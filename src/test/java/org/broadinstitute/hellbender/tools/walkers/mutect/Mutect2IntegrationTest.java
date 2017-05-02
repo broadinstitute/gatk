@@ -23,6 +23,8 @@ import java.util.stream.StreamSupport;
  * Created by davidben on 9/1/16.
  */
 public class Mutect2IntegrationTest extends CommandLineProgramTest {
+    // positions 10,000,000 - 11,000,000 of chr 20 and with most annotations removed
+    private static final File GNOMAD = new File(publicTestDir, "very-small-gnomad.vcf");
     private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
     private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
     private static final String DREAM_MASKS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/masks/";
@@ -58,6 +60,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-normal", normalSample,
                 "-R", b37_reference_20_21,
                 "-L", "20",
+                "-germline_resource", GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
@@ -144,7 +147,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-I", normalBam.getAbsolutePath(),
                 "-normal", normalName,
                 "-R", b37_reference_20_21,
-                "-dbsnp", dbsnp_138_b37_20_21_vcf,
                 "-L", "20:10000000-10100000", // this is 1/3 of the chr 20 interval of our mini-dbSNP
                 "-O", outputVcf.getAbsolutePath()
         };
@@ -154,24 +156,39 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(numVariants < 4);
     }
 
-    // run tumor-only using our mini dbSNP on NA12878, which is not a tumor
-    // since any "somatic variants" are germline hets with good likelihoods, dbSNP doesn't actually do anything
+    // run tumor-only using our mini gnomAD on NA12878, which is not a tumor
     // we're just making sure nothing blows up
     @Test
-    public void testTumorOnlyWithDbsnp() throws Exception {
+    public void testTumorOnly() throws Exception {
         Utils.resetRandomGenerator();
-        final File outputVcf = createTempFile("output", ".vcf");
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
                 "-tumor", "NA12878",
                 "-R", b37_reference_20_21,
-                "-dbsnp", dbsnp_138_b37_20_21_vcf,
-                "-L", "20:10000000-10010000",//"20:10000000-10300000",   // this is the chr 20 interval of our mini-dbSNP
-                "-O", outputVcf.getAbsolutePath()
+                "-L", "20:10000000-10010000",
+                "-germline_resource", GNOMAD.getAbsolutePath(),
+                "-O", unfilteredVcf.getAbsolutePath()
         };
 
         runCommandLine(args);
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
+
+
+        final long numVariantsBeforeFiltering = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false).count();
+
+        final long numVariantsPassingFilters = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false)
+                .filter(vc -> vc.getFilters().isEmpty()).count();
+
+        // just a sanity check that this bam has some germline variants on this interval so that our test doesn't pass trivially!
+        Assert.assertTrue(numVariantsBeforeFiltering > 50);
+
+        // every variant on this interval in this sample is in gnomAD
+        Assert.assertTrue(numVariantsPassingFilters < 2);
     }
 
     // test that ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT removes reads that consume zero reference bases

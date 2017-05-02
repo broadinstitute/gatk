@@ -22,8 +22,7 @@ import java.util.function.Function;
  *
  *
  **/
-public class PerAlleleCollection<X> {
-    // TODO: consider using Optional for ref allele
+public class PerAlleleCollection<X extends Number> {
     private Optional<Allele> refAllele;
     private Optional<X> refValue;
     private Map<Allele, X> altAlleleValueMap;
@@ -105,6 +104,10 @@ public class PerAlleleCollection<X> {
         Utils.validateArg(allele.isNonReference(), "allele is not an alt allele");
         Utils.validateArg(altAlleleValueMap.containsKey(allele), "Requested alt allele is not in the collection");
         return altAlleleValueMap.get(allele);
+    }
+
+    public double[] asDoubleArray(final Collection<Allele> allelesInOrder) {
+        return allelesInOrder.stream().mapToDouble(a -> get(a).doubleValue()).toArray();
     }
     
     public Set<Allele> getAltAlleles(){

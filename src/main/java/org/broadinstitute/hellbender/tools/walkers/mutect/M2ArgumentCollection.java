@@ -30,19 +30,35 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /***************************************/
     // Reference Metadata inputs
     /***************************************/
-    /**
-     * Mutect2 has the ability to use COSMIC data in conjunction with dbSNP to adjust the threshold for evidence of a variant
-     * in the normal.  If a variant is present in dbSNP, but not in COSMIC, then more evidence is required from the normal
-     * sample to prove the variant is not present in germline.
-     */
-    @Argument(fullName="cosmic", shortName = "cosmic", doc="VCF file of COSMIC sites", optional = true)
-    public FeatureInput<VariantContext> cosmicFeatureInput;
 
     /**
      * A panel of normals can be a useful (optional) input to help filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
      */
     @Argument(fullName="normal_panel", shortName = "PON", doc="VCF file of sites observed in normal", optional = true)
-    public FeatureInput<VariantContext> normalPanelFeatureInput;
+    public FeatureInput<VariantContext> pon;
+
+    /**
+     * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
+     */
+    @Argument(fullName="germline_resource", doc="Population vcf of germline sequencing containing allele fractions", optional = true)
+    public FeatureInput<VariantContext> germlineResource;
+
+    /**
+     * Population allele fraction assigned to alleles not found in germline resource.
+     */
+    @Argument(fullName="af_of_alleles_not_in_resurce", shortName = "default_af",
+            doc="Population allele fraction assigned to alleles not found in germline resource.  A reasonable value is" +
+                    "1/(2* number of samples in resource) if a germline resource is available; otherwise an average " +
+                    "heterozygosity rate such as 0.001 is reasonable.", optional = true)
+    public double afOfAllelesNotInGermlineResource = 0.001;
+
+    /**
+     * Prior probability that any given site has a somatic allele
+     */
+    @Argument(fullName="log_somatic_prior",
+            doc="Prior probability that a given site has a somatic allele.", optional = true)
+    public double log10PriorProbOfSomaticEvent = -6.0;
+
 
     /**
      * Minimum number of variant reads in pileup to be considered an active region.

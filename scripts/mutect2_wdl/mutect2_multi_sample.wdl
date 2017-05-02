@@ -6,8 +6,7 @@
 #  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
 #  pon, pon_index: optional panel of normals and index in vcf format containing known false positves
 #  scatter_count: number of parallel jobs when scattering over intervals
-#  dbsnp, dbsnp_index: optional database of known germline variants
-#  cosmic, cosmic_index: optional database of known somatic variants
+#  gnomad, gnomad_index: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
 #  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
 #  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  pair_list: a tab-separated table with no header in the following format:
@@ -61,10 +60,8 @@ workflow Mutect2_Multi {
 	File ref_dict
 	File? pon
 	File? pon_index
-	File? dbsnp
-	File? dbsnp_index
-	File? cosmic
-	File? cosmic_index
+	File? gnomad
+	File? gnomad_index
 	File? variants_for_contamination
     File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
@@ -103,10 +100,8 @@ workflow Mutect2_Multi {
                     pon = pon,
                     pon_index = pon_index,
                     scatter_count = scatter_count,
-                    dbsnp = dbsnp,
-                    dbsnp_index = dbsnp_index,
-                    cosmic = cosmic,
-                    cosmic_index = cosmic_index,
+                    gnomad = gnomad,
+                    gnomad_index = gnomad_index,
                     variants_for_contamination = variants_for_contamination,
                     variants_for_contamination_index = variants_for_contamination_index,
                     is_run_orientation_bias_filter = is_run_orientation_bias_filter,

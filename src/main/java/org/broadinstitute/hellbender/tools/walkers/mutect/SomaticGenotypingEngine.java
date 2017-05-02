@@ -37,8 +37,6 @@ import static org.broadinstitute.hellbender.utils.OptimizationUtils.argmax;
 
 public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine {
 
-    public static final String IN_COSMIC_VCF_ATTRIBUTE = "IN_COSMIC";
-    public static final String IN_DBSNP_VCF_ATTRIBUTE = "IN_DBSNP";
     public static final String IN_PON_VCF_ATTRIBUTE = "IN_PON";
     public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE = "N_ART_LOD";
 
@@ -129,7 +127,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             final PerAlleleCollection<Double> tumorLog10Odds = somaticLog10Odds(log10TumorMatrix);
             final Optional<PerAlleleCollection<Double>> normalLog10Odds = getForNormal(() -> diploidAltLog10Odds(log10NormalMatrix.get()));
-            final Optional<PerAlleleCollection<Double>> normalArtifactLods = getForNormal(() -> somaticLog10Odds(log10NormalMatrix.get()));
+            final Optional<PerAlleleCollection<Double>> normalArtifactLog10Odds = getForNormal(() -> somaticLog10Odds(log10NormalMatrix.get()));
 
             final List<Allele> somaticAltAlleles = mergedVC.getAlternateAlleles().stream()
                     .filter(allele -> tumorLog10Odds.getAlt(allele) > MTAC.TUMOR_LOD_THRESHOLD)
@@ -144,27 +142,23 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<LikelihoodMatrix<Allele>> subsettedLog10NormalMatrix =
                     getForNormal(() -> new SubsettedLikelihoodMatrix<>(log10NormalMatrix.get(), allSomaticAlleles));
 
-            final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC);
-            callVcb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, somaticAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
+            final Map<String, Object> germlineAnnotations = GermlineProbabilityCalculator.calculateAnnotations(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles,
+                    tumorLog10Odds.asDoubleArray(somaticAltAlleles), normalLog10Odds.isPresent() ? Optional.of(normalLog10Odds.get().asDoubleArray(somaticAltAlleles)) : Optional.empty(), MTAC.afOfAllelesNotInGermlineResource, MTAC.log10PriorProbOfSomaticEvent);
 
-            if (hasNormal) {
-                callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, somaticAltAlleles.stream().mapToDouble(a -> normalLog10Odds.get().getAlt(a)).toArray());
-                callVcb.attribute(NORMAL_ARTIFACT_LOD_ATTRIBUTE, somaticAltAlleles.stream().mapToDouble(a -> normalArtifactLods.get().getAlt(a)).toArray());
-            }
+            final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
+                    .alleles(allSomaticAlleles)
+                    .attributes(germlineAnnotations)
+                    .attribute(GATKVCFConstants.TUMOR_LOD_KEY, somaticAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
 
-            if (!featureContext.getValues(MTAC.cosmicFeatureInput, loc).isEmpty()) {
-                callVcb.attribute(IN_COSMIC_VCF_ATTRIBUTE, true);
-            }
+            normalLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, values.asDoubleArray(somaticAltAlleles)));
+            normalArtifactLog10Odds.ifPresent(values -> callVcb.attribute(NORMAL_ARTIFACT_LOD_ATTRIBUTE, values.asDoubleArray(somaticAltAlleles)));
 
-            if (!featureContext.getValues(MTAC.dbsnp.dbsnp, loc).isEmpty()) {
-                callVcb.attribute(IN_DBSNP_VCF_ATTRIBUTE, true);
-            }
-
-            if (!featureContext.getValues(MTAC.normalPanelFeatureInput, mergedVC.getStart()).isEmpty()) {
+            if (!featureContext.getValues(MTAC.pon, mergedVC.getStart()).isEmpty()) {
                 callVcb.attribute(IN_PON_VCF_ATTRIBUTE, true);
             }
 
-            final VariantContext call = addGenotypes(subsettedLog10TumorMatrix, subsettedLog10NormalMatrix, callVcb);
+            addGenotypes(subsettedLog10TumorMatrix, subsettedLog10NormalMatrix, callVcb);
+            final VariantContext call = callVcb.make();
             final ReadLikelihoods<Allele> log10LikelihoodsForAnotations = prepareReadAlleleLikelihoodsForAnnotation(log10ReadLikelihoods, Collections.emptyMap(),
                     false, alleleMapper, log10Likelihoods, call);
             final VariantContext annotatedCall =  annotationEngine.annotateContext(call, featureContext, referenceContext, log10LikelihoodsForAnotations, a -> true);
@@ -198,7 +192,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         return lods;
     }
 
-    private VariantContext addGenotypes(final LikelihoodMatrix<Allele> tumorLog10Matrix,
+    private void addGenotypes(final LikelihoodMatrix<Allele> tumorLog10Matrix,
                                         final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
                                         final VariantContextBuilder callVcb) {
         final double[] tumorAlleleCounts = SomaticLikelihoodsEngine.getEffectiveCounts(getAsRealMatrix(tumorLog10Matrix));
@@ -222,7 +216,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             genotypes.add(normalGenotype);
         }
 
-        return new VariantContextBuilder(callVcb).alleles(tumorLog10Matrix.alleles()).genotypes(genotypes).make();
+        callVcb.genotypes(genotypes);
     }
 
     /**
