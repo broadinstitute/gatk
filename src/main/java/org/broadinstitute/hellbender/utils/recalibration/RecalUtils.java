@@ -352,7 +352,7 @@ public final class RecalUtils {
     public static void generatePlots(final File csvFile, final File maybeGzipedExampleReportFile, final File output) {
         final File exampleReportFile = IOUtils.gunzipToTempIfNeeded(maybeGzipedExampleReportFile);
         final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(LoadBQSRScriptResource());
+        executor.addScript(loadBQSRScriptResource());
         executor.addArgs(csvFile.getAbsolutePath());
         executor.addArgs(exampleReportFile.getAbsolutePath());
         executor.addArgs(output.getAbsolutePath());
@@ -663,7 +663,7 @@ public final class RecalUtils {
      * Retrieve the BQSR.R script
      * @return Resource representing the R script
      */
-    protected static Resource LoadBQSRScriptResource() {
+    protected static Resource loadBQSRScriptResource() {
         return new Resource(SCRIPT_FILE, RecalUtils.class);
     }
 }

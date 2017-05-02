@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.utils.recalibration.RecalDatum;
-import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
@@ -101,7 +99,7 @@ public final class RecalUtilsUnitTest extends BaseTest {
 
     @Test
     public void testLoadBQSRRScript() {
-        Assert.assertNotNull(RecalUtils.LoadBQSRScriptResource());
+        Assert.assertNotNull(RecalUtils.loadBQSRScriptResource());
     }
 
     public List<Row> makeExpected(final List<Row> table1, final List<Row> table2) {
