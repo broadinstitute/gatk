@@ -99,6 +99,11 @@ public final class RecalUtilsUnitTest extends BaseTest {
         }
     }
 
+    @Test
+    public void testLoadBQSRRScript() {
+        Assert.assertNotNull(RecalUtils.LoadBQSRScriptResource());
+    }
+
     public List<Row> makeExpected(final List<Row> table1, final List<Row> table2) {
         final List<Row> combined = new LinkedList<>();
         for ( final Row t1 : table1 ) combined.add(new Row(t1));
