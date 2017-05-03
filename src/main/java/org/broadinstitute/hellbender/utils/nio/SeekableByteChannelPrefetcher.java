@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.common.base.Stopwatch;
+import java.util.concurrent.ThreadFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.Closeable;
@@ -18,6 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import shaded.cloud_nio.com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * SeekableByteChannelPrefetcher wraps an existing SeekableByteChannel to add prefetching.
@@ -43,6 +45,8 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     private long position = 0;
     private boolean open;
     private Stopwatch betweenCallsToRead = Stopwatch.createUnstarted();
+    private static int prefetcherCount = 0;
+    private final int prefetcherIndex;
 
     // statistics, for profiling
     // time spent blocking the user because we're waiting on the network
@@ -164,8 +168,16 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
             this.bufSize = bufSize;
         }
         this.open = true;
-        // We use a single thread to ensure no parallel accesses to the channel.
-        exec = Executors.newFixedThreadPool(1);
+        this.prefetcherIndex = (prefetcherCount++);
+        // Make sure the prefetching thread's name indicate what it is and
+        // which prefetcher it belongs to (for debugging purposes only, naturally).
+        String nameFormat = "nio-prefetcher-" + prefetcherIndex + "-thread-%d";
+        ThreadFactory threadFactory = new ThreadFactoryBuilder()
+            .setNameFormat(nameFormat)
+            .setDaemon(true)
+            .build();
+        // Single thread to ensure no concurrent access to chan.
+        exec = Executors.newFixedThreadPool(1, threadFactory);
     }
 
     public String getStatistics() {
