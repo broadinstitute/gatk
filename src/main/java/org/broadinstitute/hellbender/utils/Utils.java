@@ -711,14 +711,20 @@ public final class Utils {
      * @throws UserException if {@code file} is not a regular file or it cannot be read.
      * @return the same as the input {@code file}.
      */
-    public static File regularReadableUserFile(final File file) {
+    public static void canRead(final File file) {
         nonNull(file, "unexpected null file reference");
-        if (!file.canRead()) {
-            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file does not exist or cannot be read");
+        if ( ! file.exists() ) {
+            throw new UserException.CouldNotReadInputFile(file, "It doesn't exist.");
         } else if (!file.isFile()) {
             throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file is not a regular file");
-        } else {
-            return file;
+        } else if (!file.canRead()) {
+            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file does not exist or cannot be read");
+        }
+    }
+
+    public static void canRead(final File... files) {
+        for (final File file : files) {
+            canRead(file);
         }
     }
 

@@ -7,7 +7,6 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.math3.util.MathArrays;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -405,10 +404,16 @@ public final class UtilsUnitTest extends BaseTest {
     }
 
     @Test
-    public void testSuccessfulRegularReadableFileCheck() {
+    public void testSuccessfulCanReadFileCheck() {
         final File expectedFile = createTempFile("Utils-RRFC-test",".txt");
-        final File actualFile = Utils.regularReadableUserFile(expectedFile);
-        Assert.assertSame(actualFile, expectedFile);
+        Utils.canRead(expectedFile);
+    }
+
+    @Test
+    public void testSuccessfulCanReadFilesCheck() {
+        final File file1 = createTempFile("Utils-RRFC-test1",".txt");
+        final File file2 = createTempFile("Utils-RRFC-test2",".txt");
+        Utils.canRead(file1, file2);
     }
 
     @Test(dataProvider = "successfulValidIndexData")
@@ -428,7 +433,7 @@ public final class UtilsUnitTest extends BaseTest {
         if (file == null){
             throw new SkipException("cannot make a file unreadable (maybe you're running as root)");
         }
-        Utils.regularReadableUserFile(file);
+        Utils.canRead(file);
     }
 
     @DataProvider(name = "unsuccessfulRegularReadableFileCheckData")

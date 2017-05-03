@@ -170,17 +170,6 @@ public final class IOUtilsUnitTest extends BaseTest {
         Assert.assertEquals(IOUtils.replaceExtension(new File(input), "new"), new File(expected));
     }
 
-    @Test
-    public void testAssertFileIsReadableExistingFile() {
-        IOUtils.assertFileIsReadable(new File(hg19MiniReference));
-    }
-
-    @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
-    public void testAssertFileIsReadableNonExistentFile() {
-        IOUtils.assertFileIsReadable(new File(publicTestDir + "foo/bar/NON_EXISTENT_FILE_FOR_IOUTILS_AssertFileIsReadableNonExistentFile"));
-    }
-
-
     @Test(groups={"bucket"})
     public void testGetPath() throws IOException {
         innerTestGetPath(getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
