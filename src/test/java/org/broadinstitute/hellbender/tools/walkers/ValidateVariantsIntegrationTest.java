@@ -27,6 +27,12 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         return "-R " + reference + intervals + " --variant " + filePath + typeArgString;
     }
 
+    public String baseTestStringWithoutReference(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type) {
+        final String filePath = sharedFile ? file: getToolTestDataDir() + file;
+        final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
+        return " --variant " + filePath + typeArgString;
+    }
+
     private static String excludeValidationTypesButString(ValidateVariants.ValidationType type) {
         if (type.equals(ALL)) {
             return "";
@@ -66,6 +72,17 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
                 baseTestString(false, "validationExampleBad.vcf", false, REF),
                 0,
                 UserException.FailsStrictValidation.class
+        );
+
+        spec.executeTest("test bad ref base #1", this);
+    }
+
+    @Test
+    public void testMissingReference() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestStringWithoutReference(false, "validationExampleBad.vcf", false, REF),
+                0,
+                UserException.MissingReference.class
         );
 
         spec.executeTest("test bad ref base #1", this);

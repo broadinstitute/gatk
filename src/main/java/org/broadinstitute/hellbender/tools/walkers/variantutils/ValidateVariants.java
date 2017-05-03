@@ -177,8 +177,8 @@ public final class ValidateVariants extends VariantWalker {
         final Allele reportedRefAllele = vc.getReference();
         final int refLength = reportedRefAllele.length();
 
-        final byte[] observedRefBases = Arrays.copyOf(ref.getBases(), refLength);
-        final Allele observedRefAllele = Allele.create(observedRefBases);
+        final Allele observedRefAllele = hasReference() ? Allele.create(Arrays.copyOf(ref.getBases(), refLength)) : null;
+
         final Set<String> rsIDs = getRSIDs(featureContext);
 
         for (final ValidationType t : validationTypes) {
@@ -229,6 +229,9 @@ public final class ValidateVariants extends VariantWalker {
         } else {
            final Set<ValidationType> result = new LinkedHashSet<>(ValidationType.CONCRETE_TYPES);
            result.removeAll(excludeTypeSet);
+            if (result.contains(ValidationType.REF) && !hasReference()) {
+                throw new UserException.MissingReference("Validation type " + ValidationType.REF.name() + " was selected but no reference was provided.");
+            }
            return result;
         }
     }
