@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.utils.nio;
 
+import com.google.common.base.Stopwatch;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -91,6 +93,18 @@ public class SeekableByteChannelPrefetcherTest {
         SeekableByteChannel chan1 = new SeekableByteChannelPrefetcher(
             Files.newByteChannel(Paths.get(input)), 1024);
         new SeekableByteChannelPrefetcher(chan1, 1024);
+    }
+
+    @Test
+    public void testCloseWhilePrefetching() throws Exception {
+        SeekableByteChannel chan = new SeekableByteChannelPrefetcher(
+            Files.newByteChannel(Paths.get(input)), 10*1024*1024);
+        // read just 1 byte, get the prefetching going
+        ByteBuffer one = ByteBuffer.allocate(1);
+        readFully(chan, one);
+        // closing must not throw an exception, even if the prefetching
+        // thread is active.
+        chan.close();
     }
 
     private void testReading(SeekableByteChannel chan1, SeekableByteChannel chan2, int howMuch) throws IOException {

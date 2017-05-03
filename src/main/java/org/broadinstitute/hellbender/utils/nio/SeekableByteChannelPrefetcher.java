@@ -447,9 +447,11 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     @Override
     public void close() throws IOException {
         if (open) {
-            exec.shutdown();
+            // stop accepting work, interrupt worker thread.
+            exec.shutdownNow();
             try {
-                exec.awaitTermination(3, TimeUnit.MINUTES);
+                // give worker thread a bit of time to process the interruption.
+                exec.awaitTermination(1, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 // Restore interrupted status
                 Thread.currentThread().interrupt();
