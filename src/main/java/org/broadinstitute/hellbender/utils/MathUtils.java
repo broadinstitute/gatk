@@ -768,15 +768,6 @@ public final class MathUtils {
         return log10 * LN_10;
     }
 
-    /**r
-     * Converts LN to LOG10
-     * @param ln log(x)
-     * @return log10(x)
-     */
-     public static double lnToLog10(final double ln) {
-        return ln * LOG10_OF_E;
-     }
-
     /**
       * Calculates the log10 of the gamma function for x.
       *
@@ -784,7 +775,7 @@ public final class MathUtils {
       * @return the log10 of the gamma function at x.
       */
     public static double log10Gamma(final double x) {
-       return lnToLog10(Gamma.logGamma(x));
+       return logToLog10(Gamma.logGamma(x));
     }
 
     public static double log10Factorial(final int n) {
