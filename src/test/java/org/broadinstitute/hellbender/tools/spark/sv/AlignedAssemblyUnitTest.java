@@ -147,7 +147,7 @@ public class AlignedAssemblyUnitTest extends BaseTest{
         final byte[] dummySequenceForContigFour = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'G');
 
 
-        final List<AlignedAssembly.AlignedContig> allContigs = new ArrayList<>();
+        final List<AlignedContig> allContigs = new ArrayList<>();
 
         for(int pair=0; pair<cigars.length/2; ++pair) {
 
@@ -164,11 +164,11 @@ public class AlignedAssemblyUnitTest extends BaseTest{
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
 
             if (pair == 0) {
-                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion) );
             } else if (pair <3) {
-                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion) );
             } else {
-                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion) );
             }
         }
 

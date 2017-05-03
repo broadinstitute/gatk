@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -26,7 +25,7 @@ public final class AlignedAssembly {
 
     public final int assemblyId;
 
-    public final List<AlignedContig> listOfContigsWithItsAlignmentIntervals;
+    public final List<AlignedContig> alignedContigs;
 
     /**
      * Each assembled contig should have at least one such accompanying structure, or 0 when it is unmapped.
@@ -177,85 +176,9 @@ public final class AlignedAssembly {
         }
     }
 
-    @DefaultSerializer(AlignedContig.Serializer.class)
-    public static final class AlignedContig {
-
-        public final String contigName;
-        public final byte[] contigSequence;
-        public final List<AlignmentInterval> alignmentIntervals;
-
-        public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
-            this.contigName = contigName;
-            this.contigSequence = contigSequence;
-            this.alignmentIntervals = alignmentIntervals;
-        }
-
-        AlignedContig(final Kryo kryo, final Input input) {
-
-            contigName = input.readString();
-
-            final int nBases = input.readInt();
-            contigSequence = new byte[nBases];
-            for(int b=0; b<nBases; ++b) {
-                contigSequence[b] = input.readByte();
-            }
-
-            final int nAlignments = input.readInt();
-            alignmentIntervals = new ArrayList<>(nAlignments);
-            for(int i=0; i<nAlignments; ++i) {
-                alignmentIntervals.add(new AlignmentInterval(kryo, input));
-            }
-        }
-
-        void serialize(final Kryo kryo, final Output output) {
-
-            output.writeString(contigName);
-
-            output.writeInt(contigSequence.length);
-            for(final byte base : contigSequence) {
-                output.writeByte(base);
-            }
-
-            output.writeInt(alignmentIntervals.size());
-            alignmentIntervals.forEach(it -> it.serialize(kryo, output));
-        }
-
-        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignedContig> {
-            @Override
-            public void write( final Kryo kryo, final Output output, final AlignedContig alignedContig){
-                alignedContig.serialize(kryo, output);
-            }
-
-            @Override
-            public AlignedContig read(final Kryo kryo, final Input input, final Class<AlignedContig> clazz ) {
-                return new AlignedContig(kryo, input);
-            }
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            AlignedContig that = (AlignedContig) o;
-
-            if (!contigName.equals(that.contigName)) return false;
-            if (!Arrays.equals(contigSequence, that.contigSequence)) return false;
-            return alignmentIntervals.equals(that.alignmentIntervals);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = contigName.hashCode();
-            result = 31 * result + Arrays.hashCode(contigSequence);
-            result = 31 * result + alignmentIntervals.hashCode();
-            return result;
-        }
-    }
-
     public AlignedAssembly(final int assemblyId, final List<AlignedContig> alignedContigs) {
         this.assemblyId = assemblyId;
-        this.listOfContigsWithItsAlignmentIntervals = alignedContigs;
+        this.alignedContigs = alignedContigs;
     }
 
     @VisibleForTesting
@@ -263,9 +186,9 @@ public final class AlignedAssembly {
         this.assemblyId = input.readInt();
 
         final int nContigs = input.readInt();
-        listOfContigsWithItsAlignmentIntervals = new ArrayList<>(nContigs);
+        alignedContigs = new ArrayList<>(nContigs);
         for(int contigIdx = 0; contigIdx < nContigs; ++contigIdx) {
-            listOfContigsWithItsAlignmentIntervals.add(new AlignedContig(kryo, input));
+            alignedContigs.add(new AlignedContig(kryo, input));
         }
     }
 
@@ -273,8 +196,8 @@ public final class AlignedAssembly {
     private void serialize(final Kryo kryo, final Output output) {
         output.writeInt(assemblyId);
 
-        output.writeInt(listOfContigsWithItsAlignmentIntervals.size());
-        for(final AlignedContig alignedContig : listOfContigsWithItsAlignmentIntervals) {
+        output.writeInt(alignedContigs.size());
+        for(final AlignedContig alignedContig : alignedContigs) {
             alignedContig.serialize(kryo, output);
         }
     }
@@ -299,13 +222,13 @@ public final class AlignedAssembly {
         AlignedAssembly that = (AlignedAssembly) o;
 
         if (assemblyId != that.assemblyId) return false;
-        return listOfContigsWithItsAlignmentIntervals.equals(that.listOfContigsWithItsAlignmentIntervals);
+        return alignedContigs.equals(that.alignedContigs);
     }
 
     @Override
     public int hashCode() {
         int result = assemblyId;
-        result = 31 * result + listOfContigsWithItsAlignmentIntervals.hashCode();
+        result = 31 * result + alignedContigs.hashCode();
         return result;
     }
 

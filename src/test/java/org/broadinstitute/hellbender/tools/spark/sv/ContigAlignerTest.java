@@ -65,10 +65,10 @@ public class ContigAlignerTest extends BaseTest {
         final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
 
         final AlignedAssembly alignedAssembly = contigAligner.alignContigs(1, contigsCollection);
-        Assert.assertEquals(alignedAssembly.listOfContigsWithItsAlignmentIntervals.size(), 18);
-        Assert.assertEquals(alignedAssembly.listOfContigsWithItsAlignmentIntervals.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 20);
+        Assert.assertEquals(alignedAssembly.alignedContigs.size(), 18);
+        Assert.assertEquals(alignedAssembly.alignedContigs.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 20);
 
-        final AlignedAssembly.AlignedContig alignedContig_9 = alignedAssembly.listOfContigsWithItsAlignmentIntervals.get(3);
+        final AlignedContig alignedContig_9 = alignedAssembly.alignedContigs.get(3);
         final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContig9 = alignedContig_9.alignmentIntervals;
         Assert.assertEquals(alignedContig_9.contigName, "asm000001:tig00009");
         Assert.assertEquals(alignmentIntervalsForContig9.size(), 3);
@@ -100,10 +100,10 @@ public class ContigAlignerTest extends BaseTest {
         final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
 
         final AlignedAssembly alignedAssembly = contigAligner.alignContigs(1, contigsCollection);
-        Assert.assertEquals(alignedAssembly.listOfContigsWithItsAlignmentIntervals.size(), 1);
-        Assert.assertEquals(alignedAssembly.listOfContigsWithItsAlignmentIntervals.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 2);
+        Assert.assertEquals(alignedAssembly.alignedContigs.size(), 1);
+        Assert.assertEquals(alignedAssembly.alignedContigs.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 2);
 
-        final AlignedAssembly.AlignedContig alignedContig_3 = alignedAssembly.listOfContigsWithItsAlignmentIntervals.get(0);
+        final AlignedContig alignedContig_3 = alignedAssembly.alignedContigs.get(0);
         final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContig_3 = alignedContig_3.alignmentIntervals;
         Assert.assertEquals(alignedContig_3.contigName, "asm000001:tig00003");
         Assert.assertEquals(alignmentIntervalsForContig_3.size(), 2);
@@ -136,10 +136,10 @@ public class ContigAlignerTest extends BaseTest {
         final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
 
         final AlignedAssembly alignedAssembly = contigAligner.alignContigs(21, contigsCollection);
-        Assert.assertEquals(alignedAssembly.listOfContigsWithItsAlignmentIntervals.size(), 1);
-        Assert.assertEquals(alignedAssembly.listOfContigsWithItsAlignmentIntervals.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 2);
+        Assert.assertEquals(alignedAssembly.alignedContigs.size(), 1);
+        Assert.assertEquals(alignedAssembly.alignedContigs.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 2);
 
-        final AlignedAssembly.AlignedContig alignedContig_20 = alignedAssembly.listOfContigsWithItsAlignmentIntervals.get(0);
+        final AlignedContig alignedContig_20 = alignedAssembly.alignedContigs.get(0);
         final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContig_20 = alignedContig_20.alignmentIntervals;
         Assert.assertEquals(alignedContig_20.contigName, "asm000021:tig00020");
         Assert.assertEquals(alignmentIntervalsForContig_20.size(), 2);

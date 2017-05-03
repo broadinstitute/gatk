@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import scala.Serializable;
 import scala.Tuple2;
 
 import java.util.List;
@@ -69,23 +70,31 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final JavaRDD<AlignedAssembly.AlignedContig> parsedContigAlignments
-                = new SAMFormattedContigAlignmentParser().loadAndFilterAndParseContigAlignments(ctx, localLogger, getReads(), getHeaderForReads());
+        final JavaRDD<AlignedContig> parsedContigAlignments
+                = new SAMFormattedContigAlignmentParser(getReads(), getHeaderForReads(), localLogger).getAlignedContigs();
 
         discoverVariantsAndWriteVCF(parsedContigAlignments, discoverStageArgs.fastaReference,
                 ctx.broadcast(getReference()), getAuthenticatedGCSOptions(), vcfOutputFileName, localLogger);
     }
 
-    public static final class SAMFormattedContigAlignmentParser implements AssemblyAlignmentParser {
+    public static final class SAMFormattedContigAlignmentParser extends AlignedContigGenerator implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        @SuppressWarnings("unchecked")
-        public JavaRDD<AlignedAssembly.AlignedContig> loadAndFilterAndParseContigAlignments(final JavaSparkContext ctx,
-                                                                                            final Logger toolLogger,
-                                                                                            Object... localArguments) {
-            final JavaRDD<GATKRead> unfilteredContigAlignments = (JavaRDD<GATKRead>) localArguments[0];
-            final SAMFileHeader header = (SAMFileHeader) localArguments[1];
+        private final JavaRDD<GATKRead> unfilteredContigAlignments;
+        private final SAMFileHeader header;
+        private final Logger toolLogger;
 
+        public SAMFormattedContigAlignmentParser(final JavaRDD<GATKRead> unfilteredContigAlignments,
+                                                 final SAMFileHeader header,
+                                                 final Logger toolLogger) {
+            this.unfilteredContigAlignments = unfilteredContigAlignments;
+            this.header = header;
+            this.toolLogger = toolLogger;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public JavaRDD<AlignedContig> getAlignedContigs() {
             return unfilteredContigAlignments
                     .filter(r -> !r.isSecondaryAlignment()).groupBy(GATKRead::getName).map(Tuple2::_2)
                     .map(iterable -> parseReadsAndBreakGaps(iterable, header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger));
@@ -94,14 +103,14 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         /**
          * Iterates through the input {@code noSecondaryReads}, which are assumed to contain no secondary alignment (i.e. records with "XA" tag),
          * converts to custom {@link AlignedAssembly.AlignmentInterval} format and
-         * break the records when the gap in the alignment reaches the specified {@code sensitivity}.
+         * split the records when the gap in the alignment reaches the specified {@code sensitivity}.
          * The size of the returned iterable of {@link AlignedAssembly.AlignmentInterval}'s is guaranteed to be no lower than that of the input iterable.
          */
         @VisibleForTesting
-        public static AlignedAssembly.AlignedContig parseReadsAndBreakGaps(final Iterable<GATKRead> noSecondaryReads,
-                                                                           final SAMFileHeader header,
-                                                                           final int sensitivity,
-                                                                           final Logger toolLogger) {
+        public static AlignedContig parseReadsAndBreakGaps(final Iterable<GATKRead> noSecondaryReads,
+                                                           final SAMFileHeader header,
+                                                           final int sensitivity,
+                                                           final Logger toolLogger) {
 
             Utils.validateArg(noSecondaryReads.iterator().hasNext(), "input collection of GATK reads is empty");
 
@@ -120,9 +129,9 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
             final List<AlignedAssembly.AlignmentInterval> parsedAlignments =
                     Utils.stream(noSecondaryReads)
-                            .map(r -> AssemblyAlignmentParser.breakGappedAlignment(new AlignedAssembly.AlignmentInterval(r.convertToSAMRecord(header)), sensitivity, unClippedContigLength))
+                            .map(r -> GappedAlignmentSplitter.split(new AlignedAssembly.AlignmentInterval(r.convertToSAMRecord(header)), sensitivity, unClippedContigLength))
                             .flatMap(Utils::stream).collect(Collectors.toList());
-            return new AlignedAssembly.AlignedContig(primaryAlignment.getName(), contigSequence, parsedAlignments);
+            return new AlignedContig(primaryAlignment.getName(), contigSequence, parsedAlignments);
         }
     }
 
@@ -130,7 +139,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * Makes sense out of the alignment records of the locally assembled contigs,
      * turn into annotated {@link VariantContext}'s, and writes them to VCF.
      */
-    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedAssembly.AlignedContig> contigAlignments,
+    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> contigAlignments,
                                                    final String fastaReference, final Broadcast<ReferenceMultiSource> broadcastReference,
                                                    final PipelineOptions pipelineOptions, final String vcfFileName,
                                                    final Logger toolLogger) {

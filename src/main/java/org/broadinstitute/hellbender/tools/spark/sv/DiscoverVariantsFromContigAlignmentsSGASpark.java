@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,7 +14,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
@@ -59,26 +59,39 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final JavaRDD<AlignedAssembly.AlignedContig> parsedContigAlignments
-                = new SGATextFormatAlignmentParser().loadAndFilterAndParseContigAlignments(ctx, logContigAlignmentSimpleStats ? localLogger : null, inputAssemblies, inputAlignments);
+        final JavaRDD<AlignedContig> parsedContigAlignments
+                = new SGATextFormatAlignmentParser(ctx, inputAssemblies, inputAlignments, logContigAlignmentSimpleStats ? localLogger : null).getAlignedContigs();
 
         DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsAndWriteVCF(parsedContigAlignments, fastaReference,
                 ctx.broadcast(getReference()), getAuthenticatedGCSOptions(), vcfOutput, localLogger);
     }
 
-    public static final class SGATextFormatAlignmentParser implements AssemblyAlignmentParser {
-        private static final long serialVersionUID = 1L;
+    public static final class SGATextFormatAlignmentParser extends AlignedContigGenerator {
+
+        private final JavaSparkContext ctx;
+        private final String pathToInputAssemblies;
+        private final String pathToInputAlignments;
+        private final Logger toolLogger;
+
+        SGATextFormatAlignmentParser(final JavaSparkContext ctx,
+                                     final String pathToInputAssemblies,
+                                     final String pathToInputAlignments,
+                                     final Logger toolLogger) {
+            this.ctx = ctx;
+            this.pathToInputAssemblies = pathToInputAssemblies;
+            this.pathToInputAlignments = pathToInputAlignments;
+            this.toolLogger = toolLogger;
+        }
 
         @SuppressWarnings("unchecked")
-        public JavaRDD<AlignedAssembly.AlignedContig> loadAndFilterAndParseContigAlignments(final JavaSparkContext ctx,
-                                                                                            final Logger toolLogger,
-                                                                                            Object... customArguments) {
+        @Override
+        public JavaRDD<AlignedContig> getAlignedContigs() {
 
-            final JavaPairRDD<String, byte[]> contigNameAndSequence = extractContigNameAndSequenceFromTextFile(ctx, (String) customArguments[0]);
+            final JavaPairRDD<String, byte[]> contigNameAndSequence = extractContigNameAndSequenceFromTextFile(ctx, pathToInputAssemblies);
 
-            final JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments = parseAndBreakAlignmentTextRecords(ctx, (String) customArguments[1], toolLogger);
+            final JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments = parseAndBreakAlignmentTextRecords(ctx, pathToInputAlignments, toolLogger);
 
-            return contigNameAndAlignments.join(contigNameAndSequence).map(pair -> new AlignedAssembly.AlignedContig(pair._1, pair._2._2, pair._2._1));
+            return contigNameAndAlignments.join(contigNameAndSequence).map(pair -> new AlignedContig(pair._1, pair._2._2, pair._2._1));
         }
 
         /**
@@ -104,8 +117,8 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
         public static JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> parseAndBreakAlignmentTextRecords(final JavaSparkContext ctx, final String pathToInputAlignments, final Logger toolLogger) {
             final JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments
                     = ctx.textFile(pathToInputAlignments)
-                    .mapToPair(SGATextFormatAlignmentParser::parseHadoopTextFileAlignmentIntervalLine)
-                    .mapValues(rawAlignments -> rawAlignments.stream().flatMap(oneInterval -> Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(oneInterval, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, oneInterval.cigarAlong5to3DirectionOfContig.getReadLength() + SVVariantDiscoveryUtils.getTotalHardClipping(oneInterval.cigarAlong5to3DirectionOfContig)))).collect(Collectors.toList()));
+                    .mapToPair(SGATextFormatAlignmentParser::parseTextFileAlignmentIntervalLines)
+                    .mapValues(rawAlignments -> rawAlignments.stream().flatMap(oneInterval -> Utils.stream(GappedAlignmentSplitter.split(oneInterval, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, oneInterval.cigarAlong5to3DirectionOfContig.getReadLength() + SVVariantDiscoveryUtils.getTotalHardClipping(oneInterval.cigarAlong5to3DirectionOfContig)))).collect(Collectors.toList()));
             if (toolLogger!=null) {
                 debugStats(contigNameAndAlignments, pathToInputAlignments, toolLogger);
             }
@@ -113,10 +126,10 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
         }
 
         /**
-         * Parses fields in the same format as they were output in {@link AlignAssembledContigsSpark#formatAlignedAssemblyAsHadoopTextFileStringList(AlignedAssembly)}
+         * Parses fields in the same format as they were output in {@link AlignAssembledContigsSpark#formatAlignedAssemblyAsText(AlignedAssembly)}
          */
         @VisibleForTesting
-        public static Tuple2<String, List<AlignedAssembly.AlignmentInterval>> parseHadoopTextFileAlignmentIntervalLine(final String textLine) {
+        public static Tuple2<String, List<AlignedAssembly.AlignmentInterval>> parseTextFileAlignmentIntervalLines(final String textLine) {
 
             try {
 

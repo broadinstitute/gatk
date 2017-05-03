@@ -10,7 +10,7 @@ import scala.Tuple2;
 import java.util.*;
 import java.util.stream.Collectors;
 
-class ContigAligner {
+public class ContigAligner {
 
     private final String indexImageFile;
 
@@ -23,12 +23,12 @@ class ContigAligner {
      * (secondary) alignments are filtered out, preserving the primary and supplementary alignments.
      * Within the output list, alignments are sorted first by contig (based on the order in which
      * the contigs were passed in, and then by their start position on the contig).
-     *  @param assemblyId An identifier for the assembly or set of contigs
+     * @param assemblyId An identifier for the assembly or set of contigs
      * @param contigsCollection The set of all canonical (primary or supplementary) alignments for the contigs.*/
 
     AlignedAssembly alignContigs(final int assemblyId, final ContigsCollection contigsCollection) {
 
-        final List<AlignedAssembly.AlignedContig> alignedContigs = new ArrayList<>(contigsCollection.getContents().size());
+        final List<AlignedContig> alignedContigs = new ArrayList<>(contigsCollection.getContents().size());
 
         final BwaMemIndex index = BwaMemIndexSingleton.getInstance(indexImageFile);
 
@@ -58,7 +58,7 @@ class ContigAligner {
                         AlignedAssemblyOrExcuse.formatContigName(assemblyId,
                                 Integer.valueOf(contents.get(contigIdx)._1.toString().split(" ")[0].replace("contig", "").replace("-", "").replace(">", "")));
 
-                alignedContigs.add( new AlignedAssembly.AlignedContig(contigName, seqs.get(contigIdx), alignmentIntervals) );
+                alignedContigs.add( new AlignedContig(contigName, seqs.get(contigIdx), alignmentIntervals) );
             }
         }
 

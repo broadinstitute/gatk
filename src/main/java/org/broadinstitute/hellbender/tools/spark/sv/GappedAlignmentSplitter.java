@@ -4,34 +4,18 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import org.apache.logging.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Interface to load various upstream assembly and alignment format and turn into custom {@link AlignedAssembly} format.
- * Implementations are expected to apply filter to the provided raw format contig alignments and
- * break the gapped alignments by calling into {@link #breakGappedAlignment(AlignedAssembly.AlignmentInterval, int, int)}.
- */
-public interface AssemblyAlignmentParser extends Serializable {
-    static final long serialVersionUID = 1L;
+final class GappedAlignmentSplitter {
 
     /**
-     * Implementations are expected to apply filter to the provided raw format contig alignments and break the alignment gaps.
-     */
-    public JavaRDD<AlignedAssembly.AlignedContig> loadAndFilterAndParseContigAlignments(final JavaSparkContext ctx,
-                                                                                        final Logger toolLogger,
-                                                                                        Object... customArguments);
-    /**
-     * Break a gapped alignment into multiple alignment regions, based on input sensitivity: i.e. if the gap(s) in the input alignment
+     * Splits a gapped alignment into multiple alignment regions, based on input sensitivity: i.e. if the gap(s) in the input alignment
      * is equal to or larger than the size specified by {@code sensitivity}, two alignment regions will be generated.
      *
      * To fulfill this functionality, needs to accomplish three key tasks correctly:
@@ -40,7 +24,7 @@ public interface AssemblyAlignmentParser extends Serializable {
      *     <li>infer reference coordinates,</li>
      *     <li>infer contig coordinates</li>
      * </ul>
-     * As an example, an alignment with CIGAR "397S118M2D26M6I50M7I26M1I8M13D72M398S", when {@code sensitivity} is set to "1", should be broken into 5 alignments
+     * As an example, an alignment with CIGAR "397S118M2D26M6I50M7I26M1I8M13D72M398S", when {@code sensitivity} is set to "1", should be split into 5 alignments
      * <ul>
      *     <li>"397S118M594S"</li>
      *     <li>"515S26M568S"</li>
@@ -48,13 +32,13 @@ public interface AssemblyAlignmentParser extends Serializable {
      *     <li>"631S8M470S"</li>
      *     <li>"639S72M398S"</li>
      * </ul>
-     * On the other hand, an alignment with CIGAR "10M10D10M60I10M10I10M50D10M", when {@code sensitivity} is set to "50", should be broken into 3 alignments
+     * On the other hand, an alignment with CIGAR "10M10D10M60I10M10I10M50D10M", when {@code sensitivity} is set to "50", should be split into 3 alignments
      * <ul>
      *     <li>"10M10D10M100S"</li>
      *     <li>"80S10M10I10M10S"</li>
      *     <li>"110S10M"</li>
      * </ul>
-     * And when an alignment has hard clipping adjacent to soft clippings, e.g. "1H2S3M5I10M20D6M7S8H", it should be broken into alignments with CIGAR resembling the original CIGAR as much as possible:
+     * And when an alignment has hard clipping adjacent to soft clippings, e.g. "1H2S3M5I10M20D6M7S8H", it should be split into alignments with CIGAR resembling the original CIGAR as much as possible:
      * <ul>
      *     <li>"1H2S3M28S8H"</li>
      *     <li>"1H10S10M13S8H"</li>
@@ -64,9 +48,9 @@ public interface AssemblyAlignmentParser extends Serializable {
      * @return an iterable of size >= 1. if size==1, the returned iterable contains only the input (i.e. either no gap or hasn't reached sensitivity)
      */
     @VisibleForTesting
-    static Iterable<AlignedAssembly.AlignmentInterval> breakGappedAlignment(final AlignedAssembly.AlignmentInterval oneRegion,
-                                                                            final int sensitivity,
-                                                                            final int unclippedContigLen) {
+    public static Iterable<AlignedAssembly.AlignmentInterval> split(final AlignedAssembly.AlignmentInterval oneRegion,
+                                                                    final int sensitivity,
+                                                                    final int unclippedContigLen) {
 
         final List<CigarElement> cigarElements = checkCigarAndConvertTerminalInsertionToSoftClip(oneRegion.cigarAlong5to3DirectionOfContig);
         if (cigarElements.size() == 1) return new ArrayList<>( Collections.singletonList(oneRegion) );
@@ -177,7 +161,7 @@ public interface AssemblyAlignmentParser extends Serializable {
      * @throws IllegalArgumentException when the checks as described above fail.
      */
     @VisibleForTesting
-    static List<CigarElement> checkCigarAndConvertTerminalInsertionToSoftClip(final Cigar cigarAlongInput5to3Direction) {
+    public static List<CigarElement> checkCigarAndConvertTerminalInsertionToSoftClip(final Cigar cigarAlongInput5to3Direction) {
 
         if (cigarAlongInput5to3Direction.numCigarElements()<2 ) return cigarAlongInput5to3Direction.getCigarElements();
 
@@ -194,8 +178,8 @@ public interface AssemblyAlignmentParser extends Serializable {
      * @return the converted and compactified list of cigar elements
      */
     @VisibleForTesting
-    static List<CigarElement> convertInsToSoftClipFromOneEnd(final List<CigarElement> cigarElements,
-                                                             final boolean fromStart) {
+    public static List<CigarElement> convertInsToSoftClipFromOneEnd(final List<CigarElement> cigarElements,
+                                                                    final boolean fromStart) {
         final int numHardClippingBasesFromOneEnd = SVVariantDiscoveryUtils.getNumHardClippingBases(fromStart, cigarElements);
         final int numSoftClippingBasesFromOneEnd = SVVariantDiscoveryUtils.getNumSoftClippingBases(fromStart, cigarElements);
 
@@ -226,7 +210,7 @@ public interface AssemblyAlignmentParser extends Serializable {
      *                                  the same operator (other than 'S') but for some reason was not compactified into one
      */
     @VisibleForTesting
-    static List<CigarElement> compactifyNeighboringSoftClippings(final List<CigarElement> cigarElements) {
+    public static List<CigarElement> compactifyNeighboringSoftClippings(final List<CigarElement> cigarElements) {
         final List<CigarElement> result = new ArrayList<>(cigarElements.size());
         for (final CigarElement element : cigarElements) {
             final int idx = result.size()-1;

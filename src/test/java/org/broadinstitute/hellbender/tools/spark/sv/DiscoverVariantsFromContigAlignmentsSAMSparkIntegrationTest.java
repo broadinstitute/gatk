@@ -31,10 +31,6 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
                     " --fastaReference " + SVIntegrationTestDataProvider.reference;
         }
 
-        String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
-        }
     }
 
     @DataProvider(name = "discoverVariantsFromContigAlignmentsSparkIntegrationTest")

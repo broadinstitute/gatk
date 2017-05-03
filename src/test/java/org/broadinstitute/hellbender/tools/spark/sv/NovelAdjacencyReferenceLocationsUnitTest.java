@@ -167,7 +167,7 @@ public class NovelAdjacencyReferenceLocationsUnitTest extends BaseTest{
         final AlignedAssembly.AlignmentInterval region2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("20", 23103196, 23103238), 484, 525, TextCigarCodec.decode("483S42M968S"), false, 60, 2);
         final AlignedAssembly.AlignmentInterval region3 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("20", 23103633, 23104603), 524, 1493, TextCigarCodec.decode("523S970M"), true, 60, 3);
 
-        final AlignedAssembly.AlignedContig alignedContig = new AlignedAssembly.AlignedContig("asm00001:tig0001", contigSequence, Arrays.asList(region1, region2, region3));
+        final AlignedContig alignedContig = new AlignedContig("asm00001:tig0001", contigSequence, Arrays.asList(region1, region2, region3));
         final List<ChimericAlignment> assembledBreakpointsFromAlignmentIntervals = ChimericAlignment.fromSplitAlignments(alignedContig, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH);
         Assert.assertEquals(assembledBreakpointsFromAlignmentIntervals.size(), 1);
         final ChimericAlignment chimericAlignment = assembledBreakpointsFromAlignmentIntervals.get(0);
@@ -460,7 +460,7 @@ public class NovelAdjacencyReferenceLocationsUnitTest extends BaseTest{
         final AlignedAssembly.AlignmentInterval region1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("21", 118873207, 118873739), 1, 532, TextCigarCodec.decode("532M87S"), true, 60, 0);
         final AlignedAssembly.AlignmentInterval region2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("20", 175705642, 175705671), 519, 547, TextCigarCodec.decode("518S29M72S"), false, 3, 0);
         final AlignedAssembly.AlignmentInterval region3 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("20", 118875262, 118875338), 544, 619, TextCigarCodec.decode("543S76M"), false, 60, 0);
-        final AlignedAssembly.AlignedContig alignedContig = new AlignedAssembly.AlignedContig("asm00001:tig0001", contigSequence, Arrays.asList(region1, region2, region3));
+        final AlignedContig alignedContig = new AlignedContig("asm00001:tig0001", contigSequence, Arrays.asList(region1, region2, region3));
         final List<ChimericAlignment> assembledBreakpointsFromAlignmentIntervals = ChimericAlignment.fromSplitAlignments(alignedContig, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH);
         Assert.assertEquals(assembledBreakpointsFromAlignmentIntervals.size(), 1);
         final ChimericAlignment chimericAlignment = assembledBreakpointsFromAlignmentIntervals.get(0);

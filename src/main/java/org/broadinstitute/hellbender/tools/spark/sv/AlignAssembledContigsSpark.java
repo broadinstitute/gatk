@@ -28,6 +28,9 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
+    public static final String MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR = "%";
+    public static final String UNMAPPED_CONTIG_STRING_REP = "unmapped";
+
     /**
      * Number of assemblies to process per task. We need to make sure that the work is not
      * over-partitioned since each worker needs to localize the BWA reference index and read it into
@@ -62,44 +65,58 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
                             final ContigAligner contigAligner = new ContigAligner(indexImageFile);
                             final List<AlignedAssembly> alignedAssembliesInThisPartition = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION);
                             iter.forEachRemaining(pair -> alignedAssembliesInThisPartition.add(contigAligner.alignContigs(Integer.valueOf(pair._1), pair._2)));
-                            return alignedAssembliesInThisPartition.iterator();});
+                            return alignedAssembliesInThisPartition.iterator();
+                        });
 
-        allContigAlignments.flatMap(AlignAssembledContigsSpark::formatAlignedAssemblyAsHadoopTextFileStringList).saveAsTextFile(output);
+        allContigAlignments.flatMap(AlignAssembledContigsSpark::formatAlignedAssemblyAsText).saveAsTextFile(output);
 
         BwaMemIndexSingleton.closeAllDistributedInstances(ctx);
     }
 
     /**
      * Format input aligned assembly as list of strings where each entry is for one aligned contig.
-     * And each aligned contig is formatted as
-     * contigName (as formatted in {@link AlignedAssemblyOrExcuse#formatContigName(int, int)} + TAB + {ALIGNMENT_INTERVAL}
-     * where {ALIGNMENT_INTERVAL} is a list of formatted ALIGNMENT_INTERVAL's separated by TAB's, and
-     * each ALIGNMENT_INTERVAL is formatted as
+     * And each aligned contig is formatted as:
+     * <pre>
+     * contigName ({@link AlignedAssemblyOrExcuse#formatContigName(int, int)}) + TAB + {ALIGNMENT_INTERVAL}
+     * </pre>
+     * where {ALIGNMENT_INTERVAL} is a list of formatted {@link org.broadinstitute.hellbender.tools.spark.sv.AlignedAssembly.AlignmentInterval}'s separated by TAB's,
+     * and each {@link org.broadinstitute.hellbender.tools.spark.sv.AlignedAssembly.AlignmentInterval} is formatted as:
+     * <pre>
      * startInAssembledContig + "-" + endInAssembledContig + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
      * referenceInterval({@link org.broadinstitute.hellbender.utils.SimpleInterval#toString()} + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
      * cigarAlong5to3DirectionOfContig + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
      * "+/-" (depending on strandedness) + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
      * mapQual + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} + mismatch
+     * </pre>
      */
     @VisibleForTesting
-    public static Iterator<String> formatAlignedAssemblyAsHadoopTextFileStringList(final AlignedAssembly alignedAssembly) {
+    public static Iterator<String> formatAlignedAssemblyAsText(final AlignedAssembly alignedAssembly) {
 
-        return alignedAssembly.listOfContigsWithItsAlignmentIntervals.stream()
+        return alignedAssembly.alignedContigs.stream()
                 .map(alignedContig -> {
+                    final String mappingInfo;
                     if (alignedContig.alignmentIntervals.isEmpty()) {
-                        return alignedContig.contigName + "\t" + UNMAPPED_CONTIG_STRING_REP;
+                        mappingInfo = UNMAPPED_CONTIG_STRING_REP;
                     } else {
-                        return alignedContig.contigName + "\t" + StringUtils.join(alignedContig.alignmentIntervals.stream().map(alignmentInterval ->
-                                        StringUtils.join(Arrays.asList(String.valueOf(alignmentInterval.startInAssembledContig) + "-" + String.valueOf(alignmentInterval.endInAssembledContig),
-                                                encodeSimpleIntervalAsString(alignmentInterval.referenceInterval),TextCigarCodec.encode(alignmentInterval.cigarAlong5to3DirectionOfContig),
-                                                (alignmentInterval.forwardStrand ? "+" : "-"), alignmentInterval.mapQual, alignmentInterval.mismatches), MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR)
-                        ).collect(Collectors.toList()), "\t");
+                        final List<String> intervals =
+                                alignedContig.alignmentIntervals.stream()
+                                        .map(alignmentInterval ->
+                                                StringUtils.join(Arrays.asList(String.valueOf(alignmentInterval.startInAssembledContig) + "-" + String.valueOf(alignmentInterval.endInAssembledContig), encodeSimpleIntervalAsString(alignmentInterval.referenceInterval),TextCigarCodec.encode(alignmentInterval.cigarAlong5to3DirectionOfContig), (alignmentInterval.forwardStrand ? "+" : "-"), alignmentInterval.mapQual, alignmentInterval.mismatches), MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR))
+                                        .collect(Collectors.toList());
+                        mappingInfo = StringUtils.join(intervals,"\t");
                     }
-
+                    return alignedContig.contigName + "\t" + mappingInfo;
                 })
                 .collect(Collectors.toList()).iterator();
     }
 
+    /**
+     * Preferably, we should use {@link SimpleInterval#toString()}, but HG38 contig names such as
+     * <pre>
+     *     ##contig=&lt;ID=HLA-DRB1*16:02:01,length=11005,assembly=38&gt;
+     * </pre>
+     * forbids such move.
+     */
     public static String encodeSimpleIntervalAsString(final SimpleInterval simpleInterval) {
         return "CTG=" + simpleInterval.getContig() + "START=" + String.valueOf(simpleInterval.getStart()) + "END=" + String.valueOf(simpleInterval.getEnd());
     }
@@ -119,6 +136,4 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
         }
     }
 
-    public static final String MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR = "%";
-    public static final String UNMAPPED_CONTIG_STRING_REP = "unmapped";
 }

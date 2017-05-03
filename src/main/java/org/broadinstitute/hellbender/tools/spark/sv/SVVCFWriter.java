@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -53,7 +54,7 @@ public class SVVCFWriter {
 
         sortedVariantsList.stream()
                 .collect(Collectors.groupingBy(vc -> (String)vc.getAttribute(GATKSVVCFHeaderLines.SVTYPE), Collectors.counting()))
-                .entrySet().forEach(pair -> logger.info(pair.getKey() + ": " + pair.getValue()));
+                .forEach((key, value) -> logger.info(key + ": " + value));
     }
 
     // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample such that they have the same start, end and inversion evidence type
@@ -89,10 +90,10 @@ public class SVVCFWriter {
     }
 
     private static VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
-        final VCFHeader header = new VCFHeader();
+        final VCFHeader header = new VCFHeader(new HashSet<>(GATKSVVCFHeaderLines.vcfHeaderLines.values()));
         header.setSequenceDictionary(referenceSequenceDictionary);
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
-        GATKSVVCFHeaderLines.vcfHeaderLines.values().forEach(header::addMetaDataLine);
+//        GATKSVVCFHeaderLines.vcfHeaderLines.values().forEach(header::addMetaDataLine);
         return header;
     }
 

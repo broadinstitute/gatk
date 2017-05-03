@@ -35,18 +35,13 @@ public class AlignAssembledContigsSparkIntegrationTest extends CommandLineProgra
                     " -O " + alignmentOutput +
                     " --bwamemIndexImage " + alignerRefIndexImgLoc;
         }
-
-        String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
-        }
     }
 
     @DataProvider(name = "alignAssembledContigsSparkIntegrationTest")
     public Object[][] createTestData() throws IOException {
         List<Object[]> tests = new ArrayList<>();
 
-        final File tempWorkingDir = BaseTest.createTempDir("whatever");
+        final File tempWorkingDir = BaseTest.createTempDir("alignAssembledContigsSparkIntegrationTest");
         tempWorkingDir.deleteOnExit();
 
         final File assemblyWithPackedFastaWithLength = Files.createDirectory(Paths.get(tempWorkingDir.getAbsolutePath()+"/"+"assemblyWithPackedFastaWithLength")).toFile();

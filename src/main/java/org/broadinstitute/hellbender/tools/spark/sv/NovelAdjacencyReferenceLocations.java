@@ -42,7 +42,7 @@ public class NovelAdjacencyReferenceLocations {
         FIVE_TO_THREE, THREE_TO_THREE, FIVE_TO_FIVE
     }
 
-    static List<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>> fromContigAlignments(final AlignedAssembly.AlignedContig alignedContig) {
+    static List<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>> fromContigAlignments(final AlignedContig alignedContig) {
         final byte[] contigSequence = alignedContig.contigSequence;
         return ChimericAlignment.fromSplitAlignments(alignedContig, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH).stream()
                 .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, contigSequence), ca)).collect(Collectors.toList());

@@ -46,11 +46,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                     " --breakpointIntervals " + outputDir + "/intervals" +
                     " --fastqDir "            + outputDir + "/fastq";
         }
-
-        String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
-        }
     }
 
     @DataProvider(name = "findBreakpointEvidenceSparkIntegrationTest")

@@ -5,6 +5,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.stream.Stream;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.SVKmer.Base;
+
 /** An iterator over kmers with a specified maximum DUST-style, low-complexity score.
  *
  *  DUST scores a sequence by counting the number of occurrences of each of the 64 possible trimers in that sequence,

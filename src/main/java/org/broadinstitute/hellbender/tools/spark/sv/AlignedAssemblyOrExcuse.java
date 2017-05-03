@@ -96,6 +96,10 @@ public final class AlignedAssemblyOrExcuse {
         return errorMessage;
     }
 
+    public boolean isNotFailure() {
+        return errorMessage==null;
+    }
+
     public FermiLiteAssembly getAssembly() {
         return assembly;
     }
@@ -117,7 +121,7 @@ public final class AlignedAssemblyOrExcuse {
             final SAMTextWriter writer = new SAMTextWriter(os);
             writer.setSortOrder(SAMFileHeader.SortOrder.queryname, true);
             writer.setHeader(header);
-            turnIntoSAMRecordsForEachAssembly(header, alignedAssemblyOrExcuseList).forEach(ls -> ls.forEach(writer::addAlignment));
+            filterAndConvertToSamRecords(header, alignedAssemblyOrExcuseList).forEach( contigs -> contigs.forEach(ls -> ls.forEach(writer::addAlignment)) );
             writer.finish();
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write SAM file of aligned contigs.", ioe);
@@ -125,28 +129,38 @@ public final class AlignedAssemblyOrExcuse {
     }
 
     /**
-     * Filters out failed assemblies and turn each assembly into an iterable of SAMRecords.
+     * Filters out failed assemblies and
+     * turn each assembly into a 2-D list, where
+     * the outer level corresponds to the contigs of the assembly and
+     * the inner level corresponds to the SAMRecords of each contig.
      */
-    public static List<Iterable<SAMRecord>> turnIntoSAMRecordsForEachAssembly(final SAMFileHeader header, final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList) {
-
-        final List<Iterable<SAMRecord>> result = new ArrayList<>(alignedAssemblyOrExcuseList.size());
+    public static List<List<List<SAMRecord>>> filterAndConvertToSamRecords(final SAMFileHeader header, final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList) {
 
         final List<String> refNames =
                 header.getSequenceDictionary().getSequences().stream()
                         .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
 
-        for ( final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse : alignedAssemblyOrExcuseList ) {
-            if ( alignedAssemblyOrExcuse.getErrorMessage() != null ) continue;
-            final FermiLiteAssembly assembly = alignedAssemblyOrExcuse.getAssembly();
-            final int assemblyId = alignedAssemblyOrExcuse.getAssemblyId();
-            final List<List<BwaMemAlignment>> allAlignments = alignedAssemblyOrExcuse.getContigAlignments();
-            final int nContigs = assembly.getNContigs();
-            IntStream.range(0, nContigs).forEach(contigIdx ->
-                result.add(getAlignmentsForEachContig(header, refNames, assemblyId, contigIdx, assembly.getContig(contigIdx), allAlignments.get(contigIdx)))
-            );
-        }
+        return alignedAssemblyOrExcuseList.stream()
+                .filter(AlignedAssemblyOrExcuse::isNotFailure)
+                .map(alignedAssembly -> getAlignmentsForAllContigInOneAssembly(alignedAssembly, header, refNames))
+                .collect(Collectors.toList());
+    }
 
-        return result;
+    /**
+     * Turn input assembly into a 2-D list, where
+     * the outer level corresponds to the contigs of the assembly and
+     * the inner level corresponds to the SAMRecords of each contig.
+     */
+    public static List<List<SAMRecord>> getAlignmentsForAllContigInOneAssembly(final AlignedAssemblyOrExcuse alignedAssemblyNoExcuse,
+                                                                               final SAMFileHeader header, final List<String> refNames) {
+        final FermiLiteAssembly assembly = alignedAssemblyNoExcuse.getAssembly();
+        final int assemblyId = alignedAssemblyNoExcuse.getAssemblyId();
+        final List<List<BwaMemAlignment>> allAlignmentsOfThisAssembly = alignedAssemblyNoExcuse.getContigAlignments();
+        final int nContigs = assembly.getNContigs();
+        return IntStream.range(0, nContigs)
+                .mapToObj(contigIdx ->
+                        getAlignmentsForEachContig(header, refNames, assemblyId, contigIdx, assembly.getContig(contigIdx), allAlignmentsOfThisAssembly.get(contigIdx)))
+                .collect(Collectors.toList());
     }
 
     public static List<SAMRecord> getAlignmentsForEachContig(final SAMFileHeader header, final List<String> refNames,

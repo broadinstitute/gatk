@@ -86,7 +86,7 @@ public class ChimericAlignment {
      *
      */
     @VisibleForTesting
-    static List<ChimericAlignment> fromSplitAlignments(final AlignedAssembly.AlignedContig alignedContig,
+    static List<ChimericAlignment> fromSplitAlignments(final AlignedContig alignedContig,
                                                        final int alignmentIntervalUniqRefSpanThreshold) {
 
         final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsSortedByContigCoord = StreamSupport.stream(alignedContig.alignmentIntervals.spliterator(), false).sorted(Comparator.comparing(a -> a.startInAssembledContig)).collect(Collectors.toList());

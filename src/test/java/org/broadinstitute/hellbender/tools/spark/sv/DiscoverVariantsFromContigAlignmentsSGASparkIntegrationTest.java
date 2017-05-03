@@ -63,10 +63,6 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
                     " -O " + outputDir + "/variants.vcf";
         }
 
-        String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
-        }
     }
 
     @DataProvider(name = "discoverVariantsFromContigAlignmentsSGASparkIntegrationTest")

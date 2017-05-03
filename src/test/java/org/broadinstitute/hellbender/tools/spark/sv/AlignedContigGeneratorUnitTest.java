@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
 
-public class AssemblyAlignmentParserUnitTest extends BaseTest {
+public class AlignedContigGeneratorUnitTest extends BaseTest {
     private static final String dummyRefName = "1";
     private static final int dummyRefId = Integer.valueOf(dummyRefName) - 1;
     private static final List<String> refNames = Collections.singletonList(dummyRefName);
@@ -99,7 +99,7 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
         final byte[] dummySequenceForContigFour = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'G');
 
 
-        final List<AlignedAssembly.AlignedContig> allContigs = new ArrayList<>();
+        final List<AlignedContig> allContigs = new ArrayList<>();
 
         for(int pair=0; pair<cigars.length/2; ++pair) {
 
@@ -116,11 +116,11 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
 
             if (pair == 0) {
-                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion) );
             } else if (pair <3) {
-                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion) );
             } else {
-                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion) );
             }
         }
 
@@ -129,7 +129,7 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
         data[1] = new Object[]{1, new AlignedAssembly(1, allContigs.subList(1, 3)), allContigs.subList(1, 3)};
         data[2] = new Object[]{2, new AlignedAssembly(2, allContigs.subList(3, 4)), allContigs.subList(3, 4)};
 
-        final List<AlignedAssembly.AlignedContig> unmappedContig = Arrays.asList(new AlignedAssembly.AlignedContig("asm000004:tig00001", SVDiscoveryTestDataProvider.makeDummySequence(20, (byte)'N'), Collections.emptyList()));
+        final List<AlignedContig> unmappedContig = Arrays.asList(new AlignedContig("asm000004:tig00001", SVDiscoveryTestDataProvider.makeDummySequence(20, (byte)'N'), Collections.emptyList()));
         data[3] = new Object[]{3, new AlignedAssembly(3, unmappedContig), unmappedContig};
 
         return data;
@@ -137,22 +137,22 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
 
     @Test(dataProvider = "AlignedAssemblyTextParserText", groups = "sv")
     public void testEncodeAndDecodeAlignedAssemblyAsHadoopTextFileStringList(final Integer assemblyId, final AlignedAssembly expectedAssembly,
-                                                                             final List<AlignedAssembly.AlignedContig> contigs) {
-        final Iterator<String> alignedContigStringIt = AlignAssembledContigsSpark.formatAlignedAssemblyAsHadoopTextFileStringList(expectedAssembly);
+                                                                             final List<AlignedContig> contigs) {
+        final Iterator<String> alignedContigStringIt = AlignAssembledContigsSpark.formatAlignedAssemblyAsText(expectedAssembly);
         if (assemblyId==1) {
             Assert.assertTrue(alignedContigStringIt.hasNext());
             final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_0 =
-                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseHadoopTextFileAlignmentIntervalLine(alignedContigStringIt.next());
+                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
             Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments_0._1());
             Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments_0._2());
             final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_1 =
-                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseHadoopTextFileAlignmentIntervalLine(alignedContigStringIt.next());
+                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
             Assert.assertEquals(contigs.get(1).contigName, contigNameAndAlignments_1._1());
             Assert.assertEquals(contigs.get(1).alignmentIntervals, contigNameAndAlignments_1._2());
         } else {
             Assert.assertTrue(alignedContigStringIt.hasNext());
             final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments =
-                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseHadoopTextFileAlignmentIntervalLine(alignedContigStringIt.next());
+                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
             Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments._1());
             Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments._2());
         }
@@ -226,7 +226,7 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
         reads.add(read2);
         reads.add(read3);
 
-        final AlignedAssembly.AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
+        final AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
         assertEquals(alignedContig.contigSequence, read2.getBases());
 
         assertEquals(alignedContig.alignmentIntervals.size(), 3);
@@ -256,7 +256,7 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
         reads2.add(read4);
         reads2.add(read5);
 
-        final AlignedAssembly.AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads2, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
+        final AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads2, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
         // these should be the reverse complements of each other
         assertEquals(alignedContig2.contigSequence.length, read4.getBases().length);
 
@@ -302,10 +302,10 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
 
         Assert.assertEquals(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.directToAlignmentInterval(Collections.singleton(collection), refNames, null).size(), 2);
 
-        final Iterable<AlignedAssembly.AlignedContig> result = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.forEachAssemblyNotExcuse(collection, refNames, null);
+        final Iterable<AlignedContig> result = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.forEachAssemblyNotExcuse(collection, refNames, null);
         Assert.assertEquals(Iterables.size(result), 4);
 
-        final Iterator<AlignedAssembly.AlignedContig> it = result.iterator();
+        final Iterator<AlignedContig> it = result.iterator();
 
         Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
         Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
@@ -317,11 +317,11 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest {
         final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
         Assert.assertEquals(alignmentIntervalsForContigWithGappedAlignment.size(), 3);
 
-        final List<AlignedAssembly.AlignedContig> parsedContigsViaSAMRoute
-                = new StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser().viaSAMRoute(Collections.singletonList(collection), hg19Header, null);
+        final List<AlignedContig> parsedContigsViaSAMRoute
+                = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContig(Collections.singletonList(collection), hg19Header, null);
 
         Assert.assertEquals(parsedContigsViaSAMRoute.size(), 2);
-        parsedContigsViaSAMRoute.containsAll(Utils.stream(result).filter(ctg -> !ctg.alignmentIntervals.isEmpty()).collect(Collectors.toList()));
+        Assert.assertTrue( parsedContigsViaSAMRoute.containsAll(Utils.stream(result).filter(ctg -> !ctg.alignmentIntervals.isEmpty()).collect(Collectors.toList())) );
     }
 
     @DataProvider(name = "InvalidSimpleIntervalStrings")
