@@ -86,6 +86,25 @@ public class SeekableByteChannelPrefetcherTest {
         testSeeking(chan1, chan2, (int) chan1.size() + 1024 * 2);
     }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testDoubleWrapping() throws Exception {
+        SeekableByteChannel chan1 = new SeekableByteChannelPrefetcher(
+            Files.newByteChannel(Paths.get(input)), 1024);
+        new SeekableByteChannelPrefetcher(chan1, 1024);
+    }
+
+    @Test
+    public void testCloseWhilePrefetching() throws Exception {
+        SeekableByteChannel chan = new SeekableByteChannelPrefetcher(
+            Files.newByteChannel(Paths.get(input)), 10*1024*1024);
+        // read just 1 byte, get the prefetching going
+        ByteBuffer one = ByteBuffer.allocate(1);
+        readFully(chan, one);
+        // closing must not throw an exception, even if the prefetching
+        // thread is active.
+        chan.close();
+    }
+
     private void testReading(SeekableByteChannel chan1, SeekableByteChannel chan2, int howMuch) throws IOException {
         ByteBuffer one = ByteBuffer.allocate(howMuch);
         ByteBuffer two = ByteBuffer.allocate(howMuch);

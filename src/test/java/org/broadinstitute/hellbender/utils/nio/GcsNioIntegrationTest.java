@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.cloud.storage.StorageException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
@@ -17,6 +19,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
 
     final String privateFilePath = "org/broadinstitute/hellbender/utils/nio/private_file.txt";
     final String privateFilePath2 = "org/broadinstitute/hellbender/utils/nio/private_file_2.txt";
+    final String largeFilePath = "large/human_g1k_v37.20.21.fasta";
 
     @Test
     public void testGcsEnabled() {
@@ -100,6 +103,21 @@ public final class GcsNioIntegrationTest extends BaseTest {
         path = Paths.get(URI.create((privateFile2)));
         firstByte = Files.newInputStream(path).read();
     }
+
+
+    @Test(groups = {"cloud"})
+    public void testCloseWhilePrefetching() throws Exception {
+        final String large = getGCPTestInputPath() + largeFilePath;
+        SeekableByteChannel chan = new SeekableByteChannelPrefetcher(
+            Files.newByteChannel(Paths.get(URI.create(large))), 10*1024*1024);
+        // read just 1 byte, get the prefetching going
+        ByteBuffer one = ByteBuffer.allocate(1);
+        chan.read(one);
+        // closing must not throw an exception, even if the prefetching
+        // thread is active.
+        chan.close();
+    }
+
 
     private FileSystem getAuthenticatedGcs(String bucket) throws IOException {
         byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
