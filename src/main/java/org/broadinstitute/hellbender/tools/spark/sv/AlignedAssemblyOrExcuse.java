@@ -121,7 +121,7 @@ public final class AlignedAssemblyOrExcuse {
             final SAMTextWriter writer = new SAMTextWriter(os);
             writer.setSortOrder(SAMFileHeader.SortOrder.queryname, true);
             writer.setHeader(header);
-            filterAndConvertToSamRecords(header, alignedAssemblyOrExcuseList).forEach( contigs -> contigs.forEach(ls -> ls.forEach(writer::addAlignment)) );
+            filterFailedAssemblyAndConvertToSamRecords(header, alignedAssemblyOrExcuseList).forEach(contigs -> contigs.forEach(ls -> ls.forEach(writer::addAlignment)) );
             writer.finish();
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write SAM file of aligned contigs.", ioe);
@@ -134,7 +134,7 @@ public final class AlignedAssemblyOrExcuse {
      * the outer level corresponds to the contigs of the assembly and
      * the inner level corresponds to the SAMRecords of each contig.
      */
-    public static List<List<List<SAMRecord>>> filterAndConvertToSamRecords(final SAMFileHeader header, final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList) {
+    public static List<List<List<SAMRecord>>> filterFailedAssemblyAndConvertToSamRecords(final SAMFileHeader header, final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList) {
 
         final List<String> refNames =
                 header.getSequenceDictionary().getSequences().stream()
@@ -142,7 +142,7 @@ public final class AlignedAssemblyOrExcuse {
 
         return alignedAssemblyOrExcuseList.stream()
                 .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                .map(alignedAssembly -> getAlignmentsForAllContigInOneAssembly(alignedAssembly, header, refNames))
+                .map(alignedAssembly -> getAlignmentsForAllContigsInOneAssembly(alignedAssembly, header, refNames))
                 .collect(Collectors.toList());
     }
 
@@ -151,8 +151,8 @@ public final class AlignedAssemblyOrExcuse {
      * the outer level corresponds to the contigs of the assembly and
      * the inner level corresponds to the SAMRecords of each contig.
      */
-    public static List<List<SAMRecord>> getAlignmentsForAllContigInOneAssembly(final AlignedAssemblyOrExcuse alignedAssemblyNoExcuse,
-                                                                               final SAMFileHeader header, final List<String> refNames) {
+    public static List<List<SAMRecord>> getAlignmentsForAllContigsInOneAssembly(final AlignedAssemblyOrExcuse alignedAssemblyNoExcuse,
+                                                                                final SAMFileHeader header, final List<String> refNames) {
         final FermiLiteAssembly assembly = alignedAssemblyNoExcuse.getAssembly();
         final int assemblyId = alignedAssemblyNoExcuse.getAssemblyId();
         final List<List<BwaMemAlignment>> allAlignmentsOfThisAssembly = alignedAssemblyNoExcuse.getContigAlignments();

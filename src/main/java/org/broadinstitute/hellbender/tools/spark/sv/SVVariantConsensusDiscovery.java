@@ -61,7 +61,7 @@ public class SVVariantConsensusDiscovery implements Serializable {
         final int end = novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
 
         Utils.validateArg(start<=end,
-                "An identified breakpoint pair has left breakpoint positioned to the right of right breakpoint: " + novelAdjacencyReferenceLocations.onErrStringRep());
+                "An identified breakpoint pair has left breakpoint positioned to the right of right breakpoint: " + novelAdjacencyReferenceLocations.toString());
 
         final SvType variant = getType(novelAdjacencyReferenceLocations);
         final VariantContextBuilder vcBuilder = new VariantContextBuilder()
@@ -110,7 +110,7 @@ public class SVVariantConsensusDiscovery implements Serializable {
                 final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().isEmpty();
                 if (hasNoDupSeq) {
                     if (hasNoInsertedSeq) {
-                        throw new GATKException("Something went wrong in type inference, there's suspected insertion happening but no inserted sequence could be inferred " + novelAdjacencyReferenceLocations.onErrStringRep());
+                        throw new GATKException("Something went wrong in type inference, there's suspected insertion happening but no inserted sequence could be inferred " + novelAdjacencyReferenceLocations.toString());
                     } else {
                         type = new SvType.Insertion(novelAdjacencyReferenceLocations); // simple insertion (no duplication)
                     }
@@ -134,7 +134,7 @@ public class SVVariantConsensusDiscovery implements Serializable {
                     if (hasNoInsertedSeq) {
                         type = new SvType.Deletion(novelAdjacencyReferenceLocations); // clean contraction of repeat 2 -> 1, or complex contraction
                     } else {
-                        throw new GATKException("Something went wrong in type inference, there's suspected deletion happening but both inserted sequence and duplication exits (not supported yet): " + novelAdjacencyReferenceLocations.onErrStringRep());
+                        throw new GATKException("Something went wrong in type inference, there's suspected deletion happening but both inserted sequence and duplication exits (not supported yet): " + novelAdjacencyReferenceLocations.toString());
                     }
                 }
             }

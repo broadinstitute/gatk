@@ -277,7 +277,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         // test "failed" assembly doesn't produce anything
         final AlignedAssemblyOrExcuse excuse = new AlignedAssemblyOrExcuse(1, "justATest");
-        Assert.assertTrue(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.directToAlignmentInterval(Collections.singletonList(excuse), refNames, null).isEmpty());
+        Assert.assertTrue(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigDirect(Collections.singletonList(excuse), refNames, null).isEmpty());
 
         final byte[] dummyContigSequence = SVDiscoveryTestDataProvider.makeDummySequence(1000, (byte)'T');
         final byte[] dummyContigSequenceQuals = SVDiscoveryTestDataProvider.makeDummySequence(1000, (byte)'A');
@@ -300,9 +300,9 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         final AlignedAssemblyOrExcuse collection = new AlignedAssemblyOrExcuse(1, assembly, allAlignments);
 
-        Assert.assertEquals(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.directToAlignmentInterval(Collections.singleton(collection), refNames, null).size(), 2);
+        Assert.assertEquals(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigDirect(Collections.singleton(collection), refNames, null).size(), 2);
 
-        final Iterable<AlignedContig> result = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.forEachAssemblyNotExcuse(collection, refNames, null);
+        final Iterable<AlignedContig> result = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.getAlignedContigsInOneAssembly(collection, refNames, null);
         Assert.assertEquals(Iterables.size(result), 4);
 
         final Iterator<AlignedContig> it = result.iterator();
@@ -318,7 +318,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
         Assert.assertEquals(alignmentIntervalsForContigWithGappedAlignment.size(), 3);
 
         final List<AlignedContig> parsedContigsViaSAMRoute
-                = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContig(Collections.singletonList(collection), hg19Header, null);
+                = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigViaSAM(Collections.singletonList(collection), hg19Header, null);
 
         Assert.assertEquals(parsedContigsViaSAMRoute.size(), 2);
         Assert.assertTrue( parsedContigsViaSAMRoute.containsAll(Utils.stream(result).filter(ctg -> !ctg.alignmentIntervals.isEmpty()).collect(Collectors.toList())) );

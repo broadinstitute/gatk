@@ -30,9 +30,13 @@ public class NovelAdjacencyReferenceLocations {
     final EndConnectionType endConnectionType;
     final BreakpointComplications complication;
 
-    public String onErrStringRep() {
+    /**
+     * @return Intended for use in debugging and exception message only.
+     */
+    @Override
+    public String toString() {
         return String.format("%s\t%s\t%s\t%s", leftJustifiedLeftRefLoc.toString(), leftJustifiedRightRefLoc.toString(),
-                endConnectionType.name(), complication.onErrStringRep());
+                endConnectionType.name(), complication.toString());
     }
 
     /**
@@ -124,7 +128,7 @@ public class NovelAdjacencyReferenceLocations {
 
         Utils.validate(leftBreakpointCoord <= rightBreakpointCoord,
                 "Inferred novel adjacency reference locations have left location after right location : " + leftBreakpointCoord + "\t" + rightBreakpointCoord
-                        + ca.onErrStringRep() + "\n" + complication.onErrStringRep());
+                        + ca.onErrStringRep() + "\n" + complication.toString());
 
         final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
         final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);

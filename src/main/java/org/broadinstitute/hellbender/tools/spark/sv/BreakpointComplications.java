@@ -42,7 +42,11 @@ final class BreakpointComplications {
     private List<String> cigarStringsForDupSeqOnCtg = null;
     private boolean dupAnnotIsFromOptimization = false;
 
-    public String onErrStringRep() {
+    /**
+     * @return Intended for use in debugging and exception message only.
+     */
+    @Override
+    public String toString() {
         String toPrint = "homology: " + homologyForwardStrandRep + "\tinserted sequence: " + insertedSequenceForwardStrandRep;
 
         if (hasDuplicationAnnotation()) {
