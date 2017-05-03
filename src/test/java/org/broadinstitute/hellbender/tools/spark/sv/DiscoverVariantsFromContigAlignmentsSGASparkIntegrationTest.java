@@ -5,7 +5,6 @@ import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -90,11 +89,11 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
     }
 
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSGASparkIntegrationTest", groups = "sv")
-    public void testDiscoverVariantsFromContigAlignmentsSGASparkRunnableLocal(final DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest.DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTestArgs params) throws IOException {
-        new IntegrationTestSpec(
-                new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getString(),
-                SVIntegrationTestDataProvider.dummyExpectedFileNames)
-                .executeTest("testDiscoverVariantsSGARunnableLocal-", this);
+    public void testDiscoverVariantsFromContigAlignmentsSGASparkRunnableLocal(final DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest.DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTestArgs params) throws Exception {
+
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+        runCommandLine(args);
+        StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_INV_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), false);
     }
 
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSGASparkIntegrationTest", groups = "sv")
@@ -139,10 +138,11 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
             // outputs, prefix with hdfs address
             idx = argsToBeModified.indexOf("-O");
             path = new Path(workingDirectory, "variants.vcf");
-            argsToBeModified.set(idx+1, path.toUri().toString());
+            final String vcfOnHDFS = path.toUri().toString();
+            argsToBeModified.set(idx+1, vcfOnHDFS);
 
-            new IntegrationTestSpec(String.join(" ", argsToBeModified), SVIntegrationTestDataProvider.dummyExpectedFileNames)
-                    .executeTest("testDiscoverVariantsSGARunnableMiniCluster-", this);
+            runCommandLine(argsToBeModified);
+            StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_INV_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), true);
         });
     }
 

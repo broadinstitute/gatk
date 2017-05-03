@@ -1,11 +1,17 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -16,6 +22,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -47,11 +54,6 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                     " --breakpointIntervals " + outputDir + "/intervals" +
                     " --fastqDir "            + outputDir + "/fastq";
         }
-
-        String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
-        }
     }
 
     @DataProvider(name = "svDiscoverPipelineSparkIntegrationTest")
@@ -70,11 +72,12 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
     }
 
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
-    public void testSVDiscoverPipelineRunnableLocal(final StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs params) throws IOException {
-        new IntegrationTestSpec(
-                new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getString(),
-                SVIntegrationTestDataProvider.dummyExpectedFileNames)
-                .executeTest("testSVDiscoverPipelineRunnableLocal-", this);
+    public void testSVDiscoverPipelineRunnableLocal(final StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs params) throws Exception {
+
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+        runCommandLine(args);
+
+        svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), false);
     }
 
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
@@ -120,7 +123,8 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             // outputs, prefix with hdfs address
             idx = argsToBeModified.indexOf("-O");
             path = new Path(workingDirectory, "variants.vcf");
-            argsToBeModified.set(idx+1, path.toUri().toString());
+            final String vcfOnHDFS = path.toUri().toString();
+            argsToBeModified.set(idx+1, vcfOnHDFS);
 
             idx = argsToBeModified.indexOf("--contigSAMFile");
             path = new Path(workingDirectory, "assemblies.sam");
@@ -134,8 +138,34 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             path = new Path(workingDirectory, "fastq");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            new IntegrationTestSpec(String.join(" ", argsToBeModified), SVIntegrationTestDataProvider.dummyExpectedFileNames)
-                    .executeTest("testSVDiscoverPipelineRunnableMiniCluster-", this);
+            runCommandLine(argsToBeModified);
+            svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), true);
         });
+    }
+
+    public static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath, final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
+
+        VCFFileReader fileReader;
+        CloseableIterator<VariantContext> iterator;
+        final List<VariantContext> actualVcs;
+        if (onHDFS) {
+            final File tempLocalVCF = BaseTest.createTempFile("variants", "vcf"); tempLocalVCF.deleteOnExit();
+            new Path(generatedVCFPath).getFileSystem(new Configuration()).copyToLocalFile(new Path(generatedVCFPath), new Path(tempLocalVCF.getAbsolutePath()));
+            fileReader = new VCFFileReader(tempLocalVCF, false);
+        } else {
+            fileReader = new VCFFileReader(new File(generatedVCFPath), false);
+        }
+        iterator = fileReader.iterator();
+        actualVcs = Utils.stream(iterator).collect(Collectors.toList());
+        CloserUtil.close(iterator);
+        CloserUtil.close(fileReader);
+
+        fileReader = new VCFFileReader(new File(expectedVCFPath), false);
+        iterator = fileReader.iterator();
+        final List<VariantContext> expectedVcs = Utils.stream(iterator).collect(Collectors.toList());
+        CloserUtil.close(iterator);
+        CloserUtil.close(fileReader);
+
+        BaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
     }
 }
