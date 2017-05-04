@@ -113,11 +113,15 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             // here we have two options, one is going through the route "BwaMemAlignment -> SAM -> GATKRead -> SAM -> AlignmentInterval"
             //                           which is the route if the discovery pipeline is run by "FindBreakpointEvidenceSpark -> write sam file -> load sam file -> DiscoverVariantsFromContigAlignmentsSAMSpark"
             //                         , the other is to go directly "BwaMemAlignment -> AlignmentInterval" by calling into {@code filterAndConvertToAlignedContigDirect()}, which is faster but not used here.
+            //                         ; the two routes are tested to be generating the same output via {@code AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
             return ctx.parallelize( filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, toolLogger) );
         }
 
         /**
-         * @return Filters out failed assemblies, unmapped and secondary (i.e. "XA") alignments, and turn into AlignedContig's.
+         * Filters out "failed" assemblies, unmapped and secondary (i.e. "XA") alignments, and
+         * turn the alignments of contigs into custom {@link AlignedAssembly.AlignmentInterval} format.
+         * Should be generating the same output as {@link #filterAndConvertToAlignedContigDirect(Iterable, List, SAMFileHeader)};
+         * and currently this assertion is tested in {@see AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
          */
         @VisibleForTesting
         public static List<AlignedContig> filterAndConvertToAlignedContigViaSAM(final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
@@ -141,7 +145,10 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         }
 
         /**
-         * Filter out "failed" assemblies and turn the alignments of contigs into custom {@link AlignedAssembly.AlignmentInterval} format.
+         * Filter out "failed" assemblies, unmapped and secondary (i.e. "XA") alignments, and
+         * turn the alignments of contigs into custom {@link AlignedAssembly.AlignmentInterval} format.
+         * Should be generating the same output as {@link #filterAndConvertToAlignedContigViaSAM(List, SAMFileHeader, Logger)};
+         * and currently this assertion is tested in {@see AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
          */
         @VisibleForTesting
         public static List<AlignedContig> filterAndConvertToAlignedContigDirect(final Iterable<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseIterable,
@@ -178,6 +185,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         /**
          * Converts alignment records of the contig pointed to by {@code contigIdx} in a {@link FermiLiteAssembly} to custom {@link AlignedAssembly.AlignmentInterval} format.
+         * Filters out unmapped and ambiguous mappings (i.e. XA).
          */
         @VisibleForTesting
         private static List<AlignedAssembly.AlignmentInterval> getAlignmentsForOneContig(final String contigName, final byte[] contigSequence, final List<BwaMemAlignment> contigAlignments,
