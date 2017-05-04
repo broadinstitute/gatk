@@ -704,25 +704,6 @@ public final class Utils {
 
 
     /**
-     * Checks that a user provided file is in fact a regular (i.e. not a directory or a special device) readable file.
-     *
-     * @param file the input file to test.
-     * @throws IllegalArgumentException if {@code file} is {@code null} or {@code argName} is {@code null}.
-     * @throws UserException if {@code file} is not a regular file or it cannot be read.
-     * @return the same as the input {@code file}.
-     */
-    public static File regularReadableUserFile(final File file) {
-        nonNull(file, "unexpected null file reference");
-        if (!file.canRead()) {
-            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file does not exist or cannot be read");
-        } else if (!file.isFile()) {
-            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file is not a regular file");
-        } else {
-            return file;
-        }
-    }
-
-    /**
      * Calculates the optimum initial size for a hash table given the maximum number
      * of elements it will need to hold. The optimum size is the smallest size that
      * is guaranteed not to result in any rehash/table-resize operations.

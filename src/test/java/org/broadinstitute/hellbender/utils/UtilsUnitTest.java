@@ -7,7 +7,6 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.math3.util.MathArrays;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -405,10 +404,16 @@ public final class UtilsUnitTest extends BaseTest {
     }
 
     @Test
-    public void testSuccessfulRegularReadableFileCheck() {
-        final File expectedFile = createTempFile("Utils-RRFC-test",".txt");
-        final File actualFile = Utils.regularReadableUserFile(expectedFile);
-        Assert.assertSame(actualFile, expectedFile);
+    public void testSuccessfulCanReadFileCheck() {
+        final File expectedFile = createTempFile("Utils-can-read-test",".txt");
+        IOUtils.canRead(expectedFile);
+    }
+
+    @Test
+    public void testSuccessfulCanReadFilesCheck() {
+        final File file1 = createTempFile("Utils-can-read-test1",".txt");
+        final File file2 = createTempFile("Utils-can-read-test2",".txt");
+        IOUtils.canRead(file1, file2);
     }
 
     @Test(dataProvider = "successfulValidIndexData")
@@ -422,21 +427,21 @@ public final class UtilsUnitTest extends BaseTest {
         Utils.validIndex(index, length);
     }
 
-    @Test(dataProvider = "unsuccessfulRegularReadableFileCheckData",
+    @Test(dataProvider = "unsuccessfulCanReadFileCheckData",
             expectedExceptions = UserException.CouldNotReadInputFile.class)
-    public void testUnsuccessfulRegularReadableFileCheck(final File file) {
+    public void testUnsuccessfulCanReadFileCheck(final File file) {
         if (file == null){
             throw new SkipException("cannot make a file unreadable (maybe you're running as root)");
         }
-        Utils.regularReadableUserFile(file);
+        IOUtils.canRead(file);
     }
 
-    @DataProvider(name = "unsuccessfulRegularReadableFileCheckData")
-    public Object[][] unsuccessfulRegularReadableFileCheckData() {
-        final File directory = createTempDir("Utils-RRFCD-Dir");
-        final File nonExistingFile = createTempFile("Utils-RRFCD-NoFile", ".file");
+    @DataProvider(name = "unsuccessfulCanReadFileCheckData")
+    public Object[][] unsuccessfulCanReadFileCheckData() {
+        final File directory = createTempDir("Utils-can-read-file-Dir");
+        final File nonExistingFile = createTempFile("Utils-cant-read-NoFile", ".file");
         nonExistingFile.delete();
-        final File nonReadable = createTempFile("Utils-RRFCD-NoReadable", ".file");
+        final File nonReadable = createTempFile("Utils-cant-read-NotReadable", ".file");
 
         //Note: if this test suite is run as root (eg in a Docker image), setting readable to false may fail.
         // So we check it here and skip this test if we can't make a file non readable.

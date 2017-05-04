@@ -539,25 +539,6 @@ public final class IOUtils {
     }
 
     /**
-     * @param file file to test
-     * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if the file isn't readable
-     *         and a regular file
-     */
-    public static void assertFileIsReadable(final File file) {
-        Utils.nonNull(file);
-
-        if ( ! file.exists() ) {
-            throw new UserException.CouldNotReadInputFile(file, "It doesn't exist.");
-        }
-        if ( ! file.isFile() ) {
-            throw new UserException.CouldNotReadInputFile(file, "It isn't a regular file");
-        }
-        if ( ! file.canRead() ) {
-            throw new UserException.CouldNotReadInputFile(file, "It is not readable, check the file permissions");
-        }
-    }
-
-    /**
      * @param path Path to test
      * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if the file isn't readable
      *         and a regular file
@@ -587,6 +568,27 @@ public final class IOUtils {
             // The user can see the underlying exception by passing
             // -DGATK_STACKTRACE_ON_USER_EXCEPTION=true
             throw new UserException.CouldNotReadInputFile(path, cloudBoom.getCode() + ": " + cloudBoom.getMessage(), cloudBoom);
+        }
+    }
+
+    /**
+     * Checks that one or more user provided files are in fact regular (i.e. not a directory or a special device) readable files.
+     *
+     * @param files the input files to test.
+     * @throws IllegalArgumentException if any input file {@code file} is {@code null} or {@code files} is {@code null}.
+     * @throws UserException if any {@code file} is not a regular file or it cannot be read.
+     */
+    public static void canRead(final File... files) {
+        Utils.nonNull(files, "Unexpected null input.");
+        for (final File file : files) {
+            Utils.nonNull(file, "Unexpected null file reference.");
+            if (!file.exists()) {
+                throw new UserException.CouldNotReadInputFile(file, "The input file does not exist.");
+            } else if (!file.isFile()) {
+                throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file is not a regular file");
+            } else if (!file.canRead()) {
+                throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file cannot be read.  Check the permissions.");
+            }
         }
     }
 }
