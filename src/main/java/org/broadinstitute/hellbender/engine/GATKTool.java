@@ -323,11 +323,9 @@ public abstract class GATKTool extends CommandLineProgram {
             final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
             if ( sequenceDictionary == null ) {
                 throw new UserException("We require a sequence dictionary from a reference, a source of reads, or a source of variants to process intervals.  " +
-                        "A sequence dictionary is a list of header lines of contig names, lengths, and assemblies.  " +
                         "Since reference and reads files generally contain sequence dictionaries, this error most commonly occurs " +
                         "for VariantWalkers that do not require a reference or reads.  You can fix the problem by passing a reference file with a sequence dictionary " +
-                        "via the -R argument or you can paste lines of the form: ##contig=<ID=20,length=63025520,assembly=GRCh37> (one line per contig) " +
-                        "into your vcf header and then re-index your vcf with the IndexFeatureFile GATK tool.");
+                        "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
             }
 
             intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
