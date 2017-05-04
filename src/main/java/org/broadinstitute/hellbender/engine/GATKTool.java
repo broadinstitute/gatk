@@ -327,7 +327,7 @@ public abstract class GATKTool extends CommandLineProgram {
                         "Since reference and reads files generally contain sequence dictionaries, this error most commonly occurs " +
                         "for VariantWalkers that do not require a reference or reads.  You can fix the problem by passing a reference file with a sequence dictionary " +
                         "via the -R argument or you can paste lines of the form: ##contig=<ID=20,length=63025520,assembly=GRCh37> (one line per contig) " +
-                        "into your vcf header and then re-indexing your vcf with the IndexFeatureFile GATK tool.");
+                        "into your vcf header and then re-index your vcf with the IndexFeatureFile GATK tool.");
             }
 
             intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
