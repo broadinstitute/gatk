@@ -26,8 +26,6 @@ import java.util.List;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
 
-  private static final File TEST_REFERENCE_GENOME = new File(largeFileTestDir + "/Homo_sapiens_assembly38.20.21.fasta");
-
   @Override
   public String getTestedClassName() {
     return GenomicsDBImport.class.getSimpleName();
@@ -69,7 +67,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
               new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
               workspace,
               GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-              TEST_REFERENCE_GENOME.getAbsolutePath(), null, new BCF2Codec());
+              b38_reference_20_21, null, new BCF2Codec());
 
     final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
       AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
