@@ -90,7 +90,10 @@ public final class GVCFWriter implements VariantContextWriter {
             result.put(Range.closedOpen(lastThreshold, value), Range.closedOpen(lastThreshold, value));
             lastThreshold = value;
         }
-        result.put(Range.closedOpen(lastThreshold, Integer.MAX_VALUE), Range.closedOpen(lastThreshold, Integer.MAX_VALUE));
+
+        if (lastThreshold <= MAX_GENOTYPE_QUAL) {
+            result.put(Range.closedOpen(lastThreshold, MAX_GENOTYPE_QUAL + 1), Range.closedOpen(lastThreshold,MAX_GENOTYPE_QUAL + 1));
+        }
 
         return result;
     }

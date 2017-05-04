@@ -13,7 +13,7 @@
 ##GVCFBlock30-40=minGQ=30(inclusive),maxGQ=40(exclusive)
 ##GVCFBlock40-50=minGQ=40(inclusive),maxGQ=50(exclusive)
 ##GVCFBlock50-60=minGQ=50(inclusive),maxGQ=60(exclusive)
-##GVCFBlock60-2147483647=minGQ=60(inclusive),maxGQ=2147483647(exclusive)
+##GVCFBlock60-100=minGQ=60(inclusive),maxGQ=100(exclusive)
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
