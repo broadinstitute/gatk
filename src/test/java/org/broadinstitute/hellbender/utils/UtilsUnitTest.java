@@ -406,14 +406,14 @@ public final class UtilsUnitTest extends BaseTest {
     @Test
     public void testSuccessfulCanReadFileCheck() {
         final File expectedFile = createTempFile("Utils-can-read-test",".txt");
-        Utils.canRead(expectedFile);
+        IOUtils.canRead(expectedFile);
     }
 
     @Test
     public void testSuccessfulCanReadFilesCheck() {
         final File file1 = createTempFile("Utils-can-read-test1",".txt");
         final File file2 = createTempFile("Utils-can-read-test2",".txt");
-        Utils.canRead(file1, file2);
+        IOUtils.canRead(file1, file2);
     }
 
     @Test(dataProvider = "successfulValidIndexData")
@@ -433,7 +433,7 @@ public final class UtilsUnitTest extends BaseTest {
         if (file == null){
             throw new SkipException("cannot make a file unreadable (maybe you're running as root)");
         }
-        Utils.canRead(file);
+        IOUtils.canRead(file);
     }
 
     @DataProvider(name = "unsuccessfulCanReadFileCheckData")
