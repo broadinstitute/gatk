@@ -51,7 +51,6 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
         programGroup=StructuralVariationSparkProgramGroup.class)
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
-    private final Logger localLogger = LogManager.getLogger(FindBreakpointEvidenceSpark.class);
 
     @ArgumentCollection
     private FindBreakpointEvidenceSparkArgumentCollection reAlignmentStageArgs = new FindBreakpointEvidenceSparkArgumentCollection();
@@ -70,7 +69,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
-        gatherEvidenceAndWriteContigSamFile(ctx, getAuthenticatedGCSOptions(), reAlignmentStageArgs, getHeaderForReads(), getUnfilteredReads(), outputSAM, localLogger);
+        gatherEvidenceAndWriteContigSamFile(ctx, getAuthenticatedGCSOptions(), reAlignmentStageArgs, getHeaderForReads(), getUnfilteredReads(), outputSAM,
+                LogManager.getLogger(FindBreakpointEvidenceSpark.class));
 
     }
 

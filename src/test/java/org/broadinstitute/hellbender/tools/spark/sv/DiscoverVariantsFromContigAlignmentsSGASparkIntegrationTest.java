@@ -1,11 +1,16 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -59,7 +64,8 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
                     " --inputAlignments " + inputAlignments +
                     " --fastaReference " + SVIntegrationTestDataProvider.reference +
                     " -R " + SVIntegrationTestDataProvider.reference_2bit +
-                    " -O " + outputDir + "/variants.vcf";
+                    " -O " + outputDir + "/variants.vcf" +
+                    " --logContigAlignmentSimpleStats";
         }
 
     }
@@ -68,7 +74,7 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
     public Object[][] createTestData() throws IOException {
         List<Object[]> tests = new ArrayList<>();
 
-        final File tempWorkingDir = BaseTest.createTempDir("whatever");
+        final File tempWorkingDir = BaseTest.createTempDir("discoverVariantsFromContigAlignmentsSGASparkIntegrationTest");
         tempWorkingDir.deleteOnExit();
 
         final File assemblyWithPackedFastaWithLength = Files.createDirectory(Paths.get(tempWorkingDir.getAbsolutePath()+"/"+"assemblyWithPackedFastaWithLength")).toFile();
@@ -94,6 +100,8 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
         final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
         runCommandLine(args);
         StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_INV_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), false);
+        Assert.assertTrue(Files.exists(Paths.get(args.get(args.indexOf("--inputAlignments")+1)+"_withMoreThanTwoAlignments")));
+        Assert.assertTrue(Files.exists(Paths.get(args.get(args.indexOf("--inputAlignments")+1)+"_withTwoAlignments")));
     }
 
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSGASparkIntegrationTest", groups = "sv")
@@ -107,13 +115,13 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
             int idx = 0;
 
             idx = argsToBeModified.indexOf("--inputAssemblies");
-            Path path = new Path(workingDirectory, "contigs.txt");
+            Path path = new Path(workingDirectory, "assemblies_0");
             File file = new File(argsToBeModified.get(idx+1));
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
 
             idx = argsToBeModified.indexOf("--inputAlignments");
-            path = new Path(workingDirectory, "alignments.txt");
+            path = new Path(workingDirectory, "alignments");
             file = new File(argsToBeModified.get(idx+1));
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
@@ -143,6 +151,13 @@ public class DiscoverVariantsFromContigAlignmentsSGASparkIntegrationTest extends
 
             runCommandLine(argsToBeModified);
             StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_INV_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), true);
+
+            final RemoteIterator<LocatedFileStatus> it = FileSystem.get(workingDirectory.toUri(), new Configuration()).listFiles(workingDirectory, true);
+            while(it.hasNext()) System.err.println(it.next());
+
+            final FileSystem fs = FileSystem.get(workingDirectory.toUri(), new Configuration());
+            Assert.assertTrue(fs.exists( new Path(argsToBeModified.get(argsToBeModified.indexOf("--inputAlignments")+1)+"_withTwoAlignments") ));
+            Assert.assertTrue(fs.exists( new Path(argsToBeModified.get(argsToBeModified.indexOf("--inputAlignments")+1)+"_withMoreThanTwoAlignments") ));
         });
     }
 
