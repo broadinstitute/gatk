@@ -42,7 +42,7 @@ public final class SVUtils {
                             " but we were expecting K=" + kSize);
                 }
 
-                final SVKmerizer kmerizer = new SVKmerizer(line, kSize, kmer);
+                final SVKmerizer kmerizer = new SVKmerizer(line, kSize, 1, new SVKmerLong(kSize));
                 if ( !kmerizer.hasNext() ) {
                     throw new GATKException("Unable to kmerize the kmer kill set string '" + line + "'.");
                 }
@@ -143,6 +143,53 @@ public final class SVUtils {
      */
     public static <T> Collector<T, ?, ArrayList<T>> arrayListCollector(final int size) {
         return Collectors.toCollection( () -> new ArrayList<>(size));
+    }
+
+    /**
+     * 64-bit FNV-1a hash for long's
+     */
+    public static long fnvLong64( long start, final long toHash ) {
+        final long mult = 1099511628211L;
+        start ^= (toHash >> 56) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 48) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 40) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 32) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 24) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 16) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 8) & 0xffL;
+        start *= mult;
+        start ^= toHash & 0xffL;
+        start *= mult;
+        return start;
+    }
+
+    /**
+     * FNV-1a hash for long's using 2 32-bit hashes
+     */
+    public static int fnvLong( final int start, final long toHash ) {
+        return fnvInt(fnvInt(start, (int)(toHash >> 32)), (int)toHash);
+    }
+
+    /**
+     * FNV-1a hash for int's
+     */
+    public static int fnvInt( int start, final int toHash ) {
+        final int mult = 16777619;
+        start ^= (toHash >> 24) & 0xff;
+        start *= mult;
+        start ^= (toHash >> 16) & 0xff;
+        start *= mult;
+        start ^= (toHash >> 8) & 0xff;
+        start *= mult;
+        start ^= toHash & 0xff;
+        start *= mult;
+        return start;
     }
 
     /**

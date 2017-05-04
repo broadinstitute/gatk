@@ -107,7 +107,7 @@ public class SVKmerLongUnitTest extends BaseTest {
 
     @Test
     public void testKmerization() {
-        final SVKmerizer kmerizer = new SVKmerizer("AAAAATT", 5, new SVKmerLong(7));
+        final SVKmerizer kmerizer = new SVKmerizer("AAAAATT", 5, 1, new SVKmerLong(7));
         Assert.assertTrue(kmerizer.hasNext());
         Assert.assertEquals(kmerizer.next(), SVKmerizer.toKmer("AAAAA",new SVKmerLong(5)));
         Assert.assertTrue(kmerizer.hasNext());
@@ -119,7 +119,7 @@ public class SVKmerLongUnitTest extends BaseTest {
 
     @Test
     public void testKmerizationAcrossN() {
-        final SVKmerizer kmerizer = new SVKmerizer("AAAAANTTTTT", 5, new SVKmerLong(11));
+        final SVKmerizer kmerizer = new SVKmerizer("AAAAANTTTTT", 5, 1, new SVKmerLong(11));
         Assert.assertTrue(kmerizer.hasNext());
         Assert.assertEquals(kmerizer.next(), SVKmerizer.toKmer("AAAAA",new SVKmerLong(5)));
         Assert.assertTrue(kmerizer.hasNext());

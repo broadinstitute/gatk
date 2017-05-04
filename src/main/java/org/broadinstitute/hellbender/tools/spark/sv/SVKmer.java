@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 //Superclass for SVKmerLong and SVKmerShort
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
+
 public abstract class SVKmer {
 
     public enum Base {
@@ -35,7 +37,10 @@ public abstract class SVKmer {
     public abstract Base lastBase();
     public abstract int firstTrimer(final int kSize );
     public abstract int lastTrimer();
+    public abstract SVKmer mask(final byte[] mask, final int kSize);
     public abstract String toString( final int kSize );
+
+    public long getLong() { throw new GATKException("getLong() not implemented for this SVKmer"); }
 
     // Reverse-complement a long by taking the reverse-complement of each of its bytes in reverse order.
     protected static long reverseComplement( long val ) {
@@ -54,23 +59,6 @@ public abstract class SVKmer {
     protected static long reverseComplementByteValueAsLong( final int bIn ) {
         // this turns the 8 bits [b1 b2 b3 b4 b5 b6 b7 b8] into [~b7 ~b8 ~b5 ~b6 ~b3 ~b4 ~b1 ~b2]
         return ~(((bIn & 3) << 6) | (((bIn >> 2) & 3) << 4) | (((bIn >> 4) & 3) << 2) | ((bIn >> 6) & 3)) & 0xffL;
-    }
-
-    protected static int fnvLong( final int start, final long toHash ) {
-        return fnvInt(fnvInt(start, (int)(toHash >> 32)), (int)toHash);
-    }
-
-    protected static int fnvInt( int start, final int toHash ) {
-        final int mult = 16777619;
-        start ^= (toHash >> 24) & 0xff;
-        start *= mult;
-        start ^= (toHash >> 16) & 0xff;
-        start *= mult;
-        start ^= (toHash >> 8) & 0xff;
-        start *= mult;
-        start ^= toHash & 0xff;
-        start *= mult;
-        return start;
     }
 
 }
