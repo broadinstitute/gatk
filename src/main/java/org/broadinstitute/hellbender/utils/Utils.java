@@ -704,27 +704,23 @@ public final class Utils {
 
 
     /**
-     * Checks that a user provided file is in fact a regular (i.e. not a directory or a special device) readable file.
+     * Checks that one or more user provided files are in fact regular (i.e. not a directory or a special device) readable files.
      *
-     * @param file the input file to test.
-     * @throws IllegalArgumentException if {@code file} is {@code null} or {@code argName} is {@code null}.
-     * @throws UserException if {@code file} is not a regular file or it cannot be read.
-     * @return the same as the input {@code file}.
+     * @param files the input files to test.
+     * @throws IllegalArgumentException if any input file {@code file} is {@code null} or {@code files} is {@code null}.
+     * @throws UserException if any {@code file} is not a regular file or it cannot be read.
      */
-    public static void canRead(final File file) {
-        nonNull(file, "unexpected null file reference");
-        if ( ! file.exists() ) {
-            throw new UserException.CouldNotReadInputFile(file, "It doesn't exist.");
-        } else if (!file.isFile()) {
-            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file is not a regular file");
-        } else if (!file.canRead()) {
-            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file does not exist or cannot be read");
-        }
-    }
-
     public static void canRead(final File... files) {
+        nonNull(files, "Unexpected null input.");
         for (final File file : files) {
-            canRead(file);
+            nonNull(file, "Unexpected null file reference.");
+            if (!file.exists()) {
+                throw new UserException.CouldNotReadInputFile(file, "The input file does not exist.");
+            } else if (!file.isFile()) {
+                throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file is not a regular file");
+            } else if (!file.canRead()) {
+                throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file cannot be read");
+            }
         }
     }
 
