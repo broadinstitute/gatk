@@ -376,8 +376,10 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
 
                 siteIsMonomorphic &= !isPlausible;
-                final boolean isNonCoveringSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
-                final boolean toOutput = (isPlausible || forceKeepAllele(allele) || isNonRefWhichIsLoneAltAllele) && !isNonCoveringSpanningDeletion;
+
+                //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
+                final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
+                final boolean toOutput = (isPlausible || forceKeepAllele(allele) || isNonRefWhichIsLoneAltAllele) && !isSpuriousSpanningDeletion;
 
                 if (toOutput) {
                     outputAlleles.add(allele);
