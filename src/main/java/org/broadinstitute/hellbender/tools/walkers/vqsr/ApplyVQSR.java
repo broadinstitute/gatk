@@ -539,7 +539,7 @@ public class ApplyVQSR extends MultiVariantWalker {
             String alleleCulpritString = emptyStringValue;
 
             //if it's not a spanning deletion, replace those allele strings with the real values
-            if (!allele.equals(Allele.SPAN_DEL)) {
+            if (!GATKVCFConstants.isSpanningDeletion(allele)) {
                 VariantContext recalDatum = getMatchingRecalVC(vc, recals, allele);
                 if (recalDatum == null) {
                     throw new UserException("Encountered input allele which isn't found in the input recal file. Please make sure VariantRecalibrator and ApplyRecalibration were run on the same set of input variants with flag -AS. First seen at: " + vc);

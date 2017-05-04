@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 
@@ -462,10 +463,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             }
             else if( VRAC.useASannotations ) {
                 for (final Allele allele : vc.getAlternateAlleles()) {
-                    if ( allele == Allele.SPAN_DEL ) {
-                        continue;
-                    }
-                    if ( VariantDataManager.checkVariationClass(vc, allele, VRAC.MODE )) {
+                    if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, VRAC.MODE)) {
                         addDatum(reduceSum, isInput, context, vc, vc.getReference(), allele);
                     }
                 }

@@ -376,11 +376,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
 
                 siteIsMonomorphic &= !isPlausible;
-                boolean toOutput = (isPlausible || forceKeepAllele(allele) || isNonRefWhichIsLoneAltAllele);
-                if ( allele.equals(GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED) ||
-                        allele.equals(Allele.SPAN_DEL) ) {
-                    toOutput &= isVcCoveredByDeletion(vc);
-                }
+                final boolean isNonCoveringSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
+                final boolean toOutput = (isPlausible || forceKeepAllele(allele) || isNonRefWhichIsLoneAltAllele) && !isNonCoveringSpanningDeletion;
+
                 if (toOutput) {
                     outputAlleles.add(allele);
                     mleCounts.add(afCalculationResult.getAlleleCountAtMLE(allele));
