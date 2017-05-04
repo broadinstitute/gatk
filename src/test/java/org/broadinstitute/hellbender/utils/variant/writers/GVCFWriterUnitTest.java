@@ -346,20 +346,19 @@ public class GVCFWriterUnitTest extends BaseTest {
     @DataProvider(name = "GoodBandPartitionData")
     public Object[][] makeBandPartitionData() {
         return new Object[][]{
-                {Collections.singletonList(1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,Integer.MAX_VALUE))},
-                {Arrays.asList(1, 2, 3), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,2), Range.closedOpen(2,3),Range.closedOpen(3,Integer.MAX_VALUE))},
-                {Arrays.asList(1, 10), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, Integer.MAX_VALUE))},
-                {Arrays.asList(1, 10, 30), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, 30),Range.closedOpen(30,Integer.MAX_VALUE))},
-                {Arrays.asList(1, 10, VCFConstants.MAX_GENOTYPE_QUAL - 1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL - 1),Range.closedOpen(MAX_GENOTYPE_QUAL - 1,Integer.MAX_VALUE))},
-                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL),Range.closedOpen(MAX_GENOTYPE_QUAL,Integer.MAX_VALUE))}
+                {Collections.singletonList(1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,MAX_GENOTYPE_QUAL+1))},
+                {Arrays.asList(1, 2, 3), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,2), Range.closedOpen(2,3),Range.closedOpen(3,MAX_GENOTYPE_QUAL+1))},
+                {Arrays.asList(1, 10), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL+1))},
+                {Arrays.asList(1, 10, 30), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, 30),Range.closedOpen(30,MAX_GENOTYPE_QUAL+1))},
+                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL - 1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL - 1),Range.closedOpen(MAX_GENOTYPE_QUAL - 1,MAX_GENOTYPE_QUAL+1))},
+                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL), Range.closedOpen(MAX_GENOTYPE_QUAL, MAX_GENOTYPE_QUAL+1))}
         };
     }
 
     @Test(dataProvider = "GoodBandPartitionData")
     public void testGoodPartitions(final List<Integer> partitions, List<Range<Integer>> expected) {
         final RangeMap<Integer, Range<Integer>> ranges = GVCFWriter.parsePartitions(partitions);
-        Assert.assertEquals(new ArrayList<>(ranges.asMapOfRanges().keySet()), expected);
-
+        Assert.assertEquals(new ArrayList<>(ranges.asMapOfRanges().values()), expected);
     }
 
     @DataProvider(name = "BadBandPartitionData")
@@ -430,7 +429,7 @@ public class GVCFWriterUnitTest extends BaseTest {
     @Test(dataProvider = "toWriteToDisk")
     public void writeGVCFToDisk(List<VariantContext> variants, List<MinimalData> expected) {
         final List<Integer> gqPartitions = Arrays.asList(1, 10, 30);
-        final File outputFile =  createTempFile("generated", ".gvcf");
+        final File outputFile =  createTempFile("generated", ".g.vcf");
 
         try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
              GVCFWriter gvcfWriter = new GVCFWriter(writer, gqPartitions, HomoSapiensConstants.DEFAULT_PLOIDY))
@@ -498,7 +497,7 @@ public class GVCFWriterUnitTest extends BaseTest {
     public void testAgainstExampleGVCF() throws IOException {
         final List<Integer> gqPartitions = Arrays.asList(1, 10, 20, 30, 40, 50, 60);
         final File comparisonFile = new File("src/test/resources/org/broadinstitute/hellbender/utils/variant/writers/small.g.vcf");
-        final File outputFile = createTempFile("generated", ".gvcf");
+        final File outputFile = createTempFile("generated", ".g.vcf");
         final VariantContextBuilder chr = new VariantContextBuilder().chr(CHR1);
         final Allele REF_C = Allele.create("C", true);
         final Allele REF_G = Allele.create("G", true);
