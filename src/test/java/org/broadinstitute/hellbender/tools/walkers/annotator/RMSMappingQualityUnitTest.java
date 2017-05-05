@@ -55,7 +55,10 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
     }
 
-    private VariantContext makeVC() {
+    /**
+     * @return get a new variant context with only alleles and position filled in
+     */
+    private static VariantContext makeVC() {
         final GenotypesContext testGC = GenotypesContext.create(2);
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("T");
@@ -208,12 +211,13 @@ public final class RMSMappingQualityUnitTest {
         new RMSMappingQuality().finalizeRawMQ(vc);
     }
 
-    @Test(expectedExceptions = UserException.BadInput.class)
-    public void testNoDepth(){
+    @Test
+    public void testNoDepth() {
         final VariantContext vc = new VariantContextBuilder(makeVC())
                 .attribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, "2000")
                 .make();
-        new RMSMappingQuality().finalizeRawMQ(vc);
+        Assert.assertTrue(new RMSMappingQuality().finalizeRawMQ(vc).hasAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY));
+        Assert.assertTrue(Double.isNaN(new RMSMappingQuality().finalizeRawMQ(vc).getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 0)));
     }
 
     @Test
@@ -260,5 +264,12 @@ public final class RMSMappingQualityUnitTest {
                 .make();
 
         Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc), 115 - 5 - 10);
+    }
+
+    @Test
+    public void testGetNumReadsReturnsNegativeOneWhenDataIsBad(){
+        final VariantContext emptyVariantContext = makeVC();
+        Assert.assertEquals(RMSMappingQuality.getNumOfReads(emptyVariantContext), -1);
+
     }
 }
