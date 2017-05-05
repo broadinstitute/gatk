@@ -156,6 +156,20 @@ public final class GenomicsDBImport extends GATKTool {
       return false;
     }
 
+    @Override
+    public int getDefaultCloudPrefetchBufferSize() {
+        // Since this tool is typically run with many inputs, we want a smaller NIO buffer size
+        // than normal:
+        return 2;
+    }
+
+    @Override
+    public int getDefaultCloudIndexPrefetchBufferSize() {
+        // Since this tool is typically run with many inputs, we want a smaller NIO buffer size for the index
+        // than normal:
+        return 2;
+    }
+
     // Intervals from command line (singleton for now)
     private List<ChromosomeInterval> intervals;
 
