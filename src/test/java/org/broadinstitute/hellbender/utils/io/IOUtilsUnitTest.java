@@ -69,6 +69,19 @@ public final class IOUtilsUnitTest extends BaseTest {
         Assert.assertFalse(IOUtils.isSpecialFile(new File("/devfake/null")));
     }
 
+    @Test
+    public void testSuccessfulCanReadFileCheck() {
+        final File expectedFile = createTempFile("Utils-can-read-test",".txt");
+        IOUtils.fileIsReadable(expectedFile);
+    }
+
+    @Test
+    public void testSuccessfulCanReadFilesCheck() {
+        final File file1 = createTempFile("Utils-can-read-test1",".txt");
+        final File file2 = createTempFile("Utils-can-read-test2",".txt");
+        IOUtils.fileIsReadable(file1, file2);
+    }
+
     @DataProvider( name = "ByteArrayIOTestData")
     public Object[][] byteArrayIOTestDataProvider() {
         return new Object[][] {

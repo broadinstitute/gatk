@@ -316,8 +316,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
 
         try {
-            IOUtils.canRead(callsetJson);
-            IOUtils.canRead(vidmapJson);
+            IOUtils.fileIsReadable(callsetJson);
+            IOUtils.fileIsReadable(vidmapJson);
         }
         catch ( UserException.CouldNotReadInputFile e ) {
             throw new UserException("Couldn't connect to GenomicsDB because the vidmap and/or callset JSON files (" +
