@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.intel.genomicsdb.GenomicsDBFeatureReader;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -8,12 +8,12 @@ import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
-import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBConstants;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
@@ -28,6 +28,21 @@ import java.util.Collections;
 import java.util.List;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
+
+    private static final File TEST_REFERENCE_GENOME = new File(largeFileTestDir + "/Homo_sapiens_assembly38.20.21.fasta");
+
+    private static final String HG_00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
+    private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
+    private static final String NA_19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
+    private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
+
+    private static final String HG_00096_CLOUD = getGCPTestInputPath() + "large/gvcfs/HG00096.g.vcf.gz";
+    private static final String HG_00268_CLOUD = getGCPTestInputPath() + "large/gvcfs/HG00268.g.vcf.gz";
+    private static final String NA_19625_CLOUD = getGCPTestInputPath() + "large/gvcfs/NA19625.g.vcf.gz";
+    private static final List<String> CLOUD_GVCFS = Arrays.asList(HG_00096_CLOUD, HG_00268_CLOUD, NA_19625_CLOUD);
+
+    private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
 
     @Override
     public String getTestedClassName() {
@@ -46,65 +61,72 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testGenomicsDBImportFileInputs() throws IOException {
-        final String hg00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
-        final String hg00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
-        final String na19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
-        final String combined = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
-        final SimpleInterval interval = new SimpleInterval("chr20", 17960187, 17981445);
+    public void testSampleMappingFileInsteadOfVCFs() throws IOException {
+        final String sampleFileContents = "HG00096\t" + HG_00096 +"\n" +
+                "HG00268\t"+ HG_00268 + "\n" +
+                "NA19625\t"+ NA_19625;
+        final File sampleNameFile = IOUtils.writeTempFile(sampleFileContents, "sampleNameMap", ".tx");
 
-        testGenomicsDBImporter(Arrays.asList(hg00096, hg00268, na19625), interval, combined);
+        final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleNameFile.getAbsolutePath())
+                .addArgument("L", IntervalUtils.locatableToString(INTERVAL))
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace);
+
+        runCommandLine(args);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED);
+    }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testCantSpecifyVCFAndSampleNameFile(){
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, "someFile")
+                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, "someotherfile")
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, "someworkspace")
+                .addArgument("L", "1:1-10");
+        runCommandLine(args);
+    }
+
+    @Test(expectedExceptions = CommandLineException.MissingArgument.class)
+    public void testRequireOneOfVCFOrSampleNameFile(){
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, "someworkspace")
+                .addArgument("L", "1:1-10");
+
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputs() throws IOException {
+        testGenomicsDBImporter(LOCAL_GVCFS, INTERVAL, COMBINED);
     }
 
     @Test(groups = {"bucket"})
     public void testGenomicsDBImportGCSInputs() throws IOException {
-        final String hg00096_cloud = getGCPTestInputPath() + "large/gvcfs/HG00096.g.vcf.gz";
-        final String hg00268_cloud = getGCPTestInputPath() + "large/gvcfs/HG00268.g.vcf.gz";
-        final String na19625_cloud = getGCPTestInputPath() + "large/gvcfs/NA19625.g.vcf.gz";
-        final String combined = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
-        final SimpleInterval interval = new SimpleInterval("chr20", 17960187, 17981445);
-
-        testGenomicsDBImporter(Arrays.asList(hg00096_cloud, hg00268_cloud, na19625_cloud), interval, combined);
+        testGenomicsDBImporter(CLOUD_GVCFS, INTERVAL, COMBINED);
     }
 
     @Test(dataProvider = "batchSizes")
-    public void testGenomicsDBImportFileInputsInBatches(int batchSize) throws IOException {
-        final String hg00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
-        final String hg00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
-        final String na19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
-        final String combined = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
-        final SimpleInterval interval = new SimpleInterval("chr20", 17960187, 17981445);
-
-        testGenomicsDBImporterWithBatchSize(Arrays.asList(hg00096, hg00268, na19625), interval, combined, batchSize);
+    public void testGenomicsDBImportFileInputsInBatches(final int batchSize) throws IOException {
+        testGenomicsDBImporterWithBatchSize(LOCAL_GVCFS, INTERVAL, COMBINED, batchSize);
     }
 
     @Test(groups = {"bucket"}, dataProvider = "batchSizes")
-    public void testGenomicsDBImportGCSInputsInBatches(int batchSize) throws IOException {
-        final String hg00096_cloud = getGCPTestInputPath() + "large/gvcfs/HG00096.g.vcf.gz";
-        final String hg00268_cloud = getGCPTestInputPath() + "large/gvcfs/HG00268.g.vcf.gz";
-        final String na19625_cloud = getGCPTestInputPath() + "large/gvcfs/NA19625.g.vcf.gz";
-        final String combined = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
-        final SimpleInterval interval = new SimpleInterval("chr20", 17960187, 17981445);
-
-        testGenomicsDBImporterWithBatchSize(Arrays.asList(hg00096_cloud, hg00268_cloud, na19625_cloud), interval, combined, batchSize);
+    public void testGenomicsDBImportGCSInputsInBatches(final int batchSize) throws IOException {
+        testGenomicsDBImporterWithBatchSize(CLOUD_GVCFS, INTERVAL, COMBINED, batchSize);
     }
 
     /**
-     * Check whether user exception is thrown with vcf
-     * buffer size < 1024 bytes
      *
-     * @throws UserException  Value must be >1024 bytes
+     * @throws CommandLineException.OutOfRangeArgumentValue  Value must be >1024 bytes
      */
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.OutOfRangeArgumentValue.class)
     public void testZeroVCFBufferSize() throws IOException {
-        final String hg00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
-        final String hg00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
-        final String na19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
-        final String combined = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
-        final SimpleInterval interval = new SimpleInterval("chr20", 17960187, 17981445);
-
-        testGenomicsDBImportWithZeroBufferSize(Arrays.asList(hg00096, hg00268, na19625), interval, combined);
+        testGenomicsDBImportWithZeroBufferSize(LOCAL_GVCFS, INTERVAL, COMBINED);
     }
+
 
     private void testGenomicsDBImporter(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
@@ -114,7 +136,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         checkGenomicsDBAgainstExpected(workspace, interval, expectedCombinedVCF);
     }
 
-    private void testGenomicsDBImporterWithBatchSize(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF, int batchSize) throws IOException {
+    private void testGenomicsDBImporterWithBatchSize(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF, final int batchSize) throws IOException {
         final String workspace = createTempDir("genomicsdb-batchsize-tests-").getAbsolutePath() + "/workspace-" + batchSize;
 
         writeToGenomicsDB(vcfInputs, interval, workspace, batchSize, false, 0);
@@ -131,7 +153,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     }
 
-    private void writeToGenomicsDB(final List<String> vcfInputs, final SimpleInterval interval, final String workspace, int batchSize, final Boolean useBufferSize, int bufferSizePerSample) {
+    private void writeToGenomicsDB(final List<String> vcfInputs, final SimpleInterval interval, final String workspace, final int batchSize, final Boolean useBufferSize, int bufferSizePerSample) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument("genomicsDBWorkspace", workspace);
         args.addArgument("L", IntervalUtils.locatableToString(interval));
@@ -144,13 +166,13 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         runCommandLine(args);
     }
 
-    private void checkJSONFilesAreWritten(String workspace) {
+    private static void checkJSONFilesAreWritten(final String workspace) {
         Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).exists());
         Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).exists());
     }
 
-    private void checkGenomicsDBAgainstExpected(String workspace, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
-        GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+    private static void checkGenomicsDBAgainstExpected(final String workspace, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
+        final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
                 new GenomicsDBFeatureReader<>(
                         new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
                         new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
@@ -158,7 +180,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                         GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                         b38_reference_20_21, null, new BCF2Codec());
 
-        AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
+        final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
                 AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
 
         try (CloseableTribbleIterator<VariantContext> actualVcs =
