@@ -322,8 +322,10 @@ public abstract class GATKTool extends CommandLineProgram {
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
             if ( sequenceDictionary == null ) {
-                throw new UserException("We currently require a sequence dictionary (from a reference, a source of reads, or a source of variants) " +
-                                        "to process intervals. This restriction may be removed in the future.");
+                throw new UserException("We require a sequence dictionary from a reference, a source of reads, or a source of variants to process intervals.  " +
+                        "Since reference and reads files generally contain sequence dictionaries, this error most commonly occurs " +
+                        "for VariantWalkers that do not require a reference or reads.  You can fix the problem by passing a reference file with a sequence dictionary " +
+                        "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
             }
 
             intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
