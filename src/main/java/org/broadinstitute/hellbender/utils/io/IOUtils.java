@@ -578,7 +578,7 @@ public final class IOUtils {
      * @throws IllegalArgumentException if any input file {@code file} is {@code null} or {@code files} is {@code null}.
      * @throws UserException if any {@code file} is not a regular file or it cannot be read.
      */
-    public static void canRead(final File... files) {
+    public static void canReadFile( final File... files) {
         Utils.nonNull(files, "Unexpected null input.");
         for (final File file : files) {
             Utils.nonNull(file, "Unexpected null file reference.");
