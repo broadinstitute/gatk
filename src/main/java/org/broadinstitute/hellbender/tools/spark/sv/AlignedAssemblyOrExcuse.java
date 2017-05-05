@@ -47,6 +47,8 @@ public final class AlignedAssemblyOrExcuse {
 
     public AlignedAssemblyOrExcuse( final int assemblyId, final FermiLiteAssembly assembly,
                                     final List<List<BwaMemAlignment>> contigAlignments ) {
+        Utils.validate(assembly.getNContigs()==contigAlignments.size(),
+                "Number of contigs in assembly doesn't match length of list of alignments.");
         Utils.validateArg(assembly.getContigs().stream().noneMatch(contig -> contig.getConnections()==null), "some assembly has contigs that have null connections");
         this.assemblyId = assemblyId;
         this.errorMessage = null;
@@ -115,6 +117,30 @@ public final class AlignedAssemblyOrExcuse {
         return contigAlignments;
     }
 
+    public Stream<SAMRecord> toSAMStream( final int contigId, final SAMFileHeader header, final List<String> refNames ) {
+        if ( errorMessage != null ) {
+            throw new GATKException("Can't stream SAM records from a failed assembly.");
+        }
+        final String readName = formatContigName(assemblyId, contigId);
+        final byte[] calls = assembly.getContig(contigId).getSequence();
+        return contigAlignments.get(contigId).stream().map(alignment ->
+                BwaMemAlignmentUtils.applyAlignment(readName, calls, null, null,
+                        alignment, refNames, header, false, false));
+    }
+
+    public Stream<SAMRecord> toSAMStream( final SAMFileHeader header, final List<String> refNames ) {
+        return IntStream.range(0, contigAlignments.size()).boxed()
+                .flatMap(contigId -> toSAMStream(contigId,header,refNames));
+    }
+
+    public static Stream<SAMRecord> toSAMStream( final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
+                                                 final SAMFileHeader header ) {
+        final List<String> refNames = getRefNames(header);
+        return alignedAssemblyOrExcuseList.stream()
+                .filter(AlignedAssemblyOrExcuse::isNotFailure)
+                .flatMap(aa -> aa.toSAMStream(header,refNames));
+    }
+
     /**
      * write a SAM file containing records for each aligned contig
      */
@@ -125,15 +151,7 @@ public final class AlignedAssemblyOrExcuse {
             final SAMTextWriter writer = new SAMTextWriter(os);
             writer.setSortOrder(SAMFileHeader.SortOrder.queryname, true);
             writer.setHeader(header);
-
-            final List<String> refNames = getRefNames(header);
-
-            alignedAssemblyOrExcuseList.stream()
-                    .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                    .flatMap(alignedAssemblyNoExcuse -> getAlignmentsForAllContigsInOneAssembly(alignedAssemblyNoExcuse, header, refNames)
-                            .flatMap(Function.identity()))
-                    .forEach(writer::addAlignment);
-
+            toSAMStream(alignedAssemblyOrExcuseList,header).forEach(writer::addAlignment);
             writer.finish();
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write SAM file of aligned contigs.", ioe);

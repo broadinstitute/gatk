@@ -19,13 +19,16 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import scala.Serializable;
+import scala.Tuple2;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Tool to run the sv pipeline up to and including variant discovery
@@ -135,14 +138,17 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             return ctx.parallelize(alignedAssemblyOrExcuseList)
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
                     .flatMap(alignedAssemblyNoExcuse ->
-                            AlignedAssemblyOrExcuse.getAlignmentsForAllContigsInOneAssembly(alignedAssemblyNoExcuse, cleanHeader, refNames).iterator())
-                    .map(forOneContig -> forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.getNotPrimaryAlignmentFlag()).iterator())
-                    .filter(Iterator::hasNext) // not filtering on the stream directly to avoid consuming the stream so next operations would not throw
-                    .map(forOneContig ->
-                            DiscoverVariantsFromContigAlignmentsSAMSpark.
-                                    SAMFormattedContigAlignmentParser.
-                                    parseReadsAndBreakGaps(Utils.stream(forOneContig).map(SAMRecordToGATKReadAdapter::new).collect(Collectors.toList()),
-                                            header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger ));
+                            IntStream.range(0,alignedAssemblyNoExcuse.getAssembly().getNContigs())
+                                    .mapToObj(contigId -> {
+                                        final Stream<GATKRead> reads =
+                                                alignedAssemblyNoExcuse
+                                                        .toSAMStream(contigId,header,refNames)
+                                                        .map(SAMRecordToGATKReadAdapter::new);
+                                        return DiscoverVariantsFromContigAlignmentsSAMSpark.
+                                                SAMFormattedContigAlignmentParser.
+                                                parseReadsAndBreakGaps(reads::iterator,header,
+                                                                       SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
+                                                                       toolLogger);}).iterator());
         }
 
         /**
