@@ -53,7 +53,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
-    private FindBreakpointEvidenceSparkArgumentCollection reAlignmentStageArgs = new FindBreakpointEvidenceSparkArgumentCollection();
+    private FindBreakpointEvidenceSparkArgumentCollection evidenceAndAssemblyArgs = new FindBreakpointEvidenceSparkArgumentCollection();
 
     @Argument(doc = "sam file for aligned contigs", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
@@ -69,8 +69,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
-        gatherEvidenceAndWriteContigSamFile(ctx, getAuthenticatedGCSOptions(), reAlignmentStageArgs, getHeaderForReads(), getUnfilteredReads(), outputSAM,
-                LogManager.getLogger(FindBreakpointEvidenceSpark.class));
+        gatherEvidenceAndWriteContigSamFile(ctx, getAuthenticatedGCSOptions(), evidenceAndAssemblyArgs, getHeaderForReads(),
+                getUnfilteredReads(), outputSAM, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
 
     }
 

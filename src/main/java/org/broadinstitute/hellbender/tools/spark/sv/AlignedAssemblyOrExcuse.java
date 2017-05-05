@@ -10,6 +10,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextWriter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
@@ -22,8 +23,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * An assembly with its contigs aligned to reference, or a reason that there isn't an assembly.
@@ -44,6 +47,7 @@ public final class AlignedAssemblyOrExcuse {
 
     public AlignedAssemblyOrExcuse( final int assemblyId, final FermiLiteAssembly assembly,
                                     final List<List<BwaMemAlignment>> contigAlignments ) {
+        Utils.validateArg(assembly.getContigs().stream().noneMatch(contig -> contig.getConnections()==null), "some assembly has contigs that have null connections");
         this.assemblyId = assemblyId;
         this.errorMessage = null;
         this.assembly = assembly;
@@ -121,58 +125,49 @@ public final class AlignedAssemblyOrExcuse {
             final SAMTextWriter writer = new SAMTextWriter(os);
             writer.setSortOrder(SAMFileHeader.SortOrder.queryname, true);
             writer.setHeader(header);
-            filterFailedAssemblyAndConvertToSamRecords(header, alignedAssemblyOrExcuseList).forEach(contigs -> contigs.forEach(ls -> ls.forEach(writer::addAlignment)) );
+
+            final List<String> refNames = getRefNames(header);
+
+            alignedAssemblyOrExcuseList.stream()
+                    .filter(AlignedAssemblyOrExcuse::isNotFailure)
+                    .flatMap(alignedAssemblyNoExcuse -> getAlignmentsForAllContigsInOneAssembly(alignedAssemblyNoExcuse, header, refNames)
+                            .flatMap(Function.identity()))
+                    .forEach(writer::addAlignment);
+
             writer.finish();
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write SAM file of aligned contigs.", ioe);
         }
     }
 
-    /**
-     * Filters out failed assemblies and
-     * turn each assembly into a 2-D list, where
-     * the outer level corresponds to the contigs of the assembly and
-     * the inner level corresponds to the SAMRecords of each contig.
-     */
-    public static List<List<List<SAMRecord>>> filterFailedAssemblyAndConvertToSamRecords(final SAMFileHeader header, final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList) {
-
-        final List<String> refNames =
-                header.getSequenceDictionary().getSequences().stream()
-                        .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
-
-        return alignedAssemblyOrExcuseList.stream()
-                .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                .map(alignedAssembly -> getAlignmentsForAllContigsInOneAssembly(alignedAssembly, header, refNames))
-                .collect(Collectors.toList());
+    public static List<String> getRefNames(final SAMFileHeader header) {
+        return header.getSequenceDictionary().getSequences().stream()
+                .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
     }
 
-    /**
-     * Turn input assembly into a 2-D list, where
-     * the outer level corresponds to the contigs of the assembly and
-     * the inner level corresponds to the SAMRecords of each contig.
-     */
-    public static List<List<SAMRecord>> getAlignmentsForAllContigsInOneAssembly(final AlignedAssemblyOrExcuse alignedAssemblyNoExcuse,
-                                                                                final SAMFileHeader header, final List<String> refNames) {
+    public static Stream<Stream<SAMRecord>> getAlignmentsForAllContigsInOneAssembly(final AlignedAssemblyOrExcuse alignedAssemblyNoExcuse,
+                                                                                    final SAMFileHeader header, final List<String> refNames) {
         final FermiLiteAssembly assembly = alignedAssemblyNoExcuse.getAssembly();
         final int assemblyId = alignedAssemblyNoExcuse.getAssemblyId();
         final List<List<BwaMemAlignment>> allAlignmentsOfThisAssembly = alignedAssemblyNoExcuse.getContigAlignments();
         final int nContigs = assembly.getNContigs();
         return IntStream.range(0, nContigs)
                 .mapToObj(contigIdx ->
-                        getAlignmentsForEachContig(header, refNames, assemblyId, contigIdx, assembly.getContig(contigIdx), allAlignmentsOfThisAssembly.get(contigIdx)))
-                .collect(Collectors.toList());
+                        getAlignmentsForEachContig(header, refNames, assemblyId, contigIdx, assembly.getContig(contigIdx),
+                                allAlignmentsOfThisAssembly.get(contigIdx)));
     }
 
-    public static List<SAMRecord> getAlignmentsForEachContig(final SAMFileHeader header, final List<String> refNames,
-                                                             final int assemblyId, final int contigIdx,
-                                                             final Contig contig, final List<BwaMemAlignment> alignments) {
-        if ( alignments.isEmpty() ) return new ArrayList<>();
+    private static Stream<SAMRecord> getAlignmentsForEachContig(final SAMFileHeader header, final List<String> refNames,
+                                                                final int assemblyId, final int contigIdx,
+                                                                final Contig contig, final List<BwaMemAlignment> alignments) {
+        if ( alignments.isEmpty() ) return Stream.empty();
 
         final String readName = formatContigName(assemblyId, contigIdx);
         final byte[] calls = contig.getSequence();
+
         return alignments.stream()
-                .map(alignment -> BwaMemAlignmentUtils.applyAlignment(readName, calls, null, null, alignment, refNames, header, false, false))
-                .collect(Collectors.toList());
+                .map(alignment -> BwaMemAlignmentUtils.applyAlignment(readName, calls, null, null,
+                        alignment, refNames, header, false, false));
     }
 
     public static String formatContigName(final int assemblyId, final int contigIdx) {

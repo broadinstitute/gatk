@@ -4,6 +4,7 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -21,7 +22,7 @@ import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import scala.Serializable;
 
-import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -114,7 +115,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             //                           which is the route if the discovery pipeline is run by "FindBreakpointEvidenceSpark -> write sam file -> load sam file -> DiscoverVariantsFromContigAlignmentsSAMSpark"
             //                         , the other is to go directly "BwaMemAlignment -> AlignmentInterval" by calling into {@code filterAndConvertToAlignedContigDirect()}, which is faster but not used here.
             //                         ; the two routes are tested to be generating the same output via {@code AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
-            return ctx.parallelize( filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, toolLogger) );
+            return filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, ctx, toolLogger);
         }
 
         /**
@@ -124,30 +125,31 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
          * and currently this assertion is tested in {@see AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
          */
         @VisibleForTesting
-        public static List<AlignedContig> filterAndConvertToAlignedContigViaSAM(final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
-                                                                                final SAMFileHeader header, final Logger toolLogger) {
+        public static JavaRDD<AlignedContig> filterAndConvertToAlignedContigViaSAM(final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
+                                                                                   final SAMFileHeader header,
+                                                                                   final JavaSparkContext ctx,
+                                                                                   final Logger toolLogger) {
 
             final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
+            final List<String> refNames = AlignedAssemblyOrExcuse.getRefNames(header);
 
-            final List<AlignedContig> parsedAlignments =
-                    AlignedAssemblyOrExcuse.filterFailedAssemblyAndConvertToSamRecords(cleanHeader, alignedAssemblyOrExcuseList)
-                            .stream()
-                            .map(forOneAssembly -> forOneAssembly // each assembly to one list of contigs
-                                    .stream()
-                                    .map( forOneContig -> forOneContig.stream().filter(sam -> !sam.getReadUnmappedFlag() && !sam.getNotPrimaryAlignmentFlag()).collect(Collectors.toList()) ) // filtering step
-                                    .filter( forOneContig -> !forOneContig.isEmpty())
-                                    .map( forOneContig ->  DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(forOneContig.stream().map(SAMRecordToGATKReadAdapter::new).collect(Collectors.toList()), header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger))
-                                    .collect(Collectors.toList())
-                            ).flatMap(List::stream)
-                            .collect(Collectors.toList());
-
-            return parsedAlignments.isEmpty() ? Collections.emptyList() : parsedAlignments;
+            return ctx.parallelize(alignedAssemblyOrExcuseList)
+                    .filter(AlignedAssemblyOrExcuse::isNotFailure)
+                    .flatMap(alignedAssemblyNoExcuse ->
+                            AlignedAssemblyOrExcuse.getAlignmentsForAllContigsInOneAssembly(alignedAssemblyNoExcuse, cleanHeader, refNames).iterator())
+                    .map(forOneContig -> forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.getNotPrimaryAlignmentFlag()).iterator())
+                    .filter(Iterator::hasNext) // not filtering on the stream directly to avoid consuming the stream so next operations would not throw
+                    .map(forOneContig ->
+                            DiscoverVariantsFromContigAlignmentsSAMSpark.
+                                    SAMFormattedContigAlignmentParser.
+                                    parseReadsAndBreakGaps(Utils.stream(forOneContig).map(SAMRecordToGATKReadAdapter::new).collect(Collectors.toList()),
+                                            header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger ));
         }
 
         /**
          * Filter out "failed" assemblies, unmapped and secondary (i.e. "XA") alignments, and
          * turn the alignments of contigs into custom {@link AlignedAssembly.AlignmentInterval} format.
-         * Should be generating the same output as {@link #filterAndConvertToAlignedContigViaSAM(List, SAMFileHeader, Logger)};
+         * Should be generating the same output as {@link #filterAndConvertToAlignedContigViaSAM(List, SAMFileHeader, JavaSparkContext, Logger)};
          * and currently this assertion is tested in {@see AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
          */
         @VisibleForTesting
@@ -188,12 +190,16 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
          * Filters out unmapped and ambiguous mappings (i.e. XA).
          */
         @VisibleForTesting
-        private static List<AlignedAssembly.AlignmentInterval> getAlignmentsForOneContig(final String contigName, final byte[] contigSequence, final List<BwaMemAlignment> contigAlignments,
-                                                                                         final List<String> refNames, final SAMFileHeader header) {
+        private static List<AlignedAssembly.AlignmentInterval> getAlignmentsForOneContig(final String contigName,
+                                                                                         final byte[] contigSequence,
+                                                                                         final List<BwaMemAlignment> contigAlignments,
+                                                                                         final List<String> refNames,
+                                                                                         final SAMFileHeader header) {
 
             return contigAlignments.stream()
                     .filter( bwaMemAlignment ->  bwaMemAlignment.getRefId() >= 0 && SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwaMemAlignment.getSamFlag())) // mapped and not XA (i.e. not secondary)
-                    .map(bwaMemAlignment -> BwaMemAlignmentUtils.applyAlignment(contigName, contigSequence, null, null, bwaMemAlignment, refNames, header, false, false))
+                    .map(bwaMemAlignment -> BwaMemAlignmentUtils.applyAlignment(contigName, contigSequence, null,
+                            null, bwaMemAlignment, refNames, header, false, false))
                     .map(AlignedAssembly.AlignmentInterval::new)
                     .map(ar -> GappedAlignmentSplitter.split(ar, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, contigSequence.length))
                     .flatMap(Utils::stream).collect(Collectors.toList());
