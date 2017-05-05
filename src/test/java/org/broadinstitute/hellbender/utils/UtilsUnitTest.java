@@ -403,19 +403,6 @@ public final class UtilsUnitTest extends BaseTest {
         Assert.assertEquals(strings.stream().sorted().collect(Collectors.toList()), set.stream().sorted().collect(Collectors.toList()));
     }
 
-    @Test
-    public void testSuccessfulCanReadFileCheck() {
-        final File expectedFile = createTempFile("Utils-can-read-test",".txt");
-        IOUtils.canRead(expectedFile);
-    }
-
-    @Test
-    public void testSuccessfulCanReadFilesCheck() {
-        final File file1 = createTempFile("Utils-can-read-test1",".txt");
-        final File file2 = createTempFile("Utils-can-read-test2",".txt");
-        IOUtils.canRead(file1, file2);
-    }
-
     @Test(dataProvider = "successfulValidIndexData")
     public void testSuccessfulValidIndex(final int index, final int length) {
         final int actualIndex = Utils.validIndex(index, length);
@@ -433,7 +420,7 @@ public final class UtilsUnitTest extends BaseTest {
         if (file == null){
             throw new SkipException("cannot make a file unreadable (maybe you're running as root)");
         }
-        IOUtils.canRead(file);
+        IOUtils.fileIsReadable(file);
     }
 
     @DataProvider(name = "unsuccessfulCanReadFileCheckData")
