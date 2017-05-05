@@ -90,10 +90,10 @@ public abstract class GATKTool extends CommandLineProgram {
 
     // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
-    public int cloudPrefetchBuffer = 40;
+    public int cloudPrefetchBuffer = getDefaultCloudPrefetchBufferSize();
 
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to cloudPrefetchBuffer if unset.", optional=true)
-    public int cloudIndexPrefetchBuffer = -1;
+    public int cloudIndexPrefetchBuffer = getDefaultCloudIndexPrefetchBufferSize();
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_LONG_NAME,
             shortName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_SHORT_NAME,
@@ -238,6 +238,25 @@ public abstract class GATKTool extends CommandLineProgram {
         }
         // returns an empty Stream if there are no reads
         return Stream.empty();
+    }
+
+    /**
+     * @return Default size in MB of the cloud prefetch buffer. May be overridden by individual tools.
+     *         The default implementation returns a value (40 MB) that is suitable for tools with a small
+     *         number of large cloud inputs. Tools with large numbers of cloud inputs will likely want to
+     *         override to specify a smaller size.
+     */
+    public int getDefaultCloudPrefetchBufferSize() {
+        return 40;
+    }
+
+    /**
+     * @return Default size in MB of the cloud index prefetch buffer. May be overridden by individual tools.
+     *         A return value of -1 means to use the same value as returned by {@link #getDefaultCloudPrefetchBufferSize()}.
+     *         The default implementation returns -1.
+     */
+    public int getDefaultCloudIndexPrefetchBufferSize() {
+        return -1;
     }
 
     /**
