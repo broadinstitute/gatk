@@ -282,6 +282,14 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
     }
 
     /**
+     * Return the interval having the largest ending value.
+     * This will be null if the tree is empty.
+     */
+    public SVInterval maxEnd() {
+        return root == null ? null : root.getMaxEndInterval();
+    }
+
+    /**
      * Return an iterator over the entire tree.
      *
      * @return An iterator.

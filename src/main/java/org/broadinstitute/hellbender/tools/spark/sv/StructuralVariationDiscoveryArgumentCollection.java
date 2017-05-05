@@ -37,13 +37,13 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 "that interval are clearly not exclusively local to the interval.", fullName = "maxIntervalCoverage")
         public int maxIntervalCoverage = defaultParams.maxIntervalCoverage;
 
-        @Argument(doc = "Minimum number of reads in cluster to declare an interval of interest.",
+        @Argument(doc = "Minimum weight of the corroborating read evidence to validate some single piece of evidence.",
                 fullName = "minEvidenceCount")
-        public int minEvidenceCount = defaultParams.minEvidenceCount;
+        public int minEvidenceWeight = defaultParams.minEvidenceWeight;
 
-        @Argument(doc = "Minimum number of reads in cluster that share the same target locus to declare an interval of interest.",
+        @Argument(doc = "Minimum weight of the evidence that shares a distal target locus to validate the evidence.",
                 fullName = "minCoherentEvidenceCount")
-        public int minCoherentEvidenceCount = defaultParams.minCoherentEvidenceCount;
+        public int minCoherentEvidenceWeight = defaultParams.minCoherentEvidenceWeight;
 
         @Argument(doc = "Minimum number of localizing kmers in a valid interval.", fullName="minKmersPerInterval")
         public int minKmersPerInterval = defaultParams.minKmersPerInterval;
