@@ -93,7 +93,6 @@ public class SVVCFWriter {
         final VCFHeader header = new VCFHeader(new HashSet<>(GATKSVVCFHeaderLines.vcfHeaderLines.values()));
         header.setSequenceDictionary(referenceSequenceDictionary);
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
-//        GATKSVVCFHeaderLines.vcfHeaderLines.values().forEach(header::addMetaDataLine);
         return header;
     }
 

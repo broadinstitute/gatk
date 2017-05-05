@@ -8,6 +8,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
@@ -143,14 +144,16 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         });
     }
 
-    public static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath, final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
+    public static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath,
+                                                     final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
 
         VCFFileReader fileReader;
         CloseableIterator<VariantContext> iterator;
         final List<VariantContext> actualVcs;
         if (onHDFS) {
-            final File tempLocalVCF = BaseTest.createTempFile("variants", "vcf"); tempLocalVCF.deleteOnExit();
-            new Path(generatedVCFPath).getFileSystem(new Configuration()).copyToLocalFile(new Path(generatedVCFPath), new Path(tempLocalVCF.getAbsolutePath()));
+            final File tempLocalVCF = BaseTest.createTempFile("variants", "vcf");
+            tempLocalVCF.deleteOnExit();
+            BucketUtils.copyFile(generatedVCFPath, null, tempLocalVCF.getAbsolutePath());
             fileReader = new VCFFileReader(tempLocalVCF, false);
         } else {
             fileReader = new VCFFileReader(new File(generatedVCFPath), false);

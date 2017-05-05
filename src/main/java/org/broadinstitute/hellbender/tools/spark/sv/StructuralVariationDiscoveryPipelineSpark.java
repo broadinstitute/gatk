@@ -107,7 +107,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             this.toolLogger = toolLogger;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public JavaRDD<AlignedContig> getAlignedContigs() {
 
