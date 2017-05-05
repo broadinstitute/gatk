@@ -213,8 +213,9 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private void initializeHeaderAndSampleMappings() {
-        //Only one of
+        // Only one of -V and -sampleNameToPathFile may be specified
         if (sampleNameToPathFile == null) {
+            // -V was specified
             final List<VCFHeader> headers = new ArrayList<>(variantPaths.size());
 
             for (final String variantPath : variantPaths) {
@@ -235,6 +236,7 @@ public final class GenomicsDBImport extends GATKTool {
             mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
             mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
         } else {
+            // -sampleNameMap was specified
             sampleNameToVcfUri.putAll(loadSampleNameMapFile(IOUtils.getPath(sampleNameToPathFile)));
             sampleNames.addAll(sampleNameToVcfUri.keySet());
 
