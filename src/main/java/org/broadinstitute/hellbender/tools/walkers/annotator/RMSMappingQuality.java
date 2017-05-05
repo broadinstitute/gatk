@@ -158,9 +158,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             }
         }
         if (numOfReads <= 0){
-            throw new UserException.BadInput("Cannot calculate Root Mean Square Mapping Quality if there are 0 or less reads." +
-                                                     "\nNumber of reads recorded as :" +numOfReads +
-                                                     "\nIn VariantContext: "+ vc.toStringDecodeGenotypes());
+            numOfReads = -1;  //return -1 to result in a NaN
         }
         return numOfReads;
     }
