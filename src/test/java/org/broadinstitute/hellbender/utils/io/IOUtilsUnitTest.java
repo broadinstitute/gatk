@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -181,5 +182,46 @@ public final class IOUtilsUnitTest extends BaseTest {
         Path p = IOUtils.getPath(s);
         long size = Files.size(p);
         Assert.assertTrue(size>0);
+    }
+
+    @Test
+    public void testSuccessfulCanReadFileCheck() {
+        final File expectedFile = createTempFile("Utils-can-read-test",".txt");
+        IOUtils.canReadFile(expectedFile);
+    }
+
+    @Test
+    public void testSuccessfulCanReadFilesCheck() {
+        final File file1 = createTempFile("Utils-can-read-test1",".txt");
+        final File file2 = createTempFile("Utils-can-read-test2",".txt");
+        IOUtils.canReadFile(file1, file2);
+    }
+
+    @DataProvider(name = "unsuccessfulCanReadFileCheckData")
+    public Object[][] unsuccessfulCanReadFileCheckData() {
+        final File directory = createTempDir("Utils-can-read-file-Dir");
+        final File nonExistingFile = createTempFile("Utils-cant-read-NoFile", ".file");
+        nonExistingFile.delete();
+        final File nonReadable = createTempFile("Utils-cant-read-NotReadable", ".file");
+
+        //Note: if this test suite is run as root (eg in a Docker image), setting readable to false may fail.
+        // So we check it here and skip this test if we can't make a file non readable.
+        final boolean successSetNotReadable = nonReadable.setReadable(false) && !nonReadable.canRead();
+        if (successSetNotReadable) {
+            return new Object[][]{{directory}, {nonExistingFile}, {nonReadable}};
+        } else {
+            //pass in a special value to be able to throw a SkipException and make the same number of tests
+            logger.debug("cannot make a file unreadable (maybe you're running as root)");
+            return new Object[][]{{directory}, {nonExistingFile}, {null}};
+        }
+    }
+
+    @Test(dataProvider = "unsuccessfulCanReadFileCheckData",
+            expectedExceptions = UserException.CouldNotReadInputFile.class)
+    public void testUnsuccessfulCanReadFileCheck(final File file) {
+        if (file == null){
+            throw new SkipException("cannot make a file unreadable (maybe you're running as root)");
+        }
+        IOUtils.canReadFile(file);
     }
 }
