@@ -4,7 +4,8 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
-import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SAMRecord;
+import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -26,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Tool to run the sv pipeline up to and including variant discovery
@@ -134,14 +136,24 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
             return ctx.parallelize(alignedAssemblyOrExcuseList)
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                    .flatMap(alignedAssemblyNoExcuse ->
-                            AlignedAssemblyOrExcuse.getAlignmentsForAllContigsInOneAssembly(alignedAssemblyNoExcuse, cleanHeader, refNames).iterator())
-                    .map(forOneContig -> forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.getNotPrimaryAlignmentFlag()).iterator())
-                    .filter(Iterator::hasNext) // not filtering on the stream directly to avoid consuming the stream so next operations would not throw
+                    .flatMap(alignedAssemblyNoExcuse -> {
+                                final FermiLiteAssembly assembly = alignedAssemblyNoExcuse.getAssembly();
+                                final int assemblyId = alignedAssemblyNoExcuse.getAssemblyId();
+                                final List<List<BwaMemAlignment>> allAlignmentsOfThisAssembly = alignedAssemblyNoExcuse.getContigAlignments();
+                                final int nContigs = assembly.getNContigs();
+                                return IntStream.range(0, nContigs)
+                                        .mapToObj(contigIdx ->
+                                                AlignedAssemblyOrExcuse.toSAMStreamForOneContig(cleanHeader, refNames, assemblyId, contigIdx,
+                                                        assembly.getContig(contigIdx).getSequence(), allAlignmentsOfThisAssembly.get(contigIdx))
+                                        ).iterator();
+                            }
+                    )
+                    .map(forOneContig -> forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.getNotPrimaryAlignmentFlag()).collect(Collectors.toList()))
+                    .filter(list -> !list.isEmpty()) // not filtering on the stream directly to avoid consuming the stream so next operations would not throw
                     .map(forOneContig ->
                             DiscoverVariantsFromContigAlignmentsSAMSpark.
                                     SAMFormattedContigAlignmentParser.
-                                    parseReadsAndBreakGaps(Utils.stream(forOneContig).map(SAMRecordToGATKReadAdapter::new).collect(Collectors.toList()),
+                                    parseReadsAndBreakGaps(forOneContig,
                                             header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger ));
         }
 

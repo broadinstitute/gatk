@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.collect.Iterables;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -26,6 +27,7 @@ import scala.Tuple2;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.testng.Assert.assertEquals;
 
@@ -221,10 +223,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
         read3.setIsReverseStrand(true);
         read3.setIsSupplementaryAlignment(true);
 
-        List<GATKRead> reads = new ArrayList<>(3);
-        reads.add(read1);
-        reads.add(read2);
-        reads.add(read3);
+        final List<SAMRecord> reads = Stream.of(read1, read2, read3).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
         final AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
         assertEquals(alignedContig.contigSequence, read2.getBases());
@@ -252,9 +251,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
         read5.setIsReverseStrand(false);
         read5.setIsSupplementaryAlignment(true);
 
-        List<GATKRead> reads2 = new ArrayList<>(2);
-        reads2.add(read4);
-        reads2.add(read5);
+        List<SAMRecord> reads2 = Stream.of(read4, read5).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
         final AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads2, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
         // these should be the reverse complements of each other

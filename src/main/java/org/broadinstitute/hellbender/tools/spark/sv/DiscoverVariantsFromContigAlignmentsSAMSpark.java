@@ -4,6 +4,7 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -95,42 +96,45 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         @Override
         public JavaRDD<AlignedContig> getAlignedContigs() {
             return unfilteredContigAlignments
-                    .filter(r -> !r.isSecondaryAlignment()).groupBy(GATKRead::getName).map(Tuple2::_2)
-                    .map(iterable -> parseReadsAndBreakGaps(iterable, header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger));
+                    .filter(r -> !r.isSecondaryAlignment())
+                    .groupBy(GATKRead::getName)
+                    .map(Tuple2::_2)
+                    .map(iterable -> parseReadsAndBreakGaps(Utils.stream(iterable).map(r->r.convertToSAMRecord(header)).collect(Collectors.toList()), header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger));
         }
 
         /**
-         * Iterates through the input {@code noSecondaryReads}, which are assumed to contain no secondary alignment (i.e. records with "XA" tag),
+         * Iterates through the input {@code noSecondaryAlignments}, which are assumed to contain no secondary alignment (i.e. records with "XA" tag),
          * converts to custom {@link AlignedAssembly.AlignmentInterval} format and
          * split the records when the gap in the alignment reaches the specified {@code sensitivity}.
          * The size of the returned iterable of {@link AlignedAssembly.AlignmentInterval}'s is guaranteed to be no lower than that of the input iterable.
          */
         @VisibleForTesting
-        public static AlignedContig parseReadsAndBreakGaps(final Iterable<GATKRead> noSecondaryReads,
+        public static AlignedContig parseReadsAndBreakGaps(final Iterable<SAMRecord> noSecondaryAlignments,
                                                            final SAMFileHeader header,
                                                            final int sensitivity,
                                                            final Logger toolLogger) {
 
-            Utils.validateArg(noSecondaryReads.iterator().hasNext(), "input collection of GATK reads is empty");
+            Utils.validateArg(noSecondaryAlignments.iterator().hasNext(), "input collection of GATK reads is empty");
 
-            final GATKRead primaryAlignment = Utils.stream(noSecondaryReads).filter(r -> !r.isSupplementaryAlignment())
+            final SAMRecord primaryAlignment = Utils.stream(noSecondaryAlignments).filter(sam -> !sam.getSupplementaryAlignmentFlag())
                     .findFirst()
-                    .orElseThrow(() -> new GATKException("no primary alignment for read " + noSecondaryReads.iterator().next().getName()));
+                    .orElseThrow(() -> new GATKException("no primary alignment for read " + noSecondaryAlignments.iterator().next().getReadName()));
 
             Utils.validate(!primaryAlignment.getCigar().containsOperator(CigarOperator.H),
                     "assumption that primary alignment does not contain hard clipping is invalid for read: " + primaryAlignment.toString());
 
-            final byte[] contigSequence = primaryAlignment.getBases();
-            if (primaryAlignment.isReverseStrand()) {
+            final byte[] contigSequence = primaryAlignment.getReadBases().clone();
+            if (primaryAlignment.getReadNegativeStrandFlag()) {
                 SequenceUtil.reverseComplement(contigSequence);
             }
-            final int unClippedContigLength = contigSequence.length;
+            final int unClippedContigLength = primaryAlignment.getReadLength();
 
             final List<AlignedAssembly.AlignmentInterval> parsedAlignments =
-                    Utils.stream(noSecondaryReads)
-                            .map(r -> GappedAlignmentSplitter.split(new AlignedAssembly.AlignmentInterval(r.convertToSAMRecord(header)), sensitivity, unClippedContigLength))
+                    Utils.stream(noSecondaryAlignments)
+                            .map(AlignedAssembly.AlignmentInterval::new)
+                            .map(ar -> GappedAlignmentSplitter.split(ar, sensitivity, unClippedContigLength))
                             .flatMap(Utils::stream).collect(Collectors.toList());
-            return new AlignedContig(primaryAlignment.getName(), contigSequence, parsedAlignments);
+            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments);
         }
     }
 
