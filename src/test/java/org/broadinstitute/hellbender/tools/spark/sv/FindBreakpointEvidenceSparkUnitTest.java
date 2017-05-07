@@ -29,7 +29,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final String asmQNamesFile = toolDir+"SVBreakpointsTest.assembly.qnames";
     private final String fastqFile = toolDir+"SVBreakpointsTest.assembly.";
 
-    private final FindBreakpointEvidenceSpark.Params params = FindBreakpointEvidenceSpark.defaultParams;
+    private final FindBreakpointEvidenceSpark.Params params = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.defaultParams;
     private final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
     private final ReadsSparkSource readsSource = new ReadsSparkSource(ctx);
     private final SAMFileHeader header = readsSource.getHeader(readsFile, null);
@@ -38,7 +38,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final ReadMetadata readMetadataExpected = new ReadMetadata(Collections.emptySet(), header, reads);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
     private final FindBreakpointEvidenceSpark.Locations locations =
-        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null, null);
+        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null, null, null);
     private final Set<String> expectedQNames = loadExpectedQNames(qNamesFile);
     private final Set<String> expectedAssemblyQNames = loadExpectedQNames(asmQNamesFile);
     private final List<SVInterval> expectedIntervalList = Arrays.asList(testIntervals);

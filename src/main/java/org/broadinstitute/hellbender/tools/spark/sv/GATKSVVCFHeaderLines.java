@@ -23,8 +23,7 @@ public class GATKSVVCFHeaderLines {
     public static final String MAPPING_QUALITIES = "MAPPING_QUALITIES";
     public static final String ALIGN_LENGTHS = "ALIGN_LENGTHS";
     public static final String MAX_ALIGN_LENGTH = "MAX_ALIGN_LENGTH";
-    public static final String ASSEMBLY_IDS = "ASSEMBLY_IDS";
-    public static final String CONTIG_IDS = "CONTIG_IDS";
+    public static final String CONTIG_NAMES = "CTG_NAMES";
     public static final String INSERTED_SEQUENCE = "INSERTED_SEQUENCE";
     public static final String INSERTED_SEQUENCE_MAPPINGS = "INSERTED_SEQUENCE_MAPPINGS";
     public static final String HOMOLOGY = "HOMOLOGY";
@@ -48,8 +47,7 @@ public class GATKSVVCFHeaderLines {
         vcfHeaderLines.put(MAX_ALIGN_LENGTH, new VCFInfoHeaderLine(MAX_ALIGN_LENGTH, 1, VCFHeaderLineType.Integer, "Maximum of the minimum aligned lengths of flanking regions from each contig alignment"));
 
         // todo: create an alternate assembly file and link to it with breakpoint IDs according to the VCF spec
-        vcfHeaderLines.put(ASSEMBLY_IDS, new VCFInfoHeaderLine(ASSEMBLY_IDS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "IDs of the assemblies that produced each contig alignment"));
-        vcfHeaderLines.put(CONTIG_IDS, new VCFInfoHeaderLine(CONTIG_IDS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "IDs of the contigs that produced each alignment"));
+        vcfHeaderLines.put(CONTIG_NAMES, new VCFInfoHeaderLine(CONTIG_NAMES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Name of contigs that evidenced this variant, formatted as \"asm%06d:tig%05d\""));
 
         vcfHeaderLines.put(INSERTED_SEQUENCE, new VCFInfoHeaderLine(INSERTED_SEQUENCE, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Inserted sequence at the breakpoint"));
         vcfHeaderLines.put(INSERTED_SEQUENCE_MAPPINGS, new VCFInfoHeaderLine(INSERTED_SEQUENCE_MAPPINGS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Alignments of inserted sequence"));

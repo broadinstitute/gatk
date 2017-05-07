@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Represents an SGA module that can be called via "run" (in base) to do actual work.
  */
-public final class SGAModule extends ExternalCommandlineProgramModule {
+final class SGAModule extends ExternalCommandlineProgramModule {
 
     private final String moduleName;
 

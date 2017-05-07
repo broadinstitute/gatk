@@ -11,14 +11,14 @@ import java.util.List;
 /**
  * Various utility functions helping calling structural variants.
  */
-final class SVVariantCallerUtils {
+public final class SVVariantDiscoveryUtils {
 
     /**
      * @return the number of bases of two alignment regions overlap on the locally-assembled contig they originate from.
      *          Mostly useful for computing micro-homologyForwardStrandRep.
      */
     @VisibleForTesting
-    static int overlapOnContig(final AlignmentRegion one, final AlignmentRegion two) {
+    public static int overlapOnContig(final AlignedAssembly.AlignmentInterval one, final AlignedAssembly.AlignmentInterval two) {
         return Math.max(0, Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1) - Math.max(one.startInAssembledContig, two.startInAssembledContig));
     }
 
@@ -26,7 +26,7 @@ final class SVVariantCallerUtils {
      * @return the total number of hard clipped bases represented in the CIGAR.
      */
     @VisibleForTesting
-    static int getTotalHardClipping(final Cigar cigar) {
+    public static int getTotalHardClipping(final Cigar cigar) {
         final List<CigarElement> cigarElements = cigar.getCigarElements();
         final int sz = cigarElements.size();
         if (sz <2) { // no cigar elements or only 1 element means there cannot be any hard clipping
@@ -43,7 +43,7 @@ final class SVVariantCallerUtils {
      * @param cigar     the {@link Cigar} to be inspected
      */
     @VisibleForTesting
-    static int getNumClippedBases(final boolean fromStart, final Cigar cigar) {
+    public static int getNumClippedBases(final boolean fromStart, final Cigar cigar) {
         return getNumClippedBases(fromStart, cigar.getCigarElements());
     }
 
@@ -54,7 +54,7 @@ final class SVVariantCallerUtils {
      * @param cigarElements the ordered {@link CigarElement}'s of a cigar
      */
     @VisibleForTesting
-    static int getNumClippedBases(final boolean fromStart, final List<CigarElement> cigarElements) {
+    public static int getNumClippedBases(final boolean fromStart, final List<CigarElement> cigarElements) {
 
         final int sz = cigarElements.size();
         if(sz==1) return 0; // cannot be a giant clip
@@ -79,7 +79,7 @@ final class SVVariantCallerUtils {
      * @throws IllegalArgumentException if fails check by {@link #validateCigar(List)}
      */
     @VisibleForTesting
-    static int getNumHardClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
+    public static int getNumHardClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
 
         validateCigar(cigarElements);
 
@@ -96,7 +96,7 @@ final class SVVariantCallerUtils {
      * @throws IllegalArgumentException if fails check by {@link #validateCigar(List)}
      */
     @VisibleForTesting
-    static int getNumSoftClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
+    public static int getNumSoftClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
 
         validateCigar(cigarElements);
 
@@ -129,7 +129,7 @@ final class SVVariantCallerUtils {
      * @param cigarElements
      */
     @VisibleForTesting
-    static void validateCigar(final List<CigarElement> cigarElements) {
+    public static void validateCigar(final List<CigarElement> cigarElements) {
         Utils.validateArg(!cigarElements.isEmpty(), "Cannot parse empty list cigarElements");
         Utils.validateArg(cigarElements.stream().anyMatch(ele -> ele.getOperator().isAlignment()),
                 "No alignment found in the input list of cigar operations: " + cigarElements.toString());
@@ -148,7 +148,7 @@ final class SVVariantCallerUtils {
      * @param fromStartInsteadOfEnd  either from the start of the list or from the end of the list
      */
     @VisibleForTesting
-    static int findIndexOfFirstNonClippingOperation(final List<CigarElement> cigarElements, final boolean fromStartInsteadOfEnd) {
+    public static int findIndexOfFirstNonClippingOperation(final List<CigarElement> cigarElements, final boolean fromStartInsteadOfEnd) {
         int idx = 0;
         final int step;
         if (fromStartInsteadOfEnd) {

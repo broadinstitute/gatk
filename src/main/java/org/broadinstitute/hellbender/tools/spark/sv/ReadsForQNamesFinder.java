@@ -27,7 +27,7 @@ public final class ReadsForQNamesFinder {
         this.dumpFASTQs = dumpFASTQs;
     }
 
-    public Iterable<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> call( final Iterator<GATKRead> readsItr ) {
+    public Iterable<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> call(final Iterator<GATKRead> readsItr ) {
         @SuppressWarnings({ "unchecked", "rawtypes" })
         final List<SVFastqUtils.FastqRead>[] intervalReads = new List[nIntervals];
         int nPopulatedIntervals = 0;
