@@ -133,7 +133,7 @@ public final class AlignedAssemblyOrExcuse {
                     if ( alignments.isEmpty() ) continue;
                     final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
                     final FermiLiteAssembly.Contig contig = assembly.getContig(contigIdx);
-                    final String readName = String.format("asm%06d:tig%05d", assemblyId, contigIdx);
+                    final String readName = formatAssemblyID(assemblyId) + ":" + formatContigID(contigIdx); //String.format("asm%06d:tig%05d", assemblyId, contigIdx);
                     final byte[] calls = contig.getSequence();
                     for ( final BwaMemAlignment alignment : alignments ) {
                         final SAMRecord samRecord =
@@ -149,6 +149,14 @@ public final class AlignedAssemblyOrExcuse {
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write SAM file of aligned contigs.", ioe);
         }
+    }
+
+    static String formatAssemblyID(final int assemblyId) {
+        return String.format("asm%06d", assemblyId);
+    }
+
+    static String formatContigID(final int contigIdx) {
+        return String.format("tig%05d", contigIdx);
     }
 
     /**

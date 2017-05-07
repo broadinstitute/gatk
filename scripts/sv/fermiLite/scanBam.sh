@@ -38,5 +38,5 @@ ALTS_KILL_LIST=$(echo "${REF_FASTA}" | sed 's/.fasta$/.kill.alts/')
     --cluster "${CLUSTER_NAME}" \
     --num-executors 20 \
     --driver-memory 30G \
-    --executor-memory 30G \
+    --executor-memory 40G \
     --conf spark.yarn.executor.memoryOverhead=5000

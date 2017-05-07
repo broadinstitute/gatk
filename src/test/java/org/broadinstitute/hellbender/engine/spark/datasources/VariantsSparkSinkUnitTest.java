@@ -29,8 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static org.testng.Assert.assertEquals;
-
 public final class VariantsSparkSinkUnitTest extends BaseTest {
     private final String outputFileName = getClass().getSimpleName();
     private MiniDFSCluster cluster;

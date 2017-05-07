@@ -33,7 +33,7 @@ class SVVCFWriter {
      * FASTA and Broadcast references are both required because 2bit Broadcast references currently order their
      * sequence dictionaries in a scrambled order, see https://github.com/broadinstitute/gatk/issues/2037.
      */
-    static void writeVCF(final PipelineOptions pipelineOptions, final String outputPath, String vcfFileName,
+    static void writeVCF(final PipelineOptions pipelineOptions, String vcfFileName,
                          final String fastaReference, final JavaRDD<VariantContext> variantContexts,
                          final Logger logger) {
 
@@ -43,7 +43,7 @@ class SVVCFWriter {
 
         logNumOfVarByTypes(sortedVariantsList, logger);
 
-        writeVariants(pipelineOptions, outputPath, vcfFileName, sortedVariantsList, referenceSequenceDictionary);
+        writeVariants(pipelineOptions, vcfFileName, sortedVariantsList, referenceSequenceDictionary);
     }
 
     private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
@@ -70,10 +70,10 @@ class SVVCFWriter {
         }).collect(SVUtils.arrayListCollector(variants.size()));
     }
 
-    private static void writeVariants(final PipelineOptions pipelineOptions, final String outputPath, final String fileName,
+    private static void writeVariants(final PipelineOptions pipelineOptions, final String fileName,
                                       final List<VariantContext> variantsArrayList, final SAMSequenceDictionary referenceSequenceDictionary) {
         try (final OutputStream outputStream
-                     = new BufferedOutputStream(BucketUtils.createFile(outputPath + "/" + fileName, pipelineOptions))) {
+                     = new BufferedOutputStream(BucketUtils.createFile(fileName, pipelineOptions))) {
 
             final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 
