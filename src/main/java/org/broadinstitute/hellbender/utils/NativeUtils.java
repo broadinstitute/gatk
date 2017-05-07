@@ -68,4 +68,39 @@ public final class NativeUtils {
 
         return true;
     }
+
+    /**
+     * Figures out which library to load, and loads it.
+     */
+    public static void loadLibrary( final String overrideProperty,
+                                    final String ppcLibName,
+                                    final String macLibName,
+                                    final String linuxLibName,
+                                    final String friendlyName ) {
+        final String libNameOverride = System.getProperty(overrideProperty);
+        final String libName;
+        if ( libNameOverride != null ) libName = libNameOverride;
+        else if ( NativeUtils.runningOnPPCArchitecture() ) {
+            if ( ppcLibName == null )
+                throw new UserException.HardwareFeatureException(friendlyName+" library unavailable for PPC");
+            libName = ppcLibName;
+        }
+        else if (NativeUtils.runningOnMac()) {
+            if ( macLibName == null )
+                throw new UserException.HardwareFeatureException(friendlyName+" library unavailable for Mac");
+            libName = macLibName;
+        }
+        else if (NativeUtils.runningOnLinux()) {
+            if ( linuxLibName == null )
+                throw new UserException.HardwareFeatureException(friendlyName+" library unavailable for Linux");
+            libName = linuxLibName;
+        }
+        else {
+            throw new UserException("Can't load "+friendlyName+" native library -- Unrecognized operating system");
+        }
+        if ( !loadLibraryFromClasspath(libName) ) {
+            throw new UserException.HardwareFeatureException("Misconfiguration: Unable to load " + friendlyName +
+                    " native library from jar path " + libName);
+        }
+    }
 }
