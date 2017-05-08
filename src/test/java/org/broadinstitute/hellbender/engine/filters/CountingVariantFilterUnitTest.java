@@ -9,9 +9,8 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class CountingVariantUnitTest {
+public final class CountingVariantFilterUnitTest {
 
-    // Mirrors CountingVariantFilterUnitTest
     static final VariantContext goodVariant = new VariantContextBuilder("Zuul", "1", 2, 2, Collections.singletonList(Allele.create("A", true))).make();
     static final VariantContext endBad = new VariantContextBuilder("Peter", "1", 2, 20, Collections.singletonList(Allele.create("TTTTTTTTTTTTTTTTTTT", true))).make();
     static final VariantContext startBad = new VariantContextBuilder("Ray", "1", 1, 2, Collections.singletonList(Allele.create("AA", true))).make();
@@ -291,13 +290,13 @@ public final class CountingVariantUnitTest {
         Assert.assertTrue(vf.getClass() == CountingVariantFilter.CountingAndVariantFilter.class);
         CountingVariantFilter.CountingAndVariantFilter andFilter = (CountingVariantFilter.CountingAndVariantFilter) vf;
 
-        // lhs is a Counting and filter; rhs is a counting filter that delegates to GOOD_CIGAR
+        // lhs is a Counting and filter; rhs is a counting filter that delegates to symbolicFilter
         Assert.assertTrue(andFilter.lhs.getClass() == CountingVariantFilter.CountingAndVariantFilter.class);
         Assert.assertTrue(andFilter.rhs.delegateFilter == symbolicFilter);
         andFilter = (CountingVariantFilter.CountingAndVariantFilter) andFilter.lhs;
 
-        // lhs is a Counting filter that delegates to MAPPING_QUALITY_AVAILABLE; rhs is a
-        // counting filter that delegates to MAPPED
+        // lhs is a Counting filter that delegates to snpFilter; rhs is a
+        // counting filter that delegates to biallelicFilter
         Assert.assertTrue(andFilter.lhs.getClass() == CountingVariantFilter.class);
         Assert.assertTrue(andFilter.lhs.delegateFilter == snpFilter);
         Assert.assertTrue(andFilter.rhs.getClass() == CountingVariantFilter.class);
