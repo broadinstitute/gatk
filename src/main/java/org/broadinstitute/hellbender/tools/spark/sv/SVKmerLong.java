@@ -18,9 +18,6 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
     private final long valHigh; // most significant K bits
     private final long valLow; // least significant K bits
 
-    /**
-     *  Need this so we can call newInstance() in SVKmerizer.
-     */
     public SVKmerLong() {
         valHigh = valLow = 0;
     }
@@ -29,7 +26,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
      *  Makes an empty SVKmerLong.  If you call toString on it, it'll look like poly-A.
      */
     public SVKmerLong( final int kSize ) {
-        Utils.validateArg(kSize >= 1 && kSize < 64, "K must be between 1 and 63.");
+        Utils.validateArg(kSize >= 1 && kSize < 64, "Kmer length must be between 1 and 63.");
         valHigh = valLow = 0;
     }
 
@@ -114,7 +111,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
      * Canonical form is not defined for even-K Kmers (too expensive to compute routinely).
      */
     public SVKmerLong canonical( final int kSize ) {
-        Utils.validateArg( (kSize & 1) != 0, "K must be odd to canonicalize.");
+        Utils.validateArg( (kSize & 1) != 0, "Kmer length must be odd to canonicalize.");
         // for odd-size kmers, the high bit of the middle base is in least significant position in valHigh.
         // test its value by ANDing with 1.  if it's zero the middle base is A or C and we're good to go.
         if ( (valHigh & 1L) == 0 ) return this;
@@ -137,8 +134,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
 
     @Override
     public final int hashCode() {
-        // 32-bit FNV-1a algorithm
-        return fnvLong(fnvLong((int)2166136261L, valHigh), valLow);
+        return (int)SVUtils.fnvLong64(SVUtils.fnvLong64(valHigh), valLow);
     }
 
     /**

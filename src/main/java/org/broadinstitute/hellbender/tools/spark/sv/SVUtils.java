@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -22,6 +23,9 @@ import java.util.stream.Collectors;
 public final class SVUtils {
 
     private static final String REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT = "#";
+
+    //Workaround for seed 14695981039346656037 that doesn't fit in a signed long
+    private static final long FNV64_DEFAULT_SEED = new BigInteger("14695981039346656037").longValue();
 
     /**
      * Read a file of kmers.
@@ -42,7 +46,7 @@ public final class SVUtils {
                             " but we were expecting K=" + kSize);
                 }
 
-                final SVKmerizer kmerizer = new SVKmerizer(line, kSize, kmer);
+                final SVKmerizer kmerizer = new SVKmerizer(line, kSize, 1, new SVKmerLong(kSize));
                 if ( !kmerizer.hasNext() ) {
                     throw new GATKException("Unable to kmerize the kmer kill set string '" + line + "'.");
                 }
@@ -143,6 +147,34 @@ public final class SVUtils {
      */
     public static <T> Collector<T, ?, ArrayList<T>> arrayListCollector(final int size) {
         return Collectors.toCollection( () -> new ArrayList<>(size));
+    }
+
+    /**
+     * 64-bit FNV-1a hash for long's
+     */
+    public static long fnvLong64( final long toHash ) {
+        return fnvLong64(FNV64_DEFAULT_SEED, toHash);
+    }
+
+    public static long fnvLong64( long start, final long toHash ) {
+        final long mult = 1099511628211L;
+        start ^= (toHash >> 56) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 48) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 40) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 32) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 24) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 16) & 0xffL;
+        start *= mult;
+        start ^= (toHash >> 8) & 0xffL;
+        start *= mult;
+        start ^= toHash & 0xffL;
+        start *= mult;
+        return start;
     }
 
     /**

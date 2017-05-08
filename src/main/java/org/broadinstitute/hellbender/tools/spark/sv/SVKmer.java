@@ -56,21 +56,4 @@ public abstract class SVKmer {
         return ~(((bIn & 3) << 6) | (((bIn >> 2) & 3) << 4) | (((bIn >> 4) & 3) << 2) | ((bIn >> 6) & 3)) & 0xffL;
     }
 
-    protected static int fnvLong( final int start, final long toHash ) {
-        return fnvInt(fnvInt(start, (int)(toHash >> 32)), (int)toHash);
-    }
-
-    protected static int fnvInt( int start, final int toHash ) {
-        final int mult = 16777619;
-        start ^= (toHash >> 24) & 0xff;
-        start *= mult;
-        start ^= (toHash >> 16) & 0xff;
-        start *= mult;
-        start ^= (toHash >> 8) & 0xff;
-        start *= mult;
-        start ^= toHash & 0xff;
-        start *= mult;
-        return start;
-    }
-
 }
