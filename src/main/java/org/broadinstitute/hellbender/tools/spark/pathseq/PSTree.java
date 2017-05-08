@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Represents a taxonomic tree with nodes assigned a name and taxonomic rank (e.g. order, family, genus, species, etc.)
@@ -26,9 +27,9 @@ public class PSTree {
     private final String root;
     private Map<String, PSTreeNode> tree;
 
-    public PSTree(final String root_id) {
+    public PSTree(final String rootId) {
         tree = new HashMap<>();
-        root = root_id;
+        root = rootId;
         tree.put(root, new PSTreeNode());
         tree.get(root).setName("root");
         tree.get(root).setRank("root");
@@ -47,19 +48,10 @@ public class PSTree {
     }
 
     /**
-     * Returns short String representation of all nodes
+     * Returns short String of 20 arbitrarily-chosen nodes
      */
     private static String getAbbreviatedNodeListString(final Set<String> nodes) {
-        String nodesList = "[";
-        int count = 0;
-        for (final String s : nodes) {
-            nodesList = nodesList + s + ", ";
-            if (++count > 20) {
-                nodesList = nodesList + "...";
-                break;
-            }
-        }
-        return nodesList + "]";
+        return "[" + nodes.stream().limit(20).collect(Collectors.joining(", ")) + "]";
     }
 
     protected void serialize(final Kryo kryo, final Output output) {
@@ -84,10 +76,11 @@ public class PSTree {
         if (!tree.containsKey(id)) {
             tree.put(id, new PSTreeNode());
         }
-        tree.get(id).setName(name);
-        tree.get(id).setParent(parent);
-        tree.get(id).setLength(length);
-        tree.get(id).setRank(rank);
+        final PSTreeNode node = tree.get(id);
+        node.setName(name);
+        node.setParent(parent);
+        node.setLength(length);
+        node.setRank(rank);
 
         //If the parent doesn't exist, create a new node for it
         //We are assuming its attributes will be set later using addNode()
@@ -137,10 +130,8 @@ public class PSTree {
         }
 
         //Check disconnected sets of nodes using a traversal from the root
-        final Set<String> reachable = traverse();
-        if (reachable.size() != tree.size()) {
-            final Set<String> unreachable = tree.keySet();
-            unreachable.removeAll(reachable);
+        final Set<String> unreachable = removeUnreachableNodes();
+        if (!unreachable.isEmpty()) {
             final String nodesList = getAbbreviatedNodeListString(unreachable);
             throw new UserException.BadInput("Malformed tree detected. Tree is disconnected. " + unreachable.size() + " of " + tree.size() + " nodes were unreachable: " + nodesList);
         }
@@ -161,6 +152,8 @@ public class PSTree {
                 } else {
                     throw new UserException.BadInput("Could not find node " + id + " while traversing the tree");
                 }
+            } else {
+                throw new UserException.BadInput("Tree contains a cycle. Attempted to visit node " + id + " twice during a breadth-first traversal.");
             }
             visited.add(id);
         }
@@ -229,23 +222,23 @@ public class PSTree {
      */
     public void retainNodes(final Set<String> idsToKeep) {
         Utils.validateArg(idsToKeep.contains(root), "Cannot remove root");
-        final HashMap<String, PSTreeNode> new_tree = new HashMap<>(idsToKeep.size());
+        final HashMap<String, PSTreeNode> newTree = new HashMap<>(idsToKeep.size());
         for (final String id : tree.keySet()) {
             if (idsToKeep.contains(id)) {
                 final PSTreeNode info = tree.get(id);
-                final PSTreeNode new_info = info.copy();
+                final PSTreeNode newInfo = info.copy();
                 for (final String child : info.getChildren()) {
                     if (!idsToKeep.contains(child)) {
-                        new_info.removeChild(child);
+                        newInfo.removeChild(child);
                     }
                 }
                 if (!idsToKeep.contains(info.getParent())) {
-                    new_info.setParent(null);
+                    newInfo.setParent(null);
                 }
-                new_tree.put(id, new_info);
+                newTree.put(id, newInfo);
             }
         }
-        tree = new_tree;
+        tree = newTree;
     }
 
     public void setNameOf(final String id, final String name) {
@@ -273,12 +266,18 @@ public class PSTree {
      */
     public List<String> getPathOf(String id) {
         final List<String> path = new ArrayList<>();
+        final Set<String> visitedNodes = new HashSet<>(tree.size());
         while (id != null) {
-            if (tree.containsKey(id)) {
-                path.add(id);
-                id = tree.get(id).getParent();
+            if (!visitedNodes.contains(id)) {
+                visitedNodes.add(id);
+                if (tree.containsKey(id)) {
+                    path.add(id);
+                    id = tree.get(id).getParent();
+                } else {
+                    throw new UserException.BadInput("Parent node " + id + " not found in tree while getting path");
+                }
             } else {
-                throw new UserException.BadInput("Parent node " + id + " not found in tree while getting path");
+                throw new UserException.BadInput("The tree contains a cycle at node " + id);
             }
         }
         return path;
