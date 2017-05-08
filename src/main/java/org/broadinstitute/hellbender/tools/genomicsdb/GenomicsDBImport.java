@@ -454,7 +454,7 @@ public final class GenomicsDBImport extends GATKTool {
         final String arrayName,
         final long variantContextBufferSize,
         final long segmentSize,
-        final  long lbSampleIndex,
+        final long lbSampleIndex,
         final long ubSampleIndex) {
 
         final GenomicsDBImportConfiguration.Partition.Builder pBuilder =
