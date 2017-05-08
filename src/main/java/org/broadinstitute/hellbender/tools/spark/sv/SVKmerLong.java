@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.apache.commons.lang.NotImplementedException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -135,8 +134,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
 
     @Override
     public final int hashCode() {
-        // 32-bit FNV-1a algorithm
-        return SVUtils.fnvLong(SVUtils.fnvLong((int)2166136261L, valHigh), valLow);
+        return (int)SVUtils.fnvLong64(SVUtils.fnvLong64(valHigh), valLow);
     }
 
     /**
@@ -148,10 +146,6 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         int result = Long.compare(this.valHigh, that.valHigh);
         if ( result == 0 ) result = Long.compare(this.valLow, that.valLow);
         return result;
-    }
-
-    public SVKmer mask(final byte[] mask, final int kSize) {
-        throw new NotImplementedException("Function mask() not implemented for long kmers");
     }
 
     /**

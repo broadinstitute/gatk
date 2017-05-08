@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -22,6 +23,9 @@ import java.util.stream.Collectors;
 public final class SVUtils {
 
     private static final String REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT = "#";
+
+    //Workaround for seed 14695981039346656037 that doesn't fit in a signed long
+    private static final long FNV64_DEFAULT_SEED = new BigInteger("14695981039346656037").longValue();
 
     /**
      * Read a file of kmers.
@@ -148,6 +152,10 @@ public final class SVUtils {
     /**
      * 64-bit FNV-1a hash for long's
      */
+    public static long fnvLong64( final long toHash ) {
+        return fnvLong64(FNV64_DEFAULT_SEED, toHash);
+    }
+
     public static long fnvLong64( long start, final long toHash ) {
         final long mult = 1099511628211L;
         start ^= (toHash >> 56) & 0xffL;
@@ -165,29 +173,6 @@ public final class SVUtils {
         start ^= (toHash >> 8) & 0xffL;
         start *= mult;
         start ^= toHash & 0xffL;
-        start *= mult;
-        return start;
-    }
-
-    /**
-     * FNV-1a hash for long's using 2 32-bit hashes
-     */
-    public static int fnvLong( final int start, final long toHash ) {
-        return fnvInt(fnvInt(start, (int)(toHash >> 32)), (int)toHash);
-    }
-
-    /**
-     * FNV-1a hash for int's
-     */
-    public static int fnvInt( int start, final int toHash ) {
-        final int mult = 16777619;
-        start ^= (toHash >> 24) & 0xff;
-        start *= mult;
-        start ^= (toHash >> 16) & 0xff;
-        start *= mult;
-        start ^= (toHash >> 8) & 0xff;
-        start *= mult;
-        start ^= toHash & 0xff;
         start *= mult;
         return start;
     }

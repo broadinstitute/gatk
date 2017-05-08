@@ -90,7 +90,7 @@ public final class PathSeqKmerSpark extends GATKSparkTool {
      */
     private static List<SVKmer> processRefRDD(final int kSize, final JavaRDD<byte[]> refRDD ) {
         return refRDD.flatMap(seq ->
-                    SVKmerizer.stream(seq, kSize, 1, new SVKmerShort(kSize))
+                    SVKmerizer.stream(seq, kSize, new SVKmerShort(kSize))
                         .map(kmer -> kmer.canonical(kSize))
                         .collect(SVUtils.arrayListCollector(Math.max(0,seq.length-kSize+1)))
                         .iterator())

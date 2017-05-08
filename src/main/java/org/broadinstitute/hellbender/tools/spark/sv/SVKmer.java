@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 //Superclass for SVKmerLong and SVKmerShort
 
-import org.broadinstitute.hellbender.exceptions.GATKException;
-
 public abstract class SVKmer {
 
     public enum Base {
@@ -37,10 +35,7 @@ public abstract class SVKmer {
     public abstract Base lastBase();
     public abstract int firstTrimer(final int kSize );
     public abstract int lastTrimer();
-    public abstract SVKmer mask(final byte[] mask, final int kSize);
     public abstract String toString( final int kSize );
-
-    public long getLong() { throw new GATKException("getLong() not implemented for this SVKmer"); }
 
     // Reverse-complement a long by taking the reverse-complement of each of its bytes in reverse order.
     protected static long reverseComplement( long val ) {

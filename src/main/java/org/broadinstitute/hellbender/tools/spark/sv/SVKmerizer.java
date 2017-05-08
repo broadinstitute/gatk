@@ -14,14 +14,16 @@ import java.util.stream.StreamSupport;
  */
 public class SVKmerizer implements Iterator<SVKmer> {
     protected final CharSequence seq;
-    protected final int kSize, kSpace;
+    protected final int kSize, kAdvance;
     protected int idx = 0;
     protected SVKmer nextKmer;
 
+    //3-arg constructor creates a Kmerizer that returns consecutive kmers in the sequence
     public SVKmerizer( final byte[] seq, final int kSize, SVKmer kmer ) {
         this(seq, kSize, 1, kmer );
     }
 
+    //Overloaded constructor with kSpace, the number of bases to advance between kmers
     public SVKmerizer( final byte[] seq, final int kSize, final int kSpace, SVKmer kmer ) {
         this(new ASCIICharSequence(seq), kSize, kSpace, kmer );
     }
@@ -33,7 +35,7 @@ public class SVKmerizer implements Iterator<SVKmer> {
     public SVKmerizer( final CharSequence seq, final int kSize, final int kSpace, SVKmer kmer ) {
         this.seq = seq;
         this.kSize = kSize;
-        this.kSpace = kSpace;
+        this.kAdvance = kSize - kSpace;
         this.nextKmer = nextKmer(kmer, 0);
     }
 
@@ -44,7 +46,7 @@ public class SVKmerizer implements Iterator<SVKmer> {
     protected SVKmerizer( final int kSize, final int kSpace, final CharSequence seq ) {
         this.seq = seq;
         this.kSize = kSize;
-        this.kSpace = kSpace;
+        this.kAdvance = kSize - kSpace;
     }
 
     @Override
@@ -56,7 +58,7 @@ public class SVKmerizer implements Iterator<SVKmer> {
     public SVKmer next() {
         if ( nextKmer == null ) throw new NoSuchElementException("Kmerization sequence exhausted.");
         final SVKmer result = nextKmer;
-        nextKmer = nextKmer(nextKmer, kSize-kSpace);
+        nextKmer = nextKmer(nextKmer, kAdvance);
         return result;
     }
 
@@ -69,12 +71,17 @@ public class SVKmerizer implements Iterator<SVKmer> {
     public static SVKmer toKmer( final byte[] seq, final SVKmer kmer ) {
         return toKmer(new ASCIICharSequence(seq),kmer);
     }
+
     public static Stream<SVKmer> stream(final CharSequence seq, final int kSize, final int kSpace, final SVKmer kmer) {
         return StreamSupport.stream(((Iterable<SVKmer>)() -> new SVKmerizer(seq, kSize, kSpace, kmer)).spliterator(), false);
     }
 
     public static Stream<SVKmer> stream(final byte[] seq, final int kSize, final int kSpace, SVKmer kmer ) {
         return stream(new ASCIICharSequence(seq), kSize, kSpace, kmer);
+    }
+
+    public static Stream<SVKmer> stream(final byte[] seq, final int kSize, SVKmer kmer ) {
+        return stream(seq, kSize, 1, kmer);
     }
 
     protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {

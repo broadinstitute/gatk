@@ -57,8 +57,38 @@ public class SVKmerShortUnitTest {
         Assert.assertEquals(sb.toString(), kkk.successor(SVKmerLong.Base.T, K).toString(K));
     }
 
+    @DataProvider(name = "maskData")
+    public Object[][] getMaskData() {
+        return new Object[][]{
+                {"AGCTAGCTGCAGTCTGCTAG", "AGCTAGCTGCAGTCTGCTAG", new byte[0], Boolean.TRUE},
+                {"AGCTAGCTGCAGTCTGCTAG", "AGCTAGCTGCTGTCTGCTAG", new byte[0], Boolean.FALSE},
+                {"AGCTAGCTGCAGTCTGCTAG", "AGCTAGTTGCAGTCTGCTAG", new byte[]{6}, Boolean.TRUE},
+                {"AGCTAGCTGCAGTCTGCTAG", "AGCTAGTTGCAGTCTGCTAG", new byte[]{5}, Boolean.FALSE},
+                {"AGCTAGCTGCAGTCTGCTAG", "AGCTAGTTGCAGTCTGCTAG", new byte[]{7}, Boolean.FALSE}
+        };
+    }
+
+    @Test(dataProvider = "maskData")
+    public void testMaskedKmers(final String seq1, final String seq2, final byte[] maskBytes, final boolean equal) {
+
+        if (seq1.length() != seq2.length()) {
+            throw new TestException("Kmer sequences must be of same length");
+        }
+        final int K = seq1.length();
+
+        final SVKmerShort kmer1 = (SVKmerShort)SVKmerizer.toKmer(seq1, new SVKmerShort(K));
+        final SVKmerShort kmer2 = (SVKmerShort)SVKmerizer.toKmer(seq2, new SVKmerShort(K));
+        final SVKmerShort mask = SVKmerShort.getMask(maskBytes, K);
+
+        if (equal) {
+            Assert.assertEquals(kmer1.mask(mask), kmer2.mask(mask));
+        } else {
+            Assert.assertNotEquals(kmer1.mask(mask), kmer2.mask(mask));
+        }
+    }
+
     @Test
-    public void testMaskedKmers() {
+    public void testRandomMaskedKmers() {
 
         final int K = 31;
         final RandomDNA randDNA = new RandomDNA(379483L);
@@ -68,105 +98,33 @@ public class SVKmerShortUnitTest {
         final Random rand = new Random(2738493L);
         for (int i = 0; i < seqLen - K; i++) {
 
-            //Random k-mer
-            String substr = bases.substring(i, i + K);
-
-            //For generating the correct answer
-            final StringBuilder sb = new StringBuilder(substr);
-
-            //Generate random indices to mask, an even number of them so that the k-mer will still be odd
+            //Generate random indices to mask
             List<Byte> maskIndices = new ArrayList<>(K);
             for (int j = 0; j < K; j++) {
                 maskIndices.add(new Byte((byte) j));
             }
             Collections.shuffle(maskIndices);
             int maskSize = rand.nextInt(K - 3) + 2;
-            if ((maskSize & 1) == 1) {
-                maskSize--;
-            }
             maskIndices = maskIndices.subList(0, maskSize);
-            Collections.sort(maskIndices);
             final byte[] maskIndicesBytes = new byte[maskIndices.size()];
             for (int j = 0; j < maskIndices.size(); j++) {
                 maskIndicesBytes[j] = maskIndices.get(j).byteValue();
-                sb.setCharAt(maskIndicesBytes[j], 'X');
             }
+            final SVKmerShort mask = SVKmerShort.getMask(maskIndicesBytes, K);
 
-            //Expected masked kmer
-            final byte[] maskedBases = sb.toString().replaceAll("X", "").getBytes();
-            final SVKmer expectedKmer = SVKmerizer.toKmer(maskedBases, new SVKmerShort(maskedBases.length));
+            //Create distinct kmers
+            String substr = bases.substring(i, i + K);
+            final byte[] maskedBasesA = substr.getBytes();
+            final byte[] maskedBasesT = substr.getBytes();
+            for (int j = 0; j < maskIndicesBytes.length; j++) {
+                maskedBasesA[maskIndicesBytes[j]] = 'A';
+                maskedBasesT[maskIndicesBytes[j]] = 'T';
+            }
+            final SVKmerShort kmerA = (SVKmerShort)SVKmerizer.toKmer(maskedBasesA, new SVKmerShort(K));
+            final SVKmerShort kmerT = (SVKmerShort)SVKmerizer.toKmer(maskedBasesT, new SVKmerShort(K));
 
-            final SVKmer randKmer = SVKmerizer.toKmer(substr.getBytes(), new SVKmerShort(substr.length())).mask(maskIndicesBytes, K);
-            Assert.assertEquals(randKmer.toString(K - maskIndicesBytes.length), expectedKmer.toString(maskedBases.length));
-
+            Assert.assertEquals(kmerA.mask(mask), kmerT.mask(mask));
         }
-    }
-
-    @Test
-    public void testMaskedKmerSet() {
-        final int K = 31;
-        final int seqLen = 100;
-        final RandomDNA randDNA = new RandomDNA(379483L);
-        final Random rand = new Random(2738493L);
-        int numKmerTrue = 0;
-        int numMaskTrue = 0;
-        for (int trial = 0; trial < 10000; trial++) {
-            final byte[] baseBytes = randDNA.nextBases(seqLen);
-            final Iterator<SVKmer> kmerIter = SVKmerizer.stream(baseBytes, K, 1, new SVKmerShort(K)).iterator();
-            final HashSet<Long> kmerLib = new HashSet<>(seqLen);
-            while (kmerIter.hasNext()) {
-                kmerLib.add(kmerIter.next().mask(new byte[0], K).getLong());
-            }
-
-            final byte[] mask = {0, 15};
-            final Iterator<SVKmer> kmerMaskIter = SVKmerizer.stream(baseBytes, K, 1, new SVKmerShort(K)).iterator();
-            final HashSet<Long> kmerMaskLib = new HashSet<>(seqLen);
-            while (kmerMaskIter.hasNext()) {
-                kmerMaskLib.add(kmerMaskIter.next().mask(mask, K).getLong());
-            }
-            final byte[] baseBytesMut = Arrays.copyOf(baseBytes, baseBytes.length);
-            for (int i = 0; i < baseBytesMut.length; i++) {
-                if (rand.nextDouble() < 0.035) {
-                    switch (rand.nextInt(4)) {
-                        case 0:
-                            baseBytesMut[i] = 'A';
-                            break;
-                        case 1:
-                            baseBytesMut[i] = 'T';
-                            break;
-                        case 2:
-                            baseBytesMut[i] = 'C';
-                            break;
-                        case 3:
-                            baseBytesMut[i] = 'G';
-                            break;
-                        default:
-                            throw new TestException("Unrecognized base");
-                    }
-                }
-            }
-            final Iterator<SVKmer> mutIter = SVKmerizer.stream(baseBytesMut, K, 1, new SVKmerShort(K)).iterator();
-            boolean bFoundKmer = false;
-            while (mutIter.hasNext()) {
-                if (kmerLib.contains(mutIter.next().getLong())) {
-                    bFoundKmer = true;
-                    break;
-                }
-            }
-            if (bFoundKmer) numKmerTrue++;
-
-            final Iterator<SVKmer> mutMaskIter = SVKmerizer.stream(baseBytesMut, K, 1, new SVKmerShort(K)).iterator();
-            boolean bFoundMask = false;
-            while (mutMaskIter.hasNext()) {
-                if (kmerMaskLib.contains(mutMaskIter.next().mask(mask, K).getLong())) {
-                    bFoundMask = true;
-                    break;
-                }
-            }
-            if (bFoundMask) numMaskTrue++;
-        }
-        System.out.println(numKmerTrue);
-        System.out.println(numMaskTrue);
     }
 
     @Test(dataProvider = "sequenceStrings")
@@ -236,35 +194,5 @@ public class SVKmerShortUnitTest {
         Assert.assertTrue(kmerizer.hasNext());
         Assert.assertEquals(kmerizer.next(), SVKmerizer.toKmer("TTTTT", new SVKmerShort(5)));
         Assert.assertTrue(!kmerizer.hasNext());
-    }
-
-    @Test
-    public void testMask() {
-        final RandomDNA randDNA = new RandomDNA(4738389L);
-        final Random rand = new Random(72039493L);
-        final int kSize = 31;
-        final byte[] bases = randDNA.nextBases(1000);
-        for (int index = 0; index < bases.length - kSize + 1; index++) {
-            final String kmerString = new String(Arrays.copyOfRange(bases,index,index+kSize));
-            final StringBuilder sb = new StringBuilder(kSize);
-            sb.append(kmerString);
-            int maskSize = 2 + rand.nextInt(kSize-1);
-            maskSize = maskSize - (maskSize % 2);
-            List<Byte> maskList = new ArrayList<>(kSize);
-            for (int i = 0; i < kSize; i++) {
-                maskList.add((byte)i);
-            }
-            Collections.shuffle(maskList);
-            maskList = maskList.subList(0,maskSize);
-            Collections.sort(maskList);
-            final byte[] mask = new byte[maskSize];
-            for (int i = 0; i < maskSize; i++) {
-                mask[i] = maskList.get(i);
-                sb.deleteCharAt(mask[i] - i);
-            }
-            final SVKmer kmer = SVKmerizer.toKmer(kmerString.getBytes(), new SVKmerShort(kSize));
-            final SVKmer kmerMasked = SVKmerizer.toKmer(sb.toString(), new SVKmerShort(kSize - mask.length));
-            Assert.assertTrue(kmer.mask(mask, kSize).equals(kmerMasked));
-        }
     }
 }

@@ -123,7 +123,7 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
     @Override
     public final int hashCode() {
         // 32-bit FNV-1a algorithm
-        return SVUtils.fnvLong((int) 2166136261L, valLow);
+        return (int)SVUtils.fnvLong64(2166136261L, valLow);
     }
 
     /**
@@ -135,31 +135,17 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
         return Long.compare(this.valLow, that.valLow);
     }
 
-    /**
-     * Masks the current kmer by removing the specified bases.
-     * The mask array must be of even length, contain integers between 0 and kSize-1, and be in ascending order
-     * @param mask indices of masked bases
-     * @return kmer of length kSize - mask.length, with masked bases removed
-     */
-    public SVKmer mask(final byte[] mask, final int kSize) {
-        long maskedVal = valLow;
-        int newSize = kSize;
-        //Delete each base by shifting bits on the left of the masked bases right by 2 bits
-        for (int i = 0; i < mask.length; i++) {
-            //Amount to shift the bits to the left of the masked base
-            final int shift1 = (newSize - mask[i] + i) * 2;
-            //Amount to shift bits to the right of the masked base
-            final int shift2 = 66 - (newSize - mask[i] + i) * 2;
-            //Note that the shift operator only uses the operand's lowest 5 bits (for long's)
-            if (shift2 == 64) {
-                //Special case of deleting last base
-                maskedVal = maskedVal >>> 2;
-            } else {
-                maskedVal = ((maskedVal >>> shift1) << (shift1 - 2)) | ((maskedVal << shift2) >>> shift2);
-            }
-            newSize--;
+    //Creates kmer mask given an array of base 0-based positions and the kmer size
+    public static SVKmerShort getMask(final byte[] positions, final int kSize) {
+        long mask = 0;
+        for (final byte pos : positions) {
+            mask |= 3L << 2*(kSize - pos - 1);
         }
-        return new SVKmerShort(maskedVal);
+        return new SVKmerShort(~mask);
+    }
+
+    public SVKmerShort mask(final SVKmerShort mask) {
+        return new SVKmerShort(valLow & mask.valLow);
     }
 
     /**
