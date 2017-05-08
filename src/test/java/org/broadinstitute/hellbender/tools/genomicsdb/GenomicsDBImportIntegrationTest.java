@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
 
@@ -35,11 +37,6 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
     private static final String NA_19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
     private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
-
-    private static final String HG_00096_CLOUD = getGCPTestInputPath() + "large/gvcfs/HG00096.g.vcf.gz";
-    private static final String HG_00268_CLOUD = getGCPTestInputPath() + "large/gvcfs/HG00268.g.vcf.gz";
-    private static final String NA_19625_CLOUD = getGCPTestInputPath() + "large/gvcfs/NA19625.g.vcf.gz";
-    private static final List<String> CLOUD_GVCFS = Arrays.asList(HG_00096_CLOUD, HG_00268_CLOUD, NA_19625_CLOUD);
 
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
     private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
@@ -61,51 +58,28 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testSampleMappingFileInsteadOfVCFs() throws IOException {
-        final String sampleFileContents = "HG00096\t" + HG_00096 +"\n" +
-                "HG00268\t"+ HG_00268 + "\n" +
-                "NA19625\t"+ NA_19625;
-        final File sampleNameFile = IOUtils.writeTempFile(sampleFileContents, "sampleNameMap", ".tx");
-
-        final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
-
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleNameFile.getAbsolutePath())
-                .addArgument("L", IntervalUtils.locatableToString(INTERVAL))
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace);
-
-        runCommandLine(args);
-        checkJSONFilesAreWritten(workspace);
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED);
-    }
-
-    @Test(expectedExceptions = CommandLineException.class)
-    public void testCantSpecifyVCFAndSampleNameFile(){
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, "someFile")
-                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, "someotherfile")
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, "someworkspace")
-                .addArgument("L", "1:1-10");
-        runCommandLine(args);
-    }
-
-    @Test(expectedExceptions = CommandLineException.MissingArgument.class)
-    public void testRequireOneOfVCFOrSampleNameFile(){
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, "someworkspace")
-                .addArgument("L", "1:1-10");
-
-        runCommandLine(args);
-    }
-
-    @Test
     public void testGenomicsDBImportFileInputs() throws IOException {
         testGenomicsDBImporter(LOCAL_GVCFS, INTERVAL, COMBINED);
     }
 
     @Test(groups = {"bucket"})
     public void testGenomicsDBImportGCSInputs() throws IOException {
-        testGenomicsDBImporter(CLOUD_GVCFS, INTERVAL, COMBINED);
+        testGenomicsDBImporter(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED);
+    }
+
+    /**
+     * Converts a list of large file paths into equivalent cloud paths
+     * This must be done non-statically because any failure during static initialization results in hard to understand
+     * TestNG errors and it is possible for {@link BaseTest#getGCPTestInputPath()} to fail if the environment isn't
+     * fully set up.
+     *
+     * The cloud bucket must be organized the same way as the local test files in order to resolve correctly.
+     */
+    private List<String> resolveLargeFilesAsCloudURIs(final List<String> filenames){
+        return filenames.stream()
+                .map( filename -> filename.replace(publicTestDir, getGCPTestInputPath()))
+                .peek( filename -> Assert.assertTrue(BucketUtils.isCloudStorageUrl(filename)))
+                .collect(Collectors.toList());
     }
 
     @Test(dataProvider = "batchSizes")
@@ -115,12 +89,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(groups = {"bucket"}, dataProvider = "batchSizes")
     public void testGenomicsDBImportGCSInputsInBatches(final int batchSize) throws IOException {
-        testGenomicsDBImporterWithBatchSize(CLOUD_GVCFS, INTERVAL, COMBINED, batchSize);
+        testGenomicsDBImporterWithBatchSize(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, batchSize);
     }
 
     /**
      *
-     * @throws CommandLineException.OutOfRangeArgumentValue  Value must be >1024 bytes
+     * @throws CommandLineException.OutOfRangeArgumentValue  Value must be >= 1024 bytes
      */
     @Test(expectedExceptions = CommandLineException.OutOfRangeArgumentValue.class)
     public void testZeroVCFBufferSize() throws IOException {
@@ -153,7 +127,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     }
 
-    private void writeToGenomicsDB(final List<String> vcfInputs, final SimpleInterval interval, final String workspace, final int batchSize, final Boolean useBufferSize, int bufferSizePerSample) {
+    private void writeToGenomicsDB(final List<String> vcfInputs, final SimpleInterval interval, final String workspace,
+                                   final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument("genomicsDBWorkspace", workspace);
         args.addArgument("L", IntervalUtils.locatableToString(interval));
@@ -200,5 +175,48 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 }
             });
         }
+    }
+
+    @Test
+    public void testSampleMappingFileInsteadOfVCFs() throws IOException {
+        final File sampleNameFile = createTempSampleMapFile();
+
+        final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleNameFile.getAbsolutePath())
+                .addArgument("L", IntervalUtils.locatableToString(INTERVAL))
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace);
+
+        runCommandLine(args);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED);
+    }
+
+    private static File createTempSampleMapFile() {
+        final String sampleFileContents =
+                "HG00096\t" + HG_00096 +"\n" +
+                "HG00268\t"+ HG_00268 + "\n" +
+                "NA19625\t"+ NA_19625;
+        return IOUtils.writeTempFile(sampleFileContents, "sampleNameMap", ".txt");
+    }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testCantSpecifyVCFAndSampleNameFile(){
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createTempSampleMapFile().getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, HG_00096)
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, createTempDir("workspace").getAbsolutePath())
+                .addArgument("L",  IntervalUtils.locatableToString(INTERVAL));
+        runCommandLine(args);
+    }
+
+    @Test(expectedExceptions = CommandLineException.MissingArgument.class)
+    public void testRequireOneOfVCFOrSampleNameFile(){
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, createTempDir("workspace").getAbsolutePath())
+                .addArgument("L", "1:1-10");
+
+        runCommandLine(args);
     }
 }
