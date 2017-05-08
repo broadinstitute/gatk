@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.variant.writers;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -8,7 +7,6 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -16,7 +14,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,6 +48,7 @@ final class HomRefBlock implements Locatable {
      */
     public HomRefBlock(final VariantContext startingVC, final int lowerGQBound, final int upperGQBound, final int defaultPloidy) {
         Utils.nonNull(startingVC, "startingVC cannot be null");
+        Utils.validateArg(upperGQBound <= VCFConstants.MAX_GENOTYPE_QUAL + 1, "upperGQBound must be <= " + (VCFConstants.MAX_GENOTYPE_QUAL + 1));
         if ( lowerGQBound > upperGQBound ) { throw new IllegalArgumentException("bad lowerGQBound " + lowerGQBound + " as it's >= upperGQBound " + upperGQBound); }
 
         this.startingVC = startingVC;
@@ -94,15 +92,20 @@ final class HomRefBlock implements Locatable {
     }
 
     /**
-     * Add information from this Genotype to this band
-     * @param genotype a non-null Genotype with GQ and DP attributes
+     * Add information from this Genotype to this band.
+     *
+     * Treats GQ values > 99 as 99.
+     *
+     * @param pos Current genomic position. Must be 1 base after the previous position
+     * @param genotype A non-null Genotype with GQ and DP attributes
      */
     public void add(final int pos, final Genotype genotype) {
         Utils.nonNull(genotype, "genotype cannot be null");
         if ( ! genotype.hasPL() ) { throw new IllegalArgumentException("genotype must have PL field");}
         if ( pos != end + 1 ) { throw new IllegalArgumentException("adding genotype at pos " + pos + " isn't contiguous with previous end " + end); }
         if ( genotype.getPloidy() != ploidy) { throw new IllegalArgumentException("cannot add a genotype with a different ploidy: " + genotype.getPloidy() + " != " + ploidy); }
-        if ( !withinBounds(genotype.getGQ())) {
+        // Make sure the GQ is within the bounds of this band. Treat GQs > 99 as 99.
+        if ( !withinBounds(Math.min(genotype.getGQ(), VCFConstants.MAX_GENOTYPE_QUAL))) {
             throw new IllegalArgumentException("cannot add a genotype with GQ=" + genotype.getGQ() + " because it's not within bounds ["
                     + this.getGQLowerBound() + ',' + this.getGQUpperBound() + ')');
         }
