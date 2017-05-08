@@ -167,5 +167,18 @@ public class HomRefBlockUnitTest extends BaseTest {
         return new HomRefBlock(vc, 10, 20, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
 
+    @Test
+    public void testAddGQGreaterThanMaxGenotypeQual() {
+        final VariantContext vc = getVariantContext();
+        final HomRefBlock block90_100 = new HomRefBlock(vc, 90, 100, HomoSapiensConstants.DEFAULT_PLOIDY);
 
+        // Test that adding a Genotype with GQ > 99 succeeds (ie., doesn't throw).
+        // Internally, HomRefBlock should treat this GQ as 99.
+        block90_100.add(vc.getStart(), new GenotypeBuilder(SAMPLE_NAME, vc.getAlleles()).GQ(150).DP(10).PL(new int[]{0, 10, 100}).make());
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testConstructorThrowsOnUpperGQBoundTooLarge() {
+        final HomRefBlock block = new HomRefBlock(getVariantContext(), 90, 101, HomoSapiensConstants.DEFAULT_PLOIDY);
+    }
 }
