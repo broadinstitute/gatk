@@ -4,16 +4,17 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import scala.Tuple2;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * Common functions for PathSeq
@@ -25,33 +26,56 @@ public final class PSUtils {
     }
 
     /**
-     * Groups pairs using read names
+     * Gets RDDs of the paired and unpaired reads
      */
-    public static JavaRDD<Iterable<GATKRead>> groupReadPairs(final JavaRDD<GATKRead> reads) {
-        return reads.groupBy(GATKRead::getName).values();
+    public static Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> splitPairedAndUnpairedReads(final JavaRDD<GATKRead> reads, final int readsPerPartitionGuess) {
+
+        //Shuffle reads into partitions by read name hash code, then map each partition to a pair of lists, one
+        //  containing the paired reads and the other the unpaired reads
+        final JavaRDD<Tuple2<List<GATKRead>, List<GATKRead>>> repartitionedReads = reads.mapToPair(read -> new Tuple2<>(read.getName(), read))
+                .partitionBy(new HashPartitioner(reads.getNumPartitions()))
+                .map(Tuple2::_2)
+                .mapPartitions(iter -> mapPartitionsToPairedAndUnpairedLists(iter, readsPerPartitionGuess));
+
+        //Split the RDD into paired and unpaired reads
+        repartitionedReads.cache();
+        final JavaRDD<GATKRead> pairedReads = repartitionedReads.flatMap(tuple -> tuple._1.iterator());
+        final JavaRDD<GATKRead> unpairedReads = repartitionedReads.flatMap(tuple -> tuple._2.iterator());
+        repartitionedReads.unpersist();
+
+        return new Tuple2<>(pairedReads, unpairedReads);
     }
 
     /**
-     * Gets flattened RDD of reads that have a mate
+     * Maps each partition to a Tuple of two Lists, the first containing the paired reads, the second containing unpaired
      */
-    public static JavaRDD<GATKRead> pairedReads(final JavaRDD<GATKRead> reads) {
+    private static Iterator<Tuple2<List<GATKRead>, List<GATKRead>>> mapPartitionsToPairedAndUnpairedLists(final Iterator<GATKRead> iter, final int readsPerPartitionGuess) {
+        //Find the paired and unpaired reads by scanning the partition for repeated names
+        final List<GATKRead> pairedReadsList = new ArrayList<>(readsPerPartitionGuess);
+        final Map<String, GATKRead> unpairedReads = new HashMap<>(readsPerPartitionGuess);
+        while (iter.hasNext()) {
+            final GATKRead read = iter.next();
+            final String readName = read.getName();
+            //If read's mate is already in unpairedReads then we have a pair, which gets added to the ordered List
+            if (unpairedReads.containsKey(readName)) {
+                pairedReadsList.add(read);
+                pairedReadsList.add(unpairedReads.remove(readName));
+            } else {
+                unpairedReads.put(readName, read);
+            }
+        }
+        //Get the unpaired reads out of the hashmap
+        final List<GATKRead> unpairedReadsList = new ArrayList<>(unpairedReads.values());
 
-        return groupReadPairs(reads).filter(p -> {
-            final Iterator<GATKRead> itr = p.iterator();
-            itr.next();
-            return itr.hasNext();
-        }).flatMap(Iterable::iterator);
-    }
+        //Minimize unpairedReads memory footprint (don't rely on readsPerPartitionGuess)
+        final List<GATKRead> pairedReadsListResized = new ArrayList<>(pairedReadsList.size());
+        pairedReadsListResized.addAll(pairedReadsList);
 
-    /**
-     * Gets flattened RDD of reads that do not have a mate
-     */
-    protected static JavaRDD<GATKRead> unpairedReads(final JavaRDD<GATKRead> reads) {
-        return PSUtils.groupReadPairs(reads).filter(p -> {
-            final Iterator<GATKRead> itr = p.iterator();
-            itr.next();
-            return !itr.hasNext();
-        }).flatMap(Iterable::iterator);
+        //Wrap the result
+        final Tuple2<List<GATKRead>, List<GATKRead>> lists = new Tuple2<>(pairedReadsListResized, unpairedReadsList);
+        final List<Tuple2<List<GATKRead>, List<GATKRead>>> listOfTuple = new ArrayList<>(1);
+        listOfTuple.add(lists);
+        return listOfTuple.iterator();
     }
 
     public static String[] parseCommaDelimitedArgList(final String arg) {
@@ -68,7 +92,6 @@ public final class PSUtils {
 
         final String[] kmerMaskString = parseCommaDelimitedArgList(maskArg);
         final byte[] kmerMask = new byte[kmerMaskString.length];
-        Utils.validateArg((kmerMaskString.length & 1) == 0, "Needed kmer mask index list of even length, but found " + kmerMaskString.length);
         for (int i = 0; i < kmerMaskString.length; i++) {
             kmerMask[i] = (byte) Integer.parseInt(kmerMaskString[i]);
             Utils.validateArg(kmerMask[i] >= 0 && kmerMask[i] < kSize, "Invalid kmer mask index: " + kmerMaskString[i]);
@@ -83,7 +106,7 @@ public final class PSUtils {
         if (!items.isEmpty()) {
             String str = "";
             for (final String acc : items) str += acc + ", ";
-            str = str.substring(0,str.length() - 2);
+            str = str.substring(0, str.length() - 2);
             logger.warn(warning + " : " + str);
         }
     }

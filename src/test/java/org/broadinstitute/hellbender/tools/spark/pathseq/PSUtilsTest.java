@@ -16,10 +16,12 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.Tuple2;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public class PSUtilsTest extends BaseTest {
@@ -82,48 +84,6 @@ public class PSUtilsTest extends BaseTest {
     }
 
     @Test(groups = "spark")
-    public void testGroupReadsByName() {
-        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final List<GATKRead> readList = new ArrayList<>(2);
-
-        final SAMSequenceDictionary seq = new SAMSequenceDictionary();
-        seq.addSequence(new SAMSequenceRecord("test_seq", 1000));
-        final SAMFileHeader header = new SAMFileHeader(seq);
-
-        final List<GATKRead> readPair1 = ArtificialReadUtils.createPair(header, "paired_1", 101, 1, 102, false, false);
-        readList.addAll(readPair1);
-
-        final List<GATKRead> readPair2 = ArtificialReadUtils.createPair(header, "paired_2", 101, 1, 102, false, false);
-        readList.addAll(readPair2);
-
-        final GATKRead unpairedRead = ArtificialReadUtils.createRandomRead(101);
-        unpairedRead.setName("unpaired_1");
-        readList.add(unpairedRead);
-        final List<GATKRead> unpairedReadIterable = new ArrayList<>(1);
-        unpairedReadIterable.add(unpairedRead);
-
-        final JavaRDD<GATKRead> readRDD = ctx.parallelize(readList);
-        final List<Iterable<GATKRead>> result = PSUtils.groupReadPairs(readRDD).collect();
-
-        Assert.assertTrue(result.size() == 3);
-        for (final Iterable<GATKRead> group : result) {
-            String groupName = null;
-            for (final GATKRead read : group) {
-                final String readName = read.getName();
-                Assert.assertTrue(readName.equals("paired_1") || readName.equals("paired_2") || readName.equals("unpaired_1"),
-                        "Unrecognized read name: " + readName);
-                if (groupName == null) {
-                    groupName = readName;
-                } else {
-                    Assert.assertEquals(readName, groupName);
-                }
-            }
-            Assert.assertNotNull(groupName, "Returned an empty group");
-        }
-
-    }
-
-    @Test(groups = "spark")
     public void testReadPairing() {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final List<GATKRead> readList = new ArrayList<>(2);
@@ -132,59 +92,57 @@ public class PSUtilsTest extends BaseTest {
         seq.addSequence(new SAMSequenceRecord("test_seq", 1000));
         final SAMFileHeader header = new SAMFileHeader(seq);
 
-        final List<GATKRead> readPair1 = ArtificialReadUtils.createPair(header, "paired_1", 101, 1, 102, false, false);
-        readList.addAll(readPair1);
+        final int numReadPairs = 300;
+        final int numUnpairedReads = 205;
+        final int numFormerlyPairedReads = 400;
+        final List<String> pairedReadNames = new ArrayList<>(numReadPairs * 2);
+        final List<String> unpairedReadNames = new ArrayList<>(numUnpairedReads + numFormerlyPairedReads);
 
-        final List<GATKRead> readPair2 = ArtificialReadUtils.createPair(header, "paired_2", 101, 1, 102, false, false);
-        readList.addAll(readPair2);
+        for (int i = 0; i < numReadPairs; i++) {
+            final String readName = "paired_" + i;
+            final List<GATKRead> readPair = ArtificialReadUtils.createPair(header, readName, 101, 1, 102, false, false);
+            readList.addAll(readPair);
+            pairedReadNames.add(readName);
+            pairedReadNames.add(readName);
+        }
 
-        final GATKRead unpairedRead = ArtificialReadUtils.createRandomRead(101);
-        unpairedRead.setName("unpaired_1");
-        readList.add(unpairedRead);
+        for (int i = 0; i < numUnpairedReads; i++) {
+            final String readName = "unpaired_" + i;
+            final GATKRead unpairedRead = ArtificialReadUtils.createRandomRead(101);
+            unpairedRead.setName(readName);
+            readList.add(unpairedRead);
+            unpairedReadNames.add(readName);
+        }
 
-        final List<GATKRead> readPair3 = ArtificialReadUtils.createPair(header, "paired_3", 101, 1, 102, false, false);
-        final GATKRead formerlyPairedRead = readPair3.get(0);
-        readList.add(formerlyPairedRead);
+        for (int i = 0; i < numFormerlyPairedReads; i++) {
+            final String readName = "formerly_paired_" + i;
+            final List<GATKRead> readPair = ArtificialReadUtils.createPair(header, readName, 101, 1, 102, false, false);
+            final GATKRead formerlyPairedRead = readPair.get(0);
+            readList.add(formerlyPairedRead);
+            unpairedReadNames.add(readName);
+        }
 
-        final JavaRDD<GATKRead> readRDD = ctx.parallelize(readList);
+        Collections.shuffle(readList);
+        final int numPartitions = 3;
+        final JavaRDD<GATKRead> readRDD = ctx.parallelize(readList,numPartitions);
+        final int readsPerPartitionGuess = (numReadPairs + numUnpairedReads + numFormerlyPairedReads) / numPartitions;
+        final Tuple2<JavaRDD<GATKRead>,JavaRDD<GATKRead>> result = PSUtils.splitPairedAndUnpairedReads(readRDD, readsPerPartitionGuess);
 
-        final List<GATKRead> resultPaired = PSUtils.pairedReads(readRDD).collect();
-        Assert.assertEquals(resultPaired.size(), 4);
-        Assert.assertTrue(resultPaired.contains(readPair1.get(0)));
-        Assert.assertTrue(resultPaired.contains(readPair1.get(1)));
-        Assert.assertTrue(resultPaired.contains(readPair2.get(0)));
-        Assert.assertTrue(resultPaired.contains(readPair2.get(1)));
+        final List<GATKRead> resultPaired = result._1.collect();
+        Assert.assertEquals(resultPaired.size(), pairedReadNames.size());
+        for (final GATKRead read : resultPaired) {
+            final String readName = read.getName();
+            Assert.assertTrue(pairedReadNames.contains(readName));
+            pairedReadNames.remove(readName);
+        }
 
-        final List<GATKRead> resultUnpaired = PSUtils.unpairedReads(readRDD).collect();
-        Assert.assertEquals(resultUnpaired.size(), 2);
-        Assert.assertTrue(resultUnpaired.contains(unpairedRead));
-        Assert.assertTrue(resultUnpaired.contains(formerlyPairedRead));
-    }
-
-    @Test(groups = "spark")
-    public void testUnpairedReads() {
-        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final List<GATKRead> readList = new ArrayList<>(2);
-
-        final SAMSequenceDictionary seq = new SAMSequenceDictionary();
-        seq.addSequence(new SAMSequenceRecord("test_seq", 1000));
-        final SAMFileHeader header = new SAMFileHeader(seq);
-
-        final List<GATKRead> readPair1 = ArtificialReadUtils.createPair(header, "paired_1", 101, 1, 102, false, false);
-        readList.addAll(readPair1);
-
-        final List<GATKRead> readPair2 = ArtificialReadUtils.createPair(header, "paired_2", 101, 1, 102, false, false);
-        readList.addAll(readPair2);
-
-        final GATKRead unpairedRead = ArtificialReadUtils.createRandomRead(101);
-        unpairedRead.setName("unpaired_1");
-        readList.add(unpairedRead);
-
-        final List<GATKRead> readPair3 = ArtificialReadUtils.createPair(header, "paired_3", 101, 1, 102, false, false);
-        final GATKRead formerlyPairedRead = readPair3.get(0);
-        readList.add(formerlyPairedRead);
-
-        final JavaRDD<GATKRead> readRDD = ctx.parallelize(readList);
+        final List<GATKRead> resultUnpaired = result._2.collect();
+        Assert.assertEquals(resultUnpaired.size(), unpairedReadNames.size());
+        for (final GATKRead read : resultUnpaired) {
+            final String readName = read.getName();
+            Assert.assertTrue(unpairedReadNames.contains(readName));
+            unpairedReadNames.remove(readName);
+        }
     }
 
     @Test
