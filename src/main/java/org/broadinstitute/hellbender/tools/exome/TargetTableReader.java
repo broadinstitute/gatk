@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -58,7 +59,7 @@ public final class TargetTableReader extends TableReader<Target> {
      * @return never {@code null}
      */
     public static List<Target> readTargetFile(final File targetsFile) {
-        Utils.regularReadableUserFile(targetsFile);
+        IOUtils.canReadFile(targetsFile);
         try {
             return readTargetFromReader(targetsFile.getAbsolutePath(), new FileReader(targetsFile));
         } catch (final FileNotFoundException ex) {

@@ -50,10 +50,10 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      *
      * This argument allows you to set the GQ boundaries. HC expects a list of multiple GQ threshold values. To pass
      * multiple values, you provide them one by one with the argument, as in `-GQB 10 -GQB 20 -GQB 30` and so on. Note
-     * that GQ values are capped at 99 in the GATK.
+     * that GQ values are capped at 99 in the GATK, so values must be integers in the range [1, 99].
      */
     @Advanced
-    @Argument(fullName = "GVCFGQBands", shortName = "GQB", doc= "GQ thresholds for reference confidence bands", optional = true)
+    @Argument(fullName = "GVCFGQBands", shortName = "GQB", doc= "GQ thresholds for reference confidence bands (must be in [1, 99] and specified in increasing order)", optional = true)
     public List<Integer> GVCFGQBands = new ArrayList<>(70);
     {
             for (int i=1; i<=60; ++i) {

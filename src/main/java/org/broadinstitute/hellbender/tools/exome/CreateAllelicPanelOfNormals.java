@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormalsCreator;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -97,7 +98,7 @@ public final class CreateAllelicPanelOfNormals extends CommandLineProgram {
     }
 
     private void validateArguments() {
-        inputFiles.stream().forEach(Utils::regularReadableUserFile);
+        inputFiles.stream().forEach(IOUtils::canReadFile);
         Utils.validateArg(0. < siteFrequencyThreshold && siteFrequencyThreshold <= 1., "Site frequency must be in (0, 1].");
     }
 }

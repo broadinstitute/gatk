@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -144,8 +145,8 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
     @Override
     protected Object doWork() {
         /* check args */
-        Utils.regularReadableUserFile(inputRawReadCountsFile);
-        Utils.regularReadableUserFile(inputContigAnnotsFile);
+        IOUtils.canReadFile(inputRawReadCountsFile);
+        IOUtils.canReadFile(inputContigAnnotsFile);
         Utils.validateArg(baselineMappingErrorProbability > 0 && baselineMappingErrorProbability < 1, "Must have 0 < baseline mapping error probability < 1.");
         /* read input read counts */
         final ReadCountCollection rawReadCounts;

@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
@@ -48,7 +49,7 @@ public final class AllelicCountCollector {
      */
     public AllelicCountCollector(final File referenceFile,
                                  final ValidationStringency validationStringency) {
-        Utils.regularReadableUserFile(referenceFile);
+        IOUtils.canReadFile(referenceFile);
         readerFactory = SamReaderFactory.makeDefault().validationStringency(validationStringency).referenceSequence(referenceFile);
         referenceWalker = new ReferenceSequenceFileWalker(referenceFile);
     }

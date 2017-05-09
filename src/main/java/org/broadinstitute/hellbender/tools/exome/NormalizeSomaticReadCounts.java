@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoN;
 import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCACoveragePoN;
 import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizationResult;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -104,7 +105,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
             throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
                     "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
         }
-        Utils.regularReadableUserFile(ponFile);
+        IOUtils.canReadFile(ponFile);
         try (final HDF5File hdf5PoNFile = new HDF5File(ponFile)) {
             final PCACoveragePoN pon = new HDF5PCACoveragePoN(hdf5PoNFile, logger);
             final TargetCollection<Target> targetCollection = readTargetCollection(targetFile);
@@ -124,7 +125,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
         if (targetFile == null) {
             return null;
         } else {
-            Utils.regularReadableUserFile(targetFile);
+            IOUtils.canReadFile(targetFile);
             logger.log(Level.INFO, String.format("Reading target intervals from exome file '%s' ...", new Object[]{targetFile.getAbsolutePath()}));
             final List<Target> targets = TargetTableReader.readTargetFile(targetFile);
             return new HashedListTargetCollection<>(targets);

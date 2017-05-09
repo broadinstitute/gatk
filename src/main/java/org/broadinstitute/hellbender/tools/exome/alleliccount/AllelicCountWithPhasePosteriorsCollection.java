@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.alleliccount;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,7 +31,7 @@ public class AllelicCountWithPhasePosteriorsCollection {
      */
     public AllelicCountWithPhasePosteriorsCollection(final File inputFile) {
         Utils.nonNull(inputFile);
-        Utils.regularReadableUserFile(inputFile);
+        IOUtils.canReadFile(inputFile);
 
         try (final AllelicCountWithPhasePosteriorsReader reader = new AllelicCountWithPhasePosteriorsReader(inputFile)) {
             counts = reader.stream().collect(Collectors.toList());

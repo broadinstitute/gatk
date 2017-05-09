@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFind
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.mcmc.Decile;
 import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
@@ -209,7 +210,7 @@ public final class SegmentUtils {
      */
     public static List<String> readSampleNamesFromSegmentFile(final File segmentFile) {
         Utils.nonNull(segmentFile);
-        Utils.regularReadableUserFile(segmentFile);
+        IOUtils.canReadFile(segmentFile);
         try (final Reader segmentFileReader = new FileReader(segmentFile)) {
             return readSampleNamesFromSegmentReader(segmentFileReader, segmentFile.getAbsolutePath());
         } catch (final IOException ex) {
@@ -372,7 +373,7 @@ public final class SegmentUtils {
      */
     public static List<ACNVModeledSegment> readACNVModeledSegmentFile(final File acnvSegFile) {
         Utils.nonNull(acnvSegFile);
-        Utils.regularReadableUserFile(acnvSegFile);
+        IOUtils.canReadFile(acnvSegFile);
         return readSegmentFile(acnvSegFile, SegmentTableColumn.ACNV_MODELED_SEGMENT_COLUMNS, SegmentUtils::toACNVModeledSegment);
     }
 
@@ -410,7 +411,7 @@ public final class SegmentUtils {
                                                                 final TableColumnCollection mandatoryColumns,
                                                                 final Function<DataLine, T> dataLineToSegmentFunction) {
         Utils.nonNull(segmentsFile);
-        Utils.regularReadableUserFile(segmentsFile);
+        IOUtils.canReadFile(segmentsFile);
         try (final TableReader<T> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     TableUtils.checkMandatoryColumns(columns, mandatoryColumns, formatExceptionFactory);

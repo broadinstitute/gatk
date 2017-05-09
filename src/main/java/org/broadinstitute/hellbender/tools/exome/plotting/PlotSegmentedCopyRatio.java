@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
@@ -139,10 +140,10 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
     }
 
     private void checkRegularReadableUserFiles() {
-        Utils.regularReadableUserFile(tangentFile);
-        Utils.regularReadableUserFile(preTangentFile);
-        Utils.regularReadableUserFile(segmentsFile);
-        Utils.regularReadableUserFile(sequenceDictionaryFile);
+        IOUtils.canReadFile(tangentFile);
+        IOUtils.canReadFile(preTangentFile);
+        IOUtils.canReadFile(segmentsFile);
+        IOUtils.canReadFile(sequenceDictionaryFile);
         if (!new File(outputDir).exists()) {
             throw new UserException(String.format("Output directory %s does not exist.", outputDir));
         }

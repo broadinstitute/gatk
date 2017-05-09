@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
@@ -32,7 +33,7 @@ public final class AllelicPanelOfNormalsCreator {
     public AllelicPanelOfNormalsCreator(final List<File> pulldownFiles) {
         Utils.nonNull(pulldownFiles, "List of pulldown files cannot be null.");
         ParamUtils.isPositive(pulldownFiles.size(), "List of pulldown files should contain at least one file.");
-        pulldownFiles.stream().forEach(Utils::regularReadableUserFile);
+        pulldownFiles.stream().forEach(IOUtils::canReadFile);
         this.pulldownFiles = new ArrayList<>(pulldownFiles);
     }
 

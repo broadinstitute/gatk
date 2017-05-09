@@ -325,7 +325,7 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
      * @param outputFile    never {@code null}, output file
      */
     private static void writeTargetWeightsFile(final File ponFile, final File outputFile) {
-        Utils.regularReadableUserFile(ponFile);
+        IOUtils.canReadFile(ponFile);
         try (final HDF5File file = new HDF5File(ponFile, HDF5File.OpenMode.READ_ONLY)) {
             final HDF5PCACoveragePoN pon = new HDF5PCACoveragePoN(file);
             final double[] targetWeights = DoubleStream.of(pon.getTargetVariances()).map(v -> 1 / v).toArray();

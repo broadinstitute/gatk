@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
@@ -212,7 +213,7 @@ public class OrientationBiasUtils {
     private static<T extends OrientationSampleTransitionSummary> List<T> readOrientationBiasSummaryTable (final File inputFile,
                                                                                             final Function<DataLine, T> dataLineToSummaryFunction) {
         Utils.nonNull(inputFile);
-        Utils.regularReadableUserFile(inputFile);
+        IOUtils.canReadFile(inputFile);
         final TableColumnCollection mandatoryColumns = OrientationBiasFilterSummaryTableColumn.COLUMNS;
         try (final TableReader<T> reader = TableUtils.reader(inputFile,
                 (columns, formatExceptionFactory) -> {

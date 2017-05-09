@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller
 import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicCalls;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -128,7 +129,7 @@ public class ACSModeledSegmentUtils {
      */
     public static List<ACSModeledSegment> readACSFile(final File acsSegFile) {
         Utils.nonNull(acsSegFile);
-        Utils.regularReadableUserFile(acsSegFile);
+        IOUtils.canReadFile(acsSegFile);
         return SegmentUtils.readSegmentFile(acsSegFile, ACSTableColumn.COLUMNS, ACSModeledSegmentUtils::toACSModeledSegment);
     }
 

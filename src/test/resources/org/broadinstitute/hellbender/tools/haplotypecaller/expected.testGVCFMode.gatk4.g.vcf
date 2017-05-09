@@ -74,7 +74,7 @@
 ##GVCFBlock80-90=minGQ=80(inclusive),maxGQ=90(exclusive)
 ##GVCFBlock9-10=minGQ=9(inclusive),maxGQ=10(exclusive)
 ##GVCFBlock90-99=minGQ=90(inclusive),maxGQ=99(exclusive)
-##GVCFBlock99-2147483647=minGQ=99(inclusive),maxGQ=2147483647(exclusive)
+##GVCFBlock99-100=minGQ=99(inclusive),maxGQ=100(exclusive)
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +34,7 @@ public class AllelicCountCollection {
      */
     public AllelicCountCollection(final File inputFile) {
         Utils.nonNull(inputFile);
-        Utils.regularReadableUserFile(inputFile);
+        IOUtils.canReadFile(inputFile);
 
         try (final AllelicCountReader reader = new AllelicCountReader(inputFile)) {
             counts = reader.stream().collect(Collectors.toList());

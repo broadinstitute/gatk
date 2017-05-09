@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +30,7 @@ public class TitanFileConverter {
      * @param outputFile Not {@code null}
      */
     public static void convertHetPulldownToTitanHetFile(final File hetPulldown, final File outputFile) {
-        Utils.regularReadableUserFile(hetPulldown);
+        IOUtils.canReadFile(hetPulldown);
         try {
             final AllelicCountCollection acc = new AllelicCountCollection(hetPulldown);
             final TitanAllelicCountWriter titanAllelicCountWriter = new TitanAllelicCountWriter(outputFile);
@@ -49,7 +50,7 @@ public class TitanFileConverter {
      * @param outputFile Not {@code null}
      */
     public static void convertCRToTitanCovFile(final File tnFile, final File outputFile) {
-        Utils.regularReadableUserFile(tnFile);
+        IOUtils.canReadFile(tnFile);
         try {
             final ReadCountCollection rcc = ReadCountCollectionUtils.parse(tnFile);
             final TitanCopyRatioEstimateWriter titanCopyRatioEstimateWriter = new TitanCopyRatioEstimateWriter(outputFile);

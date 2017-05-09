@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -35,7 +36,7 @@ public class MixingFraction {
     }
 
     public static List<MixingFraction> readMixingFractions(final File file) {
-        Utils.regularReadableUserFile(file);
+        IOUtils.canReadFile(file);
         try (final MixingFractionReader reader = new MixingFractionReader(file)) {
             return reader.toList();
         } catch (final FileNotFoundException ex) {

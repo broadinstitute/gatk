@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -264,7 +265,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
      * @return never {@code null}.
      */
     private TargetCollection<Target> resolveTargetsFromFile() {
-        Utils.regularReadableUserFile(targetsFile);
+        IOUtils.canReadFile(targetsFile);
         logger.log(Level.INFO,String.format("Reading target intervals from targets file '%s' ...", targetsFile.getAbsolutePath()));
         final List<Target> targets = TargetTableReader.readTargetFile(targetsFile);
         return new HashedListTargetCollection<>(targets);

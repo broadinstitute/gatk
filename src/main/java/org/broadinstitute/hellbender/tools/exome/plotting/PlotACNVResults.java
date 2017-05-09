@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
@@ -132,10 +133,10 @@ public final class PlotACNVResults extends CommandLineProgram {
     }
 
     private void checkRegularReadableUserFiles() {
-        Utils.regularReadableUserFile(snpCountsFile);
-        Utils.regularReadableUserFile(tangentFile);
-        Utils.regularReadableUserFile(segmentsFile);
-        Utils.regularReadableUserFile(sequenceDictionaryFile);
+        IOUtils.canReadFile(snpCountsFile);
+        IOUtils.canReadFile(tangentFile);
+        IOUtils.canReadFile(segmentsFile);
+        IOUtils.canReadFile(sequenceDictionaryFile);
         if (!new File(outputDir).exists()) {
             throw new UserException(String.format("Output directory %s does not exist.", outputDir));
         }

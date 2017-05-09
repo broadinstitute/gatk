@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -97,7 +98,7 @@ public final class ContigGermlinePloidyAnnotationTableReader extends TableReader
      * @throws IOException if a read error occurs
      */
     public static List<ContigGermlinePloidyAnnotation> readContigGermlinePloidyAnnotationsFromFile(@Nonnull final File contigGermlinePloidyAnnotationsFile) {
-        Utils.regularReadableUserFile(contigGermlinePloidyAnnotationsFile);
+        IOUtils.canReadFile(contigGermlinePloidyAnnotationsFile);
         try {
             return readContigGermlinePloidyAnnotationsFromReader(contigGermlinePloidyAnnotationsFile.getAbsolutePath(),
                     new FileReader(contigGermlinePloidyAnnotationsFile));

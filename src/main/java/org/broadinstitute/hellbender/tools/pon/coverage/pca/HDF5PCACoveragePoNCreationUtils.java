@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
@@ -72,7 +73,7 @@ public final class HDF5PCACoveragePoNCreationUtils {
                               final OptionalInt numberOfEigensamples,
                               final boolean isDryRun) {
         Utils.nonNull(outputHDF5Filename);
-        Utils.regularReadableUserFile(inputPCovFile);
+        IOUtils.canReadFile(inputPCovFile);
         Utils.nonNull(initialTargets, "Target collection cannot be null.");
         Utils.nonNull(sampleNameBlacklist, "Blacklist sample list cannot be null.  Use empty list if no blacklisting is desired.");
         ParamUtils.inRange(targetFactorPercentileThreshold, 0, 100, "Target factor percentile threshold must be in range [0, 100].");
@@ -128,7 +129,7 @@ public final class HDF5PCACoveragePoNCreationUtils {
      */
     public static void redoReduction(final JavaSparkContext ctx, final OptionalInt newNumberOfEigensamples, final File inputHDF5Filename, final File outputHDF5Filename, final HDF5File.OpenMode openMode) {
         Utils.nonNull(newNumberOfEigensamples);
-        Utils.regularReadableUserFile(inputHDF5Filename);
+        IOUtils.canReadFile(inputHDF5Filename);
         Utils.nonNull(outputHDF5Filename);
         if (inputHDF5Filename.getAbsolutePath().equals(outputHDF5Filename.getAbsolutePath())) {
             throw new UserException.CouldNotCreateOutputFile(outputHDF5Filename, "Cannot create a new PoN overwriting an old one.");

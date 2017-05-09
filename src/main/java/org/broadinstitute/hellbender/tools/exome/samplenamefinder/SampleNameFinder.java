@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.Reader;
@@ -23,7 +24,7 @@ public class SampleNameFinder {
      */
     public static List<String> determineSampleNamesFromReadCountsFile(final File readCountsFile) {
         Utils.nonNull(readCountsFile);
-        Utils.regularReadableUserFile(readCountsFile);
+        IOUtils.canReadFile(readCountsFile);
         final List<String> result = ReadCountCollectionUtils.retrieveSampleNamesFromReadCountsFile(readCountsFile);
         if (result.isEmpty()) {
             throw new UserException.BadInput("Input read counts file contains no sample columns");

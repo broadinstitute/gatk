@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
@@ -182,7 +183,7 @@ public final class AllelicPanelOfNormals {
      *                     tab-separated file that contains global hyperparameters in comment lines and lines specifying hyperparameter values at each site
      */
     public static AllelicPanelOfNormals read(final File inputFile) {
-        Utils.regularReadableUserFile(inputFile);
+        IOUtils.canReadFile(inputFile);
 
         if (isHDF5File(inputFile)) {
             //construct from HDF5 file
