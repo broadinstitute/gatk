@@ -65,7 +65,7 @@ public final class GVCFWriter implements VariantContextWriter {
      * Create {@link HomRefBlock}s which will collectively accept variants of any genotype quality
      *
      * Each individual block covers a band of genotype qualities with the splits between bands occurring at values in {@code gqPartitions}.
-     * There will be {@code gqPartitions.size() +1} bands produced covering the entire possible range of genotype qualities from 0 to {@link Integer#MAX_VALUE}.
+     * There will be {@code gqPartitions.size() +1} bands produced covering the entire possible range of genotype qualities from 0 to {@link VCFConstants#MAX_GENOTYPE_QUAL}.
      *
      * @param gqPartitions proposed GQ partitions
      * @return a list of HomRefBlocks accepting bands of genotypes qualities split at the points specified in gqPartitions
@@ -79,8 +79,8 @@ public final class GVCFWriter implements VariantContextWriter {
         for (final Integer value : gqPartitions) {
             if (value < 0) {
                 throw new IllegalArgumentException("The list of GQ partitions contains a non-positive integer.");
-            } else if (value > MAX_GENOTYPE_QUAL) {
-                throw new IllegalArgumentException(String.format("The value %d in the list of GQ partitions is greater than VCFConstants.MAX_GENOTYPE_QUAL = %d.", value, VCFConstants.MAX_GENOTYPE_QUAL));
+            } else if (value > MAX_GENOTYPE_QUAL + 1) {
+                throw new IllegalArgumentException(String.format("The value %d in the list of GQ partitions is greater than VCFConstants.MAX_GENOTYPE_QUAL + 1 = %d.", value, MAX_GENOTYPE_QUAL + 1));
             } else if (value < lastThreshold) {
                 throw new IllegalArgumentException(String.format("The list of GQ partitions is out of order. Previous value is %d but the next is %d.", lastThreshold, value));
             } else if (value == lastThreshold) {
