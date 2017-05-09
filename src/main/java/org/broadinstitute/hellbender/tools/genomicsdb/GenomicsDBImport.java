@@ -169,6 +169,9 @@ public final class GenomicsDBImport extends GATKTool {
         return 2;
     }
 
+    @Override
+    public String getProgressMeterRecordLabel() { return "batches"; }
+
     // Intervals from command line (singleton for now)
     private List<ChromosomeInterval> intervals;
 
@@ -331,6 +334,8 @@ public final class GenomicsDBImport extends GATKTool {
      */
     @Override
     public void traverse() {
+        // Force the progress meter to update after every batch
+        progressMeter.setRecordsBetweenTimeChecks(1L);
 
         final int sampleCount = sampleNameToVcfUri.size();
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
@@ -364,6 +369,7 @@ public final class GenomicsDBImport extends GATKTool {
             }
 
             closeReaders(sampleToReaderMap);
+            progressMeter.update(intervals.get(0));
             logger.info("Done importing batch " + batchCount + "/" + totalBatchCount);
         }
     }

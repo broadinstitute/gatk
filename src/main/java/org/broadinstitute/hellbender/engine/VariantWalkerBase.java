@@ -35,6 +35,9 @@ public abstract class VariantWalkerBase extends GATKTool {
     public boolean requiresFeatures() { return true; }
 
     @Override
+    public String getProgressMeterRecordLabel() { return "variants"; }
+
+    @Override
     void initializeFeatures() {
 
         //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.

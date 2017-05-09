@@ -25,6 +25,9 @@ public abstract class IntervalWalker extends GATKTool {
         return true;
     }
 
+    @Override
+    public String getProgressMeterRecordLabel() { return "intervals"; }
+
     /**
      * Customize initialization of the Feature data source for this traversal type to disable query lookahead.
      */

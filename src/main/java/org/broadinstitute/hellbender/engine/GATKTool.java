@@ -139,7 +139,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * {@link ProgressMeter#update(Locatable)} after each record processed from
      * the primary input in their {@link #traverse} method.
      */
-    ProgressMeter progressMeter;
+    protected ProgressMeter progressMeter;
 
     /**
      * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
@@ -258,6 +258,12 @@ public abstract class GATKTool extends CommandLineProgram {
     public int getDefaultCloudIndexPrefetchBufferSize() {
         return -1;
     }
+
+    /**
+     * @return String label to use for records in progress meter output. Defaults to {@link ProgressMeter#DEFAULT_RECORD_LABEL},
+     *         but tools may override to provide a more appropriate label (like "reads" or "regions")
+     */
+    public String getProgressMeterRecordLabel() { return ProgressMeter.DEFAULT_RECORD_LABEL; }
 
     /**
      * Initialize our source of reference data (or set it to null if no reference argument was provided).
@@ -516,6 +522,7 @@ public abstract class GATKTool extends CommandLineProgram {
         checkToolRequirements();
 
         progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
+        progressMeter.setRecordLabel(getProgressMeterRecordLabel());
     }
 
     /**
