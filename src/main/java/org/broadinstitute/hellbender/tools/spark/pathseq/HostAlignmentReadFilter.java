@@ -25,14 +25,16 @@ public final class HostAlignmentReadFilter extends ReadFilter {
 
     @Override
     public boolean test(final GATKRead read) {
-        return read.isUnmapped() || !read.hasAttribute("NM")
-                || test(read.getCigar(), read.getAttributeAsInteger("NM"));
+        if ( read.isUnmapped() ) return true;
+        final Integer nmVal = read.getAttributeAsInteger("NM");
+        if ( nmVal == null ) return true;
+        return test(read.getCigar(), nmVal.intValue());
     }
 
-    public boolean test(final Cigar c, final int NM) {
-        int numMatches = -NM;
+    public boolean test(final Cigar cigar, final int numMismatches) {
+        int numMatches = -numMismatches;
         int numCov = 0;
-        final List<CigarElement> cigarElements = c.getCigarElements();
+        final List<CigarElement> cigarElements = cigar.getCigarElements();
         for (final CigarElement e : cigarElements) {
             if (e.getOperator().equals(CigarOperator.MATCH_OR_MISMATCH)) {
                 numMatches += e.getLength();
