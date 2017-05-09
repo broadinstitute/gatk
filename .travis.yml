@@ -5,11 +5,13 @@ git:
   depth: 9999999
 jdk:
 - oraclejdk8
+- openjdk8
 env:
   matrix:
-  - TEST_TYPE=cloud
+  - TEST_TYPE=cloud 
   - TEST_TYPE=integration TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_VERBOSITY=minimal
+
   global:
   #for genomics db
   - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
