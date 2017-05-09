@@ -48,8 +48,6 @@ public class IntervalOverlappingIterator<T extends Locatable> implements Iterabl
         this.iterator = iterator;
         this.intervals = intervals.iterator();
         this.dictionary = dictionary;
-
-        //TODO: If the input intervals is empty, won't this throw an exception?  Is that planned?
         currentInterval = this.intervals.next();
         advance();
     }

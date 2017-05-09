@@ -73,6 +73,6 @@ public class IntervalLocusIterator implements Iterable<SimpleInterval>, Iterator
         }
 
         List<SimpleInterval> dummyList = Collections.singletonList(fullInterval);
-        return IntervalUtils.cutToShards(dummyList, 1).iterator();
+        return new ShardedIntervalIterator(dummyList.iterator(), 1);
     }
 }

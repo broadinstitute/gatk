@@ -84,6 +84,8 @@ public abstract class LocusWalker extends GATKTool {
      *
      * NOTE:  Typically, this should only be used when intervals are specified.
      * NOTE:  If MappedReadFilter is removed, then emitting empty loci will fail.
+     * NOTE:  If there is no available sequence dictionary and this is set to true, there should be a failure.  Please
+     *  consider requiring reads and/or references for all tools that wish to set this to {@code true}.
      *
      * @return {@code true} if this tool requires uncovered loci information to be emitted, {@code false} otherwise
      */
@@ -224,11 +226,6 @@ public abstract class LocusWalker extends GATKTool {
             if (!hasReference() && !hasIntervals()) {
                 logger.warn("****************************************");
                 logger.warn("* Running this tool without a reference nor intervals can yield unexpected results, since it will emit results for loci with no reads.  A sequence dictionary has been found.  The easiest way avoid this message is to specify a reference.");
-                logger.warn("****************************************");
-            }
-            if (!hasIntervals() && hasReference()) {
-                logger.warn("****************************************");
-                logger.warn("* Running this tool without intervals will cause this tool to run on the entire genome, since it will emit results for loci with no reads.");
                 logger.warn("****************************************");
             }
         }
