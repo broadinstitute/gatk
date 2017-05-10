@@ -419,6 +419,10 @@ To perform an upload, use
 
 Currently all builds are considered snapshots.  The archive name is based off of `git describe`.
 
+## GATK4 Docker images
+
+Please see the README.md in ``scripts/docker``.  This has instructions for the Dockerfile in the root directory.
+
 ### Further Reading on Spark
 
 [Apache Spark](https://spark.apache.org/) is a fast and general engine for large-scale data processing.

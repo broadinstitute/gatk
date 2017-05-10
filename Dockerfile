@@ -1,13 +1,25 @@
-# http://phusion.github.io/baseimage-docker/
-FROM phusion/baseimage
+# Using OpenJDK 8
+FROM broadinstitute/gatk:gatkbase-1.0
 
-RUN  add-apt-repository ppa:webupd8team/java && \
-     add-apt-repository -y ppa:webupd8team/java && \
-     echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections && \
-     echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections && \
-     apt-get update && \
-     apt-get install -y oracle-java8-installer && \
-     apt-get install -y r-base-dev 
-    
-ADD . /hellbender
-RUN cd /hellbender && /hellbender/gradlew installApp
+ADD . /gatk
+
+RUN Rscript /gatk/scripts/install_R_packages.R
+
+WORKDIR /gatk
+RUN /gatk/gradlew clean compileTestJava installAll localJar
+
+WORKDIR /root
+
+# Make sure we can see a help message
+RUN ln -sFv /gatk/build/libs/gatk.jar
+RUN java -jar gatk.jar -h
+
+# Install git lfs and get latest big files
+WORKDIR /gatk
+RUN bash scripts/install_git_lfs.sh
+
+# Create a simple unit test runner
+ENV CI true
+RUN echo "cd /gatk/ && ./gradlew test" >/root/run_unit_tests.sh
+
+WORKDIR /root

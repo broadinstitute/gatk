@@ -17,7 +17,7 @@ import java.security.GeneralSecurityException;
 
 public final class BucketUtilsTest extends BaseTest {
 
-    @Test
+    @Test(groups={"bucket"})
     public void testIsCloudStorageURL(){
         Assert.assertTrue(BucketUtils.isCloudStorageUrl("gs://abucket/bucket"));
         Assert.assertFalse(BucketUtils.isCloudStorageUrl("hdfs://namenode/path/to/file"));
@@ -88,7 +88,7 @@ public final class BucketUtilsTest extends BaseTest {
         Assert.assertFalse(BucketUtils.fileExists(intermediate, popts));
     }
 
-    @Test
+    @Test(groups={"bucket"})
     public void testGetPathOnGcsDirectory() throws Exception {
         final String dirPath = "gs://bucket/my/dir/";
         final Path pathOnGcs = BucketUtils.getPathOnGcs(dirPath);

@@ -104,7 +104,7 @@ public final class FeatureInputUnitTest extends BaseTest {
         Assert.assertEquals(gendbInput.getName(), expectedLogicalName, "wrong logical name");
     }
 
-    @Test(dataProvider = "GcsPathAndNameData")
+    @Test(dataProvider = "GcsPathAndNameData", groups={"bucket"})
     public void testGcsPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
         final FeatureInput<VariantContext> gcsInput = new FeatureInput<>(inputString);
 

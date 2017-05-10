@@ -21,12 +21,12 @@ public final class GcsNioIntegrationTest extends BaseTest {
     final String privateFilePath2 = "org/broadinstitute/hellbender/utils/nio/private_file_2.txt";
     final String largeFilePath = "large/human_g1k_v37.20.21.fasta";
 
-    @Test
+    @Test(groups={"bucket"})
     public void testGcsEnabled() {
         FileSystem fs = FileSystems.getFileSystem(URI.create("gs://domain-registry-alpha"));
     }
 
-    @Test
+    @Test(groups={"bucket"})
     public void openPublicFile() throws IOException {
         try (InputStream inputStream = Files.newInputStream(Paths.get(URI.create(
                 "gs://pgp-harvard-data-public/hu011C57/GS000018120-DID/GS000015172-ASM/manifest.all.sig")))) {
