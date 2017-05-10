@@ -388,6 +388,9 @@ task SplitIntervals {
   String m2_docker
 
   command {
+    # fail if *any* command below (not just the last) doesn't return 0, in particular if GATK SplitIntervals fails
+    set -e
+
     # Use GATK Jar override if specified
     GATK_JAR=${gatk4_jar}
     if [[ "${gatk4_jar_override}" == *.jar ]]; then
@@ -422,6 +425,9 @@ task oncotate_m2 {
     String? onco_ds_local_db_dir
     command {
 
+          # fail if *any* command below (not just the last) doesn't return 0, in particular if wget fails
+          set -e
+
           # local db dir is a directory and has been specified
           if [[ -d "${onco_ds_local_db_dir}" ]]; then
               echo "Using local db-dir: ${onco_ds_local_db_dir}"
@@ -442,7 +448,8 @@ task oncotate_m2 {
           fi
 
 
-        /root/oncotator_venv/bin/oncotator --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  -v ${m2_vcf} ${entity_id}.oncotated.vcf hg19 -i VCF -o VCF --infer-onps --collapse-number-annotations --log_name oncotator.log
+        /root/oncotator_venv/bin/oncotator --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
+            -v ${m2_vcf} ${entity_id}.oncotated.vcf hg19 -i VCF -o VCF --infer-onps --collapse-number-annotations --log_name oncotator.log
     }
 
     runtime {
