@@ -3,14 +3,11 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections4.Predicate;
 import org.apache.commons.collections4.iterators.FilterIterator;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
@@ -83,14 +80,17 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
         }
     }
 
-    // this may often be overridden
-    protected Predicate<VariantContext> makeVariantFilter() {
+
+    protected Predicate<VariantContext> makeTruthVariantFilter() {
         return vc -> !vc.isFiltered();
     }
 
+    // this may often be overridden
+    protected Predicate<VariantContext> makeEvalVariantFilter() { return vc -> true; }
+
     private Spliterator<TruthVersusEval> getSpliteratorForDrivingVariants() {
-        final Iterator<VariantContext> truthIterator = new FilterIterator<>(truthVariants.iterator(), makeVariantFilter());
-        final Iterator<VariantContext> evalIterator = new FilterIterator<>(evalVariants.iterator(), makeVariantFilter());
+        final Iterator<VariantContext> truthIterator = new FilterIterator<>(truthVariants.iterator(), makeTruthVariantFilter());
+        final Iterator<VariantContext> evalIterator = new FilterIterator<>(evalVariants.iterator(), makeEvalVariantFilter());
         return new ConcordanceIterator(truthIterator, evalIterator).spliterator();
     }
 
@@ -174,16 +174,18 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
 
         public TruthVersusEval next() {
             if (!truthIterator.hasNext()) {
-                return TruthVersusEval.falsePositive(evalIterator.next());
+                return nextEvalOnlyVariant();
             } else if (!evalIterator.hasNext()) {
-                return TruthVersusEval.falseNegative(truthIterator.next());
+                return nextTruthOnlyVariant();
             }
 
             final int positionCompare = variantContextComparator.compare(truthIterator.peek(), evalIterator.peek());
             if (positionCompare > 0) {
-                return TruthVersusEval.falsePositive(evalIterator.next());
+                return nextEvalOnlyVariant();
             } else if (positionCompare < 0) {
-                return TruthVersusEval.falseNegative(truthIterator.next());
+                return nextTruthOnlyVariant();
+            } else if(evalIterator.peek().isFiltered()) {
+                return TruthVersusEval.filteredFalseNegative(truthIterator.next(), evalIterator.next());
             } else if (areVariantsAtSameLocusConcordant(truthIterator.peek(), evalIterator.peek())) {
                 return TruthVersusEval.truePositive(truthIterator.next(), evalIterator.next());
             } else {
@@ -191,6 +193,14 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
                 return TruthVersusEval.falseNegative(truthIterator.next());
             }
         }
+
+        // if a variant only exists in the eval vcf, it is either a false positive or a filtered true negative
+        private TruthVersusEval nextEvalOnlyVariant() {
+            final VariantContext evalVariant = evalIterator.next();
+            return evalVariant.isFiltered() ? TruthVersusEval.filteredTrueNegative(evalVariant) : TruthVersusEval.falsePositive(evalVariant);
+        }
+
+        private TruthVersusEval nextTruthOnlyVariant() { return TruthVersusEval.falseNegative(truthIterator.next()); }
 
         private Spliterator<TruthVersusEval> spliterator() {
             return Spliterators.spliteratorUnknownSize(this, 0);
@@ -208,36 +218,46 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
     protected static class TruthVersusEval implements Locatable {
         private final Optional<VariantContext> truth;
         private final Optional<VariantContext> eval;
+        private final ConcordanceState concordanceState;
 
-        private TruthVersusEval(final Optional<VariantContext> truth, final Optional<VariantContext> eval) {
+        private TruthVersusEval(final Optional<VariantContext> truth, final Optional<VariantContext> eval,
+                                final ConcordanceState concordanceState) {
             this.truth = truth;
             this.eval = eval;
+            this.concordanceState = concordanceState;
         }
 
         public static TruthVersusEval falseNegative(final VariantContext truth) {
-            return new TruthVersusEval(Optional.of(truth), Optional.empty());
+            return new TruthVersusEval(Optional.of(truth), Optional.empty(), ConcordanceState.FALSE_NEGATIVE);
         }
 
         public static TruthVersusEval falsePositive(final VariantContext eval) {
-            return new TruthVersusEval(Optional.empty(), Optional.of(eval));
+            return new TruthVersusEval(Optional.empty(), Optional.of(eval), ConcordanceState.FALSE_POSITIVE);
         }
 
         public static TruthVersusEval truePositive(final VariantContext truth, final VariantContext eval) {
-            return new TruthVersusEval(Optional.of(truth), Optional.of(eval));
+            return new TruthVersusEval(Optional.of(truth), Optional.of(eval), ConcordanceState.TRUE_POSITIVE);
+        }
+
+        public static TruthVersusEval filteredFalseNegative(final VariantContext truth, final VariantContext eval) {
+            return new TruthVersusEval(Optional.of(truth), Optional.of(eval), ConcordanceState.FILTERED_FALSE_NEGATIVE);
+        }
+
+        public static TruthVersusEval filteredTrueNegative(final VariantContext eval) {
+            return new TruthVersusEval(Optional.empty(), Optional.of(eval), ConcordanceState.FILTERED_TRUE_NEGATIVE);
         }
 
         public ConcordanceState getConcordance() {
-            return truth.isPresent() ? (eval.isPresent() ? ConcordanceState.TRUE_POSITIVE : ConcordanceState.FALSE_NEGATIVE)
-                    : ConcordanceState.FALSE_POSITIVE;
+            return concordanceState;
         }
 
         public VariantContext getTruth() {
-            Utils.validateArg(truth.isPresent(), "This is a false positive and has no truth VariantContext.");
+            Utils.validateArg(truth.isPresent(), () -> "This is a " + concordanceState.toString() + " and has no truth VariantContext.");
             return truth.get();
         }
 
         public VariantContext getEval() {
-            Utils.validateArg(eval.isPresent(), "This is a false negative and has no eval VariantContext.");
+            Utils.validateArg(eval.isPresent(), () -> "This is a " + concordanceState.toString() + " and has no eval VariantContext.");
             return eval.get();
         }
 
