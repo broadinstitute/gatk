@@ -7,6 +7,7 @@ import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
+import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -274,5 +275,9 @@ public class GATKProtectedMathUtils {
 
     public static int median(final int[] values) {
         return (int) FastMath.round(new Median().evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
+    }
+
+    public static double dotProduct(double[] a, double[] b){
+        return MathUtils.sum(MathArrays.ebeMultiply(a, b));
     }
 }

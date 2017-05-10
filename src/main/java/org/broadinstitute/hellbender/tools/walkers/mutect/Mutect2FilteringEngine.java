@@ -1,17 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.math3.util.DoubleArray;
-import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-
 import java.util.*;
 
 /**
@@ -171,19 +167,26 @@ public class Mutect2FilteringEngine {
         return GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, attribute, () -> null, -1);
     }
 
-    private static void applyStrandBiasFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        if (MTFAC.ENABLE_STRAND_ARTIFACT_FILTER) {
-            if (vc.hasAttribute(GATKVCFConstants.TLOD_FWD_KEY) && vc.hasAttribute(GATKVCFConstants.TLOD_REV_KEY)
-                    && vc.hasAttribute(GATKVCFConstants.TUMOR_SB_POWER_FWD_KEY) && vc.hasAttribute(GATKVCFConstants.TUMOR_SB_POWER_REV_KEY)) {
-                final double forwardLod = vc.getAttributeAsDouble(GATKVCFConstants.TLOD_FWD_KEY, 0.0);
-                final double reverseLod = vc.getAttributeAsDouble(GATKVCFConstants.TLOD_REV_KEY, 0.0);
-                final double forwardPower = vc.getAttributeAsDouble(GATKVCFConstants.TUMOR_SB_POWER_FWD_KEY, 0.0);
-                final double reversePower = vc.getAttributeAsDouble(GATKVCFConstants.TUMOR_SB_POWER_REV_KEY, 0.0);
-                if ((forwardPower > MTFAC.STRAND_ARTIFACT_POWER_THRESHOLD && forwardLod < MTFAC.STRAND_ARTIFACT_LOD_THRESHOLD) ||
-                        (reversePower > MTFAC.STRAND_ARTIFACT_POWER_THRESHOLD && reverseLod < MTFAC.STRAND_ARTIFACT_LOD_THRESHOLD)) {
-                    filters.add(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
-                }
-            }
+    private void applyStrandArtifactFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
+        Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final double[] posteriorProbabilities = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
+                tumorGenotype, (StrandArtifact.POSTERIOR_PROBABILITIES_KEY), () -> null, -1);
+        final double[] mapAlleleFractionEstimates = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
+                tumorGenotype, (StrandArtifact.MAP_ALLELE_FRACTIONS_KEY), () -> null, -1);
+
+        if (posteriorProbabilities == null || mapAlleleFractionEstimates == null){
+            return;
+        }
+
+        final int maxZIndex = MathUtils.maxElementIndex(posteriorProbabilities);
+
+        if (maxZIndex == StrandArtifact.StrandArtifactZ.NO_ARTIFACT.ordinal()){
+            return;
+        }
+
+        if (posteriorProbabilities[maxZIndex] > MTFAC.STRAND_ARTIFACT_POSTERIOR_PROB_THRESHOLD &&
+                mapAlleleFractionEstimates[maxZIndex] < MTFAC.STRAND_ARTIFACT_ALLELE_FRACTION_THRESHOLD){
+            filters.add(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
         }
     }
 
@@ -202,7 +205,7 @@ public class Mutect2FilteringEngine {
         applyPanelOfNormalsFilter(MTFAC, vc, filters);
         applyGermlineVariantFilter(MTFAC, vc, filters);
         applyArtifactInNormalFilter(MTFAC, vc, filters);
-        applyStrandBiasFilter(MTFAC, vc, filters);
+        applyStrandArtifactFilter(MTFAC, vc, filters);
         applySTRFilter(vc, filters);
         applyContaminationFilter(MTFAC, vc, filters);
         applyMedianBaseQualityDifferenceFilter(MTFAC, vc, filters);

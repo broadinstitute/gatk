@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.Iterator;
@@ -75,6 +76,8 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
     }
 
     private void initializeTruthVariantsIfNecessary() {
+        IOUtils.canReadFile(new File(truthVariantsFile));
+
         if (truthVariants == null) {
             truthVariants = new FeatureDataSource<>(new FeatureInput<>(truthVariantsFile, "truth"), CACHE_LOOKAHEAD, VariantContext.class);
         }
@@ -128,8 +131,12 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
     @Override
     protected final void onShutdown() {
         super.onShutdown();
-        truthVariants.close();
-        evalVariants.close();
+        if( truthVariants != null ) {
+            truthVariants.close();
+        }
+        if( evalVariants != null) {
+            evalVariants.close();
+        }
     }
     // ********** End of basic traversal methods
 

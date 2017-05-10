@@ -18,6 +18,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -235,6 +236,4 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static String keyForVariant( final VariantContext variant ) {
         return String.format("%s:%d-%d %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getAlleles());
     }
-
-
 }
