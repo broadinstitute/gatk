@@ -164,13 +164,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                         " " + System.getProperty("java.runtime.version") +
                         "; Version: " + getCommandLineParser().getVersion());
 
-                Defaults.allDefaults().entrySet().stream().forEach(e->
-                        logger.info(Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
-                );
-                final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
-                logger.info("Deflater " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
-                final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
-                logger.info("Inflater " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
+                // Print important settings to the logger:
+                printSettings();
             }
             catch (final Exception e) { /* Unpossible! */ }
         }
@@ -277,6 +272,31 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         Utils.nonNull(headers);
         this.defaultHeaders.clear();
         this.defaultHeaders.addAll(headers);
+    }
+
+    /**
+     * Output a curated set of important settings to the logger.
+     *
+     * May be overridden by subclasses to specify a different set of settings to output.
+     */
+    protected void printSettings() {
+        if ( VERBOSITY != Log.LogLevel.DEBUG ) {
+            logger.info("HTSJDK Defaults.COMPRESSION_LEVEL : " + Defaults.COMPRESSION_LEVEL);
+            logger.info("HTSJDK Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS);
+            logger.info("HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS);
+            logger.info("HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE : " + Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE);
+        }
+        else {
+            // At DEBUG verbosity, print all the HTSJDK defaults:
+            Defaults.allDefaults().entrySet().stream().forEach(e->
+                    logger.info("HTSJDK " + Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
+            );
+        }
+
+        final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
+        logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
+        final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
+        logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
     }
 
     /**
