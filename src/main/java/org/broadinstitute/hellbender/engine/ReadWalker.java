@@ -36,6 +36,9 @@ public abstract class ReadWalker extends GATKTool {
         return true;
     }
 
+    @Override
+    public String getProgressMeterRecordLabel() { return "reads"; }
+
     /**
      * This number controls the size of the cache for our FeatureInputs
      * (specifically, the number of additional bases worth of overlapping records to cache when querying feature sources).

@@ -117,6 +117,9 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Override
     public final boolean requiresReference() { return true; }
 
+    @Override
+    public String getProgressMeterRecordLabel() { return "regions"; }
+    
     private List<LocalReadShard> readShards;
     private Shard<GATKRead> currentReadShard;
 

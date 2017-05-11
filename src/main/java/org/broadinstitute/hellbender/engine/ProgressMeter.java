@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -50,6 +51,11 @@ public final class ProgressMeter {
      * Number of milliseconds in a minute
      */
     public static final long MILLISECONDS_PER_MINUTE = MILLISECONDS_PER_SECOND * 60L;
+
+    /**
+     * Default label for records in logger messages. For display purposes only.
+     */
+    public static final String DEFAULT_RECORD_LABEL = "records";
 
     /**
      * We output a line to the logger after this many seconds have elapsed
@@ -115,6 +121,11 @@ public final class ProgressMeter {
     private boolean stopped;
 
     /**
+     * Label for records in logger messages. For display purposes only.
+     */
+    private String recordLabel = DEFAULT_RECORD_LABEL;
+
+    /**
      * Create a progress meter with the default update interval of {@link #DEFAULT_SECONDS_BETWEEN_UPDATES} seconds
      * and the default time function {@link #DEFAULT_TIME_FUNCTION}.
      */
@@ -158,6 +169,16 @@ public final class ProgressMeter {
      */
     public void setRecordsBetweenTimeChecks( final long recordsBetweenTimeChecks ) {
         this.recordsBetweenTimeChecks = recordsBetweenTimeChecks;
+    }
+
+    /**
+     * Change the label used for records in logger messages. Default label is {@link #DEFAULT_RECORD_LABEL}
+     *
+     * @param label Label to use for records in logger messages. Not null.
+     */
+    public void setRecordLabel( final String label ) {
+        Utils.nonNull(label);
+        this.recordLabel = label;
     }
 
     /**
@@ -210,7 +231,9 @@ public final class ProgressMeter {
         Utils.validate( !stopped, "the progress meter has been stopped already");
         this.stopped = true;
         currentTimeMs = timeFunction.getAsLong();
-        logger.info(String.format("Traversal complete. Processed %d total records in %.1f minutes.", numRecordsProcessed, elapsedTimeInMinutes()));
+        // Output progress a final time at the end
+        printProgress();
+        logger.info(String.format("Traversal complete. Processed %d total %s in %.1f minutes.", numRecordsProcessed, recordLabel, elapsedTimeInMinutes()));
     }
 
     /**
@@ -218,7 +241,9 @@ public final class ProgressMeter {
      */
     private void printHeader() {
         logger.info(String.format("%20s  %15s  %20s  %15s",
-                                  "Current Locus", "Elapsed Minutes", "Records Processed", "Records/Minute"));
+                                  "Current Locus", "Elapsed Minutes",
+                                  StringUtils.capitalize(recordLabel) + " Processed",
+                                  StringUtils.capitalize(recordLabel) + "/Minute"));
     }
 
     /**

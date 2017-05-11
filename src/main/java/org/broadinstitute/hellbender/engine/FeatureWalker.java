@@ -29,6 +29,9 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
     public boolean requiresFeatures(){
         return true;
     }
+    
+    @Override
+    public String getProgressMeterRecordLabel() { return "features"; }
 
     @Override
     void initializeFeatures() {

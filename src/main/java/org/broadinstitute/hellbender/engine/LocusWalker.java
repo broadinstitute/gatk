@@ -55,6 +55,9 @@ public abstract class LocusWalker extends GATKTool {
         return true;
     }
 
+    @Override
+    public String getProgressMeterRecordLabel() { return "loci"; }
+
     /**
      * Does this tool require deletions in the AlignmentContext? Tools that don't should override to return {@code false}.
      *
