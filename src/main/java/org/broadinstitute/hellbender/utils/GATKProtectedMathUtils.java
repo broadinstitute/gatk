@@ -273,11 +273,42 @@ public class GATKProtectedMathUtils {
         return IntStream.range(0, array1.size()).mapToDouble(n -> Math.abs(array1.get(n) - array2.get(n))).max().getAsDouble();
     }
 
-    public static int median(final int[] values) {
+    public static double[] posteriors(double[] log10Priors, double[] log10Likelihoods) {
+        return MathUtils.normalizeFromLog10ToLinearSpace(MathArrays.ebeAdd(log10Priors, log10Likelihoods));
+    }
+
+    @FunctionalInterface
+    public interface IntToDoubleArrayFunction {
+        double[] apply(int value);
+    }
+
+    // sum of int -> double[] function mapped to an index range
+    public static double[] sumArrayFunction(final int min, final int max, final IntToDoubleArrayFunction function) {
+        Utils.validateArg(max >= min, "max must be at least as great as min");
+        final double[] result = function.apply(min);
+        for (int n = min + 1; n < max; n++) {
+            final double[] newValues = function.apply(n);
+            Utils.validateArg(newValues.length == result.length, "array function returns different sizes for different inputs!");
+            for (int i = 0; i < result.length; i++) {
+                result[i] += newValues[i];
+            }
+        }
+        return result;
+    }
+
+    public static void addToArrayInPlace(final double[] array, final double[] summand) {
+        Utils.validateArg(array.length == summand.length, "Arrays must have same length");
+        for (int n = 0; n < array.length; n++) {
+            array[n] += summand[n];
+        }
+    }
+
+	public static int median(final int[] values) {
         return (int) FastMath.round(new Median().evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
     }
 
     public static double dotProduct(double[] a, double[] b){
         return MathUtils.sum(MathArrays.ebeMultiply(a, b));
     }
+
 }
