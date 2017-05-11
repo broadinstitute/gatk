@@ -120,10 +120,10 @@ public final class AlignedAssemblyOrExcuse {
     /**
      * write a SAM file containing records for each aligned contig
      */
-    static void writeSAMFile( final String samFile, final PipelineOptions pOpts,
-                              final SAMFileHeader header,
-                              final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList ) {
-        try ( final OutputStream os = BucketUtils.createFile(samFile, pOpts) ) {
+    static void writeSAMFile( final String samFile,
+                                     final SAMFileHeader header,
+                                     final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList ) {
+        try ( final OutputStream os = BucketUtils.createFile(samFile) ) {
             final SAMTextWriter writer = new SAMTextWriter(os);
             writer.setSortOrder(SAMFileHeader.SortOrder.queryname, true);
             writer.setHeader(header);
@@ -188,7 +188,6 @@ public final class AlignedAssemblyOrExcuse {
      * write a file describing each interval
      */
     public static void writeIntervalFile( final String intervalFile,
-                                          final PipelineOptions pOpts,
                                           final SAMFileHeader header,
                                           final List<SVInterval> intervals,
                                           final List<AlignedAssemblyOrExcuse> intervalDispositions ) {
@@ -197,7 +196,7 @@ public final class AlignedAssemblyOrExcuse {
                 resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
 
         try ( final OutputStreamWriter writer =
-                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile,pOpts))) ) {
+                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile))) ) {
             final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
             final int nIntervals = intervals.size();
             for ( int intervalId = 0; intervalId != nIntervals; ++intervalId ) {

@@ -88,10 +88,9 @@ public final class QNameAndInterval implements Map.Entry<String, Integer> {
      * write template names and interval IDs to a file.
      */
     public static void writeQNames( final String qNameFile,
-                                    final PipelineOptions pOpts,
                                     final Iterable<QNameAndInterval> qNames ) {
         try ( final OutputStreamWriter writer =
-                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(qNameFile, pOpts))) ) {
+                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(qNameFile))) ) {
             for ( final QNameAndInterval qnameAndInterval : qNames ) {
                 writer.write(qnameAndInterval.toString() + "\n");
             }

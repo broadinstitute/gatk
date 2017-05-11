@@ -136,12 +136,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // record the intervals
         if ( locations.intervalFile != null ) {
-            AlignedAssemblyOrExcuse.writeIntervalFile(locations.intervalFile, pipelineOptions, header, intervals, alignedAssemblyOrExcuseList);
+            AlignedAssemblyOrExcuse.writeIntervalFile(locations.intervalFile, header, intervals, alignedAssemblyOrExcuseList);
         }
 
         // write the output file
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-        AlignedAssemblyOrExcuse.writeSAMFile(outputSAM, pipelineOptions, cleanHeader, alignedAssemblyOrExcuseList);
+        AlignedAssemblyOrExcuse.writeSAMFile(outputSAM, cleanHeader, alignedAssemblyOrExcuseList);
         log("Wrote SAM file of aligned contigs.", toolLogger);
 
         return alignedAssemblyOrExcuseList;
@@ -167,7 +167,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Set<Integer> crossContigsToIgnoreSet;
         if ( locations.crossContigsToIgnoreFile == null ) crossContigsToIgnoreSet = Collections.emptySet();
         else crossContigsToIgnoreSet = readCrossContigsToIgnoreFile(locations.crossContigsToIgnoreFile,
-                                                                    pipelineOptions,
                                                                     header.getSequenceDictionary());
         final JavaRDD<GATKRead> mappedReads =
                 unfilteredReads.filter(read ->
@@ -197,7 +196,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         broadcastMetadata.destroy();
 
         if ( locations.qNamesMappedFile != null ) {
-            QNameAndInterval.writeQNames(locations.qNamesMappedFile, pipelineOptions, qNamesMultiMap);
+            QNameAndInterval.writeQNames(locations.qNamesMappedFile, qNamesMultiMap);
         }
         log("Discovered " + qNamesMultiMap.size() + " mapped template names.", logger);
 
@@ -258,7 +257,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         goodPrimaryLines));
 
         if ( locations.qNamesAssemblyFile != null ) {
-            QNameAndInterval.writeQNames(locations.qNamesAssemblyFile, pipelineOptions, qNamesMultiMap);
+            QNameAndInterval.writeQNames(locations.qNamesAssemblyFile, qNamesMultiMap);
         }
 
         log("Discovered "+qNamesMultiMap.size()+" unique template names for assembly.", logger);
@@ -379,7 +378,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final FermiLiteAssembly assembly = new FermiLiteAssembler().createAssembly(readsList);
             if ( gfaDir != null ) {
                 final String gfaName = String.format("%s/assembly%06d.gfa",gfaDir,intervalAndReads._1());
-                try ( final OutputStream os = BucketUtils.createFile(gfaName, pipelineOptions) ) {
+                try ( final OutputStream os = BucketUtils.createFile(gfaName) ) {
                     assembly.writeGFA(os);
                 }
                 catch ( final IOException ioe ) {

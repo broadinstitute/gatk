@@ -223,7 +223,7 @@ public class ReadMetadata {
                                       final String filename,
                                       final PipelineOptions pipelineOptions ) {
         try ( final Writer writer =
-                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(filename, pipelineOptions))) ) {
+                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(filename))) ) {
             writer.write("#reads:\t" + readMetadata.getNReads() + "\n");
             writer.write("#partitions:\t" + readMetadata.getNPartitions() + "\n");
             writer.write("max reads/partition:\t" + readMetadata.getMaxReadsInPartition() + "\n");

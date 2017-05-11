@@ -66,10 +66,10 @@ public class SVFastqUtils {
         }
     }
 
-    public static List<FastqRead> readFastqFile( final String fileName, final PipelineOptions options ) {
+    public static List<FastqRead> readFastqFile( final String fileName ) {
         final int INITIAL_CAPACITY = 10000; // absolute guess, just something not too crazy small
         final List<FastqRead> reads = new ArrayList<>(INITIAL_CAPACITY);
-        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fileName, options))) ) {
+        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fileName))) ) {
             String seqIdLine;
             int lineNo = 0;
             while ( (seqIdLine = reader.readLine()) != null ) {

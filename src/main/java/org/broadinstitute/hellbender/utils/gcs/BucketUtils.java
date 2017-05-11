@@ -24,6 +24,9 @@ import shaded.cloud_nio.org.joda.time.Duration;
 import java.io.*;
 import java.util.Arrays;
 import java.util.UUID;
+import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.HttpTransportOptions;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 
 /**
  * Utilities for dealing with google buckets.
