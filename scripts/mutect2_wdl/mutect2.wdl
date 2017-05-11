@@ -8,8 +8,7 @@
 #  normal_bam, normal_bam_index, and normal_sample_name: self-explanatory
 #  pon, pon_index: optional panel of normals and index in vcf format containing known false positves
 #  scatter_count: number of parallel jobs when scattering over intervals
-#  dbsnp, dbsnp_index: optional database of known germline variants
-#  cosmic, cosmic_index: optional database of known somatic variants
+#  gnomad, gnomad_index: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
 #  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
 #  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  is_run_oncotator: if true, annotate the M2 VCFs using oncotator.  Important:  This requires a docker image and should
@@ -39,10 +38,8 @@ workflow Mutect2 {
   File? pon
   File? pon_index
   Int scatter_count
-  File? dbsnp
-  File? dbsnp_index
-  File? cosmic
-  File? cosmic_index
+  File? gnomad
+  File? gnomad_index
   File? variants_for_contamination
   File? variants_for_contamination_index
   Boolean is_run_orientation_bias_filter
@@ -96,10 +93,8 @@ workflow Mutect2 {
         normal_sample_name = normal_sample_name,
         pon = pon,
         pon_index = pon_index,
-        dbsnp = dbsnp,
-        dbsnp_index = dbsnp_index,
-        cosmic = cosmic,
-        cosmic_index = cosmic_index,
+        gnomad = gnomad,
+        gnomad_index = gnomad_index,
         output_vcf_name = ProcessOptionalArguments.output_name,
         gatk4_jar_override = gatk4_jar_override,
         preemptible_attempts = preemptible_attempts,
@@ -187,10 +182,8 @@ task M2 {
   String? normal_sample_name
   File? pon
   File? pon_index
-  File? dbsnp
-  File? dbsnp_index
-  File? cosmic
-  File? cosmic_index
+  File? gnomad
+  File? gnomad_index
   String output_vcf_name
   String m2_docker
   File? gatk4_jar_override
@@ -212,8 +205,7 @@ task M2 {
     -I ${tumor_bam} \
     -tumor ${tumor_sample_name} \
     $normal_command_line \
-    ${"--dbsnp " + dbsnp} \
-    ${"--cosmic " + cosmic} \
+    ${"--germline_resource " + gnomad} \
     ${"--normal_panel " + pon} \
     ${"-L " + intervals} \
     -O "${output_vcf_name}.vcf"

@@ -76,10 +76,8 @@ workflow Mutect2ReplicateValidation {
 	File ref_dict
 	File? pon
 	File? pon_index
-	File? dbsnp
-	File? dbsnp_index
-	File? cosmic
-	File? cosmic_index
+	File? gnomad
+	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
 	Boolean is_run_oncotator
 	String oncotator_docker
@@ -106,10 +104,8 @@ workflow Mutect2ReplicateValidation {
 				pon = pon,
 				pon_index = pon_index,
 				scatter_count = scatter_count,
-				dbsnp = dbsnp,
-				dbsnp_index = dbsnp_index,
-				cosmic = cosmic,
-				cosmic_index = cosmic_index,
+				gnomad = gnomad,
+				gnomad_index = gnomad_index,
 				picard_jar = picard_jar,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = is_run_oncotator,

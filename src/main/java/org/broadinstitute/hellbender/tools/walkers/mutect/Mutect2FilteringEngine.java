@@ -128,19 +128,12 @@ public class Mutect2FilteringEngine {
 
 
     private static void applyGermlineVariantFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        if (!vc.hasAttribute(GATKVCFConstants.NORMAL_LOD_KEY) || !vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY)) {
-            return;
-        }
+        if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY) && vc.hasAttribute(GermlineProbabilityCalculator.GERMLINE_POSTERIORS_VCF_ATTRIBUTE)) {
+            final double[] tumorLods = getArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+            final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
-        final double[] tumorLods = getArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
-        final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
-
-        final boolean siteInCosmic = vc.hasAttribute(SomaticGenotypingEngine.IN_COSMIC_VCF_ATTRIBUTE);
-        final boolean siteInDbsnp = vc.hasAttribute(SomaticGenotypingEngine.IN_DBSNP_VCF_ATTRIBUTE);
-        if (siteInDbsnp && !siteInCosmic ) {
-            // take the normal LOD of the best somatic alt allele
-            final double normalLod = getArrayAttribute(vc, GATKVCFConstants.NORMAL_LOD_KEY)[indexOfMaxTumorLod];
-            if (normalLod < MTFAC.NORMAL_DBSNP_LOD_THRESHOLD) {
+            final double[] log10GermlinePosteriors = getArrayAttribute(vc, GermlineProbabilityCalculator.GERMLINE_POSTERIORS_VCF_ATTRIBUTE);
+            if (log10GermlinePosteriors[indexOfMaxTumorLod] > Math.log10(MTFAC.maxGermlinePosterior)) {
                 filters.add(GATKVCFConstants.GERMLINE_RISK_FILTER_NAME);
             }
         }

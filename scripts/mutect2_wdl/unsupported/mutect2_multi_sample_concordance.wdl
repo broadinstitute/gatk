@@ -17,10 +17,8 @@ workflow Mutect2_Multi_Concordance {
 	File ref_dict
 	File? pon
 	File? pon_index
-	File? dbsnp
-	File? dbsnp_index
-	File? cosmic
-	File? cosmic_index
+	File? gnomad
+	File? gnomad_index
 	File? variants_for_contamination
     File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
@@ -44,10 +42,8 @@ workflow Mutect2_Multi_Concordance {
         	ref_dict = ref_dict,
         	pon = pon,
         	pon_index = pon_index,
-        	dbsnp = dbsnp,
-        	dbsnp_index = dbsnp_index,
-        	cosmic = cosmic,
-        	cosmic_index = cosmic_index,
+        	gnomad = gnomad,
+        	gnomad_index = gnomad_index,
         	variants_for_contamination = variants_for_contamination,
             variants_for_contamination_index = variants_for_contamination_index,
         	is_run_orientation_bias_filter = is_run_orientation_bias_filter,

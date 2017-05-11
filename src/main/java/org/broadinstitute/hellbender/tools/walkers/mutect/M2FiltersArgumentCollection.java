@@ -18,11 +18,11 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public double NORMAL_ARTIFACT_LOD_THRESHOLD = 0.0;
 
     /**
-     * The LOD threshold for the normal is typically made more strict if the variant has been seen in dbSNP (i.e. another
-     * normal sample). We thus require MORE evidence that a variant is NOT seen in this tumor's normal if it has been observed as a germline variant before.
+     * The default value of this argument was chosen to achieve roughly one false positive per covered megabase according
+     * to a back-of-the-envelope calculation assuming the neutral model of allele selection, with parameters estimated from ExAC.
      */
-    @Argument(fullName = "dbsnp_normal_lod", optional = true, doc = "LOD threshold for calling normal non-variant at dbsnp sites")
-    public double NORMAL_DBSNP_LOD_THRESHOLD = 5.5;
+    @Argument(fullName = "max_germline_posterior", optional = true, doc = "Maximum posterior probability that an allele is a germline variant")
+    public double maxGermlinePosterior = 0.025;
 
     @Argument(fullName = "maxAltAllelesThreshold", optional = true, doc="filter variants with too many alt alleles")
     public int numAltAllelesThreshold = 1;
@@ -37,7 +37,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public int maxMedianClippingDifference = 1;
 
     @Argument(fullName = "maxMedianFragmentLengthDifference", optional = true, doc="filter variants for which alt reads' median fragment length is very different from the median for ref reads.")
-    public int maxMedianFragmentLengthDifference = 200;
+    public int maxMedianFragmentLengthDifference = 10000;
 
     @Argument(fullName = "minMedianReadPosition", optional = true, doc="filter variants for which the median position of alt alleles within reads is too near the end of reads.")
     public int minMedianReadPosition = 5;
