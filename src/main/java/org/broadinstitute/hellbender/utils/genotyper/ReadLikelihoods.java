@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -489,19 +490,23 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * @param candidateAlleles the potentially missing alleles.
      * @param defaultLikelihood the default read likelihood value for that allele.
      *
+     * @return {@code true} iff the the read-likelihood collection was modified by the addition of the input alleles.
+     *  So if all the alleles in the input collection were already present in the read-likelihood collection this method
+     *  will return {@code false}.
+     *
      * @throws IllegalArgumentException if {@code candidateAlleles} is {@code null} or there is more than
      * one missing allele that is a reference or there is one but the collection already has
      * a reference allele.
      */
-    public void addMissingAlleles(final Collection<A> candidateAlleles, final double defaultLikelihood) {
+    public boolean addMissingAlleles(final Collection<A> candidateAlleles, final double defaultLikelihood) {
         Utils.nonNull(candidateAlleles, "the candidateAlleles list cannot be null");
         if (candidateAlleles.isEmpty()) {
-            return;
+            return false;
         }
         final List<A> allelesToAdd = candidateAlleles.stream().filter(allele -> !alleles.containsAllele(allele)).collect(Collectors.toList());
 
         if (allelesToAdd.isEmpty()) {
-            return;
+            return false;
         }
 
         final int oldAlleleCount = alleles.numberOfAlleles();
@@ -536,6 +541,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
             }
             valuesBySampleIndex[s] = newValuesBySampleIndex;
         }
+        return true;
     }
 
     /**
@@ -881,42 +887,62 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
         Utils.nonNull(nonRefAllele, "non-ref allele cannot be null");
         if (!nonRefAllele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
             throw new IllegalArgumentException("the non-ref allele is not valid");
-        }
-        if (alleles.containsAllele(nonRefAllele)) {
+        } else if (alleles.containsAllele(nonRefAllele)) {
             return;
-        }
-
-        final int oldAlleleCount = alleles.numberOfAlleles();
-        final int newAlleleCount = oldAlleleCount + 1;
-        @SuppressWarnings("unchecked")
-        final A[] newAlleles = (A[]) new Allele[newAlleleCount];
-        for (int a = 0; a < oldAlleleCount; a++) {
-            newAlleles[a] = alleles.getAllele(a);
-        }
-        newAlleles[oldAlleleCount] = nonRefAllele;
-        alleles = new IndexedAlleleList<>(newAlleles);
-        alleleList = null; // remove the cached alleleList.
-
-        final int sampleCount = samples.numberOfSamples();
-        for (int s = 0; s < sampleCount; s++) {
-            addNonReferenceAlleleLikelihoodsPerSample(oldAlleleCount, newAlleleCount, s);
+        } else if (addMissingAlleles(Collections.singleton(nonRefAllele), Double.NEGATIVE_INFINITY)) {
+            updateNonRefAlleleLikelihoods();
         }
     }
 
-    // Updates per-sample structures according to the addition of the NON_REF allele.
-    private void addNonReferenceAlleleLikelihoodsPerSample(final int alleleCount, final int newAlleleCount, final int sampleIndex) {
-        final double[][] sampleValues = valuesBySampleIndex[sampleIndex] = Arrays.copyOf(valuesBySampleIndex[sampleIndex], newAlleleCount);
-        final int sampleReadCount = readsBySampleIndex[sampleIndex].length;
+    /**
+     * Updates the likelihoods of the non-ref allele, if present, considering all non-symbolic alleles avaialble.
+     */
+    public void updateNonRefAlleleLikelihoods() {
+        updateNonRefAlleleLikelihoods(alleles);
+    }
 
-        final double[] nonRefAlleleLikelihoods = sampleValues[alleleCount] = new double [sampleReadCount];
-        Arrays.fill(nonRefAlleleLikelihoods, Double.NEGATIVE_INFINITY);
-        for (int r = 0; r < sampleReadCount; r++) {
-            final BestAllele bestAllele = searchBestAllele(sampleIndex,r,true);
-            final double secondBestLikelihood = Double.isInfinite(bestAllele.confidence) ? bestAllele.likelihood
-                    : bestAllele.likelihood - bestAllele.confidence;
-            nonRefAlleleLikelihoods[r] = secondBestLikelihood;
+    /**
+     * Updates the likelihood of the NonRef allele (if present) based on the likelihoods of a set of non-symbolic
+     * <p>
+     *     This method does
+     * </p>
+     *
+     *
+     * @param allelesToConsider
+     */
+    @SuppressWarnings("unchecked")  // for the cast (A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE below
+    public void updateNonRefAlleleLikelihoods(final AlleleList<A> allelesToConsider) {
+        final int alleleCount = alleles.numberOfAlleles();
+        final int nonRefAlleleIndex = indexOfAllele((A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int nonSymbolicAlleleCount = nonRefAlleleIndex < 0 ? alleleCount : alleleCount - 1;
+        // likelihood buffer reused across reads:
+        final double[] qualifiedAlleleLikelihoods = new double[nonSymbolicAlleleCount];
+        final Median medianCalculator = new Median();
+        for (int s = 0; s < samples.numberOfSamples(); s++) {
+            final double[][] sampleValues = valuesBySampleIndex[s];
+            final int readCount = sampleValues[0].length;
+            for (int r = 0; r < readCount; r++) {
+                final BestAllele bestAllele = searchBestAllele(s, r, true);
+                int numberOfQualifiedAlleleLikelihoods = 0;
+                for (int i = 0; i < alleleCount; i++) {
+                    final double alleleLikelihood = sampleValues[i][r];
+                    if (i != nonRefAlleleIndex && alleleLikelihood < bestAllele.likelihood
+                            && !Double.isNaN(alleleLikelihood) && allelesToConsider.indexOfAllele(alleles.getAllele(i)) != -1) {
+                        qualifiedAlleleLikelihoods[numberOfQualifiedAlleleLikelihoods++] = alleleLikelihood;
+                    }
+                }
+                final double nonRefLikelihood = medianCalculator.evaluate(qualifiedAlleleLikelihoods, 0, numberOfQualifiedAlleleLikelihoods);
+                // when the median is NaN that means that all applicable likekihoods are the same as the best
+                // so the read is not informative at all given the existing alleles. Unless there is only one (or zero) concrete
+                // alleles with give the same (the best) likelihood to the NON-REF. When there is only one (or zero) concrete
+                // alleles we set the NON-REF likelihood to NaN.
+                sampleValues[nonRefAlleleIndex][r] = !Double.isNaN(nonRefLikelihood) ? nonRefLikelihood
+                        : nonSymbolicAlleleCount <= 1 ? Double.NaN : bestAllele.likelihood;
+            }
         }
     }
+
+
 
     /**
      * Downsamples reads based on contamination fractions making sure that all alleles are affected proportionally.
