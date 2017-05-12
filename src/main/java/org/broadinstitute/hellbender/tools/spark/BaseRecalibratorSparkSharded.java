@@ -147,7 +147,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
                 PipelineOptions popts = auth.asPipelineOptionsDeprecated();
                 String d = IOUtils.createTempFile("knownVariants-"+i,".vcf").getAbsolutePath();
                 try {
-                    BucketUtils.copyFile(v, popts, d);
+                    BucketUtils.copyFile(v, d);
                 } catch (IOException x) {
                     throw new UserException.CouldNotReadInputFile(v,x);
                 }

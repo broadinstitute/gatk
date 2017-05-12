@@ -174,7 +174,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
         final String chunkPath = outputPath + "/" + basename + ".chunk." + chunkNum;
 
         try (SeekableByteChannel channel = Files.newByteChannel(gcsPath);
-             final OutputStream outputStream = new BufferedOutputStream(BucketUtils.createNonGCSFile(chunkPath))){
+             final OutputStream outputStream = new BufferedOutputStream(BucketUtils.createFile(chunkPath))){
 
             final long start = chunkSize * (long) chunkNum;
             channel.position(start);

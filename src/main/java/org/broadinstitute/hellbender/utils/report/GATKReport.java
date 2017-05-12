@@ -44,7 +44,7 @@ public final class GATKReport {
      * @param filename the path to the file to load
      */
     public GATKReport(String filename) {
-        this(BucketUtils.openFile(filename, null));
+        this(BucketUtils.openFile(filename));
     }
 
     /**

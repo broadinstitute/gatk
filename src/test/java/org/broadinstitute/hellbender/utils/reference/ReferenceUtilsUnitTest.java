@@ -57,7 +57,7 @@ public class ReferenceUtilsUnitTest extends BaseTest {
         final String bucketDictionary = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/ReferenceUtilsTest.dict";
         final PipelineOptions popts = getAuthenticatedPipelineOptions();
 
-        try ( final InputStream referenceDictionaryStream = BucketUtils.openFile(bucketDictionary, popts) ) {
+        try ( final InputStream referenceDictionaryStream = BucketUtils.openFile(bucketDictionary) ) {
             final SAMSequenceDictionary dictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);
 
             Assert.assertNotNull(dictionary, "Sequence dictionary null after loading");

@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
@@ -66,10 +65,10 @@ public class SVFastqUtils {
         }
     }
 
-    public static List<FastqRead> readFastqFile( final String fileName, final PipelineOptions options ) {
+    public static List<FastqRead> readFastqFile( final String fileName ) {
         final int INITIAL_CAPACITY = 10000; // absolute guess, just something not too crazy small
         final List<FastqRead> reads = new ArrayList<>(INITIAL_CAPACITY);
-        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fileName, options))) ) {
+        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fileName))) ) {
             String seqIdLine;
             int lineNo = 0;
             while ( (seqIdLine = reader.readLine()) != null ) {
@@ -124,10 +123,9 @@ public class SVFastqUtils {
     /** Write a list of FASTQ records into a file. */
     public static void writeFastqFile(
             final String fileName,
-            final PipelineOptions pipelineOptions,
             final Iterator<FastqRead> fastqReadItr ) {
         try ( final OutputStream writer =
-                      new BufferedOutputStream(BucketUtils.createFile(fileName, pipelineOptions)) ) {
+                      new BufferedOutputStream(BucketUtils.createFile(fileName)) ) {
             writeFastqStream(writer, fastqReadItr);
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write "+fileName, ioe);

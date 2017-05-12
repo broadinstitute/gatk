@@ -268,7 +268,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         if (numReducers != 0) {
             return numReducers;
         }
-        return 1 + (int) (BucketUtils.dirSize(getReadSourceName(), getAuthenticatedGCSOptions()) / getTargetPartitionSize());
+        return 1 + (int) (BucketUtils.dirSize(getReadSourceName()) / getTargetPartitionSize());
     }
 
     /**

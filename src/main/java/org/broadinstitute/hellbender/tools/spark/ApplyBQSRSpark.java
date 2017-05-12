@@ -46,7 +46,7 @@ public final class ApplyBQSRSpark extends GATKSparkTool {
     protected void runTool(JavaSparkContext ctx) {
         JavaRDD<GATKRead> initialReads = getReads();
         final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
-        Broadcast<RecalibrationReport> recalibrationReportBroadCast = ctx.broadcast(new RecalibrationReport(BucketUtils.openFile(bqsrRecalFile, gcsOptions)));
+        Broadcast<RecalibrationReport> recalibrationReportBroadCast = ctx.broadcast(new RecalibrationReport(BucketUtils.openFile(bqsrRecalFile)));
         final JavaRDD<GATKRead> recalibratedReads = ApplyBQSRSparkFn.apply(initialReads, recalibrationReportBroadCast, getHeaderForReads(), applyBQSRArgs);
         writeReads(ctx, output, recalibratedReads);
     }

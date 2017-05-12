@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -79,10 +78,10 @@ public final class PSUtils {
      * Same as GATKSparkTool's getRecommendedNumReducers(), but can specify input BAM path (for when --input is not used)
      */
     public static int pathseqGetRecommendedNumReducers(final String inputPath, final int numReducers,
-                                                       final PipelineOptions options, final int targetPartitionSize) {
+                                                       final int targetPartitionSize) {
         if (numReducers != 0) {
             return numReducers;
         }
-        return 1 + (int) (BucketUtils.dirSize(inputPath, options) / targetPartitionSize);
+        return 1 + (int) (BucketUtils.dirSize(inputPath) / targetPartitionSize);
     }
 }

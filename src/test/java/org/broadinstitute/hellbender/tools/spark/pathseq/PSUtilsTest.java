@@ -87,7 +87,7 @@ public class PSUtilsTest extends BaseTest {
 
         final Kryo kryo = new Kryo();
         kryo.setReferences(false);
-        final Input input = new Input(BucketUtils.openFile(tempFile.getPath(), null));
+        final Input input = new Input(BucketUtils.openFile(tempFile.getPath()));
         final Integer int_out = (Integer) kryo.readClassAndObject(input);
         final String str_out = (String) kryo.readClassAndObject(input);
         input.close();

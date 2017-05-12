@@ -76,7 +76,7 @@ public class SVVCFWriter {
     private static void writeVariants(final PipelineOptions pipelineOptions, final String fileName,
                                       final List<VariantContext> variantsArrayList, final SAMSequenceDictionary referenceSequenceDictionary) {
         try (final OutputStream outputStream
-                     = new BufferedOutputStream(BucketUtils.createFile(fileName, pipelineOptions))) {
+                     = new BufferedOutputStream(BucketUtils.createFile(fileName))) {
 
             final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 

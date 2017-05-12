@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import org.apache.logging.log4j.LogManager;
@@ -69,7 +68,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
-        gatherEvidenceAndWriteContigSamFile(ctx, getAuthenticatedGCSOptions(), evidenceAndAssemblyArgs, getHeaderForReads(),
+        gatherEvidenceAndWriteContigSamFile(ctx, evidenceAndAssemblyArgs, getHeaderForReads(),
                 getUnfilteredReads(), outputSAM, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
 
     }
@@ -80,7 +79,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      *
      * @return the in-memory representation of assembled contigs alignments, whose length equals the number of local assemblies (regardless of success of failure status)
      */
-    public static List<AlignedAssemblyOrExcuse> gatherEvidenceAndWriteContigSamFile(final JavaSparkContext ctx, final PipelineOptions pipelineOptions,
+    public static List<AlignedAssemblyOrExcuse> gatherEvidenceAndWriteContigSamFile(final JavaSparkContext ctx,
                                                                                     final FindBreakpointEvidenceSparkArgumentCollection argumentCollection,
                                                                                     final SAMFileHeader header, final JavaRDD<GATKRead> unfilteredReads,
                                                                                     final String outputSAM, final Logger toolLogger) {
@@ -110,7 +109,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // develop evidence, intervals, and, finally, a set of template names for each interval
         final Tuple2<List<SVInterval>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> intervalsAndQNameMap =
-                getMappedQNamesSet(params, ctx, header, unfilteredReads, locations, pipelineOptions, toolLogger);
+                getMappedQNamesSet(params, ctx, header, unfilteredReads, locations, toolLogger);
         final List<SVInterval> intervals = intervalsAndQNameMap._1;
         if ( intervals.isEmpty() ) return new ArrayList<>();
 
@@ -122,7 +121,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             alignedAssemblyOrExcuseList = new ArrayList<>();
         } else {
             alignedAssemblyOrExcuseList = addAssemblyQNames(params, ctx, argumentCollection.kmersToIgnoreFile, qNamesMultiMap, intervals.size(),
-                    allPrimaryLines, locations, pipelineOptions, toolLogger);
+                    allPrimaryLines, locations, toolLogger);
         }
 
         // write a FASTQ file for each interval
@@ -136,12 +135,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // record the intervals
         if ( locations.intervalFile != null ) {
-            AlignedAssemblyOrExcuse.writeIntervalFile(locations.intervalFile, pipelineOptions, header, intervals, alignedAssemblyOrExcuseList);
+            AlignedAssemblyOrExcuse.writeIntervalFile(locations.intervalFile, header, intervals, alignedAssemblyOrExcuseList);
         }
 
         // write the output file
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-        AlignedAssemblyOrExcuse.writeSAMFile(outputSAM, pipelineOptions, cleanHeader, alignedAssemblyOrExcuseList);
+        AlignedAssemblyOrExcuse.writeSAMFile(outputSAM, cleanHeader, alignedAssemblyOrExcuseList);
         log("Wrote SAM file of aligned contigs.", toolLogger);
 
         return alignedAssemblyOrExcuseList;
@@ -161,20 +160,18 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
             final Locations locations,
-            final PipelineOptions pipelineOptions,
             final Logger logger)
     {
         final Set<Integer> crossContigsToIgnoreSet;
         if ( locations.crossContigsToIgnoreFile == null ) crossContigsToIgnoreSet = Collections.emptySet();
         else crossContigsToIgnoreSet = readCrossContigsToIgnoreFile(locations.crossContigsToIgnoreFile,
-                                                                    pipelineOptions,
                                                                     header.getSequenceDictionary());
         final JavaRDD<GATKRead> mappedReads =
                 unfilteredReads.filter(read ->
                         !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped());
         final ReadMetadata readMetadata = new ReadMetadata(crossContigsToIgnoreSet, header, mappedReads);
         if ( locations.metadataFile != null ) {
-            ReadMetadata.writeMetadata(readMetadata, locations.metadataFile, pipelineOptions);
+            ReadMetadata.writeMetadata(readMetadata, locations.metadataFile);
         }
         log("Metadata retrieved.", logger);
 
@@ -188,7 +185,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         if ( locations.exclusionIntervalsFile != null ) {
             intervals = removeIntervalsNearGapsAndLog(intervals, params.exclusionIntervalPadding, readMetadata,
-                    locations.exclusionIntervalsFile, pipelineOptions, logger);
+                    locations.exclusionIntervalsFile, logger);
         }
         intervals = removeHighCoverageIntervalsAndLog(params, ctx, broadcastMetadata, intervals, mappedReads, logger);
 
@@ -197,7 +194,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         broadcastMetadata.destroy();
 
         if ( locations.qNamesMappedFile != null ) {
-            QNameAndInterval.writeQNames(locations.qNamesMappedFile, pipelineOptions, qNamesMultiMap);
+            QNameAndInterval.writeQNames(locations.qNamesMappedFile, qNamesMultiMap);
         }
         log("Discovered " + qNamesMultiMap.size() + " mapped template names.", logger);
 
@@ -206,12 +203,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     /** Read a file of contig names that will be ignored when checking for inter-contig pairs. */
     private static Set<Integer> readCrossContigsToIgnoreFile( final String crossContigsToIgnoreFile,
-                                                              final PipelineOptions pipelineOptions,
                                                               final SAMSequenceDictionary dictionary ) {
         final Set<Integer> ignoreSet = new HashSet<>();
         try ( final BufferedReader rdr =
                       new BufferedReader(
-                              new InputStreamReader(BucketUtils.openFile(crossContigsToIgnoreFile,pipelineOptions))) ) {
+                              new InputStreamReader(BucketUtils.openFile(crossContigsToIgnoreFile))) ) {
             String line;
             while ( (line = rdr.readLine()) != null ) {
                 final int tigId = dictionary.getSequenceIndex(line);
@@ -242,7 +238,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final int nIntervals,
             final JavaRDD<GATKRead> allPrimaryLines,
             final Locations locations,
-            final PipelineOptions pipelineOptions,
             final Logger logger)
     {
         final JavaRDD<GATKRead> goodPrimaryLines =
@@ -250,7 +245,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         final Tuple2<List<AlignedAssemblyOrExcuse>, HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> kmerIntervalsAndDispositions =
                 getKmerAndIntervalsSet(params, ctx, kmersToIgnoreFile, qNamesMultiMap, nIntervals,
-                                        goodPrimaryLines, locations, pipelineOptions, logger);
+                                        goodPrimaryLines, locations, logger);
         qNamesMultiMap.addAll(
                 getAssemblyQNames(
                         params,
@@ -259,7 +254,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         goodPrimaryLines));
 
         if ( locations.qNamesAssemblyFile != null ) {
-            QNameAndInterval.writeQNames(locations.qNamesAssemblyFile, pipelineOptions, qNamesMultiMap);
+            QNameAndInterval.writeQNames(locations.qNamesAssemblyFile, qNamesMultiMap);
         }
 
         log("Discovered "+qNamesMultiMap.size()+" unique template names for assembly.", logger);
@@ -282,14 +277,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final int nIntervals,
             final JavaRDD<GATKRead> goodPrimaryLines,
             final Locations locations,
-            final PipelineOptions pipelineOptions,
             final Logger logger)
     {
-        final Set<SVKmer> kmerKillSet = SVUtils.readKmersFile(params.kSize, kmersToIgnoreFile, pipelineOptions, new SVKmerLong(params.kSize));
+        final Set<SVKmer> kmerKillSet = SVUtils.readKmersFile(params.kSize, kmersToIgnoreFile, new SVKmerLong(params.kSize));
         log("Ignoring " + kmerKillSet.size() + " genomically common kmers.", logger);
 
         final Tuple2<List<AlignedAssemblyOrExcuse>, List<KmerAndInterval>> kmerIntervalsAndDispositions =
-                getKmerIntervals(params, ctx, qNamesMultiMap, nIntervals, kmerKillSet, goodPrimaryLines, locations, pipelineOptions);
+                getKmerIntervals(params, ctx, qNamesMultiMap, nIntervals, kmerKillSet, goodPrimaryLines, locations);
         final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap =
                 new HopscotchUniqueMultiMap<>(kmerIntervalsAndDispositions._2());
         log("Discovered " + kmerMultiMap.size() + " kmers.", logger);
@@ -370,17 +364,16 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 return new AlignedAssemblyOrExcuse(intervalAndReads._1(),
                         "no assembly -- too big (" + fastqSize + " bytes).");
             }
-            final PipelineOptions pipelineOptions = null;
             if ( fastqDir != null ) {
                 final String fastqName = String.format("%s/assembly%06d.fastq",fastqDir,intervalAndReads._1());
                 final ArrayList<SVFastqUtils.FastqRead> sortedReads = new ArrayList<>(intervalAndReads._2());
                 sortedReads.sort(Comparator.comparing(SVFastqUtils.FastqRead::getName));
-                SVFastqUtils.writeFastqFile(fastqName, pipelineOptions, sortedReads.iterator());
+                SVFastqUtils.writeFastqFile(fastqName, sortedReads.iterator());
             }
             final FermiLiteAssembly assembly = new FermiLiteAssembler().createAssembly(readsList);
             if ( gfaDir != null ) {
                 final String gfaName = String.format("%s/assembly%06d.gfa",gfaDir,intervalAndReads._1());
-                try ( final OutputStream os = BucketUtils.createFile(gfaName, pipelineOptions) ) {
+                try ( final OutputStream os = BucketUtils.createFile(gfaName) ) {
                     assembly.writeGFA(os);
                 }
                 catch ( final IOException ioe ) {
@@ -438,8 +431,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final int nIntervals,
             final Set<SVKmer> kmerKillSet,
             final JavaRDD<GATKRead> reads,
-            final Locations locations,
-            final PipelineOptions pipelineOptions ) {
+            final Locations locations ) {
 
         final Broadcast<Set<SVKmer>> broadcastKmerKillSet = ctx.broadcast(kmerKillSet);
         final Broadcast<HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> broadcastQNameAndIntervalsMultiMap =
@@ -488,7 +480,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         // record the kmers with their interval IDs
         if ( locations.kmerFile != null ) {
             try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                    BucketUtils.createFile(locations.kmerFile, pipelineOptions)))) {
+                    BucketUtils.createFile(locations.kmerFile)))) {
                 for (final KmerAndInterval kmerAndInterval : filteredKmerIntervals) {
                     writer.write(kmerAndInterval.toString(kSize) + " " + kmerAndInterval.getIntervalId() + "\n");
                 }
@@ -504,10 +496,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                                                    final int minDistanceToGap,
                                                                    final ReadMetadata readMetadata,
                                                                    final String exclusionIntervalsFile,
-                                                                   final PipelineOptions pipelineOptions,
                                                                    final Logger logger ) {
         final List<SVInterval> result = removeIntervalsNearGaps(intervals, minDistanceToGap,
-                readMetadata.getContigNameMap(), exclusionIntervalsFile, pipelineOptions);
+                readMetadata.getContigNameMap(), exclusionIntervalsFile);
         final int nKilledIntervals = intervals.size() - result.size();
         log("Killed " + nKilledIntervals + " intervals that were near reference gaps.", logger);
         return result;
@@ -517,11 +508,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @VisibleForTesting static List<SVInterval> removeIntervalsNearGaps( final List<SVInterval> intervals,
                                                                         final int minDistanceToGap,
                                                                         final Map<String, Integer> contigNameMap,
-                                                                        final String exclusionIntervalsFile,
-                                                                        final PipelineOptions pipelineOptions ) {
+                                                                        final String exclusionIntervalsFile ) {
         if ( exclusionIntervalsFile == null ) return intervals;
         final SortedSet<SVInterval> gaps =
-                new TreeSet<>(SVUtils.readIntervalsFile(exclusionIntervalsFile, pipelineOptions, contigNameMap));
+                new TreeSet<>(SVUtils.readIntervalsFile(exclusionIntervalsFile, contigNameMap));
         return intervals.stream()
                 .filter(interval -> {
                     final SortedSet<SVInterval> headSet = gaps.headSet(interval);

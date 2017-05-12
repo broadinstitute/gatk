@@ -38,7 +38,7 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
     public ReferenceTwoBitSource(PipelineOptions popts, String referenceURL) throws IOException {
         this.referenceURL = referenceURL;
         Utils.validateArg(isTwoBit(this.referenceURL), "ReferenceTwoBitSource can only take .2bit files");
-        byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL, popts));
+        byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
         this.twoBitSeqEntries = JavaConversions.mapAsJavaMap(twoBitFile.seqRecords());

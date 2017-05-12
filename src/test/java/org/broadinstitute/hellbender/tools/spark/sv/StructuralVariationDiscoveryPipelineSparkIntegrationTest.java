@@ -153,7 +153,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         if (onHDFS) {
             final File tempLocalVCF = BaseTest.createTempFile("variants", "vcf");
             tempLocalVCF.deleteOnExit();
-            BucketUtils.copyFile(generatedVCFPath, null, tempLocalVCF.getAbsolutePath());
+            BucketUtils.copyFile(generatedVCFPath, tempLocalVCF.getAbsolutePath());
             fileReader = new VCFFileReader(tempLocalVCF, false);
         } else {
             fileReader = new VCFFileReader(new File(generatedVCFPath), false);
