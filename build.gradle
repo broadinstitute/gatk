@@ -390,7 +390,7 @@ task sourcesJar(type: Jar) {
 }
 
 tasks.withType(Javadoc) {
-    // do this for all javadoc tasks, inlcuding gatkDocs
+    // do this for all javadoc tasks, including gatkDoc
     options.addStringOption('Xdoclint:none')
 }
 
@@ -402,7 +402,7 @@ javadoc {
 
 // Generate GATK Online Doc
 task gatkDoc(type: Javadoc, dependsOn: classes) {
-    final File gatkDocDir = new File("./gatkDoc")
+    final File gatkDocDir = new File("build/docs/gatkdoc")
     doFirst {
         // make sure the output folder exists or we can create it
         if (!gatkDocDir.exists() && !gatkDocDir.mkdirs()) {
