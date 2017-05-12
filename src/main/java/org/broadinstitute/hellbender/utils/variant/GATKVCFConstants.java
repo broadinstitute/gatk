@@ -157,4 +157,8 @@ public final class GATKVCFConstants {
     public final static Allele NON_REF_SYMBOLIC_ALLELE = Allele.create("<" + NON_REF_SYMBOLIC_ALLELE_NAME + ">", false); // represents any possible non-ref allele at this site
     public final static String SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED = "*:DEL";
     public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this site
+
+    public static boolean isSpanningDeletion(final Allele allele){
+        return allele.equals(Allele.SPAN_DEL) || allele.equals(SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED);
+    }
 }
