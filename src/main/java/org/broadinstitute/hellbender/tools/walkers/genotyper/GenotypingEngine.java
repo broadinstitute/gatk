@@ -48,8 +48,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     private final AFPriorProvider log10AlleleFrequencyPriorsIndels;
 
-    private final List<SimpleInterval> upstreamDeletionsLoc = new LinkedList<>();
-
     /**
      * Construct a new genotyper engine, on a specific subset of samples.
      *
@@ -206,7 +204,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     /**
-     * Main entry function to calculate genotypes of a given VC with corresponding GL's that is shared across genotypers (namely UG and HC).
+     * Main entry function to calculate genotypes of a given VC with corresponding GLs
      *
      * @param features                           Features
      * @param refContext                         Reference context
@@ -360,11 +358,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return information about the alternative allele subsetting {@code null}.
      */
     private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult, final VariantContext vc) {
+
+        final List<SimpleInterval> upstreamDeletionLoci = new ArrayList<>();
         final List<Allele> outputAlleles = new ArrayList<>();
         final List<Integer> mleCounts = new ArrayList<>();
-        boolean siteIsMonomorphic = true;
+        boolean siteIsPolymorphic = false;
         final List<Allele> alleles = afCalculationResult.getAllelesUsedInGenotyping();
-        final int alternativeAlleleCount = alleles.size() - 1;
         int referenceAlleleSize = 0;
         for (final Allele allele : alleles) {
             if (allele.isReference() ) {
@@ -372,44 +371,25 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             } else {
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
-                final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                final boolean isNonRefWhichIsLoneAltAllele = alleles.size() == 2 && allele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
                 final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
 
-                siteIsMonomorphic &= !isPlausible;
+                siteIsPolymorphic |= isPlausible;
                 boolean toOutput = (isPlausible || forceKeepAllele(allele) || isNonRefWhichIsLoneAltAllele);
-                if ( allele.equals(GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED) ||
-                        allele.equals(Allele.SPAN_DEL) ) {
-                    toOutput &= isVcCoveredByDeletion(vc);
+                if ( allele.equals(GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED) || allele.equals(Allele.SPAN_DEL) ) {
+                    toOutput &= isVcCoveredByDeletion(vc, upstreamDeletionLoci);
                 }
                 if (toOutput) {
                     outputAlleles.add(allele);
                     mleCounts.add(afCalculationResult.getAlleleCountAtMLE(allele));
-                    recordDeletion(referenceAlleleSize - allele.length(), vc);
+                    if (referenceAlleleSize > allele.length()) {
+                        upstreamDeletionLoci.add(new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart() + referenceAlleleSize - allele.length()));
+                    }
                 }
             }
         }
 
-        return new OutputAlleleSubset(outputAlleles,mleCounts,siteIsMonomorphic);
-    }
-
-    void clearUpstreamDeletionsLoc() {
-        upstreamDeletionsLoc.clear();
-    }
-
-    /**
-     *  Record deletion to keep
-     *  Add deletions to a list.
-     *
-     * @param deletionSize  size of deletion in bases
-     * @param vc            variant context
-     */
-    void recordDeletion(final int deletionSize, final VariantContext vc) {
-
-        // In a deletion
-        if (deletionSize > 0) {
-            final SimpleInterval genomeLoc = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart() + deletionSize);
-            upstreamDeletionsLoc.add(genomeLoc);
-        }
+        return new OutputAlleleSubset(outputAlleles,mleCounts, !siteIsPolymorphic);
     }
 
     /**
@@ -418,22 +398,10 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @param vc    variant context
      * @return  true if the location is covered by an upstream deletion, false otherwise
      */
-    boolean isVcCoveredByDeletion(final VariantContext vc) {
-        for (Iterator<SimpleInterval> it = upstreamDeletionsLoc.iterator(); it.hasNext(); ) {
-            final SimpleInterval loc = it.next();
-            if (!loc.getContig().equals(vc.getContig())) { // deletion is not on contig.
-                it.remove();
-            } else if (loc.getEnd() < vc.getStart()) { // deletion is before the start.
-                it.remove();
-            } else if (loc.getStart() == vc.getStart()) {
-                // ignore this deletion, the symbolic one does not make reference to it.
-            } else { // deletion covers.
-                return true;
-            }
-        }
-
-        return false;
+    static boolean isVcCoveredByDeletion(final VariantContext vc, final List<SimpleInterval> upstreamDeletionLoci) {
+        return upstreamDeletionLoci.stream().anyMatch(loc -> loc.getContig().equals(vc.getContig()) && loc.getStart() != vc.getStart() && loc.getEnd() >= vc.getStart());
     }
+
 
     /**
      * Checks whether even if the allele is not well supported by the data, we should keep it for genotyping.

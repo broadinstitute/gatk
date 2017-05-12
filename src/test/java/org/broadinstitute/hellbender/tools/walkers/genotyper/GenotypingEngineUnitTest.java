@@ -41,10 +41,6 @@ public class GenotypingEngineUnitTest extends BaseTest {
     @BeforeTest
     public void init() {
         genotypingEngine = getGenotypingEngine();
-        final int deletionSize = refAllele.length() - altT.length();
-        final int start = 1;
-        final VariantContext deletionVC = new VariantContextBuilder("testDeletion", "1", start, start + deletionSize, allelesDel).make();
-        genotypingEngine.recordDeletion(deletionSize, deletionVC);
     }
 
     private static GenotypingEngine<?> getGenotypingEngine() {
@@ -67,12 +63,12 @@ public class GenotypingEngineUnitTest extends BaseTest {
     @Test(dataProvider = "testCoveredByDeletionData")
     public void testCoveredByDeletion(final String test, final SimpleInterval location, final boolean isCovered) {
         final VariantContext vc = new VariantContextBuilder("test", location.getContig(), location.getStart(), location.getEnd(), allelesDel).make();
-        Assert.assertEquals(isCovered, genotypingEngine.isVcCoveredByDeletion(vc), test + " failed");
+        final SimpleInterval deletionLocus = new SimpleInterval("1", 1, 1 + refAllele.length() - altT.length());
+        Assert.assertEquals(isCovered, GenotypingEngine.isVcCoveredByDeletion(vc, Arrays.asList(deletionLocus)), test + " failed");
     }
 
     @Test(dependsOnMethods={"testCoveredByDeletion"})  // Want to run testCoveredByDeletion first to ensure clean list or recorded deletions
     public void testCalculateGenotypes() {
-        genotypingEngine.clearUpstreamDeletionsLoc();
 
          // Remove deletion
         final List<Genotype> genotypes = Arrays.asList(
