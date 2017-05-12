@@ -70,7 +70,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         // gather evidence, run assembly, and align
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList =
                 FindBreakpointEvidenceSpark
-                        .gatherEvidenceAndWriteContigSamFile(ctx, pipelineOptions, evidenceAndAssemblyArgs, header, getUnfilteredReads(),
+                        .gatherEvidenceAndWriteContigSamFile(ctx, evidenceAndAssemblyArgs, header, getUnfilteredReads(),
                                 outputSAM, localLogger);
         if (alignedAssemblyOrExcuseList.isEmpty()) return;
 

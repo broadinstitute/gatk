@@ -76,7 +76,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
 
         // an empty qname map should produce a "too few kmers" disposition for the interval
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList =
-                FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, 1, Collections.emptySet(), reads, locations, null)._1();
+                FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, 1, Collections.emptySet(), reads, locations)._1();
         Assert.assertEquals(alignedAssemblyOrExcuseList.size(), 1);
         Assert.assertTrue(alignedAssemblyOrExcuseList.get(0).getErrorMessage().contains("too few"));
 
@@ -86,8 +86,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
         final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> actualKmerAndIntervalSet =
                 new HopscotchUniqueMultiMap<>(
                         FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, 1, new HopscotchSet<>(0),
-                                reads, locations, null)._2());
-        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null, kmer);
+                                reads, locations)._2());
+        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, kmer);
         Assert.assertEquals(actualKmerAndIntervalSet.size(), expectedKmers.size());
         for ( final KmerAndInterval kmerAndInterval : actualKmerAndIntervalSet ) {
             Assert.assertTrue(expectedKmers.contains(kmerAndInterval.getKey()));
@@ -96,7 +96,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
 
     @Test(groups = "spark")
     public void getAssemblyQNamesTest() throws FileNotFoundException {
-        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null, new SVKmerLong(params.kSize));
+        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, new SVKmerLong(params.kSize));
         final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerAndIntervalSet =
                 new HopscotchUniqueMultiMap<>(expectedKmers.size());
         expectedKmers.stream().

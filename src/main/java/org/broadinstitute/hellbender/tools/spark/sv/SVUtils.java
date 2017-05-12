@@ -31,7 +31,7 @@ public final class SVUtils {
      * Read a file of kmers.
      * Each line must be exactly SVConstants.KMER_SIZE characters long, and must match [ACGT]*.
      */
-    public static Set<SVKmer> readKmersFile(final int kSize, final String kmersFile, final PipelineOptions popts,
+    public static Set<SVKmer> readKmersFile(final int kSize, final String kmersFile,
                                             final SVKmer kmer ) {
         final Set<SVKmer> kmers;
 
@@ -62,7 +62,7 @@ public final class SVUtils {
     }
 
     /** Write kmers to file. */
-    public static <KType extends SVKmer> void writeKmersFile(final int kSize, final String kmersFile, final PipelineOptions popts,
+    public static <KType extends SVKmer> void writeKmersFile(final int kSize, final String kmersFile,
                                                              final Collection<KType> kmers ) {
         try ( final Writer writer =
                       new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(kmersFile))) ) {
@@ -77,7 +77,7 @@ public final class SVUtils {
     }
 
     /** Read intervals from file. */
-    public static List<SVInterval> readIntervalsFile(final String intervalsFile, final PipelineOptions popts,
+    public static List<SVInterval> readIntervalsFile(final String intervalsFile,
                                                      final Map<String, Integer> contigNameMap ) {
         final List<SVInterval> intervals;
         try ( final BufferedReader rdr =
@@ -116,7 +116,7 @@ public final class SVUtils {
     }
 
     /** Write intervals to a file. */
-    public static void writeIntervalsFile( final String intervalsFile, final PipelineOptions popts,
+    public static void writeIntervalsFile( final String intervalsFile,
                                            final Collection<SVInterval> intervals, final List<String> contigNames ) {
         try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
                 BucketUtils.createFile(intervalsFile)))) {

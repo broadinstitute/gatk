@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
@@ -220,8 +219,7 @@ public class ReadMetadata {
     }
 
     public static void writeMetadata( final ReadMetadata readMetadata,
-                                      final String filename,
-                                      final PipelineOptions pipelineOptions ) {
+                                      final String filename ) {
         try ( final Writer writer =
                       new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(filename))) ) {
             writer.write("#reads:\t" + readMetadata.getNReads() + "\n");

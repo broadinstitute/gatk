@@ -73,7 +73,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
             killList = uniquify(killList, processFasta(kSize, maxDUSTScore, highCopyFastaFilename, options));
         }
 
-        SVUtils.writeKmersFile(kSize, outputFile, options, killList);
+        SVUtils.writeKmersFile(kSize, outputFile, killList);
     }
 
     /** Find high copy number kmers in the reference sequence */

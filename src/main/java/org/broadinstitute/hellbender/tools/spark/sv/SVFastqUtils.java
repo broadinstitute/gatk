@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
@@ -124,7 +123,6 @@ public class SVFastqUtils {
     /** Write a list of FASTQ records into a file. */
     public static void writeFastqFile(
             final String fileName,
-            final PipelineOptions pipelineOptions,
             final Iterator<FastqRead> fastqReadItr ) {
         try ( final OutputStream writer =
                       new BufferedOutputStream(BucketUtils.createFile(fileName)) ) {
