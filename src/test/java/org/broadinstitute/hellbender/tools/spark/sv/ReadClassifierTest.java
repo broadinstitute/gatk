@@ -48,7 +48,6 @@ public class ReadClassifierTest extends BaseTest {
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.OutiesPair(read, readMetadata)));
         read.setMatePosition(read.getContig(), read.getStart() + 2);
         checkClassification(classifier, read, Collections.emptyList());
-
         read.setMatePosition(read.getContig(), read.getStart() + 2 + ReadClassifier.ALLOWED_SHORT_FRAGMENT_OVERHANG);
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.OutiesPair(read, readMetadata)));
 

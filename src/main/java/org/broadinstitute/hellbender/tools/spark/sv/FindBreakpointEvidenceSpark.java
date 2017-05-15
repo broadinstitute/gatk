@@ -58,7 +58,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputSAM;
 
-
     @Override
     public boolean requiresReads()
     {
@@ -97,7 +96,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 new Params(argumentCollection.kSize, argumentCollection.maxDUSTScore,
                         argumentCollection.minEvidenceMapQ,
                         argumentCollection.minEvidenceMatchLength, argumentCollection.maxIntervalCoverage,
-                        argumentCollection.minEvidenceCount, argumentCollection.minKmersPerInterval,
+                        argumentCollection.minEvidenceCount, argumentCollection.minCoherentEvidenceCount,
+                        argumentCollection.minKmersPerInterval,
                         argumentCollection.cleanerMaxIntervals, argumentCollection.cleanerMinKmerCount,
                         argumentCollection.cleanerMaxKmerCount, argumentCollection.cleanerKmersPerPartitionGuess,
                         argumentCollection.maxQNamesPerKmer, argumentCollection.assemblyKmerMapSize,
@@ -605,6 +605,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int minMapQ = params.minEvidenceMapQ;
         final int minMatchLen = params.minEvidenceMatchLength;
         final int minEvidenceCount = params.minEvidenceCount;
+        final int minCoherentEvidenceCount = params.minCoherentEvidenceCount;
         final JavaRDD<BreakpointEvidence> evidenceRDD =
                 reads
                     .filter(read ->
@@ -620,7 +621,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                             new MapPartitioner<>(readItr,
                                     new ReadClassifier(broadcastMetadata.value())).iterator(), true)
                     .mapPartitions(evidenceItr ->
-                            new BreakpointClusterer(minEvidenceCount,evidenceItr), true);
+                            new BreakpointClusterer(broadcastMetadata.getValue(), minEvidenceCount,minCoherentEvidenceCount,evidenceItr), true);
 
         // record the evidence
         if ( locations.evidenceDir != null ) {
@@ -697,6 +698,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public final int minEvidenceMatchLength;
         public final int maxIntervalCoverage;
         public final int minEvidenceCount;
+        public final int minCoherentEvidenceCount;
         public final int minKmersPerInterval;
         public final int cleanerMaxIntervals;
         public final int cleanerMinKmerCount;
@@ -715,6 +717,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             minEvidenceMatchLength = 45;            // minimum match length
             maxIntervalCoverage = 1000;             // maximum coverage on breakpoint interval
             minEvidenceCount = 15;                  // minimum number of evidentiary reads in called cluster
+            minCoherentEvidenceCount = 7;           // minimum number of evidentiary reads in a cluster that all point to the same target locus
             minKmersPerInterval = 20;               // minimum number of good kmers in a valid interval
             cleanerMaxIntervals = 3;                // KmerCleaner maximum number of intervals a localizing kmer can appear in
             cleanerMinKmerCount = 3;                // KmerCleaner min kmer count
@@ -728,7 +731,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
 
         public Params( final int kSize, final int maxDUSTScore, final int minEvidenceMapQ,
-                       final int minEvidenceMatchLength, final int maxIntervalCoverage, final int minEvidenceCount,
+                       final int minEvidenceMatchLength, final int maxIntervalCoverage, final int minEvidenceCount, final int minCoherentEvidenceCount,
                        final int minKmersPerInterval, final int cleanerMaxIntervals, final int cleanerMinKmerCount,
                        final int cleanerMaxKmerCount, final int cleanerKmersPerPartitionGuess,
                        final int maxQNamesPerKmer, final int asemblyKmerMapSize, final int assemblyToMappedSizeRatioGuess,
@@ -739,6 +742,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.minEvidenceMatchLength = minEvidenceMatchLength;
             this.maxIntervalCoverage = maxIntervalCoverage;
             this.minEvidenceCount = minEvidenceCount;
+            this.minCoherentEvidenceCount = minCoherentEvidenceCount;
             this.minKmersPerInterval = minKmersPerInterval;
             this.cleanerMaxIntervals = cleanerMaxIntervals;
             this.cleanerMinKmerCount = cleanerMinKmerCount;
@@ -751,4 +755,5 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.exclusionIntervalPadding = exclusionIntervalPadding;
         }
     }
+
 }
