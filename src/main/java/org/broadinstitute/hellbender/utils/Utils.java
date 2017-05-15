@@ -21,6 +21,9 @@ import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -1106,5 +1109,14 @@ public final class Utils {
         return objects.stream()
                 .filter(name -> !unique.add(name))
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * Return the given {@code dateTime} formatted as string for display.
+     * @param dateTime the datte/time to be formatted
+     * @return String representing the {@code dateTime}.
+     */
+    public static String getDateTimeForDisplay(final ZonedDateTime dateTime) {
+        return dateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG));
     }
 }

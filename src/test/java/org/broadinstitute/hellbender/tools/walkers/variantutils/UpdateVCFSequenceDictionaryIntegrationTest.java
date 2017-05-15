@@ -110,7 +110,9 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
         argBuilder.addOutput(outFile);
         runCommandLine(argBuilder.getArgsList());
 
-        try (VCFFileReader vcfReader = new VCFFileReader(outFile)) {
+        // Don't require an index, since the framework doesn't create one if no input sequnce
+        // dictionary is available via getBestAvailableSequenceDictionary.
+        try (VCFFileReader vcfReader = new VCFFileReader(outFile, false)) {
             return vcfReader.getFileHeader().getSequenceDictionary();
         }
     }

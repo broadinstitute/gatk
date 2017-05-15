@@ -22,7 +22,6 @@
 ##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=SB,Number=1,Type=Float,Description="Strand Bias">
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
 1	10001292	.	G	A	232.46	.	AC=1;AF=0.50;AN=2;BaseQRankSum=1.161;DP=42;Dels=0.00;FS=2.473;HRun=0;HaplotypeScore=13.4505;MQ=146.79;MQ0=7;MQRankSum=0.203;QD=5.53;ReadPosRankSum=0.755;SB=-71.63	AD:DP:GQ:PL	26,15:42:99:262,0,342
 1	10002963	.	C	G	353.51	.	AC=1;AF=0.50;AN=2;BaseQRankSum=0.482;DP=39;Dels=0.00;FS=14.955;HRun=0;HaplotypeScore=7.6316;MQ=141.59;MQ0=0;MQRankSum=-0.570;QD=9.06;ReadPosRankSum=-0.102;SB=-77.88	GT:AD:DP:GQ:PL	0/1:20,19:39:99:384,0,431

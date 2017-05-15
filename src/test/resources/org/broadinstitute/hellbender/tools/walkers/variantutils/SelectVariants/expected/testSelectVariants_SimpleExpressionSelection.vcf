@@ -11,5 +11,4 @@
 ##contig=<ID=3,length=16000,assembly=hg19mini.fasta>
 ##contig=<ID=4,length=16000,assembly=hg19mini.fasta>
 ##reference=hg19mini
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Test1	Test2

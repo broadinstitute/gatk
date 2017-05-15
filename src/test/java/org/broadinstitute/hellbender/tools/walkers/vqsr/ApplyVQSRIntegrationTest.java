@@ -44,7 +44,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " -tranchesFile " + getLargeVQSRTestDataDir() + "expected/SNPTranches.txt" +
                     // pass in the tranche file to match GATK3; though without a TS_FILTER_LEVEL
                     // arg they aren't used
-                    " -recalFile " + getLargeVQSRTestDataDir() + "snpRecal.vcf",
+                    " -recalFile " + getLargeVQSRTestDataDir() + "snpRecal.vcf" +
+                    " --addOutputVCFCommandLine false",
                 Arrays.asList(getLargeVQSRTestDataDir() + "expected/snpApplyResult.vcf"));
         spec.executeTest("testApplyRecalibrationSNP", this);
     }
@@ -62,7 +63,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     // pass in the tranche file to match GATK3; though without a TS_FILTER_LEVEL
                     // arg they aren't used
                     " -tranchesFile " + getLargeVQSRTestDataDir() + "expected/indelTranches.txt" +
-                    " -recalFile " + getLargeVQSRTestDataDir() + "indelRecal.vcf",
+                    " -recalFile " + getLargeVQSRTestDataDir() + "indelRecal.vcf" +
+                    " --addOutputVCFCommandLine false",
                 Arrays.asList(getLargeVQSRTestDataDir() + "expected/indelApplyResult.vcf"));
         spec.executeTest("testApplyRecalibrationIndel", this);
     }
@@ -75,7 +77,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " --variant " + getToolTestDataDir() + "VQSR.mixedTest.input.vcf" +
                     " --output %s" +
                     " -tranchesFile " + getToolTestDataDir() + "VQSR.mixedTest.tranches" +
-                    " -recalFile " + getToolTestDataDir() + "VQSR.mixedTest.recal.vcf",
+                    " -recalFile " + getToolTestDataDir() + "VQSR.mixedTest.recal.vcf" +
+                    " --addOutputVCFCommandLine false",
                 Arrays.asList(getToolTestDataDir() + "expected/applySNPAndIndelResult.vcf"));
         spec.executeTest("testApplyRecalibrationSnpAndIndelTogether", this);
     }
@@ -119,7 +122,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                 " --variant " + getToolTestDataDir() + "VQSR.AStest.input.vcf" +
                 " --output %s" +
                 " -tranchesFile " + getToolTestDataDir() + "VQSR.AStest.snps.tranches" +
-                " -recalFile " + getToolTestDataDir() + "VQSR.AStest.snps.recal.vcf";
+                " -recalFile " + getToolTestDataDir() + "VQSR.AStest.snps.recal.vcf" +
+                " --addOutputVCFCommandLine false";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 base,
@@ -136,7 +140,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                 " --variant " + getToolTestDataDir() + "VQSR.AStest.postSNPinput.vcf" +
                 " --output %s" +
                 " -tranchesFile " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
-                " -recalFile " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf";
+                " -recalFile " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf" +
+                " --addOutputVCFCommandLine false";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 base,

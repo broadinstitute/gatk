@@ -21,7 +21,7 @@ public class CommandLineProgramUnitTest extends BaseTest {
         final CommandLineProgram clp = getClp();
         Assert.assertNull(clp.getCommandLine()); //should be null since no args were specified
         Assert.assertFalse(clp.parseArgs(new String[]{"--" + SpecialArgumentsCollection.HELP_FULLNAME}));
-        assertContains(clp.getCommandLine(), SpecialArgumentsCollection.HELP_FULLNAME); //now it should be filed in
+        assertContains(clp.getCommandLine(), SpecialArgumentsCollection.HELP_FULLNAME); //now it should be filled in
     }
 
     private static class ValidationFailer extends CommandLineProgram{

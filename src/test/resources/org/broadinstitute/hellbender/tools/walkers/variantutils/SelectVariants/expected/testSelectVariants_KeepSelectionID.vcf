@@ -21,6 +21,5 @@
 ##INFO=<ID=SpanningDeletions,Number=1,Type=Integer,Description="Number of spanning deletions">
 ##reference=human_b36_both.fasta
 ##source=ArbitrarySource
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA00001	NA00002	NA00003
 1	10001292	testid1	G	A	12.22	PASS	AF=0.50;AlleleBalance=0.57;DoC=23;HomopolymerRun=0;MAPQ0=8;NS=1;RMSMAPQ=46.31;SB=-24.92;SpanningDeletions=0	GT:DP:GQ	1/0:23:19	./.	./.

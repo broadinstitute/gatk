@@ -95,6 +95,5 @@
 ##contig=<ID=GL000194.1,length=191469>
 ##contig=<ID=GL000225.1,length=211173>
 ##contig=<ID=GL000192.1,length=547496>
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Sample1	Sample2	Sample3	Sample4
 1	1000	.	A	T	2000	PASS	AC=2;AF=0.333;AN=6	GT:DP:FT:GQ	0/0:20:PASS:30	0/1:20:PASS:30	0/1:20:PASS:30	./.:5:lowDP;lowGQ:10

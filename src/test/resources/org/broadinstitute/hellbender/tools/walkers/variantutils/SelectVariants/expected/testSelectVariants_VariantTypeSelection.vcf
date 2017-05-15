@@ -21,5 +21,4 @@
 ##INFO=<ID=SpanningDeletions,Number=1,Type=Integer,Description="Number of spanning deletions">
 ##reference=human_b36_both.fasta
 ##source=ArbitrarySource
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA00001	NA00002	NA00003

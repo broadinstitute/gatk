@@ -8,6 +8,8 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -31,10 +33,14 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
-import java.nio.file.Path;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -87,6 +93,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, shortName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, doc = "If true, adds a PG tag to created SAM/BAM/CRAM files.", optional=true, common = true)
     public boolean addOutputSAMProgramRecord = true;
+
+    @Argument(fullName = StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, shortName = StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, doc = "If true, adds a command line header line to created VCF files.", optional=true, common = true)
+    public boolean addOutputVCFCommandLine = true;
 
     // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
@@ -663,6 +672,24 @@ public abstract class GATKTool extends CommandLineProgram {
             header.addProgramRecord(programRecord);
         }
         return header;
+    }
+
+    /**
+     * @return If addOutputVCFCommandLine is set, a set of VCF header lines containing the GATK tool name, version,
+     * date and command line, otherwise an empty set.
+     */
+    protected Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
+        final Set<VCFHeaderLine> gatkToolHeaderLines = new HashSet<>();
+        if (addOutputVCFCommandLine) {
+            final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
+            simpleHeaderLineMap.put("ID", this.getClass().getSimpleName());
+            simpleHeaderLineMap.put("Version", getVersion());
+            simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
+            simpleHeaderLineMap.put("CommandLine", getCommandLine());
+            gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
+            gatkToolHeaderLines.add(new VCFSimpleHeaderLine("GATKCommandLine", simpleHeaderLineMap));
+        }
+        return gatkToolHeaderLines;
     }
 
     /**

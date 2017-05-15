@@ -60,7 +60,7 @@ public class VariantWalkerGCSSupportIntegrationTest extends CommandLineProgramTe
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -V " + getGCPTestInputPath() + vcf +
                 intervalArg +
-                " -O %s",
+                " -O %s "+ " --addOutputVCFCommandLine false ",
                 Collections.singletonList(expectedOutput)
         );
         testSpec.executeTest("testReadVCFOnGCS", this);

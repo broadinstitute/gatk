@@ -14,10 +14,13 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFIDHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -31,6 +34,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.io.IOException;
+import java.util.Set;
 
 public final class GATKToolUnitTest extends BaseTest{
 
@@ -521,6 +525,28 @@ public final class GATKToolUnitTest extends BaseTest{
         clp.parseArguments(System.out, args.getArgsArray());
 
         return outputFile;
+    }
+
+    @Test
+    public void testGetDefaultToolVCFHeaderLines() throws IOException {
+        final TestGATKToolWithFeatures tool = new TestGATKToolWithFeatures();
+        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test_with_bigHeader.vcf");
+        final String[] args = {"--mask", vcfFile.getCanonicalPath(), "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "true"};
+        tool.instanceMain(args);
+
+        Set<VCFHeaderLine> stdHeaderLines = tool.getDefaultToolVCFHeaderLines();
+        VCFHeader hdr = new VCFHeader(stdHeaderLines);
+
+        VCFHeaderLine sourceLine = hdr.getOtherHeaderLine("source");
+        Assert.assertEquals(sourceLine.getValue(), tool.getClass().getSimpleName());
+
+        VCFIDHeaderLine commandLine = (VCFIDHeaderLine) hdr.getOtherHeaderLine("GATKCommandLine");
+        Assert.assertEquals(commandLine.getID(), tool.getClass().getSimpleName());
+
+        String commandLineString = commandLine.toString();
+        Assert.assertTrue(commandLineString.contains("CommandLine="));
+        Assert.assertTrue(commandLineString.contains("Version="));
+        Assert.assertTrue(commandLineString.contains("Date="));
     }
 
     private void writeHeaderAndBadVariant(final VariantContextWriter writer) {

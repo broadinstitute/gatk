@@ -21,7 +21,6 @@
 ##INFO=<ID=SpanningDeletions,Number=1,Type=Integer,Description="Number of spanning deletions">
 ##reference=human_b36_both.fasta
 ##source=ArbitrarySource
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA00001	NA00002	NA00003
 1	10045603	.	AAAA	A	40.26	PASS	AF=0.50	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
 1	10045604	.	A	ACAT	41.26	PASS	AF=0.50	GT:DP:GQ	1/1:14:7	0/0:15:8	1/0:15:8

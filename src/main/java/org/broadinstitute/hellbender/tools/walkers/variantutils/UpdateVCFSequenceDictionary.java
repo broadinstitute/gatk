@@ -59,14 +59,18 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        VCFHeader vcfHeader = getHeaderForVariants();
+        VCFHeader inputHeader = getHeaderForVariants();
+        VCFHeader outputHeader = inputHeader == null ?
+                new VCFHeader() :
+                new VCFHeader(inputHeader.getMetaDataInInputOrder(), inputHeader.getGenotypeSamples()) ;
+        getDefaultToolVCFHeaderLines().forEach(line -> outputHeader.addMetaDataLine(line));
         sourceDictionary = getSequenceDictionaryFromInput(dictionarySource);
 
         // Warn and require opt-in via -replace if we're about to clobber a valid sequence
         // dictionary. Check the input file directly via the header rather than using the
         // engine, since it might dig one up from an index.
         SAMSequenceDictionary oldDictionary =
-                vcfHeader == null ? null : vcfHeader.getSequenceDictionary();
+                inputHeader == null ? null : inputHeader.getSequenceDictionary();
         if ( (oldDictionary != null && !oldDictionary.getSequences().isEmpty()) && !replace) {
             throw new CommandLineException.BadArgumentValue(
                     String.format(
@@ -78,9 +82,9 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
             );
         }
 
-        vcfHeader.setSequenceDictionary(sourceDictionary);
+        outputHeader.setSequenceDictionary(sourceDictionary);
         vcfWriter = createVCFWriter(new File(outFile));
-        vcfWriter.writeHeader(vcfHeader);
+        vcfWriter.writeHeader(outputHeader);
     }
 
     @Override
