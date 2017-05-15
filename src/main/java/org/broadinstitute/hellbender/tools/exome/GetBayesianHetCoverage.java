@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
@@ -54,6 +55,7 @@ import java.io.File;
         oneLineSummary = "Call heterozygous sites and output information about the called sites",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class GetBayesianHetCoverage extends CommandLineProgram {
 
     private final Logger logger = LogManager.getLogger(GetBayesianHetCoverage.class);

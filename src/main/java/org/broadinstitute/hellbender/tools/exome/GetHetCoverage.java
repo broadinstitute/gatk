@@ -6,6 +6,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
@@ -29,6 +30,7 @@ import java.io.File;
         oneLineSummary = "Output ref/alt counts at heterozygous SNPs in normal sample (and at same sites in tumor sample, if specified)",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class GetHetCoverage extends CommandLineProgram {
 
     protected static final String PVALUE_THRESHOLD_FULL_NAME = "pvalueThreshold";

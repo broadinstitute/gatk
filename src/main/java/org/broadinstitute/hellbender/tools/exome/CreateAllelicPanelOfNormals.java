@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -30,6 +31,7 @@ import java.util.List;
         oneLineSummary = "Creates an allelic panel of normals",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class CreateAllelicPanelOfNormals extends CommandLineProgram {
     protected static final String SITE_FREQUENCY_THRESHOLD_SHORT_NAME = "f";
     protected static final String SITE_FREQUENCY_THRESHOLD_LONG_NAME = "siteFrequencyThreshold";

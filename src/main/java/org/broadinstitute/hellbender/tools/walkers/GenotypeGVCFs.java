@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
@@ -65,6 +66,7 @@ import java.util.*;
  *
  */
 @CommandLineProgramProperties(summary = "genotype a gvcf file to produce a vcf", oneLineSummary = "genotype a gvcf file", programGroup = VariantProgramGroup.class)
+@DocumentedFeature
 public final class GenotypeGVCFs extends VariantWalker {
 
     public static final String PHASED_HOM_VAR_STRING = "1|1";

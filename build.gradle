@@ -23,6 +23,7 @@ applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false","-Dsamj
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.internal.os.OperatingSystem
+import javax.tools.ToolProvider
 
 def isMacOsX = OperatingSystem.current().macOsX
 def customJarPath = hasProperty("custom.jar.dir") ? property("custom.jar.dir") : null;
@@ -81,9 +82,18 @@ final gatkVersion = '4.alpha.2-260-ge8d00ca-20170508.215840-1'
 final htsjdkVersion = '2.9.1'
 final testNGVersion = '6.11'
 
+// Get the jdk files we need to run javadoc. We need to use these during compile, testCompile,
+// test execution, and gatkDoc generation, but we don't want them as part of the runtime
+// classpath and we don't want to redistribute them in the uber jar.
+final javadocJDKFiles = files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
+
 dependencies {
     compile 'org.broadinstitute:gatk:' + gatkVersion
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
+
+    // javadoc utilities; compile/test only to prevent redistribution of sdk jars
+    compileOnly(javadocJDKFiles)
+    testCompile(javadocJDKFiles)
 
     testCompile 'org.testng:testng:' + testNGVersion
 }
@@ -256,6 +266,66 @@ test {
 
 task wrapper(type: Wrapper) {
     gradleVersion = '3.1'
+}
+
+tasks.withType(Javadoc) {
+    // do this for all javadoc tasks, inlcuding gatkDoc
+    options.addStringOption('Xdoclint:none')
+}
+
+javadoc {
+    // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
+    // We only want to do this for the javadoc task, not gatkDoc
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+// Generate GATK Online Doc
+task gatkDoc(type: Javadoc, dependsOn: ['cleanGatkDoc', classes]) {
+    // A GATK source folder is required to resolve any dependent classes that will be part of the generated doc.
+    final String gatkSourceDir = project.hasProperty('gatkSourceDir') ?
+            project.getProperty('gatkSourceDir') :
+            '../gatk'
+    final File gatkDocDir = new File("build/docs/gatkdoc")
+    final String pathToGATKClasses = gatkSourceDir + '/src/main/java/org/broadinstitute/hellbender/'
+    final String pathToGATKHelpTemplates = gatkSourceDir + '/src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates/'
+    doFirst {
+        // make sure the output folder exists or we can create it
+        if (!gatkDocDir.exists() && !gatkDocDir.mkdirs()) {
+            throw new InvalidUserDataException(String.format("Failure creating folder (%s) for GATK doc output in task (%s)",
+                    gatkDocDir.getAbsolutePath(),
+                    it.name));
+        }
+        if (!file(gatkSourceDir).exists()) {
+            throw new GradleException("A GATK source directory is required to generate doc for gatk-protected: "
+                    + gatkSourceDir + ". Set the gatkSourceDir property to the GATK source directory.")
+        }
+        println("Note: The GATK source folder must contain the same version of GATK that is used to build gatk-protected")
+    }
+
+    //The source set needs to include any GATK classes that are referenced by the local DocumentedFeatures
+    final String gatkArgCollections = pathToGATKClasses + 'cmdline/argumentcollections/'
+    final String gatkPlugins = pathToGATKClasses + 'cmdline/GATKPlugin/'
+    final String gatkFilters = pathToGATKClasses + 'engine/filters/'
+    final FileCollection gatkClassFiles =
+                    files { file(gatkArgCollections).listFiles() } +
+                    files { file(gatkPlugins).listFiles() } +
+                    files { file(gatkFilters).listFiles() }
+    source = sourceSets.main.allJava + gatkClassFiles
+
+    // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
+    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
+    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    options.docletpath = classpath.asType(List)
+    options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
+
+    outputs.dir(gatkDocDir)
+    options.destinationDirectory(gatkDocDir)
+
+    options.addStringOption("settings-dir", pathToGATKHelpTemplates);
+    options.addStringOption("output-file-extension", "html")
+    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
+    options.addStringOption("verbose")
 }
 
 tasks.withType(ShadowJar) {

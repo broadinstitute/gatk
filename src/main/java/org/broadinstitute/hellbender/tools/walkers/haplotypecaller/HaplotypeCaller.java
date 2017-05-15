@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
@@ -152,6 +153,7 @@ import java.util.List;
         oneLineSummary = "Call germline SNPs and indels via local re-assembly of haplotypes",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     public static final int DEFAULT_READSHARD_SIZE = 5000;

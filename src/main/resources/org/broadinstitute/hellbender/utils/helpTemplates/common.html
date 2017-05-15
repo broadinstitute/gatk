@@ -1,0 +1,65 @@
+<#--
+        This file contains part of the theming neccesary to present GATKDocs on the GATK website. Included are the
+        paths to our bootstrap assets as well as helper functions to generate relevant links. Styling is separated
+        out, so pages will be minimalistic html unless replacement styling is provided.
+
+        -->
+
+    <#global siteRoot = "http://www.broadinstitute.org/gatk/" />
+    <#global guideIndex = "http://www.broadinstitute.org/gatk/guide/" />
+    <#global forum = "http://gatkforums.broadinstitute.org/" />
+
+    <#macro footerInfo>
+        <hr>
+        <p><a href='#top'><i class='fa fa-chevron-up'></i> Return to top</a></p>
+        <hr>
+        <p class="see-also">See also 
+        	<a href="${guideIndex}">GATK Documentation Index</a> |
+        	<a href="index">Tool Docs Index</a> |
+        	<a href="${forum}">Support Forum</a>
+        </p>
+
+        <p class="version">GATK version ${version} built at ${timestamp}.
+        <#-- closing P tag in next macro -->
+    </#macro>
+    
+    <#macro footerClose>
+    	<#-- ugly little hack to enable adding tool-specific info inline -->
+        </p>
+    </#macro>
+
+    <#macro getCategories groups>
+        <style>
+            #sidenav .accordion-body a {
+                color : gray;
+            }
+
+            .accordion-body li {
+                list-style : none;
+            }
+        </style>
+        <ul class="nav nav-pills nav-stacked" id="sidenav">
+        	<#assign seq = ["engine", "tools", "other", "utilities"]>
+        	<#list seq as supercat>
+        		<hr>
+        		<#list groups?sort_by("name") as group>
+        			<#if group.supercat == supercat>
+						<li><a data-toggle="collapse" data-parent="#sidenav" href="#${group.id}">${group.name}</a>
+							<div id="${group.id}"
+								<?php echo ($group == '${group.name}')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+								<ul>
+									<#list data as datum>
+										<#if datum.group == group.name>
+											<li>
+												<a href="${datum.filename}">${datum.name}</a>
+											</li>
+										</#if>
+									</#list>
+								</ul>
+							</div>
+						</li>
+        			</#if>
+        		</#list>
+        	</#list>
+        </ul>
+    </#macro>

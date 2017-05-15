@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -90,6 +91,7 @@ import java.util.List;
         oneLineSummary = "Call somatic SNPs and indels via local re-assembly of haplotypes",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class Mutect2 extends AssemblyRegionWalker {
 
     @ArgumentCollection
