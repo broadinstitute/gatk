@@ -14,7 +14,6 @@ import java.util.*;
  * Created by David Benjamin on 9/15/16.
  */
 public class Mutect2FilteringEngine {
-
     private M2FiltersArgumentCollection MTFAC;
     private final double contamination;
     private final String tumorSample;
@@ -192,11 +191,28 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    // This filter checks for the case in which PCR-duplicates with unique UMIs (which we assume is caused by false adapter priming)
+    // amplify the erroneous signal for an alternate allele.
+    private void applyDuplicatedAltReadFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
+        Genotype tumorGenotype = vc.getGenotype(tumorSample);
+
+        if (!tumorGenotype.hasExtendedAttribute(UniqueAltReadCount.UNIQUE_ALT_READ_SET_COUNT_KEY)) {
+            return;
+        }
+
+        final int uniqueReadSetCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, UniqueAltReadCount.UNIQUE_ALT_READ_SET_COUNT_KEY, -1);
+
+        if (uniqueReadSetCount <= MTFAC.uniqueAltReadCount) {
+            filters.add(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME);
+        }
+    }
+
     //TODO: building a list via repeated side effects is ugly
     public Set<String> calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc) {
         final Set<String> filters = new HashSet<>();
         applyInsufficientEvidenceFilter(MTFAC, vc, filters);
         applyClusteredEventFilter(vc, filters);
+        applyDuplicatedAltReadFilter(MTFAC, vc, filters);
         applyTriallelicFilter(vc, filters);
         applyPanelOfNormalsFilter(MTFAC, vc, filters);
         applyGermlineVariantFilter(MTFAC, vc, filters);

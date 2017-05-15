@@ -30,25 +30,25 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(fullName = "max_germline_posterior", optional = true, doc = "Maximum posterior probability that an allele is a germline variant")
     public double maxGermlinePosterior = 0.025;
 
-    @Argument(fullName = "maxAltAllelesThreshold", optional = true, doc="filter variants with too many alt alleles")
+    @Argument(fullName = "maxAltAllelesThreshold", optional = true, doc = "filter variants with too many alt alleles")
     public int numAltAllelesThreshold = 1;
 
-    @Argument(fullName = "maxMedianMappingQualityDifference", optional = true, doc="filter variants for which alt reads' median mapping quality is much lower than ref reads' median mapping quality.")
+    @Argument(fullName = "maxMedianMappingQualityDifference", optional = true, doc = "filter variants for which alt reads' median mapping quality is much lower than ref reads' median mapping quality.")
     public int maxMedianMappingQualityDifference = 30;
 
-    @Argument(fullName = "maxMedianBaseQualityDifference", optional = true, doc="filter variants for which alt reads' median base quality is much lower than ref reads' median base quality.")
+    @Argument(fullName = "maxMedianBaseQualityDifference", optional = true, doc = "filter variants for which alt reads' median base quality is much lower than ref reads' median base quality.")
     public int maxMedianBaseQualityDifference = 10;
 
-    @Argument(fullName = "maxMedianClippingDifference", optional = true, doc="filter variants for which alt reads' median number of clipped bases is too high compared to the median for ref reads.")
+    @Argument(fullName = "maxMedianClippingDifference", optional = true, doc = "filter variants for which alt reads' median number of clipped bases is too high compared to the median for ref reads.")
     public int maxMedianClippingDifference = 1;
 
-    @Argument(fullName = "maxMedianFragmentLengthDifference", optional = true, doc="filter variants for which alt reads' median fragment length is very different from the median for ref reads.")
+    @Argument(fullName = "maxMedianFragmentLengthDifference", optional = true, doc = "filter variants for which alt reads' median fragment length is very different from the median for ref reads.")
     public int maxMedianFragmentLengthDifference = 10000;
 
-    @Argument(fullName = "minMedianReadPosition", optional = true, doc="filter variants for which the median position of alt alleles within reads is too near the end of reads.")
+    @Argument(fullName = "minMedianReadPosition", optional = true, doc = "filter variants for which the median position of alt alleles within reads is too near the end of reads.")
     public int minMedianReadPosition = 5;
 
-    @Argument(fullName = "maxEventsInHaplotype", optional = true, doc="Variants coming from a haplotype with more than this many events are filtered")
+    @Argument(fullName = "maxEventsInHaplotype", optional = true, doc = "Variants coming from a haplotype with more than this many events are filtered")
     public int maxEventsInHaplotype = 2;
 
     @Argument(shortName = "strand_prob", fullName = "strandArtifactPosteriorProbability", optional = true, doc = "Filter a variant if the probability of strand artifact exceeds this number")
@@ -57,7 +57,10 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(shortName = "strand_af", fullName = "strandArtifactAlleleFraction", optional = true, doc = "Only filter a variant if the MAP estimate of allele fraction given artifact is below this number")
     public double STRAND_ARTIFACT_ALLELE_FRACTION_THRESHOLD = 0.01;
 
-    @Argument(shortName = "contaminationTable", fullName = "contaminationTable", optional = true, doc="Table containing contamination information.")
+    @Argument(shortName = "contaminationTable", fullName = "contaminationTable", optional = true, doc = "Table containing contamination information.")
     public File contaminationTable = null;
+
+    @Argument(shortName = "unique", fullName = "uniqueAltReadCount", optional = true, doc = "Filter a variant if a site contains fewer than this many unique (i.e. deduplicated) reads supporting the alternate allele")
+    public int uniqueAltReadCount = 0;
 
 }

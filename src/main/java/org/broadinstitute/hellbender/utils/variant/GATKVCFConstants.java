@@ -142,6 +142,7 @@ public final class GATKVCFConstants {
     public static final String TUMOR_LOD_FILTER_NAME =                        "t_lod"; //M2
     public static final String MULTIALLELIC_FILTER_NAME =                     "multiallelic"; //M2
     public static final String STRAND_ARTIFACT_FILTER_NAME =                  "strand_artifact"; // M2
+    public static final String DUPLICATED_EVIDENCE_FILTER_NAME =              "duplicate_evidence";
     public final static String ARTIFACT_IN_NORMAL_FILTER_NAME =                "artifact_in_normal";
     public final static String MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME =     "base_quality";
     public final static String MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME = "mapping_quality";
@@ -155,7 +156,7 @@ public final class GATKVCFConstants {
             MULTIALLELIC_FILTER_NAME, STRAND_ARTIFACT_FILTER_NAME, ARTIFACT_IN_NORMAL_FILTER_NAME,
             MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME, MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME,
             MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME, MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
-            READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME);
+            READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";
