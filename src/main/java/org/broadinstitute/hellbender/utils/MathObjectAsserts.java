@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.linalg.api.ndarray.INDArray;
 import org.testng.Assert;
+import org.testng.internal.junit.ArrayAsserts;
 
 /**
  * This class provides useful assertions about approximate equality of various mathematical objects
@@ -15,6 +17,28 @@ public class MathObjectAsserts {
     public static final double DEFAULT_ABSOLUTE_TOLERANCE = 1e-10;
 
     private MathObjectAsserts() {}
+
+    public static void assertNDArrayEquals(final INDArray actual, final INDArray expected,
+                                           final double relativeTolerance, final double absoluteTolerance) {
+        Assert.assertNotNull(expected);
+        Assert.assertNotNull(actual);
+        ArrayAsserts.assertArrayEquals(actual.shape(), expected.shape());
+        final double[] actualAsArray = actual.reshape(1, actual.length()).dup().data().asDouble();
+        final double[] expectedAsArray = expected.reshape(1, actual.length()).dup().data().asDouble();
+        Assert.assertEquals(actualAsArray.length, expected.length());
+        for (int i = 0; i < actualAsArray.length; i++) {
+            assertDoubleEquals(actualAsArray[i], expectedAsArray[i], relativeTolerance, absoluteTolerance);
+        }
+    }
+
+    public static void assertNDArrayEquals(final INDArray actual, final INDArray expected,
+                                           final double relativeTolerance) {
+        assertNDArrayEquals(actual, expected, relativeTolerance, DEFAULT_ABSOLUTE_TOLERANCE);
+    }
+
+    public static void assertNDArrayEquals(final INDArray actual, final INDArray expected) {
+        assertNDArrayEquals(actual, expected, DEFAULT_RELATIVE_TOLERANCE, DEFAULT_ABSOLUTE_TOLERANCE);
+    }
 
     public static void assertRealMatrixEquals(final RealMatrix actual, final RealMatrix expected,
                                               final double relativeTolerance, final double absoluteTolerance) {
