@@ -362,6 +362,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     @DefaultSerializer(MySVIntervalTree.Serializer.class)
     final static class MySVIntervalTree implements Serializable {
+        
+        private static final long serialVersionUID = 1L;
 
         SVIntervalTree<List<ReadInfo>> myTree;
 
