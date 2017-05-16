@@ -59,7 +59,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Argument(doc = "metadataFile",
             shortName = "metadataFile", fullName = "metadataFile",
             optional = true)
-    public File metadataFile = true;
+    public File metadataFile;
 
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
