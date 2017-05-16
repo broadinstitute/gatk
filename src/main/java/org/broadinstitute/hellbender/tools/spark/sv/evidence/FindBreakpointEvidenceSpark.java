@@ -39,6 +39,8 @@ import java.io.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * (Internal) Produces local assemblies of genomic regions that may harbor structural variants
@@ -603,6 +605,60 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         public static IntPair reduce( final IntPair pair1, final IntPair pair2 ) {
             return new IntPair(pair1.int1 + pair2.int1, pair1.int2 + pair2.int2);
+        }
+    }
+
+    /** This LocalAssemblyHandler aligns assembly contigs with BWA, along with some optional writing of intermediate results. */
+    private static final class FermiLiteAssemblyHandler implements LocalAssemblyHandler {
+        private static final long serialVersionUID = 1L;
+        private final String alignerIndexFile;
+        private final int maxFastqSize;
+        private final String fastqDir;
+        private final String gfaDir;
+
+        FermiLiteAssemblyHandler( final String alignerIndexFile, final int maxFastqSize,
+                                  final String fastqDir, final String gfaDir ) {
+            this.alignerIndexFile = alignerIndexFile;
+            this.maxFastqSize = maxFastqSize;
+            this.fastqDir = fastqDir;
+            this.gfaDir = gfaDir;
+        }
+
+        @Override
+        public AlignedAssemblyOrExcuse apply( final Tuple2<Integer, List<SVFastqUtils.FastqRead>> intervalAndReads ) {
+            final List<SVFastqUtils.FastqRead> readsList = intervalAndReads._2();
+            final int fastqSize = readsList.stream().mapToInt(FastqRead -> FastqRead.getBases().length).sum();
+            if (fastqSize > maxFastqSize) {
+                return new AlignedAssemblyOrExcuse(intervalAndReads._1(),
+                        "no assembly -- too big (" + fastqSize + " bytes).");
+            }
+            if ( fastqDir != null ) {
+                final String fastqName = String.format("%s/%s.fastq",fastqDir, AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()));
+                final ArrayList<SVFastqUtils.FastqRead> sortedReads = new ArrayList<>(intervalAndReads._2());
+                sortedReads.sort(Comparator.comparing(SVFastqUtils.FastqRead::getHeader));
+                SVFastqUtils.writeFastqFile(fastqName, sortedReads.iterator());
+            }
+            final long timeStart = System.currentTimeMillis();
+            final FermiLiteAssembly assembly = new FermiLiteAssembler().createAssembly(readsList);
+            final int secondsInAssembly = (int)((System.currentTimeMillis() - timeStart + 500)/1000);
+            if ( gfaDir != null ) {
+                final String gfaName =  String.format("%s/%s.gfa",gfaDir, AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()));
+                try ( final OutputStream os = BucketUtils.createFile(gfaName) ) {
+                    assembly.writeGFA(os);
+                }
+                catch ( final IOException ioe ) {
+                    throw new GATKException("Can't write "+gfaName, ioe);
+                }
+            }
+            final List<byte[]> tigSeqs =
+                    assembly.getContigs().stream()
+                            .map(FermiLiteAssembly.Contig::getSequence)
+                            .collect(SVUtils.arrayListCollector(assembly.getNContigs()));
+            try ( final BwaMemAligner aligner = new BwaMemAligner(BwaMemIndexCache.getInstance(alignerIndexFile)) ) {
+                aligner.setIntraCtgOptions();
+                final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(tigSeqs);
+                return new AlignedAssemblyOrExcuse(intervalAndReads._1(), assembly, secondsInAssembly, alignments);
+            }
         }
     }
 
