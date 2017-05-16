@@ -10,6 +10,7 @@ import htsjdk.samtools.SAMUtils;
  * Q = -10 log_10 P(error), which implies log P(error) = Q * (-log(10)/10)
  */
 public final class QualityUtils {
+
     /**
      * Maximum quality score that can be encoded in a SAM/BAM file
      */
@@ -35,6 +36,7 @@ public final class QualityUtils {
      * because Q 6 => you stand a 25% of being right, which means all bases are equally likely
      */
     public static final byte MIN_USABLE_Q_SCORE = 6;
+
     public static final int MAPPING_QUALITY_UNAVAILABLE = 255;
 
     /**
@@ -369,7 +371,6 @@ public final class QualityUtils {
     public static byte boundQual(final int qual, final byte maxQual) {
         return (byte) (Math.max(Math.min(qual, maxQual & 0xFF), 1) & 0xFF);
     }
-
 }
 
 
