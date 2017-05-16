@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-## $ BRANCH=`git rev-parse --symbolic-full-name --abbrev-ref HEAD` &&  sudo bash build_docker.sh -e `git rev-parse ${BRANCH}` -s -r -d /home/BROAD.MIT.EDU/lichtens/gatk_docker_staging/
-
 # Have script stop if there is an error
 set -e
 
@@ -31,13 +29,13 @@ Usage: %s: -e <GITHUB_TAG> [-psl] \n \
 where <GITHUB_TAG> is the github tag (or hash when -s is used) to use in building the docker image\n \
 (e.g. bash build_docker.sh -e 1.0.0.0-alpha1.2.1)\n \
 Optional arguments:  \n \
--p \t (DEV) push image to docker hub once complete.  This will use the GITHUB_TAG in dockerhub as well. \n \
-\t\t Unless -l is specified, this will also push this image to the 'latest' tag. \n \
 -s \t The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  git hashes cannot be pushed as latest, so -l is implied.  \n \
 -l \t Do not also push the image to the 'latest' tag. \n \
 -u \t Do not run the unit tests. \n \
 -d <STAGING_DIR> \t staging directory to grab code from repo and build the docker iamge.  If unspecified, then use whatever is in current dir (do not go to the repo).  NEVER SPECIFY YOUR WORKING DIR \n \
--r \t Do not remove the unit test docker container.  This is useful for debugging failing unit tests. \n" $0
+-p \t (GATK4 developers only) push image to docker hub once complete.  This will use the GITHUB_TAG in dockerhub as well. \n \
+\t\t Unless -l is specified, this will also push this image to the 'latest' tag. \n \
+-r \t (GATK4 developers only) Do not remove the unit test docker container.  This is useful for debugging failing unit tests. \n" $0
 	exit 1
 fi
 
