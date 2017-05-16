@@ -45,10 +45,10 @@ import java.util.stream.Collectors;
 public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
 
-    private static final String FASTQ_FILE_DIR_SHORT_NAME = "fastqDir";
-    private static final String FASTQ_FILE_DIR_FULL_NAME = "fastqAssemblyDirectory";
-    private static final String FASTQ_FILE_NAME_PATTERN_SHORT_NAME = "fastqName";
-    private static final String FASTQ_FILE_NAME_PATTERN_FULL_NAME = "fastqNameFormat";
+    public static final String FASTQ_FILE_DIR_SHORT_NAME = "fastqDir";
+    public static final String FASTQ_FILE_DIR_FULL_NAME = "fastqAssemblyDirectory";
+    public static final String FASTQ_FILE_NAME_PATTERN_SHORT_NAME = "fastqName";
+    public static final String FASTQ_FILE_NAME_PATTERN_FULL_NAME = "fastqNameFormat";
 
     private static final long serialVersionUID = 1L;
 
@@ -63,7 +63,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     @Argument(doc = "fastq files name pattern",
             shortName = FASTQ_FILE_NAME_PATTERN_SHORT_NAME,
             fullName  = FASTQ_FILE_NAME_PATTERN_FULL_NAME)
-    private String fastqFilePattern = "assembly_%2d.fastq";
+    private String fastqFilePattern = "assembly%2d.fastq";
 
     @Argument(doc = "output VCF file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -85,9 +85,11 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private void setUp(final JavaSparkContext ctx) {
         if (!outputFile.getParentFile().isDirectory()) {
-            throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, "the output file location is not a directory:");
+            throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+                    "the output file location is not a directory:");
         } else if (outputFile.exists() && !outputFile.isFile()) {
-            throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, "the output file makes reference to something that is not a file");
+            throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+                    "the output file makes reference to something that is not a file");
         }
         variantsSource = new VariantsSparkSource(ctx);
     }
@@ -95,11 +97,13 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         setUp(ctx);
-        final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
+        final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
+                variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .map(StructuralVariantContext::new);
         final JavaRDD<StructuralVariantContext> outputVariants = processVariants(variants, ctx);
         final VCFHeader header = composeOutputHeader();
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile.getParent(), outputFile.getName(), referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants, header, logger);
+        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile.getParent(), outputFile.getName(),
+                referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants, header, logger);
         tearDown(ctx);
     }
 
@@ -118,25 +122,27 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private JavaRDD<StructuralVariantContext> processVariants(final JavaRDD<StructuralVariantContext> variants, final JavaSparkContext ctx) {
         final JavaPairRDD<StructuralVariantContext, List<Integer>> variantAndAssemblyIds = variants.mapToPair(v -> new Tuple2<>(v, v.assemblyIDs()));
+        final File fastqDir = this.fastqDir;
+        final String fastqFilePattern = this.fastqFilePattern;
         final JavaPairRDD<StructuralVariantContext, List<File>> variantAndAssemblyFiles = variantAndAssemblyIds
                 .mapValues(v -> v.stream().map(id -> new File(fastqDir, String.format(fastqFilePattern, id))).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, List<SVFastqUtils.FastqRead>> variantReads = variantAndAssemblyFiles
                 .mapValues(v -> v.stream().flatMap(file -> SVFastqUtils.readFastqFile(file.getAbsolutePath(), null).stream()).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, Map<String, List<SVFastqUtils.FastqRead>>> variantReadsByName = variantReads
                 .mapValues(v -> v.stream().collect(Collectors.groupingBy(r -> templateName(r)._1())));
-        final JavaPairRDD<StructuralVariantContext, List<Template>> = variantReadByName
-
-
-        variantAndAssemblyIds.mapValues(x -> x)
-        final JavaRDD<StructuralVariantContext, Iterable<Template>> templates =
-                variants.flatMap(v -> v.assemblyIDs().iterator())
-        return variants.map(vc -> { if (vc.isIndel())});
+        final JavaPairRDD<StructuralVariantContext, List<Template>> variantTemplates = variantReadsByName.mapValues(map ->
+            map.entrySet().stream().map(entry ->
+                Template.create(entry.getKey(), entry.getValue(), read -> new Template.Fragment(read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
+            ).collect(Collectors.toList()));
+        variantTemplates.foreach(vt -> {
+            System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates " );
+        });
         return variants;
     }
 
     private static Pattern FASTQ_READ_NAME_FORMAT = Pattern.compile("^(.*)\\/(\\d+)$");
 
-    private Tuple2<String, Integer> templateName(final SVFastqUtils.FastqRead read) {
+    private static Tuple2<String, Integer> templateName(final SVFastqUtils.FastqRead read) {
         final String readName = read.getName();
         final Matcher matcher = FASTQ_READ_NAME_FORMAT.matcher(readName);
         final String templateName;
@@ -149,10 +155,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             fragmentNumber = -1;
         }
         return new Tuple2<>(templateName, fragmentNumber);
-    }
-
-    private Template composeTemplate(final List<SVFastqUtils.FastqRead> reads) {
-        rea
     }
 
     private void tearDown(final JavaSparkContext ctx) {

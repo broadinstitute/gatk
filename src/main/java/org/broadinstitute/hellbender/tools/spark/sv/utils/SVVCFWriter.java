@@ -51,22 +51,21 @@ public class SVVCFWriter {
      * FASTA and Broadcast references are both required because 2bit Broadcast references currently order their
      * sequence dictionaries in a scrambled order, see https://github.com/broadinstitute/gatk/issues/2037.
      */
-    public static void writeVCF(final PipelineOptions pipelineOptions, final String vcfFileName,
-                                final String fastaReference, final JavaRDD<VariantContext> variantContexts,
-                                final VCFHeader header,
-                                final Logger logger) {
+    public static void writeVCF(final PipelineOptions pipelineOptions, String vcfFileName,
+                         final String fastaReference, final JavaRDD<? extends VariantContext> variantContexts, VCFHeader header,
+                         final Logger logger) {
 
         final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference,
                 ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
 
-        final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(variantContexts.collect(), referenceSequenceDictionary);
+        final List<? extends VariantContext> sortedVariantsList = sortVariantsByCoordinate(variantContexts.collect(), referenceSequenceDictionary);
 
         logNumOfVarByTypes(sortedVariantsList, logger);
 
         writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary, header);
     }
 
-    private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
+    private static void logNumOfVarByTypes(final List<? extends VariantContext> sortedVariantsList, final Logger logger) {
 
         logger.info("Discovered " + sortedVariantsList.size() + " variants.");
 
@@ -75,15 +74,12 @@ public class SVVCFWriter {
                 .forEach((key, value) -> logger.info(key + ": " + value));
     }
 
-    // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample
-    //       such that they have the same start, end and inversion evidence type but differ only in their inserted sequence,
-    //       sorting these variants must take into account of such complications.
-    // the solution below is hackish
-    @VisibleForTesting
-    static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants,
-                                                         final SAMSequenceDictionary referenceSequenceDictionary) {
-        return variants.stream().sorted((VariantContext v1, VariantContext v2) -> {
+   // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample such that they have the same start, end and inversion evidence type
+    //     but differ only in their inserted sequence, sorting these variants must take into account of such complications. the solution below is hackish
+    private static <V extends VariantContext> List<V> sortVariantsByCoordinate(final List<V> variants, SAMSequenceDictionary referenceSequenceDictionary) {
+        return variants.stream().sorted((V v1, V v2) -> {
             final int x = IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary);
+
             if (x == 0) {
                 final String s1 = v1.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "");
                 final String s2 = v2.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "");
@@ -94,8 +90,8 @@ public class SVVCFWriter {
         }).collect(SVUtils.arrayListCollector(variants.size()));
     }
 
-    private static void writeVariants(final String fileName, final List<VariantContext> variantsArrayList,
-                                      final SAMSequenceDictionary referenceSequenceDictionary, final VCFHeader header) {
+    private static void writeVariants(final String fileName,
+                                      final List<? extends VariantContext> variantsArrayList, final SAMSequenceDictionary referenceSequenceDictionary, final VCFHeader header) {
         try (final OutputStream outputStream
                      = new BufferedOutputStream(BucketUtils.createFile(fileName))) {
 
