@@ -2,10 +2,11 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
@@ -25,25 +26,8 @@ import java.util.List;
  *
  * <p>
  *     In addition to the raw target coverage file, the user must provide a tab-separated contig
- *     germline ploidy annotation file. For example, a basic annotation file for homo sapiens is as follows:
- *
- *     <pre>
- *         CONTIG_NAME    CONTIG_CLASS    SEX_XX    SEX_XY
- *         1              AUTOSOMAL       2          2
- *         2              AUTOSOMAL       2          2
- *                                   ...
- *                                   ...
- *                                   ...
- *         X              ALLOSOMAL       2          0
- *         Y              ALLOSOMAL       1          1
- *     </pre>
- *
- *     CONTIG_NAME column values must be same as contig names that appear in the read counts table.
- *     CONTIG_CLASS is either AUTOSOMAL or ALLOSOMAL. "SEX_XX" and "SEX_YY" are arbitrary sex genotype tags,
- *     along with their ploidies (= number of homologs). AUTOSOMAL contigs must have the same ploidy for all
- *     sexes. Every contig that appears in the read counts table must be annotated. One may include additional
- *     sex genotypes (along with contig ploidies) for specifies having more than two sexes by adding
- *     additional columns to the contig annotation file.
+ *     germline ploidy annotation file. The format is described in {@link ContigGermlinePloidyAnnotationTableReader}.
+ *     Note: Every contig that appears in the read counts table must be annotated.
  * </p>
  *
  * <p>
@@ -55,7 +39,7 @@ import java.util.List;
  * <p>
  *     Note: due to the uncertainty in the alignment of short reads, a small number of reads may be
  *     erroneously mapped to contigs with 0 actual ploidy (e.g. female homo sapiens samples may
- *     have a small number of reads aligned to the Y contig). The user must specifiy the typical mapping
+ *     have a small number of reads aligned to the Y contig). The user must specify the typical mapping
  *     error probability for the tool to properly account for these errors.
  * </p>
  *
@@ -82,8 +66,8 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "This tool infers sample sex genotypes from raw target read counts by calculating the likelihoods of all provided " +
                 "genotypes and choosing the most likely one. The required inputs are (1) a table of raw target read counts " +
-                "from one or more samples, and (2) a table of annotated contigs that includes a CONTIG_NAME column, " +
-                "a CONTIG_CLASS column (AUTOSOMAL, or ALLOSOMAL), and one additional column for each sex genotype " +
+                "from one or more samples, and (2) a table of annotated contigs that includes a CONTIG column, " +
+                "a CLASS column (AUTOSOMAL, or ALLOSOMAL), and one additional column for each sex genotype " +
                 "that lists the expected germline ploidy of the contig. Sex genotypes may have arbitrary names and are " +
                 "identified with their given column name. All contigs that appear in the input read count table targets " +
                 "must be annotated in this file. The output is a tab-separated file that includes sample names, their " +

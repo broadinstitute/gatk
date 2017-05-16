@@ -261,14 +261,14 @@ public class ReadCountCollectionUtilsUnitTest {
             final int expectedRemainingCount = (int) IntStream.of(numberOfZeros).filter(i -> i <= maxZerosThres).count();
             if (expectedRemainingCount == 0) {
                 try {
-                    ReadCountCollectionUtils.removeColumnsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+                    ReadCountCollectionUtils.removeColumnsWithTooManyZeros(readCount, maxZeros, false, NULL_LOGGER);
                 } catch (final UserException.BadInput ex) {
                     // expected.
                     continue;
                 }
                 Assert.fail("expects an exception");
             }
-            final ReadCountCollection rc = ReadCountCollectionUtils.removeColumnsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+            final ReadCountCollection rc = ReadCountCollectionUtils.removeColumnsWithTooManyZeros(readCount, maxZeros, false, NULL_LOGGER);
             Assert.assertEquals(rc.columnNames().size(), expectedRemainingCount);
             final int[] newIndices = new int[expectedRemainingCount];
             int nextIndex = 0;
@@ -300,14 +300,14 @@ public class ReadCountCollectionUtilsUnitTest {
             final int expectedRemainingCount = (int) IntStream.of(numberOfZeros).filter(i -> i <= maxZerosThres).count();
             if (expectedRemainingCount == 0) {
                 try {
-                    ReadCountCollectionUtils.removeTargetsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+                    ReadCountCollectionUtils.removeTargetsWithTooManyZeros(readCount, maxZeros, false, NULL_LOGGER);
                 } catch (final UserException.BadInput ex) {
                     // expected.
                     continue;
                 }
                 Assert.fail("expects an exception");
             }
-            final ReadCountCollection rc = ReadCountCollectionUtils.removeTargetsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+            final ReadCountCollection rc = ReadCountCollectionUtils.removeTargetsWithTooManyZeros(readCount, maxZeros, false, NULL_LOGGER);
             Assert.assertEquals(rc.targets().size(), expectedRemainingCount);
             int nextIndex = 0;
             for (int i = 0; i < readCount.targets().size(); i++) {

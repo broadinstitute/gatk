@@ -6,11 +6,10 @@ import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
+import org.broadinstitute.hellbender.utils.hmm.HMM;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -33,7 +32,7 @@ import java.util.stream.IntStream;
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public abstract class ClusteringGenomicHMM<DATA, HIDDEN> implements HiddenMarkovModel<DATA, SimpleInterval, Integer> {
+public abstract class ClusteringGenomicHMM<DATA, HIDDEN> implements HMM<DATA, SimpleInterval, Integer> {
     private final double memoryLength;
     private final List<HIDDEN> hiddenStateValues;
     private final List<Double> weights;
@@ -48,7 +47,7 @@ public abstract class ClusteringGenomicHMM<DATA, HIDDEN> implements HiddenMarkov
         this.memoryLength = ParamUtils.isPositive(memoryLength, "CNV memory length must be positive");
     }
 
-    // The following methods implement the HiddenMarkovModel interface -------------------------------------------------
+    // The following methods implement the HMM interface -------------------------------------------------
     @Override
     public List<Integer> hiddenStates() {
         return IntStream.range(0, hiddenStateValues.size()).boxed().collect(Collectors.toList());

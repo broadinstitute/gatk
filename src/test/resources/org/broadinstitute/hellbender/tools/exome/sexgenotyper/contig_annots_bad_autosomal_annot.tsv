@@ -1,5 +1,5 @@
 ## autosomal contigs must have the same ploidy for all classes
-CONTIG_NAME	CONTIG_CLASS	SEX_XX	SEX_XY
+CONTIG	CLASS	SEX_XX	SEX_XY
 1	AUTOSOMAL	2	3
 2	AUTOSOMAL	2	2
 3	AUTOSOMAL	2	2

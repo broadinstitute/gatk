@@ -142,6 +142,10 @@ public final class SexGenotypeDataCollection {
         return sampleNamesToSexGenotypeDataMap.get(sampleName);
     }
 
+    public Set<String> getSampleNames() {
+        return Collections.unmodifiableSet(sampleNames);
+    }
+
     /**
      * Equality comparison is based on the pairwise equality of the contained {@link SexGenotypeData}
      * entries.

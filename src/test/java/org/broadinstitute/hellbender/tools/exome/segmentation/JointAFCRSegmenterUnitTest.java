@@ -39,7 +39,7 @@ public final class JointAFCRSegmenterUnitTest {
         final int initialNumCRStates = 20;
         final int initialNumAFStates = 20;
         final AlleleFractionGlobalParameters trueAFParams = new AlleleFractionGlobalParameters(1.0, 0.01, 0.01);
-        final JointAFCRHiddenMarkovModel trueJointModel = new JointAFCRHiddenMarkovModel(trueJointStates, trueWeights, trueMemoryLength,
+        final JointAFCRHMM trueJointModel = new JointAFCRHMM(trueJointStates, trueWeights, trueMemoryLength,
                 trueAFParams, AllelicPanelOfNormals.EMPTY_PON, trueCauchyWidth);
 
         // generate joint truth

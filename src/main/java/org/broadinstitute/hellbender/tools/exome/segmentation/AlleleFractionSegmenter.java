@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -71,7 +70,7 @@ public final class AlleleFractionSegmenter extends ScalarHMMSegmenter<AllelicCou
 
     @Override
     protected ClusteringGenomicHMM<AllelicCount, Double> makeModel() {
-        return new AlleleFractionHiddenMarkovModel(getStates(), getWeights(), getMemoryLength(), allelicPoN, globalParameters);
+        return new AlleleFractionHMM(getStates(), getWeights(), getMemoryLength(), allelicPoN, globalParameters);
     }
 
     @Override
@@ -82,7 +81,7 @@ public final class AlleleFractionSegmenter extends ScalarHMMSegmenter<AllelicCou
                 for (int state = 0; state < numStates(); state++) {
                     final double eStepPosterior = eStep.pStateAtPosition(state, position);
                     logLikelihood += eStepPosterior < NEGLIGIBLE_POSTERIOR_FOR_M_STEP ? 0 :eStepPosterior
-                            * AlleleFractionHiddenMarkovModel.logEmissionProbability(data.get(position), getState(state), params, allelicPoN);
+                            * AlleleFractionHMM.logEmissionProbability(data.get(position), getState(state), params, allelicPoN);
                 }
             }
             return logLikelihood;

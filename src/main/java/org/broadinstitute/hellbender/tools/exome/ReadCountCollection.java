@@ -143,7 +143,7 @@ public final class ReadCountCollection implements Serializable {
     }
 
     /**
-     * TODO unit test
+     * TODO github/gatk-protected issue #843
      *
      * Returns a column from the collection on a given list of targets with the same ordering as {@code targetsToKeep}
      *
@@ -207,8 +207,8 @@ public final class ReadCountCollection implements Serializable {
      *
      * @param targetsToKeep the new target subset.
      * @return never {@code null}. The order of targets in the result is guaranteed to
-     *  follow the traversal order of {@code targetsToKeep}. The order of count columns is
-     *  guaranteed to follow the original order of count columns.
+     *  follow the original order of targets. The order of count columns is guaranteed to
+     *  follow the original order of count columns.
      * @throws IllegalArgumentException if {@code targetsToKeep}:
      * <ul>
      *     <li>is {@code null},</li>
@@ -318,5 +318,23 @@ public final class ReadCountCollection implements Serializable {
     private IllegalArgumentException unknownTargetsToKeep(final Set<Target> targetsToKeep) {
         return new IllegalArgumentException("some column names in the column keep set that are not part of this read count collection: e.g. "
                 + targetsToKeep.stream().filter(name -> !targets.contains(name)).map(Target::getName).limit(5).collect(Collectors.joining(", ")));
+    }
+
+    /**
+     * Helper class for referring to an entry in the read count collection
+     */
+    public static class EntryIndex {
+        public final int targetIndex;
+        public final int sampleIndex;
+
+        public EntryIndex(final int targetIndex, final int sampleIndex) {
+            this.targetIndex = ParamUtils.isPositiveOrZero(targetIndex, "Target index must be >= 0");
+            this.sampleIndex = ParamUtils.isPositiveOrZero(sampleIndex, "Sample index must be >= 0");
+        }
+
+        public void assertInRange(final ReadCountCollection readCountCollection) {
+            Utils.validateArg(targetIndex < readCountCollection.targets().size(), "Target index is out of range");
+            Utils.validateArg(sampleIndex < readCountCollection.columnNames().size(), "Sample index is out of range");
+        }
     }
 }

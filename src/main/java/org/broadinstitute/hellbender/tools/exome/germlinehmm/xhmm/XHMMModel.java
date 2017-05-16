@@ -1,20 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.coveragemodel.XHMMEmissionProbabilityCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateHiddenMarkovModel;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateTransitionProbabilityCache;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateHMM;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -45,7 +37,7 @@ import java.util.Random;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class XHMMModel extends CopyNumberTriStateHiddenMarkovModel<XHMMEmissionData> {
+public final class XHMMModel extends CopyNumberTriStateHMM<XHMMEmissionData> {
 
     private static final long serialVersionUID = 2702812961362183203L;
 
@@ -88,14 +80,14 @@ public final class XHMMModel extends CopyNumberTriStateHiddenMarkovModel<XHMMEmi
     }
 
     /**
-     * See {@link Target#calculateDistance(Target, Target, double)}
+     * See {@link Target#calculateDistance(Target, Target)}
      *
      * @param fromTarget first target
      * @param toTarget second target
      * @return distance
      */
     public static double calculateDistance(final Target fromTarget, final Target toTarget) {
-        return Target.calculateDistance(fromTarget, toTarget, DEFAULT_DISTANCE_BETWEEN_TARGETS);
+        return Target.calculateDistance(fromTarget, toTarget);
     }
 
     /**

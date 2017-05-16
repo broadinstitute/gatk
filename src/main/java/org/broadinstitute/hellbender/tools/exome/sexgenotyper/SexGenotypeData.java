@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,10 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class SexGenotypeData {
+public final class SexGenotypeData implements Serializable {
+
+    private static final long serialVersionUID = 2486876951436887403L;
+
     /* mandatory */
     private final String sampleName;
     private final String sexGenotype;

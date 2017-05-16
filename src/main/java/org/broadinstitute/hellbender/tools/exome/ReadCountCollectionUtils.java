@@ -10,19 +10,23 @@ import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
 import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
+import javax.annotation.Nonnull;
 import java.io.*;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -71,6 +75,7 @@ import java.util.stream.IntStream;
  * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class ReadCountCollectionUtils {
 
@@ -399,7 +404,7 @@ public final class ReadCountCollectionUtils {
         }
 
         try (final TableWriter<ReadCountRecord> writer =
-                     writerWithIntervals(outWriter, Arrays.asList(sampleName))) {
+                     writerWithIntervals(outWriter, Collections.singletonList(sampleName))) {
             for (String comment : comments) {
                 writer.writeComment(comment);
             }
@@ -532,7 +537,7 @@ public final class ReadCountCollectionUtils {
         final double topExtremeThreshold = new Percentile(100 - extremeColumnMedianCountPercentileThreshold).evaluate(columnMedians);
 
         // Determine kept and dropped column sets.
-        final Set<String> columnsToKeep = new HashSet<>(readCounts.columnNames().size());
+        final Set<String> columnsToKeep = new LinkedHashSet<>(readCounts.columnNames().size());
         final int initialMapSize = ((int) (2.0 * extremeColumnMedianCountPercentileThreshold / 100.0)) * readCounts.columnNames().size();
         final Map<String, Double> columnsToDrop = new LinkedHashMap<>(initialMapSize);
         for (int i = 0; i < columnMedians.length; i++) {
@@ -561,8 +566,50 @@ public final class ReadCountCollectionUtils {
         }
     }
 
-    private static long countZeroes(final double[] data) {
-        return DoubleStream.of(data).filter(d -> d == 0.0).count();
+    /**
+     * Remove columns with NaNs, infinities, and negative values.
+     *
+     * @param readCounts the input read counts.
+     * @param logger instance of logger.
+     * @return never {@code null}. It might be a reference to the input read-counts if there is
+     *   is no target to be dropped.
+     */
+    public static ReadCountCollection removeColumnsWithBadValues(final ReadCountCollection readCounts,
+                                                                 final Logger logger) {
+        final List<String> columnNames = readCounts.columnNames();
+
+        // Determine kept and dropped column sets.
+        final Set<String> columnsToKeep = new LinkedHashSet<>(readCounts.columnNames().size());
+        final Set<String> columnsToDrop = new HashSet<>();
+        for (int i = 0; i < columnNames.size(); i++) {
+            if (Arrays.stream(readCounts.getColumn(i)).noneMatch(d -> Double.isNaN(d) || Double.isInfinite(d) || d < 0)) {
+                columnsToKeep.add(columnNames.get(i));
+            } else {
+                columnsToDrop.add(columnNames.get(i));
+            }
+        }
+
+        // log and drop columns if it applies
+        if (columnsToKeep.isEmpty()) {
+            throw new UserException.BadInput("No column count left after removing those with NaN and infinities");
+        } else if (columnsToKeep.size() == columnNames.size()) {
+            logger.info("No column dropped due to bad values");
+            return readCounts;
+        } else {
+            final double droppedPercentage = ((double)(columnsToDrop.size()) / columnNames.size()) * 100;
+            logger.info(String.format("Some columns dropped (%d out of %d, %.2f%%) as they contained bad values: %s",
+                    columnsToDrop.size(), columnNames.size(), droppedPercentage,
+                    columnsToDrop.stream().collect(Collectors.joining(", ", "[", "]"))));
+            return readCounts.subsetColumns(columnsToKeep);
+        }
+    }
+
+    private static long countZeroes(final double[] data, final boolean roundToInteger) {
+        if (roundToInteger) {
+            return DoubleStream.of(data).filter(d -> (int) FastMath.round(d) == 0).count();
+        } else {
+            return DoubleStream.of(data).filter(d -> d == 0.0).count();
+        }
     }
 
     /**
@@ -577,12 +624,14 @@ public final class ReadCountCollectionUtils {
      *   is no target to be dropped.
      */
     public static ReadCountCollection removeTargetsWithTooManyZeros(final ReadCountCollection readCounts,
-                                                                    final int maximumTargetZeros, final Logger logger) {
+                                                                    final int maximumTargetZeros, final boolean roundToInteger,
+                                                                    final Logger logger) {
         final RealMatrix counts = readCounts.counts();
 
         final Set<Target> targetsToKeep = IntStream.range(0, counts.getRowDimension()).boxed()
-                .filter(i -> countZeroes(counts.getRow(i)) <= maximumTargetZeros)
-                .map(i -> readCounts.targets().get(i)).collect(Collectors.toSet());
+                .filter(i -> countZeroes(counts.getRow(i), roundToInteger) <= maximumTargetZeros)
+                .map(i -> readCounts.targets().get(i))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         final int targetsToDropCount = readCounts.targets().size() - targetsToKeep.size();
         if (targetsToDropCount == 0) {
@@ -614,7 +663,60 @@ public final class ReadCountCollectionUtils {
      *   is no target to be dropped.
      */
     public static ReadCountCollection removeTotallyUncoveredTargets(final ReadCountCollection readCounts, final Logger logger) {
-        return removeTargetsWithTooManyZeros(readCounts, readCounts.columnNames().size() - 1, logger);
+        return removeTargetsWithTooManyZeros(readCounts, readCounts.columnNames().size() - 1, true, logger);
+    }
+
+    /**
+     * Removes targets that are flagged for more than {@code toleratedFlagsPerSample} times per sample according to
+     * a provided {@code flagger} predicate.
+     *
+     * If some targets are dropped, the order of the remaining targets will be the same as the original read
+     * count collection.
+     *
+     * If no target is dropped, the original read count collection will be returned by reference.
+     *
+     * @param readCounts the input read counts
+     * @param entryFlagger a predicate for flagging an arbitrary {@link ReadCountCollection.EntryIndex} in the read count collection
+     * @param toleratedFlagsPerSample maximum tolerated flags per sample before dropping a target
+     * @param reasonForFlagging a description of the reason for flagging (used for logging)
+     * @param logger an instance of {@link Logger}
+     * @return never {@code null}. It might be a reference to the input read-counts if there is
+     *   is no target to be dropped.
+     */
+    public static ReadCountCollection removeTargetsWithTooManyFlags(@Nonnull final ReadCountCollection readCounts,
+                                                                    @Nonnull final Predicate<ReadCountCollection.EntryIndex> entryFlagger,
+                                                                    final int toleratedFlagsPerSample,
+                                                                    @Nonnull final String reasonForFlagging,
+                                                                    @Nonnull final Logger logger) {
+        Utils.nonNull(readCounts, "The input read counts must be non-null");
+        Utils.nonNull(entryFlagger, "The predicate must be non-null");
+        Utils.nonNull(reasonForFlagging, "The reason for flagging must be non-null");
+        Utils.nonNull(logger, "The logger must be non-null");
+        ParamUtils.isPositiveOrZero(toleratedFlagsPerSample, "Tolerated flags per sample must be >= 0");
+        final int numTargets = readCounts.counts().getRowDimension();
+        final int numColumns = readCounts.counts().getColumnDimension();
+        final List<Target> originalTargets = readCounts.targets();
+        final Set<Target> targetsToKeep = IntStream.range(0, numTargets)
+                .filter(targetIndex -> IntStream.range(0, numColumns)
+                        .filter(columnIndex -> entryFlagger.test(new ReadCountCollection.EntryIndex(targetIndex, columnIndex)))
+                        .count() <= toleratedFlagsPerSample)
+                .mapToObj(originalTargets::get)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        final int targetsToDropCount = originalTargets.size() - targetsToKeep.size();
+        if (targetsToDropCount == 0) {
+            logger.info(String.format("There are no targets flagged more than %d times across all %d samples as being %s. Keeping all" +
+                    " %d targets.", toleratedFlagsPerSample, numColumns, reasonForFlagging, numTargets));
+            return readCounts;
+        } else if (targetsToDropCount == originalTargets.size()) {
+            throw new UserException.BadInput(String.format("All targets are flagged more than %d times across all %d samples as being %s" +
+                    " resulting in all targets being dropped", toleratedFlagsPerSample, numColumns, reasonForFlagging));
+        } else {
+            final double droppedPercentage = ((double)(targetsToDropCount) / originalTargets.size()) * 100;
+            logger.info(String.format("Some targets dropped (%d out of %d, %.2f%%) as they were flagged more than %d" +
+                    " times across %d samples as being %s.", targetsToDropCount, numTargets, droppedPercentage, toleratedFlagsPerSample,
+                    numColumns, reasonForFlagging));
+            return readCounts.subsetTargets(targetsToKeep);
+        }
     }
 
     /**
@@ -630,13 +732,16 @@ public final class ReadCountCollectionUtils {
      */
     @VisibleForTesting
     public static ReadCountCollection removeColumnsWithTooManyZeros(final ReadCountCollection readCounts,
-                                                                    final int maximumColumnZeros, final Logger logger) {
+                                                                    final int maximumColumnZeros,
+                                                                    final boolean roundToInteger,
+                                                                    final Logger logger) {
 
         final RealMatrix counts = readCounts.counts();
 
         final Set<String> columnsToKeep = IntStream.range(0, counts.getColumnDimension()).boxed()
-                .filter(i -> countZeroes(counts.getColumn(i)) <= maximumColumnZeros)
-                .map(i -> readCounts.columnNames().get(i)).collect(Collectors.toSet());
+                .filter(i -> countZeroes(counts.getColumn(i), roundToInteger) <= maximumColumnZeros)
+                .map(i -> readCounts.columnNames().get(i))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         final int columnsToDropCount = readCounts.columnNames().size() - columnsToKeep.size();
         if (columnsToDropCount == 0) {

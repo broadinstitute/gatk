@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.utils.IndexRange;
@@ -10,7 +9,11 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -18,9 +21,14 @@ import java.util.stream.Collectors;
  * A collection of {@link Target} instances along with helper methods for generating their genotype ploidy
  * annotations on-the-fly using provided contig ploidy annotations.
  *
+ * @implNote had to remove unmodifiable status on all collections. Kryo still has serialization issues
+ *           with unmodifiable collections even using custom serializers from de.javakaffee:kryo-serializers
+ *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class GermlinePloidyAnnotatedTargetCollection implements TargetCollection<Target> {
+public final class GermlinePloidyAnnotatedTargetCollection implements TargetCollection<Target>, Serializable {
+
+    private static final long serialVersionUID = 4942518403271978055L;
 
     /**
      * Map from targets to their germline ploidy annotations (based on target contigs)
@@ -58,40 +66,48 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
                                                    @Nonnull final List<Target> targetList) {
         performValidityChecks(targetList, contigAnnotsList);
 
-        fullTargetList = Collections.unmodifiableList(targetList);
-        fullTargetSet = Collections.unmodifiableSet(new HashSet<>(fullTargetList));
+        fullTargetList = targetList;
+        fullTargetSet = new HashSet<>(fullTargetList);
 
         /* map targets to ploidy annotations */
         final Map<String, ContigGermlinePloidyAnnotation> contigNameToContigPloidyAnnotationMap = contigAnnotsList.stream()
                 .collect(Collectors.toMap(ContigGermlinePloidyAnnotation::getContigName, Function.identity()));
-        targetToContigPloidyAnnotationMap = Collections.unmodifiableMap(
+        targetToContigPloidyAnnotationMap =
                 fullTargetList.stream().collect(Collectors.toMap(Function.identity(),
-                        target -> contigNameToContigPloidyAnnotationMap.get(target.getContig()))));
+                        target -> contigNameToContigPloidyAnnotationMap.get(target.getContig())));
 
         /* autosomal and allosomal target lists */
-        autosomalTargetList = Collections.unmodifiableList(fullTargetList.stream()
+        autosomalTargetList = fullTargetList.stream()
                 .filter(target -> targetToContigPloidyAnnotationMap.get(target).getContigClass() == ContigClass.AUTOSOMAL)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
 
-        allosomalTargetList = Collections.unmodifiableList(fullTargetList.stream()
+        allosomalTargetList = fullTargetList.stream()
                 .filter(target -> targetToContigPloidyAnnotationMap.get(target).getContigClass() == ContigClass.ALLOSOMAL)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
     }
 
     /**
-     * Returns an unmodifiable list of autosomal targets contained in the collection
-     * @return unmodifiable list of contained autosomal targets
+     * Returns the list of autosomal targets contained in the collection
+     * @return list of contained autosomal targets
      */
     public List<Target> getAutosomalTargetList() {
-        return Collections.unmodifiableList(autosomalTargetList);
+        return autosomalTargetList;
     }
 
     /**
-     * Returns an unmodifiable list of allosomal targets contained in the collection
-     * @return unmodifiable list of contained allosomal targets
+     * Returns the list of allosomal targets contained in the collection
+     * @return list of contained allosomal targets
      */
     public List<Target> getAllosomalTargetList() {
-        return Collections.unmodifiableList(allosomalTargetList);
+        return allosomalTargetList;
+    }
+
+    /**
+     * Returns the set of all targets contained in the collection
+     * @return the set of targets
+     */
+    public Set<Target> getFullTargetSet() {
+        return fullTargetSet;
     }
 
     /**
@@ -106,6 +122,13 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
         return targetToContigPloidyAnnotationMap.get(target).getGermlinePloidy(genotypeName);
     }
 
+    public ContigGermlinePloidyAnnotation getContigGermlinePloidyAnnotation(@Nonnull final Target target) {
+        if (!fullTargetSet.contains(target)) {
+            throw new IllegalArgumentException("Target \"" + target.getName() + "\" can not be found");
+        }
+        return targetToContigPloidyAnnotationMap.get(target);
+    }
+
     /**
      * Perform a number of checks on the arguments passed to the constructor:
      * <dl>
@@ -118,36 +141,31 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
      * @param targetList list of targets
      * @param contigAnnotsList list of contig ploidy annotations
      */
-    private void performValidityChecks(final List<Target> targetList, final List<ContigGermlinePloidyAnnotation> contigAnnotsList) {
+    private void performValidityChecks(@Nonnull final List<Target> targetList,
+                                       @Nonnull final List<ContigGermlinePloidyAnnotation> contigAnnotsList) {
         /* assert the lists are non-empty */
-        if (targetList.isEmpty()) {
-            throw new UserException.BadInput("Target list can not be empty");
-        }
-        if (contigAnnotsList.isEmpty()) {
-            throw new UserException.BadInput("Contig germline ploidy annotation list can not be empty");
-        }
+        Utils.validateArg(!Utils.nonNull(targetList, "Target list must be non-null").isEmpty(),
+                "Target list can not be empty");
+        Utils.validateArg(!Utils.nonNull(contigAnnotsList, "Contig ploidy annotation list must be non-null").isEmpty(),
+                "Contig germline ploidy annotation list can not be empty");
 
         /* assert targets have unique names */
         final Map<String, Long> targetNameCounts = targetList.stream()
                 .map(Target::getName)
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        if (targetNameCounts.keySet().size() < targetList.size()) {
-            throw new UserException.BadInput("Targets must have unique names. Non-unique target names: " +
-                    targetNameCounts.keySet().stream()
-                            .filter(name -> targetNameCounts.get(name) > 1)
-                            .collect(Collectors.joining(", ")));
-        }
+        Utils.validateArg(targetNameCounts.keySet().size() == targetList.size(),
+                "Targets must have unique names. Non-unique target names: " + targetNameCounts.keySet().stream()
+                        .filter(name -> targetNameCounts.get(name) > 1)
+                        .collect(Collectors.joining(", ")));
 
         /* assert contigs are not annotated multiple times */
         final Map<String, Long> contigAnnotsCounts = contigAnnotsList.stream()
                 .map(ContigGermlinePloidyAnnotation::getContigName)
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        if (contigAnnotsCounts.keySet().size() < contigAnnotsList.size()) {
-            throw new UserException.BadInput("Some contigs are multiply annotated: " +
-                    contigAnnotsCounts.keySet().stream()
+        Utils.validateArg(contigAnnotsCounts.keySet().size() == contigAnnotsList.size(),
+                "Some contigs are multiply annotated: " + contigAnnotsCounts.keySet().stream()
                             .filter(contig -> contigAnnotsCounts.get(contig) > 1) /* multiply annotated contigs */
                             .collect(Collectors.joining(", ")));
-        }
 
         /* assert all contigs present in the target list are annotated */
         final Set<String> contigNamesFromTargets = targetList.stream()
@@ -155,17 +173,13 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
         final Set<String> contigNamesFromAnnots = contigAnnotsList.stream()
                 .map(ContigGermlinePloidyAnnotation::getContigName).collect(Collectors.toSet());
         final Set<String> missingContigs = Sets.difference(contigNamesFromTargets, contigNamesFromAnnots);
-        if (missingContigs.size() > 0) {
-            throw new UserException.BadInput("All contigs must be annotated. Annotations are missing for: " +
+        Utils.validateArg(missingContigs.isEmpty(), "All contigs must be annotated. Annotations are missing for: " +
                     missingContigs.stream().collect(Collectors.joining(", ")));
-        }
 
         /* assert all contigs have annotations for all ploidy classes */
         final Set<String> firstAnnotPloidyTagSet = contigAnnotsList.get(0).getGenotypesSet();
-        if (contigAnnotsList.stream().filter(annot -> !annot.getGenotypesSet().equals(firstAnnotPloidyTagSet)).count() > 0) {
-            throw new UserException.BadInput("Not all entries in the contig germline ploidy annotation list have the same " +
-                    "set of genotypes");
-        }
+        Utils.validateArg(contigAnnotsList.stream().allMatch(annot -> annot.getGenotypesSet().equals(firstAnnotPloidyTagSet)),
+                "Not all entries in the contig germline ploidy annotation list have the same set of genotypes");
     }
 
     @Override
@@ -195,7 +209,7 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
 
     @Override
     public List<Target> targets() {
-        return Collections.unmodifiableList(fullTargetList);
+        return fullTargetList;
     }
 
 

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.hmm;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.lang.math.IntRange;
+import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -13,7 +14,7 @@ import java.util.stream.IntStream;
 
 /**
  * Performs the Forward-backward algorithm for
- * {@link HiddenMarkovModel}
+ * {@link HMM}
  * on a sequence of data points and positions.
  *
  * <p>This done by calling {@link #apply} that returns an
@@ -50,7 +51,7 @@ public final class ForwardBackwardAlgorithm {
          * Returns the model passed to the forward-backward algorithm.
          * @return never {@code null}.
          */
-        HiddenMarkovModel<D, T, S> model();
+        HMM<D, T, S> model();
 
 
         /**
@@ -260,6 +261,18 @@ public final class ForwardBackwardAlgorithm {
          * @throws IllegalArgumentException if {@code target} is unknown to the model.
          */
         double logDataLikelihood(final T target);
+
+        /**
+         * Returns the posterior probability of the hidden chain, defined as:
+         *
+         *   \log \pi_i E[z_{i,0}] + \log T_{t, t+1}^{i, j} E[z_{i,t} z_{j,t+1}]
+         *
+         * This quantity is the logDataLikelihood excluding the emission probability
+         *
+         * @return a log scaled probability from -Inf to 0.
+         */
+        double logChainPosteriorProbability();
+
     }
 
     /**
@@ -286,7 +299,7 @@ public final class ForwardBackwardAlgorithm {
      *   positions.
      */
     public static <D, T, S> Result<D, T, S> apply(final List<D> data, final List<T> positions,
-                                 final HiddenMarkovModel<D, T, S> model) {
+                                 final HMM<D, T, S> model) {
         Utils.nonNull(data, "the input data sequence cannot be null.");
         Utils.nonNull(positions, "the input position sequence cannot be null.");
         Utils.nonNull(model, "the input model cannot be null");
@@ -319,7 +332,7 @@ public final class ForwardBackwardAlgorithm {
      *   or {@code positions}.
      */
     private static <D, T, S> double[][] calculateLogForwardProbabilities(
-            final HiddenMarkovModel<D, T, S> model,
+            final HMM<D, T, S> model,
             final List<D> data,
             final List<T> positions) {
 
@@ -380,7 +393,7 @@ public final class ForwardBackwardAlgorithm {
      * @throws IllegalArgumentException if the {@code model} does not recognize any of the values in {@code dataList}
      *   or {@code positionList}.
      */
-    private static <D, T, S> double[][] calculateLogBackwardProbabilities(final HiddenMarkovModel<D, T, S> model,
+    private static <D, T, S> double[][] calculateLogBackwardProbabilities(final HMM<D, T, S> model,
                                                                         final List<D> dataList,
                                                                         final List<T> positionList) {
 
@@ -438,7 +451,7 @@ public final class ForwardBackwardAlgorithm {
         private final List<T> positions;
         private final IntRange positionIndexRange;
 
-        private final HiddenMarkovModel<D, T, S> model;
+        private final HMM<D, T, S> model;
 
         private final Object2IntMap<T> positionIndex;
         private final Object2IntMap<S> stateIndex;
@@ -449,7 +462,7 @@ public final class ForwardBackwardAlgorithm {
         private final double[] logDataLikelihood;
 
         private ArrayResult(final List<D> data, final List<T> positions,
-                            final HiddenMarkovModel<D, T, S> model,
+                            final HMM<D, T, S> model,
                             final double[][] logForwardProbabilities,
                             final double[][] logBackwardProbabilities) {
             this.data = Collections.unmodifiableList(new ArrayList<>(data));
@@ -477,7 +490,7 @@ public final class ForwardBackwardAlgorithm {
          * @return a valid probability in log scale (between -Inf and 0 inclusive).
          */
         private static double[] calculateLogDataLikelihood(final double[][] logForwardProbabilities,
-                                                         final double[][] logBackwardProbabilities) {
+                                                           final double[][] logBackwardProbabilities) {
             return IntStream.range(0, logForwardProbabilities.length)
                     .mapToObj(i ->
                             IntStream.range(0, logForwardProbabilities[i].length)
@@ -515,7 +528,7 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
-        public HiddenMarkovModel<D, T, S> model() {
+        public HMM<D, T, S> model() {
             return model;
         }
 
@@ -671,6 +684,23 @@ public final class ForwardBackwardAlgorithm {
         @Override
         public double logDataLikelihood(final T position) {
             return logDataLikelihood[validPositionIndex(position)];
+        }
+
+        @Override
+        public double logChainPosteriorProbability() {
+            final List<S> states = model.hiddenStates();
+            if (positions.isEmpty() || states.isEmpty()) {
+                return 0;
+            }
+            /* calculate the contribution of emission nodes */
+            final double logEmissionPosteriorExpectation = IntStream.range(0, positions.size())
+                    .mapToDouble(positionIndex -> IntStream.range(0, states.size())
+                            .mapToDouble(stateIndex -> FastMath.exp(logProbability(positionIndex, states.get(stateIndex))) *
+                                    model.logEmissionProbability(data.get(positionIndex), states.get(stateIndex),
+                                            positions.get(positionIndex)))
+                            .sum())
+                    .sum();
+            return logDataLikelihood() - logEmissionPosteriorExpectation;
         }
 
         /**

@@ -12,19 +12,18 @@ import java.util.Set;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public enum ContigGermlinePloidyAnnotationTableColumn {
-
     /**
      * Contig identifier ("1", "chr1", "X", "chrX", etc.)
      */
-    CONTIG_NAME,
+    CONTIG,
 
     /**
      * Contig class (see {@link ContigClass})
      */
-    CONTIG_CLASS;
+    CLASS;
 
     public static final TableColumnCollection MANDATORY_CONTIG_ANNOTATION_COLUMNS = new TableColumnCollection(
-            CONTIG_NAME, CONTIG_CLASS);
+            CONTIG, CLASS);
 
     public static final Set<String> MANDATORY_CONTIG_ANNOTATION_COLUMNS_SET = Collections.unmodifiableSet(
             new HashSet<>(MANDATORY_CONTIG_ANNOTATION_COLUMNS.names()));
