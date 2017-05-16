@@ -60,6 +60,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         final File evalVcf = new File(testDir, "gatk4-dream3-x.vcf");
         final File tpfp = createTempFile("tpfp", ".vcf");
         final File tpfn = createTempFile("tpfn", ".vcf");
+        final File ftnfn = createTempFile("ftnfn", ".vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -67,7 +68,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
                 "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
                 "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
                 "-" + Concordance.TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME, tpfn.getAbsolutePath(),
-                "-" + Concordance.TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME, tpfp.getAbsolutePath()
+                "-" + Concordance.TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME, tpfp.getAbsolutePath(),
+                "-" + Concordance.FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_SHORT_NAME, ftnfn.getAbsolutePath()
         };
         runCommandLine(args);
         ConcordanceSummaryRecord.Reader summaryReader = new ConcordanceSummaryRecord.Reader(summary);

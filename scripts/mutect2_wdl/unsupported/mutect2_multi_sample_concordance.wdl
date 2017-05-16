@@ -76,6 +76,8 @@ workflow Mutect2_Multi_Concordance {
       Array[File] tpfn_idx = Concordance.tpfn_idx
       Array[File] tpfp = Concordance.tpfp
       Array[File] tpfp_idx = Concordance.tpfp_idx
+      Array[File] ftnfn = Concordance.ftnfn
+      Array[File] ftnfn_idx = Concordance.ftnfn_idx
       Array[File] summary = Concordance.summary
     }
 }
@@ -102,6 +104,7 @@ workflow Mutect2_Multi_Concordance {
             -truth ${truth_vcf} -eval ${eval_vcf} \
             -tpfn "true_positives_and_false_negatives.vcf" \
             -tpfp "true_positives_and_false_positives.vcf" \
+            -ftnfn "filtered_true_negatives_and_false_negatives.vcf" \
             -summary summary.tsv
       }
 
@@ -117,6 +120,8 @@ workflow Mutect2_Multi_Concordance {
             File tpfn_idx = "true_positives_and_false_negatives.vcf.idx"
             File tpfp = "true_positives_and_false_positives.vcf"
             File tpfp_idx = "true_positives_and_false_positives.vcf.idx"
+            File ftnfn = "filtered_true_negatives_and_false_negatives.vcf"
+            File ftnfn_idx = "filtered_true_negatives_and_false_negatives.vcf.idx"
             File summary = "summary.tsv"
       }
 }
