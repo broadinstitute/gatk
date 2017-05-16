@@ -39,7 +39,7 @@ public class StructuralVariantContext extends VariantContext {
      */
     public List<Integer> assemblyIDs() {
         if (assemblyIDs == null) {
-            if (hasAttribute(GATKSVVCFHeaderLines.ASSEMBLY_IDS)) {
+            if (!hasAttribute(GATKSVVCFHeaderLines.ASSEMBLY_IDS)) {
                 assemblyIDs = Collections.emptyList();
             } else {
                 try {
