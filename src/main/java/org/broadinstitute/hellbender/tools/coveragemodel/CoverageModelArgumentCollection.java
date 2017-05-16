@@ -124,6 +124,10 @@ public final class CoverageModelArgumentCollection {
     public static final String NUM_LATENTS_SHORT_NAME = "NL";
     public static final String NUM_LATENTS_LONG_NAME = "numLatents";
 
+    public static final int DEFAULT_NUMBER_OF_TARGET_SPACE_PARTITIONS = 1;
+    public static final String NUMBER_OF_TARGET_SPACE_PARTITIONS_SHORT_NAME = "NTSP";
+    public static final String NUMBER_OF_TARGET_SPACE_PARTITIONS_LONG_NAME = "numTargetSpacePartitions";
+
     public static final int DEFAULT_MIN_LEARNING_READ_COUNT = 5;
     public static final String MIN_LEARNING_READ_COUNT_SHORT_NAME = "MLRC";
     public static final String MIN_LEARNING_READ_COUNT_LONG_NAME = "minimumLearningReadCount";
@@ -200,7 +204,6 @@ public final class CoverageModelArgumentCollection {
     public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS_SHORT_NAME = "TSVSNT";
     public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS_LONG_NAME = "targetSpecificVarianceSolverNumThreads";
 
-
     /* bias covariates related */
 
     public static final BiasCovariateSolverStrategy DEFAULT_BIAS_COVARIATES_SOLVER_TYPE = BiasCovariateSolverStrategy.SPARK;
@@ -276,6 +279,8 @@ public final class CoverageModelArgumentCollection {
     public static final String FOURIER_REGULARIZATION_STRENGTH_LONG_NAME = "fourierRegularizationStrength";
 
 
+    /* copy ratio calling related */
+
     public static final boolean DEFAULT_CR_UPDATE_ENABLED = true;
     public static final String CR_UPDATE_ENABLED_SHORT_NAME = "CRU";
     public static final String CR_UPDATE_ENABLED_LONG_NAME = "copyRatioUpdate";
@@ -284,10 +289,7 @@ public final class CoverageModelArgumentCollection {
     public static final String CR_HMM_TYPE_SHORT_NAME = "CRHMM";
     public static final String CR_HMM_TYPE_LONG_NAME = "copyRatioHMMType";
 
-
-    public static final int DEFAULT_NUMBER_OF_TARGET_SPACE_PARTITIONS = 1;
-    public static final String NUMBER_OF_TARGET_SPACE_PARTITIONS_SHORT_NAME = "NTSP";
-    public static final String NUMBER_OF_TARGET_SPACE_PARTITIONS_LONG_NAME = "numTargetSpacePartitions";
+    /* checkpointing related */
 
     public static final int DEFAULT_RDD_CHECKPOINTING_INTERVAL = 10;
     public static final String RDD_CHECKPOINTING_INTERVAL_SHORT_NAME = "RDDCPI";
@@ -300,7 +302,6 @@ public final class CoverageModelArgumentCollection {
     public static final String DEFAULT_RDD_CHECKPOINTING_PATH = "/dev/null";
     public static final String RDD_CHECKPOINTING_PATH_SHORT_NAME = "RDDCPP";
     public static final String RDD_CHECKPOINTING_PATH_LONG_NAME = "rddCheckpointingPath";
-
 
     public static final int DEFAULT_RUN_CHECKPOINTING_INTERVAL = 1;
     public static final String RUN_CHECKPOINTING_INTERVAL_SHORT_NAME = "RCPI";
