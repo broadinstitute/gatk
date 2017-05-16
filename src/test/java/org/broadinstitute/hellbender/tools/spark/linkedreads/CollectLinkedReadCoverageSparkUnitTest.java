@@ -162,4 +162,19 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(listEntry.getValue().size(), 5);
     }
 
+    @Test
+    public void testSerializeNull() {
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        final Output out = new Output(bos);
+        final Kryo kryo = new Kryo();
+        kryo.writeClassAndObject(out, new CollectLinkedReadCoverageSpark.MySVIntervalTree());
+        out.flush();
+
+        final ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+        final Input in = new Input(bis);
+        @SuppressWarnings("unchecked")
+        final CollectLinkedReadCoverageSpark.MySVIntervalTree tree2 = (CollectLinkedReadCoverageSpark.MySVIntervalTree)kryo.readClassAndObject(in);
+        Assert.assertTrue(tree2.myTree == null);
+    }
+
 }

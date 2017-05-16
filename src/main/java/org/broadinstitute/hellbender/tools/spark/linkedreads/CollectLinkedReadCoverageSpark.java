@@ -362,7 +362,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     @DefaultSerializer(MySVIntervalTree.Serializer.class)
     final static class MySVIntervalTree implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         SVIntervalTree<List<ReadInfo>> myTree;
@@ -371,19 +371,20 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         }
 
         public MySVIntervalTree(final Kryo kryo, final Input input) {
-            myTree = new SVIntervalTree<>();
-            int treeSize = input.readInt();
-            while ( treeSize-- > 0 ) {
-                SVInterval interval = new SVInterval(input.readInt(), input.readInt(), input.readInt());
-                int valueSize = input.readInt();
-                List<ReadInfo> valueList = new ArrayList<>(valueSize);
-                while (valueSize-- > 0) {
-                    final ReadInfo readInfo = new ReadInfo(kryo, input);
-                    valueList.add(readInfo);
+            if (input.readBoolean()) {
+                myTree = new SVIntervalTree<>();
+                int treeSize = input.readInt();
+                while (treeSize-- > 0) {
+                    SVInterval interval = new SVInterval(input.readInt(), input.readInt(), input.readInt());
+                    int valueSize = input.readInt();
+                    List<ReadInfo> valueList = new ArrayList<>(valueSize);
+                    while (valueSize-- > 0) {
+                        final ReadInfo readInfo = new ReadInfo(kryo, input);
+                        valueList.add(readInfo);
+                    }
+                    myTree.put(interval, valueList);
                 }
-                myTree.put(interval, valueList);
             }
-
         }
 
         public MySVIntervalTree(final SVIntervalTree<List<ReadInfo>> mergedTree) {
@@ -403,13 +404,16 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         }
 
         private void serialize(final Kryo kryo, final Output output) {
-            output.writeInt(myTree.size());
-            for (final SVIntervalTree.Entry<List<ReadInfo>> next : myTree) {
-                new SVInterval.Serializer().write(kryo, output, next.getInterval());
-                List<ReadInfo> value = next.getValue();
-                output.writeInt(value.size());
-                for (final ReadInfo readInfo : value) {
-                    new ReadInfo.Serializer().write(kryo, output, readInfo);
+            output.writeBoolean(myTree != null);
+            if (myTree != null) {
+                output.writeInt(myTree.size());
+                for (final SVIntervalTree.Entry<List<ReadInfo>> next : myTree) {
+                    new SVInterval.Serializer().write(kryo, output, next.getInterval());
+                    List<ReadInfo> value = next.getValue();
+                    output.writeInt(value.size());
+                    for (final ReadInfo readInfo : value) {
+                        new ReadInfo.Serializer().write(kryo, output, readInfo);
+                    }
                 }
             }
         }
