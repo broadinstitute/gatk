@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.examples;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -38,10 +39,12 @@ public final class ExampleVariantWalkerSparkIntegrationTest extends CommandLineP
     @Test
     public void testLongVariants() throws Exception {
         final File testOutput = createTempFile("output", ".txt");
+        testOutput.delete();
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
                         " -V " + TEST_OUTPUT_DIRECTORY + "input_long_variants.vcf" +
                         " -O " + testOutput, Collections.emptyList()
         );
         testSpec.executeTest("testExampleAssemblyRegionWalker", this);
+        Assert.assertTrue(testOutput.exists());
     }
 }
