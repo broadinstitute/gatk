@@ -3,13 +3,12 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -17,7 +16,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.sv.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.util.NIOFileUtil;
@@ -31,7 +32,6 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @CommandLineProgramProperties(
         summary = "Computes the coverage by long molecules from linked-read data",
@@ -51,10 +51,15 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public int clusterSize = 5000;
 
-    @Argument(doc = "write SAM",
+    @Argument(doc = "writeSAM",
             shortName = "writeSAM", fullName = "writeSAM",
             optional = true)
     public boolean writeSAM = true;
+
+    @Argument(doc = "metadataFile",
+            shortName = "metadataFile", fullName = "metadataFile",
+            optional = true)
+    public File metadataFile = true;
 
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
@@ -76,59 +81,64 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         final int finalClusterSize = clusterSize;
 
+        final JavaRDD<GATKRead> mappedReads =
+                reads.filter(read ->
+                        !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped());
+        final ReadMetadata readMetadata = new ReadMetadata(Collections.emptySet(), getHeaderForReads(), mappedReads);
+        ReadMetadata.writeMetadata(readMetadata, metadataFile.getAbsolutePath());
+
+        final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
+
         if (writeSAM) {
-            final JavaPairRDD<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeIntervals =
+            final JavaPairRDD<String, SVIntervalTree<List<GATKRead>>> barcodeIntervals =
                     reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
                             .aggregateByKey(
-                                    new HashMap<>(),
-                                    (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
+                                    new SVIntervalTree<List<GATKRead>>(),
+                                    (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize, broadcastMetadata.getValue()),
                                     (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
                             );
 
             final JavaRDD<GATKRead> intervalsByBarcode =
                     barcodeIntervals.flatMap(x -> {
                         final String barcode = x._1;
-                        final Map<String, IntervalTree<List<GATKRead>>> contigIntervalTreeMap = x._2;
+                        final SVIntervalTree<List<GATKRead>> intervalTree = x._2;
                         final List<GATKRead> results = new ArrayList<>();
-                        for (final String contig : contigIntervalTreeMap.keySet()) {
-                            for (final IntervalTree.Node<List<GATKRead>> next : contigIntervalTreeMap.get(contig)) {
-                                results.add(intervalTreeToGATKRead(barcode, contig, headerForReads, next));
-                            }
+                        for (final SVIntervalTree.Entry<List<GATKRead>> next : intervalTree) {
+                            results.add(intervalTreeToGATKRead(barcode, headerForReads, next, broadcastMetadata.getValue()));
                         }
                         return results.iterator();
                     });
             writeReads(ctx, out, intervalsByBarcode);
 
         } else {
-            final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeIntervals =
-                    reads.filter(read -> read.isFirstOfPair())
+            final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> barcodeIntervals =
+                    reads.filter(GATKRead::isFirstOfPair)
                             .mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), new ReadInfo(read.getContig(), read.getStart(), read.getEnd())))
                             .aggregateByKey(
-                                    new HashMap<>(),
-                                    (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
+                                    new SVIntervalTree<>(),
+                                    (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize, broadcastMetadata.getValue()),
                                     (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
                             );
 
-            final JavaPairRDD<SimpleInterval, String> intervalsByBarcode;
-            intervalsByBarcode = barcodeIntervals.flatMapToPair(x -> {
+            final JavaPairRDD<SVInterval, String> bedRecordsByBarcode;
+            bedRecordsByBarcode = barcodeIntervals.flatMapToPair(x -> {
                 final String barcode = x._1;
-                final Map<String, IntervalTree<List<ReadInfo>>> contigIntervalTreeMap = x._2;
+                final SVIntervalTree<List<ReadInfo>> svIntervalTree = x._2;
 
-                final List<Tuple2<SimpleInterval, String>> results = new ArrayList<>();
-                for (final String contig : contigIntervalTreeMap.keySet()) {
-                    for (final IntervalTree.Node<List<ReadInfo>> next : contigIntervalTreeMap.get(contig)) {
-                        results.add(new Tuple2<>(new SimpleInterval(contig, next.getStart(), next.getEnd()), intervalTreeToBedRecord(barcode, contig, next)));
-                    }
+                final List<Tuple2<SVInterval, String>> results = new ArrayList<>();
+                for (final SVIntervalTree.Entry<List<ReadInfo>> next : svIntervalTree) {
+                    results.add(new Tuple2<>(next.getInterval(), intervalTreeToBedRecord(barcode, next, broadcastMetadata.getValue())));
                 }
+
                 return results.iterator();
             });
 
             if (shardedOutput) {
-                intervalsByBarcode.values().saveAsTextFile(out);
+                bedRecordsByBarcode.values().saveAsTextFile(out);
             } else {
                 final String shardedOutputDirectory = this.out + ".parts";
-                final int numParts = intervalsByBarcode.getNumPartitions();
-                intervalsByBarcode.sortByKey(new SimpleIntervalComparator(headerForReads.getSequenceDictionary())).values().saveAsTextFile(shardedOutputDirectory);
+                final int numParts = bedRecordsByBarcode.getNumPartitions();
+                bedRecordsByBarcode.sortByKey().values().saveAsTextFile(shardedOutputDirectory);
                 //final BlockCompressedOutputStream outputStream = new BlockCompressedOutputStream(out);
                 final OutputStream outputStream;
 
@@ -164,9 +174,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     /**
      * Delete the given directory and all of its contents if non-empty.
      * @param directory the directory to delete
-     * @throws IOException
      */
-    static void deleteRecursive(Path directory) throws IOException {
+    private static void deleteRecursive(Path directory) throws IOException {
         Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -183,22 +192,18 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
 
     @VisibleForTesting
-    static <T extends Locatable> Map<String, IntervalTree<List<T>>> addReadToIntervals(final Map<String, IntervalTree<List<T>>> intervalList, final T read, final int clusterSize) {
-        final Interval sloppedReadInterval = new Interval(read.getContig(), read.getStart() - clusterSize, read.getStart()+clusterSize);
-        if (! intervalList.containsKey(read.getContig())) {
-            intervalList.put(read.getContig(), new IntervalTree<>());
-        }
-        final IntervalTree<List<T>> contigIntervals = intervalList.get(sloppedReadInterval.getContig());
-
-        final Iterator<IntervalTree.Node<List<T>>> iterator = contigIntervals.overlappers(sloppedReadInterval.getStart(), sloppedReadInterval.getEnd());
+    static <T extends Locatable> SVIntervalTree<List<T>> addReadToIntervals(final SVIntervalTree<List<T>> intervalList, final T read, final int clusterSize, final ReadMetadata readMetadata) {
+        final SVInterval sloppedReadInterval = new SVInterval(readMetadata.getContigID(read.getContig()), read.getStart() - clusterSize, read.getEnd()+clusterSize);
+        final Iterator<SVIntervalTree.Entry<List<T>>> iterator = intervalList.overlappers(
+                sloppedReadInterval);
         int start = read.getStart();
         int end = read.getEnd();
         final List<T> newReadList = new ArrayList<>();
         newReadList.add(read);
         if (iterator.hasNext()) {
-            final IntervalTree.Node<List<T>> existingNode = iterator.next();
-            final int currentStart = existingNode.getStart();
-            final int currentEnd = existingNode.getEnd();
+            final SVIntervalTree.Entry<List<T>> existingNode = iterator.next();
+            final int currentStart = existingNode.getInterval().getStart();
+            final int currentEnd = existingNode.getInterval().getEnd();
             final List<T> currentValue = existingNode.getValue();
             start = Math.min(currentStart, read.getStart());
             end = Math.max(currentEnd, read.getEnd());
@@ -206,80 +211,92 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             iterator.remove();
         }
         while (iterator.hasNext()) {
-            final IntervalTree.Node<List<T>> next = iterator.next();
-            final int currentEnd = next.getStart();
+            final SVIntervalTree.Entry<List<T>> next = iterator.next();
+            final int currentEnd = next.getInterval().getStart();
             final List<T> currentValue = next.getValue();
             end = Math.max(end, currentEnd);
             newReadList.addAll(currentValue);
             iterator.remove();
         }
-        contigIntervals.put(start, end, newReadList);
+        intervalList.put(new SVInterval(readMetadata.getContigID(read.getContig()), start, end), newReadList);
         return intervalList;
     }
 
-    static <T extends Locatable> Map<String, IntervalTree<List<T>>> combineIntervalLists(final Map<String, IntervalTree<List<T>>> intervalList1,
-                                                                   final Map<String, IntervalTree<List<T>>> intervalList2,
-                                                                   final int clusterSize) {
-        final Map<String, IntervalTree<List<T>>> combinedList = new HashMap<>();
-        Stream.concat(intervalList1.keySet().stream(), intervalList2.keySet().stream()).
-                forEach(contigName -> combinedList.put(contigName, mergeIntervalTrees(intervalList1.get(contigName), intervalList2.get(contigName), clusterSize)));
-        return combinedList;
+    private static <T extends Locatable> SVIntervalTree<List<T>> combineIntervalLists(final SVIntervalTree<List<T>> intervalTree1,
+                                                                                      final SVIntervalTree<List<T>> intervalTree2,
+                                                                                      final int clusterSize) {
+        return mergeIntervalTrees(intervalTree1, intervalTree2, clusterSize);
 
     }
 
     @VisibleForTesting
-    static <T extends Locatable> IntervalTree<List<T>> mergeIntervalTrees(final IntervalTree<List<T>> tree1, final IntervalTree<List<T>> tree2, final int clusterSize) {
+    static <T extends Locatable> SVIntervalTree<List<T>> mergeIntervalTrees(final SVIntervalTree<List<T>> tree1, final SVIntervalTree<List<T>> tree2, final int clusterSize) {
 
         if (tree1 == null || tree1.size() == 0) return tree2;
         if (tree2 == null || tree2.size() == 0) return tree1;
 
-        final IntervalTree<List<T>> mergedTree = new IntervalTree<>();
+        final SVIntervalTree<List<T>> mergedTree = new SVIntervalTree<>();
 
-        PriorityQueue<IntervalTree.Node<List<T>>> nodes = new PriorityQueue<>(tree1.size() + tree2.size(), Comparator.comparingInt(IntervalTree.Node::getStart));
+        PriorityQueue<SVIntervalTree.Entry<List<T>>> nodes = new PriorityQueue<>(tree1.size() + tree2.size(),
+                (o1, o2) -> {
+                    if (o1.getInterval().getContig() == o2.getInterval().getContig()) {
+                        return new Integer(o1.getInterval().getStart()).compareTo(o2.getInterval().getStart());
+                    } else {
+                        return new Integer(o1.getInterval().getContig()).compareTo(o2.getInterval().getContig());
+                    }
+                });
+
         tree1.iterator().forEachRemaining(nodes::add);
         tree2.iterator().forEachRemaining(nodes::add);
 
+        int currentContig = -1;
         int currentStart = -1;
         int currentEnd = -1;
         List<T> values = new ArrayList<T>();
         while (nodes.size() > 0) {
-            IntervalTree.Node<List<T>> next = nodes.poll();
-            if (currentStart == -1) {
-                currentStart = next.getStart();
-                currentEnd = next.getEnd();
-                values = new ArrayList<T>(next.getValue());
+            final SVIntervalTree.Entry<List<T>> next = nodes.poll();
+            final SVInterval newInterval = next.getInterval();
+            final int newContig = newInterval.getContig();
+            if (currentContig != newContig) {
+                if (currentContig != -1) {
+                    mergedTree.put(new SVInterval(currentContig, currentStart, currentEnd), values);
+                }
+                currentContig = newContig;
+                currentStart = newInterval.getStart();
+                currentEnd = newInterval.getEnd();
+                values = new ArrayList<>(next.getValue());
             } else {
-                if (overlaps(next, currentStart, currentEnd, clusterSize)) {
-                    currentEnd = Math.max(currentEnd, next.getEnd());
+                if (overlaps(newInterval, currentEnd, clusterSize)) {
+                    currentEnd = Math.max(currentEnd, newInterval.getEnd());
                     values.addAll(next.getValue());
                 } else {
                     // no overlap, so put the previous node in and set up the next set of values
-                    mergedTree.put(currentStart, currentEnd, values);
-                    currentStart = next.getStart();
-                    currentEnd = next.getEnd();
-                    values = new ArrayList<T>(next.getValue());
+                    mergedTree.put(new SVInterval(currentContig, currentStart, currentEnd), values);
+                    currentStart = newInterval.getStart();
+                    currentEnd = newInterval.getEnd();
+                    values = new ArrayList<>(next.getValue());
                 }
             }
 
         }
         if (currentStart != -1) {
-            mergedTree.put(currentStart, currentEnd, values);
+            mergedTree.put(new SVInterval(currentContig, currentStart, currentEnd), values);
         }
 
         return mergedTree;
     }
 
-    private static <T extends Locatable> boolean overlaps(final IntervalTree.Node<List<T>> node, final int start, final int end, final int clusterSize) {
-        return end + clusterSize > node.getStart() - clusterSize;
+    private static boolean overlaps(final SVInterval newInterval, final int currentEnd, final int clusterSize) {
+        return currentEnd + clusterSize > newInterval.getStart() - clusterSize;
     }
 
-    public static <T extends Locatable>  String intervalTreeToBedRecord(final String barcode, final String contig, final IntervalTree.Node<List<T>> node) {
+    static <T extends Locatable>  String intervalTreeToBedRecord(final String barcode, final SVIntervalTree.Entry<List<T>> node, final ReadMetadata readMetadata) {
         final StringBuilder builder = new StringBuilder();
-        builder.append(contig);
+        builder.append(lookupContigName(node.getInterval().getContig(), readMetadata));
         builder.append("\t");
-        builder.append(node.getStart());
+        builder.append(node.getInterval().getStart());
         builder.append("\t");
-        builder.append(node.getEnd());
+        builder.append(node.getInterval().getEnd());
         builder.append("\t");
         builder.append(barcode);
         builder.append("\t");
@@ -287,9 +304,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         builder.append("\t");
         builder.append("+");
         builder.append("\t");
-        builder.append(node.getStart());
+        builder.append(node.getInterval().getStart());
         builder.append("\t");
-        builder.append(node.getEnd());
+        builder.append(node.getInterval().getEnd());
         builder.append("\t");
         builder.append("0,0,255");
         builder.append("\t");
@@ -299,16 +316,17 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         builder.append("\t");
         builder.append(reads.stream().map(r -> String.valueOf(r.getEnd() - r.getStart() + 1)).collect(Collectors.joining(",")));
         builder.append("\t");
-        builder.append(reads.stream().map(r -> String.valueOf(r.getStart() - node.getStart())).collect(Collectors.joining(",")));
+        builder.append(reads.stream().map(r -> String.valueOf(r.getStart() - node.getInterval().getStart())).collect(Collectors.joining(",")));
         return builder.toString();
     }
 
-    public static GATKRead intervalTreeToGATKRead(final String barcode, final String contig, final SAMFileHeader samHeader, final IntervalTree.Node<List<GATKRead>> node) {
+    static GATKRead intervalTreeToGATKRead(final String barcode, final SAMFileHeader samHeader, final SVIntervalTree.Entry<List<GATKRead>> node, final ReadMetadata readMetadata) {
 
         final List<GATKRead> reads = node.getValue();
         reads.sort((o1, o2) -> new Integer(o1.getUnclippedStart()).compareTo(o2.getUnclippedStart()));
 
-        int minUnclippedStart = node.getStart();
+        final SVInterval interval = node.getInterval();
+        int minUnclippedStart = interval.getStart();
         int currentEnd = 0;
         final ByteArrayOutputStream seqOutputStream = new ByteArrayOutputStream();
         final ByteArrayOutputStream qualOutputStream = new ByteArrayOutputStream();
@@ -414,7 +432,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final SAMRecord samRecord = new SAMRecord(samHeader);
         samRecord.setReadName(barcode);
         samRecord.setFlags(0x1);
-        samRecord.setReferenceName(contig);
+        samRecord.setReferenceName(lookupContigName(interval.getContig(), readMetadata));
         samRecord.setAlignmentStart(minUnclippedStart);
         samRecord.setMappingQuality(60);
         samRecord.setCigar(uberCigar);
@@ -439,6 +457,13 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     }
 
+    private static String lookupContigName(final int contig, final ReadMetadata readMetadata) {
+        for (Map.Entry<String, Integer> entry : readMetadata.getContigNameMap().entrySet()) {
+            if (entry.getValue().equals(contig)) return entry.getKey();
+        }
+        throw new GATKException("Invalid contig ID: "+ contig);
+    }
+
     private static CigarElement translateSoftClip(final CigarElement cigarElement) {
         if (cigarElement.getOperator() == CigarOperator.S) {
             return new CigarElement(cigarElement.getLength(), CigarOperator.M);
@@ -448,7 +473,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     static class ReadInfo implements Locatable {
-        public ReadInfo(final String contig, final int start, final int end) {
+        ReadInfo(final String contig, final int start, final int end) {
             this.contig = contig;
             this.start = start;
             this.end = end;
