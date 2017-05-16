@@ -76,6 +76,7 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         final ReadMetadata readMetadata = new ReadMetadata(Collections.emptySet(), ArtificialReadUtils.createArtificialSamHeader(), null, 1, 1, 1, 30);
         final CollectLinkedReadCoverageSpark.MySVIntervalTree tree1 = new CollectLinkedReadCoverageSpark.MySVIntervalTree(createTestSVIntervalTree1(artificialSamHeader, readMetadata));
         final CollectLinkedReadCoverageSpark.MySVIntervalTree tree2 = new CollectLinkedReadCoverageSpark.MySVIntervalTree();
+        tree2.myTree = new SVIntervalTree<>();
 
         final List<ReadInfo> resultList2 = new ArrayList<>();
         resultList2.add(new ReadInfo(readMetadata, ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 3000, 100)));

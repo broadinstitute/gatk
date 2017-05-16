@@ -165,6 +165,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @VisibleForTesting
     static MySVIntervalTree addReadToIntervals(final MySVIntervalTree intervalTree, final ReadInfo read, final int clusterSize) {
         final SVInterval sloppedReadInterval = new SVInterval(read.getContig(), read.getStart() - clusterSize, read.getEnd()+clusterSize);
+        if (intervalTree.myTree == null) {
+            intervalTree.myTree = new SVIntervalTree<>();
+        }
         final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = intervalTree.myTree.overlappers(
                 sloppedReadInterval);
         int start = read.getStart();
@@ -189,6 +192,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             newReadList.addAll(currentValue);
             iterator.remove();
         }
+        if (intervalTree.myTree == null) {
+            intervalTree.myTree = new SVIntervalTree<>();
+        }
         intervalTree.myTree.put(new SVInterval(read.getContig(), start, end), newReadList);
         return intervalTree;
     }
@@ -203,8 +209,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @VisibleForTesting
     static MySVIntervalTree mergeIntervalTrees(final MySVIntervalTree tree1, final MySVIntervalTree tree2, final int clusterSize) {
 
-        if (tree1 == null || tree1.myTree.size() == 0) return tree2;
-        if (tree2 == null || tree2.myTree.size() == 0) return tree1;
+        if (tree1 == null || tree1.myTree == null || tree1.myTree.size() == 0) return tree2;
+        if (tree2 == null || tree2.myTree == null || tree2.myTree.size() == 0) return tree1;
 
         final SVIntervalTree<List<ReadInfo>> mergedTree = new SVIntervalTree<>();
 
@@ -355,12 +361,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     @DefaultSerializer(MySVIntervalTree.Serializer.class)
-    final static class MySVIntervalTree {
+    final static class MySVIntervalTree implements Serializable {
 
-        final SVIntervalTree<List<ReadInfo>> myTree;
+        SVIntervalTree<List<ReadInfo>> myTree;
 
         public MySVIntervalTree() {
-            myTree = new SVIntervalTree<>();
         }
 
         public MySVIntervalTree(final Kryo kryo, final Input input) {
