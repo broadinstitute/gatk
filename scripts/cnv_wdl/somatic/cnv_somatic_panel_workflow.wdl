@@ -21,7 +21,7 @@
 #
 #############
 
-import "cnv_somatic_tasks.wdl" as CNVSomatic
+import "cnv_common_tasks.wdl" as CNVTasks
 
 workflow CNVSomaticPanelWorkflow {
     # Workflow input files
@@ -42,7 +42,7 @@ workflow CNVSomaticPanelWorkflow {
     Boolean is_wgs = select_first([targets, ""]) == ""
 
     if (!is_wgs) {
-        call CNVSomatic.PadTargets {
+        call CNVTasks.PadTargets {
             input:
                 targets = targets,
                 gatk_jar = gatk_jar
@@ -50,7 +50,7 @@ workflow CNVSomaticPanelWorkflow {
     }
 
     scatter (normal_bam in normal_bams) {
-        call CNVSomatic.CollectCoverage {
+        call CNVTasks.CollectCoverage {
             input:
                 padded_targets = PadTargets.padded_targets,
                 bam = normal_bam[0],
@@ -69,7 +69,7 @@ workflow CNVSomaticPanelWorkflow {
             gatk_jar = gatk_jar
     }
 
-    call CNVSomatic.AnnotateTargets {
+    call CNVTasks.AnnotateTargets {
         input:
             entity_id = combined_entity_id,
             targets = CollectCoverage.coverage[0],
@@ -79,7 +79,7 @@ workflow CNVSomaticPanelWorkflow {
             gatk_jar = gatk_jar
     }
 
-    call CNVSomatic.CorrectGCBias {
+    call CNVTasks.CorrectGCBias {
         input:
             entity_id = combined_entity_id,
             coverage = CombineReadCounts.combined_coverage,

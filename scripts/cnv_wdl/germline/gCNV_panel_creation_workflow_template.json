@@ -1,0 +1,14 @@
+{
+  "CNVGermlinePanelWorkflow.sex_genotypes": "File",
+  "CNVGermlinePanelWorkflow.gatk_jar": "File",
+  "CNVGermlinePanelWorkflow.contig_ploidy_annotations": "File",
+  "CNVGermlinePanelWorkflow.targets": "(optional) File?",
+  "CNVGermlinePanelWorkflow.normal_bams_list": "File",
+  "CNVGermlinePanelWorkflow.num_latents": "Int",
+  "CNVGermlinePanelWorkflow.pon_output_path": "String",
+  "CNVGermlinePanelWorkflow.ref_fasta": "File",
+  "CNVGermlinePanelWorkflow.ref_fasta_dict": "File",
+  "CNVGermlinePanelWorkflow.ref_fasta_fai": "File",
+  "CNVGermlinePanelWorkflow.transition_prior_table": "File",
+  "CNVGermlinePanelWorkflow.copy_number_transition_prior_files": "Array[File]"
+}

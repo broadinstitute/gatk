@@ -1,0 +1,3 @@
+#A trivial transition matrix for enforcing zero ploidy on Y contig in XX samples
+T_MATRIX_XX_Y	TO_0
+FROM_0	1.0

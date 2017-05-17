@@ -14,6 +14,7 @@ env:
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - RUN_CNV_SOMATIC_WDL=true
   - RUN_M2_WDL=true
+  - RUN_CNV_GERMLINE_WDL=true
   global:
   #for genomics db
   - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
@@ -23,8 +24,8 @@ env:
   - GRADLE_OPTS="-Xmx1024m -Dorg.gradle.daemon=false"
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-  - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 
-  - CLOUDSDK_PYTHON_SITEPACKAGES=1 
+  - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin
+  - CLOUDSDK_PYTHON_SITEPACKAGES=1
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
   #Path to GenomicsDB binaries
   - GATK_GENOMICSDB_BIN=src/test/resources/large/tiledb_bin
@@ -73,8 +74,8 @@ before_install:
    sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi
 # Download Cromwell jar
-- if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
-    wget -O ~/cromwell-0.25.jar https://github.com/broadinstitute/cromwell/releases/download/25/cromwell-25.jar;
+- if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
+    wget -O ~/cromwell-0.26.jar https://github.com/broadinstitute/cromwell/releases/download/26/cromwell-26.jar;
   fi
 # Download Picard jar
 - if [[ $RUN_M2_WDL == true ]]; then
@@ -90,7 +91,7 @@ install:
   else
     ./gradlew assemble;
     ./gradlew installDist;
-    if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
+    if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
     fi
@@ -103,6 +104,9 @@ script:
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
     bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+  elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
+    echo "Running CNV germline workflows";
+    bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     echo "Running M2 WDL";
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
@@ -124,10 +128,11 @@ after_success:
 - bash <(curl -s https://codecov.io/bash)
 - if [[ $TRAVIS_BRANCH == master && $TEST_TYPE == integration ]]; then ./gradlew uploadArchives; fi
 # if this is actually a commit to master and not a pull request build into master, then publish master-snapshot
-- if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $TEST_TYPE == integration ]]; then 
+- if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $TEST_TYPE == integration ]]; then
     git tag master;
-    ./gradlew uploadArchives; 
+    ./gradlew uploadArchives;
   fi
+
 after_failure:
 - dmesg | tail -100
 after_script:

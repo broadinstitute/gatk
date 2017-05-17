@@ -22,7 +22,7 @@
 #
 #############
 
-import "cnv_somatic_tasks.wdl" as CNVSomatic
+import "cnv_common_tasks.wdl" as CNVTasks
 import "cnv_somatic_copy_ratio_bam_workflow.wdl" as CopyRatio
 import "cnv_somatic_allele_fraction_pair_workflow.wdl" as AlleleFraction
 
@@ -48,7 +48,7 @@ workflow CNVSomaticPairWorkflow {
     Boolean is_tumor_only = select_first([normal_bam, ""]) == ""
 
     if (!is_wgs) {
-        call CNVSomatic.PadTargets {
+        call CNVTasks.PadTargets {
             input:
                 targets = targets,
                 gatk_jar = gatk_jar

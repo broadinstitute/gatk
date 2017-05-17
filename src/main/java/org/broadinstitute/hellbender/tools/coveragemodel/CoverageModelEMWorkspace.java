@@ -1007,8 +1007,7 @@ public final class CoverageModelEMWorkspace<STATE extends AlleleMetadataProducer
             final INDArray G_ll = CoverageModelEMWorkspaceMathUtils.minv(shared_ll
                     .add(G_partial_sll.get(NDArrayIndex.point(si), NDArrayIndex.all(), NDArrayIndex.all())));
             /* E[z_s] = G_s W^T M_{st} \Psi_{st}^{-1} (m_{st} - m_t) */
-            new_z_sl.get(NDArrayIndex.point(si), NDArrayIndex.all())
-                    .assign(G_ll.mmul(z_rhs_ls.get(NDArrayIndex.all(), NDArrayIndex.point(si))).transpose());
+            new_z_sl.getRow(si).assign(G_ll.mmul(z_rhs_ls.getColumn(si)).transpose());
             /* E[z_s z_s^T] = G_s + E[z_s] E[z_s^T] */
             final INDArray z = new_z_sl.get(NDArrayIndex.point(si), NDArrayIndex.all());
             new_zz_sll.get(NDArrayIndex.point(si), NDArrayIndex.all(), NDArrayIndex.all())
@@ -2458,7 +2457,7 @@ public final class CoverageModelEMWorkspace<STATE extends AlleleMetadataProducer
                     calls[ti] = copyRatio;
                 }
             });
-            res.get(NDArrayIndex.point(si), NDArrayIndex.all()).assign(Nd4j.create(calls, new int[] {1, numTargets}));
+            res.getRow(si).assign(Nd4j.create(calls, new int[] {1, numTargets}));
         }
         return res.transpose();
     }

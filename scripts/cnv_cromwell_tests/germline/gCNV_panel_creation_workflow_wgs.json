@@ -1,0 +1,18 @@
+{ 
+  "CNVGermlinePanelWorkflow.gatk_jar": "/home/travis/build/broadinstitute/gatk-protected/build/libs/gatk-protected.jar", 
+  "CNVGermlinePanelWorkflow.sex_genotypes": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/inputs/sex_genotypes.tsv",
+  "CNVGermlinePanelWorkflow.contig_ploidy_annotations": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/contig_annots.tsv",
+  "CNVGermlinePanelWorkflow.transition_prior_table": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/homo_sapiens_germline_CN_priors.tsv",
+  "CNVGermlinePanelWorkflow.copy_number_transition_prior_files": [ "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/homo_sapiens_germline_CN_transition_matrix_autosomal.tsv",
+                                                                    "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/homo_sapiens_germline_CN_transition_matrix_XY_X.tsv",
+                                                                    "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/homo_sapiens_germline_CN_transition_matrix_XX_Y.tsv",
+                                                                    "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/homo_sapiens_germline_CN_transition_matrix_XX_X.tsv",
+                                                                    "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/homo_sapiens_germline_CN_transition_matrix_XY_Y.tsv" ],
+  "CNVGermlinePanelWorkflow.num_latents": "1",
+  "CNVGermlinePanelWorkflow.CollectCoverage.disable_all_read_filters": "false", 
+  "CNVGermlinePanelWorkflow.normal_bams_list": "/home/travis/build/broadinstitute/gatk-protected/scripts/cnv_cromwell_tests/germline/normal_bam_list.tsv", 
+  "CNVGermlinePanelWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/Homo_sapiens_assembly19.truncated.fasta.fai",
+  "CNVGermlinePanelWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/Homo_sapiens_assembly19.truncated.dict", 
+  "CNVGermlinePanelWorkflow.pon_output_path": "test_pon",
+  "CNVGermlinePanelWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_germline_workflows_test_files/resources/Homo_sapiens_assembly19.truncated.fasta"
+}
