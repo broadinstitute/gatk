@@ -51,9 +51,16 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyTriallelicFilter(final VariantContext vc, final Collection<String> filters) {
-        if (vc.getNAlleles() > (MTFAC.numAltAllelesThreshold + 1)) {
-            filters.add(GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME);
+        if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY)) {
+            final double[] tumorLods = getArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+            final long numPassingAltAlleles = Arrays.stream(tumorLods).filter(x -> x > MTFAC.TUMOR_LOD_THRESHOLD).count();
+
+            if (numPassingAltAlleles > MTFAC.numAltAllelesThreshold) {
+                filters.add(GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME);
+            }
         }
+
+
     }
 
     private static void applySTRFilter(final VariantContext vc, final Collection<String> filters) {
@@ -139,6 +146,16 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    private static void applyInsufficientEvidenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
+        if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY)) {
+            final double[] tumorLods = getArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+
+            if (MathUtils.arrayMax(tumorLods) < MTFAC.TUMOR_LOD_THRESHOLD) {
+                filters.add(GATKVCFConstants.TUMOR_LOD_FILTER_NAME);
+            }
+        }
+    }
+
     // filter out anything called in tumor that would also be called in the normal if it were treated as a tumor.
     // this handles shared artifacts, such as ones due to alignment and any shared aspects of sequencing
     private static void applyArtifactInNormalFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
@@ -193,6 +210,7 @@ public class Mutect2FilteringEngine {
     //TODO: building a list via repeated side effects is ugly
     public Set<String> calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc) {
         final Set<String> filters = new HashSet<>();
+        applyInsufficientEvidenceFilter(MTFAC, vc, filters);
         applyEventDistanceFilters(vc, filters);
         applyTriallelicFilter(vc, filters);
         applyPanelOfNormalsFilter(MTFAC, vc, filters);

@@ -130,7 +130,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<PerAlleleCollection<Double>> normalArtifactLog10Odds = getForNormal(() -> somaticLog10Odds(log10NormalMatrix.get()));
 
             final List<Allele> somaticAltAlleles = mergedVC.getAlternateAlleles().stream()
-                    .filter(allele -> tumorLog10Odds.getAlt(allele) > MTAC.TUMOR_LOD_THRESHOLD)
+                    .filter(allele -> tumorLog10Odds.getAlt(allele) > MTAC.emissionLodThreshold)
                     .filter(allele -> !hasNormal || normalLog10Odds.get().getAlt(allele) > MTAC.NORMAL_LOD_THRESHOLD)
                     .collect(Collectors.toList());
             final List<Allele> allSomaticAlleles = ListUtils.union(Arrays.asList(mergedVC.getReference()), somaticAltAlleles);
