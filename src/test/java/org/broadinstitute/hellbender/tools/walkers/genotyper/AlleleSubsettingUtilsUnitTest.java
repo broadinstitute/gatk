@@ -242,16 +242,14 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
 
         // sample 1 has GLs: {1.1, 0.1, 2.3}, so that its likeliest genotype has two copies of the alt allele
         // and its GL difference weight (see javadoc of the tested method) is 2.3 - 1.1 = 1.2
-        // thus it contributes 2 * 1.2 = 2.4 to the likelihood sum of the alt allele
 
         // sample 2 will have GLs: {3.1, 0.1, 2.3}, so that its likeliest genotype is hom ref
         // and it contributes nothing to the likelihood sum
 
         // sample 3 will have GLs: {1.1, 4.1, 2.3}, so that its likeliest genotype has one copy of the alt allele
         // and its GL difference weight is 4.3 - 1.1 = 3.0
-        // thus it contributes 1 * 3.0 = 3.0 to the likelihood sum of the alt allele
 
-        // the total likelihood sum is thus 2.4 + 0.0 + 3.0 = 5.4
+        // the total likelihood sum is thus 1.2 + 0.0 + 3.0 = 4.2
 
         final Genotype g1 = new GenotypeBuilder("sample1", twoAlleles).PL(new double[] {1.1, 0.1, 2.3}).make();
         final Genotype g2 = new GenotypeBuilder("sample2", twoAlleles).PL(new double[] {3.1, 0.1, 2.3}).make();
@@ -260,7 +258,7 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         final VariantContext vc1 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
                 .genotypes(Arrays.asList(g1, g2, g3)).make();
 
-        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc1, 2)[1], 5.4, 1.0e-8);
+        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc1, 2)[1], 4.2, 1.0e-8);
 
         // diploid, triallelic, two samples
         final List<Allele> threeAlleles = Arrays.asList(Aref, C, G);
@@ -292,14 +290,14 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         // the canonical ordering of genotypes is 0/0/0, 0/0/1, 0/1/1, 1/1/1
 
         // sample 1 has GLs: {0.0, 0.0, 0.0, 3.5}, so that its likeliest genotype has three copies of the alt allele
-        // and its GL difference weight is 3.5.  thus it contributes 10.5 to the alt allele
+        // and its GL difference weight is 3.5.
 
         final Genotype g6 = new GenotypeBuilder("sample1", Arrays.asList(C, C, C)).PL(new double[] {0.0, 0.0, 0.0, 3.5}).make();
 
         final VariantContext vc3 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
                 .genotypes(Arrays.asList(g6)).make();
 
-        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3)[1], 10.5, 1.0e-8);
+        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3)[1], 3.5, 1.0e-8);
     }
 
 }
