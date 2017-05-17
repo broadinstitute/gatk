@@ -221,24 +221,18 @@ public final class AlleleSubsettingUtils {
                 .collect(Collectors.toList());
     }
 
-    /** the likelihood sum for an alt allele is the sum over all samples of:
-     *
-     * 1) the number of copies of that allele for the sample's most likely genotype i.e. genotypes AB and BB contribute
-     * 1 and 2 for allele B, respectively
-     *
-     * multiplied by
-     *
-     * 2) the GL difference between this best genotype and the hom ref genotype
+    /** the likelihood sum for an alt allele is the sum over all samples whose likeliest genotype contains that allele of
+     * the GL difference between the most likely genotype and the hom ref genotype
      *
      * Since GLs are log likelihoods, this quantity is thus
-     * SUM_samples log(likelihood alt / likelihood ref) * # alt copies
+     * SUM_{samples whose likeliest genotype contains this alt allele} log(likelihood alt / likelihood hom ref)
      */
     @VisibleForTesting
     static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
         final double[] likelihoodSums = new double[vc.getNAlleles()];
         for ( final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder() ) {
             final double[] gls = genotype.getLikelihoods().getAsVector();
-            if (gls == null || !GATKVariantContextUtils.isInformative(gls)) {
+            if (gls == null) {
                 continue;
             }
             final int indexOfMostLikelyGenotype = MathUtils.maxElementIndex(gls);
@@ -250,7 +244,9 @@ public final class AlleleSubsettingUtils {
                     .alleleCountsByIndex(vc.getNAlleles() - 1);
 
             for (int allele = 1; allele < alleleCounts.length; allele++) {
-                likelihoodSums[allele] += alleleCounts[allele] * GLDiffBetweenRefAndBest;
+                if (alleleCounts[allele] > 0) {
+                    likelihoodSums[allele] += GLDiffBetweenRefAndBest;
+                }
             }
         }
         return likelihoodSums;
