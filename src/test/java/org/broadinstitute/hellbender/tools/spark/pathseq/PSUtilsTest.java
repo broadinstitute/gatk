@@ -77,7 +77,7 @@ public class PSUtilsTest extends BaseTest {
 
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.CouldNotCreateOutputFile.class)
     @SuppressWarnings("unchecked")
     public void testWriteTwoKryo() throws Exception {
         final File tempFile = createTempFile("test", ".dat");
@@ -95,11 +95,8 @@ public class PSUtilsTest extends BaseTest {
         Assert.assertEquals(int_in, int_out);
         Assert.assertEquals(str_in, str_out);
 
-        try {
-            PSUtils.writeKryoTwo("/bad_dir", int_out, str_out);
-            Assert.fail("Did not throw UserException for bad path to writeKryoTwo()");
-        } catch (UserException e) {
-        }
+        // Point to a subdir that does not exist, so that we get a FNF excpetion
+        PSUtils.writeKryoTwo(tempFile.getAbsolutePath() + "/bad_dir/bad_subdir/", int_out, str_out);
     }
 
     @Test

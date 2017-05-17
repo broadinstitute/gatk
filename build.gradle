@@ -60,6 +60,9 @@ final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.6.2-proto-3.0.0-beta-1')
 final testNGVersion = '6.11'
 
+final baseJarName = 'gatk'
+final secondaryBaseJarName = 'hellbender'
+
 configurations.all {
     resolutionStrategy {
         force 'com.google.http-client:google-http-client:1.21.0'
@@ -210,6 +213,24 @@ processTestResources {
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+def createSymlinks(archivePath, symlinkLocation) {
+    exec {
+        commandLine 'ln', '-fs', archivePath, symlinkLocation
+        ignoreExitValue = false
+    }
+}
+
+// Suffix is what will be added to the symlink
+def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, secondaryBaseJarName) {
+    def finalSuffix = (suffix == "") ? "" : ("-" + suffix)
+
+    def symlinkLocation = destinationDir.toString() + "/" + baseJarName + finalSuffix + ".jar"
+    def symlinkLocation2 = destinationDir.toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
+
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
+}
+
 final isRelease = Boolean.getBoolean("release")
 version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
 
@@ -347,6 +368,12 @@ shadowJar {
     configurations = [project.configurations.runtime]
     classifier = 'local'
     mergeServiceFiles('reference.conf')
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be gatk.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createGatkSymlinks(destinationDir.toString(), archivePath, "", baseJarName, secondaryBaseJarName)
+    }
 }
 
 task localJar{ dependsOn shadowJar }
@@ -356,6 +383,12 @@ task sparkJar(type: ShadowJar) {
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
     classifier = 'spark'
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be gatk.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createGatkSymlinks(destinationDir.toString(), archivePath, classifier, baseJarName, secondaryBaseJarName)
+    }
 }
 
 task gatkZipDistribution(type: Zip) {
