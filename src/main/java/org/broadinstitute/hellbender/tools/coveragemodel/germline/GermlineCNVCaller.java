@@ -367,7 +367,7 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
      * @return an instance of {@link Reader}
      */
     private Reader getReaderFromURI(@Nonnull final String path) {
-        final InputStream inputStream = BucketUtils.openFile(path, getAuthenticatedGCSOptions());
+        final InputStream inputStream = BucketUtils.openFile(path);
         return new BufferedReader(new InputStreamReader(inputStream));
     }
 }

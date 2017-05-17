@@ -78,7 +78,7 @@ build.dependsOn installDist
 check.dependsOn installDist
 
 // NOTE: When changing the GATK version, these versions should be changed to specify the same version as used by GATK
-final gatkVersion = '4.alpha.2-260-ge8d00ca-20170508.215840-1'
+final gatkVersion = '4.alpha.2-271-gb05aee6-20170517.012235-1'
 final htsjdkVersion = '2.9.1'
 final testNGVersion = '6.11'
 
