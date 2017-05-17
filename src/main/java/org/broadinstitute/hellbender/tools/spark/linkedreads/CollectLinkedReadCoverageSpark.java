@@ -71,6 +71,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
 
+    @Argument(fullName = "minReadCountPerMol", shortName = "minReadCountPerMol", doc="Minimum numnber of reads to call a molecule", optional=true)
+    public int minReadCountPerMol = 2;
+
     @Override
     public boolean requiresReads() { return true; }
 
@@ -104,7 +107,22 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                                 new MySVIntervalTree(),
                                 (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
                                 (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
-                        ).cache();
+                        )
+                        .mapValues(mySVIntervalTree -> {
+                            final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
+                            while (iterator.hasNext()) {
+                                final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
+                                if (next.getValue().size() < minReadCountPerMol) {
+                                    iterator.remove();
+                                }
+                            }
+                            return mySVIntervalTree;
+                        })
+                        .filter(kv -> {
+                            final MySVIntervalTree mySVIntervalTree = kv._2();
+                            return mySVIntervalTree.myTree.size() > 0;
+                        })
+                        .cache();
 
         final Tuple2<double[], long[]> moleculeLengthHistogram = barcodeIntervals.flatMapToDouble(kv -> {
             final MySVIntervalTree mySVIntervalTree = kv._2();
