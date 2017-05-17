@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
+import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
@@ -142,6 +143,12 @@ public final class SVUtils {
         return result;
     }
 
+    public static int iteratorSize( final LongIterator itr ) {
+        int result = 0;
+        while ( itr.hasNext() ) { result += 1; itr.next(); }
+        return result;
+    }
+
     /**
      * Provides a stream collector that will collect items into an array list with a given initial capacity.
      */
@@ -152,6 +159,7 @@ public final class SVUtils {
     /**
      * 64-bit FNV-1a hash for long's
      */
+
     public static long fnvLong64( final long toHash ) {
         return fnvLong64(FNV64_DEFAULT_SEED, toHash);
     }
