@@ -20,6 +20,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.seqdoop.hadoop_bam.util.NIOFileUtil;
 import scala.Tuple2;
@@ -51,6 +53,16 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public int clusterSize = 5000;
 
+    @Argument(doc = "molSizeHistogramFile",
+            shortName = "molSizeHistogramFile", fullName = "molSizeHistogramFile",
+            optional = true)
+    public File molSizeHistogramFile;
+
+    @Argument(doc = "gapHistogramFile",
+            shortName = "gapHistogramFile", fullName = "gapHistogramFile",
+            optional = true)
+    public File gapHistogramFile;
+
     @Argument(doc = "metadataFile",
             shortName = "metadataFile", fullName = "metadataFile",
             optional = true)
@@ -79,10 +91,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 reads.filter(read ->
                         !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped());
         final ReadMetadata readMetadata = new ReadMetadata(Collections.emptySet(), getHeaderForReads(), mappedReads);
-        ReadMetadata.writeMetadata(readMetadata, metadataFile.getAbsolutePath());
+        if (metadataFile != null) {
+            ReadMetadata.writeMetadata(readMetadata, metadataFile.getAbsolutePath());
+        }
 
         final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
-
 
         final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals =
                 reads.filter(GATKRead::isFirstOfPair)
@@ -91,7 +104,48 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                                 new MySVIntervalTree(),
                                 (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
                                 (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
-                        );
+                        ).cache();
+
+        final Tuple2<double[], long[]> moleculeLengthHistogram = barcodeIntervals.flatMapToDouble(kv -> {
+            final MySVIntervalTree mySVIntervalTree = kv._2();
+            List<Double> results = new ArrayList<>(mySVIntervalTree.myTree.size());
+            final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
+            Utils.stream(iterator).map(e -> e.getInterval().getLength()).forEach(l -> results.add(new Double(l)));
+            return results.iterator();
+        }).histogram(100);
+
+        try ( final Writer writer =
+                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(molSizeHistogramFile.getAbsolutePath()))) ) {
+            writer.write("# Molecule length histogram\n");
+            for (int i = 0; i < moleculeLengthHistogram._1().length; i++) {
+                writer.write(moleculeLengthHistogram._1()[i] + "\t" + moleculeLengthHistogram._2()[i] + "\n");
+            }
+        } catch ( final IOException ioe ) {
+            throw new GATKException("Can't write read histogram file.", ioe);
+        }
+
+        final Tuple2<double[], long[]> readGapHistogram = barcodeIntervals.flatMapToDouble(kv -> {
+            final MySVIntervalTree mySVIntervalTree = kv._2();
+            List<Double> results = new ArrayList<>();
+            for (final SVIntervalTree.Entry<List<ReadInfo>> next : mySVIntervalTree.myTree) {
+                List<ReadInfo> readInfoList = next.getValue();
+                readInfoList.sort(Comparator.comparing(ReadInfo::getStart));
+                for (int i = 1; i < readInfoList.size(); i++) {
+                    results.add((double) (readInfoList.get(i).start - readInfoList.get(i - 1).start));
+                }
+            }
+            return results.iterator();
+        }).histogram(100);
+
+        try ( final Writer writer =
+                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gapHistogramFile.getAbsolutePath()))) ) {
+            writer.write("# Read gap histogram\n");
+            for (int i = 0; i < readGapHistogram._1().length; i++) {
+                writer.write(readGapHistogram._1()[i] + "\t" + readGapHistogram._2()[i] + "\n");
+            }
+        } catch ( final IOException ioe ) {
+            throw new GATKException("Can't write gap histogram file.", ioe);
+        }
 
         final JavaPairRDD<SVInterval, String> bedRecordsByBarcode;
         bedRecordsByBarcode = barcodeIntervals.flatMapToPair(x -> {
