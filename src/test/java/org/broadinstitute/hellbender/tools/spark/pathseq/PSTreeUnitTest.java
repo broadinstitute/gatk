@@ -32,8 +32,8 @@ public class PSTreeUnitTest extends CommandLineProgramTest {
             output.close();
 
             final Input input = new Input(new FileInputStream(tempFile));
-            final PSTree tree_in = kryo.readObject(input, PSTree.class);
-            Assert.assertEquals(tree_in, tree);
+            final PSTree treeIn = kryo.readObject(input, PSTree.class);
+            Assert.assertEquals(treeIn, tree);
         } catch (FileNotFoundException e) {
             throw new IOException("Error with Kryo IO", e);
         }

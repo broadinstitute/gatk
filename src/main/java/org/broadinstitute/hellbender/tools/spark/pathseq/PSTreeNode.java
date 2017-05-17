@@ -49,9 +49,8 @@ public class PSTreeNode {
         output.writeString(rank);
         output.writeString(parent);
         output.writeLong(length);
-        final int numChildren = children.size();
-        output.writeInt(numChildren);
-        for (String child : children) {
+        output.writeInt(children.size());
+        for (final String child : children) {
             output.writeString(child);
         }
 

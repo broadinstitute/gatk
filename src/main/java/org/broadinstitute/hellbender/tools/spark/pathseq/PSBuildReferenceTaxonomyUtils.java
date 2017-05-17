@@ -1,0 +1,318 @@
+package org.broadinstitute.hellbender.tools.spark.pathseq;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Output;
+import htsjdk.samtools.SAMSequenceRecord;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import scala.Tuple2;
+
+import java.io.*;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
+
+public final class PSBuildReferenceTaxonomyUtils {
+
+    protected final static Logger logger = LogManager.getLogger(PSBuildReferenceTaxonomyUtils.class);
+    private final static String ROOT_ID = "1"; //NCBI root node taxonomic id
+
+    /**
+     * Build set of accessions contained in the reference.
+     * Returns: a map from accession to the name and length of the record. If the sequence name contains the
+     * taxonomic ID, it instead gets added to taxIdToProperties. Later we merge both results into taxIdToProperties.
+     * Method: First, look for either "taxid|<taxid>|" or "ref|<accession>|" in the sequence name. If neither of
+     * those are found, use the first word of the name as the accession.
+     */
+    protected static Map<String, Tuple2<String, Long>> parseReferenceRecords(final List<SAMSequenceRecord> dictionaryList,
+                                                                             final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+
+        final Map<String, Tuple2<String, Long>> accessionToNameAndLength = new HashMap<>();
+        for (final SAMSequenceRecord record : dictionaryList) {
+            final String recordName = record.getSequenceName();
+            final long recordLength = record.getSequenceLength();
+            final String[] tokens = recordName.split("[|]");
+            String recordAccession = null;
+            String recordTaxId = null;
+            for (int i = 0; i < tokens.length - 1 && recordTaxId == null; i++) {
+                if (tokens[i].equals("ref")) {
+                    recordAccession = tokens[i + 1];
+                } else if (tokens[i].equals("taxid")) {
+                    recordTaxId = tokens[i + 1];
+                }
+            }
+            if (recordTaxId == null) {
+                if (recordAccession == null) {
+                    final String[] tokens2 = tokens[0].split(" "); //Default accession to first word in the name
+                    recordAccession = tokens2[0];
+                }
+                accessionToNameAndLength.put(recordAccession, new Tuple2<>(recordName, recordLength));
+            } else {
+                updateAccessionTaxonProperties(recordTaxId, recordName, recordLength, taxIdToProperties);
+            }
+        }
+        return accessionToNameAndLength;
+    }
+
+    /**
+     * Builds maps of reference contig accessions to their taxonomic ids and vice versa.
+     * Input can be a RefSeq or Genbank catalog file. accNotFound is an initial list of
+     * accessions from the reference that have not been successfully looked up; if null,
+     * will be initialized to the accToRefInfo key set by default.
+     * <p>
+     * Returns a collection of reference accessions that could not be found, if any.
+     */
+    protected static Set<String> parseCatalog(final BufferedReader reader,
+                                              final Map<String, Tuple2<String, Long>> accessionToNameAndLength,
+                                              final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties,
+                                              final boolean bGenBank, Set<String> accessionsNotFound) {
+        try {
+            String line;
+            final int taxIdColumnIndex, accessionColumnIndex;
+            if (bGenBank) {
+                taxIdColumnIndex = 6;
+                accessionColumnIndex = 1;
+            } else {
+                taxIdColumnIndex = 0;
+                accessionColumnIndex = 2;
+            }
+            if (accessionsNotFound == null) {
+                accessionsNotFound = new HashSet<>(accessionToNameAndLength.keySet());
+            }
+            final int minColumns = Math.max(taxIdColumnIndex, accessionColumnIndex) + 1;
+            long lineNumber = 1;
+            while ((line = reader.readLine()) != null && !line.isEmpty()) {
+                final String[] tokens = line.trim().split("\t", minColumns + 1);
+                if (tokens.length >= minColumns) {
+                    final String taxId = tokens[taxIdColumnIndex];
+                    final String accession = tokens[accessionColumnIndex];
+                    if (accessionToNameAndLength.containsKey(accession)) {
+                        final Tuple2<String, Long> nameAndLength = accessionToNameAndLength.get(accession);
+                        updateAccessionTaxonProperties(taxId, nameAndLength._1, nameAndLength._2, taxIdToProperties);
+                        accessionsNotFound.remove(accession);
+                    }
+                } else {
+                    throw new UserException.BadInput("Expected at least " + minColumns + " tab-delimited columns in " +
+                            "GenBank catalog file, but only found " + tokens.length + " on line " + lineNumber);
+                }
+                lineNumber++;
+            }
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile("Error reading from catalog file", e);
+        }
+        return accessionsNotFound;
+    }
+
+    /**
+     * Parses scientific name of each taxon
+     */
+    protected static void parseNamesFile(final BufferedReader reader, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+        try {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                final String[] tokens = line.split("\t\\|\t");
+                if (tokens.length != 4) {
+                    throw new UserException.BadInput("Expected 4 columns in tax dump names file but found " + tokens.length);
+                }
+                final String nameType = tokens[3];
+                if (nameType.equals("scientific name\t|")) {
+                    final String taxId = tokens[0];
+                    final String name = tokens[1];
+                    final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.containsKey(taxId) ? taxIdToProperties.get(taxId) : new PSPathogenReferenceTaxonProperties();
+                    taxonProperties.name = name;
+                    taxIdToProperties.put(taxId, taxonProperties);
+                }
+            }
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile("Error reading from taxonomy dump names file", e);
+        }
+    }
+
+    /**
+     * Gets the rank and parent of each taxon.
+     * Returns a Collection of tax ID's found in the nodes file that are not in taxIdToProperties (i.e. were not found in
+     * a reference sequence name using the taxid|\<taxid\> tag or the catalog file).
+     */
+    protected static Collection<String> parseNodesFile(final BufferedReader reader, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+        try {
+            final Collection<String> taxIdsNotFound = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                final String[] tokens = line.split("\t\\|\t");
+                if (tokens.length != 13) {
+                    throw new UserException.BadInput("Expected 13 columns in tax dump nodes file but found " + tokens.length);
+                }
+                final String taxId = tokens[0];
+                final String parent = tokens[1];
+                final String rank = tokens[2];
+                final PSPathogenReferenceTaxonProperties taxonProperties;
+                if (taxIdToProperties.containsKey(taxId)) {
+                    taxonProperties = taxIdToProperties.get(taxId);
+                } else {
+                    taxonProperties = new PSPathogenReferenceTaxonProperties();
+                    taxonProperties.name = "tax_" + taxId;
+                    taxIdsNotFound.add(taxId);
+                }
+                taxonProperties.rank = rank;
+                if (!taxId.equals(ROOT_ID)) { //keep root's parent set to null
+                    taxonProperties.parentTaxId = parent;
+                }
+                taxIdToProperties.put(taxId, taxonProperties);
+            }
+            return taxIdsNotFound;
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile("Error reading from taxonomy dump nodes file", e);
+        }
+    }
+
+    /**
+     * Helper function for building the map from tax id to reference contig accession
+     */
+    private static void updateAccessionTaxonProperties(final String accession, final String name, final long length, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+        final PSPathogenReferenceTaxonProperties taxonProperties;
+        if (taxIdToProperties.containsKey(accession)) {
+            taxonProperties = taxIdToProperties.get(accession);
+        } else {
+            taxonProperties = new PSPathogenReferenceTaxonProperties();
+        }
+        taxonProperties.accessions.add(name);
+        taxonProperties.length += length;
+        taxIdToProperties.put(accession, taxonProperties);
+    }
+
+    /**
+     * Create reference_name-to-taxid map (just an inversion on taxIdToProperties)
+     */
+    protected static Map<String, String> buildAccessionToTaxIdMap(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+        final Map<String, String> accessionToTaxId = new HashMap<>();
+        for (final String taxId : taxIdToProperties.keySet()) {
+            final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
+            for (String name : taxonProperties.accessions) {
+                accessionToTaxId.put(name, taxId);
+            }
+        }
+        return accessionToTaxId;
+    }
+
+    /**
+     * Returns a PSTree representing a reduced taxonomic tree containing only taxa present in the reference
+     */
+    protected static PSTree buildTaxonomicTree(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+
+        //Build tree of all taxa
+        final PSTree tree = new PSTree(ROOT_ID);
+        final Collection<String> invalidIds = new ArrayList<>();
+        for (final String taxId : taxIdToProperties.keySet()) {
+            if (!taxId.equals(ROOT_ID)) {
+                final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
+                if (taxonProperties.name != null && taxonProperties.parentTaxId != null && taxonProperties.rank != null) {
+                    tree.addNode(taxId, taxonProperties.name, taxonProperties.parentTaxId, taxonProperties.length, taxonProperties.rank);
+                } else {
+                    invalidIds.add(taxId);
+                }
+            }
+        }
+        PSUtils.logItemizedWarning(logger, invalidIds, "The following taxonomic IDs did not have name/taxonomy information (this may happen when the catalog and taxdump files are inconsistent)");
+
+        final Set<String> unreachableNodes = tree.removeUnreachableNodes();
+        if (!unreachableNodes.isEmpty()) {
+            PSUtils.logItemizedWarning(logger, unreachableNodes, "Removed " + unreachableNodes.size() + " unreachable tree nodes");
+        }
+
+        tree.checkStructure();
+
+        //Trim tree down to nodes corresponding only to reference taxa (and their ancestors)
+        final Set<String> relevantNodes = new HashSet<>();
+        for (final String tax : taxIdToProperties.keySet()) {
+            if (!taxIdToProperties.get(tax).accessions.isEmpty()) {
+                if (tree.hasNode(tax)) {
+                    relevantNodes.addAll(tree.getPathOf(tax));
+                }
+            }
+        }
+        if (relevantNodes.isEmpty()) {
+            throw new UserException.BadInput("Did not find any taxa corresponding to reference sequence names.\n\n"
+                    + "Check that reference names follow one of the required formats:\n\n"
+                    + "\t...|ref|<accession.version>|...\n"
+                    + "\t...|taxid|<taxonomy_id>|...\n"
+                    + "\t<accession.version><mask>...");
+        }
+        tree.retainNodes(relevantNodes);
+
+        return tree;
+    }
+
+    /**
+     * Gets a buffered reader for a gzipped file
+     * @param path   File path
+     * @return  Reader for the file
+     */
+    public static BufferedReader getBufferedReaderGz(final String path) {
+        try {
+            return new BufferedReader(IOUtils.makeReaderMaybeGzipped(new File(path)));
+        } catch (final IOException e) {
+            throw new UserException.BadInput("Could not open file " + path, e);
+        }
+    }
+
+    /**
+     * Gets a Reader for a file in a gzipped tarball
+     * @param tarPath   Path to the tarball
+     * @param fileName   File within the tarball
+     * @return   The file's reader
+     */
+    public static BufferedReader getBufferedReaderTarGz(final String tarPath, final String fileName) {
+        try {
+            InputStream result = null;
+            final TarArchiveInputStream tarStream = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(tarPath)));
+            TarArchiveEntry entry = tarStream.getNextTarEntry();
+            while (entry != null) {
+                if (entry.getName().equals(fileName)) {
+                    result = tarStream;
+                    break;
+                }
+                entry = tarStream.getNextTarEntry();
+            }
+            if (result == null) {
+                throw new UserException.BadInput("Could not find file " + fileName + " in tarball " + tarPath);
+            }
+            return new BufferedReader(new InputStreamReader(result));
+        } catch (final IOException e) {
+            throw new UserException.BadInput("Could not open compressed tarball file " + fileName + " in " + tarPath, e);
+        }
+    }
+
+    /**
+     * Wrapper for closing a reader
+     * @param reader The reader to close
+     */
+    public static void closeReader(final Reader reader) {
+        try {
+            if (reader != null) {
+                reader.close();
+            }
+        } catch (final IOException e) {
+            throw new RuntimeException("Could not close file reader", e);
+        }
+    }
+
+    /**
+     * Writes objects using Kryo to specified local file path.
+     * NOTE: using setReferences(false), which must also be set when reading the file. Does not work with nested
+     * objects that reference its parent.
+     */
+    public static void writeTaxonomyDatabase(final String filePath, final PSTaxonomyDatabase taxonomyDatabase) {
+        try {
+            final Kryo kryo = new Kryo();
+            kryo.setReferences(false);
+            Output output = new Output(new FileOutputStream(filePath));
+            kryo.writeObject(output, taxonomyDatabase);
+            output.close();
+        } catch (final FileNotFoundException e) {
+            throw new UserException.CouldNotCreateOutputFile("Could not serialize objects to file", e);
+        }
+    }
+}

@@ -42,13 +42,19 @@ public class PSTree {
         kryo.setReferences(false);
 
         root = input.readString();
-        tree = (HashMap<String, PSTreeNode>) kryo.readClassAndObject(input);
+        final int treeSize = input.readInt();
+        tree = new HashMap<>(treeSize);
+        for (int i = 0; i < treeSize; i++) {
+            final String key = input.readString();
+            final PSTreeNode value = kryo.readObject(input, PSTreeNode.class);
+            tree.put(key, value);
+        }
 
         kryo.setReferences(oldReferences);
     }
 
     /**
-     * Returns short String of 20 arbitrarily-chosen nodes
+     * Returns short String of 20 arbitrarily chosen nodes
      */
     private static String getAbbreviatedNodeListString(final Set<String> nodes) {
         return "[" + nodes.stream().limit(20).collect(Collectors.joining(", ")) + "]";
@@ -59,7 +65,11 @@ public class PSTree {
         kryo.setReferences(false);
 
         output.writeString(root);
-        kryo.writeClassAndObject(output, tree);
+        output.writeInt(tree.size());
+        for (final String key : tree.keySet()) {
+            output.writeString(key);
+            kryo.writeObject(output, tree.get(key));
+        }
 
         kryo.setReferences(oldReferences);
     }
