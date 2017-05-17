@@ -58,7 +58,7 @@ public class OrientationBiasFilterer {
 
             final List<Allele> alleles = genotype.getAlleles();
             if (genotype.getPloidy() != 2) {
-                throw new UserException.BadInput("This tool will not run with non-diploid organisms.  Saw GT: " + genotype.getGenotypeString());
+                logger.warn("No action required:  This tool will skip non-diploid sites.  Saw GT: " + genotype.getGenotypeString() + " at " + vc.toStringWithoutGenotypes());
             }
 
             // Get the reference allele as a String and make sure that there is only one ref allele and that it is length
@@ -66,7 +66,7 @@ public class OrientationBiasFilterer {
             final List<String> refAlleles = alleles.stream().filter(a -> a.isReference()).map(a -> a.getBaseString()).collect(Collectors.toList());
             if (((refAlleles.size() == 1) && (refAlleles.get(0).length() == 1))) {
                 final Character refAllele = (char) refAlleles.get(0).getBytes()[0];
-                for (int i = 1; i < alleles.size(); i ++ ) {
+                for (int i = 1; i < alleles.size(); i++) {
                     final Allele allele = genotype.getAllele(i);
                     if (allele.isCalled() && allele.isNonReference() && !allele.equals(Allele.SPAN_DEL)
                             && allele.getBaseString().length() == 1) {

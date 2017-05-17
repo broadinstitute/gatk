@@ -18,6 +18,7 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
     private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/orientationbiasvariantfilter/");
     public static final String smallM2Vcf = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
+    public static final String smallM2HighPloidy = TEST_RESOURCE_DIR.getAbsolutePath() + "/high_ploidy.vcf";
 
     @Test
     public void testAnnotateVariantContextWithPreprocessingValues() {
@@ -210,6 +211,34 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
             Assert.assertNotNull(pArtifact);
             Assert.assertTrue(pArtifact <= previousPArtifact);
             Assert.assertNotEquals(pArtifact, Double.POSITIVE_INFINITY);
+        }
+    }
+
+    @Test(description = "This test just confirms that the OB filterer does not throw an exception if confronted with high ploidy call.  Also test that it is a superset of the original variant context.")
+    public void testHighPloidy() {
+        final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2HighPloidy));
+
+        // Dummy values for relevant transitions and preAdapter Map
+        SortedSet<Transition> relevantTransitions = new TreeSet<>();
+        relevantTransitions.add(Transition.transitionOf('G', 'T'));
+        relevantTransitions.add(Transition.transitionOf('C', 'T'));
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final double amGTPreAdapterQ = 20.0;
+        final double amCTPreAdapterQ = 25.0;
+        preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(relevantTransitions.last(), amCTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+
+        for (final VariantContext vc : featureDataSource) {
+            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantTransitions, preAdapterQFakeScoreMap);
+            final Set<String> originalGenotypeAttributes = vc.getGenotype("TUMOR1").getExtendedAttributes().keySet();
+            final Set<String> newGenotypeAttributes = updatedVariantContext.getGenotype("TUMOR1").getExtendedAttributes().keySet();
+            Assert.assertTrue(newGenotypeAttributes.containsAll(originalGenotypeAttributes));
+            Assert.assertTrue(newGenotypeAttributes.size() == (originalGenotypeAttributes.size()+2) );
+
+            for (final String ga : originalGenotypeAttributes) {
+                Assert.assertEquals(updatedVariantContext.getGenotype("TUMOR1").getExtendedAttributes().get(ga),
+                        vc.getGenotype("TUMOR1").getExtendedAttributes().get(ga));
+            }
         }
     }
 
