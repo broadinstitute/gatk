@@ -44,7 +44,7 @@ import java.util.stream.StreamSupport;
 public abstract class LocusWalker extends GATKTool {
 
     @Argument(fullName = "maxDepthPerSample", shortName = "maxDepthPerSample", doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
-    protected long maxDepthPerSample = defaultMaxDepthPerSample();
+    protected int maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**
      * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
@@ -98,7 +98,7 @@ public abstract class LocusWalker extends GATKTool {
      * Returns default value for the {@link #maxDepthPerSample} parameter, if none is provided on the command line.
      * Default implementation returns 0 (no downsampling by default).
      */
-    protected long defaultMaxDepthPerSample() {
+    protected int defaultMaxDepthPerSample() {
         return 0;
     }
 
