@@ -1311,7 +1311,7 @@ public final class CoverageModelEMComputeBlock {
                 final INDArray zz_ll = zz_sll.get(NDArrayIndex.point(si), NDArrayIndex.all(), NDArrayIndex.all());
                 /* mean_W_contrib_t = \sum_{m,n} E[W_{tm}] E[W_{tn}] E[z_{sm} z_{sn}] */
                 final INDArray mean_W_contrib_t = W_tl.mmul(zz_ll).muli(W_tl).sum(1).transpose();
-                WzzWT_st.get(NDArrayIndex.point(si), NDArrayIndex.all()).assign(mean_W_contrib_t);
+                WzzWT_st.getRow(si).assign(mean_W_contrib_t);
             }
             return new DuplicableNDArray(WzzWT_st);
         }

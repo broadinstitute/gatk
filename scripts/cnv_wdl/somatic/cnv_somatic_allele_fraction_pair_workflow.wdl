@@ -12,7 +12,7 @@
 #
 #############
 
-import "cnv_somatic_tasks.wdl" as CNVSomatic
+import "cnv_common_tasks.wdl" as CNVTasks
 
 workflow CNVSomaticAlleleFractionPairWorkflow {
     # Workflow input files

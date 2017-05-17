@@ -10,7 +10,7 @@
 #
 #############
 
-import "cnv_somatic_tasks.wdl" as CNVSomatic
+import "cnv_common_tasks.wdl" as CNVTasks
 
 workflow CNVSomaticCopyRatioBAMWorkflow {
     # Workflow input files
@@ -26,7 +26,7 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
     # If no padded target file is input, then do WGS workflow
     Boolean is_wgs = select_first([padded_targets, ""]) == ""
 
-    call CNVSomatic.CollectCoverage {
+    call CNVTasks.CollectCoverage {
         input:
             padded_targets = padded_targets,
             bam = bam,
@@ -37,7 +37,7 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             gatk_jar = gatk_jar
     }
 
-    call CNVSomatic.AnnotateTargets {
+    call CNVTasks.AnnotateTargets {
         input:
             entity_id = CollectCoverage.entity_id,
             targets = CollectCoverage.coverage,
@@ -47,7 +47,7 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             gatk_jar = gatk_jar
     }
 
-    call CNVSomatic.CorrectGCBias {
+    call CNVTasks.CorrectGCBias {
         input:
             entity_id = CollectCoverage.entity_id,
             coverage = CollectCoverage.coverage,
