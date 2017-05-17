@@ -119,7 +119,7 @@ public class IntervalAlignmentContextIteratorUnitTest extends BaseTest {
     }
 
     @Test
-    public void testNoIntervals() {
+    public void testNoIntervalsSpecified() {
         // $ samtools view -H NA12878.chr17_69k_70k.dictFix.bam
         // @HD	VN:1.5	GO:none	SO:coordinate
         // @SQ	SN:17	LN:1000000	AS:GRCh37	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	M5:351f64d4f4f9ddd45b35336ad97aa6de	SP:Homo Sapiens
@@ -129,7 +129,14 @@ public class IntervalAlignmentContextIteratorUnitTest extends BaseTest {
         Assert.assertEquals(allAlignmentContexts.size(), 1000000);
     }
 
-    private List<AlignmentContext> getAlignmentContexts(List<SimpleInterval> locusIntervals, String bamPath) {
+    @Test
+    public void testIntervalIteratorIsEmpty() {
+        // This test should not throw an exception.
+        final List<AlignmentContext> allAlignmentContexts = getAlignmentContexts(Collections.<SimpleInterval>emptyList(),MINI_BAM.getAbsolutePath());
+        Assert.assertEquals(allAlignmentContexts.size(), 0);
+    }
+
+    private List<AlignmentContext> getAlignmentContexts(final List<SimpleInterval> locusIntervals, final String bamPath) {
         final List<String> sampleNames = Collections.singletonList("NA12878");
 
         final ReadsDataSource gatkReads = new ReadsDataSource(IOUtils.getPath(bamPath));

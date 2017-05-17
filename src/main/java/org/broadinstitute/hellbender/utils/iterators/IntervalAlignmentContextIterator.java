@@ -30,13 +30,17 @@ public class IntervalAlignmentContextIterator implements Iterator<AlignmentConte
 
         // Iterate once.
         advanceIntervalLocus();
+
+        // Just to make sure that current alignment context is not null.  We only want to do this during the initialization.
         advanceAlignmentContext();
-        advanceAlignmentContextToCurrentInterval(this.currentInterval);
+
+        // Advance the alignment context to overlap or be in front of the current interval.
+        advanceAlignmentContextToCurrentInterval();
     }
 
     @Override
     public boolean hasNext() {
-        return (intervalLocusIterator.hasNext()) || (currentInterval != null);
+        return currentInterval != null;
     }
 
     @Override
@@ -52,7 +56,7 @@ public class IntervalAlignmentContextIterator implements Iterator<AlignmentConte
         if (isOverlaps) {
             result = currentAlignmentContext;
             advanceIntervalLocus();
-            advanceAlignmentContextToCurrentInterval(currentInterval);
+            advanceAlignmentContextToCurrentInterval();
         } else {
             result = createEmptyAlignmentContext(currentInterval);
             advanceIntervalLocus();
@@ -63,7 +67,7 @@ public class IntervalAlignmentContextIterator implements Iterator<AlignmentConte
                 //  which we are already doing.
                 //  Interval is after the next alignment context when comparison is greater than zero.
                 if (comparison > 0) {
-                    advanceAlignmentContextToCurrentInterval(currentInterval);
+                    advanceAlignmentContextToCurrentInterval();
                 }
             }
         }
@@ -76,8 +80,8 @@ public class IntervalAlignmentContextIterator implements Iterator<AlignmentConte
         return new AlignmentContext(interval, new ReadPileup(interval, new ArrayList<>()));
     }
 
-    private void advanceAlignmentContextToCurrentInterval(final SimpleInterval interval) {
-        if (interval == null) {
+    private void advanceAlignmentContextToCurrentInterval() {
+        if (currentInterval == null) {
             currentAlignmentContext = null;
             return;
         }

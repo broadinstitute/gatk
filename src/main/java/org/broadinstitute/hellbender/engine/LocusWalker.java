@@ -44,7 +44,7 @@ import java.util.stream.StreamSupport;
 public abstract class LocusWalker extends GATKTool {
 
     @Argument(fullName = "maxDepthPerSample", shortName = "maxDepthPerSample", doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
-    protected int maxDepthPerSample = defaultMaxDepthPerSample();
+    protected long maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**
      * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
@@ -98,7 +98,7 @@ public abstract class LocusWalker extends GATKTool {
      * Returns default value for the {@link #maxDepthPerSample} parameter, if none is provided on the command line.
      * Default implementation returns 0 (no downsampling by default).
      */
-    protected int defaultMaxDepthPerSample() {
+    protected long defaultMaxDepthPerSample() {
         return 0;
     }
 
@@ -161,6 +161,21 @@ public abstract class LocusWalker extends GATKTool {
         final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
         // get the LIBS
         final LocusIteratorByState libs = new LocusIteratorByState(readIterator, getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
+        final Iterator<AlignmentContext> iterator = createAlignmentContextIterator(header, libs);
+
+        // iterate over each alignment, and apply the function
+        final Spliterator<AlignmentContext> spliterator = Spliterators.spliteratorUnknownSize(iterator, 0);
+        StreamSupport.stream(spliterator, false)
+            .forEach(alignmentContext -> {
+                        final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
+                        apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
+                        progressMeter.update(alignmentInterval);
+                }
+            );
+        logger.info(countedFilter.getSummaryLine());
+    }
+
+    private Iterator<AlignmentContext> createAlignmentContextIterator(SAMFileHeader header, LocusIteratorByState libs) {
         Iterator<AlignmentContext> iterator;
 
         validateEmitEmptyLociParameters();
@@ -177,17 +192,7 @@ public abstract class LocusWalker extends GATKTool {
             // prepare the iterator
             iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()) : libs;
         }
-
-        // iterate over each alignment, and apply the function
-        final Spliterator<AlignmentContext> spliterator = Spliterators.spliteratorUnknownSize(iterator, 0);
-        StreamSupport.stream(spliterator, false)
-            .forEach(alignmentContext -> {
-                        final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
-                        apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
-                        progressMeter.update(alignmentInterval);
-                }
-            );
-        logger.info(countedFilter.getSummaryLine());
+        return iterator;
     }
 
     /**

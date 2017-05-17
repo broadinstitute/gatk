@@ -13,13 +13,13 @@ public final class LIBSDownsamplingInfo implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final boolean performDownsampling;
-    private final int toCoverage;
+    private final long toCoverage;
 
     /**
      * @param performDownsampling whether to downsample
      * @param toCoverage what coverage to downsample to (or -1 if no downsampling)
      */
-    public LIBSDownsamplingInfo(final boolean performDownsampling, final int toCoverage) {
+    public LIBSDownsamplingInfo(final boolean performDownsampling, final long toCoverage) {
         Utils.validateArg(toCoverage >= -1, "toCoverage must be at least -1 (special value) but was " + toCoverage);
         this.performDownsampling = performDownsampling;
         this.toCoverage = toCoverage;
@@ -29,7 +29,7 @@ public final class LIBSDownsamplingInfo implements Serializable {
         return performDownsampling;
     }
 
-    public int getToCoverage() {
+    public long getToCoverage() {
         return toCoverage;
     }
 
@@ -38,7 +38,7 @@ public final class LIBSDownsamplingInfo implements Serializable {
                 downsamplingMethod.type == DownsampleType.BY_SAMPLE &&
                 downsamplingMethod.toCoverage != null;
 
-        final int toCoverage = performDownsampling ? downsamplingMethod.toCoverage : 0;
+        final long toCoverage = performDownsampling ? downsamplingMethod.toCoverage : 0;
 
         return new LIBSDownsamplingInfo(performDownsampling, toCoverage);
     }
