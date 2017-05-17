@@ -117,8 +117,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         try ( final Writer writer =
                       new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(molSizeHistogramFile.getAbsolutePath()))) ) {
             writer.write("# Molecule length histogram\n");
-            for (int i = 0; i < moleculeLengthHistogram._1().length; i++) {
-                writer.write(moleculeLengthHistogram._1()[i] + "\t" + moleculeLengthHistogram._2()[i] + "\n");
+            for (int i = 1; i < moleculeLengthHistogram._1().length; i++) {
+                writer.write(moleculeLengthHistogram._1()[i-1] + "-" + moleculeLengthHistogram._1()[i] + "\t" + moleculeLengthHistogram._2()[i-1] + "\n");
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write read histogram file.", ioe);
@@ -140,8 +140,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         try ( final Writer writer =
                       new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gapHistogramFile.getAbsolutePath()))) ) {
             writer.write("# Read gap histogram\n");
-            for (int i = 0; i < readGapHistogram._1().length; i++) {
-                writer.write(readGapHistogram._1()[i] + "\t" + readGapHistogram._2()[i] + "\n");
+            for (int i = 1; i < readGapHistogram._1().length; i++) {
+                writer.write(readGapHistogram._1()[i-1] + "-" + readGapHistogram._1()[i] + "\t" + readGapHistogram._2()[i-1] + "\n");
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write gap histogram file.", ioe);
