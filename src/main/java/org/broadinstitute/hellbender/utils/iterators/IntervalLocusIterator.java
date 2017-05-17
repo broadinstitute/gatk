@@ -10,7 +10,7 @@ import java.util.*;
 /**
  * Returns a SimpleInterval for each locus in a set of intervals.  I.e. returns each genomic point location in an interval list.
  */
-public class IntervalLocusIterator implements Iterable<SimpleInterval>, Iterator<SimpleInterval> {
+public class IntervalLocusIterator implements Iterator<SimpleInterval> {
 
     private Iterator<SimpleInterval> intervalIterator;
 
@@ -23,11 +23,6 @@ public class IntervalLocusIterator implements Iterable<SimpleInterval>, Iterator
         Utils.nonNull(intervalIterator, "Input iterator cannot be null");
         this.intervalIterator = intervalIterator;
         advanceCurrentInterval();
-    }
-
-    @Override
-    public Iterator<SimpleInterval> iterator() {
-        return this;
     }
 
     @Override

@@ -16,7 +16,7 @@ import java.util.NoSuchElementException;
  *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class IntervalOverlappingIterator<T extends Locatable> implements Iterable<T>, Iterator<T> {
+public class IntervalOverlappingIterator<T extends Locatable> implements Iterator<T> {
 
     // underlying iterator
     private final Iterator<T> iterator;
@@ -50,11 +50,6 @@ public class IntervalOverlappingIterator<T extends Locatable> implements Iterabl
         this.dictionary = dictionary;
         currentInterval = this.intervals.next();
         advance();
-    }
-
-    @Override
-    public Iterator<T> iterator() {
-        return this;
     }
 
     @Override

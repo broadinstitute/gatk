@@ -16,14 +16,14 @@ import java.util.NoSuchElementException;
  * In other words, this will iterate over each base of each interval and emit an alignment context.  If no reads overlap,
  *  it will emit an empty alignment context.  Each empty alignment context will be a new instance.
  */
-public class IntervalAlignmentContextIterator implements Iterable<AlignmentContext>, Iterator<AlignmentContext> {
+public class IntervalAlignmentContextIterator implements Iterator<AlignmentContext> {
     private Iterator<AlignmentContext> alignmentContextIterator;
     private IntervalLocusIterator intervalLocusIterator;
     private SimpleInterval currentInterval;
     private AlignmentContext currentAlignmentContext;
     private SAMSequenceDictionary dictionary;
 
-    public IntervalAlignmentContextIterator(Iterator<AlignmentContext> alignmentContextIterator, IntervalLocusIterator intervalLocusIterator, SAMSequenceDictionary dictionary) {
+    public IntervalAlignmentContextIterator(final Iterator<AlignmentContext> alignmentContextIterator, final IntervalLocusIterator intervalLocusIterator, final SAMSequenceDictionary dictionary) {
         this.alignmentContextIterator = alignmentContextIterator;
         this.intervalLocusIterator = intervalLocusIterator;
         this.dictionary = dictionary;
@@ -32,11 +32,6 @@ public class IntervalAlignmentContextIterator implements Iterable<AlignmentConte
         advanceIntervalLocus();
         advanceAlignmentContext();
         advanceAlignmentContextToCurrentInterval(this.currentInterval);
-    }
-
-    @Override
-    public Iterator<AlignmentContext> iterator() {
-        return this;
     }
 
     @Override

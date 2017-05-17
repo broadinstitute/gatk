@@ -16,7 +16,7 @@ import java.util.NoSuchElementException;
  * Developer note:  This class queues up the next interval to return and then has (minimal) code to detect when
  *  an empty iterator was passed in for initialization.
  */
-public class ShardedIntervalIterator implements Iterable<SimpleInterval>, Iterator<SimpleInterval> {
+public class ShardedIntervalIterator implements Iterator<SimpleInterval> {
 
     private Iterator<SimpleInterval> intervals;
     private int shardSize;
@@ -67,11 +67,6 @@ public class ShardedIntervalIterator implements Iterable<SimpleInterval>, Iterat
     private SimpleInterval calculateShardedInterval() {
         return new SimpleInterval(this.currentInterval.getContig(), currentInterval.getStart() + IntervalUtils.beginOfShard(currentOffsetInCurrentInterval, shardSize) - 1,
                 Integer.min(currentInterval.getStart() + IntervalUtils.endOfShard(currentOffsetInCurrentInterval, shardSize) - 1, currentInterval.getEnd()));
-    }
-
-    @Override
-    public Iterator<SimpleInterval> iterator() {
-        return this;
     }
 
     @Override

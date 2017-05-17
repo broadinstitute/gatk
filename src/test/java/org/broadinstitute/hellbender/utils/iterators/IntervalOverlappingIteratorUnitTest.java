@@ -13,6 +13,8 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Spliterator;
+import java.util.Spliterators;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -58,7 +60,8 @@ public class IntervalOverlappingIteratorUnitTest extends BaseTest {
     public void testIterator(List<SimpleInterval> intervals, SAMSequenceDictionary dictionary, Locatable[] records,	Locatable[] expected) {
         IntervalOverlappingIterator<Locatable> iterator = new IntervalOverlappingIterator<>(Arrays.asList(records).iterator(), intervals, dictionary);
         int index = 0;
-        for(Locatable loc: iterator) {
+        final Iterable<Locatable> iterable = () -> iterator;
+        for(Locatable loc: iterable) {
             // assert that the locations are the expected
             Assert.assertEquals(loc, expected[index++]);
         }

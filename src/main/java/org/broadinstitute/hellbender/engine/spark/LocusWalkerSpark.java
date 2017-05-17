@@ -19,9 +19,7 @@ import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -112,7 +110,8 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
                     .collect(Collectors.toSet());
             LocusIteratorByState libs = new LocusIteratorByState(readIterator, downsamplingInfo, false, samples, header, true, false);
             IntervalOverlappingIterator<AlignmentContext> alignmentContexts = new IntervalOverlappingIterator<>(libs, ImmutableList.of(interval), sequenceDictionary);
-            return StreamSupport.stream(alignmentContexts.spliterator(), false).map(alignmentContext -> {
+            final Spliterator<AlignmentContext> alignmentContextSpliterator = Spliterators.spliteratorUnknownSize(alignmentContexts, 0);
+            return StreamSupport.stream(alignmentContextSpliterator, false).map(alignmentContext -> {
                 final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
                 return new LocusWalkerContext(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(fm, alignmentInterval));
             }).iterator();

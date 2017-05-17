@@ -22,19 +22,6 @@ import java.util.*;
 
 public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBaseTest {
 
-    @Test
-    public void testIterator() {
-        final int readLength = 10;
-        final GATKRead mapped1 = ArtificialReadUtils.createArtificialRead(header, "mapped1", 0, 1, readLength);
-        final GATKRead mapped2 = ArtificialReadUtils.createArtificialRead(header, "mapped2", 0, 1, readLength);
-
-        final List<GATKRead> reads = Arrays.asList(mapped1, mapped2);
-
-        final LocusIteratorByState li;
-        li = makeLIBS(reads, DownsamplingMethod.NONE, true, header);
-        Assert.assertSame(li.iterator(), li);
-    }
-
     @Test(expectedExceptions = NoSuchElementException.class)
     public void testIteratingBeyondElements() {
         final int readLength = 3;

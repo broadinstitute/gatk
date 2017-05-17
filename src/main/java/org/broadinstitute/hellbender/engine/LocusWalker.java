@@ -161,7 +161,7 @@ public abstract class LocusWalker extends GATKTool {
         final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
         // get the LIBS
         final LocusIteratorByState libs = new LocusIteratorByState(readIterator, getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
-        Spliterator<AlignmentContext> iterator;
+        Iterator<AlignmentContext> iterator;
 
         validateEmitEmptyLociParameters();
         if (emitEmptyLoci()) {
@@ -171,15 +171,16 @@ public abstract class LocusWalker extends GATKTool {
                 intervalsForTraversal = IntervalUtils.getAllIntervalsForReference(getBestAvailableSequenceDictionary());
             }
             final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(intervalsForTraversal.iterator());
-            iterator =  new IntervalAlignmentContextIterator(libs, intervalLocusIterator, header.getSequenceDictionary()).spliterator();
+            iterator =  new IntervalAlignmentContextIterator(libs, intervalLocusIterator, header.getSequenceDictionary());
 
         } else {
             // prepare the iterator
-            iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
+            iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()) : libs;
         }
 
         // iterate over each alignment, and apply the function
-        StreamSupport.stream(iterator, false)
+        final Spliterator<AlignmentContext> spliterator = Spliterators.spliteratorUnknownSize(iterator, 0);
+        StreamSupport.stream(spliterator, false)
             .forEach(alignmentContext -> {
                         final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
                         apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));

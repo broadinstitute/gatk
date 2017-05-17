@@ -9,6 +9,7 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -18,7 +19,7 @@ public class ShardedIntervalIteratorUnitTest extends BaseTest {
     public void testSimpleCount(List<SimpleInterval> intervals, int shardSize, int expectedCount) {
 
         final ShardedIntervalIterator shardedIntervalIterator1 = new ShardedIntervalIterator(intervals.iterator(), shardSize);
-        Assert.assertEquals(StreamSupport.stream(shardedIntervalIterator1.spliterator(), false).count(), expectedCount);
+        Assert.assertEquals(StreamSupport.stream(Spliterators.spliteratorUnknownSize(shardedIntervalIterator1, 0), false).count(), expectedCount);
     }
 
     @Test
@@ -29,7 +30,7 @@ public class ShardedIntervalIteratorUnitTest extends BaseTest {
         final int shardSizeInBases = 10;
         final ShardedIntervalIterator shardedIntervalIterator1 = new ShardedIntervalIterator(intervals.iterator(), shardSizeInBases);
 
-        final List<SimpleInterval> newIntervals = StreamSupport.stream(shardedIntervalIterator1.spliterator(), false).collect(Collectors.toList());
+        final List<SimpleInterval> newIntervals = StreamSupport.stream(Spliterators.spliteratorUnknownSize(shardedIntervalIterator1, 0), false).collect(Collectors.toList());
 
         Assert.assertEquals(newIntervals.size(), 6);
         Assert.assertEquals(newIntervals.get(0).size(), shardSizeInBases);
