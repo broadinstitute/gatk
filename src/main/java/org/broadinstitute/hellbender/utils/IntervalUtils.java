@@ -1009,6 +1009,9 @@ public final class IntervalUtils {
      * The shard boundaries lie at integer multiples of shardSize.
      *
      * chr2:1-200 -> chr2:1-100,chr2:101-200
+     *
+     * This method will return all intervals in RAM.  If you need a solution that is light on RAM usage, though it
+     *  returns an iterator, see {@link org.broadinstitute.hellbender.utils.iterators.ShardedIntervalIterator}
      */
     static public List<SimpleInterval> cutToShards(Iterable<SimpleInterval> intervals, int shardSize) {
         ArrayList<SimpleInterval> ret = new ArrayList<>();

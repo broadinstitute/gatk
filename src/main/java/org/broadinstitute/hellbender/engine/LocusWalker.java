@@ -2,13 +2,19 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
+import org.broadinstitute.hellbender.utils.iterators.IntervalAlignmentContextIterator;
+import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
@@ -77,6 +83,21 @@ public abstract class LocusWalker extends GATKTool {
     }
 
     /**
+     * Does this tool emit information for uncovered loci? Tools that do should override to return {@code true}.
+     *
+     * NOTE:  Typically, this should only be used when intervals are specified.
+     * NOTE:  If MappedReadFilter is removed, then emitting empty loci will fail.
+     * NOTE:  If there is no available sequence dictionary and this is set to true, there should be a failure.  Please
+     *  consider requiring reads and/or references for all tools that wish to set this to {@code true}.
+     *
+     * @return {@code true} if this tool requires uncovered loci information to be emitted, {@code false} otherwise
+     */
+    public boolean emitEmptyLoci() {
+        return false;
+    }
+
+
+    /**
      * Returns default value for the {@link #maxDepthPerSample} parameter, if none is provided on the command line.
      * Default implementation returns 0 (no downsampling by default).
      */
@@ -143,10 +164,11 @@ public abstract class LocusWalker extends GATKTool {
         final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
         // get the LIBS
         final LocusIteratorByState libs = new LocusIteratorByState(readIterator, getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
-        // prepare the iterator
-        final Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
+        final Iterator<AlignmentContext> iterator = createAlignmentContextIterator(header, libs);
+
         // iterate over each alignment, and apply the function
-        StreamSupport.stream(iterator, false)
+        final Spliterator<AlignmentContext> spliterator = Spliterators.spliteratorUnknownSize(iterator, 0);
+        StreamSupport.stream(spliterator, false)
             .forEach(alignmentContext -> {
                         final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
                         apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
@@ -154,6 +176,26 @@ public abstract class LocusWalker extends GATKTool {
                 }
             );
         logger.info(countedFilter.getSummaryLine());
+    }
+
+    private Iterator<AlignmentContext> createAlignmentContextIterator(SAMFileHeader header, LocusIteratorByState libs) {
+        Iterator<AlignmentContext> iterator;
+
+        validateEmitEmptyLociParameters();
+        if (emitEmptyLoci()) {
+
+            // If no intervals were specified, then use the entire reference (or best available sequence dictionary).
+            if (intervalsForTraversal == null) {
+                intervalsForTraversal = IntervalUtils.getAllIntervalsForReference(getBestAvailableSequenceDictionary());
+            }
+            final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(intervalsForTraversal.iterator());
+            iterator =  new IntervalAlignmentContextIterator(libs, intervalLocusIterator, header.getSequenceDictionary());
+
+        } else {
+            // prepare the iterator
+            iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()) : libs;
+        }
+        return iterator;
     }
 
     /**
@@ -179,5 +221,22 @@ public abstract class LocusWalker extends GATKTool {
     protected final void onShutdown() {
         // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
+    }
+
+    /**
+     *  The emit empty loci parameter comes with several pitfalls when used incorrectly.  Here we check and either give
+     *   warnings or errors.
+     */
+    protected void validateEmitEmptyLociParameters() {
+        if (emitEmptyLoci()) {
+            if (getBestAvailableSequenceDictionary() == null) {
+                throw new UserException.MissingReference("Could not create a sequence dictionary nor find a reference.  Therefore, emitting empty loci is impossible and this tool cannot be run.  The easiest fix here is to specify a reference dictionary.");
+            }
+            if (!hasReference() && !hasIntervals()) {
+                logger.warn("****************************************");
+                logger.warn("* Running this tool without a reference nor intervals can yield unexpected results, since it will emit results for loci with no reads.  A sequence dictionary has been found.  The easiest way avoid this message is to specify a reference.");
+                logger.warn("****************************************");
+            }
+        }
     }
 }

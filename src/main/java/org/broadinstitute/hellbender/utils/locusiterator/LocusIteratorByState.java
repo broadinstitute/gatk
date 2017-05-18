@@ -42,7 +42,7 @@ import java.util.*;
  * occurs, if requested.  This allows users of LIBS to see both a ReadPileup view of the data as well as
  * a stream of unique, sorted reads
  */
-public final class LocusIteratorByState implements Iterable<AlignmentContext>, Iterator<AlignmentContext> {
+public final class LocusIteratorByState implements Iterator<AlignmentContext> {
     /** Indicates that we shouldn't do any downsampling */
     public static final LIBSDownsamplingInfo NO_DOWNSAMPLING = new LIBSDownsamplingInfo(false, -1);
 
@@ -224,11 +224,6 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
         this.includeReadsWithNsAtLoci = includeReadsWithNsAtLoci;
         this.samples = new ArrayList<>(samples);
         this.readStates = new ReadStateManager(samIterator, this.samples, downsamplingInfo, keepUniqueReadListInLIBS, header);
-    }
-
-    @Override
-    public Iterator<AlignmentContext> iterator() {
-        return this;
     }
 
     /**
