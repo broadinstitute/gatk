@@ -18,14 +18,7 @@ public enum TargetAnnotation {
      * <p>This value is always a number between 0 and 1 except in very rare cases with small targets with all, undefined bases (N or X),
      * in this case it value will be {@link Double#NaN NaN}</p>.
      */
-    GC_CONTENT(TargetTableColumn.GC_CONTENT),
-
-    /**
-     * Fraction of bases in the target that have been marked as repeated somewhere else in the genome.
-     *
-     * <p>This value is always a number between 0 and 1 without exceptions.</p>
-     */
-    REPEAT_FRACTION(TargetTableColumn.REPEAT_FRACTION);
+    GC_CONTENT(TargetTableColumn.GC_CONTENT);
 
     /**
      * Reference to the corresponding column in the targets table.

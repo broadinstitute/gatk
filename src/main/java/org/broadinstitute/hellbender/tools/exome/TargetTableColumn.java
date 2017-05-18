@@ -15,8 +15,7 @@ public enum TargetTableColumn {
     CONTIG("contig", true), /* it was a terrible idea to change this from "CONTIG" to "contig"! */
     START("start", true), /* it was a terrible idea to change this from "START" to "start"! */
     END("stop", true), /* it was a terrible idea to change this from "END" to "stop"! */
-    GC_CONTENT("GC_CONTENT", false),
-    REPEAT_FRACTION("REPEAT_FRACTION", false);
+    GC_CONTENT("GC_CONTENT", false);
 
     private final String columnName;  //store the column names
 

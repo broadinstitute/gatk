@@ -4,6 +4,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 
 import java.io.File;
@@ -45,6 +46,7 @@ public final class SNPSegmenter {
      */
     public static void writeSegmentFile(final TargetCollection<AllelicCount> snps, final String sampleName,
                                         final File outputFile, final double allelicBias) {
+        Utils.validateArg(snps.totalSize() > 0, "Must have a positive number of SNPs to perform SNP segmentation.");
         try {
             final File targetsFromSNPCountsFile = File.createTempFile("targets-from-snps", ".tsv");
 

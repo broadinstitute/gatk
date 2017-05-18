@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.convertbed;
 
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
+import htsjdk.tribble.TribbleException;
 import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -21,8 +22,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @CommandLineProgramProperties(
-        summary = "Converts a target bed file to the target file format. Empty files will probably fail. Drops bed file columns other than the first four.",
-        oneLineSummary = "Convert bed to target file",
+        summary = "Converts a BED file to the target file format. Drops BED file columns other than the first four.",
+        oneLineSummary = "Convert BED to target file",
         programGroup = CopyNumberProgramGroup.class
 )
 public class ConvertBedToTargetFile extends CommandLineProgram {
@@ -34,7 +35,7 @@ public class ConvertBedToTargetFile extends CommandLineProgram {
     public static final String TARGET_OUTPUT_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
 
     @Argument(
-            doc = "target bed file",
+            doc = "Input BED file.",
             shortName = BED_INPUT_SHORT_NAME,
             fullName = BED_INPUT_LONG_NAME,
             optional = false
@@ -42,7 +43,7 @@ public class ConvertBedToTargetFile extends CommandLineProgram {
     protected File inputBedFile;
 
     @Argument(
-            doc = "output target file",
+            doc = "Output target file.",
             shortName = TARGET_OUTPUT_SHORT_NAME,
             fullName = TARGET_OUTPUT_LONG_NAME,
             optional = false
@@ -55,11 +56,15 @@ public class ConvertBedToTargetFile extends CommandLineProgram {
         final Class<? extends Feature> featureType = codec.getFeatureType();
         if (BEDFeature.class.isAssignableFrom(featureType)) {
             final FeatureDataSource<? extends BEDFeature> source = new FeatureDataSource<>(inputBedFile);
-            final List<Target> targets = StreamSupport.stream(source.spliterator(), false).map(ConvertBedToTargetFile::createTargetFromBEDFeature)
-                    .collect(Collectors.toList());
-            TargetWriter.writeTargetsToFile(outFile, targets);
+            try {
+                final List<Target> targets = StreamSupport.stream(source.spliterator(), false).map(ConvertBedToTargetFile::createTargetFromBEDFeature)
+                        .collect(Collectors.toList());
+                TargetWriter.writeTargetsToFile(outFile, targets);
+            } catch (final TribbleException e) {
+                throw new UserException.BadInput(String.format("'%s' has a .bed extension but does not seem to be a valid BED file.", inputBedFile.getAbsolutePath()));
+            }
         } else {
-            throw new UserException.BadInput(String.format("currently only BED formatted exome file are supported. '%s' does not seem to be a BED file", inputBedFile.getAbsolutePath()));
+            throw new UserException.BadInput(String.format("'%s' does not seem to be a BED file.", inputBedFile.getAbsolutePath()));
         }
         return "SUCCESS";
     }

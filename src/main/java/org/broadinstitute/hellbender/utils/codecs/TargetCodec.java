@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.codecs;
 
+import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -10,6 +11,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+
+import static htsjdk.tribble.bed.BEDCodec.BED_EXTENSION;
 
 /**
  * Target table file codec.
@@ -64,6 +67,11 @@ public class TargetCodec extends AsciiFeatureCodec<Target> {
             // whereas RuntimeException would be caused by a formatting error in the file.
             return false;
         }
-        return true;
+
+        //disallow .bed extension
+        final String toDecode = AbstractFeatureReader.hasBlockCompressedExtension(path) ?
+                path.substring(0, path.lastIndexOf(".")) :
+                path;
+        return !toDecode.toLowerCase().endsWith(BED_EXTENSION);
     }
 }

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.convertbed;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 import org.testng.Assert;
@@ -15,6 +16,7 @@ public class ConvertBedToTargetFileIntegrationTest extends CommandLineProgramTes
     private static final File TEST_BED_INPUT = new File(TEST_DIR, "testbedconversion.bed");
     private static final File TEST_BED_INPUT_MORE_ANNOTATIONS = new File(TEST_DIR, "testbedconversion-more-annotations.bed");
     private static final File TARGET_FILE_GT = new File(TEST_DIR, "test_target_file.txt");
+    private static final File TARGET_FILE_WITH_BED_EXTENSION = new File(TEST_DIR, "test_target_file_with_bed_extension.bed");
     private static final File TEST_TARGET_OUTPUT = createTempFile("test_target_file",".txt");
 
     @Test
@@ -49,5 +51,14 @@ public class ConvertBedToTargetFileIntegrationTest extends CommandLineProgramTes
         for (int i = 0; i < gtTargets.size(); i++) {
             Assert.assertEquals(outputTestTargets.get(i), gtTargets.get(i));
         }
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testTargetFileWithBedExtensionInput() {
+        final String[] arguments = {
+                "-" + ConvertBedToTargetFile.BED_INPUT_SHORT_NAME, TARGET_FILE_WITH_BED_EXTENSION.getAbsolutePath(),
+                "-" + ConvertBedToTargetFile.TARGET_OUTPUT_SHORT_NAME, TEST_TARGET_OUTPUT.getAbsolutePath(),
+        };
+        runCommandLine(arguments);
     }
 }

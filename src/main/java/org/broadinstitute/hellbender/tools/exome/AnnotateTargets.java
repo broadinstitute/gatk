@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -11,9 +10,7 @@ import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.BitSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,7 +20,7 @@ import java.util.Map;
  * </p>
  * <p>
  *     Each annotation may require some source of information. For example {@link TargetAnnotation#GC_CONTENT}
- *     requires a reference, {@link TargetAnnotation#REPEAT_FRACTION} requires a list of repeat intervals.
+ *     requires a reference.
  * </p>
  * <p>
  *     Only annotation for which all data source dependencies are satisfied will be added to the ones present in the input
@@ -48,39 +45,20 @@ import java.util.Map;
  *         {@value StandardArgumentDefinitions#REFERENCE_LONG_NAME} argument.
  *         </p>
  *         </dd>
- *         <dt>{@link TargetAnnotation#REPEAT_FRACTION}</dt>
- *         <dd><p>Fraction of the target region that is repeated somewhere else
- *         in the reference genome.</p>
- *         <p>This annotation can take values strictly from 0 to 1 and
- *         requires a list of repeated regions passed as a BED formatted file using
- *         the {@value #REPEAT_REGIONS_FULL_NAME} argument.
- *         </p>
- *         </dd>
  *     </dl>
  * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        oneLineSummary = "Annotate targets with various properties, such as GC content and repeat fraction",
-        summary = "Annotate targets with various properties, such as GC content and repeat fraction",
+        oneLineSummary = "Annotate targets with various properties, such as GC content",
+        summary = "Annotate targets with various properties, such as GC content",
         programGroup = CopyNumberProgramGroup.class
 )
 public class AnnotateTargets extends TargetWalker {
 
-    public static final String REPEAT_REGIONS_FULL_NAME = "repeats";
-    public static final String REPEAT_REGIONS_SHORT_NAME = REPEAT_REGIONS_FULL_NAME;
-
     @Argument(
-            doc = "BED file containing repeated region in the reference.",
-            fullName = REPEAT_REGIONS_FULL_NAME,
-            shortName = REPEAT_REGIONS_SHORT_NAME,
-            optional = true
-    )
-    public FeatureInput<BEDFeature> repeatedRegions;
-
-    @Argument(
-            doc = "Output target file",
+            doc = "Output annotated target file.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             optional  = false
@@ -101,17 +79,10 @@ public class AnnotateTargets extends TargetWalker {
         } else {
             logger.info(String.format("Omitting the %s annotation to the output; no reference was provided", TargetAnnotation.GC_CONTENT));
         }
-        if (repeatedRegions != null) {
-            annotators.put(TargetAnnotation.REPEAT_FRACTION, new RepeatTargetAnnotator());
-            logger.info(String.format("Adding the %s annotation to the output; a repeat interval BED file has been provided", TargetAnnotation.REPEAT_FRACTION));
-        } else {
-            logger.info(String.format("Omitting the %s annotation to the output; no repeat interval BED file was provided", TargetAnnotation.REPEAT_FRACTION));
-        }
+
 
         if (annotators.isEmpty()) {
-            throw new UserException.BadInput(
-                    String.format("no annotation annotation can be performed as we lack a reference (for %s) or a repeat region file (for %s)",
-                            TargetAnnotation.GC_CONTENT, TargetAnnotation.REPEAT_FRACTION));
+            throw new UserException.BadInput("Resources needed to perform annotation are missing.");
         }
         try {
             outputWriter = new TargetWriter(outputFile, annotators.keySet());
@@ -165,29 +136,6 @@ public class AnnotateTargets extends TargetWalker {
             final long atCount = counter.get(Nucleotide.A) + counter.get(Nucleotide.T);
             final long totalCount = gcCount + atCount;
             return totalCount == 0 ? Double.NaN : gcCount / (double) totalCount;
-        }
-    }
-
-    private class RepeatTargetAnnotator implements TargetAnnotator {
-        @Override
-        public Double apply(final Target target, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-            final List<BEDFeature> repeatedIntervals = featureContext.getValues(repeatedRegions);
-            if (repeatedIntervals.isEmpty()) {
-                return 0.0;
-            } else {
-                final int start = target.getStart();
-                final int end = target.getEnd();
-                final int width = end - start + 1;
-                final BitSet repeatedPositions = new BitSet(width);
-                for (final BEDFeature repeatedInterval : repeatedIntervals) {
-                    final int repeatStart = repeatedInterval.getStart();
-                    final int repeatEnd = repeatedInterval.getEnd();
-                    final int overlapStart = Math.max(start, repeatStart);
-                    final int overlapEnd = Math.min(end, repeatEnd);
-                    repeatedPositions.set(overlapStart - start, overlapEnd + 1 - start);
-                }
-                return repeatedPositions.cardinality() / (double) width;
-            }
         }
     }
 }

@@ -97,8 +97,10 @@ public class TargetWriterUnitTest {
         final List<Object[]> result = new ArrayList<>();
         final Set<TargetAnnotation> all = Stream.of(TargetAnnotation.values()).collect(Collectors.toSet());
         result.add(new Object[] { all, Collections.emptySet() });
-        for (final TargetAnnotation annotation : TargetAnnotation.values()) {
-            result.add(new Object[] { all, Collections.singleton(annotation) });
+        if (all.size() > 1) {
+            for (final TargetAnnotation annotation : TargetAnnotation.values()) {
+                result.add(new Object[] { all, Collections.singleton(annotation) });
+            }
         }
         for (final TargetAnnotation annotation : TargetAnnotation.values()) {
             for (final TargetAnnotation annotation2 : TargetAnnotation.values()) {

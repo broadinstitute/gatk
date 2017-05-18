@@ -8,6 +8,8 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -41,5 +43,16 @@ public final class SNPSegmenterUnitTest extends BaseTest {
         final List<SimpleInterval> expected = SegmentUtils.readIntervalsFromSegmentFile(expectedFile);
 
         Assert.assertEquals(result, expected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testAllelicFractionBasedSegmentationNoSNPs() {
+        final String sampleName = "test";
+
+        final List<AllelicCount> snpCounts = Collections.emptyList();
+        final TargetCollection<AllelicCount> snps = new HashedListTargetCollection<>(snpCounts);
+
+        final File resultFile = createTempFile("snp-segmenter-test-result", ".seg");
+        SNPSegmenter.writeSegmentFile(snps, sampleName, resultFile);
     }
 }

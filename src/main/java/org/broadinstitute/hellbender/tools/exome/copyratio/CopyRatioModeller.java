@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 public final class CopyRatioModeller {
     private static final double EPSILON = 1E-10;
     private static final double VARIANCE_MIN = EPSILON;
-    private static final double VARIANCE_MAX = 10.;
 
     private static final double OUTLIER_PROBABILITY_INITIAL = 0.05;
     private static final double OUTLIER_PROBABILITY_PRIOR_ALPHA = 5.;
@@ -50,10 +49,11 @@ public final class CopyRatioModeller {
         //set widths for slice sampling of variance and segment-mean posteriors using empirical variance estimate.
         //variance posterior is inverse chi-squared, segment-mean posteriors are Gaussian; the below expressions
         //approximate the standard deviations of these distributions.
-        final double varianceEstimate = data.estimateVariance();
-        final double varianceSliceSamplingWidth = Math.sqrt(2. * varianceEstimate / data.getNumTargets()) / 10.;    //take the width down an order of magnitude to account for inflation by outliers
         final double coverageMin = data.getCoverageMin();
         final double coverageMax = data.getCoverageMax();
+        final double varianceEstimate = data.estimateVariance();
+        final double varianceSliceSamplingWidth = Math.sqrt(2. * varianceEstimate / data.getNumTargets()) / 10.;    //take the width down an order of magnitude to account for inflation by outliers
+        final double varianceMax = Math.abs(coverageMax - coverageMin);
         final double meanSliceSamplingWidth = Math.sqrt(varianceEstimate * data.getNumSegments() / data.getNumTargets());
 
         //the uniform log-likelihood for outliers is determined by the minimum and maximum coverages in the dataset;
@@ -66,7 +66,7 @@ public final class CopyRatioModeller {
 
         //define ParameterSamplers
         final ParameterSampler<Double, CopyRatioParameter, CopyRatioState, CopyRatioData> varianceSampler =
-                new CopyRatioSamplers.VarianceSampler(VARIANCE_MIN, VARIANCE_MAX, varianceSliceSamplingWidth);
+                new CopyRatioSamplers.VarianceSampler(VARIANCE_MIN, varianceMax, varianceSliceSamplingWidth);
         final ParameterSampler<Double, CopyRatioParameter, CopyRatioState, CopyRatioData> outlierProbabilitySampler =
                 new CopyRatioSamplers.OutlierProbabilitySampler(OUTLIER_PROBABILITY_PRIOR_ALPHA, OUTLIER_PROBABILITY_PRIOR_BETA);
         final ParameterSampler<CopyRatioState.SegmentMeans, CopyRatioParameter, CopyRatioState, CopyRatioData> segmentMeansSampler =

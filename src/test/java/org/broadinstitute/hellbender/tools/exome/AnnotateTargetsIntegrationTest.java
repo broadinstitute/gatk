@@ -40,29 +40,11 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
     private static final int MEAN_TARGET_SIZE = 50;
     private static final double TARGET_SIZE_STDEV = MEAN_TARGET_SIZE;
     private static final int NUMBER_OF_TARGETS = 100;
-
-    private static final int MIN_REPEAT_SIZE = 10;
-    private static final int MAX_REPEAT_SIZE = 1000;
-    private static final int MEAN_REPEAT_SIZE = 50;
-    private static final double REPEAT_SIZE_STDEV = MEAN_REPEAT_SIZE;
-    private static final int NUMBER_OF_REPEATS = 10000;
     // End of meta-parameters
 
     private static final Random RANDOM = new Random(1313);
     private static final File TARGET_FILE = createTempFile("ati-target-file", ".tsv");
     private static final File TARGET_FILE_IDX = Tribble.indexFile(TARGET_FILE);
-    private static final File REPEAT_FILE = createTempFile("ati-repeat-file", ".bed");
-    private static final File REPEAT_FILE_IDX = Tribble.indexFile(REPEAT_FILE);
-
-    /**
-     * Boolean matrix where each row represents a different sequence in the reference (ordered by their index)
-     * and each position tells us whether that position (0-based) in the corresponding sequence is believed to be a
-     * repeat or not.
-     * <p>
-     *     This matrix is initialized in {@link #createRepeatsFile()}.
-     * </p>
-     */
-    private static boolean[][] REPEATED_ARRAY;
 
     @BeforeClass
     public void createTargetFile() throws IOException
@@ -77,47 +59,10 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
         stream.close();
     }
 
-    @BeforeClass
-    public void createRepeatsFile() throws IOException {
-        final SAMSequenceDictionary referenceDictionary = resolveReferenceDictionary();
-        final List<SimpleInterval> repeatIntervals = createRandomIntervals(referenceDictionary, NUMBER_OF_REPEATS, MIN_REPEAT_SIZE, MAX_REPEAT_SIZE, MEAN_REPEAT_SIZE, REPEAT_SIZE_STDEV);
-        final PrintWriter writer = new PrintWriter(new FileWriter(REPEAT_FILE));
-        for (final SimpleInterval interval : repeatIntervals) {
-            writer.append(interval.getContig()).append('\t')
-                    .append(String.valueOf(interval.getStart() - 1)).append('\t')
-                    .append(String.valueOf(interval.getEnd())).append('\n');
-        }
-        writer.close();
-        final Index index = IndexFactory.createIndex(REPEAT_FILE, new BEDCodec(), IndexFactory.IndexType.LINEAR);
-        final LittleEndianOutputStream stream = new LittleEndianOutputStream(new FileOutputStream(REPEAT_FILE_IDX));
-        index.write(stream);
-        stream.close();
-        REPEATED_ARRAY = composeRepeatedArray(referenceDictionary, repeatIntervals);
-    }
-
-    public boolean[][] composeRepeatedArray(final SAMSequenceDictionary dictionary, final List<SimpleInterval> repeatedIntervals) {
-        final boolean[][] result = new boolean[dictionary.getSequences().size()][];
-        for (int i = 0; i < dictionary.getSequences().size(); i++) {
-            result[i] = new boolean[dictionary.getSequence(i).getSequenceLength()];
-        }
-        for (final SimpleInterval repeat : repeatedIntervals) {
-            final int sequenceIndex = dictionary.getSequenceIndex(repeat.getContig());
-            Arrays.fill(result[sequenceIndex], repeat.getStart() - 1, repeat.getEnd(), true);
-        }
-        return result;
-    }
-
     @AfterClass
     public void disposeTargetFile() {
         TARGET_FILE.delete();
         TARGET_FILE_IDX.delete();
-    }
-
-    @AfterClass
-    public void disposeRepeatFile() {
-        REPEAT_FILE.delete();
-        REPEAT_FILE_IDX.delete();
-        REPEATED_ARRAY = null;
     }
 
     private List<SimpleInterval> createRandomIntervals(final SAMSequenceDictionary referenceDictionary, final int numberOfIntervals, final int minIntervalSize, final int maxIntervalSize, final int meanIntervalSize, final double intervalSizeStdev) {
@@ -159,7 +104,6 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
         final List<String> arguments = new ArrayList<>();
         arguments.addAll(baseArguments(outputFile));
         arguments.addAll(gcContentDependenciesArguments());
-        arguments.addAll(repeatDependenciesArguments());
         runCommandLine(arguments);
         checkOutputFileContent(outputFile, true, true);
     }
@@ -173,17 +117,6 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments);
         checkOutputFileContent(outputFile, true, false);
     }
-
-    @Test()
-    public void testRepeatsAnnotationOnly() throws IOException {
-        final File outputFile = createTempFile("ati-test-out-",".tsv");
-        final List<String> arguments = new ArrayList<>();
-        arguments.addAll(baseArguments(outputFile));
-        arguments.addAll(repeatDependenciesArguments());
-        runCommandLine(arguments);
-        checkOutputFileContent(outputFile, false, true);
-    }
-
 
     private void checkOutputFileContent(final File outputFile, final boolean mustHaveGCContent, final boolean mustHaveRepeats) throws IOException {
         try (final TargetTableReader outputReader = new TargetTableReader(outputFile);
@@ -210,22 +143,8 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
                 } else {
                     Assert.assertFalse(annotations.hasAnnotation(TargetAnnotation.GC_CONTENT));
                 }
-                if (mustHaveRepeats) {
-                    Assert.assertTrue(annotations.hasAnnotation(TargetAnnotation.REPEAT_FRACTION));
-                    checkOutputRepeats(dictionary, outputTarget.getInterval(), annotations.getDouble(TargetAnnotation.REPEAT_FRACTION));
-                } else {
-                    Assert.assertFalse(annotations.hasAnnotation(TargetAnnotation.REPEAT_FRACTION));
-                }
             } while (true);
         }
-    }
-
-    private void checkOutputRepeats(final SAMSequenceDictionary dictionary, final SimpleInterval interval, final double observed) {
-        final int sequenceIndex = dictionary.getSequenceIndex(interval.getContig());
-        final double repeatedBases = new IndexRange(interval.getStart() - 1, interval.getEnd())
-                .sum(i -> REPEATED_ARRAY[sequenceIndex][i] ? 1 : 0);
-        final double actual = repeatedBases / (double) (interval.getEnd() - interval.getStart() + 1);
-        Assert.assertEquals(observed, actual, 0.0001);
     }
 
     private void checkOutputGCContent(final ReferenceFileSource reference, final SimpleInterval interval, final double observed) {
@@ -252,10 +171,6 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    private Collection<? extends String> repeatDependenciesArguments() {
-        return Arrays.asList("-" + AnnotateTargets.REPEAT_REGIONS_SHORT_NAME, REPEAT_FILE.getAbsolutePath());
-    }
-
     private Collection<? extends String> gcContentDependenciesArguments() {
         return Arrays.asList("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE.getPath());
     }
@@ -274,5 +189,4 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
                 "-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME,
                 TARGET_FILE.getAbsolutePath());
     }
-
 }
