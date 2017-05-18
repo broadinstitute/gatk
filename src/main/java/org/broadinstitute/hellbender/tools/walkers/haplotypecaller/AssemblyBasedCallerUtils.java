@@ -80,8 +80,16 @@ public class AssemblyBasedCallerUtils {
             // TODO -- truly in the extended region, as the unclipped bases might actually include a deletion
             // TODO -- w.r.t. the reference.  What really needs to happen is that kmers that occur before the
             // TODO -- reference haplotype start must be removed
-            clippedRead = dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(clippedRead) ?
+            try {
+                clippedRead = dontUseSoftClippedBases || !ReadUtils.hasWellDefinedFragmentSize(clippedRead) ?
                     ReadClipper.hardClipSoftClippedBases(clippedRead) : ReadClipper.revertSoftClippedBases(clippedRead);
+            } catch (java.lang.IllegalArgumentException e) {
+                System.err.println("tw: Bad read detected: " + locatableToString(myRead) + "\n" + myRead.getSAMString());
+                System.err.println("tw: Clipped Read: " + locatableToString(clippedRead) + "\n" + clippedRead.getSAMString());
+                //continue; // ignore this read
+                throw new IllegalArgumentException(e.getMessage() + "\n.Bad read detected: " + locatableToString(myRead) + "\n" + myRead.getSAMString() +
+                "\nClipped Read: " + locatableToString(clippedRead) + "\n" + clippedRead.getSAMString());
+            }
 
             clippedRead = clippedRead.isUnmapped() ? clippedRead : ReadClipper.hardClipAdaptorSequence(clippedRead);
             if ( ! clippedRead.isEmpty() && clippedRead.getCigar().getReadLength() > 0 ) {
@@ -102,6 +110,10 @@ public class AssemblyBasedCallerUtils {
         region.clearReads();
         region.addAll(readsToUse);
         region.setFinalized(true);
+    }
+
+    private static String locatableToString(Locatable l) {
+        return (l.getContig() == null ? "<null>" : l.getContig()) + ":" + l.getStart() + "-" + l.getEnd();
     }
 
     /**
