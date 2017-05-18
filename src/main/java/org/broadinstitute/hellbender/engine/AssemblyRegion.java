@@ -588,8 +588,7 @@ public final class AssemblyRegion implements Locatable {
 
         // Use the provided activity profile to determine the bounds of each assembly region:
         List<AssemblyRegion> assemblyRegions = new ArrayList<>();
-        final Iterable<AlignmentContext> locatableIterable = () -> locusIterator;
-        for ( final AlignmentContext pileup : locatableIterable ) {
+        locusIterator.forEachRemaining(pileup -> {
             if ( ! activityProfile.isEmpty() ) {
                 final boolean forceConversion = pileup.getLocation().getStart() != activityProfile.getEnd() + 1;
                 assemblyRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionPadding, minRegionSize, maxRegionSize, forceConversion));
@@ -603,7 +602,8 @@ public final class AssemblyRegion implements Locatable {
                 final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, features);
                 activityProfile.add(profile);
             }
-        }
+        });
+
         assemblyRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionPadding, minRegionSize, maxRegionSize, true));
 
         return assemblyRegions;

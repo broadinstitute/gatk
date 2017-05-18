@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
+import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
@@ -11,10 +12,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.*;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -59,13 +57,15 @@ public class IntervalOverlappingIteratorUnitTest extends BaseTest {
     @Test(dataProvider = "data")
     public void testIterator(List<SimpleInterval> intervals, SAMSequenceDictionary dictionary, Locatable[] records,	Locatable[] expected) {
         IntervalOverlappingIterator<Locatable> iterator = new IntervalOverlappingIterator<>(Arrays.asList(records).iterator(), intervals, dictionary);
-        int index = 0;
-        final Iterable<Locatable> iterable = () -> iterator;
-        for(Locatable loc: iterable) {
+
+        final Iterator<Locatable> expectedIterator = Arrays.asList(expected).iterator();
+        final List<Locatable> iteratorAsList = new ArrayList<>();
+        iterator.forEachRemaining(loc -> {
+            iteratorAsList.add(loc);
             // assert that the locations are the expected
-            Assert.assertEquals(loc, expected[index++]);
-        }
+            Assert.assertEquals(loc, expectedIterator.next());
+        });
         // assert that all the expected values are present
-        Assert.assertEquals(index, expected.length);
+        Assert.assertEquals(iteratorAsList.size(), expected.length);
     }
 }
