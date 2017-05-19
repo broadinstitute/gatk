@@ -4,6 +4,7 @@ import org.apache.logging.log4j.Level;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.*;
@@ -20,18 +21,39 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Normalizes read counts given the PanelOfNormals.
+ * Normalizes read counts given the PanelOfNormals (PoN).
  *
- * <p> Dev note:  If this is extended to use spark, please be wary that the parallelization in tangent normalization is
+ * <p> A note to developers:  If this is extended to use Spark, please be wary that the parallelization in tangent normalization is
  * by case sample, which may not yield benefits for most use cases (which are one sample)  </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ *
+ * <h3>Examples</h3>
+ * <p>
+ *     The command encompasses empirically determined parameters for TCGA project data.
+ *     You may obtain better results with different parameters.
+ * </p>
+ *
+ * <p>
+ *     The following command is for either whole exome sequencing (WES) or whole genome sequencing (WGS) data.
+ * </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar NormalizeSomaticReadCounts \
+ *   --input coverage.tsv \
+ *   --panelOfNormals cnv_panel_of_normals.pon \
+ *   --tangentNormalized entity_id.tn.tsv \
+ *   --factorNormalizedOutput entity_id.fnt.tsv \
+ *   --preTangentNormalized entity_id.preTN.tsv \
+ *   --betaHatsOutput entity_id.betaHats.tsv
+ * </pre>
  */
 @CommandLineProgramProperties(
         summary = "Normalize PCOV read counts using a panel of normals",
         oneLineSummary = "Normalize proportional coverage (PCOV) read counts using a panel of normals",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 
     public static final String READ_COUNTS_FILE_FULL_NAME = StandardArgumentDefinitions.INPUT_LONG_NAME;
