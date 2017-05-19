@@ -273,8 +273,12 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             }
         } else {
             final Path featurePath = IOUtils.getPath(featureInput.getFeaturePath());
-            IOUtils.assertFileIsReadable(featurePath);
-            final FeatureCodec<T, ?> codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
+            FeatureCodec<T, ?> codec = featureInput.getFeatureCodec();
+            if (codec == null) {
+                IOUtils.assertFileIsReadable(featurePath);
+                codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
+                featureInput.setFeatureCodec(codec);
+            }
             return getTribbleFeatureReader(featureInput, codec, cloudWrapper, cloudIndexWrapper);
         }
     }
