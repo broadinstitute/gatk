@@ -48,7 +48,6 @@ import java.util.stream.IntStream;
  * <pre>
  * java -Xmx4g -jar $gatk_jar CalculateTargetCoverage \
  *   --input bam.bam \
- *   --reference ref_fasta.fa
  *   --targets padded_targets.tsv \
  *   --disableReadFilter NotDuplicateReadFilter \
  *   --output base_filename.coverage.tsv
@@ -58,7 +57,6 @@ import java.util.stream.IntStream;
  *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
  *     Target intervals do NOT overlap. Use the PadTargets tool to generate non-overlapping padded intervals from exome targets.
  *     Do NOT use BED format. See ConvertBedToTargetFile.
- *     The reference is optional if --disableSequenceDictionaryValidation is set to true.
  * </p>
  *
  * <p>For whole genome sequencing (WGS) data, use SparkGenomeReadCounts instead.</p>
