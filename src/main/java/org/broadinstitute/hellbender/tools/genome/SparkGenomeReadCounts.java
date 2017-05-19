@@ -43,14 +43,9 @@ import java.util.stream.Collectors;
  * <pre>
  * java -Xmx4g -jar $gatk_jar SparkGenomeReadCounts \
  *   --input bam.bam \
- *   --reference ref_fasta.fa \
  *   --disableReadFilter NotDuplicateReadFilter \
  *   --outputFile base_filename.coverage.tsv
  * </pre>
- *
- * <p>
- *     The reference is optional if --disableSequenceDictionaryValidation is set to true.
- * </p>
  *
  * <p>
  *     For whole exome sequencing (WGS) data, use CalculateTargetCoverage instead.
