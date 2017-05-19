@@ -29,7 +29,7 @@ public final class GatherVcfsUnitTest {
                 {Lists.newArrayList("test.vcf"), false},
                 {Lists.newArrayList("test.bcf"), false},
                 {Lists.newArrayList("test.vcf.gz"), true},
-                {Lists.newArrayList("test1.vcf", "test2.vcf.gz", false}
+                {Lists.newArrayList("test1.vcf", "test2.vcf.gz"), false}
         };
     }
 
