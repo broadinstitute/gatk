@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -27,8 +30,6 @@ public class OrientationBiasUtilsUnitTest extends BaseTest {
         final List<Transition> result = OrientationBiasUtils.createReverseComplementTransitions(transition);
         IntStream.range(0, result.size()).forEachOrdered(i -> Assert.assertEquals(result.get(i), reverseComplement.get(i)));
     }
-
-
 
     @DataProvider(name = "BasicTransitionsWithRC")
     public Object[][] basicTransitionsWithRC() {
@@ -70,6 +71,44 @@ public class OrientationBiasUtilsUnitTest extends BaseTest {
     @Test(dataProvider = "GenotypeFiltering")
     public void testUpdatingGenotypeFilter(String inFilter, String addFilter, String updatedFilter) {
         Assert.assertEquals(OrientationBiasUtils.addFilterToGenotype(inFilter, addFilter), updatedFilter);
+    }
+
+    @Test(dataProvider = "basicTransitions")
+    public void testGenotypeInTransitions(Genotype g, Transition t, boolean isInTransition, boolean isInTransitionOrTransitionRC) {
+        Assert.assertEquals(OrientationBiasUtils.isGenotypeInTransition(g, t), isInTransition);
+        Assert.assertEquals(OrientationBiasUtils.isGenotypeInTransitionWithComplement(g, t), isInTransitionOrTransitionRC);
+    }
+
+    @DataProvider(name="basicTransitions")
+    public Object [] [] basicTransitions() {
+
+        final List<Allele> ctoTAlleles = new ArrayList<>();
+        ctoTAlleles.add(Allele.create("C", true));
+        ctoTAlleles.add(Allele.create("T", false));
+
+        final List<Allele> gtoTAlleles = new ArrayList<>();
+        gtoTAlleles.add(Allele.create("G", true));
+        gtoTAlleles.add(Allele.create("T", false));
+
+        final List<Allele> gtoAAlleles = new ArrayList<>();
+        gtoAAlleles.add(Allele.create("G", true));
+        gtoAAlleles.add(Allele.create("A", false));
+
+        final List<Allele> gtoCAlleles = new ArrayList<>();
+        gtoCAlleles.add(Allele.create("G", true));
+        gtoCAlleles.add(Allele.create("C", false));
+
+        return new Object[] [] {
+                // Genotype, transition, is in transition, is in transition or transition rc
+                {GenotypeBuilder.create("DUMMYSAMPLE", ctoTAlleles), Transition.CtoT, true, true },
+                {GenotypeBuilder.create("DUMMYSAMPLE", gtoTAlleles), Transition.CtoT, false, false },
+                {GenotypeBuilder.create("DUMMYSAMPLE", gtoAAlleles), Transition.CtoT, false, true },
+                {GenotypeBuilder.create("DUMMYSAMPLE", gtoCAlleles), Transition.CtoT, false, false },
+                {GenotypeBuilder.create("DUMMYSAMPLE", ctoTAlleles), Transition.AtoT, false, false },
+                {GenotypeBuilder.create("DUMMYSAMPLE", gtoTAlleles), Transition.AtoT, false, false },
+                {GenotypeBuilder.create("DUMMYSAMPLE", gtoAAlleles), Transition.AtoT, false, false },
+                {GenotypeBuilder.create("DUMMYSAMPLE", gtoCAlleles), Transition.AtoT, false, false }
+        };
     }
 
     @DataProvider(name = "GenotypeFiltering")

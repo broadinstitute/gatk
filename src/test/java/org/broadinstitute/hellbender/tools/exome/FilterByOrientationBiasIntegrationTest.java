@@ -24,6 +24,7 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
     public static final String emptyVcf = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty.vcf";
     public static final String emptyVcfNoSamples = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty_and_no_samples.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
+    public static final String smallHighDiploid = TEST_RESOURCE_DIR.getAbsolutePath() + "/high_ploidy.vcf";
     public static final String nullADField = TEST_RESOURCE_DIR.getAbsolutePath() + "/null_AD_field.vcf";
     public static final String preAdapterQFile = TEST_RESOURCE_DIR.getAbsolutePath() + "/SAMPLE9.pre_adapter_detail_metrics";
 
@@ -159,5 +160,27 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
 
         final List<OrientationSampleTransitionSummary> summaries = OrientationBiasUtils.readOrientationBiasSummaryTable(summaryFile);
         Assert.assertEquals(summaries.size(), 0);
+    }
+
+    @Test
+    public void testHighPloidyRun() throws IOException {
+        final File outputFile = File.createTempFile("ob_high_ploidy", ".vcf");
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + FilterByOrientationBias.PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME);
+        arguments.add(preAdapterQFile);
+        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
+        arguments.add(smallHighDiploid);
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.getAbsolutePath());
+        runCommandLine(arguments);
+
+        Assert.assertTrue(outputFile.exists());
+        final List<VariantContext> variantContexts = new ArrayList<>();
+        final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(outputFile);
+        for (final VariantContext vc : featureDataSource) {
+            variantContexts.add(vc);
+        }
+
+        Assert.assertEquals(variantContexts.size(), 1);
     }
 }

@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,11 +18,10 @@ import org.broadinstitute.hellbender.utils.tsv.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class OrientationBiasUtils {
@@ -78,26 +79,23 @@ public class OrientationBiasUtils {
 
     /** Complement of the artifact mode is NOT considered.
      *
-     *  Must be diploid genotype!
-     *
      *  The genotype can contain indels, be a reference genotype, etc.  That is all considered.
      *
      * @param g Never {@code null}
      * @param transition Never {@code null}
-     * @return whether the given genotype falls into the given artifact mode.  Complement of the artifact mode is NOT considered.
+     * @return whether *any* alleles in the given genotype falls into the given artifact mode (ref/alt).
+     *   Complement of the artifact mode is NOT considered.
      */
     public static boolean isGenotypeInTransition(final Genotype g, final Transition transition) {
         Utils.nonNull(g, "Genotype cannot be null");
         Utils.nonNull(transition, "Artifact mode cannot be null");
 
-        if (g.getAlleles().size() != 2) {
-            throw new UserException.BadInput("Cannot run this method on non-diploid genotypes.");
-        }
-        return g.getAllele(0).getDisplayString().equals(String.valueOf(transition.ref())) &&
-                g.getAllele(1).getDisplayString().equals(String.valueOf(transition.call()));
+        return IntStream.range(1,g.getAlleles().size()).anyMatch(i -> g.getAllele(0).basesMatch(Allele.create((byte) transition.ref(), true)) &&
+                g.getAllele(i).basesMatch(Allele.create((byte) transition.call())));
     }
 
     /** See {@link #isGenotypeInTransition}, except that this will take into account complements.
+     * I.e. if any alleles in the genotype match the transition or the transition reverse complement.
      *
      * @param g See {@link #isGenotypeInTransition(Genotype, Transition)}
      * @param transition See {@link #isGenotypeInTransition(Genotype, Transition)}
@@ -107,20 +105,7 @@ public class OrientationBiasUtils {
         Utils.nonNull(g, "Genotype cannot be null");
         Utils.nonNull(transition, "Transition cannot be null");
 
-        if (g.getAlleles().size() != 2) {
-            throw new UserException.BadInput("Cannot run this method on non-diploid genotypes.");
-        }
-        final boolean isInTransition = g.getAllele(0).getDisplayString().equals(String.valueOf(transition.ref())) &&
-                g.getAllele(1).getDisplayString().equals(String.valueOf(transition.call()));
-
-        if (isInTransition) {
-            return true;
-        }
-
-        final Transition transitionComplement = transition.complement();
-        return g.getAllele(0).getDisplayString().equals(String.valueOf(transitionComplement.ref())) &&
-                g.getAllele(1).getDisplayString().equals(String.valueOf(transitionComplement.call()));
-
+        return isGenotypeInTransition(g, transition) || isGenotypeInTransition(g, transition.complement());
     }
 
     /** Is this genotype in any of the specified artifact modes (or complements)

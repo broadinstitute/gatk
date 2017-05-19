@@ -333,6 +333,8 @@ task Filter {
   File? variants_for_contamination_index
 
   command {
+    set -e
+
     # Use GATK Jar override if specified
     GATK_JAR=${gatk4_jar}
     if [[ "${gatk4_jar_override}" == *.jar ]]; then
