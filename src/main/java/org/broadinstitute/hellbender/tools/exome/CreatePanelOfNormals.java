@@ -60,7 +60,8 @@ import java.util.stream.DoubleStream;
  *
  * <p>
  * In addition to the resulting PoN, this command produces a .pon.removed_samples.txt file of samples removed for quality control (QC)
- * and a .pon.target_weights.txt file.
+ * and a .pon.target_weights.txt file that gives the inverse variance per target that can optionally be passed to PerformSegmentation.
+ * Enable Spark processing by omitting the --disableSpark option from the command.
  * </p>
  *
  */
