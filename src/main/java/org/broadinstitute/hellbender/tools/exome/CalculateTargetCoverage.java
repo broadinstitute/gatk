@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -34,12 +35,41 @@ import java.util.stream.IntStream;
  * Calculate read-counts across targets given their reference coordinates.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>
+ *     The command encompasses empirically determined parameters for TCGA project data.
+ *     You may obtain better results with different parameters.
+ * </p>
+ *
+ * <p>For whole exome sequencing (WES) data: </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CalculateTargetCoverage \
+ *   --input bam.bam \
+ *   --reference ref_fasta.fa
+ *   --targets padded_targets.tsv \
+ *   --disableReadFilter NotDuplicateReadFilter \
+ *   --output base_filename.coverage.tsv
+ * </pre>
+ *
+ * <p>
+ *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
+ *     Target intervals do NOT overlap. Use the PadTargets tool to generate non-overlapping padded intervals from exome targets.
+ *     Do NOT use BED format. See ConvertBedToTargetFile.
+ *     The reference is optional if --disableSequenceDictionaryValidation is set to true.
+ * </p>
+ *
+ * <p>For whole genome sequencing (WGS) data, use SparkGenomeReadCounts instead.</p>
+ *
  */
 @CommandLineProgramProperties(
         summary = "Count overlapping reads target by target",
         oneLineSummary = "Count overlapping reads target by target",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class CalculateTargetCoverage extends ReadWalker {
 
     public static final String DEFAULT_COHORT_NAME = "<ALL>";
@@ -106,11 +136,11 @@ public final class CalculateTargetCoverage extends ReadWalker {
             shortName = GROUP_BY_SHORT_NAME,
             fullName = GROUP_BY_FULL_NAME,
             optional = true)
-    protected GroupBy groupBy = GroupBy.COHORT;
+    protected GroupBy groupBy = GroupBy.SAMPLE;
 
     @Argument(
             doc = "Cohort name used to name the read count column when the groupBy " +
-                    "argument is set to COHORT (default)",
+                    "argument is set to COHORT",
             shortName = COHORT_SHORT_NAME,
             fullName = COHORT_FULL_NAME,
             optional = true)
@@ -123,10 +153,10 @@ public final class CalculateTargetCoverage extends ReadWalker {
             fullName = TRANSFORM_FULL_NAME,
             optional = true
     )
-    protected Transform transform = Transform.RAW;
+    protected Transform transform = Transform.PCOV;
 
     @Argument(
-            doc = "File containing the targets for analysis",
+            doc = "TSV file listing 1-based genomic intervals with specific column headers. Do NOT use BED format.",
             shortName = TARGET_FILE_SHORT_NAME,
             fullName = TARGET_FILE_FULL_NAME,
             optional = true
@@ -139,7 +169,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
             fullName = TARGET_OUT_INFO_FULL_NAME,
             optional = true
     )
-    protected TargetOutInfo targetOutInfo = TargetOutInfo.COORDS;
+    protected TargetOutInfo targetOutInfo = TargetOutInfo.FULL;
 
     /**
      * Writer to the main output file indicated by {@link #output}.
@@ -660,12 +690,12 @@ public final class CalculateTargetCoverage extends ReadWalker {
     protected enum Transform {
 
         /**
-         * Default read-count raw value (non-)transformation.
+         * Read-count raw value (non-)transformation.
          */
         RAW((count, columnTotal) -> Integer.toString(count)),
 
         /**
-         * Proportional coverage transformation.
+         * Default proportional coverage transformation.
          * <p>Individual counts are transformed into the fraction of the total
          * count across the enclosing column.</p>
          */
