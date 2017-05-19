@@ -50,7 +50,7 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
     public boolean requiresReference() { return true; }
 
     @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
-    protected List<String> baseRecalibrationKnownVariants;
+    protected List<String> baseRecalibrationKnownVariantPaths;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
@@ -100,9 +100,9 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> filteredReadsForBQSR = initialReads.filter(read -> bqsrReadFilter.test(read));
 
         final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        final JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
+        final JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariantPaths, getIntervals());
 
-        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, filteredReadsForBQSR, getReference(), bqsrKnownVariants, baseRecalibrationKnownVariants, joinStrategy, getHeaderForReads().getSequenceDictionary(), readShardSize, readShardPadding);
+        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, filteredReadsForBQSR, getReference(), bqsrKnownVariants, baseRecalibrationKnownVariantPaths, joinStrategy, getHeaderForReads().getSequenceDictionary(), readShardSize, readShardPadding);
         //note: we use the reference dictionary from the reads themselves.
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getHeaderForReads().getSequenceDictionary(), bqsrArgs);
 

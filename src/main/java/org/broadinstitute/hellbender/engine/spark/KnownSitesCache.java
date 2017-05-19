@@ -39,7 +39,8 @@ class KnownSitesCache {
     }
 
     private static List<GATKVariant> loadFromFeatureDataSource(String path) {
-        try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(path, null, 0, null) ) {
+        int cloudPrefetchBuffer = 40; // only used for GCS
+        try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(path, null, 0, null, cloudPrefetchBuffer, cloudPrefetchBuffer) ) {
             return wrapQueryResults(dataSource.iterator());
         }
     }
