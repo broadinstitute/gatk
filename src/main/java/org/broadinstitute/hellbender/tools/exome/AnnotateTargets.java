@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -48,6 +49,15 @@ import java.util.Map;
  *     </dl>
  * </p>
  *
+ * <h3>Examples</h3>
+
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar AnnotateTargets \
+ *   --targets targets.tsv \
+ *   --reference ref_fasta.fa \
+ *   --output entity_id.annotated.tsv
+ * </pre>
+ *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
@@ -55,6 +65,7 @@ import java.util.Map;
         summary = "Annotate targets with various properties, such as GC content",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public class AnnotateTargets extends TargetWalker {
 
     @Argument(
