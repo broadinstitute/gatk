@@ -5,6 +5,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
@@ -19,16 +20,30 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Convert AllelicCNV results to TITAN and Allelic CapSeg formats.
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar ConvertACNVResults \
+ *   --tumorHets hets.het \
+ *   --tangentNormalized tn_coverage.tn.tsv \
+ *   --segments acnv_segments.seg \
+ *   --outputDir output_dir
+ * </pre>
+ */
 @CommandLineProgramProperties(
 
         summary = "Convert files into TITAN and " +
-                "Broad CGA Allelic CapSeg (ACS) formats.  This tool uses spark, though running locally is fine.\n" +
-                "As part of this process, this tool generates calls whether a particular segment is balanced (MAF=0.5)" +
-                "\nIMPORTANT:  The additional CNLoH calls from this tool should be treated with a lot of skepticism.  Preliminary results " +
-                "indicated very poor performance.",
-        oneLineSummary = "Convert ACNV results to Broad CGA Allelic CapSeg (ACS) and TITAN files.",
+                "Broad CGA Allelic CapSeg (ACS) formats.  This tool uses Spark, though running locally is fine.\n" +
+                "As a part of this process, the tool calls whether a particular segment is balanced (MAF or minor allele frequency of 0.5)." +
+                "\nNOTE: Treat the additional CNLoH (Copy-Neutral Loss of Heterozygosity) calls with skepticism, as preliminary results " +
+                "using TCGA data have shown a high rate of false-positive calls.",
+        oneLineSummary = "Convert AllelicCNV (ACNV) results to Broad CGA Allelic CapSeg (ACS) and TITAN files.",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public class ConvertACNVResults extends SparkCommandLineProgram {
 
     static final long serialVersionUID = 42123132L;
