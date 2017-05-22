@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
@@ -26,16 +27,52 @@ import java.util.stream.Collectors;
  * Detects copy-number events using allelic-count data and GATK CNV output.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>
+ *     The commands encompass empirically determined parameters for TCGA project data.
+ *     You may obtain better results with different parameters.
+ * </p>
+ *
+ * <p>For whole exome sequencing (WES) data: </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar AllelicCNV \
+ *   --tumorHets hets.tsv \
+ *   --tangentNormalized tn_coverage.tsv \
+ *   --segments called_segments.seg \
+ *   --outputPrefix entity_id
+ * </pre>
+ *
+ * <p>For whole genome sequencing (WGS) data: </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar AllelicCNV \
+ *   --tumorHets hets.tsv \
+ *   --tangentNormalized tn_coverage.tsv \
+ *   --segments called_segments.seg \
+ *   --outputPrefix entity_id \
+ *   --maxNumIterationsSNPSeg 5 \
+ *   --numSamplesCopyRatio 50 \
+ *   --numBurnInCopyRatio 25 \
+ *   --numSamplesAlleleFraction 50 \
+ *   --numBurnInAlleleFraction 25 \
+ *   --numIterationsSimSegPerFit 5 \
+ *   --maxNumIterationsSimSeg 25
+ * </pre>
+ *
  */
 @CommandLineProgramProperties(
-        summary = "Detect copy-number events in a tumor sample using allelic-count data and GATK CNV output. " +
+        summary = "Detect copy-number events in a tumor sample using allelic-count data and GATK CNV results. " +
                 "Allelic-count data (reference/alternate counts from the GetHetCoverage tool) is segmented using " +
                 "circular binary segmentation; the result is combined with the target coverages " +
                 "and called segments found by the GATK CNV tool. Bayesian parameter estimation of models for the " +
-                "copy ratios and minor allele fractions in each segment is performed using Markov chain Monte Carlo.",
+                "copy ratios and minor allele fractions in each segment is performed using Markov chain Monte Carlo (MCMC).",
         oneLineSummary = "Detect copy-number events using allelic-count data and GATK CNV output",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public class AllelicCNV extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1l;
 
@@ -178,7 +215,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = NUM_SAMPLES_ALLELE_FRACTION_SHORT_NAME,
             optional = true
     )
-    protected int numSamplesAlleleFraction = 200;
+    protected int numSamplesAlleleFraction = 100;
 
     @Argument(
             doc = "Number of burn-in samples to discard for allele-fraction model.",
@@ -186,7 +223,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = NUM_BURN_IN_ALLELE_FRACTION_SHORT_NAME,
             optional = true
     )
-    protected int numBurnInAlleleFraction = 100;
+    protected int numBurnInAlleleFraction = 50;
 
     @Argument(
             doc = "Number of 95% credible-interval widths to use for copy-ratio similar-segment merging.",
@@ -194,7 +231,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = INTERVAL_THRESHOLD_COPY_RATIO_SHORT_NAME,
             optional = true
     )
-    protected double intervalThresholdCopyRatio = 2.;
+    protected double intervalThresholdCopyRatio = 4.;
 
     @Argument(
             doc = "Number of 95% credible-interval widths to use for allele-fraction similar-segment merging.",
@@ -210,7 +247,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = MAX_NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_SHORT_NAME,
             optional = true
     )
-    protected int maxNumSimilarSegmentMergingIterations = 25;
+    protected int maxNumSimilarSegmentMergingIterations = 10;
 
     @Argument(
             doc = "Number of similar-segment--merging iterations per MCMC model refit. " +
