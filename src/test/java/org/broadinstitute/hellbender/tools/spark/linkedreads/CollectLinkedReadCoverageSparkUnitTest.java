@@ -125,7 +125,7 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         final String barcode = "ACTGACTG";
 
         final String bedRecord = CollectLinkedReadCoverageSpark.intervalTreeToBedRecord(barcode, tree.iterator().next(), readMetadata);
-        Assert.assertEquals(bedRecord, "1\t1000\t1160\tACTGACTG\t5\t+\t1000\t1160\t0,0,255\t5\t10,11,10,9,10\t0,20,25,45,150");
+        Assert.assertEquals(bedRecord, "1\t1000\t1160\tACTGACTG\t5\t+\t1000\t1160\t0,0,255\t5\t10,11,10,9,10\t0,20,25,45,150\t0");
 
     }
 
