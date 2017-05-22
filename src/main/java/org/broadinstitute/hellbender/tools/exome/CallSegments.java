@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -12,10 +13,21 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Calls segments as amplified, deleted, or copy number neutral given files containing tangent-normalized
- * read counts by target and a list of segments
+ * Calls segments as amplified, deleted or copy number neutral given files containing tangent-normalized
+ * read counts by target and a list of segments.
  *
  * @author David Benjamin
+ *
+ * <h3>Examples</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CallSegments \
+ *   --tangentNormalized tn_coverage.tn.tsv \
+ *   --segments segments.seg \
+ *   --output entity_id.called
+ * </pre>
+ *
+ * <p>To call on ReCapSeg legacy format data, set --legacy option to true. </p>
  */
 @CommandLineProgramProperties(
         summary = "Call segments as amplified, deleted, or copy number neutral given files containing tangent-normalized" +
@@ -23,6 +35,7 @@ import java.util.List;
         oneLineSummary = "Call segments as amplified, deleted, or copy number neutral",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class CallSegments extends CommandLineProgram{
 
     @Argument(
