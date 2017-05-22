@@ -39,8 +39,8 @@ import java.util.List;
                 "Broad CGA Allelic CapSeg (ACS) formats.  This tool uses Spark, though running locally is fine.\n" +
                 "As a part of this process, the tool calls whether a particular segment is balanced (MAF or minor allele frequency of 0.5)." +
                 "\nNOTE: Treat the additional CNLoH (Copy-Neutral Loss of Heterozygosity) calls with skepticism, as preliminary results " +
-                "using TCGA data have shown a high rate of false-positive calls.",
-        oneLineSummary = "Convert AllelicCNV (ACNV) results to Broad CGA Allelic CapSeg (ACS) and TITAN files.",
+                "using TCGA data have shown a high error rate, i.e. high rates of both false-positive and false-negative calls.",
+        oneLineSummary = "(Experimental) Convert AllelicCNV (ACNV) results to Broad CGA Allelic CapSeg (ACS) and TITAN files.",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
