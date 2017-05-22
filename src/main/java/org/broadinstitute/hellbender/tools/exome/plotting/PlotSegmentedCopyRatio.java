@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -19,11 +20,31 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Plots segmented coverage results.
+ *
+ * <p>The order of plotting follows the contig ordering within the required reference sequence dictionary. </p>
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>The --output parameter specifies a directory.</p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar PlotSegmentedCopyRatio \
+ *   --tangentNormalized tn_coverage.tn.tsv \
+ *   --preTangentNormalized pre_tn_coverage.ptn.tsv \
+ *   --segments called_segments.seg \
+ *   -SD ref_fasta_dict.dict \
+ *   --output output_dir \
+ *   --outputPrefix $entity_id
+ * </pre>
+ */
 @CommandLineProgramProperties(
         summary = "Create plots of denoised and segmented copy ratio.",
         oneLineSummary = "Create plots of denoised and segmented copy ratio",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class PlotSegmentedCopyRatio extends CommandLineProgram {
     private static final String CNV_PLOTTING_R_LIBRARY = "CNVPlottingLibrary.R";
     private static final String COPY_RATIO_PLOTTING_R_SCRIPT = "CopyRatioPlotting.R";
@@ -66,7 +87,8 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
             doc = "File containing the reference sequence dictionary (used to determine relative contig lengths). " +
                     "Contigs will be plotted in the order given. " +
                     "Contig names should not include \"" + CONTIG_DELIMITER + "\"." +
-                    "Data on contigs not in the dictionary will not be plotted and a warning will be thrown.",
+                    " Only data for contigs represented by the dictionary will be plotted. " +
+                    "Data for contigs absent in the dictionary generate a warning.",
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME,
             optional = false
     )
