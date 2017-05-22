@@ -49,6 +49,9 @@ import java.util.stream.IntStream;
  * java -Xmx4g -jar $gatk_jar CalculateTargetCoverage \
  *   --input bam.bam \
  *   --targets padded_targets.tsv \
+ *   --groupBy SAMPLE \
+ *   --transform PCOV \
+ *   --targetInformationColumns FULL \
  *   --disableReadFilter NotDuplicateReadFilter \
  *   --output base_filename.coverage.tsv
  * </pre>
@@ -134,7 +137,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
             shortName = GROUP_BY_SHORT_NAME,
             fullName = GROUP_BY_FULL_NAME,
             optional = true)
-    protected GroupBy groupBy = GroupBy.SAMPLE;
+    protected GroupBy groupBy = GroupBy.COHORT;
 
     @Argument(
             doc = "Cohort name used to name the read count column when the groupBy " +
@@ -151,7 +154,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
             fullName = TRANSFORM_FULL_NAME,
             optional = true
     )
-    protected Transform transform = Transform.PCOV;
+    protected Transform transform = Transform.RAW;
 
     @Argument(
             doc = "TSV file listing 1-based genomic intervals with specific column headers. Do NOT use BED format.",
@@ -167,7 +170,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
             fullName = TARGET_OUT_INFO_FULL_NAME,
             optional = true
     )
-    protected TargetOutInfo targetOutInfo = TargetOutInfo.FULL;
+    protected TargetOutInfo targetOutInfo = TargetOutInfo.COORDS;
 
     /**
      * Writer to the main output file indicated by {@link #output}.
@@ -693,7 +696,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
         RAW((count, columnTotal) -> Integer.toString(count)),
 
         /**
-         * Default proportional coverage transformation.
+         * Proportional coverage transformation.
          * <p>Individual counts are transformed into the fraction of the total
          * count across the enclosing column.</p>
          */
