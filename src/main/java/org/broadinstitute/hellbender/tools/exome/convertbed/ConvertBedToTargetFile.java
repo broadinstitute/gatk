@@ -56,8 +56,7 @@ import java.util.stream.StreamSupport;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-public class
-ConvertBedToTargetFile extends CommandLineProgram {
+public class ConvertBedToTargetFile extends CommandLineProgram {
 
     public static final String BED_INPUT_LONG_NAME = StandardArgumentDefinitions.INPUT_LONG_NAME;
     public static final String BED_INPUT_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
