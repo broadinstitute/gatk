@@ -16,7 +16,7 @@ import java.io.File;
  *     The tool requires R and R components. Install R from https://www.r-project.org/.
  *     For the components, download the script at
  *     https://github.com/broadinstitute/gatk-protected/blob/master/scripts/install_R_packages.R and
- *     use it with the following comm
+ *     use it with the following command:
  *     <pre>
  *         Rscript install_R_packages.R
  *     </pre>
