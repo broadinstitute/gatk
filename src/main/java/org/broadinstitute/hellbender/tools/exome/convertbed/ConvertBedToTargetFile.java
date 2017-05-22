@@ -27,8 +27,9 @@ import java.util.stream.StreamSupport;
  * <p>
  *     Conversion retains data from the first four columns of a BED file.
  *     The tool adds a line at top to label the four columns.
- *     These columns are the contig, start, stop and name.
+ *     These columns are contig, start, stop and name.
  *     For example, the following BED intervals:
+ *
  *     <pre>
  *         chr1    11868   12227
  *         chr1    12612   12721
