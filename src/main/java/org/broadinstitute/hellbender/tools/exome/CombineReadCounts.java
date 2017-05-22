@@ -4,6 +4,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -46,27 +47,29 @@ import java.util.stream.IntStream;
  * </p>
  *
  * <p>
- *    The following restrictions apply:
+ *    Follow these rules:
  *
  *    <ul>
  *        <li>All input files must contain the subject targets in the same order.</li>
- *        <li>If no target file is specified all input files must contain exactly the same targets.</li>
- *        <li>If a target file is specified all input files must contain at least the targets listed in that file and in the same order;
- *            they can contain other additional targets that may appear any where in the input files. These
- *            will be ignored.</li>
+ *        <li>If no target file is specified, then all input files must contain exactly the same targets.</li>
+ *        <li>If a target file is specified, then all input files must contain at least the targets listed in that file and in the same order;
+ *            they can contain other additional targets that may appear anywhere in the input files. The latter
+ *            are ignored.</li>
  *    </ul>
  * </p>
+ *
+ * <h3>Examples</h3>
  *
  * <p>
  *     Example 1:
  *     <pre>
- *         java -jar hellbender.jar CombineReadCounts -I sample1.tab -I sample2.tab ... -I sampleN.tab -O all-samples.tab
+ *         java -jar $gatk_jar CombineReadCounts -I sample1.tab -I sample2.tab ... -I sampleN.tab -O all-samples.tab
  *     </pre>
  * </p>
  * <p>
  *     Example 2:
  *     <pre>
- *         java -jar hellbender.jar CombineReadCounts -inputList my-samples.list -O all-samples.tab
+ *         java -jar $gatk_jar CombineReadCounts -inputList my-samples.list -O all-samples.tab
  *     </pre>
  *     where {@code my-samples.list} contains:
  *     <pre>
@@ -121,6 +124,7 @@ import java.util.stream.IntStream;
         summary = "Combine read Counts",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class CombineReadCounts extends CommandLineProgram {
 
     public static final String READ_COUNT_FILES_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
