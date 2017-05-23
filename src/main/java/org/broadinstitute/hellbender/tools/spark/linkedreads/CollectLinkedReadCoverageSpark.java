@@ -77,6 +77,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public File molSizeReadDensityFile;
 
+    @Argument(doc = "barcodeFragmentCountsFile",
+            shortName = "barcodeFragmentCountsFile", fullName = "barcodeFragmentCountsFile",
+            optional = true)
+    public File barcodeFragmentCountsFile;
+
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
 
@@ -139,6 +144,12 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                             return mySVIntervalTree.myTree.size() > 0;
                         })
                         .cache();
+
+        if (barcodeFragmentCountsFile != null) {
+            final JavaPairRDD<Integer, String> barcodeReadCounts = barcodeIntervals.mapToPair(kv -> new Tuple2<>(kv._1(), Utils.stream(kv._2().myTree.iterator()).mapToInt(e -> e.getValue().size()).sum())).mapToPair(Tuple2::swap).sortByKey(true, 1);
+            barcodeReadCounts.saveAsTextFile(barcodeFragmentCountsFile.getAbsolutePath());
+        }
+
 
         if (molSizeHistogramFile != null) {
 
