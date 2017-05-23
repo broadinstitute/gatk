@@ -19,16 +19,15 @@ import java.util.List;
  * <h3>Example</h3>
  *
  * <p>For whole exome sequencing (WES) targets: </p>
- * 
+ *
  * <pre>
  * java -Xmx1g -jar $gatk_jar PadTargets \
  *   --targets targets.tsv \
- *   --padding 250 \
  *   --output base_filename.padded.tsv
  * </pre>
  *
  * <p>
- *     The --padding 250 option pads targets 250 basepairs on either side of each target.
+ *     By default, the tool pads targets 250 basepairs on either side of each target.
  *     This amount of padding was empirically determined to increase sensitivity for CNV calling
  *     for Illumina short-read whole exome sequencing (WES) data similar to TCGA Project data.
  * </p>
