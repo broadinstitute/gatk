@@ -140,15 +140,16 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         })
                         .cache();
 
-        final JavaDoubleRDD moleculeSizes = barcodeIntervals.flatMapToDouble(kv -> {
-            final MySVIntervalTree mySVIntervalTree = kv._2();
-            List<Double> results = new ArrayList<>(mySVIntervalTree.myTree.size());
-            final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
-            Utils.stream(iterator).map(e -> e.getInterval().getLength()).forEach(l -> results.add(new Double(l)));
-            return results.iterator();
-        });
-
         if (molSizeHistogramFile != null) {
+
+            final JavaDoubleRDD moleculeSizes = barcodeIntervals.flatMapToDouble(kv -> {
+                final MySVIntervalTree mySVIntervalTree = kv._2();
+                List<Double> results = new ArrayList<>(mySVIntervalTree.myTree.size());
+                final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
+                Utils.stream(iterator).map(e -> e.getInterval().getLength()).forEach(l -> results.add(new Double(l)));
+                return results.iterator();
+            });
+
             final Tuple2<double[], long[]> moleculeLengthHistogram = moleculeSizes.histogram(1000);
 
             try (final Writer writer =
@@ -175,21 +176,22 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 //        molSizeDistribution.load(molSizeSample.);
 //        molSizeDistribution.
 
-        final Tuple2<double[], long[]> readGapHistogram = barcodeIntervals.flatMapToDouble(kv -> {
-            final MySVIntervalTree mySVIntervalTree = kv._2();
-            List<Double> results = new ArrayList<>();
-            for (final SVIntervalTree.Entry<List<ReadInfo>> next : mySVIntervalTree.myTree) {
-                List<ReadInfo> readInfoList = next.getValue();
-                readInfoList.sort(Comparator.comparing(ReadInfo::getStart));
-                for (int i = 1; i < readInfoList.size(); i++) {
-                    results.add((double) (readInfoList.get(i).start - readInfoList.get(i - 1).start));
-                }
-            }
-            return results.iterator();
-        }).histogram(1000);
-
-
         if (gapHistogramFile != null) {
+
+            final Tuple2<double[], long[]> readGapHistogram = barcodeIntervals.flatMapToDouble(kv -> {
+                final MySVIntervalTree mySVIntervalTree = kv._2();
+                List<Double> results = new ArrayList<>();
+                for (final SVIntervalTree.Entry<List<ReadInfo>> next : mySVIntervalTree.myTree) {
+                    List<ReadInfo> readInfoList = next.getValue();
+                    readInfoList.sort(Comparator.comparing(ReadInfo::getStart));
+                    for (int i = 1; i < readInfoList.size(); i++) {
+                        results.add((double) (readInfoList.get(i).start - readInfoList.get(i - 1).start));
+                    }
+                }
+                return results.iterator();
+            }).histogram(1000);
+
+
             try (final Writer writer =
                          new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gapHistogramFile.getAbsolutePath())))) {
                 writer.write("# Read gap histogram\n");
