@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -154,7 +155,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
         m2Engine.callRegion(region, referenceContext, featureContext).stream()
                 // Only include calls that start within the current read shard (as opposed to the padded regions around it).
                 // This is critical to avoid duplicating events that span shard boundaries!
-                .filter(call -> getCurrentReadShardBounds().contains(call))
+                .filter(call -> getCurrentReadShardBounds().contains(new SimpleInterval(call.getContig(), call.getStart(), call.getStart())))
                 .forEach(vcfWriter::add);
     }
 
