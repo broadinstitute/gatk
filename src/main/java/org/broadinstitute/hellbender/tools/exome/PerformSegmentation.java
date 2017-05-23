@@ -3,17 +3,58 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 
 import java.io.File;
-
+/**
+ * Tool groups contiguous targets with the same copy-ratio per sample.
+ *
+ * <p>
+ *     The tool requires R and R components. Install R from https://www.r-project.org/.
+ *     For the components, download the script at
+ *     https://github.com/broadinstitute/gatk-protected/blob/master/scripts/install_R_packages.R and
+ *     use it with the following command:
+ *     <pre>
+ *         Rscript install_R_packages.R
+ *     </pre>
+ * </p>
+ *
+ * <h3>Examples</h3>
+ * <p>
+ *     The commands encompass empirically determined parameters for TCGA project data.
+ *     You may obtain better results with different parameters.
+ * </p>
+ *
+ * <p>For whole exome sequencing (WES) data: </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar PerformSegmentation \
+ *   --tangentNormalized tn_coverage.tn.tsv \
+ *   --log2Input true \
+ *   --undoSD 2 \
+ *   --output entity_id.seg
+ * </pre>
+ *
+ * <p>For whole genome sequencing (WGS) data: </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar PerformSegmentation \
+ *   --tangentNormalized tn_coverage.tn.tsv \
+ *   --log2Input true \
+ *   --undoSplits SDUNDO \
+ *   --output entity_id.seg
+ * </pre>
+ *
+ */
 @CommandLineProgramProperties(
         summary = "Segment genomic data into regions of constant copy-ratio.  Only supports one sample input.",
         oneLineSummary = "Segment genomic data into regions of constant copy-ratio",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class PerformSegmentation extends CommandLineProgram {
 
     public static final String TARGET_WEIGHT_FILE_LONG_NAME = "targetWeights";
