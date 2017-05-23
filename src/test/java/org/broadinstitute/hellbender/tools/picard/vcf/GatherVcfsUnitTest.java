@@ -21,21 +21,19 @@ public final class GatherVcfsUnitTest {
 
     @DataProvider(name = "files")
     public Object[][] files(){
-        File nullFile = null;
-
+        final Path nullPath = null;
 
         return new Object[][]{
-                {Lists.newArrayList(nullFile), false},
-                {Lists.newArrayList("test.vcf"), false},
-                {Lists.newArrayList("test.bcf"), false},
-                {Lists.newArrayList("test.vcf.gz"), true},
-                {Lists.newArrayList("test1.vcf", "test2.vcf.gz"), false}
+                {Lists.newArrayList(nullPath), false},
+                {Lists.newArrayList(IOUtils.getPath("test.vcf")), false},
+                {Lists.newArrayList(IOUtils.getPath("test.bcf")), false},
+                {Lists.newArrayList(IOUtils.getPath("test.vcf.gz")), true},
+                {Lists.newArrayList(IOUtils.getPath("test1.vcf"), IOUtils.getPath("test2.vcf.gz")), false}
         };
     }
 
     @Test(dataProvider = "files")
-    public void testareAllBlockCompressed(List<String> files, boolean expected) throws IOException {
-        List<Path> paths = files.stream().map(IOUtils::getPath).collect(Collectors.toList());
+    public void testareAllBlockCompressed(List<Path> paths, boolean expected) throws IOException {
         Assert.assertEquals(GatherVcfs.areAllBlockCompressed(paths), expected);
     }
 

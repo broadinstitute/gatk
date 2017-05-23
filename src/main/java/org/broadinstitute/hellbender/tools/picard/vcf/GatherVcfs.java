@@ -63,7 +63,6 @@ public final class GatherVcfs extends PicardCommandLineProgram {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file.")
 	public File output;
 
-    // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
     public int cloudPrefetchBuffer = 2;
 
@@ -130,9 +129,13 @@ public final class GatherVcfs extends PicardCommandLineProgram {
     @VisibleForTesting
     static boolean areAllBlockCompressed(final List<Path> input) {
         for (final Path path : input) {
+            if (path == null){
+                return false;
+            }
             final String pathString = path.toUri().toString();
-            if (pathString == null || pathString.endsWith(".bcf") || !AbstractFeatureReader.hasBlockCompressedExtension(pathString)){
-                return false;}
+            if ( pathString.endsWith(".bcf") || !AbstractFeatureReader.hasBlockCompressedExtension(pathString)){
+                return false;
+            }
         }
         return true;
     }
