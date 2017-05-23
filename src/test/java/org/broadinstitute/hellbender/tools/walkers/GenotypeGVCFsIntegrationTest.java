@@ -214,13 +214,16 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(index.exists());
     }
 
-    @Test(expectedExceptions = CommandLineException.class)
+    @Test
     public void testIntervalsAndOnlyOutputCallsStartingInIntervalsAreMutuallyRequired(){
         ArgumentsBuilder args =   new ArgumentsBuilder()
                 .addVCF(getTestFile("leadingDeletion.g.vcf"))
+                .addReference(new File(b37_reference_20_21))
                 .addOutput( createTempFile("tmp",".vcf"))
                 .addBooleanArgument(GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME, true);
 
+        Assert.assertThrows(CommandLineException.MissingArgument.class, () -> runCommandLine(args));
+        args.addArgument("L", "20:69512-69513");
         runCommandLine(args);
     }
 }

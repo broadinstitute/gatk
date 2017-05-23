@@ -143,7 +143,7 @@ public final class GenotypeGVCFs extends VariantWalker {
 
         if(onlyOutputCallsStartingInIntervals) {
             if( !hasIntervals()) {
-                throw new CommandLineException("Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
+                throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
             }
         }
         intervals = hasIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
