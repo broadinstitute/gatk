@@ -517,6 +517,7 @@ public final class IOUtils {
      * @throws UserException if an I/O error occurs when creating the file system
      */
     public static Path getPath(String uriString) {
+        Utils.nonNull(uriString);
         URI uri = URI.create(uriString);
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.

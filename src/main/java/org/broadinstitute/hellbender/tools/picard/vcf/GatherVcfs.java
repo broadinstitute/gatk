@@ -12,12 +12,13 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
-import htsjdk.variant.vcf.VCFFileReader;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 
 import org.apache.logging.log4j.Logger;
@@ -29,16 +30,16 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.io.*;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Simple little class that combines multiple VCFs that have exactly the same set of samples
@@ -56,11 +57,21 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,  doc = "Input VCF file(s).")
-	public List<File> INPUT;
+	public List<String> inputs;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file.")
-	public File OUTPUT;
+	public File output;
+
+    @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
+    public int cloudPrefetchBuffer = 2;
+
+    @Argument(fullName = "ignoreSafetyChecks", doc = "Disable sanity checks to improve performance, may result in silently creating corrupted outputs data")
+    public boolean ignoreSafetyChecks = false;
+
+    @Argument(fullName = "useConventionalGather", doc = "Use conventional vcf gathering by opening and parsing each vcf file rather than doing compressed block copies.  " +
+            "This is necessary when using NIO paths")
+    public boolean useConventionalGather = false;
 
     private static final Logger log = LogManager.getLogger();
 
@@ -71,56 +82,86 @@ public final class GatherVcfs extends PicardCommandLineProgram {
     @Override
     protected Object doWork() {
         log.info("Checking inputs.");
-        INPUT = IOUtil.unrollFiles(INPUT, IOUtil.VCF_EXTENSIONS);
-        for (final File f: INPUT) IOUtil.assertFileIsReadable(f);
-        IOUtil.assertFileIsWritable(OUTPUT);
+        final List<Path> inputPaths = inputs.stream().map(IOUtils::getPath).collect(Collectors.toList());
 
-		final SAMSequenceDictionary sequenceDictionary = VCFFileReader.getSequenceDictionary(INPUT.get(0));
+        if(!ignoreSafetyChecks) {
+            for (final Path f : inputPaths) {
+                IOUtil.assertFileIsReadable(f);
+            }
+        }
+
+        IOUtil.assertFileIsWritable(output);
+
+        final SAMSequenceDictionary sequenceDictionary = getHeader(inputPaths.get(0)).getSequenceDictionary();
 
         if (CREATE_INDEX && sequenceDictionary == null) {
             throw new UserException("In order to index the resulting VCF input VCFs must contain ##contig lines.");
         }
 
-        log.info("Checking file headers and first records to ensure compatibility.");
-        assertSameSamplesAndValidOrdering(INPUT);
+        if( !ignoreSafetyChecks) {
+            log.info("Checking file headers and first records to ensure compatibility.");
+            assertSameSamplesAndValidOrdering(inputPaths);
+        }
 
-        if (areAllBlockCompressed(INPUT) && areAllBlockCompressed(CollectionUtil.makeList(OUTPUT))) {
+        if (!useConventionalGather && areAllBlockCompressed(inputPaths) && areAllBlockCompressed(CollectionUtil.makeList(output.toPath()))) {
+            final List<File> inputFiles = inputs.stream().map(File::new).collect(Collectors.toList());
             log.info("Gathering by copying gzip blocks. Will not be able to validate position non-overlap of files.");
             if (CREATE_INDEX) log.warn("Index creation not currently supported when gathering block compressed VCFs.");
-            gatherWithBlockCopying(INPUT, OUTPUT);
+            gatherWithBlockCopying(inputFiles, output);
         }
         else {
             log.info("Gathering by conventional means.");
-            gatherConventionally(sequenceDictionary, CREATE_INDEX, INPUT, OUTPUT);
+            gatherConventionally(sequenceDictionary, CREATE_INDEX, inputPaths, output, cloudPrefetchBuffer);
         }
 
         return null;
     }
 
+    private static VCFHeader getHeader(final Path path) {
+        try (FeatureReader<VariantContext> reader =  getReaderFromVCFUri(path, 0)) {
+            return ((VCFHeader) reader.getHeader());
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile(path, e.getMessage(), e);
+        }
+    }
+
     /** Checks (via filename checking) that all files appear to be block compressed files. */
     @VisibleForTesting
-    static boolean areAllBlockCompressed(final List<File> input) {
-        for (final File f : input) {
-            if (f == null || f.getName().contains(".bcf") || !AbstractFeatureReader.hasBlockCompressedExtension(f)){
-                return false;}
+    static boolean areAllBlockCompressed(final List<Path> input) {
+        for (final Path path : input) {
+            if (path == null){
+                return false;
+            }
+            final String pathString = path.toUri().toString();
+            if ( pathString.endsWith(".bcf") || !AbstractFeatureReader.hasBlockCompressedExtension(pathString)){
+                return false;
+            }
         }
         return true;
     }
 
-    /** Validates that all headers contain the same set of genotyped samples and that files are in order by position of first record. */
-    private static void assertSameSamplesAndValidOrdering(final List<File> inputFiles) {
-        final VCFHeader header = new VCFFileReader(inputFiles.get(0), false).getFileHeader();
-        final SAMSequenceDictionary dict = header.getSequenceDictionary();
-        final VariantContextComparator comparator = new VariantContextComparator(header.getSequenceDictionary());
-        final List<String> samples = header.getGenotypeSamples();
+    private static FeatureReader<VariantContext> getReaderFromVCFUri(final Path variantPath, final int cloudPrefetchBuffer) {
+        final String variantURI = variantPath.toUri().toString();
+        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher
+                .addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
+        return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), false, cloudWrapper, Function.identity());
+    }
 
-        File lastFile = null;
+    /** Validates that all headers contain the same set of genotyped samples and that files are in order by position of first record. */
+    private static void assertSameSamplesAndValidOrdering(final List<Path> inputFiles) {
+        final VCFHeader firstHeader = getHeader(inputFiles.get(0));
+        final SAMSequenceDictionary dict = firstHeader.getSequenceDictionary();
+        final VariantContextComparator comparator = new VariantContextComparator(firstHeader.getSequenceDictionary());
+        final List<String> samples = firstHeader.getGenotypeSamples();
+
+        Path lastFile = null;
         VariantContext lastContext = null;
 
-        for (final File f : inputFiles) {
-            final VCFFileReader in = new VCFFileReader(f, false);
-            dict.assertSameDictionary(in.getFileHeader().getSequenceDictionary());
-            final List<String> theseSamples = in.getFileHeader().getGenotypeSamples();
+        for (final Path f : inputFiles) {
+            final FeatureReader<VariantContext> in = getReaderFromVCFUri(f, 0);
+            VCFHeader header = (VCFHeader)in.getHeader();
+            dict.assertSameDictionary(header.getSequenceDictionary());
+            final List<String> theseSamples = header.getGenotypeSamples();
 
             if (!samples.equals(theseSamples)) {
                 final SortedSet<String> s1 = new TreeSet<>(samples);
@@ -129,21 +170,25 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                 s2.removeAll(samples);
 
                 throw new IllegalArgumentException("VCFs do not have identical sample lists." +
-                        " Samples unique to first file: " + s1 + ". Samples unique to " + f.getAbsolutePath() + ": " + s2 + ".");
+                        " Samples unique to first file: " + s1 + ". Samples unique to " + f.toUri().toString() + ": " + s2 + ".");
             }
 
-            final CloseableIterator<VariantContext> variantIterator = in.iterator();
-            if (variantIterator.hasNext()) {
-                final VariantContext currentContext = variantIterator.next();
-                if (lastContext != null) {
-                    if (comparator.compare(lastContext, currentContext) >= 0) {
-                        throw new IllegalArgumentException("First record in file " + f.getAbsolutePath() + " is not after first record in " +
-                                "previous file " + lastFile.getAbsolutePath());
+            try(final CloseableIterator<VariantContext> variantIterator = in.iterator()) {
+                if (variantIterator.hasNext()) {
+                    final VariantContext currentContext = variantIterator.next();
+                    if (lastContext != null) {
+                        if (comparator.compare(lastContext, currentContext) >= 0) {
+                            throw new IllegalArgumentException(
+                                    "First record in file " + f.toUri().toString() + " is not after first record in " +
+                                            "previous file " + lastFile.toUri().toString());
+                        }
                     }
-                }
 
-                lastContext = currentContext;
-                lastFile    = f;
+                    lastContext = currentContext;
+                    lastFile = f;
+                }
+            } catch (IOException e) {
+                throw new UserException.CouldNotReadInputFile(f, e.getMessage(), e);
             }
 
             CloserUtil.close(in);
@@ -152,9 +197,10 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
     /** Code for gathering multiple VCFs that works regardless of input format and output format, but can be slow. */
     private static void gatherConventionally(final SAMSequenceDictionary sequenceDictionary,
-                                      final boolean createIndex,
-                                      final List<File> inputFiles,
-                                      final File outputFile) {
+                                             final boolean createIndex,
+                                             final List<Path> inputFiles,
+                                             final File outputFile,
+                                             final int cloudPrefetchBuffer) {
         final EnumSet<Options> options = EnumSet.copyOf(VariantContextWriterBuilder.DEFAULT_OPTIONS);
         if (createIndex) options.add(Options.INDEX_ON_THE_FLY); else options.remove(Options.INDEX_ON_THE_FLY);
         try (final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(outputFile)
@@ -162,40 +208,47 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
             final ProgressLogger progress = new ProgressLogger(log, 10000);
             VariantContext lastContext = null;
-            File lastFile = null;
+            Path lastFile = null;
             VCFHeader firstHeader = null;
             VariantContextComparator comparator = null;
 
-            for (final File f : inputFiles) {
-                log.debug("Gathering from file: ", f.getAbsolutePath());
-                final VCFFileReader variantReader = new VCFFileReader(f, false);
-                final PeekableIterator<VariantContext> variantIterator = new PeekableIterator<>(variantReader.iterator());
-                final VCFHeader header = variantReader.getFileHeader();
+            for (final Path f : inputFiles) {
+                try {
+                    log.debug("Gathering from file: ", f.toUri().toString());
+                    final FeatureReader<VariantContext> variantReader = getReaderFromVCFUri(f, cloudPrefetchBuffer);
+                    final PeekableIterator<VariantContext> variantIterator;
 
-                if (firstHeader == null) {
-                    firstHeader = header;
-                    out.writeHeader(firstHeader);
-                    comparator = new VariantContextComparator(firstHeader.getContigLines());
-                }
+                        variantIterator = new PeekableIterator<>(variantReader.iterator());
 
-                if (lastContext != null && variantIterator.hasNext()) {
-                    final VariantContext vc = variantIterator.peek();
-                    if (comparator.compare(vc, lastContext) <= 0) {
-                        throw new IllegalStateException("First variant in file " + f.getAbsolutePath() + " is at " + vc.getSource() +
-                                " but last variant in earlier file " + lastFile.getAbsolutePath() + " is at " + lastContext.getSource());
+                    final VCFHeader header = (VCFHeader)variantReader.getHeader();
+
+                    if (firstHeader == null) {
+                        firstHeader = header;
+                        out.writeHeader(firstHeader);
+                        comparator = new VariantContextComparator(firstHeader.getContigLines());
                     }
+
+                    if (lastContext != null && variantIterator.hasNext()) {
+                        final VariantContext vc = variantIterator.peek();
+                        if (comparator.compare(vc, lastContext) <= 0) {
+                            throw new IllegalStateException("First variant in file " + f.toUri().toString() + " is at " + vc.getSource() +
+                                    " but last variant in earlier file " + lastFile.toUri().toString() + " is at " + lastContext.getSource());
+                        }
+                    }
+
+                    while (variantIterator.hasNext()) {
+                        lastContext = variantIterator.next();
+                        out.add(lastContext);
+                        progress.record(lastContext.getContig(), lastContext.getStart());
+                    }
+
+                    lastFile = f;
+
+                    CloserUtil.close(variantIterator);
+                    CloserUtil.close(variantReader);
+                } catch (IOException e) {
+                    throw new UserException.CouldNotReadInputFile(f, e.getMessage(), e);
                 }
-
-                while (variantIterator.hasNext()) {
-                    lastContext = variantIterator.next();
-                    out.add(lastContext);
-                    progress.record(lastContext.getContig(), lastContext.getStart());
-                }
-
-                lastFile = f;
-
-                CloserUtil.close(variantIterator);
-                CloserUtil.close(variantReader);
             }
         }
     }
