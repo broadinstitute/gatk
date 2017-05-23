@@ -30,11 +30,6 @@ import java.util.List;
  *
  * <h3>Examples</h3>
  * <p>
- *     The command encompasses empirically determined parameters for TCGA project data.
- *     You may obtain better results with different parameters.
- * </p>
- *
- * <p>
  *     The following command is for either whole exome sequencing (WES) or whole genome sequencing (WGS) data.
  * </p>
  *
