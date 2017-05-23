@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -14,12 +15,30 @@ import java.util.List;
  * Pad targets.  This tool behaves intelligently when padding consecutive targets naively would yield overlapping targets.
  *
  * Input and output target files are both in the format described in {@link TargetWriter}.
+ *
+ * <h3>Example</h3>
+ *
+ * <p>For whole exome sequencing (WES) targets: </p>
+ * 
+ * <pre>
+ * java -Xmx1g -jar $gatk_jar PadTargets \
+ *   --targets targets.tsv \
+ *   --padding 250 \
+ *   --output base_filename.padded.tsv
+ * </pre>
+ *
+ * <p>
+ *     The --padding 250 option pads targets 250 basepairs on either side of each target.
+ *     This amount of padding was empirically determined to increase sensitivity for CNV calling
+ *     for Illumina short-read whole exome sequencing (WES) data similar to TCGA Project data.
+ * </p>
  */
 @CommandLineProgramProperties(
         summary = "Creates a new target file with targets extended on both sides by the specified number of bases.  IMPORTANT:  This tool will only preserve contig, start, end, and name columns.",
         oneLineSummary = "Create a new target file with padded targets",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class PadTargets extends CommandLineProgram {
 
     protected static final String TARGET_FILE_FULL_NAME = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME;
