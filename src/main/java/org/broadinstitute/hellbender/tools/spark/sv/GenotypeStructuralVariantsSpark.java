@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariant
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
@@ -49,6 +50,10 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     public static final String FASTQ_FILE_DIR_FULL_NAME = "fastqAssemblyDirectory";
     public static final String FASTQ_FILE_NAME_PATTERN_SHORT_NAME = "fastqName";
     public static final String FASTQ_FILE_NAME_PATTERN_FULL_NAME = "fastqNameFormat";
+    public static final String PADDING_SHORT_NAME = "padding";
+    public static final String PADDING_FULL_NAME = "padding";
+    public static final String INSERT_SIZE_DISTR_SHORT_NAME = "insSize";
+    public static final String INSERT_SIZE_DISTR_FULL_NAME = "insertSizeDistribution";
 
     private static final long serialVersionUID = 1L;
 
@@ -70,6 +75,21 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = true)
     private File outputFile = null;
+
+    @Argument(doc = "padding",
+            shortName = PADDING_SHORT_NAME,
+            fullName = PADDING_FULL_NAME,
+            optional = true)
+    private int padding = 300;
+
+    @Argument(doc = "insert size distribution",
+              shortName = INSERT_SIZE_DISTR_SHORT_NAME,
+              fullName = INSERT_SIZE_DISTR_FULL_NAME,
+              optional = true)
+    private InsertSizeDistribution dist = new InsertSizeDistribution("N(300,100)");
+
+    @Argument(doc = "pair-hmm implementation")
+    private StructuralVariantPairHMMImplementation pairHmm = new StructuralVariantPairHMMImplementation("Affine(45,10)");
 
     private VariantsSparkSource variantsSource;
 
@@ -124,6 +144,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<StructuralVariantContext, List<Integer>> variantAndAssemblyIds = variants.mapToPair(v -> new Tuple2<>(v, v.assemblyIDs()));
         final File fastqDir = this.fastqDir;
         final String fastqFilePattern = this.fastqFilePattern;
+
         final JavaPairRDD<StructuralVariantContext, List<File>> variantAndAssemblyFiles = variantAndAssemblyIds
                 .mapValues(v -> v.stream().map(id -> new File(fastqDir, String.format(fastqFilePattern, id))).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, List<SVFastqUtils.FastqRead>> variantReads = variantAndAssemblyFiles
@@ -135,9 +156,23 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 Template.create(entry.getKey(), entry.getValue(), read -> new Template.Fragment(read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
             ).collect(Collectors.toList()));
         variantTemplates.foreach(vt -> {
-            System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates " );
+            if (structuralVariantAlleleIsSupported(vt._1().getStructuralVariantAllele())) {
+                System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates ");
+            } else {
+                System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " not supported ");
+            }
         });
         return variants;
+    }
+
+    private static boolean structuralVariantAlleleIsSupported(final StructuralVariantAllele structuralVariantAllele) {
+        switch (structuralVariantAllele) {
+            case INS:
+            case DEL:
+                return true;
+            default:
+                return false;
+        }
     }
 
     private static Pattern FASTQ_READ_NAME_FORMAT = Pattern.compile("^(.*)\\/(\\d+)$");
