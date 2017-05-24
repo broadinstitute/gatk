@@ -65,6 +65,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = StandardArgumentDefinitions.VERBOSITY_NAME, shortName = StandardArgumentDefinitions.VERBOSITY_NAME, doc = "Control verbosity of logging.", common = true, optional = true)
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
+    @Argument(fullName = "log_to_file", shortName = "log", doc = "Set the logging location", common = true, optional = true)
+    protected String logToFile = null;
+
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
 
@@ -130,6 +133,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         this.defaultHeaders.add(new StringHeader(commandLine));
         this.defaultHeaders.add(new StringHeader("Started on: " +
                                 startDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG))));
+
+        LoggingUtils.sendLogToFile(logToFile);
 
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 

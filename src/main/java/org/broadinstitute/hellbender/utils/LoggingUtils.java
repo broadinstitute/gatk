@@ -5,9 +5,13 @@ import com.google.common.collect.EnumHashBiMap;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.FileAppender;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.logging.ConsoleHandler;
@@ -26,6 +30,8 @@ import java.util.logging.Logger;
  * a different set of level values which we chose a mapping to.
  */
 public class LoggingUtils {
+
+    private static final String PATTERN_STRING = "%-5p %d{HH:mm:ss,SSS} %C{1} - %m %n";
 
     // Map between the logging level used throughout Hellbender code (which is the Picard Log.LogLevel enum),
     // and the log4j log Level values.
@@ -87,6 +93,22 @@ public class LoggingUtils {
         return javaUtilLevelNamespaceMap.get(picardLevel);
     }
 
+    /**
+     * Send log output to file if file name is not null.
+     *
+     * @param fileName  File path for log output
+     */
+    public static void sendLogToFile(final String fileName) {
+        if (fileName != null) {
+            final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+            final Configuration loggerContextConfig = loggerContext.getConfiguration();
+            final Layout<?> layout = PatternLayout.createLayout(PATTERN_STRING, null, loggerContextConfig,
+                    null, null, false, false, null, null);
+            final FileAppender appender = FileAppender.createAppender(fileName, "", "", fileName, "",
+                    "", "", "", layout, null, "", fileName, null);
+            loggerContextConfig.addLoggerAppender((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger(), appender);
+        }
+    }
 
     /**
      * Propagate the verbosity level to Picard, log4j, the java built in logger, and Kryo's MinLog
