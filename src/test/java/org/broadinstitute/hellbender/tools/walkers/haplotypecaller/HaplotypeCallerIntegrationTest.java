@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
@@ -397,7 +398,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testGenotypeGivenAllelesModeNotAllowedInGVCFMode() throws IOException {
         Utils.resetRandomGenerator();
-        
+
         final File output = createTempFile("testGenotypeGivenAllelesModeNotAllowedInGVCFMode", ".g.vcf");
 
         final String[] args = {
@@ -508,7 +509,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             final boolean createBamoutIndex,
             final boolean createBamoutMD5,
             final boolean createVCFOutIndex,
-            final boolean createVCFOutMD5) {
+            final boolean createVCFOutMD5) throws IOException {
         Utils.resetRandomGenerator();
 
         // run on small interval to test index/md5 outputs
@@ -549,6 +550,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final File expectedBamoutMD5File = new File(bamOutput.getAbsolutePath() + ".md5");
         Assert.assertEquals(expectedBamoutMD5File.exists(), createBamoutMD5);
+
+        // Check the output BAN header contains all of the inout BAM header Program Records (@PG)
+        SamAssertionUtils.assertOutBamContainsInBamProgramRecords(new File(NA12878_20_21_WGS_bam), bamOutput);
     }
 
     @Test

@@ -1,33 +1,20 @@
 package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.collect.Sets;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFlag;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SAMValidationError;
-import htsjdk.samtools.SamFileValidator;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import htsjdk.samtools.*;
 import org.apache.commons.io.FilenameUtils;
-import picard.sam.SortSam;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SamComparison;
 import org.testng.Assert;
+import picard.sam.SortSam;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Path;
+import java.util.*;
 
 /**
  * Collection of utilities for making common assertions about SAM files for unit testing purposes.
@@ -458,4 +445,30 @@ public final class SamAssertionUtils {
             throw new RuntimeException("Failure running SortSam on inputs");
         }
     }
+
+    /**
+     * Get the program records (@PG) in the BAM file header
+     *
+     * @param bamFile   the BAM file
+     * @return  program records from teh BAN file header
+     * @throws IOException if cannot close BAM file
+     */
+    private static List<SAMProgramRecord> getProgramRecords(final File bamFile) throws IOException {
+        final SamReader bamInReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(bamFile);
+        List<SAMProgramRecord> programRecords =  bamInReader.getFileHeader().getProgramRecords();
+        bamInReader.close();
+        return programRecords;
+    }
+
+    /**
+     * Assert the output BAM file header contains the input BAM file header Program Records (@PG)
+     * @param inputBam  input BAM file
+     * @param outputBam output BAM file
+     */
+    public static void assertOutBamContainsInBamProgramRecords(final File inputBam, final File outputBam) throws IOException {
+        final List<SAMProgramRecord> bamInProgramRecords = getProgramRecords(inputBam);
+        final List<SAMProgramRecord> bamOutProgramRecords = getProgramRecords(outputBam);
+        Assert.assertTrue(bamOutProgramRecords.containsAll(bamInProgramRecords));
+    }
+
 }

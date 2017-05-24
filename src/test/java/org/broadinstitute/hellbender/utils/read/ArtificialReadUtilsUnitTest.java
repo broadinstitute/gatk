@@ -19,7 +19,7 @@ public final class ArtificialReadUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testReadGroup() {
         GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
-        assertNull(read.getReadGroup());
+        Assert.assertEquals(read.getReadGroup(), ArtificialReadUtils.READ_GROUP_ID);
     }
 
     @Test

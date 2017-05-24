@@ -17,9 +17,11 @@ public final class ArtificialReadUtils {
     private static final String DEFAULT_PLATFORM_UNIT_PREFIX = "Lane";
     private static final String DEFAULT_PLATFORM_PREFIX = "Platform";
     private static final String DEFAULT_SAMPLE_NAME = "SampleX";
+    private static final String DEFAULT_PROGRAM_NAME = "Program";
+    public static final String READ_GROUP_ID = "x";
 
     /**
-     * Creates an artificial sam header, matching the parameters, chromosomes which will be labeled chr1, chr2, etc
+     * Creates an artificial SAM header, matching the parameters, chromosomes which will be labeled chr1, chr2, etc
      *
      * @param numberOfChromosomes the number of chromosomes to create
      * @param startingChromosome  the starting number for the chromosome (most likely set to 1)
@@ -41,7 +43,7 @@ public final class ArtificialReadUtils {
     }
 
     /**
-     * Creates an artificial sam header, matching the parameters, chromosomes which will be labeled chr1, chr2, etc
+     * Creates an artificial SAM header, matching the parameters, chromosomes which will be labeled chr1, chr2, etc
      * It also adds read groups.
      *
      * @param numberOfChromosomes the number of chromosomes to create
@@ -69,14 +71,49 @@ public final class ArtificialReadUtils {
     }
 
     /**
-     * Creates an artificial sam header with standard test parameters
+     * Creates an artificial SAM header, matching the parameters, chromosomes which will be labeled chr1, chr2, etc
+     * It also adds program records.
      *
-     * @return the sam header
+     * @param numberOfChromosomes   the number of chromosomes to create
+     * @param startingChromosome    the starting number for the chromosome (most likely set to 1)
+     * @param chromosomeSize        the length of each chromosome
+     * @param programCount          the number of programs to make
+     * @return
+     */
+    public static SAMFileHeader createArtificialSamHeaderWithPrograms(int numberOfChromosomes, int startingChromosome, int chromosomeSize, int programCount) {
+        final SAMFileHeader header = createArtificialSamHeader(numberOfChromosomes, startingChromosome, chromosomeSize);
+
+        final List<SAMProgramRecord> programRecords = new ArrayList<>();
+        for (int i = 0; i < programCount; i++) {
+            final SAMProgramRecord rec  = new SAMProgramRecord(Integer.toString(i));
+            rec.setCommandLine("run " + Integer.toString(i));
+            rec.setProgramVersion("1.0");
+            if (i > 0) {
+                rec.setPreviousProgramGroupId(Integer.toString(i-1));
+            }
+            rec.setProgramName(DEFAULT_PROGRAM_NAME + i);
+            programRecords.add(rec);
+        }
+        header.setProgramRecords(programRecords);
+
+        return header;
+    }
+
+    /**
+     * Creates an artificial SAM header with standard test parameters
+     *
+     * @return the SAM header
      */
     public static SAMFileHeader createArtificialSamHeader() {
         return createArtificialSamHeader(22, 1, 1000000);
     }
 
+    /**
+     * Creates an artificial SAM header with standard test parameters and a Read Group
+     * 
+     * @param readGroup read group
+     * @return the SAM header
+     */
     public static SAMFileHeader createArtificialSamHeaderWithReadGroup( final SAMReadGroupRecord readGroup ) {
         final SAMFileHeader header = createArtificialSamHeader();
         header.addReadGroup(readGroup);
@@ -353,7 +390,7 @@ public final class ArtificialReadUtils {
         SAMRecord rec = createArtificialSAMRecord(header, name, refIndex, alignmentStart, bases.length);
         rec.setReadBases(Arrays.copyOf(bases, bases.length));
         rec.setBaseQualities(Arrays.copyOf(qual, qual.length));
-        rec.setAttribute(SAMTag.PG.name(), new SAMReadGroupRecord("x").getId());
+        rec.setAttribute(SAMTag.RG.name(), new SAMReadGroupRecord(READ_GROUP_ID).getId());
         if (refIndex == -1) {
             rec.setReadUnmappedFlag(true);
         }
@@ -595,9 +632,9 @@ public final class ArtificialReadUtils {
     }
 
     /**
-     * Creates an artificial sam header based on the sequence dictionary dict
+     * Creates an artificial SAM header based on the sequence dictionary dict
      *
-     * @return a new sam header
+     * @return a new SAM header
      */
     public static SAMFileHeader createArtificialSamHeader(final SAMSequenceDictionary dict) {
         SAMFileHeader header = new SAMFileHeader();

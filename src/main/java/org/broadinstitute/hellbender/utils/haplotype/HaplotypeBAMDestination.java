@@ -43,8 +43,9 @@ public abstract class HaplotypeBAMDestination {
         rgRec.setSequencingCenter("BI");
         readGroups.add(rgRec);
         bamOutputHeader.setReadGroups(readGroups);
-
-        bamOutputHeader.addProgramRecord(new SAMProgramRecord("HalpotypeBAMWriter"));
+        final List<SAMProgramRecord> programRecords = new ArrayList<>(sourceHeader.getProgramRecords());
+        programRecords.add(new SAMProgramRecord("HalpotypeBAMWriter"));
+        bamOutputHeader.setProgramRecords(programRecords);
     }
 
     /**
