@@ -40,7 +40,7 @@ public final class BucketUtils {
     public static final String FILE_PREFIX = "file:";
 
     // if the channel errors out, re-open up to this many times
-    public static final int NIO_MAX_REOPENS = 0;
+    public static final int NIO_MAX_REOPENS = 3;
 
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
