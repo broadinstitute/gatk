@@ -44,6 +44,8 @@ public final class Utils {
 
     private Utils(){}
 
+    private final static DateTimeFormatter longDateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG);
+
     /**
      *  Static random number generator and seed.
      */
@@ -1113,10 +1115,10 @@ public final class Utils {
 
     /**
      * Return the given {@code dateTime} formatted as string for display.
-     * @param dateTime the datte/time to be formatted
+     * @param dateTime the date/time to be formatted
      * @return String representing the {@code dateTime}.
      */
     public static String getDateTimeForDisplay(final ZonedDateTime dateTime) {
-        return dateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG));
+        return dateTime.format(longDateTimeFormatter);
     }
 }

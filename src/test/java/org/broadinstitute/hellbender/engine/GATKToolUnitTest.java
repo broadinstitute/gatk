@@ -544,9 +544,9 @@ public final class GATKToolUnitTest extends BaseTest{
         Assert.assertEquals(commandLine.getID(), tool.getClass().getSimpleName());
 
         String commandLineString = commandLine.toString();
-        Assert.assertTrue(commandLineString.contains("CommandLine="));
-        Assert.assertTrue(commandLineString.contains("Version="));
-        Assert.assertTrue(commandLineString.contains("Date="));
+        assertContains(commandLineString,"CommandLine=");
+        assertContains(commandLineString,"Version=");
+        assertContains(commandLineString,"Date=");
     }
 
     private void writeHeaderAndBadVariant(final VariantContextWriter writer) {

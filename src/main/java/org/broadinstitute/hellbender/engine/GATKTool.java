@@ -675,7 +675,7 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * @return If addOutputVCFCommandLine is set, a set of VCF header lines containing the GATK tool name, version,
+     * @return If addOutputVCFCommandLine is true, a set of VCF header lines containing the tool name, version,
      * date and command line, otherwise an empty set.
      */
     protected Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
@@ -687,7 +687,7 @@ public abstract class GATKTool extends CommandLineProgram {
             simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
             simpleHeaderLineMap.put("CommandLine", getCommandLine());
             gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
-            gatkToolHeaderLines.add(new VCFSimpleHeaderLine("GATKCommandLine", simpleHeaderLineMap));
+            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitName()), simpleHeaderLineMap));
         }
         return gatkToolHeaderLines;
     }
@@ -710,12 +710,17 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Returns the name of this GATK tool.
-     * The default implementation return the the string "GATK " followed by the simple name of the class.
-     * Subclasses may override.
+     * @return The name of toolkit for this tool. Subclasses may override to provide a custom toolkit name.
+     */
+    protected String getToolkitName() { return "GATK"; }
+
+    /**
+     * Returns the name of this tool.
+     * The default implementation returns the result of calling {@link# getToolkitName} followed by the simple
+     * name of the class. Subclasses may override.
      */
     public String getToolName() {
-        return "GATK " + getClass().getSimpleName();
+        return String.format("%s %s", getToolkitName(), getClass().getSimpleName());
     }
 
     /**
