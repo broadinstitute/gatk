@@ -6,7 +6,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
-import org.apache.commons.math3.random.EmpiricalDistribution;
 import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -27,6 +26,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.seqdoop.hadoop_bam.util.NIOFileUtil;
 import scala.Tuple2;
 
@@ -60,27 +60,32 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Argument(doc = "molSizeHistogramFile",
             shortName = "molSizeHistogramFile", fullName = "molSizeHistogramFile",
             optional = true)
-    public File molSizeHistogramFile;
+    public String molSizeHistogramFile;
 
     @Argument(doc = "gapHistogramFile",
             shortName = "gapHistogramFile", fullName = "gapHistogramFile",
             optional = true)
-    public File gapHistogramFile;
+    public String gapHistogramFile;
 
     @Argument(doc = "metadataFile",
             shortName = "metadataFile", fullName = "metadataFile",
             optional = true)
-    public File metadataFile;
+    public String metadataFile;
 
     @Argument(doc = "molSizeReadDensityFile",
             shortName = "molSizeReadDensityFile", fullName = "molSizeReadDensityFile",
             optional = true)
-    public File molSizeReadDensityFile;
+    public String molSizeReadDensityFile;
 
     @Argument(doc = "barcodeFragmentCountsFile",
             shortName = "barcodeFragmentCountsFile", fullName = "barcodeFragmentCountsFile",
             optional = true)
-    public File barcodeFragmentCountsFile;
+    public String barcodeFragmentCountsFile;
+
+    @Argument(doc = "startMotifOutputCountFile",
+            shortName = "startMotifOutputCountFile", fullName = "startMotifOutputCountFile",
+            optional = true)
+    public String startMotifOutputCountFile;
 
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
@@ -116,62 +121,22 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final ReadMetadata readMetadata = new ReadMetadata(Collections.emptySet(), getHeaderForReads(), mappedReads);
 
         if (metadataFile != null) {
-            ReadMetadata.writeMetadata(readMetadata, metadataFile.getAbsolutePath());
+            ReadMetadata.writeMetadata(readMetadata, metadataFile);
         }
 
         final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
+        final ReferenceMultiSource reference = getReference();
+        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(reference);
 
-        final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals =
-                mappedReads.filter(GATKRead::isFirstOfPair)
-                        .mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), new ReadInfo(broadcastMetadata.getValue(), read)))
-                        .aggregateByKey(
-                                new MySVIntervalTree(),
-                                (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
-                                (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
-                        )
-                        .mapValues(mySVIntervalTree -> {
-                            final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
-                            while (iterator.hasNext()) {
-                                final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
-                                if (next.getValue().size() < minReadCountPerMol) {
-                                    iterator.remove();
-                                }
-                            }
-                            return mySVIntervalTree;
-                        })
-                        .filter(kv -> {
-                            final MySVIntervalTree mySVIntervalTree = kv._2();
-                            return mySVIntervalTree.myTree.size() > 0;
-                        })
-                        .cache();
+        final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals = getBarcodeIntervals(finalClusterSize, mappedReads, broadcastMetadata, minReadCountPerMol);
 
         if (barcodeFragmentCountsFile != null) {
-            final JavaPairRDD<Integer, String> barcodeReadCounts = barcodeIntervals.mapToPair(kv -> new Tuple2<>(kv._1(), Utils.stream(kv._2().myTree.iterator()).mapToInt(e -> e.getValue().size()).sum())).mapToPair(Tuple2::swap).sortByKey(true, 1);
-            barcodeReadCounts.saveAsTextFile(barcodeFragmentCountsFile.getAbsolutePath());
+            computeFragmentCounts(barcodeIntervals, barcodeFragmentCountsFile);
         }
 
 
         if (molSizeHistogramFile != null) {
-
-            final JavaDoubleRDD moleculeSizes = barcodeIntervals.flatMapToDouble(kv -> {
-                final MySVIntervalTree mySVIntervalTree = kv._2();
-                List<Double> results = new ArrayList<>(mySVIntervalTree.myTree.size());
-                final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
-                Utils.stream(iterator).map(e -> e.getInterval().getLength()).forEach(l -> results.add(new Double(l)));
-                return results.iterator();
-            });
-
-            final Tuple2<double[], long[]> moleculeLengthHistogram = moleculeSizes.histogram(1000);
-
-            try (final Writer writer =
-                         new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(molSizeHistogramFile.getAbsolutePath())))) {
-                writer.write("# Molecule length histogram\n");
-                for (int i = 1; i < moleculeLengthHistogram._1().length; i++) {
-                    writer.write(moleculeLengthHistogram._1()[i - 1] + "-" + moleculeLengthHistogram._1()[i] + "\t" + moleculeLengthHistogram._2()[i - 1] + "\n");
-                }
-            } catch (final IOException ioe) {
-                throw new GATKException("Can't write read histogram file.", ioe);
-            }
+            computeMolSizeHistogram(barcodeIntervals, molSizeHistogramFile);
         }
 
 //        if (molSizeReadDensityFile != null) {
@@ -188,88 +153,165 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 //        molSizeDistribution.
 
         if (gapHistogramFile != null) {
-
-            final Tuple2<double[], long[]> readGapHistogram = barcodeIntervals.flatMapToDouble(kv -> {
-                final MySVIntervalTree mySVIntervalTree = kv._2();
-                List<Double> results = new ArrayList<>();
-                for (final SVIntervalTree.Entry<List<ReadInfo>> next : mySVIntervalTree.myTree) {
-                    List<ReadInfo> readInfoList = next.getValue();
-                    readInfoList.sort(Comparator.comparing(ReadInfo::getStart));
-                    for (int i = 1; i < readInfoList.size(); i++) {
-                        results.add((double) (readInfoList.get(i).start - readInfoList.get(i - 1).start));
-                    }
-                }
-                return results.iterator();
-            }).histogram(1000);
-
-
-            try (final Writer writer =
-                         new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gapHistogramFile.getAbsolutePath())))) {
-                writer.write("# Read gap histogram\n");
-                for (int i = 1; i < readGapHistogram._1().length; i++) {
-                    writer.write(readGapHistogram._1()[i - 1] + "-" + readGapHistogram._1()[i] + "\t" + readGapHistogram._2()[i - 1] + "\n");
-                }
-            } catch (final IOException ioe) {
-                throw new GATKException("Can't write gap histogram file.", ioe);
-            }
+            computeGapSizeHistogram(barcodeIntervals, gapHistogramFile);
         }
 
         if (out != null) {
-            final JavaPairRDD<SVInterval, String> bedRecordsByBarcode;
-            bedRecordsByBarcode = barcodeIntervals.flatMapToPair(x -> {
-                final String barcode = x._1;
-                final MySVIntervalTree svIntervalTree = x._2;
+            writeBarcodeIntervals(broadcastMetadata, barcodeIntervals, shardedOutput, out);
+        }
 
-                final List<Tuple2<SVInterval, String>> results = new ArrayList<>();
-                for (final SVIntervalTree.Entry<List<ReadInfo>> next : svIntervalTree.myTree) {
-                    results.add(new Tuple2<>(next.getInterval(), intervalTreeToBedRecord(barcode, next, broadcastMetadata.getValue())));
-                }
+        if (startMotifOutputCountFile != null) {
+            computeStartMotifs(mappedReads, broadcastReference, startMotifOutputCountFile);
 
-                return results.iterator();
-            });
+        }
+    }
 
-            if (shardedOutput) {
-                bedRecordsByBarcode.values().saveAsTextFile(out);
-            } else {
-                final String shardedOutputDirectory = this.out + ".parts";
-                final int numParts = bedRecordsByBarcode.getNumPartitions();
-                bedRecordsByBarcode.sortByKey().values().saveAsTextFile(shardedOutputDirectory);
-                //final BlockCompressedOutputStream outputStream = new BlockCompressedOutputStream(out);
-                final OutputStream outputStream;
+    private static void computeStartMotifs(final JavaRDD<GATKRead> mappedReads, final Broadcast<ReferenceMultiSource> broadcastReference, final String startMotifOutputCountFile) {
+        final Map<String, Long> countByMotif = mappedReads.filter(GATKRead::isFirstOfPair).map(r -> {
+            final ReferenceMultiSource ref = broadcastReference.getValue();
+            final ReferenceBases referenceBases = ref.getReferenceBases(null, new SimpleInterval(r.getContig(), r.isReverseStrand() ? r.getUnclippedStart() - 3 : r.getUnclippedStart() - 3,
+                    r.isReverseStrand() ? r.getUnclippedEnd() + 3 : r.getAssignedStart() + 3));
+            return new String(referenceBases.getBases());
 
-                outputStream = new BlockCompressedOutputStream(out);
-                for (int i = 0; i < numParts; i++) {
-                    String fileName = String.format("part-%1$05d", i);
-                    try {
-                        final BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(shardedOutputDirectory + System.getProperty("file.separator") + fileName));
-                        int bite;
-                        while ((bite = bufferedInputStream.read()) != -1) {
-                            outputStream.write(bite);
-                        }
-                        bufferedInputStream.close();
-                    } catch (IOException e) {
-                        throw new GATKException(e.getMessage());
+        }).countByValue();
+
+        try (final Writer writer =
+                     new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(startMotifOutputCountFile)))) {
+            writer.write("# motif counts\n");
+            for (String motif : countByMotif.keySet()) {
+                writer.write(motif + "\t" + countByMotif.get(motif) + "\n");
+            }
+        } catch (final IOException ioe) {
+            throw new GATKException("Can't start motif file.", ioe);
+        }
+    }
+
+    private static void writeBarcodeIntervals(final Broadcast<ReadMetadata> broadcastMetadata, final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final boolean shardedOutput, final String out) {
+        final JavaPairRDD<SVInterval, String> bedRecordsByBarcode;
+        bedRecordsByBarcode = barcodeIntervals.flatMapToPair(x -> {
+            final String barcode = x._1;
+            final MySVIntervalTree svIntervalTree = x._2;
+
+            final List<Tuple2<SVInterval, String>> results = new ArrayList<>();
+            for (final SVIntervalTree.Entry<List<ReadInfo>> next : svIntervalTree.myTree) {
+                results.add(new Tuple2<>(next.getInterval(), intervalTreeToBedRecord(barcode, next, broadcastMetadata.getValue())));
+            }
+
+            return results.iterator();
+        });
+
+        if (shardedOutput) {
+            bedRecordsByBarcode.values().saveAsTextFile(out);
+        } else {
+            final String shardedOutputDirectory = out + ".parts";
+            final int numParts = bedRecordsByBarcode.getNumPartitions();
+            bedRecordsByBarcode.sortByKey().values().saveAsTextFile(shardedOutputDirectory);
+            //final BlockCompressedOutputStream outputStream = new BlockCompressedOutputStream(out);
+            final OutputStream outputStream;
+
+            outputStream = new BlockCompressedOutputStream(out);
+            for (int i = 0; i < numParts; i++) {
+                String fileName = String.format("part-%1$05d", i);
+                try {
+                    final BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(shardedOutputDirectory + System.getProperty("file.separator") + fileName));
+                    int bite;
+                    while ((bite = bufferedInputStream.read()) != -1) {
+                        outputStream.write(bite);
                     }
-                }
-                try {
-                    outputStream.close();
-                } catch (IOException e) {
-                    throw new GATKException(e.getMessage());
-                }
-                try {
-                    deleteRecursive(NIOFileUtil.asPath(shardedOutputDirectory));
+                    bufferedInputStream.close();
                 } catch (IOException e) {
                     throw new GATKException(e.getMessage());
                 }
             }
+            try {
+                outputStream.close();
+            } catch (IOException e) {
+                throw new GATKException(e.getMessage());
+            }
+            try {
+                deleteRecursive(NIOFileUtil.asPath(shardedOutputDirectory));
+            } catch (IOException e) {
+                throw new GATKException(e.getMessage());
+            }
         }
+    }
 
-//        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
-//        mappedReads.filter(GATKRead::isFirstOfPair).map(r -> {
-//            final ReferenceMultiSource ref = broadcastReference.getValue();
-//
-//            ref.getReferenceBases(null, new SimpleInterval(r.isReverseStrand() ? : ))
-//        })
+    private static void computeGapSizeHistogram(final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final String gapHistogramFile) {
+        final Tuple2<double[], long[]> readGapHistogram = barcodeIntervals.flatMapToDouble(kv -> {
+            final MySVIntervalTree mySVIntervalTree = kv._2();
+            List<Double> results = new ArrayList<>();
+            for (final SVIntervalTree.Entry<List<ReadInfo>> next : mySVIntervalTree.myTree) {
+                List<ReadInfo> readInfoList = next.getValue();
+                readInfoList.sort(Comparator.comparing(ReadInfo::getStart));
+                for (int i = 1; i < readInfoList.size(); i++) {
+                    results.add((double) (readInfoList.get(i).start - readInfoList.get(i - 1).start));
+                }
+            }
+            return results.iterator();
+        }).histogram(1000);
+
+
+        try (final Writer writer =
+                     new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gapHistogramFile)))) {
+            writer.write("# Read gap histogram\n");
+            for (int i = 1; i < readGapHistogram._1().length; i++) {
+                writer.write(readGapHistogram._1()[i - 1] + "-" + readGapHistogram._1()[i] + "\t" + readGapHistogram._2()[i - 1] + "\n");
+            }
+        } catch (final IOException ioe) {
+            throw new GATKException("Can't write gap histogram file.", ioe);
+        }
+    }
+
+    private static void computeMolSizeHistogram(final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final String molSizeHistogramFile) {
+        final JavaDoubleRDD moleculeSizes = barcodeIntervals.flatMapToDouble(kv -> {
+            final MySVIntervalTree mySVIntervalTree = kv._2();
+            List<Double> results = new ArrayList<>(mySVIntervalTree.myTree.size());
+            final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
+            Utils.stream(iterator).map(e -> e.getInterval().getLength()).forEach(l -> results.add(new Double(l)));
+            return results.iterator();
+        });
+
+        final Tuple2<double[], long[]> moleculeLengthHistogram = moleculeSizes.histogram(1000);
+
+        try (final Writer writer =
+                     new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(molSizeHistogramFile)))) {
+            writer.write("# Molecule length histogram\n");
+            for (int i = 1; i < moleculeLengthHistogram._1().length; i++) {
+                writer.write(moleculeLengthHistogram._1()[i - 1] + "-" + moleculeLengthHistogram._1()[i] + "\t" + moleculeLengthHistogram._2()[i - 1] + "\n");
+            }
+        } catch (final IOException ioe) {
+            throw new GATKException("Can't write read histogram file.", ioe);
+        }
+    }
+
+    private static void computeFragmentCounts(final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final String barcodeFragmentCountsFile) {
+        final JavaPairRDD<Integer, String> barcodeReadCounts = barcodeIntervals.mapToPair(kv -> new Tuple2<>(kv._1(), Utils.stream(kv._2().myTree.iterator()).mapToInt(e -> e.getValue().size()).sum())).mapToPair(Tuple2::swap).sortByKey(true, 1);
+        barcodeReadCounts.saveAsTextFile(barcodeFragmentCountsFile);
+    }
+
+    private static JavaPairRDD<String, MySVIntervalTree> getBarcodeIntervals(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata, final int minReadCountPerMol) {
+        return mappedReads.filter(GATKRead::isFirstOfPair)
+                .mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), new ReadInfo(broadcastMetadata.getValue(), read)))
+                .aggregateByKey(
+                        new MySVIntervalTree(),
+                        (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
+                        (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
+                )
+                .mapValues(mySVIntervalTree -> {
+                    final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
+                    while (iterator.hasNext()) {
+                        final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
+                        if (next.getValue().size() < minReadCountPerMol) {
+                            iterator.remove();
+                        }
+                    }
+                    return mySVIntervalTree;
+                })
+                .filter(kv -> {
+                    final MySVIntervalTree mySVIntervalTree = kv._2();
+                    return mySVIntervalTree.myTree.size() > 0;
+                })
+                .cache();
     }
 
     /**
