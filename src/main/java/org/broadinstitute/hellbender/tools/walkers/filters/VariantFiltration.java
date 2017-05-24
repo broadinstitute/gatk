@@ -28,37 +28,41 @@ import static java.util.Collections.singleton;
  * Filter variant calls based on INFO and FORMAT annotations
  *
  * <p>
- * This tool is designed for hard-filtering variant calls based on certain criteria.
- * Records are hard-filtered by changing the value in the FILTER field to something other than PASS. Filtered records
- * will be preserved in the output unless their removal is requested in the command line. </p>
+ * This tool is designed for hard-filtering variant calls based on certain criteria. Records are hard-filtered by
+ * changing the value in the FILTER field to something other than PASS. Filtered records will be preserved in the output
+ * unless their removal is requested in the command line. </p>
  *
- * <h3>Input</h3>
- * <p>
- * A variant set to filter.
- * </p>
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>A VCF of variant calls to filter.</li>
+ *     <li>One or more filtering expressions and corresponding filter names.</li>
+ * </ul>
  *
  * <h3>Output</h3>
  * <p>
- * A filtered VCF.
+ * A filtered VCF in which passing variants are annotated as PASS and failing variants are annotated with the name(s) of
+ * the filter(s) they failed.
  * </p>
  *
  * <h3>Usage example</h3>
  * <pre>
- * java -jar GenomeAnalysisTK.jar \
- *   -T VariantFiltration \
+ *   ./gatk-launch VariantFiltration \
  *   -R reference.fasta \
- *   -o output.vcf \
- *   --variant input.vcf \
+ *   -V input.vcf \
+ *   -O output.vcf \
  *   --filterExpression "AB < 0.2 || MQ0 > 50" \
- *   --filterName "Nov09filters" \
- *   --mask mask.vcf \
- *   --maskName InDel
+ *   --filterName "my_filters"
  * </pre>
+ *
+ * <h3>Note</h3>
+ * <p>Composing filtering expressions can range from very simple to extremely complicated depending on what you're
+ * trying to do. Please see <a href='https://software.broadinstitute.org/gatk/documentation/article.php?id=1255'>this
+ * document</a> for more details on how to compose and use filtering expressions effectively.</p>
  *
  */
 @CommandLineProgramProperties(
         summary = "Filter variant calls based on INFO and FORMAT annotations.",
-        oneLineSummary = "Hard-filter variants VCF (mark them as FILTER)",
+        oneLineSummary = "Filter variant calls based on INFO and FORMAT annotations",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
