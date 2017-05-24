@@ -294,4 +294,21 @@ public final class Haplotype extends Allele {
     public SAMRecord toSAMRecord(final SAMFileHeader header, final String name) {
         return toSAMRecord(header, name, null);
     }
+
+    public String getBaseString(final int from, final int to) {
+        final byte[] bases = getBases();
+        if (to < from) {
+            throw new IllegalArgumentException("the to index cannot be smaller than the from index");
+        } else if (from < 0) {
+            throw new IllegalArgumentException("the from index cannot less than 0");
+        } else if (to > bases.length) {
+            throw new IllegalArgumentException("the to index cannot be larger than the length of the haplotype");
+        } else {
+            final StringBuilder builder = new StringBuilder(to - from);
+            for (int i = from; i < to; i++) {
+                builder.append(bases[i]);
+            }
+            return builder.toString();
+        }
+    }
 }
