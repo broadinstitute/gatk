@@ -49,13 +49,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Select a subset of variants from a larger callset
+ * Select a subset of variants from a VCF file
  *
- * <p>
- * Often, a VCF containing many samples and/or variants will need to be subset in order to facilitate certain analyses
- * (e.g. comparing and contrasting cases vs. controls; extracting variant or non-variant loci that meet certain
- * requirements, displaying just a few samples in a browser like IGV, etc.). SelectVariants can be used for this purpose.
- * </p>
+ * <p>This tool allows you to select a subset of variants based on various criteria in order to facilitate certain
+ * analyses such as comparing and contrasting cases vs. controls, extracting variant or non-variant loci that meet
+ * certain requirements, or troubleshooting some unexpected results, to name but a few.</p>
+ *
  * <p>
  * There are many different options for selecting subsets of variants from a larger callset:
  * <ul>
@@ -76,7 +75,7 @@ import java.util.stream.Collectors;
  *
  * <h3>Input</h3>
  * <p>
- * A variant call set from which to select a subset.
+ * A variant call set in VCF format from which to select a subset.
  * </p>
  *
  * <h3>Output</h3>
@@ -84,10 +83,21 @@ import java.util.stream.Collectors;
  * A new VCF file containing the selected subset of variants.
  * </p>
  *
+ * * <h3>Usage example</h3>
+ * <pre>
+ *     ./gatk-launch SelectVariants \
+ *     -R reference.fasta \
+ *     -V input.vcf \
+ *     -selectType SNP \
+ *     -O output.vcf
+ * </pre>
+ *
  */
 @CommandLineProgramProperties(
-        summary = "Select variant calls based on sample names, patterns, etc.",
-        oneLineSummary = "Select a subset of variants from a larger callset in a VCF file",
+        summary = "This tool allows you to select a subset of variants based on various criteria in order to facilitate certain" +
+                " analyses such as comparing and contrasting cases vs. controls, extracting variant or non-variant loci that meet" +
+                " certain requirements, or troubleshooting some unexpected results, to name but a few.",
+        oneLineSummary = "Select a subset of variants from a VCF file",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
