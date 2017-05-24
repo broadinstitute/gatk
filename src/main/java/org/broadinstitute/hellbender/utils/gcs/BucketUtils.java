@@ -40,7 +40,7 @@ public final class BucketUtils {
     public static final String FILE_PREFIX = "file:";
 
     // if the channel errors out, re-open up to this many times
-    public static final int NIO_MAX_REOPENS = 3;
+    public static final int NIO_MAX_REOPENS = 0;
 
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
@@ -374,9 +374,9 @@ public final class BucketUtils {
             .setRetrySettings(RetrySettings.newBuilder()
                 .setMaxAttempts(10)
                 .setMaxRetryDelay(Duration.ofMillis(30000L))
-                .setTotalTimeout(Duration.ofMillis(120000L))
-                .setInitialRetryDelay(Duration.ofMillis(250L))
-                .setRetryDelayMultiplier(1.0)
+                .setTotalTimeout(Duration.ofMillis(180000L))
+                .setInitialRetryDelay(Duration.ofMillis(500L))
+                .setRetryDelayMultiplier(2.0)
                 .setInitialRpcTimeout(Duration.ofMillis(120000L))
                 .setRpcTimeoutMultiplier(1.0)
                 .setMaxRpcTimeout(Duration.ofMillis(120000L))
