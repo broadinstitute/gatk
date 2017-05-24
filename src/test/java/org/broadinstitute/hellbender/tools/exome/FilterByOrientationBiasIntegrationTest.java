@@ -25,6 +25,7 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
     public static final String emptyVcfNoSamples = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty_and_no_samples.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
     public static final String smallHighDiploid = TEST_RESOURCE_DIR.getAbsolutePath() + "/high_ploidy.vcf";
+    public static final String smallMA = TEST_RESOURCE_DIR.getAbsolutePath() + "/m2_multiallelic.vcf";
     public static final String nullADField = TEST_RESOURCE_DIR.getAbsolutePath() + "/null_AD_field.vcf";
     public static final String preAdapterQFile = TEST_RESOURCE_DIR.getAbsolutePath() + "/SAMPLE9.pre_adapter_detail_metrics";
 
@@ -182,5 +183,52 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
         }
 
         Assert.assertEquals(variantContexts.size(), 1);
+    }
+
+    @Test
+    public void testMultiallelic() throws IOException {
+        final File outputFile = File.createTempFile("ob_ma", ".vcf");
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + FilterByOrientationBias.PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME);
+        arguments.add(preAdapterQFile);
+        arguments.add("-" + FilterByOrientationBias.ARTIFACT_MODES_SHORT_NAME);
+        arguments.add("C/T");
+        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
+        arguments.add(smallMA);
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.getAbsolutePath());
+        runCommandLine(arguments);
+
+        Assert.assertTrue(outputFile.exists());
+        final List<VariantContext> variantContexts = new ArrayList<>();
+        final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(outputFile);
+        for (final VariantContext vc : featureDataSource) {
+            variantContexts.add(vc);
+        }
+
+        // It is important to remember that the filter only looks at the first alternate allele.
+        Assert.assertEquals(variantContexts.size(), 5);
+
+        // The first variant should have a null in the been OB filter annotation.
+        Assert.assertTrue(variantContexts.get(0).getGenotype(0).getExtendedAttribute("OBAMRC").toString().equals("false"));
+        Assert.assertTrue(variantContexts.get(0).getGenotype(0).getExtendedAttribute("OBQRC").toString().equals("100.00"));
+
+        // The second variant should not be filtered
+        Assert.assertTrue(variantContexts.get(1).getGenotype(0).getExtendedAttribute("OBAMRC").toString().equals("true"));
+        Assert.assertTrue(variantContexts.get(2).getGenotype(0).getExtendedAttribute("GT") == null);
+        Assert.assertTrue(Double.parseDouble(variantContexts.get(1).getGenotype(0).getExtendedAttribute("OBQRC").toString()) < 100.0);
+
+        // The third variant should be filtered
+        Assert.assertTrue(variantContexts.get(2).getGenotype(0).getExtendedAttribute("OBAMRC").toString().equals("true"));
+        Assert.assertTrue(Double.parseDouble(variantContexts.get(2).getGenotype(0).getExtendedAttribute("OBQRC").toString()) < 100.0);
+
+        // fourth is in artifact mode
+        Assert.assertTrue(variantContexts.get(3).getGenotype(0).getExtendedAttribute("OBAMRC").toString().equals("false"));
+        Assert.assertTrue(variantContexts.get(3).getGenotype(0).getExtendedAttribute("OBAM").toString().equals("true"));
+        Assert.assertTrue(Double.parseDouble(variantContexts.get(3).getGenotype(0).getExtendedAttribute("OBQ").toString()) < 100.0);
+
+        Assert.assertTrue(variantContexts.get(4).getGenotype(0).getExtendedAttribute("OBAM").toString().equals("false"));
+        Assert.assertTrue(variantContexts.get(4).getGenotype(0).getExtendedAttribute("OBQ").toString().equals("100.00"));
+
     }
 }

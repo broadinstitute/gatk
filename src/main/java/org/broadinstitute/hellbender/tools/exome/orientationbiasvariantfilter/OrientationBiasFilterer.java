@@ -66,32 +66,32 @@ public class OrientationBiasFilterer {
             final List<String> refAlleles = alleles.stream().filter(a -> a.isReference()).map(a -> a.getBaseString()).collect(Collectors.toList());
             if (((refAlleles.size() == 1) && (refAlleles.get(0).length() == 1))) {
                 final Character refAllele = (char) refAlleles.get(0).getBytes()[0];
-                for (int i = 1; i < alleles.size(); i++) {
-                    final Allele allele = genotype.getAllele(i);
-                    if (allele.isCalled() && allele.isNonReference() && !allele.equals(Allele.SPAN_DEL)
-                            && allele.getBaseString().length() == 1) {
 
-                        final Transition genotypeMode = Transition.transitionOf(refAllele, allele.getBaseString().charAt(0));
-                        final boolean isRelevantArtifact = relevantTransitionsWithoutComplement.contains(genotypeMode);
-                        final boolean isRelevantArtifactComplement = relevantTransitionsComplement.contains(genotypeMode);
+                // Since we only look at the first alt allele on a site, we do not need a for loop over all non-ref alleles, e.g. for (int i = 1; i < alleles.size(); i++) {
+                final Allele allele = genotype.getAllele(1);
+                if (allele.isCalled() && allele.isNonReference() && !allele.equals(Allele.SPAN_DEL)
+                        && allele.getBaseString().length() == 1) {
 
-                        genotypeBuilder.attribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_ARTIFACT_MODE, String.valueOf(isRelevantArtifact));
-                        genotypeBuilder.attribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE, String.valueOf(isRelevantArtifactComplement));
+                    final Transition genotypeMode = Transition.transitionOf(refAllele, allele.getBaseString().charAt(0));
+                    final boolean isRelevantArtifact = relevantTransitionsWithoutComplement.contains(genotypeMode);
+                    final boolean isRelevantArtifactComplement = relevantTransitionsComplement.contains(genotypeMode);
 
-                        genotypeBuilder.attribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_FIELD_NAME, preAdapterQScoreMap.getOrDefault(genotypeMode, PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
-                        genotypeBuilder.attribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_RC_FIELD_NAME, preAdapterQScoreMap.getOrDefault(genotypeMode.complement(), PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
+                    genotypeBuilder.attribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_ARTIFACT_MODE, String.valueOf(isRelevantArtifact));
+                    genotypeBuilder.attribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE, String.valueOf(isRelevantArtifactComplement));
 
-                        // FOB for the complement is ALT_F2R1/(ALT_F2R1 + ALT_F1R2) and for the actual artifact mode is ALT_F1R2/(ALT_F2R1 + ALT_F1R2)
-                        // FOB is the fraction of alt reads indicating orientation bias error (taking into account artifact mode complement).
-                        if (isRelevantArtifact || isRelevantArtifactComplement) {
-                            final int totalAltAlleleCount = genotype.hasAD() ? genotype.getAD()[i] : 0;
-                            final double fob = calculateFob(genotype, isRelevantArtifact);
-                            genotypeBuilder.attribute(OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, ArtifactStatisticsScorer.calculateArtifactPValue(totalAltAlleleCount, (int) Math.round(fob * totalAltAlleleCount), BIAS_P));
-                            genotypeBuilder.attribute(OrientationBiasFilterConstants.FOB, fob);
-                        } else {
-                            genotypeBuilder.attribute(OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, VCFConstants.EMPTY_ALLELE);
-                            genotypeBuilder.attribute(OrientationBiasFilterConstants.FOB, VCFConstants.EMPTY_ALLELE);
-                        }
+                    genotypeBuilder.attribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_FIELD_NAME, preAdapterQScoreMap.getOrDefault(genotypeMode, PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
+                    genotypeBuilder.attribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_RC_FIELD_NAME, preAdapterQScoreMap.getOrDefault(genotypeMode.complement(), PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
+
+                    // FOB for the complement is ALT_F2R1/(ALT_F2R1 + ALT_F1R2) and for the actual artifact mode is ALT_F1R2/(ALT_F2R1 + ALT_F1R2)
+                    // FOB is the fraction of alt reads indicating orientation bias error (taking into account artifact mode complement).
+                    if (isRelevantArtifact || isRelevantArtifactComplement) {
+                        final int totalAltAlleleCount = genotype.hasAD() ? genotype.getAD()[1] : 0;
+                        final double fob = calculateFob(genotype, isRelevantArtifact);
+                        genotypeBuilder.attribute(OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, ArtifactStatisticsScorer.calculateArtifactPValue(totalAltAlleleCount, (int) Math.round(fob * totalAltAlleleCount), BIAS_P));
+                        genotypeBuilder.attribute(OrientationBiasFilterConstants.FOB, fob);
+                    } else {
+                        genotypeBuilder.attribute(OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, VCFConstants.EMPTY_ALLELE);
+                        genotypeBuilder.attribute(OrientationBiasFilterConstants.FOB, VCFConstants.EMPTY_ALLELE);
                     }
                 }
             }
@@ -173,21 +173,26 @@ public class OrientationBiasFilterer {
             relevantTransitions.stream().forEach(transition -> transitionCutSoFar.put(transition, 0L));
             for (final Genotype genotype : genotypesToConsiderForFiltering.keySet()) {
                 final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
-
+                // Since we only have the ALT_F2R1 and ALT_F1R2 counts for the first alt allele, we will not consider a site where transition is not artifact mode in the first alt allele.
                 final Transition transition = Transition.transitionOf(genotype.getAllele(0).getBaseString().charAt(0), genotype.getAllele(1).getBaseString().charAt(0));
 
-                final Double pValue = OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0);
-                final Double fractionOfReadsSupportingOrientationBias = OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.FOB, 0.0);
-                if (transitionCutSoFar.get(transition) < transitionNumToCut.get(transition)) {
-                    final String updatedFilter = OrientationBiasUtils.addFilterToGenotype(genotype.getFilters(), OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT);
-                    genotypeBuilder.filter(updatedFilter);
-                    transitionCutSoFar.put(transition, transitionCutSoFar.get(transition) + 1);
-                    logger.info("Cutting: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
-                            + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
+                if (!transitionNumToCut.keySet().contains(transition)) {
+                    logger.warn("Have to skip genotype: " + genotype + " since it does not have the artifact mode in the first alt allele.  Total alleles: " + genotype.getAlleles().size());
                 } else {
-                    // No need to do anything for the genotype filter, so just log it.
-                    logger.info("Passing: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
-                            + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
+
+                    final Double pValue = OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0);
+                    final Double fractionOfReadsSupportingOrientationBias = OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.FOB, 0.0);
+                    if (transitionCutSoFar.get(transition) < transitionNumToCut.get(transition)) {
+                        final String updatedFilter = OrientationBiasUtils.addFilterToGenotype(genotype.getFilters(), OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT);
+                        genotypeBuilder.filter(updatedFilter);
+                        transitionCutSoFar.put(transition, transitionCutSoFar.get(transition) + 1);
+                        logger.info("Cutting: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
+                                + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
+                    } else {
+                        // No need to do anything for the genotype filter, so just log it.
+                        logger.info("Passing: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
+                                + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
+                    }
                 }
 
                 newGenotypes.computeIfAbsent(genotypesToConsiderForFiltering.get(genotype), v -> new ArrayList<>()).add(genotypeBuilder.make());
