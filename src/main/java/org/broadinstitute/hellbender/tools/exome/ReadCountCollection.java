@@ -142,6 +142,16 @@ public final class ReadCountCollection implements Serializable {
         return counts.getColumn(columnIndex);
     }
 
+    public double[] getRow(final int rowIndex) {
+        ParamUtils.inRange(rowIndex, 0, counts.getRowDimension() - 1, "Row index is out of range");
+        return counts.getRow(rowIndex);
+    }
+
+    public double[] getRow(final Target target) {
+        Utils.validateArg(targetIndexMap.containsKey(target), () -> String.format("Target %s is not in the collection", target));
+        return getRow(targetIndexMap.get(target));
+    }
+
     /**
      * TODO github/gatk-protected issue #843
      *

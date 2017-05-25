@@ -21,6 +21,7 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
     private static final File TEST_RCC_FILE = new File(TEST_SUB_DIR, "sex_genotyper_rcc_trunc.tsv");
     private static final File TEST_SEX_GENOTYPE_FILE = new File(TEST_SUB_DIR, "sex_genotypes_agilent_trunc.tsv");
     private static final File TARGET_FILE_WITH_MISSING_TARGETS = new File(TEST_SUB_DIR, "agilent_trunc_with_some_missing_targets.tsv");
+    private static final File TARGET_FILE_ALL_TARGETS_WITH_BAIT_COUNT = new File(TEST_SUB_DIR, "agilent_trunc_all_targets_with_bait_count.tsv");
 
     private static final SexGenotypeDataCollection TEST_SEX_GENOTYPE_DATA_COLLECTION;
 
@@ -37,9 +38,10 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
     public void testGoodRunWithoutInputTargetList() {
         final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
         final String[] arguments = {
-                "-" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
-                "-" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath()
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
+                "--" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTATIONS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
         };
         runCommandLine(arguments);
         try {
@@ -55,10 +57,53 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
     public void testGoodRunWithInputTargetList() {
         final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
         final String[] arguments = {
-                "-" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
-                "-" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME, TARGET_FILE_WITH_MISSING_TARGETS.getAbsolutePath()
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
+                "--" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTATIONS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME, TARGET_FILE_WITH_MISSING_TARGETS.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
+        };
+        runCommandLine(arguments);
+        try {
+            final SexGenotypeDataCollection inferredSexGenotypeDataCollection =
+                    new SexGenotypeDataCollection(sexGenotypeOutputFile);
+            Assert.assertEquals(inferredSexGenotypeDataCollection, TEST_SEX_GENOTYPE_DATA_COLLECTION);
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotReadInputFile("Could not read the output sex genotype table");
+        }
+    }
+
+    @Test
+    public void testGoodRunWithExcludedIntervals() {
+        final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
+        final String[] arguments = {
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
+                "--" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTATIONS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
+                "--excludeIntervals", "1:1-70000",
+                "--excludeIntervals", "X:200000-202000",
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
+        };
+        runCommandLine(arguments);
+        try {
+            final SexGenotypeDataCollection inferredSexGenotypeDataCollection =
+                    new SexGenotypeDataCollection(sexGenotypeOutputFile);
+            Assert.assertEquals(inferredSexGenotypeDataCollection, TEST_SEX_GENOTYPE_DATA_COLLECTION);
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotReadInputFile("Could not read the output sex genotype table");
+        }
+    }
+
+    @Test
+    public void testGoodRunWithExcludedIntervalsAndBaitAnnotatedTargets() {
+        final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
+        final String[] arguments = {
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
+                "--" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTATIONS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME, TARGET_FILE_ALL_TARGETS_WITH_BAIT_COUNT.getAbsolutePath(),
+                "--excludeIntervals", "Y:150000-156000",
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
         };
         runCommandLine(arguments);
         try {
@@ -74,10 +119,11 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
     public void testBadRunMappingError(final double mappingError) {
         final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
         final String[] arguments = {
-                "-" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
-                "-" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
-                "-" + TargetCoverageSexGenotyper.BASELINE_MAPPING_ERROR_PROBABILITY_LONG_NAME, String.valueOf(mappingError)
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
+                "--" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTATIONS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
+                "--" + TargetCoverageSexGenotyper.BASELINE_MAPPING_ERROR_PROBABILITY_LONG_NAME, String.valueOf(mappingError),
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
         };
         runCommandLine(arguments);
     }
@@ -86,8 +132,9 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
     public void testBadRunMissingReadCounts() {
         final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
         final String[] arguments = {
-                "-" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath()
+                "--" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTATIONS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
         };
         runCommandLine(arguments);
     }
@@ -96,8 +143,9 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
     public void testBadRunMissingAnnotations() {
         final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
         final String[] arguments = {
-                "-" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath()
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, sexGenotypeOutputFile.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
         };
         runCommandLine(arguments);
     }
@@ -105,8 +153,9 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
     @Test(expectedExceptions = CommandLineException.class)
     public void testBadRunMissingOutput() {
         final String[] arguments = {
-                "-" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
-                "-" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),
+                "--" + TargetCoverageSexGenotyper.INPUT_CONTIG_ANNOTATIONS_LONG_NAME, TEST_CONTIG_PLOIDY_ANNOTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, "INFO"
         };
         runCommandLine(arguments);
     }
