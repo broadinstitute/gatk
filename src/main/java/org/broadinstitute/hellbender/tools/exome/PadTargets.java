@@ -12,9 +12,10 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Pad targets.  This tool behaves intelligently when padding consecutive targets naively would yield overlapping targets.
+ * Extend target intervals on either side without overlapping consecutive intervals.
  *
- * Input and output target files are both in the format described in {@link TargetWriter}.
+ * <p>Input and output target files are both in the format described in {@link TargetWriter}.</p>
+ * <p>Any overlapping padding is split equally between upstream and downstream targets.</p>
  *
  * <h3>Example</h3>
  *
