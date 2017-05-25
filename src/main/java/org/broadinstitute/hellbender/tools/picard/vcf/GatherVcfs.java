@@ -73,6 +73,9 @@ public final class GatherVcfs extends PicardCommandLineProgram {
             "This is necessary when using NIO paths")
     public boolean useConventionalGather = false;
 
+    @Argument(fullName = "disableContigOrderingCheck", doc = "Don't check relative ordering of contigs when doing a conventional gather")
+    public boolean disableContigOrderingCheck = false;
+
     private static final Logger log = LogManager.getLogger();
 
     public GatherVcfs() {
@@ -100,7 +103,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
         if( !ignoreSafetyChecks) {
             log.info("Checking file headers and first records to ensure compatibility.");
-            assertSameSamplesAndValidOrdering(inputPaths);
+            assertSameSamplesAndValidOrdering(inputPaths, disableContigOrderingCheck);
         }
 
         if (!useConventionalGather && areAllBlockCompressed(inputPaths) && areAllBlockCompressed(CollectionUtil.makeList(output.toPath()))) {
@@ -111,7 +114,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
         }
         else {
             log.info("Gathering by conventional means.");
-            gatherConventionally(sequenceDictionary, CREATE_INDEX, inputPaths, output, cloudPrefetchBuffer);
+            gatherConventionally(sequenceDictionary, CREATE_INDEX, inputPaths, output, cloudPrefetchBuffer, disableContigOrderingCheck);
         }
 
         return null;
@@ -148,7 +151,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
     }
 
     /** Validates that all headers contain the same set of genotyped samples and that files are in order by position of first record. */
-    private static void assertSameSamplesAndValidOrdering(final List<Path> inputFiles) {
+    private static void assertSameSamplesAndValidOrdering(final List<Path> inputFiles, final boolean disableContigOrderingCheck) {
         final VCFHeader firstHeader = getHeader(inputFiles.get(0));
         final SAMSequenceDictionary dict = firstHeader.getSequenceDictionary();
         final VariantContextComparator comparator = new VariantContextComparator(firstHeader.getSequenceDictionary());
@@ -177,10 +180,19 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                 if (variantIterator.hasNext()) {
                     final VariantContext currentContext = variantIterator.next();
                     if (lastContext != null) {
-                        if (comparator.compare(lastContext, currentContext) >= 0) {
-                            throw new IllegalArgumentException(
-                                    "First record in file " + f.toUri().toString() + " is not after first record in " +
-                                            "previous file " + lastFile.toUri().toString());
+                        if ( disableContigOrderingCheck ) {
+                            if ( lastContext.getContig().equals(currentContext.getContig()) && lastContext.getStart() >= currentContext.getStart() ) {
+                                throw new IllegalArgumentException(
+                                        "First record in file " + f.toUri().toString() + " is not after first record in " +
+                                                "previous file " + lastFile.toUri().toString());
+                            }
+                        }
+                        else {
+                            if ( comparator.compare(lastContext, currentContext) >= 0 ) {
+                                throw new IllegalArgumentException(
+                                        "First record in file " + f.toUri().toString() + " is not after first record in " +
+                                                "previous file " + lastFile.toUri().toString());
+                            }
                         }
                     }
 
@@ -200,7 +212,8 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                                              final boolean createIndex,
                                              final List<Path> inputFiles,
                                              final File outputFile,
-                                             final int cloudPrefetchBuffer) {
+                                             final int cloudPrefetchBuffer,
+                                             final boolean disableContigOrderingCheck) {
         final EnumSet<Options> options = EnumSet.copyOf(VariantContextWriterBuilder.DEFAULT_OPTIONS);
         if (createIndex) options.add(Options.INDEX_ON_THE_FLY); else options.remove(Options.INDEX_ON_THE_FLY);
         try (final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(outputFile)
@@ -230,9 +243,20 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
                     if (lastContext != null && variantIterator.hasNext()) {
                         final VariantContext vc = variantIterator.peek();
-                        if (comparator.compare(vc, lastContext) <= 0) {
-                            throw new IllegalStateException("First variant in file " + f.toUri().toString() + " is at " + vc.getSource() +
-                                    " but last variant in earlier file " + lastFile.toUri().toString() + " is at " + lastContext.getSource());
+                        if ( disableContigOrderingCheck ) {
+                            // Just check start positions
+                            if ( vc.getContig().equals(lastContext.getContig()) && vc.getStart() <= lastContext.getStart() ) {
+                                throw new IllegalStateException("First variant in file " + f.toUri().toString() + " is at start position " + vc.getStart() +
+                                        " but last variant in earlier file " + lastFile.toUri().toString() + " is at start position " + lastContext.getStart());
+                            }
+                        }
+                        else {
+                            // Check contig ordering and start positions
+                            if ( comparator.compare(vc, lastContext) <= 0 ) {
+                                throw new IllegalStateException("First variant in file " + f.toUri().toString() + " is at " + String.format("%s:%d", vc.getContig(), vc.getStart()) +
+                                        " but last variant in earlier file " + lastFile.toUri().toString() + " is at " + String.format("%s:%d", lastContext.getContig(), lastContext.getStart()));
+
+                            }
                         }
                     }
 
