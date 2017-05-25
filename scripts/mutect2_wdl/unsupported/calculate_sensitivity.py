@@ -70,7 +70,7 @@ def generate_sensitivity_table(df, snp_or_indel):
     depth_bins = np.sort(df['depth_bin'].unique())
     sensitivity_table = pd.DataFrame(sensitivity, columns = [str(x) for x in af_bins], index = total.index)
 
-    error_bars = [proportion_confint(x,y, alpha = 0.05, method = 'wilson') for x,y in zip(called.values.flat, total.values.flat)]
+    error_bars = [proportion_confint(x, max(y,1), alpha = 0.05, method = 'wilson') for x,y in zip(called.values.flat, total.values.flat)]
 
     #reshape confidence intervals
     num_rows, num_cols = called.shape

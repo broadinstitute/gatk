@@ -52,6 +52,8 @@ workflow Mutect2 {
   String? onco_ds_local_db_dir
   Array[String] artifact_modes
   File picard_jar
+  String? m2_args
+  String? m2_filtering_args
 
   call ProcessOptionalArguments {
     input:
@@ -98,7 +100,8 @@ workflow Mutect2 {
         output_vcf_name = ProcessOptionalArguments.output_name,
         gatk4_jar_override = gatk4_jar_override,
         preemptible_attempts = preemptible_attempts,
-        m2_docker = m2_docker
+        m2_docker = m2_docker,
+        m2_args = m2_args
     }
   }
 
@@ -141,7 +144,8 @@ workflow Mutect2 {
       ref_fasta_index = ref_fasta_index,
       artifact_modes = artifact_modes,
       variants_for_contamination = variants_for_contamination,
-      variants_for_contamination_index = variants_for_contamination_index
+      variants_for_contamination_index = variants_for_contamination_index,
+      m2_filtering_args = m2_filtering_args
   }
 
 
@@ -188,6 +192,7 @@ task M2 {
   String m2_docker
   File? gatk4_jar_override
   Int preemptible_attempts
+  String? m2_args
 
   command {
   if [[ "_${normal_bam}" == *.bam ]]; then
@@ -208,7 +213,8 @@ task M2 {
     ${"--germline_resource " + gnomad} \
     ${"--normal_panel " + pon} \
     ${"-L " + intervals} \
-    -O "${output_vcf_name}.vcf"
+    -O "${output_vcf_name}.vcf" \
+    ${m2_args}
   }
 
   runtime {
@@ -331,6 +337,7 @@ task Filter {
   Array[String]? artifact_modes
   File? variants_for_contamination
   File? variants_for_contamination_index
+  String? m2_filtering_args
 
   command {
     set -e
@@ -354,7 +361,9 @@ task Filter {
         penultimate_variants=ob_filtered.vcf
     fi
 
-  	java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V $penultimate_variants -O "${output_vcf_name}-filtered.vcf" $contamination_cmd
+  	java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V $penultimate_variants \
+  	    -O "${output_vcf_name}-filtered.vcf" $contamination_cmd \
+  	    ${m2_filtering_args}
   }
 
   runtime {
