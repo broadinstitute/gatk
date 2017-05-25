@@ -165,7 +165,7 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     protected String readCountsURI;
 
     @Argument(
-            doc = "Contig ploidy annotations URI. For an example fuke for the human reference, see the GATK Resource Bundle.",
+            doc = "Contig ploidy annotations URI. For an example file for the human reference, see the GATK Resource Bundle.",
             fullName = CONTIG_PLOIDY_ANNOTATIONS_TABLE_LONG_NAME,
             shortName = CONTIG_PLOIDY_ANNOTATIONS_TABLE_SHORT_NAME,
             optional = false
