@@ -27,16 +27,18 @@ import java.util.List;
  *
  * <pre>
  * java -Xmx4g -jar $gatk_jar ConvertACNVResults \
- *   --tumorHets hets.het \
+ *   --tumorHets heterozygous_coverage.het \
  *   --tangentNormalized tn_coverage.tn.tsv \
  *   --segments acnv_segments.seg \
- *   --outputDir output_dir
+ *   --outputDir output_folder
  * </pre>
+ *
+ * <p>The tool runs locally by default. Use the --sparkMaster option to enable Spark.</p>
  */
 @CommandLineProgramProperties(
 
         summary = "Convert files into TITAN and " +
-                "Broad CGA Allelic CapSeg (ACS) formats.  This tool uses Spark, though running locally is fine.\n" +
+                "Broad CGA Allelic CapSeg (ACS) formats.  This tool can use Spark if enabled.\n" +
                 "As a part of this process, the tool calls whether a particular segment is balanced (MAF or minor allele frequency of 0.5)." +
                 "\nNOTE: Treat the additional CNLoH (Copy-Neutral Loss of Heterozygosity) calls with skepticism, as preliminary results " +
                 "using TCGA data have shown a high error rate, i.e. high rates of both false-positive and false-negative calls.",
