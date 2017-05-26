@@ -134,7 +134,12 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final ReferenceMultiSource reference = getReference();
         final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(reference);
 
-        final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals = getBarcodeIntervals(finalClusterSize, mappedReads, broadcastMetadata, minReadCountPerMol);
+        final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals;
+        if (out != null || barcodeFragmentCountsFile != null || molSizeHistogramFile != null || gapHistogramFile != null) {
+            barcodeIntervals = getBarcodeIntervals(finalClusterSize, mappedReads, broadcastMetadata, minReadCountPerMol);
+        } else {
+            barcodeIntervals = null;
+        }
 
         if (barcodeFragmentCountsFile != null) {
             computeFragmentCounts(barcodeIntervals, barcodeFragmentCountsFile);
