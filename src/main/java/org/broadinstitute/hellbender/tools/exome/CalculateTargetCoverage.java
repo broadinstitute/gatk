@@ -47,13 +47,13 @@ import java.util.stream.IntStream;
  *
  * <pre>
  * java -Xmx4g -jar $gatk_jar CalculateTargetCoverage \
- *   --input bam.bam \
+ *   --input sample.bam \
  *   --targets padded_targets.tsv \
  *   --groupBy SAMPLE \
  *   --transform PCOV \
  *   --targetInformationColumns FULL \
  *   --disableReadFilter NotDuplicateReadFilter \
- *   --output base_filename.coverage.tsv
+ *   --output sample.coverage.tsv
  * </pre>
  *
  * <p>
