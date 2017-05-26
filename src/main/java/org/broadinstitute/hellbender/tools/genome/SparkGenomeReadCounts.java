@@ -42,9 +42,9 @@ import java.util.stream.Collectors;
  *
  * <pre>
  * java -Xmx4g -jar $gatk_jar SparkGenomeReadCounts \
- *   --input bam.bam \
+ *   --input sample.bam \
  *   --disableReadFilter NotDuplicateReadFilter \
- *   --outputFile base_filename.coverage.tsv
+ *   --outputFile sample.coverage.tsv
  * </pre>
  *
  * <p>
