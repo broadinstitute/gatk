@@ -5,7 +5,8 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -19,9 +20,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.SVInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.SVIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -31,10 +30,7 @@ import org.seqdoop.hadoop_bam.util.NIOFileUtil;
 import scala.Tuple2;
 
 import java.io.*;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -87,6 +83,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public String startMotifOutputCountFile;
 
+    @Argument(doc = "phaseSetIntervalsFile",
+            shortName = "phaseSetIntervalsFile", fullName = "phaseSetIntervalsFile",
+            optional = true)
+    public String phaseSetIntervalsFile;
+
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
 
@@ -95,6 +96,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     @Argument(fullName = "minMaxMapq", shortName = "minMaxMapq", doc="Minimum highest mapq read to create a fragment", optional=true)
     public int minMaxMapq = 2;
+
+    private static final int REF_RECORD_LEN = 10000;
+    // assuming we have ~1Gb/core, we can process ~1M kmers per partition
+    private static final int REF_RECORDS_PER_PARTITION = 1024*1024 / REF_RECORD_LEN;
+
 
     @Override
     public boolean requiresReads() { return true; }
@@ -117,7 +123,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         final JavaRDD<GATKRead> mappedReads =
                 reads.filter(read ->
-                        !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped());
+                        !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped() && ! read.isSecondaryAlignment() && ! read.isSupplementaryAlignment());
         final ReadMetadata readMetadata = new ReadMetadata(Collections.emptySet(), getHeaderForReads(), mappedReads);
 
         if (metadataFile != null) {
@@ -157,21 +163,96 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         }
 
         if (out != null) {
-            writeBarcodeIntervals(broadcastMetadata, barcodeIntervals, shardedOutput, out);
+            writeIntervalsAsBed12(broadcastMetadata, barcodeIntervals, shardedOutput, out);
         }
 
         if (startMotifOutputCountFile != null) {
             computeStartMotifs(mappedReads, broadcastReference, startMotifOutputCountFile);
 
         }
+
+        if (phaseSetIntervalsFile != null) {
+            final JavaRDD<String> phaseSetIntervals = mappedReads.mapPartitions(iter -> {
+                final ReadMetadata metadata = broadcastMetadata.getValue();
+                List<Tuple2<Integer, SVInterval>> partitionPhaseSets = new ArrayList<>();
+                int currentPS = -1;
+                int currentContig = -1;
+                int currentStart = -1;
+                int currentEnd = -1;
+                while (iter.hasNext()) {
+                    GATKRead read = iter.next();
+                    if (read.hasAttribute("PS")) {
+                        int ps = read.getAttributeAsInteger("PS");
+                        if (ps != currentPS) {
+                            if (currentPS != -1) {
+                                partitionPhaseSets.add(new Tuple2<>(currentPS, new SVInterval(currentContig, currentStart, currentEnd)));
+                            }
+                            currentPS = ps;
+                            currentContig = metadata.getContigID(read.getContig());
+                            currentStart = read.getStart();
+                            currentEnd = read.getEnd();
+                        } else {
+                            currentEnd = read.getEnd();
+                        }
+                    }
+                }
+                return partitionPhaseSets.iterator();
+            }).mapToPair(v -> v).reduceByKey((svInterval1, svInterval2) -> new SVInterval(svInterval1.getContig(),
+                    Math.min(svInterval1.getStart(), svInterval2.getStart()),
+                    Math.max(svInterval1.getEnd(), svInterval2.getEnd())))
+                    .mapToPair(kv -> new Tuple2<>(kv._2(), kv._1())).sortByKey()
+                    .map(kv -> {
+                        final SVInterval svInterval = kv._1();
+                        final Integer ps = kv._2();
+                        final String contigName = lookupContigName(svInterval.getContig(), broadcastMetadata.getValue());
+                        return contigName + "\t" + svInterval.getStart() + "\t" + svInterval.getEnd() + "\t" + ps;
+                    });
+
+
+            if (shardedOutput) {
+                phaseSetIntervals.saveAsTextFile(phaseSetIntervalsFile);
+            } else {
+                final String shardedOutputDirectory = phaseSetIntervalsFile + ".parts";
+                phaseSetIntervals.saveAsTextFile(shardedOutputDirectory);
+                unshardOutput(phaseSetIntervalsFile, shardedOutputDirectory, phaseSetIntervals.getNumPartitions());
+            }
+        }
     }
 
     private static void computeStartMotifs(final JavaRDD<GATKRead> mappedReads, final Broadcast<ReferenceMultiSource> broadcastReference, final String startMotifOutputCountFile) {
-        final Map<String, Long> countByMotif = mappedReads.filter(GATKRead::isFirstOfPair).map(r -> {
+
+        final Map<String, Long> countByMotif = mappedReads.filter(GATKRead::isFirstOfPair).flatMap(r -> {
+
             final ReferenceMultiSource ref = broadcastReference.getValue();
-            final ReferenceBases referenceBases = ref.getReferenceBases(null, new SimpleInterval(r.getContig(), r.isReverseStrand() ? r.getUnclippedStart() - 3 : r.getUnclippedStart() - 3,
-                    r.isReverseStrand() ? r.getUnclippedEnd() + 3 : r.getAssignedStart() + 3));
-            return new String(referenceBases.getBases());
+            final SAMSequenceDictionary referenceSequenceDictionary = ref.getReferenceSequenceDictionary(null);
+            final SAMSequenceRecord sequence = referenceSequenceDictionary.getSequence(r.getContig());
+            if (sequence == null) {
+                return Collections.emptyListIterator();
+            }
+
+            if (r.isReverseStrand() && (r.getUnclippedEnd() < 1 || r.getUnclippedEnd() > sequence.getSequenceLength() - 7)) {
+                return Collections.emptyListIterator();
+            }
+
+            if (!r.isReverseStrand() && (r.getUnclippedStart() < 8 || r.getUnclippedStart() > sequence.getSequenceLength() - 7)) {
+                return Collections.emptyListIterator();
+            }
+
+            final SimpleInterval motifInterval = new SimpleInterval(r.getContig(), r.isReverseStrand() ? r.getUnclippedEnd() + 1 : r.getUnclippedStart() - 7,
+                    r.isReverseStrand() ? r.getUnclippedEnd() + 7 : r.getUnclippedStart() - 1 );
+            if (motifInterval.getStart() < 1) return Collections.emptyListIterator();
+
+            if (motifInterval.getEnd() >= sequence.getSequenceLength()) {
+                return Collections.emptyListIterator();
+            }
+
+            final ReferenceBases referenceBases = ref.getReferenceBases(null, motifInterval);
+            final String baseString = new String(referenceBases.getBases());
+            if (baseString.contains("N")) return Collections.emptyListIterator();
+
+            final String kmer = SVKmerizer.toKmer(baseString, new SVKmerShort(7)).canonical(7).toString(7);
+
+            return Collections.singletonList(kmer).iterator();
 
         }).countByValue();
 
@@ -186,7 +267,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         }
     }
 
-    private static void writeBarcodeIntervals(final Broadcast<ReadMetadata> broadcastMetadata, final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final boolean shardedOutput, final String out) {
+    private static void writeIntervalsAsBed12(final Broadcast<ReadMetadata> broadcastMetadata, final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final boolean shardedOutput, final String out) {
         final JavaPairRDD<SVInterval, String> bedRecordsByBarcode;
         bedRecordsByBarcode = barcodeIntervals.flatMapToPair(x -> {
             final String barcode = x._1;
@@ -207,32 +288,36 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             final int numParts = bedRecordsByBarcode.getNumPartitions();
             bedRecordsByBarcode.sortByKey().values().saveAsTextFile(shardedOutputDirectory);
             //final BlockCompressedOutputStream outputStream = new BlockCompressedOutputStream(out);
-            final OutputStream outputStream;
+            unshardOutput(out, shardedOutputDirectory, numParts);
+        }
+    }
 
-            outputStream = new BlockCompressedOutputStream(out);
-            for (int i = 0; i < numParts; i++) {
-                String fileName = String.format("part-%1$05d", i);
-                try {
-                    final BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(shardedOutputDirectory + System.getProperty("file.separator") + fileName));
-                    int bite;
-                    while ((bite = bufferedInputStream.read()) != -1) {
-                        outputStream.write(bite);
-                    }
-                    bufferedInputStream.close();
-                } catch (IOException e) {
-                    throw new GATKException(e.getMessage());
+    private static void unshardOutput(final String out, final String shardedOutputDirectory, final int numParts) {
+        final OutputStream outputStream;
+
+        outputStream = BucketUtils.createFile(out);
+        for (int i = 0; i < numParts; i++) {
+            String fileName = String.format("part-%1$05d", i);
+            try {
+                final BufferedInputStream bufferedInputStream = new BufferedInputStream(Files.newInputStream(NIOFileUtil.asPath(shardedOutputDirectory + System.getProperty("file.separator") + fileName)));
+                int bite;
+                while ((bite = bufferedInputStream.read()) != -1) {
+                    outputStream.write(bite);
                 }
-            }
-            try {
-                outputStream.close();
+                bufferedInputStream.close();
             } catch (IOException e) {
                 throw new GATKException(e.getMessage());
             }
-            try {
-                deleteRecursive(NIOFileUtil.asPath(shardedOutputDirectory));
-            } catch (IOException e) {
-                throw new GATKException(e.getMessage());
-            }
+        }
+        try {
+            outputStream.close();
+        } catch (IOException e) {
+            throw new GATKException(e.getMessage());
+        }
+        try {
+            deleteRecursive(NIOFileUtil.asPath(shardedOutputDirectory));
+        } catch (IOException e) {
+            throw new GATKException(e.getMessage());
         }
     }
 
@@ -290,28 +375,42 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     private static JavaPairRDD<String, MySVIntervalTree> getBarcodeIntervals(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata, final int minReadCountPerMol) {
-        return mappedReads.filter(GATKRead::isFirstOfPair)
-                .mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), new ReadInfo(broadcastMetadata.getValue(), read)))
+        return getClusteredReadIntervalsByTag(finalClusterSize, mappedReads, broadcastMetadata, minReadCountPerMol, "BX")
+                .cache();
+    }
+
+    private static JavaPairRDD<String, MySVIntervalTree> getPhaseSetIntervals(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata) {
+        return getClusteredReadIntervalsByTag(1000000, mappedReads, broadcastMetadata, 0, "PS");
+    }
+
+    private static JavaPairRDD<String, MySVIntervalTree> getClusteredReadIntervalsByTag(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata, final int minReadCountPerMol, final String tag) {
+        final JavaPairRDD<String, MySVIntervalTree> intervalsByKey = mappedReads.filter(GATKRead::isFirstOfPair)
+                .mapToPair(read -> new Tuple2<>(read.getAttributeAsString(tag), new ReadInfo(broadcastMetadata.getValue(), read)))
                 .aggregateByKey(
                         new MySVIntervalTree(),
                         (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
-                )
-                .mapValues(mySVIntervalTree -> {
-                    final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
-                    while (iterator.hasNext()) {
-                        final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
-                        if (next.getValue().size() < minReadCountPerMol) {
-                            iterator.remove();
+                );
+        if (minReadCountPerMol > 0) {
+            final JavaPairRDD<String, MySVIntervalTree> filteredIntervalsByKey = intervalsByKey
+                    .mapValues(mySVIntervalTree -> {
+                        final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
+                        while (iterator.hasNext()) {
+                            final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
+                            if (next.getValue().size() < minReadCountPerMol) {
+                                iterator.remove();
+                            }
                         }
-                    }
-                    return mySVIntervalTree;
-                })
-                .filter(kv -> {
-                    final MySVIntervalTree mySVIntervalTree = kv._2();
-                    return mySVIntervalTree.myTree.size() > 0;
-                })
-                .cache();
+                        return mySVIntervalTree;
+                    })
+                    .filter(kv -> {
+                        final MySVIntervalTree mySVIntervalTree = kv._2();
+                        return mySVIntervalTree.myTree.size() > 0;
+                    });
+            return filteredIntervalsByKey;
+        } else {
+            return intervalsByKey;
+        }
     }
 
     /**
