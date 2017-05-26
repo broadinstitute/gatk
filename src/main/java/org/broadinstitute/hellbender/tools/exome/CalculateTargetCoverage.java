@@ -140,8 +140,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
     protected GroupBy groupBy = GroupBy.COHORT;
 
     @Argument(
-            doc = "Cohort name used to name the read count column when the groupBy " +
-                    "argument is set to COHORT",
+            doc = "Cohort name used to name the read count column when the groupBy argument is set to COHORT",
             shortName = COHORT_SHORT_NAME,
             fullName = COHORT_FULL_NAME,
             optional = true)
@@ -691,7 +690,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
     protected enum Transform {
 
         /**
-         * Read-count raw value (non-)transformation.
+         * Raw integer read-count (non-)transformation.
          */
         RAW((count, columnTotal) -> Integer.toString(count)),
 
