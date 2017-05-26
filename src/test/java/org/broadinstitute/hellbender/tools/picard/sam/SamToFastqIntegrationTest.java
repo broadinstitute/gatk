@@ -350,7 +350,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         final FastqReader freader = new FastqReader(file);
         while (freader.hasNext()) {
             final FastqRecord frec = freader.next();
-            set.add(frec.getReadHeader());
+            set.add(frec.getReadName());
         }
         return set ;
     }

@@ -191,7 +191,7 @@ public final class FastqToSam extends PicardCommandLineProgram {
         final ProgressLogger progress = new ProgressLogger(LOG);
         for ( ; freader.hasNext()  ; readCount++) {
             final FastqRecord frec = freader.next();
-            final SAMRecord srec = createSamRecord(writer.getFileHeader(), getReadName(frec.getReadHeader(), false) , frec, false) ;
+            final SAMRecord srec = createSamRecord(writer.getFileHeader(), getReadName(frec.getReadName(), false), frec, false) ;
             srec.setReadPairedFlag(false);
             writer.addAlignment(srec);
             progress.record(srec);
@@ -209,8 +209,8 @@ public final class FastqToSam extends PicardCommandLineProgram {
             final FastqRecord frec1 = freader1.next();
             final FastqRecord frec2 = freader2.next();
 
-            final String frec1Name = getReadName(frec1.getReadHeader(), true);
-            final String frec2Name = getReadName(frec2.getReadHeader(), true);
+            final String frec1Name = getReadName(frec1.getReadName(), true);
+            final String frec2Name = getReadName(frec2.getReadName(), true);
             final String baseName = getBaseName(frec1Name, frec2Name, freader1, freader2);
 
             final SAMRecord srec1 = createSamRecord(writer.getFileHeader(), baseName, frec1, true) ;
@@ -251,7 +251,7 @@ public final class FastqToSam extends PicardCommandLineProgram {
             final int uQual = qual & 0xff;
             if (uQual < MIN_Q || uQual > MAX_Q) {
                 throw new GATKException("Base quality " + uQual + " is not in the range " + MIN_Q + ".." +
-                        MAX_Q + " for read " + frec.getReadHeader());
+                        MAX_Q + " for read " + frec.getReadName());
             }
         }
         srec.setBaseQualities(quals);
