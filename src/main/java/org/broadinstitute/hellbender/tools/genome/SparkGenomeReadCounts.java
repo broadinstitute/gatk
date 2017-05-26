@@ -7,6 +7,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -25,13 +26,40 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Calculates read coverage on whole genome sequencing (WGS) alignments using Spark.
+ *
+ * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>
+ *     The command encompasses empirically determined parameters for TCGA project data.
+ *     You may obtain better results with different parameters.
+ * </p>
+ *
+ * <p>For whole genome sequencing (WGS) data: </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar SparkGenomeReadCounts \
+ *   --input sample.bam \
+ *   --disableReadFilter NotDuplicateReadFilter \
+ *   --outputFile sample.coverage.tsv
+ * </pre>
+ *
+ * <p>
+ *     For whole exome sequencing (WGS) data, use CalculateTargetCoverage instead.
+ * </p>
+ *
+ */
 @CommandLineProgramProperties(
-        summary = "Calculate coverage on a WGS bam file using Spark.  This creates a set of pseudo-targets that span" +
+        summary = "Calculate coverage on a WGS bam file using Spark.  This creates a set of pseudo-targets that span " +
                 "the entire genome.  Use the 'binsize' parameter to specify the size of each interval.  By default, any " +
                 "contigs X, Y, M, and MT are excluded.\n" +
         "Please see the " + SparkGenomeReadCounts.DROP_NON_AUTOSOMES_LONG_NAME + " option if using this tool on a non-human genome.",
         oneLineSummary = "Calculate coverage on a WGS bam file using Spark",
         programGroup = CopyNumberProgramGroup.class)
+@DocumentedFeature
 public class SparkGenomeReadCounts extends GATKSparkTool {
     private static final long serialVersionUID = 1l;
 
