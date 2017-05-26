@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Calculate read-counts across targets given their reference coordinates.
+ * Calculates read-counts across targets for the exome copy number variant (CNV) calling workflow.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  *
@@ -59,7 +59,7 @@ import java.util.stream.IntStream;
  * <p>
  *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
  *     Target intervals do NOT overlap. Use the PadTargets tool to generate non-overlapping padded intervals from exome targets.
- *     Do NOT use BED format. See ConvertBedToTargetFile.
+ *     Do NOT use BED format. See {@link ConvertBedToTargetFile}.
  * </p>
  *
  * <p>For whole genome sequencing (WGS) data, use SparkGenomeReadCounts instead.</p>
