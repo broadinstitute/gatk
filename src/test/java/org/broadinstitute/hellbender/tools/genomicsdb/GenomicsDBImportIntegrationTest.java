@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.intel.genomicsdb.GenomicsDBFeatureReader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.readers.LineIterator;
@@ -8,6 +9,8 @@ import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -37,6 +40,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
     private static final String NA_19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
     private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
+    private static final String GENOMICSDB_TEST_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/GenomicsDBImport/";
 
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
     private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
@@ -218,5 +222,31 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 .addArgument("L", "1:1-10");
 
         runCommandLine(args);
+    }
+
+    @Test
+    public void testPreserveContigOrderingInHeader() throws IOException {
+        final String workspace = createTempDir("testPreserveContigOrderingInHeader-").getAbsolutePath() + "/workspace";
+
+        writeToGenomicsDB(Arrays.asList(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting2.g.vcf"),
+                new SimpleInterval("chr20", 17959479, 17959479), workspace, 0, false, 0);
+
+        try ( final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+                new GenomicsDBFeatureReader<>(
+                        new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
+                        new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
+                        workspace,
+                        GenomicsDBConstants.DEFAULT_ARRAY_NAME,
+                        b38_reference_20_21, null, new BCF2Codec());
+
+              final AbstractFeatureReader<VariantContext, LineIterator> inputGVCFReader =
+                      AbstractFeatureReader.getFeatureReader(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", new VCFCodec(), true);
+        ) {
+            final SAMSequenceDictionary dictionaryFromGenomicsDB = ((VCFHeader)genomicsDBFeatureReader.getHeader()).getSequenceDictionary();
+            final SAMSequenceDictionary dictionaryFromInputGVCF =  ((VCFHeader)inputGVCFReader.getHeader()).getSequenceDictionary();
+
+            Assert.assertEquals(dictionaryFromGenomicsDB, dictionaryFromInputGVCF, "Sequence dictionary from GenomicsDB does not match original sequence dictionary from input GVCF");
+        }
+
     }
 }

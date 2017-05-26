@@ -363,7 +363,7 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
             try(final FastqReader reader = new FastqReader(FASTAFile)){
                 while(reader.hasNext()){
                     final FastqRecord record = reader.next();
-                    readNames.add(record.getReadHeader());
+                    readNames.add(record.getReadName());
                     sequences.add(record.getReadString());
                 }
             }
