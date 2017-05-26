@@ -18,6 +18,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     private static String baseTestString(String args, String testFile) {
         return " --variant " + testFile
                     + " -O %s "
+                    + " --addOutputVCFCommandLine false "
                     + args;
     }
 
@@ -30,7 +31,8 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         + " --variant " + testFile
                         + " -sn NA11918 "
                         + " -sr " // suppress reference file path in output for test differencing
-                        + " -O %s ",
+                        + " -O %s "
+                        + " --addOutputVCFCommandLine false",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleSelection.vcf")
         );
 
@@ -46,7 +48,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         + " --variant " + testFile
                         + " -select 'DP < 7' "
                         + " -sr " // suppress reference file path in output for test differencing
-                        + " -O %s ",
+                        + " -O %s --addOutputVCFCommandLine false",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleExpressionSelection.vcf")
         );
 
@@ -333,7 +335,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcf4.1.example.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec (
-                " --variant " + testFile + " -O %s ",
+                " --variant " + testFile + " -O %s " + " --addOutputVCFCommandLine false ",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_NoGTs.vcf")
         );
 

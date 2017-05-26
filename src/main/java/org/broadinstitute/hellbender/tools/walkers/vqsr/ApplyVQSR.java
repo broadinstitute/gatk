@@ -261,11 +261,9 @@ public class ApplyVQSR extends MultiVariantWalker {
             logger.info("Keeping all variants with VQSLOD >= " + VQSLOD_CUTOFF);
         }
 
+        hInfo.addAll(getDefaultToolVCFHeaderLines());
         final VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
-        vcfWriter = GATKVariantContextUtils.createVCFWriter(
-                new File(output),
-                getBestAvailableSequenceDictionary(),
-                lenientVCFProcessing);
+        vcfWriter = createVCFWriter(new File(output));
         vcfWriter.writeHeader(vcfHeader);
     }
 

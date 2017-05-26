@@ -92,6 +92,5 @@
 ##contig=<ID=GL000194.1,length=191469>
 ##contig=<ID=GL000225.1,length=211173>
 ##contig=<ID=GL000192.1,length=547496>
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Test1	Test2
 1	13504	.	G	A	93.93	PASS	DP=55	GT:DP:FT	0/0:5:highDP	0/0:50:PASS

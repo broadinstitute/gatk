@@ -128,8 +128,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         // Build the default headers
         final ZonedDateTime startDateTime = ZonedDateTime.now();
         this.defaultHeaders.add(new StringHeader(commandLine));
-        this.defaultHeaders.add(new StringHeader("Started on: " +
-                                startDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG))));
+        this.defaultHeaders.add(new StringHeader("Started on: " + Utils.getDateTimeForDisplay(startDateTime)));
 
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
@@ -151,18 +150,16 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         }
 
         if (!QUIET) {
-            System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
-                                "] " + commandLine);
+            System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] " + commandLine);
 
             // Output a one liner about who/where and what software/os we're running on
             try {
-                System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
-                        "] Executing as " +
+                System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] Executing as " +
                         System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
                         " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
                         " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
                         " " + System.getProperty("java.runtime.version") +
-                        "; Version: " + getCommandLineParser().getVersion());
+                        "; Version: " + getVersion());
 
                 // Print important settings to the logger:
                 printSettings();
@@ -178,8 +175,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 final ZonedDateTime endDateTime = ZonedDateTime.now();
                 final double elapsedMinutes = (Duration.between(startDateTime, endDateTime).toMillis()) / (1000d * 60d);
                 final String elapsedString  = new DecimalFormat("#,##0.00").format(elapsedMinutes);
-                System.err.println("[" + endDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
-                                    "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.");
+                System.err.println("[" + Utils.getDateTimeForDisplay(endDateTime) + "] " +
+                        getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.");
                 System.err.println("Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory());
             }
         }
@@ -246,7 +243,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * Returns the version of this tool. It is the version stored in the manifest of the jarfile.
      */
     public final String getVersion() {
-        return getCommandLineParser().getVersion();
+        String versionString = this.getClass().getPackage().getImplementationVersion();
+        return versionString != null ?
+                versionString :
+                "Unavailable";
     }
 
     /**

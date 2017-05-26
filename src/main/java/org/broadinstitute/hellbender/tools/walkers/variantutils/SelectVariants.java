@@ -732,7 +732,7 @@ public final class SelectVariants extends VariantWalker {
     private Set<VCFHeaderLine> createVCFHeaderLineList(Map<String, VCFHeader> vcfHeaders) {
 
         final Set<VCFHeaderLine> headerLines = VCFUtils.smartMergeHeaders(vcfHeaders.values(), true);
-        headerLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
+        headerLines.addAll(getDefaultToolVCFHeaderLines());
 
         // need AC, AN and AF since output if set filtered genotypes to no-call
         if (setFilteredGenotypesToNocall) {

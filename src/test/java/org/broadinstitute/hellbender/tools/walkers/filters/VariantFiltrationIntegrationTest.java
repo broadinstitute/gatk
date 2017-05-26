@@ -13,7 +13,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
 
     public String baseTestString(final String vcf, final String options) {
         final String file = getToolTestDataDir() + vcf;
-        return "--variant " + file + " " + options + " -O %s" + " -R" + hg19_chr1_1M_Reference;
+        return "--variant " + file + " " + options + " -O %s" + " -R" + hg19_chr1_1M_Reference + " --addOutputVCFCommandLine false ";
     }
 
     @Test

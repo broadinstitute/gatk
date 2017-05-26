@@ -60,7 +60,8 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                     "truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
                     "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
                     "--trustAllPolymorphic", // for speed
-                     "-mode", "SNP"
+                    "-mode", "SNP",
+                    "--addOutputVCFCommandLine", "false"
                 }
             },
         };
@@ -174,7 +175,8 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 " -mode INDEL -mG 3" +
                 " --trustAllPolymorphic" + // for speed
                 " --output %s" +
-                " -tranchesFile %s",
+                " -tranchesFile %s" +
+                " --addOutputVCFCommandLine false",
                 Arrays.asList(
                         // the "expected" vcf is not in the expected dir because its used
                         // as input for the ApplyVQSR test

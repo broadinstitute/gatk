@@ -176,7 +176,6 @@
 ##contig=<ID=GL000194.1,length=191469>
 ##contig=<ID=GL000225.1,length=211173>
 ##contig=<ID=GL000192.1,length=547496>
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12891
 20	9999900	.	G	.	.	.	AN=0;DP=0	GT:DP:GQ:MIN_DP	./.:0:0:0
 20	9999901	.	T	.	.	.	AN=0;DP=0	GT:DP:GQ:MIN_DP	./.:0:0:0

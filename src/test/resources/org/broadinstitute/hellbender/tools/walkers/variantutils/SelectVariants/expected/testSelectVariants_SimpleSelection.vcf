@@ -22,7 +22,6 @@
 ##contig=<ID=3,length=16000,assembly=hg19mini.fasta>
 ##contig=<ID=4,length=16000,assembly=hg19mini.fasta>
 ##reference=hg19mini
-##source=SelectVariants
 ##source=UnifiedGenotyper
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11918
 1	10020400	.	C	T	30.66	.	AC=0;AF=0.00;AFrange=0.01-0.09,95%;AN=0;AlleleBalance=0.72;DoC=193;FisherStrand=9.8;HomopolymerRun=0;MAPQ0=0;NS=60;OnOffGenotype=1.00;RMSMAPQ=177.45;SB=-0.02;SpanningDeletions=0	GT	./.

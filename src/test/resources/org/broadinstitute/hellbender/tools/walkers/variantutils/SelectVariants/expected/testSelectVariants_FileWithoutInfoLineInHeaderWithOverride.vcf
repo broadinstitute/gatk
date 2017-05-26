@@ -3,6 +3,5 @@
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12892
 20	10000000	.	T	G	.	PASS	AC=1;AF=0.500;AN=2;foo=bar	GT:PL	0/1:10,0,12

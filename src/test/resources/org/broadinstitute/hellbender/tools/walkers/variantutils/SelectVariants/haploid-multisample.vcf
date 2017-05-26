@@ -119,7 +119,6 @@
 ##contig=<ID=NC_007605,length=171823,assembly=b37>
 ##contig=<ID=hs37d5,length=35477943,assembly=b37>
 ##reference=file:///humgen/gsa-hpprojects/GATK/bundle/current/b37/human_g1k_v37_decoy.fasta
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG00610	HG01187
 Y	4968368	.	G	T	615.77	.	AC=2;AF=1.00;AN=2;DP=25;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=22.22;MQ0=0;QD=25.66;SOR=2.925	GT:AD:DP:GQ:PL	1:0,6:6:99:160,0	1:0,18:18:99:484,0
 Y	4968655	.	T	G	408.77	.	AC=2;AF=1.00;AN=2;DP=20;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=28.47;MQ0=0;QD=24.05;SOR=1.061	GT:AD:DP:GQ:PL	1:0,9:9:99:223,0	1:0,8:8:99:214,0

@@ -5,6 +5,5 @@
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
 ##INFO=<ID=KG_FREQ,Number=1,Type=Float,Description="x">
 ##INFO=<ID=KG_FREQ.AF,Number=1,Type=Float,Description="x">
-##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 1	10006296	bar	C	T	63.56	.	KG_FREQ=0.1;KG_FREQ.AF=0.3

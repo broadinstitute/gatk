@@ -18,7 +18,6 @@
 ##INFO=<ID=SB,Number=1,Type=Float,Description="Strand bias">
 ##INFO=<ID=SpanningDeletions,Number=1,Type=Integer,Description="No spanning deletions">
 ##reference=human_b36_both.fasta
-##source=SelectVariants
 ##source=UnifiedGenotyper
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11992
 1	10020439	.	G	A,T	57.80	.	AC=0,0;AF=0.00,0.00;AFrange=0.01-0.13,95%;AN=2;AlleleBalance=0.73;DoC=156;FisherStrand=9.4;HomopolymerRun=1;MAPQ0=0;NS=60;OnOffGenotype=0.97;RMSMAPQ=167.02;SB=-0.33;SpanningDeletions=0	GT:GQ:RD	0/0:2:5
