@@ -165,7 +165,7 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     protected String readCountsURI;
 
     @Argument(
-            doc = "Contig ploidy annotations URI. For an example file for the human reference, see the GATK Resource Bundle.",
+            doc = "Contig ploidy annotations URI. For an example file, see the GATK Resource Bundle.",
             fullName = CONTIG_PLOIDY_ANNOTATIONS_TABLE_LONG_NAME,
             shortName = CONTIG_PLOIDY_ANNOTATIONS_TABLE_SHORT_NAME,
             optional = false
@@ -186,7 +186,7 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     @Argument(
             doc = "Copy number transition prior table URI. Lists per contig and against the sex states, " +
                     "the relative file paths to files that in turn list in tsv format the copy number transition priors. " +
-                    "For an example set of files for the human reference, see the GATK Resource Bundle.",
+                    "For an example set of files, see the GATK Resource Bundle.",
             fullName = COPY_NUMBER_TRANSITION_PRIOR_TABLE_LONG_NAME,
             shortName = COPY_NUMBER_TRANSITION_PRIOR_TABLE_SHORT_NAME,
             optional = false
