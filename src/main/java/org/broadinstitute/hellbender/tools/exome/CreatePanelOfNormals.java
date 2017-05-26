@@ -53,9 +53,9 @@ import java.util.stream.DoubleStream;
  *
  * <pre>
  * java -Xmx4g -jar $gatk_jar CreatePanelOfNormals \
- *   --input corrected_coverage.tsv \
+ *   --input corrected_coverages.tsv \
  *   --disableSpark \
- *   --output pon_entity_id.pon
+ *   --output panel_of_normals.pon
  * </pre>
  *
  * <p>
