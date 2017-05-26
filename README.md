@@ -1,10 +1,11 @@
 [![Build Status](https://travis-ci.org/broadinstitute/gatk-protected.svg?branch=master)](https://travis-ci.org/broadinstitute/gatk-protected)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/gatk-protected/badge.svg?branch=master&service=github)](https://coveralls.io/github/broadinstitute/gatk-protected?branch=master)
+[![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 GATK4-Protected (codename Hellbender-protected)
 ===============================================
 
-GATK4 development of the license-protected part of the toolkit
+GATK4 development of the previously license-protected part of the toolkit. The contents of this repo will be merged into broadinstitute/gatk in the near future.
 
 This README is aimed at developers.  For user information, please see the [GATK 4 forum](http://gatkforums.broadinstitute.org/gatk/categories/gatk-4-alpha)
 
