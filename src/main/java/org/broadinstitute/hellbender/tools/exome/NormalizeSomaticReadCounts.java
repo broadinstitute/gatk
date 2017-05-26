@@ -36,11 +36,10 @@ import java.util.List;
  * <pre>
  * java -Xmx4g -jar $gatk_jar NormalizeSomaticReadCounts \
  *   --input tumor.coverage.tsv \
+ *   --targets padded_targets.tsv
  *   --panelOfNormals panel_of_normals.pon \
  *   --tangentNormalized tumor.tn.tsv \
- *   --factorNormalizedOutput tumor.fnt.tsv \
- *   --preTangentNormalized tumor.preTN.tsv \
- *   --betaHatsOutput tumor.betaHats.tsv
+ *   --preTangentNormalized tumor.preTN.tsv
  * </pre>
  */
 @CommandLineProgramProperties(
