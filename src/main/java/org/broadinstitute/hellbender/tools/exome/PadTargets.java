@@ -24,7 +24,7 @@ import java.util.List;
  * <pre>
  * java -Xmx1g -jar $gatk_jar PadTargets \
  *   --targets targets.tsv \
- *   --output base_filename.padded.tsv
+ *   --output targets.padded.tsv
  * </pre>
  *
  * <p>
