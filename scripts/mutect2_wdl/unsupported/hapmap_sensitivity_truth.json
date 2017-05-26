@@ -6,7 +6,6 @@
   "HapmapSensitivityTruth.pooled_bam_idx": "$__pooled_bam_idx__",
   "HapmapSensitivityTruth.sample_file": "$__sample_file__",
   "HapmapSensitivityTruth.intervals": "$__intervals__",
-  "HapmapSensitivityTruth.dbsnp": "$__dbsnp__",
-  "HapmapSensitivityTruth.dbsnp_idx": "$__dbsnp_idx__",
-  "HapmapSensitivityTruth.min_indel_spacing": "$__min_indel_spacing__",
+  "HapmapSensitivityTruth.dbsnp_intervals": "$__dbsnp_intervals__",
+  "HapmapSensitivityTruth.min_indel_spacing": "$__min_indel_spacing__"
 }

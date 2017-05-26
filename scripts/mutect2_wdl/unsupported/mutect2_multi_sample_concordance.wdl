@@ -27,6 +27,8 @@ workflow Mutect2_Multi_Concordance {
     Int preemptible_attempts
     Array[String] artifact_modes
     File picard_jar
+    String? m2_args
+    String? m2_filtering_args
 
     File truth_list
     Array[Array[String]] truth = read_tsv(truth_list)
@@ -53,7 +55,9 @@ workflow Mutect2_Multi_Concordance {
             gatk4_jar_override = gatk4_jar_override,
             preemptible_attempts = preemptible_attempts,
             artifact_modes = artifact_modes,
-            picard_jar = picard_jar
+            picard_jar = picard_jar,
+            m2_args = m2_args,
+            m2_filtering_args = m2_filtering_args
     }
 
        scatter (n in range(length(truth))) {
