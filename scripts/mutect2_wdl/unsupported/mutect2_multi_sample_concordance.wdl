@@ -106,9 +106,9 @@ workflow Mutect2_Multi_Concordance {
 
           java -jar $GATK_JAR Concordance ${"-L " + intervals} \
             -truth ${truth_vcf} -eval ${eval_vcf} \
-            -tpfn "true_positives_and_false_negatives.vcf" \
-            -tpfp "true_positives_and_false_positives.vcf" \
-            -ftnfn "filtered_true_negatives_and_false_negatives.vcf" \
+            -tpfn "tpfn.vcf" \
+            -tpfp "tpfp.vcf" \
+            -ftnfn "ftnfn.vcf" \
             -summary summary.tsv
       }
 
@@ -120,12 +120,12 @@ workflow Mutect2_Multi_Concordance {
         }
 
       output {
-            File tpfn = "true_positives_and_false_negatives.vcf"
-            File tpfn_idx = "true_positives_and_false_negatives.vcf.idx"
-            File tpfp = "true_positives_and_false_positives.vcf"
-            File tpfp_idx = "true_positives_and_false_positives.vcf.idx"
-            File ftnfn = "filtered_true_negatives_and_false_negatives.vcf"
-            File ftnfn_idx = "filtered_true_negatives_and_false_negatives.vcf.idx"
+            File tpfn = "tpfn.vcf"
+            File tpfn_idx = "tpfn.vcf.idx"
+            File tpfp = "tpfp.vcf"
+            File tpfp_idx = "tpfp.vcf.idx"
+            File ftnfn = "ftnfn.vcf"
+            File ftnfn_idx = "ftnfn.vcf.idx"
             File summary = "summary.tsv"
       }
 }

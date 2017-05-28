@@ -34,7 +34,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public int numAltAllelesThreshold = 1;
 
     @Argument(fullName = "maxMedianMappingQualityDifference", optional = true, doc="filter variants for which alt reads' median mapping quality is much lower than ref reads' median mapping quality.")
-    public int maxMedianMappingQualityDifference = 15;
+    public int maxMedianMappingQualityDifference = 30;
 
     @Argument(fullName = "maxMedianBaseQualityDifference", optional = true, doc="filter variants for which alt reads' median base quality is much lower than ref reads' median base quality.")
     public int maxMedianBaseQualityDifference = 10;
