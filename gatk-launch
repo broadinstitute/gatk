@@ -15,6 +15,8 @@
 #     -Otherwise uses the newest Spark jar in the same directory as the script or the BIN_PATH
 #      (in that order of precedence)
 #
+#
+#
 
 import sys
 from subprocess import check_call, CalledProcessError, call
@@ -94,17 +96,20 @@ def main(args):
             print("")
             print("   --sparkRunner <target>    controls how spark tools are run")
             print("     valid targets are:")
-            print("     LOCAL:   run using the in-memory spark runner")
-            print("     SPARK:   run using spark-submit on an existing cluster ")
-            print("              --sparkMaster must be specified")
-            print("              --sparkSubmitCommand may be specified to control the Spark submit command")
-            print("              arguments to spark-submit may optionally be specified after -- ")
-            print("     GCS:     run using Google cloud dataproc")
-            print("              commands after the -- will be passed to dataproc")
-            print("              --cluster <your-cluster> must be specified after the --")
-            print("              spark properties and some common spark-submit parameters will be translated to dataproc equivalents")
+            print("     LOCAL:      run using the in-memory spark runner")
+            print("     SPARK:      run using spark-submit on an existing cluster ")
+            print("                 --sparkMaster must be specified")
+            print("                 --sparkSubmitCommand may be specified to control the Spark submit command")
+            print("                 arguments to spark-submit may optionally be specified after -- ")
+            print("     GCS:        run using Google cloud dataproc")
+            print("                 commands after the -- will be passed to dataproc")
+            print("                 --cluster <your-cluster> must be specified after the --")
+            print("                 spark properties and some common spark-submit parameters will be translated ")
+            print("                 to dataproc equivalents")
             print("")
-            print("   --dryRun    may be specified to output the generated command line without running it")
+            print("   --dryRun      may be specified to output the generated command line without running it")
+            print("   --javaOptions 'OPTION1=X[, OPTION2=Y ... ]'   optional - pass the given string of options to the ")
+            print("                 java JVM at runtime (for local runs only)")
             sys.exit(0)
 
         if len(args) is 1 and args[0] == "--list":
@@ -114,6 +119,12 @@ def main(args):
         if dryRun:
             dryRun = True
             args.remove("--dryRun")
+
+        javaOptions = getValueForArgument(args, "--javaOptions")
+        if javaOptions is not None:
+            i = args.index("--javaOptions")
+            del args[i] #remove javaOptions
+            del args[i] #and its parameter
 
         sparkRunner = getValueForArgument(args, "--sparkRunner")
         if sparkRunner is not None:
@@ -136,7 +147,8 @@ def main(args):
             del sparkArgs[i] #and its parameter
             gatkArgs += ["--sparkMaster", sparkMaster]
 
-        runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs)
+        runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs, javaOptions)
+
     except GATKLaunchException as e:
         sys.stderr.write(str(e)+"\n")
         sys.exit(3)
@@ -153,20 +165,39 @@ def getSparkSubmitCommand(sparkSubmitCommand):
     else:
         return sparkSubmitCommand
 
-def getLocalGatkRunCommand():
+def getLocalGatkRunCommand(javaOptions):
     localJarFromEnv = getJarFromEnv(GATK_LOCAL_JAR_ENV_VARIABLE)
     if localJarFromEnv is not None:
+
+        # Add java options to our packaged local jar options
+        if javaOptions is not None:
+            PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split(' '))
+
         return formatLocalJarCommand(localJarFromEnv)
 
     wrapperScript = getGatkWrapperScript(throwIfNotFound=False)
     if wrapperScript is not None:
+
+        # Add options to JAVA_OPTS environment var for dispatch script
+        if javaOptions is not None:
+            envJavaOpts = os.environ.get('JAVA_OPTS')
+            if envJavaOpts is not None:
+                envJavaOpts + ' ' + javaOptions
+            else:
+                envJavaOpts = javaOptions
+            os.environ['JAVA_OPTS'] = envJavaOpts
+
         return [wrapperScript]
+
+    # Add java options to our packaged local jar options
+    if javaOptions is not None:
+        PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split(' '))
 
     return formatLocalJarCommand(getLocalJar())  # will throw if local jar not found
 
 
 def formatLocalJarCommand(localJar):
-    return ["java"] + PACKAGED_LOCAL_JAR_OPTIONS  + [ "-jar", localJar]
+    return ["java"] + PACKAGED_LOCAL_JAR_OPTIONS + [ "-jar", localJar]
 
 def getGatkWrapperScript(throwIfNotFound=True):
     if not os.path.exists(GATK_RUN_SCRIPT):
@@ -276,9 +307,9 @@ def cacheJarOnGCS(jar, dryRun):
             return jar
 
 
-def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs):
+def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs, javaOptions):
     if sparkRunner is None or sparkRunner == "LOCAL":
-        cmd = getLocalGatkRunCommand() + gatkArgs + sparkArgs
+        cmd = getLocalGatkRunCommand(javaOptions) + gatkArgs + sparkArgs
         runCommand(cmd, dryrun)
     elif sparkRunner == "SPARK":
         sparkSubmitCmd = getSparkSubmitCommand(suppliedSparkSubmitCommand)
@@ -311,7 +342,14 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
 
 def runCommand(cmd, dryrun):
     if dryrun:
-        print( "\nDry run:\n")
+        print("\nDry run:\n")
+
+        # Display environment variables for dry run
+        if len(os.environ) != 0:
+            print("    Env:\n")
+            print( '\n'.join(['        %s = %s' % (v, os.environ[v]) for v in os.environ]) )
+
+        print("    Cmd:\n")
         print(("    " + " ".join(cmd)+"\n"))
     else:
         sys.stderr.write( "\nRunning:\n")
