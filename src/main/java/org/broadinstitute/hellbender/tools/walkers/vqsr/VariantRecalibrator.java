@@ -46,61 +46,58 @@ import java.util.*;
 /**
  * Build a recalibration model to score variant quality for filtering purposes
  *
- * <p>
- * Note: this tool only accepts a single input variant file (unlike GATK3, which accepted multiple
- * input variant files).
- * </p>
+ * <p>This tool performs the first pass in a two-stage process called Variant Quality Score Recalibration (VQSR).
+ * Specifically, it builds the model that will be used in the second step to actually filter variants. This model
+ * attempts to describe the relationship between variant annotations (such as QD, MQ and ReadPosRankSum, for example)
+ * and the probability that a variant is a true genetic variant versus a sequencing or data processing artifact. It is
+ * developed adaptively based on "true sites" provided as input, typically HapMap sites and those sites found to be
+ * polymorphic on the Omni 2.5M SNP chip array (in humans). This adaptive error model can then be applied to both known
+ * and novel variation discovered in the call set of interest to evaluate the probability that each call is real. The
+ * result is a score called the VQSLOD that gets added to the INFO field of each variant. This score is the log odds of
+ * being a true variant versus being false under the trained Gaussian mixture model. </p>
  *
- * <p>
- * The purpose of variant recalibration is to assign a well-calibrated probability to each variant call in a call set.
- * You can then create highly accurate call sets by filtering based on this single estimate for the accuracy of each call.
- * The approach taken by variant quality score recalibration is to develop a continuous, covarying estimate of the relationship
- * between SNP call annotations (such as QD, MQ, and ReadPosRankSum, for example) and the probability that a SNP is a true genetic
- * variant versus a sequencing or data processing artifact. This model is determined adaptively based on "true sites" provided
- * as input, typically HapMap 3 sites and those sites found to be polymorphic on the Omni 2.5M SNP chip array (in humans). This
- * adaptive error model can then be applied to both known and novel variation discovered in the call set of interest to evaluate
- * the probability that each call is real. The score that gets added to the INFO field of each variant is called the VQSLOD. It is
- * the log odds of being a true variant versus being false under the trained Gaussian mixture model.
- * </p>
- *
- * <p>
- * This tool performs the first pass in a two-stage process called VQSR; the second pass is performed by the
- * <a href='https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_variantrecalibration_ApplyRecalibration.php'>ApplyRecalibration</a> tool.
- * In brief, the first pass consists of creating a Gaussian mixture model by looking at the distribution of annotation
- * values over a high quality subset of the input call set, and then scoring all input variants according to the model.
- * The second pass consists of filtering variants based on score cutoffs identified in the first pass.
- *</p>
+ * <h4>Summary of the VQSR procedure</h4>
+ * <p>The purpose of variant recalibration is to assign a well-calibrated probability to each variant call in a call set.
+ * These probabilities can then be used to filter the variants with a greater level of accuracy and flexibility than
+ * can typically be achieved by traditional hard-filter (filtering on individual annotation value thresholds). The first
+ * pass consists of building a model that describes how variant annotation values co-vary with the truthfulness of
+ * variant calls in a training set, and then scoring all input variants according to the model. The second pass simply
+ * consists of specifying a target sensitivity value (which corresponds to an empirical VQSLOD cutoff) and applying
+ * filters to each variant call according to their ranking. The result is a VCF file in which variants have been
+ * assigned a score and filter status.</p>
  *
  * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
  * <a href='https://www.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
  * <a href='https://www.broadinstitute.org/gatk/guide/article?id=1259'>parameter recommendations</a> and
  * <a href='https://www.broadinstitute.org/gatk/guide/article?id=2805'>tutorial</a> to really understand what these
- * tools and how to use them for best results on your own data.</p>
+ * tools do and how to use them for best results on your own data.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
- * <li>The input raw variants to be recalibrated. These variant calls must be annotated with the annotations that will be
+ *      <li>The input variants to be recalibrated. These variant calls must be annotated with the annotations that will be
  * used for modeling. If the calls come from multiple samples, they must have been obtained by joint calling the samples,
  * either directly (running HaplotypeCaller on all samples together) or via the GVCF workflow (HaplotypeCaller with -ERC
  * GVCF per-sample then GenotypeGVCFs on the resulting gVCFs) which is more scalable.</li>
- * <li>Known, truth, and training sets to be used by the algorithm. See the method documentation for more details.</li>
+ *      <li>Known, truth, and training sets to be used by the algorithm. See the method documentation linked above for
+ * more details.</li>
  * </ul>
  *
- * <h3>Output</h3>
+ * <h3>Outputs</h3>
  * <ul>
- * <li>A recalibration table file that will be used by the ApplyRecalibration tool.</li>
- * <li>A tranches file which shows various metrics of the recalibration callset for slices of the data.</li>
+ * <li>A recalibration table file that will be used by the ApplyVQSR tool.</li>
+ * <li>A tranches file that shows various metrics of the recalibration callset for slices of the data.</li>
  * </ul>
  *
  * <h3>Usage example</h3>
- * <p>Recalibrating SNPs in exome data:</p>
+ *
+ * <h4>Recalibrating SNPs in exome data</h4>
  * <pre>
- * ./gatk-launch JAVA_OPTS=-Xmx4g \
- *   VariantRecalibrator \
- *   --variant raw_variants.vcf \
+ * ./gatk-launch VariantRecalibrator \
+ *   -R reference.fasta \
+ *   -V input.vcf \
  *   --resource hapmap,known=false,training=true,truth=true,prior=15.0 hapmap_3.3.b37.sites.vcf \
  *   --resource omni,known=false,training=true,truth=false,prior=12.0 1000G_omni2.5.b37.sites.vcf \
- *   --resource 1000G,known=false,training=true,truth=false,prior=10.0 1000G_phase1.snps.high_confidence.vcf
+ *   --resource 1000G,known=false,training=true,truth=false,prior=10.0 1000G_phase1.snps.high_confidence.vcf \
  *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0 dbsnp_135.b37.vcf \
  *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR -an InbreedingCoeff \
  *   -mode SNP \
@@ -109,43 +106,51 @@ import java.util.*;
  *   --rscriptFile output.plots.R
  * </pre>
  *
- * <h3>Allele-specfic usage</h3>
+ * <h4>Allele-specific version of the SNP recalibration (beta)</h4>
  * <pre>
- * ./gatk-launch JAVA_OPTS=-Xmx4g \
- *   VariantRecalibrator \
- *   --variant raw_variants.withASannotations.vcf \
+ * ./gatk-launch VariantRecalibrator \
+ *   -R reference.fasta \
+ *   -V input.vcf \
  *   -AS \
  *   --resource hapmap,known=false,training=true,truth=true,prior=15.0:hapmap_3.3.b37.sites.vcf \
  *   --resource omni,known=false,training=true,truth=false,prior=12.0:1000G_omni2.5.b37.sites.vcf \
- *   --resource 1000G,known=false,training=true,truth=false,prior=10.0:1000G_phase1.snps.high_confidence.vcf
+ *   --resource 1000G,known=false,training=true,truth=false,prior=10.0:1000G_phase1.snps.high_confidence.vcf \
  *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0 dbsnp_135.b37.vcf \
  *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR -an InbreedingCoeff \
  *   -mode SNP \
  *   --recalFile output.AS.recal \
- *   -tranchesFile output.AS.tranches \
+ *   --tranchesFile output.AS.tranches \
  *   --rscriptFile output.plots.AS.R
  * </pre>
- * The input VCF must have been produced using allele-specific annotations in HaplotypeCaller.
- * Note that each allele will have a separate line in the output .recal file with its own VQSLOD and culprit that will be
- * transferred to the final VCF in ApplyRecalibration.
+ * <p>Note that to use the allele-specific (AS) mode, the input VCF must have been produced using allele-specific
+ * annotations in HaplotypeCaller. Note also that each allele will have a separate line in the output recalibration
+ * file with its own VQSLOD and `culprit`, which will be transferred to the final VCF by the ApplyRecalibration tool.
  *
  * <h3>Caveats</h3>
  *
  * <ul>
- * <li>SNPs and indels must be recalibrated in separate runs (but it is not necessary to separate them into different
- * files). Mixed records are treated as indels.</li>
  * <li>The values used in the example above are only meant to show how the command lines are composed.
  * They are not meant to be taken as specific recommendations of values to use in your own work, and they may be
  * different from the values cited elsewhere in our documentation. For the latest and greatest recommendations on
- * how to set parameter values for you own analyses, please read the Best Practices section of the documentation,
+ * how to set parameter values for your own analyses, please read the Best Practices section of the documentation,
  * especially the <a href='https://www.broadinstitute.org/gatk/guide/article?id=1259'>FAQ document</a> on VQSR parameters.</li>
  * <li>Whole genomes and exomes take slightly different parameters, so make sure you adapt your commands accordingly! See
  * the documents linked above for details.</li>
  * <li>If you work with small datasets (e.g. targeted capture experiments or small number of exomes), you will run into
  * problems. Read the docs linked above for advice on how to deal with those issues.</li>
- * <li>In order to create the model reporting plots Rscript needs to be in your environment PATH (this is the scripting
- * version of R, not the interactive version). See <a target="r-project" href="http://www.r-project.org">http://www.r-project.org</a>
- * for more info on how to download and install R.</li>
+ * <li>In order to create the model reporting plots, the Rscript executable needs to be in your environment PATH
+ * (this is the scripting version of R, not the interactive version).
+ * See <a target="r-project" href="http://www.r-project.org">http://www.r-project.org</a> for more information on how
+ * to download and install R.</li>
+ * </ul>
+ *
+ * <h3>Additional notes</h3>
+ * <ul>
+ *     <li>This tool only accepts a single input variant file unlike earlier version of GATK, which accepted multiple
+ *     input variant files.</li>
+ *     <li>SNPs and indels must be recalibrated in separate runs, but it is not necessary to separate them into different
+ * files. See the tutorial linked above for an example workflow. Note that mixed records are treated as indels.</li>
+ *     <li></li>
  * </ul>
  *
  */
