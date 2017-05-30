@@ -58,6 +58,36 @@ public final class PSBuildReferenceTaxonomyUtils {
     }
 
     /**
+     * Helper classes for defining RefSeq and GenBank catalog formats. Columns should be given as 0-based indices.
+     */
+    private interface AccessionCatalogFormat {
+        int getTaxIdColumn();
+        int getAccessionColumn();
+    }
+
+    private static final class RefSeqCatalogFormat implements AccessionCatalogFormat {
+        private static final int TAX_ID_COLUMN = 0;
+        private static final int ACCESSION_COLUMN = 2;
+        public int getTaxIdColumn() {
+            return TAX_ID_COLUMN;
+        }
+        public int getAccessionColumn() {
+            return ACCESSION_COLUMN;
+        }
+    }
+
+    private static final class GenBankCatalogFormat implements AccessionCatalogFormat {
+        private static final int TAX_ID_COLUMN = 6;
+        private static final int ACCESSION_COLUMN = 1;
+        public int getTaxIdColumn() {
+            return TAX_ID_COLUMN;
+        }
+        public int getAccessionColumn() {
+            return ACCESSION_COLUMN;
+        }
+    }
+
+    /**
      * Builds maps of reference contig accessions to their taxonomic ids and vice versa.
      * Input can be a RefSeq or Genbank catalog file. accNotFound is an initial list of
      * accessions from the reference that have not been successfully looked up; if null,
@@ -68,19 +98,21 @@ public final class PSBuildReferenceTaxonomyUtils {
     protected static Set<String> parseCatalog(final BufferedReader reader,
                                               final Map<String, Tuple2<String, Long>> accessionToNameAndLength,
                                               final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties,
-                                              final boolean bGenBank, Set<String> accessionsNotFound) {
+                                              final boolean bGenBank,
+                                              final Set<String> accessionsNotFoundIn) {
+
+        final Set<String> accessionsNotFoundOut;
         try {
             String line;
-            final int taxIdColumnIndex, accessionColumnIndex;
-            if (bGenBank) {
-                taxIdColumnIndex = 6;
-                accessionColumnIndex = 1;
+            final AccessionCatalogFormat catalogFormat = bGenBank ? new GenBankCatalogFormat() : new RefSeqCatalogFormat();
+            final int taxIdColumnIndex = catalogFormat.getTaxIdColumn();
+            final int accessionColumnIndex = catalogFormat.getAccessionColumn();
+            if (accessionsNotFoundIn == null) {
+                //If accessionsNotFoundIn is null, this is the first call to parseCatalog, so initialize the set to all accessions
+                accessionsNotFoundOut = new HashSet<>(accessionToNameAndLength.keySet());
             } else {
-                taxIdColumnIndex = 0;
-                accessionColumnIndex = 2;
-            }
-            if (accessionsNotFound == null) {
-                accessionsNotFound = new HashSet<>(accessionToNameAndLength.keySet());
+                //Otherwise this is a subsequent call and we continue to look for any remaining accessions
+                accessionsNotFoundOut = new HashSet<>(accessionsNotFoundIn);
             }
             final int minColumns = Math.max(taxIdColumnIndex, accessionColumnIndex) + 1;
             long lineNumber = 1;
@@ -92,7 +124,7 @@ public final class PSBuildReferenceTaxonomyUtils {
                     if (accessionToNameAndLength.containsKey(accession)) {
                         final Tuple2<String, Long> nameAndLength = accessionToNameAndLength.get(accession);
                         updateAccessionTaxonProperties(taxId, nameAndLength._1, nameAndLength._2, taxIdToProperties);
-                        accessionsNotFound.remove(accession);
+                        accessionsNotFoundOut.remove(accession);
                     }
                 } else {
                     throw new UserException.BadInput("Expected at least " + minColumns + " tab-delimited columns in " +
@@ -103,16 +135,18 @@ public final class PSBuildReferenceTaxonomyUtils {
         } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile("Error reading from catalog file", e);
         }
-        return accessionsNotFound;
+        return accessionsNotFoundOut;
     }
 
     /**
-     * Parses scientific name of each taxon
+     * Parses scientific name of each taxon and puts it in taxIdToProperties
      */
     protected static void parseNamesFile(final BufferedReader reader, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
         try {
             String line;
             while ((line = reader.readLine()) != null) {
+                //Split into columns delimited by <TAB>|<TAB>. Note the "\\|" is required to match "|" otherwise Java
+                // thinks it's an escape character and throws and error
                 final String[] tokens = line.split("\t\\|\t");
                 if (tokens.length != 4) {
                     throw new UserException.BadInput("Expected 4 columns in tax dump names file but found " + tokens.length);
@@ -204,7 +238,7 @@ public final class PSBuildReferenceTaxonomyUtils {
 
         //Build tree of all taxa
         final PSTree tree = new PSTree(ROOT_ID);
-        final Collection<String> invalidIds = new ArrayList<>();
+        final Collection<String> invalidIds = new HashSet<>(taxIdToProperties.size());
         for (final String taxId : taxIdToProperties.keySet()) {
             if (!taxId.equals(ROOT_ID)) {
                 final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
@@ -282,20 +316,6 @@ public final class PSBuildReferenceTaxonomyUtils {
             return new BufferedReader(new InputStreamReader(result));
         } catch (final IOException e) {
             throw new UserException.BadInput("Could not open compressed tarball file " + fileName + " in " + tarPath, e);
-        }
-    }
-
-    /**
-     * Wrapper for closing a reader
-     * @param reader The reader to close
-     */
-    public static void closeReader(final Reader reader) {
-        try {
-            if (reader != null) {
-                reader.close();
-            }
-        } catch (final IOException e) {
-            throw new RuntimeException("Could not close file reader", e);
         }
     }
 

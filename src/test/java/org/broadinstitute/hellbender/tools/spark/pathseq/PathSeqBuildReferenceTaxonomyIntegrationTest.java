@@ -50,12 +50,12 @@ public class PathSeqBuildReferenceTaxonomyIntegrationTest extends CommandLinePro
             final Kryo kryo = new Kryo();
             kryo.setReferences(false);
             Input input = new Input(new FileInputStream(expectedFile));
-            final PSTaxonomyDatabase db_expected = kryo.readObject(input, PSTaxonomyDatabase.class);
+            final PSTaxonomyDatabase dbExpected = kryo.readObject(input, PSTaxonomyDatabase.class);
 
             input = new Input(new FileInputStream(outputFile));
-            final PSTaxonomyDatabase db_actual = kryo.readObject(input, PSTaxonomyDatabase.class);
-            Assert.assertEquals(db_actual.tree, db_expected.tree);
-            Assert.assertEquals(db_actual.accessionToTaxId, db_expected.accessionToTaxId);
+            final PSTaxonomyDatabase dbTest = kryo.readObject(input, PSTaxonomyDatabase.class);
+            Assert.assertEquals(dbTest.tree, dbExpected.tree);
+            Assert.assertEquals(dbTest.accessionToTaxId, dbExpected.accessionToTaxId);
         } catch (FileNotFoundException e) {
             throw new IOException("Error with Kryo IO", e);
         }

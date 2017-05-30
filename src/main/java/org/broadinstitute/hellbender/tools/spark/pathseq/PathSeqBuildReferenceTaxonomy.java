@@ -2,14 +2,20 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import scala.Tuple2;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -24,8 +30,10 @@ import java.util.*;
 @CommandLineProgramProperties(summary = "Builds PathSeq taxonomy database for a given pathogen reference",
         oneLineSummary = "PathSeq taxonomy database builder",
         programGroup = ReadProgramGroup.class)
-public class PathSeqBuildReferenceTaxonomy extends GATKTool {
+public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
 
+    @ArgumentCollection
+    protected final ReferenceInputArgumentCollection referenceArguments = new RequiredReferenceInputArgumentCollection();
     @Argument(doc = "Local path for the output file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
@@ -33,7 +41,7 @@ public class PathSeqBuildReferenceTaxonomy extends GATKTool {
     @Argument(doc = "Local path to catalog file " +
             "(RefSeq-releaseXX.catalog.gz available at ftp://ftp.ncbi.nlm.nih.gov/refseq/release/release-catalog/)",
             fullName = "refseqCatalogPath",
-        optional = true)
+            optional = true)
     public String refseqCatalogPath = null;
     @Argument(doc = "Local path to Genbank catalog file " +
             "(gbXXX.catalog.XXX.txt.gz at ftp://ftp.ncbi.nlm.nih.gov/genbank/catalog/)",
@@ -45,23 +53,18 @@ public class PathSeqBuildReferenceTaxonomy extends GATKTool {
     public String taxdumpPath;
 
     @Override
-    public boolean requiresReference() {
-        return true;
-    }
-
-    @Override
-    public void onStartup() {
-        super.onStartup();
+    public Object doWork() {
 
         if (refseqCatalogPath == null && genbankCatalogPath == null) {
             throw new UserException.BadInput("At least one of --refseqCatalogPath or --genbankCatalogPath must be specified");
         }
 
         logger.info("Parsing reference and files... (this may take a several minutes)");
-        if (getReferenceDictionary() == null) {
+        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());
+        if (reference.getSequenceDictionary() == null) {
             throw new UserException.BadInput("Reference sequence dictionary not found. Please build one using CreateSequenceDictionary.");
         }
-        final List<SAMSequenceRecord> referenceRecords = getReferenceDictionary().getSequences();
+        final List<SAMSequenceRecord> referenceRecords = reference.getSequenceDictionary().getSequences();
 
         //Parse reference index, filling in data to taxIdToProperties and accessionToNameAndLength where possible
         final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
@@ -70,31 +73,39 @@ public class PathSeqBuildReferenceTaxonomy extends GATKTool {
         //Parse RefSeq catalog to determine taxonomic ID's of accession keys in accessionToNameAndLength
         Set<String> accessionsNotFound = null;
         if (refseqCatalogPath != null) {
-            final BufferedReader refseqCatalogStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderGz(refseqCatalogPath);
-            accessionsNotFound = PSBuildReferenceTaxonomyUtils.parseCatalog(refseqCatalogStreamReader, accessionToNameAndLength, taxIdToProperties, false, null);
-            PSBuildReferenceTaxonomyUtils.closeReader(refseqCatalogStreamReader);
+            try (final BufferedReader refseqCatalogStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderGz(refseqCatalogPath)) {
+                accessionsNotFound = PSBuildReferenceTaxonomyUtils.parseCatalog(refseqCatalogStreamReader, accessionToNameAndLength, taxIdToProperties, false, null);
+            } catch (IOException e) {
+                throw new GATKException("Error reading RefSeq catalog", e);
+            }
         }
 
         //Parse Genbank catalog
         if (genbankCatalogPath != null) {
-            final BufferedReader genbankCatalogStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderGz(genbankCatalogPath);
-            accessionsNotFound = PSBuildReferenceTaxonomyUtils.parseCatalog(genbankCatalogStreamReader, accessionToNameAndLength, taxIdToProperties, true, accessionsNotFound);
-            PSBuildReferenceTaxonomyUtils.closeReader(genbankCatalogStreamReader);
+            try (final BufferedReader genbankCatalogStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderGz(genbankCatalogPath)) {
+                accessionsNotFound = PSBuildReferenceTaxonomyUtils.parseCatalog(genbankCatalogStreamReader, accessionToNameAndLength, taxIdToProperties, true, accessionsNotFound);
+            } catch (IOException e) {
+                throw new GATKException("Error reading GenBank catalog", e);
+            }
         }
         if (accessionsNotFound != null && !accessionsNotFound.isEmpty()) {
             PSUtils.logItemizedWarning(logger, accessionsNotFound, "Did not find entries in the catalog for the following reference accessions");
         }
 
         //Get the scientific name of every taxonomic node (even the ones not in the reference)
-        final BufferedReader namesStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderTarGz(taxdumpPath, "names.dmp");
-        PSBuildReferenceTaxonomyUtils.parseNamesFile(namesStreamReader, taxIdToProperties);
-        PSBuildReferenceTaxonomyUtils.closeReader(namesStreamReader);
+        try (final BufferedReader namesStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderTarGz(taxdumpPath, "names.dmp")) {
+            PSBuildReferenceTaxonomyUtils.parseNamesFile(namesStreamReader, taxIdToProperties);
+        } catch (IOException e) {
+            throw new GATKException("Error reading taxdump names files", e);
+        }
 
         //Gets the taxonomic rank (e.g. family, order, genus, species, etc.) and parent of each node
-        final BufferedReader nodesStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderTarGz(taxdumpPath, "nodes.dmp");
-        final Collection<String> taxNotFound = PSBuildReferenceTaxonomyUtils.parseNodesFile(nodesStreamReader, taxIdToProperties);
-        PSUtils.logItemizedWarning(logger, taxNotFound, "Did not find entry from reference sequence names or the names file for following some tax ID's. Setting name to tax_<tax ID>");
-        PSBuildReferenceTaxonomyUtils.closeReader(nodesStreamReader);
+        try (final BufferedReader nodesStreamReader = PSBuildReferenceTaxonomyUtils.getBufferedReaderTarGz(taxdumpPath, "nodes.dmp")) {
+            final Collection<String> taxNotFound = PSBuildReferenceTaxonomyUtils.parseNodesFile(nodesStreamReader, taxIdToProperties);
+            PSUtils.logItemizedWarning(logger, taxNotFound, "Did not find entry from reference sequence names or the names file for following some tax ID's. Setting name to tax_<tax ID>");
+        } catch (IOException e) {
+            throw new GATKException("Error reading taxdump names files", e);
+        }
 
         //Build the taxonomic tree and a map from accession ID's to taxonomic ID's
         logger.info("Building taxonomic database...");
@@ -103,9 +114,8 @@ public class PathSeqBuildReferenceTaxonomy extends GATKTool {
 
         //Write output
         PSBuildReferenceTaxonomyUtils.writeTaxonomyDatabase(outputPath, new PSTaxonomyDatabase(tree, accessionToTaxId));
-    }
 
-    @Override
-    public void traverse() {}
+        return null;
+    }
 
 }

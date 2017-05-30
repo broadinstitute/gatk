@@ -306,9 +306,5 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
         } catch (IOException e) {
             throw new TestException(e);
         }
-        PSBuildReferenceTaxonomyUtils.closeReader(r);
-
-        //Close null reader should do nothing
-        PSBuildReferenceTaxonomyUtils.closeReader(null);
     }
 }
