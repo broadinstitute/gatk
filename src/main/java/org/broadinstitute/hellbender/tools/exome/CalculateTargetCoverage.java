@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -31,15 +32,45 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Calculate read-counts across targets given their reference coordinates.
+ * Calculates read-counts across targets for the exome copy number variant (CNV) calling workflow.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>
+ *     The command encompasses empirically determined parameters for TCGA project data.
+ *     You may obtain better results with different parameters.
+ * </p>
+ *
+ * <p>For whole exome sequencing (WES) data: </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CalculateTargetCoverage \
+ *   --input sample.bam \
+ *   --targets padded_targets.tsv \
+ *   --groupBy SAMPLE \
+ *   --transform PCOV \
+ *   --targetInformationColumns FULL \
+ *   --disableReadFilter NotDuplicateReadFilter \
+ *   --output sample.coverage.tsv
+ * </pre>
+ *
+ * <p>
+ *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
+ *     Target intervals do NOT overlap. Use the {@link PadTargets} tool to generate non-overlapping padded intervals from exome targets.
+ *     Do NOT use BED format. See {@link ConvertBedToTargetFile}.
+ * </p>
+ *
+ * <p>For whole genome sequencing (WGS) data, use {@link SparkGenomeReadCounts} instead.</p>
+ *
  */
 @CommandLineProgramProperties(
         summary = "Count overlapping reads target by target",
         oneLineSummary = "Count overlapping reads target by target",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class CalculateTargetCoverage extends ReadWalker {
 
     public static final String DEFAULT_COHORT_NAME = "<ALL>";
@@ -109,8 +140,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
     protected GroupBy groupBy = GroupBy.COHORT;
 
     @Argument(
-            doc = "Cohort name used to name the read count column when the groupBy " +
-                    "argument is set to COHORT (default)",
+            doc = "Cohort name used to name the read count column when the groupBy argument is set to COHORT",
             shortName = COHORT_SHORT_NAME,
             fullName = COHORT_FULL_NAME,
             optional = true)
@@ -126,7 +156,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
     protected Transform transform = Transform.RAW;
 
     @Argument(
-            doc = "File containing the targets for analysis",
+            doc = "TSV file listing 1-based genomic intervals with specific column headers. Do NOT use BED format.",
             shortName = TARGET_FILE_SHORT_NAME,
             fullName = TARGET_FILE_FULL_NAME,
             optional = true
@@ -660,7 +690,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
     protected enum Transform {
 
         /**
-         * Default read-count raw value (non-)transformation.
+         * Raw integer read-count (non-)transformation.
          */
         RAW((count, columnTotal) -> Integer.toString(count)),
 
