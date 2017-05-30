@@ -44,20 +44,19 @@ import java.util.stream.DoubleStream;
  * <h3>Examples</h3>
  *
  * <p>
- *     The following command is for either whole exome sequencing (WES) or whole genome sequencing (WGS) data.
+ *     The following command is for either whole exome sequencing (WES) or whole genome sequencing (WGS) data and uses Spark.
  * </p>
  *
  * <pre>
  * java -Xmx4g -jar $gatk_jar CreatePanelOfNormals \
- *   --input corrected_coverages.tsv \
- *   --disableSpark \
+ *   --input gc_corrected_coverages.tsv \
  *   --output panel_of_normals.pon
  * </pre>
  *
  * <p>
  * In addition to the resulting PoN, this command produces a .pon.removed_samples.txt file of samples removed for quality control (QC)
  * and a .pon.target_weights.txt file that gives the inverse variance per target that can optionally be passed to PerformSegmentation.
- * Enable Spark processing by omitting the --disableSpark option from the command.
+ * To disable Spark processing, add the --disableSpark option to the command.
  * </p>
  *
  */
