@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Joins an RDD of GATKReads to variant data using a broadcast strategy.
@@ -21,13 +22,13 @@ import java.util.Collections;
 public final class BroadcastJoinReadsWithVariants {
     private BroadcastJoinReadsWithVariants(){}
 
-    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(final JavaRDD<GATKRead> reads, final JavaRDD<GATKVariant> variants ) {
+    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(final JavaRDD<GATKRead> reads, final JavaRDD<GATKVariant> variants, final List<String> variantsPaths ) {
         final JavaSparkContext ctx = new JavaSparkContext(reads.context());
-        final IntervalsSkipList<GATKVariant> variantSkipList = new IntervalsSkipList<>(variants.collect());
-        final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(variantSkipList);
+        final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = variantsPaths == null ? ctx.broadcast(new IntervalsSkipList<>(variants.collect())) : null;
 
         return reads.mapToPair(r -> {
-            final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsBroadcast.getValue();
+            final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsPaths == null ? variantsBroadcast.getValue() :
+                    KnownSitesCache.getVariants(variantsPaths);
             if (SimpleInterval.isValid(r.getContig(), r.getStart(), r.getEnd())) {
                 return new Tuple2<>(r, intervalsSkipList.getOverlapping(new SimpleInterval(r)));
             } else {
