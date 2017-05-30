@@ -18,7 +18,7 @@ import java.util.List;
  * Groups contiguous targets with the same minor allele fraction for a single sample.
  *
  *  <p>
- *     The --tumorHets file is from {@link org.broadinstitute.hellbender.tools.exome.GetHetCoverage}.
+ *     The --tumorHets file is from {@link GetBayesianHetCoverage}, preferably, but can also come from {@link org.broadinstitute.hellbender.tools.exome.GetHetCoverage}.
  *      For example,
  * </p>
  *
@@ -35,7 +35,7 @@ import java.util.List;
  */
 @CommandLineProgramProperties(
         summary = "Segment genomic data into regions of constant minor allele fraction.  Only supports one sample input.",
-        oneLineSummary = "Segment genomic data into regions of constant minor allele fraction",
+        oneLineSummary = "(Experimental) Segment genomic data into regions of constant minor allele fraction",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class PerformAlleleFractionSegmentation extends CommandLineProgram {
