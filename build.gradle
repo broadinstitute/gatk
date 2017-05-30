@@ -319,7 +319,7 @@ task gatkDoc(type: Javadoc, dependsOn: ['cleanGatkDoc', classes]) {
                     files { file(gatkArgCollections).listFiles() } +
                     files { file(gatkPlugins).listFiles() } +
                     files { file(gatkFilters).listFiles() }
-    source = sourceSets.main.allJava + gatkClassFiles
+    source = gatkClassFiles + sourceSets.main.allJava
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
     // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
