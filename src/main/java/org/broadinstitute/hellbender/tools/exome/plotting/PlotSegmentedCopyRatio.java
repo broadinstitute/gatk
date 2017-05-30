@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 /**
  * Plots segmented coverage results.
  *
- * <p>The order of plotting follows the contig ordering within the required reference sequence dictionary. </p>
+ * <p>The order and representation of contigs in plots follows the contig ordering within the required reference sequence dictionary. </p>
  *
  * <h3>Examples</h3>
  *
@@ -86,9 +86,11 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
     @Argument(
             doc = "File containing the reference sequence dictionary (used to determine relative contig lengths). " +
                     "Contigs will be plotted in the order given. " +
-                    "Contig names should not include \"" + CONTIG_DELIMITER + "\"." +
-                    " Only data for contigs represented by the dictionary will be plotted. " +
-                    "Data for contigs absent in the dictionary generate a warning.",
+                    "Contig names should not include the string \"" + CONTIG_DELIMITER + "\". " +
+                    "The tool only considers contigs in the given dictionary for plotting, and " +
+                    "data for contigs absent in the dictionary generate only a warning. In other words, you may " +
+                    "modify a reference dictionary for use with this tool to include only contigs for which plotting is desired, " +
+                    "and sort the contigs to the order in which the plots should display the contigs."
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME,
             optional = false
     )
