@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  *   --segments called_segments.seg \
  *   -SD ref_fasta_dict.dict \
  *   --output output_dir \
- *   --outputPrefix $entity_id
+ *   --outputPrefix basename
  * </pre>
  */
 @CommandLineProgramProperties(
