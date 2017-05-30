@@ -58,11 +58,11 @@ import java.util.stream.IntStream;
  *
  * <p>
  *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
- *     Target intervals do NOT overlap. Use the PadTargets tool to generate non-overlapping padded intervals from exome targets.
+ *     Target intervals do NOT overlap. Use the {@link PadTargets} tool to generate non-overlapping padded intervals from exome targets.
  *     Do NOT use BED format. See {@link ConvertBedToTargetFile}.
  * </p>
  *
- * <p>For whole genome sequencing (WGS) data, use SparkGenomeReadCounts instead.</p>
+ * <p>For whole genome sequencing (WGS) data, use {@link SparkGenomeReadCounts} instead.</p>
  *
  */
 @CommandLineProgramProperties(
