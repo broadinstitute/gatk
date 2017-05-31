@@ -1,0 +1,9 @@
+{
+  "CNVSomaticPanelWorkflow.gatk_jar": "$__gatk_jar__",
+  "CNVSomaticPanelWorkflow.normal_bams_list": "$__normal_bams_list__",
+  "CNVSomaticPanelWorkflow.pon_entity_id": "$__pon_entity_id__",
+  "CNVSomaticPanelWorkflow.ref_fasta_dict": "$__ref_fasta_dict__",
+  "CNVSomaticPanelWorkflow.ref_fasta_fai": "$__ref_fasta_fai__",
+  "CNVSomaticPanelWorkflow.ref_fasta": "$__ref_fasta__",
+  "CNVSomaticPanelWorkflow.targets": "$__targets__"
+}

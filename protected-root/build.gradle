@@ -1,0 +1,386 @@
+//Note: this section 'buildscript` is only for the dependencies of the buildscript itself.
+// See the second 'repositories' section below for the actual dependencies of GATK itself
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+    id "java"  // set up default java compile and test tasks
+    id "application"  // provides installDist
+    id "jacoco"  // record code coverage during test execution
+    id "com.github.johnrengelman.shadow" version "1.2.3"  //used to build the shadow and sparkJars
+    id "com.github.kt3k.coveralls" version "2.6.3"  // report coverage data to coveralls
+    id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
+}
+
+mainClassName = "org.broadinstitute.hellbender.Main"
+
+//Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
+//Note: this is copied verbatim from gatk public
+applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false","-Dsamjdk.use_async_io_write_samtools=true", "-Dsamjdk.use_async_io_write_tribble=false", "-Dsamjdk.compression_level=1"]
+
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.internal.os.OperatingSystem
+import javax.tools.ToolProvider
+
+def isMacOsX = OperatingSystem.current().macOsX
+def customJarPath = hasProperty("custom.jar.dir") ? property("custom.jar.dir") : null;
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://oss.sonatype.org/content/groups/public"
+    }
+    maven {
+        url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
+    }
+    maven {
+        url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
+    }
+
+    if (customJarPath) {
+        flatDir {
+            // Specified by user
+            dirs customJarPath
+        }
+    }
+    mavenLocal()
+}
+
+jacocoTestReport {
+    dependsOn test
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+
+    reports {
+        xml.enabled = true // coveralls plugin depends on xml format report
+        html.enabled = true
+    }
+}
+
+jacoco {
+    toolVersion = "0.7.1.201405082137"
+}
+
+//NOTE: we ignore contracts for now
+compileJava {
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror']
+}
+
+compileTestJava {
+    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror']
+}
+
+build.dependsOn installDist
+check.dependsOn installDist
+
+// NOTE: When changing the GATK version, these versions should be changed to specify the same version as used by GATK
+final gatkVersion = '4.alpha.2-280-gebc0702-SNAPSHOT'
+final htsjdkVersion = '2.9.1'
+final testNGVersion = '6.11'
+
+// Get the jdk files we need to run javadoc. We need to use these during compile, testCompile,
+// test execution, and gatkDoc generation, but we don't want them as part of the runtime
+// classpath and we don't want to redistribute them in the uber jar.
+final javadocJDKFiles = files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
+
+dependencies {
+    compile 'org.broadinstitute:gatk:' + gatkVersion
+    compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
+    compile 'com.github.wendykierp:JTransforms:3.1'
+    compile 'org.nd4j:nd4j-native-platform:0.5.0'
+    compile 'org.nd4j:nd4j-kryo_2.11:0.5.0'
+    compile 'de.javakaffee:kryo-serializers:0.41'
+
+    // javadoc utilities; compile/test only to prevent redistribution of sdk jars
+    compileOnly(javadocJDKFiles)
+    testCompile(javadocJDKFiles)
+
+    testCompile 'org.testng:testng:' + testNGVersion
+}
+
+// These need to be kept in sync with, and should specify the same versions as the version of GATK public we're using
+configurations.all {
+    resolutionStrategy {
+        force 'com.google.http-client:google-http-client:1.21.0'
+        // the snapshot folder contains a dev version of guava, we don't want to use that.
+        force 'com.google.guava:guava:18.0'
+        // force the htsjdk version so we don't get a different one transitively
+        force 'com.github.samtools:htsjdk:' + htsjdkVersion
+        // later versions explode Hadoop
+        force 'com.google.protobuf:protobuf-java:3.0.0-beta-1'
+        // force testng dependency so we don't pick up a different version via GenomicsDB
+        force 'org.testng:testng:' + testNGVersion
+    }
+    all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
+    all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
+}
+
+// Dependency change for including MLLib
+configurations {
+    compile.exclude module: 'jul-to-slf4j'
+    compile.exclude module: 'javax.servlet'
+    compile.exclude module: 'servlet-api'
+    compile.exclude group: 'com.esotericsoftware.kryo'
+
+    sparkConfiguration {
+        extendsFrom runtime
+        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
+        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
+        exclude group: 'org.apache.hadoop'
+        exclude module: 'spark-core_2.11'
+        exclude group: 'org.slf4j'
+        exclude module: 'jul-to-slf4j'
+        exclude module: 'javax.servlet'
+        exclude module: 'servlet-api'
+        exclude group: 'com.esotericsoftware.kryo'
+        exclude module: 'spark-mllib_2.11'
+        exclude group: 'org.scala-lang'
+        exclude module: 'kryo'
+    }
+}
+
+def findJarByName(Configuration config, String name) {
+    config.find { File file -> file.name.startsWith(name)}
+}
+
+final GATK_LAUNCH = "gatk-launch"
+task setupGatkLaunch(type: Copy) {
+    def gatkJar =  findJarByName(configurations.compile, 'gatk')
+
+    from {
+        zipTree( gatkJar ).matching{ include GATK_LAUNCH }.singleFile
+    }
+    into "$projectDir"
+    outputs.file "$projectDir/$GATK_LAUNCH"
+    description = "extract gatk-launch script from the gatk jar"
+}
+
+clean{
+    delete GATK_LAUNCH //add gatk-launch script to things that need cleaning up since it isn't included automatically
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+def String deriveVersion(){
+    def stdout = new ByteArrayOutputStream()
+    try {
+        logger.info("path is $System.env.PATH")
+        exec {
+            commandLine "git", "describe", "--always"
+            standardOutput = stdout;
+
+            ignoreExitValue = true
+        }
+    } catch (GradleException e) {
+        logger.error("Couldn't determine version.  " + e.getMessage())
+    }
+    return stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
+}
+
+def createSymlinks(archivePath, symlinkLocation) {
+    exec {
+        commandLine 'ln', '-fs', archivePath, symlinkLocation
+        ignoreExitValue = false
+    }
+}
+
+// Suffix is what will be added to the symlink
+def createAllSymlinks(destinationDir, archivePath, suffix) {
+    def finalSuffix = "-" + suffix
+    if (suffix == "") {
+        finalSuffix = ""
+    }
+
+    def symlinkLocation = destinationDir.toString() + "/hellbender-protected" + finalSuffix + ".jar"
+    def symlinkLocation2 = destinationDir.toString() + "/gatk-protected" + finalSuffix + ".jar"
+
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
+}
+
+version = deriveVersion()
+final SNAPSHOT = "-SNAPSHOT"
+version = deriveVersion() + SNAPSHOT
+boolean isRelease = ! version.endsWith(SNAPSHOT)
+logger.info("build for version:" + version);
+group = 'org.broadinstitute'
+
+
+tasks.withType(Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
+                'Implementation-Version': version,
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
+    }
+}
+
+test {
+
+    systemProperty "samjdk.use_async_io_read_samtools", "false"
+    systemProperty "samjdk.use_async_io_write_samtools", "true"
+    systemProperty "samjdk.use_async_io_write_tribble", "false"
+    systemProperty "samjdk.compression_level", "1"
+    systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
+
+    environment "SPARK_LOCAL_IP","127.0.0.1"
+
+    // Nd4j
+    systemProperty "dtype", "double"
+    environment "OMP_NUM_THREADS", "4"
+
+    // enable TestNG support (default is JUnit)
+    useTestNG{
+        excludeGroups 'cloud', 'bucket'
+    }
+
+    // set heap size for the test JVM(s)
+    jvmArgs = ['-Xmx6G']
+
+    String CI = "$System.env.CI"
+
+    maxParallelForks = CI == "true" ? 1 : 2
+
+    if (CI == "true") {
+        int count = 0
+        // listen to events in the test execution lifecycle
+        testLogging {
+            events "skipped", "failed"
+            exceptionFormat = "full"
+        }
+
+        beforeTest { descriptor ->
+            count++
+            if( count % 100 == 0) {
+                logger.lifecycle("Finished " + Integer.toString(count++) + " tests")
+            }
+        }
+    } else {
+        // show standard out and standard error of the test JVM(s) on the console
+        testLogging.showStandardStreams = true
+        beforeTest { descriptor ->
+            logger.lifecycle("Running Test: " + descriptor)
+        }
+
+        // listen to standard out and standard error of the test JVM(s)
+        onOutput { descriptor, event ->
+            logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+        }
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.1'
+}
+
+tasks.withType(Javadoc) {
+    // do this for all javadoc tasks, inlcuding gatkDoc
+    options.addStringOption('Xdoclint:none')
+}
+
+javadoc {
+    // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
+    // We only want to do this for the javadoc task, not gatkDoc
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+// Generate GATK Online Doc
+task gatkDoc(type: Javadoc, dependsOn: ['cleanGatkDoc', classes]) {
+    // A GATK source folder is required to resolve any dependent classes that will be part of the generated doc.
+    final String gatkSourceDir = project.hasProperty('gatkSourceDir') ?
+            project.getProperty('gatkSourceDir') :
+            '../gatk'
+    final File gatkDocDir = new File("build/docs/gatkdoc")
+    final String pathToGATKClasses = gatkSourceDir + '/src/main/java/org/broadinstitute/hellbender/'
+    final String pathToGATKHelpTemplates = gatkSourceDir + '/src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates/'
+    doFirst {
+        // make sure the output folder exists or we can create it
+        if (!gatkDocDir.exists() && !gatkDocDir.mkdirs()) {
+            throw new InvalidUserDataException(String.format("Failure creating folder (%s) for GATK doc output in task (%s)",
+                    gatkDocDir.getAbsolutePath(),
+                    it.name));
+        }
+        if (!file(gatkSourceDir).exists()) {
+            throw new GradleException("A GATK source directory is required to generate doc for gatk-protected: "
+                    + gatkSourceDir + ". Set the gatkSourceDir property to the GATK source directory.")
+        }
+        println("Note: The GATK source folder must contain the same version of GATK that is used to build gatk-protected")
+    }
+
+    //The source set needs to include any GATK classes that are referenced by the local DocumentedFeatures
+    final String gatkArgCollections = pathToGATKClasses + 'cmdline/argumentcollections/'
+    final String gatkPlugins = pathToGATKClasses + 'cmdline/GATKPlugin/'
+    final String gatkFilters = pathToGATKClasses + 'engine/filters/'
+    final FileCollection gatkClassFiles =
+                    files { file(gatkArgCollections).listFiles() } +
+                    files { file(gatkPlugins).listFiles() } +
+                    files { file(gatkFilters).listFiles() }
+    source = gatkClassFiles + sourceSets.main.allJava
+
+    // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
+    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
+    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    options.docletpath = classpath.asType(List)
+    options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
+
+    outputs.dir(gatkDocDir)
+    options.destinationDirectory(gatkDocDir)
+
+    options.addStringOption("settings-dir", pathToGATKHelpTemplates);
+    options.addStringOption("output-file-extension", "html")
+    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
+    options.addStringOption("verbose")
+}
+
+tasks.withType(ShadowJar) {
+    from(project.sourceSets.main.output)
+    baseName = project.name + '-package'
+    mergeServiceFiles()
+
+    // Suggested by the akka devs to make sure that we do not get the spark configuration error.
+    // http://doc.akka.io/docs/akka/snapshot/general/configuration.html#When_using_JarJar__OneJar__Assembly_or_any_jar-bundler
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer) {
+        resource = 'reference.conf'
+    }
+
+
+    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
+    zip64 true
+    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
+}
+
+shadowJar {
+    classifier = 'local'
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createAllSymlinks(destinationDir.toString(), archivePath, "")
+    }
+}
+
+task localJar {
+    dependsOn shadowJar 
+}
+
+task sparkJar(type: ShadowJar) {
+    configurations = [project.configurations.sparkConfiguration]
+    classifier = 'spark'
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createAllSymlinks(destinationDir.toString(), archivePath, classifier)
+    }
+}
+
+
+task installSpark{ dependsOn sparkJar }
+task installAll{  dependsOn installSpark, installDist }
+
+tasks.withType(Jar) { dependsOn setupGatkLaunch }

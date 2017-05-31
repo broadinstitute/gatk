@@ -1,0 +1,13 @@
+{
+  "CNVSomaticPairWorkflow.cnv_panel_of_normals": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/wes_test.pon",
+  "CNVSomaticPairWorkflow.common_sites":  "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/common_snps_sample-chr20.interval_list",
+  "CNVSomaticPairWorkflow.gatk_jar": "/home/travis/build/broadinstitute/gatk-protected/build/libs/gatk-protected.jar",
+  "CNVSomaticPairWorkflow.normal_bam_idx": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.bam.bai",
+  "CNVSomaticPairWorkflow.normal_bam": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.bam",
+  "CNVSomaticPairWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.dict",
+  "CNVSomaticPairWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta.fai",
+  "CNVSomaticPairWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta",
+  "CNVSomaticPairWorkflow.targets": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/ice_targets_sample-chr20.tsv",
+  "CNVSomaticPairWorkflow.tumor_bam_idx": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74P4M-v1-chr20-downsampled.deduplicated.bam.bai",
+  "CNVSomaticPairWorkflow.tumor_bam": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74P4M-v1-chr20-downsampled.deduplicated.bam"
+}

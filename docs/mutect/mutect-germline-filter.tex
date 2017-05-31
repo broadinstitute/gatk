@@ -1,0 +1,81 @@
+\documentclass[nofootinbib,amssymb,amsmath]{revtex4}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{bm}
+
+%Put an averaged random variable between brackets
+\newcommand{\ave}[1]{\left\langle #1 \right\rangle}
+
+\newcommand{\vzero}{{\bf 0}}
+\newcommand{\vI}{{\bf I}}
+\newcommand{\vb}{{\bf b}}
+\newcommand{\vd}{{\bf d}}
+\newcommand{\vf}{{\bf f}}
+\newcommand{\vc}{{\bf c}}
+\newcommand{\vv}{{\bf v}}
+\newcommand{\vz}{{\bf z}}
+\newcommand{\vn}{{\bf n}}
+\newcommand{\vm}{{\bf m}}
+\newcommand{\vG}{{\bf G}}
+\newcommand{\vQ}{{\bf Q}}
+\newcommand{\vM}{{\bf M}}
+\newcommand{\vW}{{\bf W}}
+\newcommand{\vX}{{\bf X}}
+\newcommand{\vPsi}{{\bf \Psi}}
+\newcommand{\vSigma}{{\bf \Sigma}}
+\newcommand{\vlambda}{{\bf \lambda}}
+\newcommand{\vpi}{{\bf \pi}}
+\newcommand{\valpha}{{\bm{\alpha}}}
+\newcommand{\vbeta}{{\bm{\beta}}}
+\newcommand{\vomega}{{\bm{\omega}}}
+\newcommand{\vLambda}{{\bf \Lambda}}
+\newcommand{\vA}{{\bf A}}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+\def\SL#1{{\color [rgb]{0,0,0.8} [SL: #1]}}
+\def\DB#1{{\color [rgb]{0,0.8,0} [DB: #1]}}
+
+\newcommand{\HOM}{$\mathsf{Hom}$}
+\newcommand{\HET}{$\mathsf{Het}$}
+\newcommand{\REF}{$\mathsf{Ref}$}
+\newcommand{\epss}{\varepsilon}
+
+\begin{document}
+
+\title{Germline Filtering in Mutect}
+\author{David Benjamin}
+\email{davidben@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
+\date{\today}
+
+\maketitle
+
+\section{Germline Filter}\label{germline-filter}
+Suppose we have detected an allele such that its (somatic) likelihood in the tumor is $\ell_t$ and its (diploid) likelihood in the normal is $\ell_n$.  By convention, both of these are relative to a likelihood of $1$ for the allele \textit{not} to be found.  If we have no matched normal, $\ell_n = 1$.  Suppose we also have the population allele frequency $f$ of this allele.  Then the prior probability for the normal to be heterozygous or homozygous alt for the allele is $2f(1-f) + f^2$ and the prior probability for the normal genotype not to contain the allele is $(1-f)^2$.  Finally, suppose that the prior for this allele to arise as a somatic variant is $\pi$.
+
+We can determine the posterior probability that the variant exists in the normal genotype by calculating the unnormalized probabilities of four possibilities:
+\begin{enumerate}
+\item The variant exists is both the normal and the tumor samples.  This has unnormalized probability $\left(2f(1-f) + f^2 \right) \ell_n \ell_t (1 - \pi)$.
+\item The variant exists in the tumor but not the normal.  This has unnormalized probability $(1-f)^2 \ell_t \pi$.
+\item The variant exists in neither the tumor nor the normal.  This has unnormalized probability $(1-f)^2 (1 - \pi)$.
+\item The variants exists in the normal but not the tumor.  This is biologically very unlikely.  Furthermore, if it \textit{did} occur we wouldn't care about filtering the variant as a germline event because we wouldn't call it as a somatic event.  Thus we neglect this possibility.
+\end{enumerate}
+
+Normalizing, we obtain the following posterior probability that an allele is a germline variant:
+\begin{equation}
+P({\rm germline}) = \frac{(1)}{(1) + (2) + (3)} = \frac{\left(2f(1-f) + f^2 \right) \ell_n \ell_t (1 - \pi)}{\left(2f(1-f) + f^2 \right) \ell_n \ell_t (1 - \pi) + (1-f)^2 \ell_t \pi + (1-f)^2 (1 - \pi)}.
+\end{equation}
+
+To filter, we set a threshold on this posterior probability.
+
+\end{document}

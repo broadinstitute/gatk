@@ -1,0 +1,160 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=artifact_in_normal,Description="artifact_in_normal">
+##FILTER=<ID=clustered_events,Description="Clustered events observed in the tumor">
+##FILTER=<ID=germline_risk,Description="Evidence indicates this site is germline, not somatic">
+##FILTER=<ID=homologous_mapping_event,Description="More than three events were observed in the tumor">
+##FILTER=<ID=panel_of_normals,Description="Seen in at least 2 samples in the panel of normals">
+##FILTER=<ID=str_contraction,Description="Site filtered due to contraction of short tandem repeat region">
+##FILTER=<ID=strand_artifact,Description="Evidence for alt allele comes from one read direction only">
+##FILTER=<ID=t_lod_fstar,Description="Tumor does not meet likelihood threshold">
+##FILTER=<ID=triallelic_site,Description="Site filtered because more than two alt alleles pass tumor LOD">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=1,Type=Float,Description="Allele fraction of the event in the tumor">
+##FORMAT=<ID=ALT_F1R2,Number=1,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting the alternate allele">
+##FORMAT=<ID=ALT_F2R1,Number=1,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting the alternate allele">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=FOXOG,Number=1,Type=Float,Description="Fraction of alt reads indicating OxoG error">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=QSS,Number=R,Type=Integer,Description="Sum of base quality scores for each allele">
+##FORMAT=<ID=REF_F1R2,Number=1,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting the reference allele">
+##FORMAT=<ID=REF_F2R1,Number=1,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting the reference allele">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
+##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP Membership">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=String,Description="Number of events in this haplotype">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=HCNT,Number=1,Type=String,Description="Number of haplotypes that support this variant">
+##INFO=<ID=IN_COSMIC,Number=0,Type=Flag,Description="site found in COSMIC database">
+##INFO=<ID=IN_DBSNP,Number=0,Type=Flag,Description="site found in dbSNP database">
+##INFO=<ID=IN_PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=NLOD,Number=1,Type=String,Description="Normal LOD score">
+##INFO=<ID=N_ART_LOD,Number=A,Type=Float,Description="log odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=PON,Number=1,Type=String,Description="Count from Panel of Normals">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=TLOD,Number=1,Type=String,Description="Tumor LOD score">
+##INFO=<ID=TLOD_FWD,Number=1,Type=Float,Description="Tumor LOD from forward reads only">
+##INFO=<ID=TLOD_REV,Number=1,Type=Float,Description="Tumor LOD from reverse reads only">
+##INFO=<ID=TUMOR_SB_POWER_FWD,Number=1,Type=Float,Description="Power to detect a variant with forward reads">
+##INFO=<ID=TUMOR_SB_POWER_REV,Number=1,Type=Float,Description="Power to detect a variant with reverse reads">
+##contig=<ID=1,length=249250621,assembly=GRCh37>
+##contig=<ID=2,length=243199373,assembly=GRCh37>
+##contig=<ID=3,length=198022430,assembly=GRCh37>
+##contig=<ID=4,length=191154276,assembly=GRCh37>
+##contig=<ID=5,length=180915260,assembly=GRCh37>
+##contig=<ID=6,length=171115067,assembly=GRCh37>
+##contig=<ID=7,length=159138663,assembly=GRCh37>
+##contig=<ID=8,length=146364022,assembly=GRCh37>
+##contig=<ID=9,length=141213431,assembly=GRCh37>
+##contig=<ID=10,length=135534747,assembly=GRCh37>
+##contig=<ID=11,length=135006516,assembly=GRCh37>
+##contig=<ID=12,length=133851895,assembly=GRCh37>
+##contig=<ID=13,length=115169878,assembly=GRCh37>
+##contig=<ID=14,length=107349540,assembly=GRCh37>
+##contig=<ID=15,length=102531392,assembly=GRCh37>
+##contig=<ID=16,length=90354753,assembly=GRCh37>
+##contig=<ID=17,length=81195210,assembly=GRCh37>
+##contig=<ID=18,length=78077248,assembly=GRCh37>
+##contig=<ID=19,length=59128983,assembly=GRCh37>
+##contig=<ID=20,length=63025520,assembly=GRCh37>
+##contig=<ID=21,length=48129895,assembly=GRCh37>
+##contig=<ID=22,length=51304566,assembly=GRCh37>
+##contig=<ID=X,length=155270560,assembly=GRCh37>
+##contig=<ID=Y,length=59373566,assembly=GRCh37>
+##contig=<ID=MT,length=16569,assembly=GRCh37>
+##contig=<ID=GL000207.1,length=4262,assembly=GRCh37>
+##contig=<ID=GL000226.1,length=15008,assembly=GRCh37>
+##contig=<ID=GL000229.1,length=19913,assembly=GRCh37>
+##contig=<ID=GL000231.1,length=27386,assembly=GRCh37>
+##contig=<ID=GL000210.1,length=27682,assembly=GRCh37>
+##contig=<ID=GL000239.1,length=33824,assembly=GRCh37>
+##contig=<ID=GL000235.1,length=34474,assembly=GRCh37>
+##contig=<ID=GL000201.1,length=36148,assembly=GRCh37>
+##contig=<ID=GL000247.1,length=36422,assembly=GRCh37>
+##contig=<ID=GL000245.1,length=36651,assembly=GRCh37>
+##contig=<ID=GL000197.1,length=37175,assembly=GRCh37>
+##contig=<ID=GL000203.1,length=37498,assembly=GRCh37>
+##contig=<ID=GL000246.1,length=38154,assembly=GRCh37>
+##contig=<ID=GL000249.1,length=38502,assembly=GRCh37>
+##contig=<ID=GL000196.1,length=38914,assembly=GRCh37>
+##contig=<ID=GL000248.1,length=39786,assembly=GRCh37>
+##contig=<ID=GL000244.1,length=39929,assembly=GRCh37>
+##contig=<ID=GL000238.1,length=39939,assembly=GRCh37>
+##contig=<ID=GL000202.1,length=40103,assembly=GRCh37>
+##contig=<ID=GL000234.1,length=40531,assembly=GRCh37>
+##contig=<ID=GL000232.1,length=40652,assembly=GRCh37>
+##contig=<ID=GL000206.1,length=41001,assembly=GRCh37>
+##contig=<ID=GL000240.1,length=41933,assembly=GRCh37>
+##contig=<ID=GL000236.1,length=41934,assembly=GRCh37>
+##contig=<ID=GL000241.1,length=42152,assembly=GRCh37>
+##contig=<ID=GL000243.1,length=43341,assembly=GRCh37>
+##contig=<ID=GL000242.1,length=43523,assembly=GRCh37>
+##contig=<ID=GL000230.1,length=43691,assembly=GRCh37>
+##contig=<ID=GL000237.1,length=45867,assembly=GRCh37>
+##contig=<ID=GL000233.1,length=45941,assembly=GRCh37>
+##contig=<ID=GL000204.1,length=81310,assembly=GRCh37>
+##contig=<ID=GL000198.1,length=90085,assembly=GRCh37>
+##contig=<ID=GL000208.1,length=92689,assembly=GRCh37>
+##contig=<ID=GL000191.1,length=106433,assembly=GRCh37>
+##contig=<ID=GL000227.1,length=128374,assembly=GRCh37>
+##contig=<ID=GL000228.1,length=129120,assembly=GRCh37>
+##contig=<ID=GL000214.1,length=137718,assembly=GRCh37>
+##contig=<ID=GL000221.1,length=155397,assembly=GRCh37>
+##contig=<ID=GL000209.1,length=159169,assembly=GRCh37>
+##contig=<ID=GL000218.1,length=161147,assembly=GRCh37>
+##contig=<ID=GL000220.1,length=161802,assembly=GRCh37>
+##contig=<ID=GL000213.1,length=164239,assembly=GRCh37>
+##contig=<ID=GL000211.1,length=166566,assembly=GRCh37>
+##contig=<ID=GL000199.1,length=169874,assembly=GRCh37>
+##contig=<ID=GL000217.1,length=172149,assembly=GRCh37>
+##contig=<ID=GL000216.1,length=172294,assembly=GRCh37>
+##contig=<ID=GL000215.1,length=172545,assembly=GRCh37>
+##contig=<ID=GL000205.1,length=174588,assembly=GRCh37>
+##contig=<ID=GL000219.1,length=179198,assembly=GRCh37>
+##contig=<ID=GL000224.1,length=179693,assembly=GRCh37>
+##contig=<ID=GL000223.1,length=180455,assembly=GRCh37>
+##contig=<ID=GL000195.1,length=182896,assembly=GRCh37>
+##contig=<ID=GL000212.1,length=186858,assembly=GRCh37>
+##contig=<ID=GL000222.1,length=186861,assembly=GRCh37>
+##contig=<ID=GL000200.1,length=187035,assembly=GRCh37>
+##contig=<ID=GL000193.1,length=189789,assembly=GRCh37>
+##contig=<ID=GL000194.1,length=191469,assembly=GRCh37>
+##contig=<ID=GL000225.1,length=211173,assembly=GRCh37>
+##contig=<ID=GL000192.1,length=547496,assembly=GRCh37>
+##contig=<ID=NC_007605,length=171823,assembly=NC_007605.1>
+##sample=<ID=NORMAL,name=G15512.prenormal.sorted>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	G15512.prenormal.sorted	IS3.snv.indel.sv
+1	1090169	rs199863110	GA	G	.	germline_risk	AC=1;AF=0.250;AN=4;BaseQRankSum=-2.360;ClippingRankSum=-4.117;DB;DP=58;ECNT=1;FS=0.000;IN_DBSNP;MQRankSum=-4.117;NLOD=3.13;N_ART_LOD=-9.254e-01;RAW_MQ=198344.00;ReadPosRankSum=-1.885;SOR=0.929;TLOD=7.90;TLOD_FWD=2.92;TLOD_REV=4.97;TUMOR_SB_POWER_FWD=0.926;TUMOR_SB_POWER_REV=0.986	GT:AD:AF:DP:QSS	0/0:13,1:0.031:14:318,26	0/1:21,6:0.222:27:397,146
+1	1090609	.	AG	A	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-6.965;ClippingRankSum=-7.089;DP=101;ECNT=1;FS=0.000;MQRankSum=-7.089;NLOD=12.94;N_ART_LOD=-1.026e+01;RAW_MQ=364900.00;ReadPosRankSum=-5.245;SOR=0.793;TLOD=70.62;TLOD_FWD=42.27;TLOD_REV=28.35;TUMOR_SB_POWER_FWD=1.000;TUMOR_SB_POWER_REV=1.000	GT:AD:AF:DP:QSS	0/0:43,0:0.00:43:1279,0	0/1:30,22:0.423:52:884,646
+1	1111709	rs9730234	A	G	.	artifact_in_normal;germline_risk;strand_artifact	AC=1;AF=0.250;AN=4;BaseQRankSum=-3.874;ClippingRankSum=-4.855;DB;DP=150;ECNT=1;FS=1.379;IN_DBSNP;MQRankSum=-4.775;NLOD=4.14;N_ART_LOD=3.58;RAW_MQ=459013.00;ReadPosRankSum=-2.299;SOR=0.783;TLOD=6.54;TLOD_FWD=5.37;TLOD_REV=1.16;TUMOR_SB_POWER_FWD=0.985;TUMOR_SB_POWER_REV=0.999	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:40,3:0.038:0:3:43:1.00:1099,78:18:22	0/1:27,6:0.182:4:2:33:0.333:735,157:11:16
+1	1165842	.	AT	ATT	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-2.514;ClippingRankSum=-3.916;DP=63;ECNT=1;FS=1.719;MQRankSum=-3.882;NLOD=4.57;N_ART_LOD=-3.207e-01;RAW_MQ=225504.00;ReadPosRankSum=-2.514;SOR=1.186;TLOD=6.83;TLOD_FWD=2.42;TLOD_REV=4.40;TUMOR_SB_POWER_FWD=0.904;TUMOR_SB_POWER_REV=0.938	GT:AD:AF:DP:QSS	0/0:23,1:0.026:24:461,20	0/1:21,5:0.192:26:487,149
+1	1259680	.	G	A	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-3.389;ClippingRankSum=-4.440;DP=63;ECNT=1;FS=0.000;MQRankSum=-4.440;NLOD=7.17;N_ART_LOD=-4.196e+00;RAW_MQ=198000.00;ReadPosRankSum=-4.302;SOR=0.908;TLOD=18.15;TLOD_FWD=18.86;TLOD_REV=-7.041e-01;TUMOR_SB_POWER_FWD=0.999;TUMOR_SB_POWER_REV=0.804	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:24,0:0.00:0:0:24:NaN:569,0:9:15	0/1:16,8:0.333:5:3:24:0.625:351,209:6:10
+1	1261932	.	ACCTGCTGCAGACAGCGGGGCCTAGTGGTCT	A	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-8.696;ClippingRankSum=-8.944;DP=162;ECNT=1;FS=1.569;MQRankSum=-8.944;NLOD=22.33;N_ART_LOD=-1.619e+01;RAW_MQ=585800.00;ReadPosRankSum=-7.564;SOR=0.849;TLOD=126.25;TLOD_FWD=80.80;TLOD_REV=45.45;TUMOR_SB_POWER_FWD=1.000;TUMOR_SB_POWER_REV=1.000	GT:AD:AF:DP:QSS	0/0:75,0:0.00:75:2032,0	0/1:52,34:0.395:86:1487,1012
+1	1298461	.	C	CA	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-2.546;ClippingRankSum=-3.630;DP=54;ECNT=1;FS=1.857;IN_DBSNP;MQRankSum=-3.630;NLOD=6.01;N_ART_LOD=-1.937e+00;RAW_MQ=194400.00;ReadPosRankSum=-0.551;SOR=0.900;TLOD=7.63;TLOD_FWD=2.67;TLOD_REV=4.96;TUMOR_SB_POWER_FWD=0.937;TUMOR_SB_POWER_REV=0.937	GT:AD:AF:DP:QSS	0/0:20,0:0.00:20:503,0	0/1:20,5:0.200:25:451,94
+1	1583495	rs61774952	T	C	.	artifact_in_normal	AC=1;AF=0.250;AN=4;BaseQRankSum=-4.577;ClippingRankSum=-4.680;DB;DP=122;ECNT=1;FS=26.568;IN_DBSNP;MQRankSum=-4.654;NLOD=7.18;N_ART_LOD=2.25;RAW_MQ=295331.00;ReadPosRankSum=-4.436;SOR=4.402;TLOD=10.89;TLOD_FWD=12.12;TLOD_REV=-1.227e+00;TUMOR_SB_POWER_FWD=0.914;TUMOR_SB_POWER_REV=0.863	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:43,2:0.044:1:1:45:0.500:1268,58:20:23	0/1:48,6:0.111:5:1:54:0.833:1420,174:25:23
+1	1610811	.	G	GTGTCT	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-6.695;ClippingRankSum=-6.766;DP=103;ECNT=1;FS=5.083;MQRankSum=-6.766;NLOD=13.26;N_ART_LOD=-7.926e+00;RAW_MQ=373400.00;ReadPosRankSum=-4.745;SOR=1.254;TLOD=67.58;TLOD_FWD=42.43;TLOD_REV=25.15;TUMOR_SB_POWER_FWD=1.000;TUMOR_SB_POWER_REV=1.000	GT:AD:AF:DP:QSS	0/0:44,0:0.00:44:1370,0	0/1:37,19:0.339:56:1154,578
+1	1628642	rs377256998	G	A	.	artifact_in_normal	AC=1;AF=0.250;AN=4;BaseQRankSum=-4.437;ClippingRankSum=-4.985;DB;DP=135;ECNT=1;FS=19.849;IN_DBSNP;MQRankSum=-4.966;NLOD=5.66;N_ART_LOD=7.32;RAW_MQ=308483.00;ReadPosRankSum=-4.701;SOR=4.167;TLOD=7.99;TLOD_FWD=-9.639e-01;TLOD_REV=8.95;TUMOR_SB_POWER_FWD=0.796;TUMOR_SB_POWER_REV=0.864	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:62,4:0.059:1:3:66:0.250:1657,126:36:26	0/1:51,5:0.089:3:2:56:0.600:1359,143:22:29
+1	1630955	.	G	A	.	artifact_in_normal	AC=1;AF=0.250;AN=4;BaseQRankSum=-4.261;ClippingRankSum=-4.668;DP=111;ECNT=1;FS=13.239;MQRankSum=-4.668;NLOD=4.00;N_ART_LOD=4.60;RAW_MQ=160493.00;ReadPosRankSum=-4.546;SOR=3.592;TLOD=6.96;TLOD_FWD=-8.348e-01;TLOD_REV=7.79;TUMOR_SB_POWER_FWD=0.754;TUMOR_SB_POWER_REV=0.897	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:42,3:0.067:1:2:45:0.333:1168,90:29:13	0/1:44,5:0.102:4:1:49:0.800:1205,128:20:24
+1	1649498	rs201586872	C	A	.	artifact_in_normal	AC=1;AF=0.250;AN=4;BaseQRankSum=-4.379;ClippingRankSum=-4.724;DB;DP=124;ECNT=1;FS=31.652;IN_DBSNP;MQRankSum=-4.602;NLOD=10.19;N_ART_LOD=4.35;RAW_MQ=356414.00;ReadPosRankSum=-4.440;SOR=4.399;TLOD=7.70;TLOD_FWD=-1.151e+00;TLOD_REV=8.85;TUMOR_SB_POWER_FWD=0.825;TUMOR_SB_POWER_REV=0.834	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:61,3:0.044:1:2:64:0.667:1762,86:31:30	0/1:55,5:0.082:3:2:60:0.400:1662,139:27:28
+1	1653111	.	CCTCCTCAAGGGAATCCCGCTT	C	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-3.746;ClippingRankSum=-4.359;DP=81;ECNT=1;FS=0.000;IN_DBSNP;MQRankSum=-4.155;NLOD=10.20;N_ART_LOD=-2.427e+00;RAW_MQ=203377.00;ReadPosRankSum=-2.164;SOR=0.255;TLOD=22.98;TLOD_FWD=3.54;TLOD_REV=19.44;TUMOR_SB_POWER_FWD=0.438;TUMOR_SB_POWER_REV=0.995	GT:AD:AF:DP:QSS	0/0:34,0:0.00:34:956,0	0/1:39,7:0.152:46:1077,177
+1	1660975	rs2377214	A	G	.	artifact_in_normal;germline_risk	AC=1;AF=0.250;AN=4;BaseQRankSum=-3.729;ClippingRankSum=-4.298;DB;DP=77;ECNT=1;FS=23.231;IN_DBSNP;MQRankSum=-4.210;NLOD=3.78;N_ART_LOD=2.57;RAW_MQ=209759.00;ReadPosRankSum=-4.013;SOR=4.168;TLOD=12.67;TLOD_FWD=-9.780e-01;TLOD_REV=13.65;TUMOR_SB_POWER_FWD=0.840;TUMOR_SB_POWER_REV=0.920	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:34,2:0.056:2:0:36:0.00:995,61:14:20	0/1:22,5:0.185:2:3:27:0.600:635,166:14:8
+1	1815406	.	CT	C	.	strand_artifact	AC=1;AF=0.250;AN=4;BaseQRankSum=-2.186;ClippingRankSum=-3.505;DP=32;ECNT=1;FS=8.512;MQRankSum=-3.505;NLOD=2.60;N_ART_LOD=-2.952e+00;RAW_MQ=116500.00;ReadPosRankSum=-0.784;SOR=2.236;TLOD=11.30;TLOD_FWD=1.16;TLOD_REV=10.14;TUMOR_SB_POWER_FWD=0.993;TUMOR_SB_POWER_REV=1.000	GT:AD:AF:DP:QSS	0/0:9,0:0.00:9:223,0	0/1:5,6:0.545:11:92,137
+1	1994394	.	A	C	.	artifact_in_normal;strand_artifact	AC=1;AF=0.250;AN=4;BaseQRankSum=-4.965;ClippingRankSum=-5.196;DP=72;ECNT=2;FS=52.223;MQRankSum=-4.965;NLOD=2.60;N_ART_LOD=1.53;RAW_MQ=202567.00;ReadPosRankSum=-4.413;SOR=4.971;TLOD=9.69;TLOD_FWD=-2.804e+00;TLOD_REV=12.49;TUMOR_SB_POWER_FWD=0.994;TUMOR_SB_POWER_REV=0.974	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:PGT:PID:QSS:REF_F1R2:REF_F2R1	0/0:28,2:0.063:1:1:30:0.500:0|1:1994394_A_C:718,27:14:14	0/1:25,9:0.265:4:5:34:0.556:0|1:1994394_A_C:722,90:8:17
+1	1994398	.	A	C	.	artifact_in_normal;strand_artifact	AC=1;AF=0.250;AN=4;BaseQRankSum=-4.975;ClippingRankSum=-5.178;DP=75;ECNT=2;FS=55.751;MQRankSum=-4.938;NLOD=2.60;N_ART_LOD=1.43;RAW_MQ=200167.00;ReadPosRankSum=-4.607;SOR=4.971;TLOD=9.82;TLOD_FWD=-2.904e+00;TLOD_REV=12.72;TUMOR_SB_POWER_FWD=0.995;TUMOR_SB_POWER_REV=0.972	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:PGT:PID:QSS:REF_F1R2:REF_F2R1	0/0:27,2:0.063:1:1:29:0.500:0|1:1994394_A_C:716,26:14:13	0/1:24,9:0.273:4:5:33:0.556:0|1:1994394_A_C:692,78:7:17
+1	2079323	rs201336295	A	T	.	artifact_in_normal	AC=1;AF=0.250;AN=4;BaseQRankSum=-3.317;ClippingRankSum=-3.749;DB;DP=96;ECNT=1;FS=1.861;IN_DBSNP;MQRankSum=-3.659;NLOD=9.07;N_ART_LOD=0.574;RAW_MQ=278409.00;ReadPosRankSum=-3.262;SOR=0.864;TLOD=7.58;TLOD_FWD=1.59;TLOD_REV=5.99;TUMOR_SB_POWER_FWD=0.789;TUMOR_SB_POWER_REV=0.740	GT:AD:AF:ALT_F1R2:ALT_F2R1:DP:FOXOG:QSS:REF_F1R2:REF_F2R1	0/0:40,1:0.024:0:1:41:1.00:1162,29:17:23	0/1:43,4:0.085:1:3:47:0.750:1257,122:24:19
+1	2088843	.	CT	C	.	PASS	AC=1;AF=0.250;AN=4;BaseQRankSum=-3.823;ClippingRankSum=-4.341;DP=88;ECNT=1;FS=1.505;MQRankSum=-4.341;NLOD=9.10;N_ART_LOD=-7.580e-01;RAW_MQ=316800.00;ReadPosRankSum=-2.309;SOR=0.877;TLOD=8.22;TLOD_FWD=3.26;TLOD_REV=4.97;TUMOR_SB_POWER_FWD=0.853;TUMOR_SB_POWER_REV=0.973	GT:AD:AF:DP:QSS	0/0:41,2:0.042:43:1210,33	0/1:26,5:0.161:31:771,125
+1	2124345	.	TTTG	T	.	artifact_in_normal	AC=1;AF=0.250;AN=4;BaseQRankSum=-3.150;ClippingRankSum=-3.379;DP=115;ECNT=1;FS=8.721;IN_DBSNP;MQRankSum=-3.379;NLOD=9.88;N_ART_LOD=1.90;RAW_MQ=414000.00;ReadPosRankSum=-1.500;SOR=2.833;TLOD=8.75;TLOD_FWD=9.39;TLOD_REV=-6.407e-01;TUMOR_SB_POWER_FWD=0.710;TUMOR_SB_POWER_REV=0.699	GT:AD:AF:DP:QSS	0/0:47,1:0.016:48:1386,29	0/1:41,3:0.068:44:1221,90

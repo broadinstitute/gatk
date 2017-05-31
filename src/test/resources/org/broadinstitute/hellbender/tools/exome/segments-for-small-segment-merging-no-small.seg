@@ -1,0 +1,4 @@
+Sample	Chromosome	Start	End	Num_Probes	Segment_Mean
+test	1	226	278	4	0.149470836353999
+test	1	466	589	4	0.189993822742704
+test	1	612	678	3	0.142478790642246
