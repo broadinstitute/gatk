@@ -45,7 +45,7 @@ public class SVVCFWriter {
 
         logNumOfVarByTypes(sortedVariantsList, logger);
 
-        writeVariants(pipelineOptions, vcfFileName, sortedVariantsList, referenceSequenceDictionary);
+        writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary);
     }
 
     private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
@@ -73,7 +73,7 @@ public class SVVCFWriter {
         }).collect(SVUtils.arrayListCollector(variants.size()));
     }
 
-    private static void writeVariants(final PipelineOptions pipelineOptions, final String fileName,
+    private static void writeVariants(final String fileName,
                                       final List<VariantContext> variantsArrayList, final SAMSequenceDictionary referenceSequenceDictionary) {
         try (final OutputStream outputStream
                      = new BufferedOutputStream(BucketUtils.createFile(fileName))) {
