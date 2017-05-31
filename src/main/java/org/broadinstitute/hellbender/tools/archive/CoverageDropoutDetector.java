@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.detectcoveragedropout;
+package org.broadinstitute.hellbender.tools.archive;
 
 
 import org.apache.commons.math3.distribution.MixtureMultivariateNormalDistribution;

@@ -1,9 +1,10 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.archive;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionIndicator;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionSimulatedData;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionState;

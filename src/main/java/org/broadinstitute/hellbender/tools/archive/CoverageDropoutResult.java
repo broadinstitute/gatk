@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.detectcoveragedropout;
+package org.broadinstitute.hellbender.tools.archive;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;

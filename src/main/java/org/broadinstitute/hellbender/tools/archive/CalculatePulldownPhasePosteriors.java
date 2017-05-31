@@ -1,13 +1,18 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.archive;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hdf5.HDF5Library;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
+import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
+import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
+import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.*;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
@@ -60,7 +65,7 @@ public class CalculatePulldownPhasePosteriors extends CommandLineProgram {
 
     @Argument(
             doc = "Input file for GATK ACNV allele-fraction global parameters " +
-                    "(with extension " + AllelicCNV.AF_PARAMETER_FILE_SUFFIX + ").",
+                    "(with extension .af.param).",  //hard-coded only because protected access to AllelicCNV.AF_PARAMETER_FILE_SUFFIX not available after this tool was archived
             fullName = ExomeStandardArgumentDefinitions.AF_PARAMETER_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.AF_PARAMETER_FILE_SHORT_NAME,
             optional = false

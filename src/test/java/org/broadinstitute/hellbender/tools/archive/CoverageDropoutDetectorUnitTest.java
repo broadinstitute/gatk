@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.detectcoveragedropout;
+package org.broadinstitute.hellbender.tools.archive;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
@@ -18,7 +18,7 @@ import java.util.Random;
 /**
  * @author lichtens &lt;lichtens@broadinstitute.org&gt;
  */
-public final class CoverageDropoutDetectorTest extends BaseTest {
+public final class CoverageDropoutDetectorUnitTest extends BaseTest {
 
 
     @DataProvider(name = "randomUnivariateGaussianTargetsLowVariance")
