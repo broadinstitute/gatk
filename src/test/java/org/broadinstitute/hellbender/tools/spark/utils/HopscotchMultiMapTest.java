@@ -80,4 +80,20 @@ public final class HopscotchMultiMapTest extends BaseTest {
         }
         Assert.assertEquals(hopscotchMultiMap.size(), 0);
     }
+
+    // found a bug in removeEach when multiple keys hash to the same bucket
+    // (non-equivalent keys were getting deleted)
+    // this test demonstrates the fix
+    @Test
+    void removeEachBugTest() {
+        final HopscotchMultiMap<Integer, Integer, IntPair> hopscotchMultiMap = new HopscotchMultiMap<>();
+        final int capacity = hopscotchMultiMap.capacity();
+        hopscotchMultiMap.add(new IntPair(1, 1));
+        hopscotchMultiMap.add(new IntPair(capacity+1, 1));
+        hopscotchMultiMap.add(new IntPair(1, 2));
+        hopscotchMultiMap.add(new IntPair(capacity+1, 2));
+        hopscotchMultiMap.add(new IntPair(1, 3));
+        Assert.assertTrue(hopscotchMultiMap.removeEach(1));
+        Assert.assertEquals(hopscotchMultiMap.size(),2);
+    }
 }
