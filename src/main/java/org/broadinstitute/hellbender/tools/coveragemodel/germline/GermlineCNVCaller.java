@@ -7,6 +7,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -34,22 +35,9 @@ import java.util.ArrayList;
 import java.util.Map;
 
 /**
- * The command line tool for modelling and denoising coverage profiles and detecting germline copy number variation
+ * Models and denoises coverage profiles and detects germline copy number variation
  *
- * The tool can be run in two modes by specifying the job type (--jobType):
- *
- * <dl>
- *     <dt>LEARN_AND_CALL</dt>
- *     <dd>Learns model parameters from coverage profiles, saves the model, as well as various
- *     posteriors (copy number, sample-specific biases, read depth, model-compatibility log likelihoods, etc.)
- *     to disk</dd>
- *
- *     <dt>CALL_ONLY</dt>
- *     <dd>Takes a previously learned model from the argument --inputModelPath, and calculates various posteriors
- *     and saves the posteriors to disk</dd>
- * </dl>
- *
- * The tool requires the following mandatory arguments:
+ * <p>The tool requires the following parameters:
  *
  * <dl>
  *     <dt>Job type (specified via argument --jobType)</dt>
@@ -70,10 +58,52 @@ import java.util.Map;
  *     <dt>Output path for inferred model parameters, posteriors, and checkpoints (specified via argument
  *     --outputPath) </dt>
  * </dl>
+ * </p>
  *
- * The tool will automatically use Spark clusters if available. Otherwise, it will run in the single-machine
- * (local) mode. If the user intends to run the tool on a single machine, it is recommended to disable Spark
- * altogether (--disableSpark true) since a local Spark context will only add unnecessary overhead.
+ * <p>The tool automatically uses Spark clusters if available. Otherwise, it will run in the single-machine
+ * (local) mode. If running the tool on a single machine, be sure to disable Spark
+ * altogether (--disableSpark true) since a local Spark context will only add unnecessary overhead.</p>
+ *
+ * <p>To make an effective PoN with at least 50 samples will require use of a Spark cluster.</p>
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>To make CNV calls and simultaneously create a Panel of Normals (PoN), use --jobType LEARN_AND_CALL:</p>
+ * <pre>
+ * java -Xmx16g -jar $gatk_jar GermlineCNVCaller \
+ *   --jobType LEARN_AND_CALL \
+ *   --input combined_read_counts.tsv \
+ *   --contigAnnotationsTable grch37_contig_annotations.tsv \
+ *   --copyNumberTransitionPriorTable grch37_germline_CN_priors.tsv \
+ *   --outputPath learn_and_call_results \
+ *   --sexGenotypeTable SEX_GENOTYPES.tsv \
+ *   --disableSpark true
+ * </pre>
+ *
+ * <p>
+ *     This creates a directory of results.
+ *     The model_final and posteriors_final folders contain the PoN and CNV calls, respectively.
+ * </p>
+ *
+ * <p>To make CNV calls using a Panel of Normals (PoN), use --jobType CALL_ONLY:</p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar GermlineCNVCaller \
+ *   --jobType CALL_ONLY \
+ *   --input combined_read_counts.tsv \
+ *   --inputModelPath learn_and_call_results/model_final \
+ *   --contigAnnotationsTable grch37_contig_annotations.tsv \
+ *   --copyNumberTransitionPriorTable grch37_germline_CN_priors.tsv \
+ *   --outputPath call_only_results \
+ *   --sexGenotypeTable SEX_GENOTYPES.tsv \
+ *   --disableSpark true
+ * </pre>
+ *
+ * <p>
+ *     Within the outputPath, the posteriors_final folder contains the CNV calls,
+ *     as well as various metrics relating the model to each sample.
+ *     In turn, the segments folder contains the per-sample CNV calls.
+ * </p>
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
@@ -82,6 +112,7 @@ import java.util.Map;
         oneLineSummary = "Performs coverage profile modelling, denoising, and detecting germline copy number variation",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
 
     private static final long serialVersionUID = -1149969750485027900L;
@@ -125,7 +156,8 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     public static final String INPUT_READ_COUNTS_TABLE_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
 
     @Argument(
-            doc = "Combined read count collection URI",
+            doc = "Combined read count collection URI. Combined raw or GC corrected (but not proportional) " +
+                    "read counts table. Can be for a cohort or for a single sample.",
             fullName = INPUT_READ_COUNTS_TABLE_LONG_NAME,
             shortName = INPUT_READ_COUNTS_TABLE_SHORT_NAME,
             optional = false
@@ -133,7 +165,7 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     protected String readCountsURI;
 
     @Argument(
-            doc = "Contig ploidy annotations URI",
+            doc = "Contig ploidy annotations URI. For an example file, see the GATK Resource Bundle.",
             fullName = CONTIG_PLOIDY_ANNOTATIONS_TABLE_LONG_NAME,
             shortName = CONTIG_PLOIDY_ANNOTATIONS_TABLE_SHORT_NAME,
             optional = false
@@ -141,7 +173,10 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     protected String contigPloidyAnnotationsURI;
 
     @Argument(
-            doc = "Sample sex genotypes URI",
+            doc = "Sample sex genotypes URI. Either from TargetCoverageSexGenotyper " +
+                    "or a table listing the known sex genotypes of each sample. " +
+                    "Only two columns, labeled SAMPLE_NAME and SEX_GENOTYPE, are required. " +
+                    "The SEX_GENOTYPE column values must match those of the contigAnnotationsTable.</p>",
             fullName = SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
             shortName = SAMPLE_SEX_GENOTYPE_TABLE_SHORT_NAME,
             optional = false
@@ -149,7 +184,9 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     protected String sampleSexGenotypesURI;
 
     @Argument(
-            doc = "Copy number transition prior table URI",
+            doc = "Copy number transition prior table URI. Lists per contig and against the sex states, " +
+                    "the relative file paths to files that in turn list in tsv format the copy number transition priors. " +
+                    "For an example set of files, see the GATK Resource Bundle.",
             fullName = COPY_NUMBER_TRANSITION_PRIOR_TABLE_LONG_NAME,
             shortName = COPY_NUMBER_TRANSITION_PRIOR_TABLE_SHORT_NAME,
             optional = false
@@ -165,7 +202,12 @@ public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
     protected String outputPath;
 
     @Argument(
-            doc = "Job type",
+            doc = "The tool can be run in two modes by specifying the job type (LEARN_AND_CALL or CALL_ONLY). " +
+                    "LEARN_AND_CALL learns model parameters from coverage profiles, saves the model (Panel of Normals or PoN), " +
+                    "as well as various posteriors (copy number, sample-specific biases, read depth, " +
+                    "model-compatibility log likelihoods, etc.) to disk.\n" +
+                    "CALL_ONLY takes a previously learned model (PoN) from the argument " +
+                    "--inputModelPath, and calculates various posteriors, i.e. makes copy number variation calls",
             fullName = JOB_TYPE_LONG_NAME,
             shortName = JOB_TYPE_SHORT_NAME,
             optional = false
