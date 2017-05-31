@@ -40,7 +40,7 @@ public class GATKHelpDoclet extends HelpDoclet {
      * @return name of freemarker index template
      */
     @Override
-    protected String getIndexTemplateName() {
+    public String getIndexTemplateName() {
         return GATK_FREEMARKER_INDEX_TEMPLATE_NAME;
     }
 
@@ -49,7 +49,6 @@ public class GATKHelpDoclet extends HelpDoclet {
      * for the target feature(s) represented by documentedFeature.
      *
      * @param documentedFeature DocumentedFeature annotation for the target feature
-     * @param commmandLineProgramProperties
      * @param classDoc javadoc classDoc for the target feature
      * @param clazz class of the target feature
      * @return DocWorkUnit to be used for this feature
@@ -57,14 +56,12 @@ public class GATKHelpDoclet extends HelpDoclet {
     @Override
     protected DocWorkUnit createWorkUnit(
             final DocumentedFeature documentedFeature,
-            final CommandLineProgramProperties commmandLineProgramProperties,
             final ClassDoc classDoc,
             final Class<?> clazz)
     {
         return new DocWorkUnit(
                 new GATKHelpDocWorkUnitHandler(this),
                 documentedFeature,
-                commmandLineProgramProperties,
                 classDoc,
                 clazz);
     }

@@ -29,10 +29,9 @@ import java.net.InetAddress;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -311,7 +310,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      */
     protected final CommandLineParser getCommandLineParser() {
         if( commandLineParser == null) {
-            commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors());
+            commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors(), Collections.emptySet());
         }
         return commandLineParser;
     }
