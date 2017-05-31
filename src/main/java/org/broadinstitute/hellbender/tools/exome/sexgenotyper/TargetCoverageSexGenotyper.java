@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -22,7 +23,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * A command line tool for inferring sex genotypes from a tab-separated raw target coverage file.
+ * Infers sex genotypes from raw target coverage data and germline contig ploidy annotations.
  *
  * <p>
  *     In addition to the raw target coverage file, the user must provide a tab-separated contig
@@ -38,15 +39,15 @@ import java.util.List;
  *
  * <p>
  *     Note: due to the uncertainty in the alignment of short reads, a small number of reads may be
- *     erroneously mapped to contigs with 0 actual ploidy (e.g. female homo sapiens samples may
- *     have a small number of reads aligned to the Y contig). The user must specify the typical mapping
+ *     erroneously mapped to contigs with 0 actual ploidy. For example, female Homo sapiens samples may
+ *     have a small number of reads aligned to the Y contig. The user must specify the typical mapping
  *     error probability for the tool to properly account for these errors.
  * </p>
  *
  * <p>
  *     Note: setting {@link TargetCoverageSexGenotyper#baselineMappingErrorProbability} to 0 (or to
  *     an unreasonably small number) will bias genotyping toward classes that cover more
- *     targets (SEX_XX < SEX_XY).
+ *     targets, e.g. XY over XX.
  * </p>
  *
  * <h2>Output File Format</h2>
@@ -54,12 +55,34 @@ import java.util.List;
  *     The inferred genotypes will be written to a tab-separated file such as:
  *
  *     <pre>
- *         SAMPLE_NAME                SEX_GENOTYPE      SEX_XX             SEX_XY
- *         arbitrary_XX_sample_name   SEX_XX            [log likelihood]   [log likelihood]
- *         arbitrary_XY_sample_name   SEX_XY            [log likelihood]   [log likelihood]
+ *         SAMPLE_NAME      SEX_GENOTYPE      SEX_XX             SEX_XY
+ *         sample_1       SEX_XX            [log likelihood]   [log likelihood]
+ *         sample_2       SEX_XY            [log likelihood]   [log likelihood]
  *                                             ...
  *     </pre>
  * </p>
+ *
+ * <p>
+ *     To sex genotype, remove targets that overlap pseudoautosomal regions (PAR) of allosteric contigs, e.g. human X and Y.
+ *     For example, if the read counts include PAR targets, then omit these from the analysis by excluding them from the --targets file.
+ *     If these regions are included, then sex genotypes can be unreliable.
+ * </p>
+ *
+ * <p>
+ *     Allosteric contig mapping errors, e.g. human X contig reads that map to Y,
+ *     as well as partial blacklisting of PAR regions, can bias inferred sexes towards genotypes that cover more targets such as XY.
+ *     Inspect results for such systematic biases, e.g. with a histogram of log likelihoods.
+ *     This recommendation applies especially to whole genome sequencing (WGS) samples.
+ * </p>
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar TargetCoverageSexGenotyper \
+ *   --input combined_read_counts.tsv \
+ *   --contigAnnotations grch37_contig_annotations.tsv \
+ *   --targets targets.tsv \
+ *   --output inferred_sex_genotypes.tsv
+ * </pre>
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
@@ -75,7 +98,7 @@ import java.util.List;
         oneLineSummary = "Infers sample sex genotypes from raw read counts.",
         programGroup = CopyNumberProgramGroup.class
 )
-
+@DocumentedFeature
 public class TargetCoverageSexGenotyper extends CommandLineProgram {
 
     private final Logger logger = LogManager.getLogger(TargetCoverageSexGenotyper.class);
@@ -87,7 +110,7 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
     public static final String BASELINE_MAPPING_ERROR_PROBABILITY_SHORT_NAME = "mapErr";
 
     @Argument(
-            doc = "Input raw read count collection tab-separated file.",
+            doc = "Input raw read count collection tab-separated file for either cohort or single sample.",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             optional = false
@@ -103,7 +126,7 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
     protected File outputSampleGenotypesFile;
 
     @Argument(
-            doc = "Input contig annotations file.",
+            doc = "Input germline contig ploidy annotations file. For an example file, see the GATK Resource Bundle.",
             fullName = INPUT_CONTIG_ANNOTS_LONG_NAME,
             shortName = INPUT_CONTIG_ANNOTS_SHORT_NAME,
             optional = false
@@ -111,7 +134,7 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
     protected File inputContigAnnotsFile;
 
     @Argument(
-            doc = "Baseline mapping error probability.",
+            doc = "Baseline mapping error probability or an estimate of the typical mapping error.",
             fullName = BASELINE_MAPPING_ERROR_PROBABILITY_LONG_NAME,
             shortName = BASELINE_MAPPING_ERROR_PROBABILITY_SHORT_NAME,
             optional = true
@@ -119,7 +142,8 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
     protected double baselineMappingErrorProbability = 1e-4;
 
     @Argument(
-            doc = "Input target list.",
+            doc = "Input target list. A tab-separated list of targets used for sex genotyping. " +
+                    " It must be a subset or can be all of the targets included in the read counts table.",
             fullName = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
             optional = true
