@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -28,12 +29,22 @@ import java.util.stream.Collectors;
 
 /**
  * Given mixing weights of different samples in a pooled bam, annotate a corresponding
- * vcf containing individual sample genotypes.  The formula is:
+ * vcf containing individual sample genotypes.
  *
- * Expected allele fraction = SUM_samples {mixing_fraction(sample) * [0 if hom ref, 0.5 is het, 1.0 if hom var]}
+ * <p>The formula is:</p>
  *
- * Usage:
- * java -jar gatk.jar AnnotateVcfWithExpectedAlleleFraction -V input.vcf -O output.vcf -mixingFractions mixingFractions.table
+ * <p>
+ *     Expected allele fraction = SUM_samples {mixing_fraction(sample) * [0 if hom ref, 0.5 is het, 1.0 if hom var]}
+ * </p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -jar gatk.jar AnnotateVcfWithExpectedAlleleFraction \
+ *   -V input.vcf \
+ *   -O output.vcf \
+ *   -mixingFractions mixingFractions.table
+ * </pre>
  *
  * Created by David Benjamin on 1/31/17.
  */
@@ -41,9 +52,10 @@ import java.util.stream.Collectors;
         summary = "Annotate a multi-sample vcf with expected allele fractions in pooled sequencing given mixing" +
                 " fractions of the different samples in the pool via the formula" +
                 " Expected allele fraction = SUM_samples {mixing_fraction(sample) * [0 if hom ref, 0.5 is het, 1.0 if hom var]}",
-        oneLineSummary = "Annotate a vcf with expected allele fractions in pooled sequencing",
+        oneLineSummary = "(Internal) Annotate a vcf with expected allele fractions in pooled sequencing",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class AnnotateVcfWithExpectedAlleleFraction extends VariantWalker {
 
     public static final String MIXING_FRACTIONS_TABLE_NAME = "mixingFractions";

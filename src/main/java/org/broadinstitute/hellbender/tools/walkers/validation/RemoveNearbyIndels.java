@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -17,20 +18,30 @@ import java.io.File;
 import java.util.ArrayDeque;
 
 /**
- * Remove indels that are close to another indel from a vcf.  This is a preprocessing step
- * for the CRSP sensitivity validation truth data.
+ * Remove indels that are close to another indel from a vcf.
  *
- * Example usage:
- * java -jat gatk.jar RemoveNearbyIndels -V input.vcf -O output.vcf -minIndelSpacing 20
+ * <p>
+ * This is a preprocessing step for the CRSP sensitivity validation truth data.
+ * </p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -jat gatk.jar RemoveNearbyIndels \
+ *   -V input.vcf \
+ *   -O output.vcf \
+ *   -minIndelSpacing 20
+ * </pre>
  *
  * Created by David Benjamin on 1/30/17.
  */
 @CommandLineProgramProperties(
         summary = "Remove indels that are close to each other from a vcf.  For any pair of indels that are within" +
                 "some minimum allowed distance, both indels are removed, regardless of any intervening non-indel variants.",
-        oneLineSummary = "Remove indels that are close to each other from a vcf",
+        oneLineSummary = "(Internal) Remove indels that are close to each other from a vcf",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class RemoveNearbyIndels extends VariantWalker {
 
     public static final String MIN_INDEL_SPACING_NAME = "minIndelSpacing";

@@ -5,6 +5,7 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -24,17 +25,26 @@ import java.util.stream.StreamSupport;
  * contributes to a pooled BAM.  We first estimate each sample's mixing fraction as the average alt fraction
  * in the bam of singleton hets belonging to that sample, then normalize these initial estimates to sum to one.
  *
+ * <p>
  * In the CRSP sensitivity validation, we have a bam derived from a pool of 5, 10, or 20 samples
  * and a vcf of all known variants in those samples.  The pooled bam is a simulated tumor and
  * the vcf of individual variants is our truth data.  We annotate the truth data with the estimated
  * allele fractions of each variant in the pooled bam in order to bin our results by "tumor" allele fraction.
  * To estimate allele fractions we need to know the sample mixing fractions as an intermediate step.
+ * </p>
  *
+ * <p>
  * One could use this tool for generating precise truth data any time multiple samples with known ground
  * truth are combined to simulate tumors or any situation in which low allele fractions occur.
+ * </p>
  *
- * Example usage:
- * java -jat gatk.jar CalculateMixingFractions -V input.vcf -O output.table
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -jat gatk.jar CalculateMixingFractions \
+ *   -V input.vcf \
+ *   -O output.table
+ * </pre>
  *
  * Created by David Benjamin on 1/30/17.
  */
@@ -42,9 +52,10 @@ import java.util.stream.StreamSupport;
         summary = "Calculate proportions of different samples in a pooled bam by first estimating each sample's" +
                 " mixing fraction as the average alt fraction in the bam of singleton hets belonging to that sample, then" +
                 " normalizing these initial estimates to sum to one.",
-        oneLineSummary = "Calculate proportions of different samples in a pooled bam",
+        oneLineSummary = "(Internal) Calculate proportions of different samples in a pooled bam",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class CalculateMixingFractions extends VariantWalker {
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
