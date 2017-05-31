@@ -5,6 +5,7 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -25,28 +26,34 @@ import java.util.stream.Collectors;
  * Print read alignments in Pileup-style format
  *
  * <p>This tool emulates the 'samtools pileup' command. It prints the alignment in a format that is very similar to the
- * Samtools pileup format (see the <a href="http://samtools.sourceforge.net/pileup.shtml">Pileup format
- * documentation</a> for more details about the original format). There is one line per genomic position, listing the
+ * Samtools pileup format; see the <a href="http://samtools.sourceforge.net/pileup.shtml">Pileup format
+ * documentation</a> for more details about the original format. There is one line per genomic position, listing the
  * chromosome name, coordinate, reference base, read bases, and read qualities. In addition to these default fields,
  * additional information can be added to the output as extra columns; see options detailed below.</p>
  *
  * <h4>Emulated command:</h4>
  * <pre>
- *  samtools pileup -f in.ref.fasta -l in.site_list input.bam
+ *  samtools pileup -f reference.fasta -l intervals.site_list input.bam
  * </pre>
  *
- * <h3>Input</h3> <p> A BAM file and the interval to print. </p>
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>A BAM or CRAM file containing input read data</li>
+ *     <li>The interval(s) of interest</li>
+ * </ul>
  *
- * <h3>Output</h3> <p> Alignment of reads formatted in the Pileup style. </p>
+ * <h3>Output</h3>
+ * <p> Alignment of bases formatted in the Pileup style</p>
  *
  * <h3>Usage example</h3>
  * <pre>
- * ./gatk-launch Pileup  \\
+ * ./gatk-launch Pileup \
  *   -R reference.fasta \
- *   -I my_reads.bam \
- *   -L chr1:257-267
+ *   -I input.bam \
+ *   -L chr1:257-267 \
  *   -O output.txt
  * </pre>
+ *
  * <h4>Expected output</h4>
  * <pre>
  *     chr1 257 A CAA '&=
@@ -66,12 +73,13 @@ import java.util.stream.Collectors;
  */
 @CommandLineProgramProperties(
     summary = "This tool emulates the 'samtools pileup' command. It prints the alignment in a format that is very "
-        + "similar to the Samtools pileup format (see the documentation in http://samtools.sourceforge.net/pileup.shtml"
-        + "for more details about the original format). There is one line per genomic position, listing the chromosome "
+        + "similar to the Samtools pileup format; see the documentation in http://samtools.sourceforge.net/pileup.shtml"
+        + "for more details about the original format. There is one line per genomic position, listing the chromosome "
         + "name, coordinate, reference base, read bases, and read qualities. In addition to these default fields, "
         + "additional information can be added to the output as extra columns; see options detailed below.",
     oneLineSummary = "Print read alignments in Pileup-style format",
     programGroup = QCProgramGroup.class)
+@DocumentedFeature
 public final class Pileup extends LocusWalker {
 
     private static final String VERBOSE_DELIMITER = "@"; // it's ugly to use "@" but it's literally the only usable character not allowed in read names
@@ -99,7 +107,6 @@ public final class Pileup extends LocusWalker {
      * Adds the length of the insert each base comes from to the output pileup. Here, "insert" refers to the DNA insert
      * produced during library generation before sequencing.
      */
-    @Hidden
     @Argument(fullName = "outputInsertLength", shortName = "outputInsertLength", doc = "Output insert length", optional = true)
     public boolean outputInsertLength = false;
 
