@@ -24,7 +24,7 @@ import java.util.stream.StreamSupport;
  */
 public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // positions 10,000,000 - 11,000,000 of chr 20 and with most annotations removed
-    private static final File GNOMAD = new File(publicTestDir, "very-small-gnomad.vcf");
+    private static final File GNOMAD = new File(largeFileTestDir, "very-small-gnomad.vcf");
     private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
     private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
     private static final String DREAM_MASKS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/masks/";

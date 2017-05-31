@@ -28,7 +28,9 @@ import java.util.stream.Stream;
  */
 public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLineProgramTest {
 
-    public static final File REALISTIC_TARGETS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/germlinehmm/realistic-targets.tab");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+
+    public static final File REALISTIC_TARGETS_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "realistic-targets.tab");
     public static final TargetCollection<Target> REALISTIC_TARGETS;
 
     static {

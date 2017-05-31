@@ -18,12 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class PCATangentNormalizationUtilsUnitTest extends BaseTest {
-    private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
-    private static final File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
-    private static final File TEST_FULL_NORMALS_TN_FILE = new File(TEST_DIR, "create-pon-all-targets.pon.normal_projection");
-    private static final File TEST_SOME_NORMALS_TN_FILE = new File(TEST_DIR, "create-pon-some-targets.pon.normal_projection");
-    private static final File TEST_FULL_PON = new File(TEST_DIR, "create-pon-all-targets.pon");
-    private static final File TEST_SOME_PON = new File(TEST_DIR, "create-pon-some-targets.pon");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+    private static final File TEST_PCOV_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");
+    private static final File TEST_FULL_NORMALS_TN_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-all-targets.pon.normal_projection");
+    private static final File TEST_SOME_NORMALS_TN_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-some-targets.pon.normal_projection");
+    private static final File TEST_FULL_PON = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-all-targets.pon");
+    private static final File TEST_SOME_PON = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-some-targets.pon");
 
     @DataProvider(name="normalizeReadCountByTargetFactorsData")
     public Object[][] normalizeReadCountByTargetFactorsData() {

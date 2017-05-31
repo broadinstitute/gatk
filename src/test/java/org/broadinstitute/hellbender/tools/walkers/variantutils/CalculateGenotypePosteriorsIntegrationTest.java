@@ -28,7 +28,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -L 20:10,000,000-10,001,432" +
                         " -V " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
                         " -addOutputVCFCommandLine false",
-                Collections.singletonList(dir + "expectedCGP_testUsingDiscoveredAF.vcf")
+                Collections.singletonList(largeDir + "CalculateGenotypePosteriors/expectedCGP_testUsingDiscoveredAF.vcf")
         );
         spec.executeTest("testUsingDiscoveredAF", this);
     }
@@ -44,7 +44,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -L 20:10,000,000-10,001,432" +
                         " -V " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
                         " -addOutputVCFCommandLine false",
-                Collections.singletonList(dir + "expectedCGP_testMissingPriors.vcf")
+                Collections.singletonList(largeDir + "CalculateGenotypePosteriors/expectedCGP_testMissingPriors.vcf")
         );
         spec.executeTest("testMissingPriors", this);
     }

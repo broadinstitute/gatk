@@ -45,9 +45,10 @@ import java.util.stream.Stream;
  */
 public final class HDF5PCACoveragePoNCreationUtilsUnitTest extends BaseTest {
     private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
-    private static final File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+    private static final File TEST_PCOV_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");
     private static final File GT_TARGET_VAR_FILE = new File(TEST_DIR, "dummy_pon_target_variances_matlab.txt");
-    private static final File TEST_FULL_PON_FILE = new File(TEST_DIR, "create-pon-all-targets.pon");
+    private static final File TEST_FULL_PON_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-all-targets.pon");
 
     @Test
     public void testRedoReductionWithSameEigensampleCount() {

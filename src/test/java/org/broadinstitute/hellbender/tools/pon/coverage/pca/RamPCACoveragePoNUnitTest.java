@@ -11,8 +11,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public final class RamPCACoveragePoNUnitTest extends BaseTest {
-    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
-    private static final File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+
+    private static final File TEST_PCOV_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");
 
     @Test
     public void testCopiesReturnedOfMatrices() {

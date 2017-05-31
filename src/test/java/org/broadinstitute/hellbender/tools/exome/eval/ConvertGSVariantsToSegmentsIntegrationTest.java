@@ -28,11 +28,13 @@ import java.util.stream.Stream;
  */
 public class ConvertGSVariantsToSegmentsIntegrationTest extends CommandLineProgramTest {
 
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+
     private static final File TEST_INPUT_FILE =
             new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/eval", "gs-calls.vcf.gz");
 
     private static final File TEST_TARGET_FILE =
-            new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/germlinehmm/realistic-targets.tab");
+            new File(LARGE_CNV_TEST_FILE_DIR, "realistic-targets.tab");
 
     @Override
     public String getTestedClassName() {

@@ -28,21 +28,23 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
 
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
 
-    private static final File CONTROL_PCOV_FULL_FILE = new File(TEST_FILE_DIR, "create-pon-control-full.pcov");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
 
-    private static final File CONTROL_PCOV_SOME_TARGETS_FULL_FILE = new File(TEST_FILE_DIR, "create-pon-control-some-targets-full.pcov");
+    private static final File CONTROL_PCOV_FULL_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");
 
-    private static final File CONTROL_PCOV_TARGET_NAME_ONLY_FILE = new File(TEST_FILE_DIR, "create-pon-control-target-name-only.pcov");
+    private static final File CONTROL_PCOV_SOME_TARGETS_FULL_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-some-targets-full.pcov");
 
-    private static final File CONTROL_PCOV_TARGET_COORDINATE_ONLY_FILE = new File(TEST_FILE_DIR, "create-pon-control-target-coord-only.pcov");
+    private static final File CONTROL_PCOV_TARGET_NAME_ONLY_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-target-name-only.pcov");
+
+    private static final File CONTROL_PCOV_TARGET_COORDINATE_ONLY_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-target-coord-only.pcov");
 
     private static final File ALL_TARGETS_FILE = new File(TEST_FILE_DIR, "create-pon-all-targets.tab");
 
     private static final File SOME_TARGETS_FILE = new File(TEST_FILE_DIR, "create-pon-some-targets.tab");
 
-    private static final File EXPECTED_ALL_TARGETS_PON = new File(TEST_FILE_DIR, "create-pon-all-targets.pon");
+    private static final File EXPECTED_ALL_TARGETS_PON = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-all-targets.pon");
 
-    private static final File EXPECTED_SOME_TARGETS_PON = new File(TEST_FILE_DIR, "create-pon-some-targets.pon");
+    private static final File EXPECTED_SOME_TARGETS_PON = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-some-targets.pon");
 
     @Test(dataProvider="allTargetsHDF5PoNCreationData")
     public void testAllTargetsHDF5PoNCreationNoSparkNoQC(final File targetsFile, final File inputFile) {
