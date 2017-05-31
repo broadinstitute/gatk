@@ -28,7 +28,7 @@ import java.util.List;
         summary = "Creates an allelic panel of normals, given het pulldowns for samples that are part of the panel, " +
                 "and writes it to an HDF5 file (and optionally, a TSV file).  Samples can differ from those " +
                 "used to create the coverage PoN but should be representative of the same sequencing process.",
-        oneLineSummary = "Creates an allelic panel of normals",
+        oneLineSummary = "(Experimental) Creates an allelic panel of normals",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
