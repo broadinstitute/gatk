@@ -31,6 +31,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
@@ -181,6 +182,9 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final Broadcast<ReferenceMultiSource> referenceBroadcast = ctx.broadcast(reference);
         final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast = ctx.broadcast(hcArgs);
 
+        final VariantAnnotatorEngine variantAnnotatorEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.annotationGroupsToUse, hcArgs.annotationsToUse, hcArgs.annotationsToExclude, hcArgs.dbsnp.dbsnp, hcArgs.comps);
+        final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast = ctx.broadcast(variantAnnotatorEngine);
+
         final List<ShardBoundary> shardBoundaries = getShardBoundaries(header, intervals, shardingArgs.readShardSize, shardingArgs.readShardPadding);
 
         final int maxLocatableSize = reads.map(r -> r.getEnd() - r.getStart() + 1).reduce(Math::max);
@@ -188,9 +192,10 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final JavaRDD<Shard<GATKRead>> readShards = createReadShards(ctx, shardBoundaries, reads, header, maxLocatableSize);
 
         final JavaRDD<Tuple2<AssemblyRegion, SimpleInterval>> assemblyRegions = readShards
-                .mapPartitions(shardsToAssemblyRegions(authHolder, referenceBroadcast, hcArgsBroadcast, shardingArgs, header));
+                .mapPartitions(shardsToAssemblyRegions(authHolder, referenceBroadcast,
+                    hcArgsBroadcast, shardingArgs, header, annotatorEngineBroadcast));
 
-        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(authHolder, header, referenceBroadcast, hcArgsBroadcast));
+        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(authHolder, header, referenceBroadcast, hcArgsBroadcast, annotatorEngineBroadcast));
     }
 
     /**
@@ -202,12 +207,13 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final AuthHolder authHolder,
             final SAMFileHeader header,
             final Broadcast<ReferenceMultiSource> referenceBroadcast,
-            final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast) {
+            final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
+            final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return regionAndIntervals -> {
             //HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
             final ReferenceMultiSource referenceMultiSource = referenceBroadcast.value();
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource, authHolder);
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource);
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
             return iteratorToStream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
         };
     }
@@ -287,11 +293,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final Broadcast<ReferenceMultiSource> reference,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final ShardingArgumentCollection assemblyArgs,
-            final SAMFileHeader header) {
+            final SAMFileHeader header,
+            final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return shards -> {
             final ReferenceMultiSource referenceMultiSource = reference.value();
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource, authHolder);
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource);
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
 
             ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
                 new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
