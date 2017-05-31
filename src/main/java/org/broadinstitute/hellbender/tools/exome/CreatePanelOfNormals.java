@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -39,6 +40,25 @@ import java.util.stream.DoubleStream;
  * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>
+ *     The following command is for either whole exome sequencing (WES) or whole genome sequencing (WGS) data and uses Spark.
+ * </p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CreatePanelOfNormals \
+ *   --input gc_corrected_coverages.tsv \
+ *   --output panel_of_normals.pon
+ * </pre>
+ *
+ * <p>
+ * In addition to the resulting PoN, this command produces a .pon.removed_samples.txt file of samples removed for quality control (QC)
+ * and a .pon.target_weights.txt file that gives the inverse variance per target that can optionally be passed to PerformSegmentation.
+ * To disable Spark processing, add the --disableSpark option to the command.
+ * </p>
+ *
  */
 @CommandLineProgramProperties(
         summary = "Create a coverage panel of normals (PoN) given the proportional read counts " +
@@ -46,6 +66,7 @@ import java.util.stream.DoubleStream;
         oneLineSummary = "Create a coverage panel of normals",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
 
     static final long serialVersionUID = 42123132L;
