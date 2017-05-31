@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.segmentation;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
@@ -16,13 +17,16 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Created by davidben on 5/23/16.
+ * Groups contiguous regions of constant copy ratio per sample.
+ *
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Segment genomic data into regions of constant copy ratio.  Only supports one sample input.",
-        oneLineSummary = "Segment genomic data into regions of constant copy ratio",
+        oneLineSummary = "(Experimental) Segment genomic data into regions of constant copy ratio",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class PerformCopyRatioSegmentation extends CommandLineProgram {
     protected static final String INITIAL_NUM_STATES_LONG_NAME = "initialNumberOfStates";
     protected static final String INITIAL_NUM_STATES_SHORT_NAME = "initialNumStates";
