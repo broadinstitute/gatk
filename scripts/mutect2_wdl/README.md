@@ -15,7 +15,7 @@ This file has reasonable default parameters.
 *Please note that there are optional parameters that do not appear in the template files, since we do not want to specify, by default*
 
 ### Docker images
-- "broadinstitute/gatk-protected:1.0.0.0-alpha1.2.4" (This is a private image!  Recommended use ``gatk_jar`` as ``/root/gatk-protected.jar``)
+- "broadinstitute/gatk-protected:1.0.0.0-alpha1.2.4" (This is a private image!  Recommended use ``gatk_jar`` as ``/root/gatk.jar``)
 - "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282" (You must specify a ``gatk4_jar_override``)
 
 
@@ -152,7 +152,7 @@ gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-
 
 ```
 {
-  "Mutect2_Multi.gatk4_jar_override": "/home/lichtens/test_onco_m2/gatk-protected/build/libs/gatk-protected.jar",
+  "Mutect2_Multi.gatk4_jar_override": "/home/lichtens/test_onco_m2/gatk/build/libs/gatk.jar",
   "Mutect2_Multi.gatk4_jar": "DO NOT USE",
   "Mutect2_Multi.intervals": "/home/lichtens/test_onco_m2/intervals.interval_list",
   "Mutect2_Multi.ref_fasta": "/data/ref/Homo_sapiens_assembly19.fasta",
@@ -168,7 +168,7 @@ gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-
   "Mutect2_Multi.cosmic_index": "/data/m1/hg19_cosmic_v54_120711.vcf.idx",
   "Mutect2_Multi.is_run_orientation_bias_filter": true,
   "Mutect2_Multi.is_run_oncotator": true,
-  "Mutect2_Multi.m2_docker": "broadinstitute/gatk-protected:1.0.0.0-alpha1.2.4",
+  "Mutect2_Multi.m2_docker": "broadinstitute/gatk:1.0.0.0-alpha1.2.4",
   "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.2.0",
   "Mutect2_Multi.preemptible_attempts": 2,
   "Mutect2_Multi.onco_ds_tar_gz": "/data/onco_dir/oncotator_v1_ds_April052016.tar.gz"
@@ -179,5 +179,5 @@ gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-
 Associated pair_list file (tab separated):
 
 ```
-/home/lichtens/test_onco_m2/gatk-protected/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam	/home/lichtens/test_onco_m2/gatk-protected/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam.bai	 synthetic.challenge.set1.tumor  /home/lichtens/test_onco_m2/gatk-protected/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam    /home/lichtens/test_onco_m2/gatk-protected/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam.bai	synthetic.challenge.set1.normal
+/home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam	/home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam.bai	 synthetic.challenge.set1.tumor  /home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam    /home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam.bai	synthetic.challenge.set1.normal
 ```

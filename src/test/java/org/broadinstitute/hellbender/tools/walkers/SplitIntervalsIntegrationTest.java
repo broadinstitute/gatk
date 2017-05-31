@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.SAMSequenceRecord;
-import junit.framework.Assert;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 4/25/17.

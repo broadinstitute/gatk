@@ -4,7 +4,7 @@
 set -e
 
 REPO=broadinstitute
-PROJECT=gatk-protected
+PROJECT=gatk
 REPO_PRJ=${REPO}/${PROJECT}
 
 #################################################

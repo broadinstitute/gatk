@@ -95,7 +95,7 @@ sudo docker pull broadinstitute/gatk
 sudo docker run -i -t broadinstitute/gatk:latest
 
 # On the docker prompt
-cd /root/gatk-protected
+cd /root/gatk
 ./gradlew test
 
 # To leave the docker prompt:

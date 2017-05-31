@@ -74,33 +74,33 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
 
 # R setup complete...
 
-# Installing GATK4 protected (from repo: gatk-protected)
+# Installing GATK4 protected (from repo: gatk)
 #  This Dockerfile is getting the specified tag of gatk4-protected
 #  This Dockerfile generates a jar file that will work without spark or in spark standalone.  Not on a spark cluster.
 
 # Install R dependencies and build the shadowJar
 ENV GITHUB_TAG ${GITHUB_TAG}
 ENV GITHUB_DIR ${GITHUB_DIR}
-RUN mkdir -p /root/gatk-protected/
-COPY . /root/gatk-protected/
-WORKDIR /root/gatk-protected/
-RUN Rscript /root/gatk-protected/scripts/install_R_packages.R
+RUN mkdir -p /root/gatk/
+COPY . /root/gatk/
+WORKDIR /root/gatk/
+RUN Rscript /root/gatk/scripts/install_R_packages.R
 RUN ./gradlew clean compileTestJava shadowJar
 
 WORKDIR /root
 
 # Make sure we can see a help message
-RUN ln -sFv /root/gatk-protected/build/libs/gatk-protected.jar
-RUN java -jar gatk-protected.jar -h
+RUN ln -sFv /root/gatk/build/libs/gatk.jar
+RUN java -jar gatk.jar -h
 
 # Install git lfs and get latest big files
-WORKDIR /root/gatk-protected/
+WORKDIR /root/gatk/
 RUN bash scripts/install_git_lfs.sh
 
-RUN echo This docker image is running gatk-protected `git describe --tags` > /root/GATK_PROTECTED_VERSION
+RUN echo This docker image is running gatk `git describe --tags` > /root/GATK_PROTECTED_VERSION
 
 # Create a simple unit test runner
 ENV CI true
-RUN echo "cd /root/gatk-protected/ && ./gradlew test" >/root/run_unit_tests.sh
+RUN echo "cd /root/gatk/ && ./gradlew test" >/root/run_unit_tests.sh
 
 WORKDIR /root

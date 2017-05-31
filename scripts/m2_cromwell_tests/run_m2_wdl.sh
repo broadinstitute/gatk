@@ -9,17 +9,17 @@ WORKING_DIR=/home/travis/build/broadinstitute
 set -e
 echo "Building docker image for M2 WDL tests (skipping unit tests)..."
 HASH_TO_USE=`git rev-parse ${TRAVIS_BRANCH}`
-#cd $WORKING_DIR/gatk-protected/scripts/docker/
+#cd $WORKING_DIR/gatk/scripts/docker/
 #assume Dockerfile is in root
-cp -rfp $WORKING_DIR/gatk-protected/scripts/docker/Dockerfile $WORKING_DIR/gatk-protected/
-cp -rfp $WORKING_DIR/gatk-protected/scripts/docker/build_docker.sh $WORKING_DIR/gatk-protected/
+cp -rfp $WORKING_DIR/gatk/scripts/docker/Dockerfile $WORKING_DIR/gatk/
+cp -rfp $WORKING_DIR/gatk/scripts/docker/build_docker.sh $WORKING_DIR/gatk/
 echo "Building docker without running unit tests... ========="
-cd $WORKING_DIR/gatk-protected
+cd $WORKING_DIR/gatk
 sudo bash build_docker.sh  -e $HASH_TO_USE -s -u
 echo "Docker build done =========="
 echo "Putting the newly built docker image into the json parameters"
-cd $WORKING_DIR/gatk-protected/scripts/docker/
-sed -r "s/__M2_DOCKER__/broadinstitute\/gatk-protected\:$HASH_TO_USE/g" ../m2_cromwell_tests/test_m2_wdl_multi.json >$WORKING_DIR/test_m2_wdl_multi_mod.json
+cd $WORKING_DIR/gatk/scripts/docker/
+sed -r "s/__M2_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ../m2_cromwell_tests/test_m2_wdl_multi.json >$WORKING_DIR/test_m2_wdl_multi_mod.json
 echo "JSON FILE (modified) ======="
 cat $WORKING_DIR/test_m2_wdl_multi_mod.json
 echo "=================="
@@ -29,8 +29,8 @@ sed -r "s/\"pair_list/\"pair_list_tumor_only/g" $WORKING_DIR/test_m2_wdl_multi_m
 cd $WORKING_DIR/
 
 echo "Running M2 WDL through cromwell (T/N)"
-ln -fs $WORKING_DIR/gatk-protected/scripts/mutect2_wdl/mutect2.wdl
-sudo java -jar ~/cromwell-0.25.jar run $WORKING_DIR/gatk-protected/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod.json - $WORKING_DIR/test_m2_wdl.metadata
+ln -fs $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl
+sudo java -jar ~/cromwell-0.25.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod.json - $WORKING_DIR/test_m2_wdl.metadata
 
 echo "Running M2 WDL through cromwell (Tumor-only)"
-sudo java -jar ~/cromwell-0.25.jar run $WORKING_DIR/gatk-protected/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod_to.json - $WORKING_DIR/test_m2_wdl_to.metadata
+sudo java -jar ~/cromwell-0.25.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod_to.json - $WORKING_DIR/test_m2_wdl_to.metadata

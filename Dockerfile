@@ -15,8 +15,15 @@ RUN ln -sFv /gatk/build/libs/gatk.jar
 RUN java -jar gatk.jar -h
 
 # Install git lfs and get latest big files
+#WORKDIR /gatk
+#RUN bash scripts/install_git_lfs.sh
+
+#Setup test data
 WORKDIR /gatk
-RUN bash scripts/install_git_lfs.sh
+# remove existing test data
+RUN rm -rf src/test/resources
+# Create link to where test data is expeced
+RUN ln -s /testdata src/test/resources
 
 # Create a simple unit test runner
 ENV CI true
