@@ -7,6 +7,7 @@ import org.apache.commons.lang.math.IntRange;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -33,15 +34,51 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Tool to convert Genotype Strip Variant call file into {@link HiddenStateSegmentRecord} table file.
+ * Converts Genome STRiP (GS) variant call format (VCF) variants into {@link HiddenStateSegmentRecord} CopyNumberTriState format calls.
  *
+ * <p>
+ *     CopyNumberTriState refers to the three copy number calls of plus (+), neutral (0) and minus (-).
+ *     Use the resulting file with {@link EvaluateCopyNumberTriStateCalls}.
+ *     Here are example CopyNumberTriState format calls:
+ * </p>
+ *
+ * <pre>
+ *     Sample  Chromosome      Start   End     Segment_Call    Num_Targets     Segment_Mean    Segment_Std     Exact_Quality   Some_Quality    Start_Quality   End_Quality     Event_Quality
+ *     01C05110        1       21944797        21946084        0       1       2.3443  0.0000  44.4002 NaN     NaN     NaN     0.0000
+ *     01C06980        1       21944797        21946084        0       1       2.2533  0.0000  59.8000 NaN     NaN     NaN     0.0000
+ *     01C07132        1       21944797        21946084        0       1       2.1878  0.0000  68.7000 NaN     NaN     NaN     0.0000
+ *     01C07215        1       21944797        21946084        0       1       1.6267  0.0000  96.5991 NaN     NaN     NaN     0.0000
+ *     01C07248        1       21944797        21946084        0       1       1.7863  0.0000  103.2934        NaN     NaN     NaN     0.0000
+ *     01C07286        1       21944797        21946084        0       1       2.1658  0.0000  68.7000 NaN     NaN     NaN     0.0000
+ *     01C07431        1       21944797        21946084        0       1       2.1904  0.0000  66.1000 NaN     NaN     NaN     0.0000
+ *     01C07450        1       21944797        21946084        0       1       2.1317  0.0000  75.0000 NaN     NaN     NaN     0.0000
+ *     01C05110        1       46597740        46598439        0       0       2.2678  0.0000  34.2017 NaN     NaN     NaN     0.0000
+ *     01C06980        1       46597740        46598439        0       0       2.0544  0.0000  49.5000 NaN     NaN     NaN     0.0000
+ *     01C07132        1       46597740        46598439        +       0       2.7620  0.0000  5.3133  NaN     NaN     NaN     5.3000
+ *     01C07215        1       46597740        46598439        0       0       2.5568  0.0000  13.6898 NaN     NaN     NaN     0.2000
+ * </pre>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -jar $gatk_jar ConvertGSVariantsToSegments \
+ *   --variant genomestrip.vcf.gz \
+ *   --output copynumbertristate.seg
+ * </pre>
+ *
+ * <p>
+ *     Optional argument --targets (see {@link org.broadinstitute.hellbender.tools.exome.convertbed.ConvertBedToTargetFile})
+ *     limits data to the listed target intervals.
+ * </p>
+ * 
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Convert Genome STRiP VCF file contents into a CopyNumberTriState segment file. Genome STRiP can be found at http://www.broadinstitute.org/software/genomestrip",
-        oneLineSummary = "Convert Genome STRiP VCF file into a segment file",
+        oneLineSummary = "(Internal) Convert Genome STRiP VCF file into a segment file",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class ConvertGSVariantsToSegments extends VariantWalker {
 
     public static final String OUTPUT_FILE_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
