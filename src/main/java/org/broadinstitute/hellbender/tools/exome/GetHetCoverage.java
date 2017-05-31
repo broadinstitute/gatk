@@ -20,8 +20,10 @@ import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import java.io.File;
 
 /**
- * Outputs reference/alternate read counts at heterozygous SNP sites present in a normal sample
- * (and at the same sites in a tumor sample, if specified).
+ * Outputs reference/alternate read counts at heterozygous SNP sites present in a normal sample,
+ * and, if specified, at the same sites in a tumor sample.
+ *
+ * <p>The non-Bayesian version of {@link GetBayesianHetCoverage}. See GetBayesianHetCoverage for modes.</p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
