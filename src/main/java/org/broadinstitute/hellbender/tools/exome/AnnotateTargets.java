@@ -55,7 +55,7 @@ import java.util.Map;
  * java -Xmx4g -jar $gatk_jar AnnotateTargets \
  *   --targets targets.tsv \
  *   --reference ref_fasta.fa \
- *   --output entity_id.annotated.tsv
+ *   --output targets.annotated.tsv
  * </pre>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;

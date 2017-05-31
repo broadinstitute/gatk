@@ -4,6 +4,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 /**
  * Correct coverage for sample-specific GC bias effects as described in {@link GCCorrector}.
  *
+ * <p>
  * Inputs are
  * 1. read counts file (format described in {@link ReadCountCollectionUtils}).  Since this tool corrects
  *    for multiplicative GC bias effects, these counts should not be in log space i.e. they should represent
@@ -24,17 +26,28 @@ import java.util.stream.Collectors;
  * 2. targets file containing GC content annotation as produced by {@link AnnotateTargets}.  Every target in the input
  *    read counts must be present in the targets file but the reverse need not be true.
  *
- * Output is a read counts file with the same targets (rows) and samples (columns) as the input, corrected for GC bias.
+ * The resulting read counts file has the same targets (rows) and samples (columns) as the input, with entries denoting GC-bias-corrected coverage.
  * Coverage is represented by doubles in {@link ReadCountCollection}.
+ * </p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CorrectGCBias \
+ *   --input coverage.tsv \
+ *   --targets targets.annotated.tsv \
+ *   --output coverage.gc_corrected.tsv
+ * </pre>
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        oneLineSummary = "Correct for per-sample GC bias effects",
-        summary = "Correct coverage in a read counts files by estimating per-sample bias as a function of target GC" +
-                " content and dividing input coverage by these derived bias curves.",
+        oneLineSummary = "Correct for sample-specific GC bias",
+        summary = "Correct coverage in read counts by (i) estimating per-sample bias as a function of per-target GC " +
+                "content and (ii) dividing input coverage by derived bias curves.",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public class CorrectGCBias extends CommandLineProgram {
     public static final String INPUT_READ_COUNTS_FILE_LONG_NAME = StandardArgumentDefinitions.INPUT_LONG_NAME;
     public static final String INPUT_READ_COUNTS_FILE_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
