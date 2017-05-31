@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
@@ -23,13 +24,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Created by davidben on 10/5/16.
+ * Group contiguous segments into regions of constant copy ratio and allele fraction per sample.
+ *
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Segment genomic data into regions of constant copy ratio and allele fraction.  Only supports one sample input.",
-        oneLineSummary = "Segment genomic data into regions of constant copy ratio and allele fraction",
+        oneLineSummary = "(Experimental) Segment genomic data into regions of constant copy ratio and allele fraction",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public class PerformJointSegmentation extends CommandLineProgram {
     protected static final String INITIAL_NUM_COPY_RATIO_STATES_LONG_NAME = "initialNumberOfCopyRatioStates";
     protected static final String INITIAL_NUM_COPY_RATIO_STATES_SHORT_NAME = "initialNumCRStates";
