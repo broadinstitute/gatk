@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -305,7 +306,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     private static void unshardOutput(final String out, final String shardedOutputDirectory, final int numParts) {
         final OutputStream outputStream;
 
-        outputStream = new BufferedOutputStream(BucketUtils.createFile(out));
+        outputStream = new BlockCompressedOutputStream(new BufferedOutputStream(BucketUtils.createFile(out)), null);
         for (int i = 0; i < numParts; i++) {
             String fileName = String.format("part-%1$05d", i);
             try {
@@ -385,11 +386,35 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     private static JavaPairRDD<String, MySVIntervalTree> getBarcodeIntervals(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata, final int minReadCountPerMol, final int minMaxMapq, final int edgeReadMapqThreshold) {
-        final JavaPairRDD<String, MySVIntervalTree> readsClusteredByBC = getClusteredReadIntervalsByTag(finalClusterSize, mappedReads, broadcastMetadata, minReadCountPerMol, "BX");
+        final JavaPairRDD<String, MySVIntervalTree> readsClusteredByBC = getClusteredReadIntervalsByTag(finalClusterSize, mappedReads, broadcastMetadata, "BX");
         final JavaPairRDD<String, MySVIntervalTree> edgefilteredClusteredReads = edgeFilterFragments(readsClusteredByBC, edgeReadMapqThreshold);
-        final JavaPairRDD<String, MySVIntervalTree> maxMapqFilteredFragments = minMaxMapqFilterFragments(edgefilteredClusteredReads, minMaxMapq);
+        final JavaPairRDD<String, MySVIntervalTree> minMoleculeCountFragments = minMoleculeCountFilterFragments(edgefilteredClusteredReads, minReadCountPerMol);
+        final JavaPairRDD<String, MySVIntervalTree> maxMapqFilteredFragments = minMaxMapqFilterFragments(minMoleculeCountFragments, minMaxMapq);
         return maxMapqFilteredFragments
                 .cache();
+    }
+
+    private static JavaPairRDD<String, MySVIntervalTree> minMoleculeCountFilterFragments(final JavaPairRDD<String, MySVIntervalTree> clusteredReads, final int minReadCountPerMol) {
+        if (minReadCountPerMol > 0) {
+            final JavaPairRDD<String, MySVIntervalTree> filteredIntervalsByKey = clusteredReads
+                    .mapValues(mySVIntervalTree -> {
+                        final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
+                        while (iterator.hasNext()) {
+                            final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
+                            if (next.getValue().size() < minReadCountPerMol) {
+                                iterator.remove();
+                            }
+                        }
+                        return mySVIntervalTree;
+                    })
+                    .filter(kv -> {
+                        final MySVIntervalTree mySVIntervalTree = kv._2();
+                        return mySVIntervalTree.myTree.size() > 0;
+                    });
+            return filteredIntervalsByKey;
+        } else {
+            return clusteredReads;
+        }
     }
 
     private static JavaPairRDD<String, MySVIntervalTree> minMaxMapqFilterFragments(final JavaPairRDD<String, MySVIntervalTree> readsClusteredByBC, final int minMaxMapq) {
@@ -439,7 +464,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         if (readInfo.getMapq() > edgeReadMapqThreshold) {
                             break;
                         } else {
-                            iterator.remove();
+                            revIterator.remove();
                         }
                     }
                     if (entry.getValue().isEmpty()) {
@@ -459,10 +484,10 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     private static JavaPairRDD<String, MySVIntervalTree> getPhaseSetIntervals(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata) {
-        return getClusteredReadIntervalsByTag(1000000, mappedReads, broadcastMetadata, 0, "PS");
+        return getClusteredReadIntervalsByTag(1000000, mappedReads, broadcastMetadata, "PS");
     }
 
-    private static JavaPairRDD<String, MySVIntervalTree> getClusteredReadIntervalsByTag(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata, final int minReadCountPerMol, final String tag) {
+    private static JavaPairRDD<String, MySVIntervalTree> getClusteredReadIntervalsByTag(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata, final String tag) {
         final JavaPairRDD<String, MySVIntervalTree> intervalsByKey = mappedReads.filter(GATKRead::isFirstOfPair)
                 .mapToPair(read -> new Tuple2<>(read.getAttributeAsString(tag), new ReadInfo(broadcastMetadata.getValue(), read)))
                 .aggregateByKey(
@@ -470,26 +495,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
                 );
-        if (minReadCountPerMol > 0) {
-            final JavaPairRDD<String, MySVIntervalTree> filteredIntervalsByKey = intervalsByKey
-                    .mapValues(mySVIntervalTree -> {
-                        final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = mySVIntervalTree.myTree.iterator();
-                        while (iterator.hasNext()) {
-                            final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
-                            if (next.getValue().size() < minReadCountPerMol) {
-                                iterator.remove();
-                            }
-                        }
-                        return mySVIntervalTree;
-                    })
-                    .filter(kv -> {
-                        final MySVIntervalTree mySVIntervalTree = kv._2();
-                        return mySVIntervalTree.myTree.size() > 0;
-                    });
-            return filteredIntervalsByKey;
-        } else {
-            return intervalsByKey;
-        }
+        return intervalsByKey;
     }
 
     /**
