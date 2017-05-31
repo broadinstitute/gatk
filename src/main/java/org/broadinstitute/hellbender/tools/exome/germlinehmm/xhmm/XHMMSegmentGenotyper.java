@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.Target;
@@ -23,8 +24,9 @@ import java.util.Collections;
 @CommandLineProgramProperties(
         programGroup = CopyNumberProgramGroup.class,
         summary = "Genotype locations for copy number variation in germline samples using a HMM",
-        oneLineSummary = "Genotype location for copy number variation"
+        oneLineSummary = "(Internal) Genotype location for copy number variation"
 )
+@DocumentedFeature
 public final class XHMMSegmentGenotyper extends XHMMSegmentCallerBase {
 
     /**

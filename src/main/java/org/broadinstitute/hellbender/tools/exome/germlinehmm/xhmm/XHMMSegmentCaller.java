@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.NormalizeSomaticReadCounts;
@@ -31,8 +32,9 @@ import java.util.Collections;
 @CommandLineProgramProperties(
         programGroup = CopyNumberProgramGroup.class,
         summary = "Find possible locations for rare copy number variation events in germline samples using a HMM",
-        oneLineSummary = "Discover possible locations of copy number variation"
+        oneLineSummary = "(Internal) Discover possible locations of copy number variation"
 )
+@DocumentedFeature
 public final class XHMMSegmentCaller extends XHMMSegmentCallerBase {
 
     private HiddenStateSegmentRecordWriter<CopyNumberTriState, Target> outputWriter;

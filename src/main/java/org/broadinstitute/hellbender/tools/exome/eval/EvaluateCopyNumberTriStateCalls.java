@@ -13,6 +13,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
@@ -38,24 +39,26 @@ import java.util.stream.StreamSupport;
 
 /**
  * Tool to evaluate the output of {@link XHMMSegmentCaller}.
+ *
  * <p>Example:</p>
+ *
  * <pre>
- * java -jar build/libs/hellbender-protected.jar EvaluateCopyNumberTriStateCalls \
- *      -calls my-analysis-dir/genotyped_segments.vcf \
- *      -truth my-analysis-dir/gs_cnv.vcf \
- *      -targets my-analysis-dir/pca_filtered_targets.tsv \
- *      -O my-analysis-dir/evaluation.vcf \
- *      -sites my-analysis-dir/evaluation-sites.tab \
- *      -summary my-analysis-dir/evaluation-sample-summary.tab \
- *      -includeOverall \
- *      -applyMATFilter \
- *      -applyMACFilter \
- *      -minTruthLen 4 \
- *      -minCallLen 4 \
- *      -maxTruthFreq 0.05 \
- *      -maxCallFreq 0.05 \
- *      -minTruthQual 30 \
- *      -minCallQual 90 \
+ * java -jar $gatk_jar EvaluateCopyNumberTriStateCalls \
+ *      --callsFile genotyped_segments.vcf \
+ *      --truthFile genomestrip_cnv.vcf \
+ *      --targets pca_filtered_targets.tsv \
+ *      --output evaluation.vcf \
+ *      --siteDetailsOutput evaluation-sites.tab \
+ *      --sampleSummaryOutput evaluation-sample-summary.tab \
+ *      --includeOverallSummaryOutputLine \
+ *      --applyMultiAllelicTruthFilter \
+ *      --applyMultiAllelicCalledFilter \
+ *      --minimumTruthSegmentLength 4 \
+ *      --minimumCalledSegmentLength 4 \
+ *      --maximumTruthEventFrequency 0.05 \
+ *      --maximumCalledEventFrequency 0.05 \
+ *      --minimumTruthSegmentQuality 30 \
+ *      --minimumCalledSegmentQuality 90
  * </pre>
  *
  * <h3>Inputs</h3>
@@ -88,9 +91,10 @@ import java.util.stream.StreamSupport;
  */
 @CommandLineProgramProperties(
         summary = "Evaluate a set of call segments against the truth segments",
-        oneLineSummary = "Evaluate a set of germline call segments",
+        oneLineSummary = "(Internal) Evaluate a set of germline call segments",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
 
     public static final String CALLS_FILE_SHORT_NAME = "calls";
