@@ -59,7 +59,7 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
 
             final LocusIteratorByState libs = new LocusIteratorByState(readIter, DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(reads.getHeader()), reads.getHeader(), false);
 
-            for ( final AlignmentContext pileup : libs ) {
+            libs.forEachRemaining(pileup -> {
                 final SimpleInterval pileupInterval = new SimpleInterval(pileup.getLocation());
                 final ReferenceContext pileupRefContext = new ReferenceContext(ref, pileupInterval);
 
@@ -67,7 +67,7 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
 
                 final double expectedIsActiveValue = expectedActiveSites.contains(pileupInterval) ? 1.0 : 0.0;
                 Assert.assertEquals(isActiveResult.isActiveProb(), expectedIsActiveValue, "Wrong isActive probability for site " + pileupInterval);
-            }
+            });
         }
     }
 }

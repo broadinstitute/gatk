@@ -62,7 +62,6 @@
 ##contig=<ID=20,length=63025520,assembly=b37>
 ##contig=<ID=21,length=48129895,assembly=b37>
 ##reference=human_g1k_v37.fasta
-##source=CalculateGenotypePosteriors
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	PAIR_CHILD	PAIR_FATHER	TRIO_CHILD	TRIO_FATHER	TRIO_MOTHER	UNRELATED_INDIVIDUAL_CONTROL
 1	10109	.	A	T	99	PASS	AC=0;AF=0.00;AN=12;TestDescription=HomRef/HomRef/HomRef	GT:GQ:JL:JP:PL:PP	0/0:50:.:.:0,50,200	0/0:50:.:.:0,50,200	0/0:97:45:46:0,50,200:0,97,299	0/0:50:45:46:0,50,200:0,50,250	0/0:50:45:46:0,50,200:0,50,250	0/0:50:.:.:0,50,200

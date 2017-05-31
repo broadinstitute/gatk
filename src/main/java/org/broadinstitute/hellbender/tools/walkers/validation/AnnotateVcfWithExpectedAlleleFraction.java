@@ -84,6 +84,7 @@ public class AnnotateVcfWithExpectedAlleleFraction extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());
         headerLines.add(new VCFInfoHeaderLine(EXPECTED_ALLELE_FRACTION_NAME, 1, VCFHeaderLineType.Float, "expected allele fraction in pooled bam"));
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
+        headerLines.addAll(getDefaultToolVCFHeaderLines());
         vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(vcfHeader);
 

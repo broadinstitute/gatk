@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections4.Predicate;
@@ -21,6 +22,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.File;
 import java.io.IOException;
 import java.util.EnumMap;
+import java.util.Set;
 
 /**
  *
@@ -93,6 +95,7 @@ public class Concordance extends AbstractConcordanceWalker {
 
     @Override
     public void onTraversalStart() {
+        Set<VCFHeaderLine> defaultToolHeaderLines = getDefaultToolVCFHeaderLines();
         for (final ConcordanceState state : ConcordanceState.values()) {
             snpCounts.put(state, new MutableLong(0));
             indelCounts.put(state, new MutableLong(0));
@@ -102,12 +105,14 @@ public class Concordance extends AbstractConcordanceWalker {
             truePositivesAndFalseNegativesVcfWriter = createVCFWriter(truePositivesAndFalseNegativesVcf);
             final VCFHeader truthHeader = getTruthHeader();
             truthHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
+            defaultToolHeaderLines.forEach(truthHeader::addMetaDataLine);
             truePositivesAndFalseNegativesVcfWriter.writeHeader(truthHeader);
         }
 
         if (truePositivesAndFalsePositivesVcf != null) {
             truePositivesAndFalsePositivesVcfWriter = createVCFWriter(truePositivesAndFalsePositivesVcf);
             final VCFHeader evalHeader = getEvalHeader();
+            defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
             truePositivesAndFalsePositivesVcfWriter.writeHeader(evalHeader);
         }
@@ -115,6 +120,7 @@ public class Concordance extends AbstractConcordanceWalker {
             filteredTrueNegativesAndFalseNegativesVcfWriter = createVCFWriter(filteredTrueNegativesAndFalseNegativesVcf);
             final VCFHeader evalHeader = getEvalHeader();
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
+            defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             filteredTrueNegativesAndFalseNegativesVcfWriter.writeHeader(evalHeader);
         }
     }

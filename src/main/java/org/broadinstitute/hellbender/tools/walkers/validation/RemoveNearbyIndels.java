@@ -66,6 +66,7 @@ public class RemoveNearbyIndels extends VariantWalker {
     public void onTraversalStart() {
         final VCFHeader inputHeader = getHeaderForVariants();
         final VCFHeader vcfHeader = new VCFHeader(inputHeader.getMetaDataInSortedOrder(), inputHeader.getGenotypeSamples());
+        getDefaultToolVCFHeaderLines().forEach(vcfHeader::addMetaDataLine);
         vcfWriter = createVCFWriter(new File(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
     }

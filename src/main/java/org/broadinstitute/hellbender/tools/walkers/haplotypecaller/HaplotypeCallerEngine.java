@@ -327,10 +327,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      *
      * @param vcfWriter writer to which the header should be written
      */
-    public void writeHeader( final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary ) {
+    public void writeHeader( final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary,
+                             final Set<VCFHeaderLine>  defaultToolHeaderLines) {
         Utils.nonNull(vcfWriter);
 
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        headerInfo.addAll(defaultToolHeaderLines);
 
         headerInfo.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
         // all annotation fields from VariantAnnotatorEngine

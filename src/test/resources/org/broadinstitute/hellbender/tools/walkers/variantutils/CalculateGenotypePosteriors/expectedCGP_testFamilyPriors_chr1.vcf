@@ -31,7 +31,6 @@
 ##contig=<ID=20,length=63025520,assembly=b37>
 ##contig=<ID=21,length=48129895,assembly=b37>
 ##reference=human_b37_both.fasta
-##source=CalculateGenotypePosteriors
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12891	NA12892
 1	564477	.	A	G	0	.	AC=0;AF=0.00;AN=6;DP=32;FS=0.000;MLEAC=0;MLEAF=0.00;MQ0=0;PG=0,0,0;set=Intersection	GT:AD:DP:GQ:JL:JP:PL:PP	0/0:19,0:19:66:9:9:0,57,632:0,66,672	0/0:3,0:3:9:9:9:0,9,109:0,9,164	0/0:10,0:10:30:9:9:0,30,356:0,30,411

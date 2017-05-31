@@ -30,7 +30,6 @@
 ##contig=<ID=20,length=63025520,assembly=b37>
 ##contig=<ID=21,length=48129895,assembly=b37>
 ##reference=human_g1k_v37.fasta
-##source=CalculateGenotypePosteriors
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
 20	10001436	.	A	AAGGCT	3862.77	.	AC=2;AF=1.00;AN=2;DP=48;FS=0.000;HaplotypeScore=9.1318;MLEAC=2;MLEAF=1.00;MQ=42.54;MQ0=0;PG=0,0,0;QD=16.09	GT:AD:GQ:PL:PP	1/1:0,43:99:3891,154,0:3891,154,0

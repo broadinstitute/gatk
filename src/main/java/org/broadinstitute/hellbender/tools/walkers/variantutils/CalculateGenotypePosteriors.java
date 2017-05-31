@@ -326,7 +326,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.JOINT_LIKELIHOOD_TAG_NAME));
             headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.JOINT_POSTERIOR_TAG_NAME));
         }
-        headerLines.add(new VCFHeaderLine("source", "CalculateGenotypePosteriors"));
+        headerLines.addAll(getDefaultToolVCFHeaderLines());
 
         vcfWriter.writeHeader(new VCFHeader(headerLines, vcfSamples));
 

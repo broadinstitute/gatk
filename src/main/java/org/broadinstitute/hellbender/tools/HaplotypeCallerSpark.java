@@ -40,6 +40,7 @@ import scala.Tuple2;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -211,7 +212,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
         try(final VariantContextWriter writer = hcEngine.makeVCFWriter(output, getBestAvailableSequenceDictionary())) {
-            hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary());
+            hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary(), Collections.emptySet());
             sortedVariants.forEach(writer::add);
         }
     }

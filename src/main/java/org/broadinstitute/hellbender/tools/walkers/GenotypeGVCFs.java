@@ -166,6 +166,7 @@ public final class GenotypeGVCFs extends VariantWalker {
 
     private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>(inputVCFHeader.getMetaDataInInputOrder());
+        headerLines.addAll(getDefaultToolVCFHeaderLines());
 
         // Remove GCVFBlocks
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCF_BLOCK));

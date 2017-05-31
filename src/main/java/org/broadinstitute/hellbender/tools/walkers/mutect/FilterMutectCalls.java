@@ -50,7 +50,7 @@ public final class FilterMutectCalls extends VariantWalker {
         headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME, "abs(ref - alt) median fragment length"));
         headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.READ_POSITION_FILTER_NAME, "median distance of alt variants from end of reads"));
         headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.CONTAMINATION_FILTER_NAME, "contamination"));
-
+        headerLines.addAll(getDefaultToolVCFHeaderLines());
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
         vcfWriter = createVCFWriter(new File(outputVcf));
         vcfWriter.writeHeader(vcfHeader);

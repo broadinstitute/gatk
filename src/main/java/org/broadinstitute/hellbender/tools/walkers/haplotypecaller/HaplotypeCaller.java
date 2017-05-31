@@ -220,7 +220,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary);
-        hcEngine.writeHeader(vcfWriter, sequenceDictionary);
+        hcEngine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
     }
 
     private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {

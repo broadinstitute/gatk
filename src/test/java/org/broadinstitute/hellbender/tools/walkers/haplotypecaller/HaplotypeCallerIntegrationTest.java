@@ -36,7 +36,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-stand_call_conf", "30.0"
+                "-stand_call_conf", "30.0",
+                "-addOutputVCFCommandLine", "false"
         };
 
         runCommandLine(args);
@@ -159,7 +160,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-stand_call_conf", "30.0"
+                "-stand_call_conf", "30.0",
+                "-addOutputVCFCommandLine", "false"
         };
 
         runCommandLine(args);
@@ -188,7 +190,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "AS_StandardAnnotation",
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-stand_call_conf", "30.0"
+                "-stand_call_conf", "30.0",
+                "-addOutputVCFCommandLine", "false"
         };
 
         runCommandLine(args);
@@ -314,7 +317,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath(),
                 "-ploidy", "4",
                 "-maxGT", "15",
-                "-stand_call_conf", "30.0"
+                "-stand_call_conf", "30.0",
+                "-addOutputVCFCommandLine", "false"
         };
         runCommandLine(args);
 
