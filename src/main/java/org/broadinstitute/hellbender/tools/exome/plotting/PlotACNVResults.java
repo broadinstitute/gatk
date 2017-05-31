@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -20,12 +21,33 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+/**
+ * Plot segmented copy-ratio and minor-allele-fraction results.
+ *
+ * <p>The order and representation of contigs in plots follows the contig ordering within the required reference sequence dictionary. </p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar PlotACNVResults \
+ *   --hets tumor.hets.tsv \
+ *   --tangentNormalized tn_coverage.tn.tsv \
+ *   --segments acnv_segments.seg \
+ *   -SD ref_fasta_dict.dict \
+ *   --output output_dir \
+ *    --outputPrefix basename
+ * </pre>
+ *
+ * <p>The --output parameter specifies a directory.</p>
+ *
+ */
 
 @CommandLineProgramProperties(
         summary = "Create plots of denoised and segmented copy-ratio and minor-allele-fraction estimates.",
         oneLineSummary = "Create plots of denoised and segmented copy-ratio and minor-allele-fraction estimates.",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class PlotACNVResults extends CommandLineProgram {
     private static final String CNV_PLOTTING_R_LIBRARY = "CNVPlottingLibrary.R";
     private static final String ACNV_PLOTTING_R_SCRIPT = "ACNVResultsPlotting.R";
@@ -67,8 +89,11 @@ public final class PlotACNVResults extends CommandLineProgram {
     @Argument(
             doc = "File containing the reference sequence dictionary (used to determine relative contig lengths). " +
                     "Contigs will be plotted in the order given. " +
-                    "Contig names should not include \"" + CONTIG_DELIMITER + "\"." +
-                    "Data on contigs not in the dictionary will not be plotted and a warning will be thrown.",
+                    "Contig names should not include the string \"" + CONTIG_DELIMITER + "\". " +
+                    "The tool only considers contigs in the given dictionary for plotting, and " +
+                    "data for contigs absent in the dictionary generate only a warning. In other words, you may " +
+                    "modify a reference dictionary for use with this tool to include only contigs for which plotting is desired, " +
+                    "and sort the contigs to the order in which the plots should display the contigs.",
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME,
             optional = false
     )
