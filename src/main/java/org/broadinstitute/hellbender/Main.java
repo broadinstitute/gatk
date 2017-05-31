@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender;
 
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
@@ -344,10 +345,16 @@ public class Main {
                 if (null == property) {
                     throw new RuntimeException(String.format("Unexpected error: did not find the CommandLineProgramProperties annotation for '%s'", clazz.getSimpleName()));
                 }
+
+                final BetaFeature betaFeature = clazz.getAnnotation(BetaFeature.class);
+                final String summaryLine =
+                        betaFeature == null ?
+                                String.format("%s%s", CYAN, property.oneLineSummary()) :
+                                String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, property.oneLineSummary());
                 if (clazz.getSimpleName().length() >= 45) {
-                    builder.append(String.format("%s    %s    %s%s%s\n", GREEN, clazz.getSimpleName(), CYAN, property.oneLineSummary(), KNRM));
+                    builder.append(String.format("%s    %s    %s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
                 } else {
-                    builder.append(String.format("%s    %-45s%s%s%s\n", GREEN, clazz.getSimpleName(), CYAN, property.oneLineSummary(), KNRM));
+                    builder.append(String.format("%s    %-45s%s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
                 }
             }
             builder.append(String.format("\n"));
