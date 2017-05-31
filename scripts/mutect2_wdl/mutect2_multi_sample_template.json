@@ -1,5 +1,5 @@
 {
-  "Mutect2_Multi.gatk4_jar": "/root/gatk-protected.jar",
+  "Mutect2_Multi.gatk4_jar": "/root/gatk.jar",
   "Mutect2_Multi.intervals": "$__intervals__",
   "Mutect2_Multi.ref_fasta": "$__ref_fasta__",
   "Mutect2_Multi.ref_fasta_index": "$__ref_fasta_index__",

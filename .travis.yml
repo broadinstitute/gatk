@@ -12,6 +12,8 @@ env:
   - TEST_TYPE=unit TEST_VERBOSITY=minimal
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - RUN_CNV_SOMATIC_WDL=true
+  - RUN_M2_WDL=true
   global:
   #for genomics db
   - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
@@ -59,24 +61,49 @@ before_install:
     $GCLOUD/gcloud auth activate-service-account --key-file servicekey.json;
   fi
 #install R
+- sudo mkdir -p /usr/local/lib/R/
+- sudo mkdir -p site-library
+- sudo ln -sFv ~/site-library /usr/local/lib/R/site-library
 - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
 - sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/"
 - sudo apt-get update
-- sudo apt-get install -y --force-yes r-base
-- R --version
+- sudo apt-get install -y --force-yes r-base-dev=3.1.3-1trusty
+- sudo apt-get install -y --force-yes r-base-core=3.1.3-1trusty
+- sudo Rscript scripts/install_R_packages.R
+# Download Cromwell jar
+- if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
+    wget -O ~/cromwell-0.25.jar https://github.com/broadinstitute/cromwell/releases/download/25/cromwell-25.jar;
+  fi
+# Download Picard jar
+- if [[ $RUN_M2_WDL == true ]]; then
+    wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
+  fi
+# Download git lfs files
+- bash scripts/download_lfs_files.sh;
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
+  elif [[ $TEST_DOCKER == true ]]; then
+    echo "Skip the install because we're doing a docker build";
   else
     ./gradlew assemble;
     ./gradlew installDist;
+    if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
+      echo "building a shadow jar for the wdl";
+      ./gradlew shadowJar;
+    fi
   fi
 script:
 # run a basic sanity check to be sure that gatk-launch doesn't explode
-# install git-lfs
 # run tests
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
+  elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
+    echo "Running CNV somatic workflows";
+    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+  elif [[ $RUN_M2_WDL == true ]]; then
+    echo "Running M2 WDL";
+    sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate unit tests..." ;
     echo "${TRAVIS_BRANCH}" ;
@@ -85,11 +112,10 @@ script:
     sudo bash build_docker.sh  -e ${HASH} -s -u -d $PWD/temp_staging/;
     sudo docker images;
     echo ${TEST_TYPE};
-    sudo docker run --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${HASH} bash /root/run_unit_tests.sh;
+    sudo docker run -v $(pwd)/src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${HASH} bash /root/run_unit_tests.sh;
   else
     ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
-    bash scripts/install_git_lfs.sh;
-    travis_wait 30 ./gradlew jacocoTestReport;
+    travis_wait 50 ./gradlew jacocoTestReport;
   fi
 
 after_success:

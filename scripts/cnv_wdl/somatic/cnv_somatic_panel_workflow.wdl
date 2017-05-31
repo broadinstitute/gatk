@@ -17,7 +17,7 @@
 # - Example invocation:
 #    java -jar cromwell.jar run cnv_somatic_panel_workflow.wdl myParameters.json
 #   See cnv_somatic_panel_workflow_template.json for a template json file to modify with your own parameters (please save
-#   your modified version with a different filename and do not commit to the gatk-protected repository).
+#   your modified version with a different filename and do not commit to the gatk repository).
 #
 #############
 

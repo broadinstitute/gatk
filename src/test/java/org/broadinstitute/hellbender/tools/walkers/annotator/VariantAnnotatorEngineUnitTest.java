@@ -209,7 +209,11 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
 
     @Test
     public void testAllAnnotations() throws Exception {
-        final List<String> annotationsToExclude= Collections.emptyList();
+        /**
+         * exclude {@link StrandArtifact} until https://github.com/broadinstitute/gatk/issues/2797 is fixed
+         * exclude {@link ReferenceBases} until https://github.com/broadinstitute/gatk/issues/2799 is fixed
+         * */
+        final List<String> annotationsToExclude= Arrays.asList("StrandArtifact", "ReferenceBases");
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
         final VariantAnnotatorEngine vae = VariantAnnotatorEngine.ofAllMinusExcluded(annotationsToExclude, dbSNPBinding, features);
