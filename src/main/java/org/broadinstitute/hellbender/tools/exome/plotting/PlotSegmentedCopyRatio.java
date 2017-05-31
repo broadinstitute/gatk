@@ -90,7 +90,7 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
                     "The tool only considers contigs in the given dictionary for plotting, and " +
                     "data for contigs absent in the dictionary generate only a warning. In other words, you may " +
                     "modify a reference dictionary for use with this tool to include only contigs for which plotting is desired, " +
-                    "and sort the contigs to the order in which the plots should display the contigs."
+                    "and sort the contigs to the order in which the plots should display the contigs.",
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME,
             optional = false
     )
