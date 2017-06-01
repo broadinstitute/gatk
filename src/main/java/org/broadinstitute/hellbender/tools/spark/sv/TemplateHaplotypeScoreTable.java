@@ -1,12 +1,21 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.base.Functions;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.apache.commons.collections4.CollectionUtils;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created by valentin on 5/18/17.
@@ -26,8 +35,8 @@ public class TemplateHaplotypeScoreTable implements Serializable {
     public TemplateHaplotypeScoreTable(final Iterable<Template> templates, final Iterable<Haplotype> haplotypes)
 
     {
-        this.templates = Collections.unmodifiableList(CollectionUtils.collect(templates, t -> t, new ArrayList<>(1000)));
-        this.haplotypes = Collections.unmodifiableList(CollectionUtils.collect(haplotypes, t -> t, new ArrayList<>()));
+        this.templates = CollectionUtils.collect(templates, t -> t, new ArrayList<>(1000));
+        this.haplotypes = CollectionUtils.collect(haplotypes, t -> t, new ArrayList<>());
         values = new double[this.haplotypes.size()][this.templates.size()];
         this.templateIndex = composeTemplateIndex(this.templates);
     }
@@ -99,5 +108,54 @@ public class TemplateHaplotypeScoreTable implements Serializable {
             sb.setLength(sb.length() - 1);
         }
         return sb.toString();
+    }
+
+    public void dropUninformativeTemplates() {
+        final int[] informativeIndexes = IntStream.range(0, templates.size())
+                .filter(i -> {
+                    final double firstLikelihood = values[0][i];
+                    if (Double.isNaN(firstLikelihood)) {
+                        return false;
+                    } else {
+                        boolean foundDifference = false;
+                        for (int j = 1; j < values.length; j++) {
+                            if (Double.isNaN(values[j][i])) {
+                                return false;
+                            } else if (values[j][i] != firstLikelihood) {
+                                foundDifference = true;
+                            }
+                        }
+                        return foundDifference;
+                    }
+                }).toArray();
+        if (informativeIndexes.length == 0) {
+            templates.clear();
+            for (int j = 0; j < values.length; j++) {
+                values[j] = new double[0];
+            }
+        } else if (informativeIndexes.length != templates.size()) {
+            final List<Template> newTemplates = new ArrayList<>(informativeIndexes.length);
+            for (int i = 0; i < informativeIndexes.length; i++) {
+                newTemplates.add(templates.get(informativeIndexes[i]));
+            }
+            templates.clear();
+            templates.addAll(newTemplates);
+            for (int j = 0; j < haplotypes.size(); j++) {
+                final double[] newValues = new double[informativeIndexes.length];
+                for (int i = 0; i < informativeIndexes.length; i++) {
+                    newValues[i] = values[j][informativeIndexes[i]];
+                }
+                values[j] = newValues;
+            }
+        } // else {...} no changes.
+    }
+
+    public GenotypeLikelihoods calculateGenotypeLikelihoods(final int ploidy) {
+        final ReadLikelihoods<Haplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("the-sample"),
+                new IndexedAlleleList<>(haplotypes), Collections.singletonMap("the-sample", templates.stream().map(t -> t.fragments().get(0).toUnmappedRead(null, false)).collect(Collectors.toList())));
+        final LikelihoodMatrix<Haplotype> matrix = likelihoods.sampleMatrix(0);
+        matrix.setAll(values);
+        final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, haplotypes.size());
+        return calculator.genotypeLikelihoods(matrix);
     }
 }
