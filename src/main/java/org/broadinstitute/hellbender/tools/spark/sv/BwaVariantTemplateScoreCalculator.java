@@ -43,6 +43,7 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
 
     public BwaVariantTemplateScoreCalculator(final JavaSparkContext ctx, final InsertSizeDistribution insertSizeDistribution) {
         this.ctx = Utils.nonNull(ctx);
+        this.insertSizeDistribution = Utils.nonNull(insertSizeDistribution);
     }
 
     @Override
@@ -66,13 +67,13 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
             referenceDictionary.addSequence(contig);
             final File referenceImage = composeReference(table.haplotypes().get(i));
             final BwaSparkEngine bwa = prepareBwaEngine(referenceImage, samHeader, referenceDictionary);
-            final JavaRDD<GATKRead> bwaInputReads = unmappedReads.partitionBy(new HashPartitioner(unmappedReads.getNumPartitions())).values();
+            final JavaRDD<GATKRead> bwaInputReads = unmappedReads.partitionBy(new HashPartitioner(1)).values().sortBy(r -> r.getName(), true, 1);
             final JavaRDD<GATKRead> mappedReads = bwa.align(bwaInputReads);
 
             final JavaPairRDD<Template, Iterable<GATKRead>> templatesAndMappedReads = mappedReads.mapToPair(r -> new Tuple2<String, GATKRead>(r.getName(), r)).groupByKey()
                     .mapToPair(p -> new Tuple2<>(templatesByName.getValue().get(p._1()),  p._2()));
 
-            templatesAndMappedReads.foreach(p ->
+            templatesAndMappedReads.toLocalIterator().forEachRemaining(p ->
                 table.set(alleleIndex, table.indexOf(p._1()), calculateLikelihood(haplotype, p._1(), p._2())));
 
             System.err.println("table is " + table);
