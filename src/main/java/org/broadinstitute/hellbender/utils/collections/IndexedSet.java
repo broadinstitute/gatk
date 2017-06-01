@@ -33,6 +33,14 @@ public final class IndexedSet<E> extends AbstractSet<E> {
     private final Map<E, Integer> indexByElement;
 
     /**
+     * Creates an empty indexed set.
+     */
+    public IndexedSet() {
+        elements = new ArrayList<>();
+        indexByElement = new LinkedHashMap<>();
+    }
+
+    /**
      * Creates an empty indexed set indicating the expected number of elements.
      *
      * @param initialCapacity the initial number of elements.
