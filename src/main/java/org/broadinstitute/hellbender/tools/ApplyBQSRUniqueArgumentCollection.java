@@ -44,14 +44,16 @@ public class ApplyBQSRUniqueArgumentCollection implements Serializable {
     public boolean roundDown = false;
 
     /**
-     * By default, the OQ tag in not emitted. Use this flag to include OQ tags in the output BAM file.
-     * Note that this may results in significant file size increase.
+     * The tool is capable of writing out the original quality scores of each read in the recalibrated output file
+     * under the "OQ" tag. By default, this behavior is disabled because emitting original qualities results in a
+     * significant increase of the file size. Use this flag to turn on emission of original qualities.
      */
-    @Argument(fullName="emit_original_quals", shortName = "EOQ", doc = "Emit the OQ tag with the original base qualities", optional=true)
+    @Argument(fullName="emit_original_quals", shortName = "EOQ", doc = "Emit original base qualities under the OQ tag", optional=true)
     public boolean emitOriginalQuals = false;
 
     /**
-     * If specified, this value will be used as the prior for all mismatch quality scores instead of the actual reported quality score.
+     * If specified, the value of this argument will be used as a flat prior for all mismatching quality scores instead
+     * of the reported quality score (assigned by the sequencer).
      */
     @Argument(fullName = "globalQScorePrior", shortName = "globalQScorePrior", doc = "Global Qscore Bayesian prior to use for BQSR", optional = true)
     public double globalQScorePrior = -1.0;
