@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -75,6 +76,7 @@ public class Template implements Serializable {
                 record.setFirstOfPairFlag(number == 1);
                 record.setSecondOfPairFlag(number == 2);
             }
+            record.setValidationStringency(ValidationStringency.STRICT);
             return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
         }
 

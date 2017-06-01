@@ -100,5 +100,4 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         }
         return sb.toString();
     }
-
 }
