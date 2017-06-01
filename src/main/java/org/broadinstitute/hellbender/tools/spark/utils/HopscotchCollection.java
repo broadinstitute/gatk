@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.common.annotations.VisibleForTesting;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -48,15 +47,6 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
 
     private static final double LOAD_FACTOR = .85;
     private static final int NO_ELEMENT_INDEX = -1;
-
-    // largest prime numbers less than each half power of 2 from 2^8 to 2^31
-    // Note the last size is the greatest prime that is an allowable Java array size (<=2^31-3)
-    @VisibleForTesting static final int[] legalSizes = {
-            251, 359, 509, 719, 1021, 1447, 2039, 2887, 4093, 5791, 8191, 11579, 16381, 23167, 32749, 46337, 65521,
-            92681, 131071, 185363, 262139, 370723, 524287, 741431, 1048573, 1482907, 2097143, 2965819, 4194301, 5931641,
-            8388593, 11863279, 16777213, 23726561, 33554393, 47453111, 67108859, 94906249, 134217689, 189812507,
-            268435399, 379625047, 536870909, 759250111, 1073741789, 1518500213, 2147483629
-    };
     private static final int SPREADER = 241;
 
     /** make a small HopscotchCollection */
@@ -448,7 +438,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         final T[] oldBuckets = buckets;
         final byte[] oldStatus = status;
 
-        capacity = bumpCapacity(capacity);
+        capacity = SetSizeUtils.getLegalSizeAbove(capacity);
         size = 0;
         buckets = (T[])new Object[capacity];
         status = new byte[capacity];
@@ -489,26 +479,11 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         */
         if ( size < LOAD_FACTOR*Integer.MAX_VALUE ) {
             final int augmentedSize = (int) (size / LOAD_FACTOR);
-            for ( final int legalSize : legalSizes ) {
+            for ( final int legalSize : SetSizeUtils.legalSizes ) {
                 if ( legalSize >= augmentedSize ) return legalSize;
             }
         }
-        return legalSizes[legalSizes.length-1];
-    }
-
-    private static int bumpCapacity( final int capacity ) {
-        // For power-of-2 table sizes substitute these lines
-        /*
-        if ( capacity == maxCapacity ) throw new IllegalStateException("Unable to increase capacity.");
-        return capacity * 2;
-        */
-        if ( capacity <= legalSizes[legalSizes.length-2] ) {
-            for ( int idx = 0; idx != legalSizes.length; ++idx ) {
-                if ( legalSizes[idx] >= capacity ) return legalSizes[idx + 1];
-            }
-        }
-        // this only happens when we're already at max size (a little less than 1<<31)
-        throw new IllegalStateException("Unable to increase capacity.");
+        return SetSizeUtils.legalSizes[SetSizeUtils.legalSizes.length-1];
     }
 
     private abstract class BaseIterator implements Iterator<T> {

@@ -4,31 +4,44 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 /**
  * Set of longs that is larger than the max Java array size ( ~ 2^31 ~ 2 billion) and therefore cannot fit into a
- * single LongHopscotchSet. Maintains partitions of LongHopscotchSets given a maximum partition size and the number
- * of elements to be added. Bins each entry into a corresponding LongHopscotchSet using the entry hash value. Does
- * not support dynamic resizing.
+ * single LongHopscotchSet. Maintains partitions of LongHopscotchSets given the number of elements to be added.
+ * Bins each entry into a LongHopscotchSet using the entry hash value. Note the number of partitions is based on
+ * the size estimate passed to the constructor and does not resize dynamically.
  */
 @DefaultSerializer(LargeLongHopscotchSet.Serializer.class)
-public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
+public final class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
 
     private static final long serialVersionUID = 1L;
     private final List<LongHopscotchSet> sets;
-    private int numSets;
+    private final int numSets;
 
-    public LargeLongHopscotchSet(final long maxPartitionBytes, final long numElements) {
+    public LargeLongHopscotchSet(final long numElements) {
+        Utils.validateArg(numElements > 0, "Number of elements must be greater than 0");
+
+        int elementsPerPartition = (int) Math.sqrt(numElements);
+        int partitions;
+        try {
+            partitions = SetSizeUtils.getLegalSizeBelow(elementsPerPartition);
+        } catch (final IllegalArgumentException e) {
+            //If there were no legal sizes small enough, just use 1 set
+            partitions = 1;
+        }
+        elementsPerPartition = (int) ((numElements / partitions) + 1);
+
         sets = new ArrayList<>();
-        initialize(maxPartitionBytes, numElements);
+        for (int i = 0; i < partitions; i++) {
+            sets.add(new LongHopscotchSet(elementsPerPartition));
+        }
+        numSets = sets.size();
     }
 
     @SuppressWarnings("unchecked")
@@ -46,26 +59,7 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
     }
 
     private static int longHash(final long entryVal) {
-        return (int) SVUtils.fnvLong64(0x4c79ac6a, entryVal);
-    }
-
-    private void initialize(final long maxPartitionBytes, final long numElements) {
-        Utils.validateArg(maxPartitionBytes > 0, "Max partition size must be greater than 0");
-        Utils.validateArg(numElements > 0, "Number of elements must be greater than 0");
-
-        //Largest partition according to the max bytes per partition constraint
-        final int maxPartitionSize = LongHopscotchSet.getLegalSizeBelow(maxPartitionBytes / LongHopscotchSet.bytesPerBucket);
-        //Truncate numElements to largest int possible
-        final int idealPartitionSize = LongHopscotchSet.getPartitionSize(numElements);
-        //Number of elements per partition
-        final int elementsPerPartitionGuess = Math.min(idealPartitionSize, maxPartitionSize);
-        final int partitions = (int) Math.ceil(((double) numElements) / elementsPerPartitionGuess);
-        final int elementsPerPartition = (int)Math.ceil(numElements / (double)partitions);
-
-        for (int i = 0; i < partitions; i++) {
-            sets.add(new LongHopscotchSet(elementsPerPartition));
-        }
-        numSets = sets.size();
+        return (int) SVUtils.fnvLong64(entryVal);
     }
 
     protected void serialize(final Kryo kryo, final Output stream) {
@@ -81,9 +75,9 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
     }
 
     public boolean add(final long entryValue) {
-        final int setIndex = setIndexOf(entryValue);
-        final LongHopscotchSet setRef = sets.get(setIndex);
-        return setRef.add(entryValue);
+        final int hashValue = longHash(entryValue);
+        final int setIndex = setIndexOf(hashValue);
+        return sets.get(setIndex).add(entryValue, hashValue);
     }
 
     public void addAll(final long[] entryValues) {
@@ -100,6 +94,7 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
         return sum;
     }
 
+    @VisibleForTesting
     public Collection<LongHopscotchSet> getSets() {
         return sets;
     }
@@ -113,7 +108,8 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
     }
 
     public boolean contains(final long key) {
-        return sets.get(setIndexOf(key)).contains(key);
+        final int hash = longHash(key);
+        return sets.get(setIndexOf(hash)).contains(key, hash);
     }
 
     public boolean containsAll(final long[] vals) {
@@ -126,11 +122,11 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
 
     public LongIterator iterator() {
         return new LargeLongHopscotchSetIterator();
-
     }
 
     public boolean remove(final long key) {
-        return sets.get(setIndexOf(key)).remove(key);
+        final int hash = longHash(key);
+        return sets.get(setIndexOf(hash)).remove(key, hash);
     }
 
     public boolean removeAll(final long[] set) {
@@ -145,14 +141,14 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
         return this.size() == 0;
     }
 
-    private int setIndexOf(final long val) {
-        return Integer.remainderUnsigned(longHash(val), numSets);
+    private int setIndexOf(final int hash) {
+        return Integer.remainderUnsigned(hash, numSets);
     }
 
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (!(o instanceof LargeLongHopscotchSet)) return false;
 
         final LargeLongHopscotchSet that = (LargeLongHopscotchSet) o;
 
@@ -162,12 +158,7 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
 
     @Override
     public int hashCode() {
-        final LongIterator itr = iterator();
-        int sum = 0;
-        while (itr.hasNext()) {
-            sum += LongHopscotchSet.longHash(itr.next());
-        }
-        return sum;
+        return sets.stream().mapToInt(LongHopscotchSet::hashCode).sum();
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<LargeLongHopscotchSet> {
@@ -184,39 +175,42 @@ public class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
 
     private final class LargeLongHopscotchSetIterator implements LongIterator {
 
-        private static final int NO_ELEMENT_INDEX = -1;
-        private int currentSetIndex;
-        private int nextSetIndex;
-        private LongIterator itr;
+        //Iterator over partitions
+        private final Iterator<LongHopscotchSet> outerIterator;
+        //Iterator over current partition. If null, then no elements are left. The converse is true after hasNext().
+        private LongIterator innerIterator;
 
         public LargeLongHopscotchSetIterator() {
-            nextSetIndex = numSets > 1 ? 1 : NO_ELEMENT_INDEX;
-            if (isEmpty()) {
-                currentSetIndex = NO_ELEMENT_INDEX;
+            outerIterator = sets.iterator();
+            if (outerIterator.hasNext()) {
+                //We have at least 1 partition
+                innerIterator = outerIterator.next().iterator();
             } else {
-                currentSetIndex = 0;
-                itr = sets.get(currentSetIndex).iterator();
+                //Empty set of partitions
+                innerIterator = null;
             }
         }
 
         public boolean hasNext() {
-            return itr != null && itr.hasNext();
+            if (innerIterator == null) return false;
+            while (!innerIterator.hasNext()) {
+                //While we are at the end of a partition, try to move on
+                if (outerIterator.hasNext()) {
+                    //A next partition exists, so move to it
+                    innerIterator = outerIterator.next().iterator();
+                } else {
+                    //There are no partitions left, so kill the iterator
+                    innerIterator = null;
+                    return false;
+                }
+            }
+            return true;
         }
 
         public long next() {
             if (!hasNext())
-                throw new NoSuchElementException("LargeLongHopscotchSet.LargeLongHopscotchSetIterator is exhausted.");
-            final long result = itr.next();
-            while (itr != null && !itr.hasNext()) {
-                currentSetIndex = nextSetIndex;
-                if (currentSetIndex != NO_ELEMENT_INDEX) {
-                    itr = sets.get(currentSetIndex).iterator();
-                    nextSetIndex = currentSetIndex < numSets - 1 ? nextSetIndex + 1 : NO_ELEMENT_INDEX;
-                } else {
-                    itr = null;
-                }
-            }
-            return result;
+                throw new NoSuchElementException("LargeLongHopscotchSetIterator is exhausted.");
+            return innerIterator.next();
         }
 
     }

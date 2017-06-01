@@ -20,9 +20,8 @@ public final class LongBloomFilterTest extends BaseTest {
     private static final long[] notAllTestVals = {0, 1, 2, 3, 7, 22, 61};
     private static final long notInTestVals = 6;
     private static final int RAND_SEED = 0xdeadf00;
-    private static final int HHASH_NVALS = 10000;
+    private static final int HHASH_NVALS = 1000000;
     private static final int FPR_NVALS = 10000;
-    private static final int N_TRIALS = 100;
     private static final float FPP = 0.01F;
 
     private static long randomLong(Random rng) {
@@ -80,39 +79,30 @@ public final class LongBloomFilterTest extends BaseTest {
     }
 
     @Test
-    void getLegalSizeBelowTest() {
-        Assert.assertEquals(LongBloomFilter.getLegalSizeBelow(1000),719);
-        Assert.assertEquals(LongBloomFilter.getLegalSizeBelow(2147483630),2147483629);
-    }
-
-    @Test
-    void loadRandomIntsTest() {
+    void testRandomLongs() {
         final Random rng = new Random(RAND_SEED);
-        for (int trialNo = 0; trialNo != N_TRIALS; ++trialNo) {
-            final HashSet<Long> hashSet = new HashSet<>();
-            final LongBloomFilter bloomFilter = new LongBloomFilter(HHASH_NVALS, FPP);
-            final String trialMsg = "trialNo=" + trialNo;
-            for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
-                final long randLong = randomLong(rng);
-                bloomFilter.add(randLong);
-                hashSet.add(new Long(randLong));
-            }
-            for (final Long val : hashSet) {
-                Assert.assertTrue(bloomFilter.contains(val), trialMsg + ", testVal=" + val);
-            }
-            int num_false_pos = 0;
-            int num_total = 0;
-            for (int valNo = 0; valNo != FPR_NVALS; ++valNo) {
-                final long randLong = randomLong(rng);
-                if (!hashSet.contains(new Long(randLong))) {
-                    num_total++;
-                    if (bloomFilter.contains(randLong)) {
-                        num_false_pos++;
-                    }
+        final HashSet<Long> hashSet = new HashSet<>();
+        final LongBloomFilter bloomFilter = new LongBloomFilter(HHASH_NVALS, FPP);
+        for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
+            final long randLong = randomLong(rng);
+            bloomFilter.add(randLong);
+            hashSet.add(new Long(randLong));
+        }
+        for (final Long val : hashSet) {
+            Assert.assertTrue(bloomFilter.contains(val), "testVal=" + val);
+        }
+        int num_false_pos = 0;
+        int num_total = 0;
+        for (int valNo = 0; valNo != FPR_NVALS; ++valNo) {
+            final long randLong = randomLong(rng);
+            if (!hashSet.contains(new Long(randLong))) {
+                num_total++;
+                if (bloomFilter.contains(randLong)) {
+                    num_false_pos++;
                 }
             }
-            Assert.assertTrue(num_false_pos < num_total * FPP * 10);
         }
+        Assert.assertTrue(num_false_pos < num_total * FPP * 1.5);
     }
 
     @Test
@@ -129,13 +119,12 @@ public final class LongBloomFilterTest extends BaseTest {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();
-        kryo.writeClassAndObject(out, bloomFilter);
+        kryo.writeObject(out, bloomFilter);
         out.flush();
 
         final ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
         final Input in = new Input(bis);
-        @SuppressWarnings("unchecked")
-        final LongBloomFilter bloomFilter2 = (LongBloomFilter) kryo.readClassAndObject(in);
+        final LongBloomFilter bloomFilter2 = kryo.readObject(in, LongBloomFilter.class);
 
         Assert.assertEquals(bloomFilter, bloomFilter2);
         for (Long val : hashSet) {

@@ -22,36 +22,11 @@ public final class LongHopscotchSetTest extends BaseTest {
     private static final long[] notAllTestVals = {0, 1, 2, 3, 7, 22, 61};
     private static final long notInTestVals = 6;
     private static final int RAND_SEED = 0xdeadf00;
-    private static final int HHASH_NVALS = 10000;
-    private static final int N_TRIALS = 100;
-
-    private static boolean isPrime(final long iii) {
-        if (iii % 2 == 0 || iii % 3 == 0) return false;
-        long iFact = 5;
-        while (iFact * iFact <= iii) {
-            if (iii % iFact == 0 || iii % (iFact + 2) == 0) return false;
-            iFact += 6;
-        }
-        return true;
-    }
+    private static final int HHASH_NVALS = 100000;
+    private static final int N_TRIALS = 10;
 
     private static long randomLong(Random rng) {
         return (((long) rng.nextInt()) | (((long) rng.nextInt()) << 31)) & ~Long.MIN_VALUE;
-    }
-
-    @Test
-    void legalCapacitiesTest() {
-        final int[] caps = LongHopscotchSet.legalSizes;
-        final int nCaps = caps.length;
-        // test that they're spaced properly -- each is supposed to be about sqrt(2) bigger than the previous one
-        for (int idx = 1; idx < nCaps; ++idx) {
-            final double err = Math.abs(1. - Math.sqrt(2.) * caps[idx - 1] / caps[idx]);
-            Assert.assertTrue(err < .015, "testing capacity " + caps[idx] + " at index " + idx);
-        }
-        // test that they're all primes
-        for (int idx = 0; idx < nCaps; ++idx) {
-            Assert.assertTrue(isPrime(caps[idx]), "testing capacity " + caps[idx] + " at index " + idx);
-        }
     }
 
     @Test
@@ -63,13 +38,13 @@ public final class LongHopscotchSetTest extends BaseTest {
 
     @Test
     void getLegalSizeBelowTest() {
-        Assert.assertEquals(LongHopscotchSet.getLegalSizeBelow((long)(1000 * LongHopscotchSet.LOAD_FACTOR)), 719);
-        Assert.assertEquals(LongHopscotchSet.getLegalSizeBelow((long)(3e9 * LongHopscotchSet.LOAD_FACTOR)), 2147483629);
+        Assert.assertEquals(SetSizeUtils.getLegalSizeBelow((long)(1000 * LongHopscotchSet.LOAD_FACTOR)), 719);
+        Assert.assertEquals(SetSizeUtils.getLegalSizeBelow((long)(3e9 * LongHopscotchSet.LOAD_FACTOR)), 2147483629);
     }
 
     @Test
     void bytesPerBucketTest() {
-        Assert.assertTrue(LongHopscotchSet.bytesPerBucket > 0);
+        Assert.assertTrue(LongHopscotchSet.bytesPerEntry > 0);
     }
 
     @Test
@@ -96,7 +71,7 @@ public final class LongHopscotchSetTest extends BaseTest {
             final long capacity = new LongHopscotchSet(size).capacity();
             Assert.assertTrue(capacity >= size);
             Assert.assertTrue(capacity < 2 * size);
-            final List<Integer> legalSizes = IntStream.of(LongHopscotchSet.legalSizes).boxed().collect(Collectors.toList());
+            final List<Integer> legalSizes = IntStream.of(SetSizeUtils.legalSizes).boxed().collect(Collectors.toList());
             Assert.assertTrue(legalSizes.contains(new Integer((int) capacity)));
         }
     }
@@ -202,7 +177,7 @@ public final class LongHopscotchSetTest extends BaseTest {
     }
 
     @Test
-    void loadRandomIntsTest() {
+    void loadRandomLongsTest() {
         final Random rng = new Random(RAND_SEED);
         for (int trialNo = 0; trialNo != N_TRIALS; ++trialNo) {
             final HashSet<Long> hashSet = new HashSet<>();
@@ -283,13 +258,12 @@ public final class LongHopscotchSetTest extends BaseTest {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();
-        kryo.writeClassAndObject(out, hopscotchSet);
+        kryo.writeObject(out, hopscotchSet);
         out.flush();
 
         final ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
         final Input in = new Input(bis);
-        @SuppressWarnings("unchecked")
-        final LongHopscotchSet hopscotchSet2 = (LongHopscotchSet) kryo.readClassAndObject(in);
+        final LongHopscotchSet hopscotchSet2 = kryo.readObject(in, LongHopscotchSet.class);
 
         Assert.assertEquals(hopscotchSet.size(), hopscotchSet2.size());
         final LongIterator itr1 = hopscotchSet.iterator();

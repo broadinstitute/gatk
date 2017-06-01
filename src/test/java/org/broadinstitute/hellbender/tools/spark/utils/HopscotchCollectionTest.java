@@ -18,7 +18,7 @@ public final class HopscotchCollectionTest extends BaseTest {
 
     @Test
     void legalCapacitiesTest() {
-        final int[] caps = HopscotchCollection.legalSizes;
+        final int[] caps = SetSizeUtils.legalSizes;
         final int nCaps = caps.length;
         // test that they're spaced properly -- each is supposed to be about sqrt(2) bigger than the previous one
         for ( int idx = 1; idx < nCaps; ++idx ) {
@@ -70,7 +70,7 @@ public final class HopscotchCollectionTest extends BaseTest {
             final int capacity = new HopscotchCollection<>(size).capacity();
             Assert.assertTrue(capacity >= size);
             Assert.assertTrue(capacity < 2*size);
-            final List<Integer> legalSizes = IntStream.of(HopscotchCollection.legalSizes).boxed().collect(Collectors.toList());
+            final List<Integer> legalSizes = IntStream.of(SetSizeUtils.legalSizes).boxed().collect(Collectors.toList());
             Assert.assertTrue(legalSizes.contains(capacity));
         }
     }

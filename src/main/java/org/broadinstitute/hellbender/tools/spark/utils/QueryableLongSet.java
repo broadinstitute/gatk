@@ -5,7 +5,6 @@ package org.broadinstitute.hellbender.tools.spark.utils;
  */
 public interface QueryableLongSet {
 
-    boolean add(final long val); //TODO needed for experimental kmer filtering approach
     boolean contains(final long val);
     boolean containsAll(final long[] vals);
 

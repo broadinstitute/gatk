@@ -5,13 +5,13 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.stream.LongStream;
 
 /**
  * This class is based on the HopscotchCollection and HopscotchSet classes for storing Objects. Saves memory used by
@@ -20,30 +20,19 @@ import java.util.NoSuchElementException;
  * Non-negative longs only! We set the MSB to say that a bin is not empty.
  */
 @DefaultSerializer(LongHopscotchSet.Serializer.class)
-public class LongHopscotchSet implements Serializable, QueryableLongSet {
+public final class LongHopscotchSet implements Serializable, QueryableLongSet {
 
-    protected static final int bytesPerBucket = 9;
-    // For power-of-2 table sizes add this line
-    //private static final int maxCapacity = Integer.MAX_VALUE/2 + 1;
-    // largest prime numbers less than each half power of 2 from 2^8 to 2^31
-    // Note the last size is the greatest prime that is an allowable Java array size (<=2^31-3)
-    @VisibleForTesting
-    static final int[] legalSizes = {
-            251, 359, 509, 719, 1021, 1447, 2039, 2887, 4093, 5791, 8191, 11579, 16381, 23167, 32749, 46337, 65521,
-            92681, 131071, 185363, 262139, 370723, 524287, 741431, 1048573, 1482907, 2097143, 2965819, 4194301, 5931641,
-            8388593, 11863279, 16777213, 23726561, 33554393, 47453111, 67108859, 94906249, 134217689, 189812507,
-            268435399, 379625047, 536870909, 759250111, 1073741789, 1518500213, 2147483629
-    };
+    static final int bytesPerEntry = 9;
     @VisibleForTesting
     static final double LOAD_FACTOR = .85;
     private static final long serialVersionUID = 1L;
     private static final int NO_ELEMENT_INDEX = -1;
-    private static final int SPREADER = 241;
     private int capacity;
-    // unused buckets contain null.  (this data structure does not support null entries.)
-    // if the bucket is unused, the corresponding status byte is irrelevant, but is always set to 0.
     private int size;
+
+    // buckets have the most significant bit set to 0 if empty and 1 otherwise (entries must be non-negative)
     private long[] buckets;
+
     // format of the status bytes:
     // high bit set indicates that the bucket contains a "chain head" (i.e., an entry that naturally belongs in the
     // corresponding bucket).  high bit not set indicates a "squatter" (i.e., an entry that got placed here through the
@@ -51,6 +40,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
     // low 7 bits give the (unsigned) offset from the current entry to the next entry in the collision resolution chain.
     // if the low 7 bits are 0, then we'd be pointing at ourselves, which is nonsense, so that particular value marks
     // "end of chain" instead.  we use Byte.MAX_VALUE (i.e., 0x7f) to pick off these bits.
+    // If the bucket is unused, the corresponding status byte is irrelevant, but is always set to 0.
     private byte[] status;
 
     /**
@@ -64,9 +54,8 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
      * make a LongHopscotchSet for a specified minimum capacity
      */
     public LongHopscotchSet(final int capacity) {
-        this.capacity = getLegalSizeAbove(capacity);
+        this.capacity = SetSizeUtils.getLegalSizeAbove(capacity);
         this.size = 0;
-        // Not unsafe, because the remainder of the API allows only elements known to be long's to be assigned to buckets.
         this.buckets = new long[this.capacity];
         this.status = new byte[this.capacity];
     }
@@ -75,9 +64,8 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
      * make a LongHopscotchSet containing an initial array of values
      */
     public LongHopscotchSet(final long[] values) {
-        this.capacity = getLegalSizeAbove(values.length);
+        this.capacity = SetSizeUtils.getLegalSizeAbove(values.length);
         this.size = 0;
-        // Not unsafe, because the remainder of the API allows only elements known to be long's to be assigned to buckets.
         this.buckets = new long[this.capacity];
         this.status = new byte[this.capacity];
         for (final long val : values) {
@@ -86,9 +74,6 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
     }
 
     protected LongHopscotchSet(final Kryo kryo, final Input stream) {
-        final boolean oldReferences = kryo.getReferences();
-        kryo.setReferences(false);
-
         capacity = stream.readInt();
         size = 0;
         buckets = new long[capacity];
@@ -97,69 +82,20 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         while (nElements-- > 0) {
             add(stream.readLong());
         }
-
-        kryo.setReferences(oldReferences);
-    }
-
-    /**
-     * Computes next largest legal table size for a given number of elements, accounting for load factor
-     */
-    protected static int getLegalSizeAbove(final long minElements) {
-        final long augmentedSize = (long) (minElements / LOAD_FACTOR);
-        for (final int legalSize : legalSizes) {
-            if (legalSize >= augmentedSize) return legalSize;
-        }
-        throw new IllegalArgumentException("No legal sizes large enough for size " + minElements);
-    }
-
-    /**
-     * Computes next smallest legal table size for a given number of elements, accounting for load factor
-     */
-    protected static int getLegalSizeBelow(final long maxElements) {
-        final long augmentedSize = (long) (maxElements / LOAD_FACTOR);
-        if (augmentedSize <= legalSizes[0]) {
-            throw new GATKException("No legal sizes small enough for size " + maxElements);
-        }
-        for (int i = 1; i < legalSizes.length; i++) {
-            if (augmentedSize <= legalSizes[i]) {
-                return legalSizes[i - 1];
-            }
-        }
-        return legalSizes[legalSizes.length - 1];
-    }
-
-    /**
-     * Computes appropriate partition size for the given number of elements
-     */
-    protected static int getPartitionSize(final long numElements) {
-        final long augmentedSize = (long) (numElements / LOAD_FACTOR);
-        for (final int legalSize : legalSizes) {
-            if (legalSize >= augmentedSize) return legalSize;
-        }
-        return legalSizes[legalSizes.length - 1];
-    }
-
-    /**
-     * in a set, uniqueness is on the entry, so we just compare entries to see if we already have an identical one
-     */
-    private static LongBiPredicate entryCollides() {
-        return (long t, long u) -> getValue(t) == getValue(u);
     }
 
     /**
      * Returns the value for a given bucket entry (zeroing the bit used for declaring the bucket null)
      */
     private static long getValue(final long entry) {
-        return entry & ~Long.MIN_VALUE;
+        return entry & Long.MAX_VALUE;
     }
 
     public static int longHash(final long entryVal) {
-        return (int)SVUtils.fnvLong64( 2166136261L, entryVal);
+        return (int) SVUtils.fnvLong64(entryVal);
     }
 
     protected void serialize(final Kryo kryo, final Output stream) {
-        final boolean oldReferences = kryo.getReferences();
-        kryo.setReferences(false);
 
         stream.writeInt(capacity);
         stream.writeInt(size);
@@ -174,27 +110,29 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         }
         for (int idx = 0; idx != capacity; ++idx) {
             final long val = buckets[idx];
-            if (!isNull(val) && !isChainHead(idx)) {
+            if (!isUnusedValue(val) && !isChainHead(idx)) {
                 stream.writeLong(getValue(val));
                 count += 1;
             }
         }
-
         if (count != size) {
             throw new IllegalStateException("Failed to serialize the expected number of objects: expected=" + size + " actual=" + count + ".");
         }
-        kryo.setReferences(oldReferences);
     }
 
     public final boolean add(final long entryValue) {
+        final int hashValue = longHash(entryValue);
+        return add(entryValue, hashValue);
+    }
+
+    public final boolean add(final long entryValue, final int hashValue) {
         Utils.validateArg(isValidKey(entryValue), "Tried to add negative entry to LongHopScotchSet");
         if (size == capacity) resize();
-        final LongBiPredicate collision = entryCollides();
         try {
-            return insert(entryValue, collision);
+            return insert(entryValue, hashValue);
         } catch (final IllegalStateException ise) {
             resize();
-            return insert(entryValue, collision);
+            return insert(entryValue, hashValue);
         }
     }
 
@@ -214,16 +152,19 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
     }
 
     public final boolean contains(final long key) {
-        Utils.validateArg(isValidKey(key), "Tried to use negative key in LongHopScotchSet");
-        int bucketIndex = hashToIndex(key);
+        return contains(key, longHash(key));
+    }
+
+    public final boolean contains(final long key, final int hash) {
+        int bucketIndex = hashToIndex(hash);
         if (!isChainHead(bucketIndex)) return false;
         long entryVal = getValue(buckets[bucketIndex]);
-        if (equivalentValue(entryVal, key)) return true;
+        if (entryVal == key) return true;
         int offset;
         while ((offset = getOffset(bucketIndex)) != 0) {
             bucketIndex = getIndex(bucketIndex, offset);
             entryVal = getValue(buckets[bucketIndex]);
-            if (equivalentValue(entryVal, key)) return true;
+            if (entryVal == key) return true;
         }
         return false;
     }
@@ -239,11 +180,15 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
     }
 
     public final boolean remove(final long key) {
+        return remove(key, longHash(key));
+    }
+
+    public final boolean remove(final long key, final int hash) {
         Utils.validateArg(isValidKey(key), "Tried to remove by negative key in LongHopScotchSet");
-        int bucketIndex = hashToIndex(key);
-        if (isNull(buckets[bucketIndex]) || !isChainHead(bucketIndex)) return false;
+        int bucketIndex = hashToIndex(hash);
+        if (isUnusedValue(buckets[bucketIndex]) || !isChainHead(bucketIndex)) return false;
         int predecessorIndex = NO_ELEMENT_INDEX;
-        while (!equivalentEntry(buckets[bucketIndex], key)) {
+        while (getValue(buckets[bucketIndex]) != key) {
             final int offset = getOffset(bucketIndex);
             if (offset == 0) return false;
             predecessorIndex = bucketIndex;
@@ -257,22 +202,12 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         return size;
     }
 
-    //Works with both raw entry with MSB set
-    private boolean equivalentEntry(final long entry, final long key) {
-        return entry != 0 && equivalentValue(getValue(entry), key);
+    private int valueToIndex(final long entryVal) {
+        return hashToIndex(longHash(entryVal));
     }
 
-    /**
-     * Returns whether a raw bucket entry (possibly with null bit set) and key (without null bit set) are equal
-     */
-    private boolean equivalentValue(final long entry, final long key) {
-        return getValue(entry) == key;
-    }
-
-    private int hashToIndex(final long entryVal) {
-        // For power-of-2 table sizes substitute this line
-        // return (SPREADER*hashVal)&(capacity-1);
-        int result = (SPREADER * longHash(entryVal)) % capacity;
+    private int hashToIndex(final int hashVal) {
+        int result = hashVal % capacity;
         if (result < 0) result += capacity;
         return result;
     }
@@ -281,14 +216,18 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         return key >= 0;
     }
 
-    private boolean insert(final long entryValue, final LongBiPredicate collision) {
-        final int bucketIndex = hashToIndex(entryValue);
+    private boolean insert(final long entryValue) {
+        return insert(entryValue, longHash(entryValue));
+    }
+
+    private boolean insert(final long entryValue, final int hashValue) {
+        final int bucketIndex = hashToIndex(hashValue);
 
         // if there's a squatter where the new entry should go, move it elsewhere and put the entry there
-        if (!isNull(buckets[bucketIndex]) && !isChainHead(bucketIndex)) evict(bucketIndex);
+        if (!isUnusedValue(buckets[bucketIndex]) && !isChainHead(bucketIndex)) evict(bucketIndex);
 
         // if the place where it should go is empty, just put the new entry there
-        if (isNull(buckets[bucketIndex])) {
+        if (isUnusedValue(buckets[bucketIndex])) {
             buckets[bucketIndex] = entryValue;
             setOccupied(bucketIndex);
             status[bucketIndex] = Byte.MIN_VALUE;
@@ -302,7 +241,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         while (true) {
             // if entry is already in the set
             final long tableEntry = buckets[endOfChainIndex];
-            if (collision.test(tableEntry, entryValue)) return false;
+            if (getValue(tableEntry) == entryValue) return false;
             final int offset = getOffset(endOfChainIndex);
             if (offset == 0) break;
             endOfChainIndex = getIndex(endOfChainIndex, offset);
@@ -382,7 +321,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
     }
 
     private void evict(final int bucketToEvictIndex) {
-        final int bucketIndex = hashToIndex(getValue(buckets[bucketToEvictIndex]));
+        final int bucketIndex = valueToIndex(getValue(buckets[bucketToEvictIndex]));
         final int offsetToEvictee = getIndexDiff(bucketIndex, bucketToEvictIndex);
         int emptyBucketIndex = findEmptyBucket(bucketIndex);
         int fromIndex = bucketIndex;
@@ -412,7 +351,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         do {
             bucketIndex = getIndex(bucketIndex, 1);
         }
-        while (!isNull(buckets[bucketIndex]));
+        while (!isUnusedValue(buckets[bucketIndex]));
         return bucketIndex;
     }
 
@@ -424,7 +363,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         return status[bucketIndex] & Byte.MAX_VALUE;
     }
 
-    private boolean isNull(final long val) {
+    private boolean isUnusedValue(final long val) {
         return val == 0L;
     }
 
@@ -489,7 +428,6 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         status[bucketToMoveIndex] = 0;
     }
 
-    @SuppressWarnings("unchecked")
     private void resize() {
         if (buckets == null) {
             throw new IllegalStateException("Someone must be doing something ugly with reflection -- I have no buckets.");
@@ -499,7 +437,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
         final long[] oldBuckets = buckets;
         final byte[] oldStatus = status;
 
-        capacity = getLegalSizeAbove(capacity);
+        capacity = SetSizeUtils.getLegalSizeAbove(capacity);
         size = 0;
         buckets = new long[capacity];
         status = new byte[capacity];
@@ -508,7 +446,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
             int idx = 0;
             do {
                 final long entry = oldBuckets[idx];
-                if (!isNull(entry)) insert(getValue(entry), (t1, t2) -> false);
+                if (!isUnusedValue(entry)) insert(getValue(entry));
             }
             while ((idx = (idx + 127) % oldCapacity) != 0);
         } catch (final IllegalStateException ise) {
@@ -557,11 +495,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
 
     @Override
     public int hashCode() {
-        int result = capacity;
-        result = 31 * result + size;
-        result = 31 * result + Arrays.hashCode(buckets);
-        result = 31 * result + Arrays.hashCode(status);
-        return result;
+        return LongStream.of(buckets).filter(val -> !isUnusedValue(val)).map(LongHopscotchSet::getValue).mapToInt(Objects::hashCode).sum();
     }
 
     public boolean removeAll(final LongHopscotchSet collection) {
@@ -580,10 +514,6 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
             if (remove(val)) result = true;
         }
         return result;
-    }
-
-    public interface LongBiPredicate {
-        boolean test(long t, long u);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<LongHopscotchSet> {
@@ -617,7 +547,7 @@ public class LongHopscotchSet implements Serializable, QueryableLongSet {
             // If we haven't deleted the end of a chain, we'll now have an unseen element under previousElementIndex.
             // So we need to back up and let the user know about it at the next call to the next method.  If we
             // have deleted an end of chain, then the bucket will be empty and no adjustment needs to be made.
-            if (!isNull(buckets[removeIndex])) {
+            if (!isUnusedValue(buckets[removeIndex])) {
                 currentIndex = removeIndex;
                 prevIndex = removePrevIndex;
             }
