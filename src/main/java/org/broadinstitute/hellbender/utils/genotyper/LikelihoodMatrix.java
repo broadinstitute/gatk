@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
@@ -114,4 +115,21 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @param offset the copy offset within the destination allele
      */
     public void copyAlleleLikelihoods(final int alleleIndex, final double[] dest, final int offset);
+
+    default void setAll(final double[][] values) {
+        Utils.nonNull("the input values must not be null");
+        if (values.length != alleles().size()) {
+            throw new IllegalArgumentException("the number of alleles in the input matrix does not match this matrix allele list size");
+        }
+        for (int i = 0; i < values.length; i++) {
+            final double[] alleleValues = values[i];
+            Utils.nonNull(alleleValues, "the input values must not contain null arrays");
+            if (alleleValues.length != reads().size()) {
+                throw new IllegalArgumentException("the input value likelihood arrays must have as many entries as reads in this matrix");
+            }
+            for (int j = 0; j < alleleValues.length; j++) {
+                set(i, j, alleleValues[j]);
+            }
+        }
+    }
 }

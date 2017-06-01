@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
@@ -81,7 +82,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
               shortName = INSERT_SIZE_DISTR_SHORT_NAME,
               fullName = INSERT_SIZE_DISTR_FULL_NAME,
               optional = true)
-    private InsertSizeDistribution dist = new InsertSizeDistribution("N(300,100)");
+    private InsertSizeDistribution dist = new InsertSizeDistribution("N(309,149)");
 
     @Argument(doc = "pair-hmm implementation")
     private StructuralVariantPairHMMImplementation pairHmm = new StructuralVariantPairHMMImplementation("Affine(45,10)");
@@ -155,13 +156,15 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final ReferenceMultiSource reference = getReference();
         variantTemplates.collect().stream().forEach(vt -> {
             if (structuralVariantAlleleIsSupported(vt._1().getStructuralVariantAllele())) {
-
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates ");
                 final List<Haplotype> haplotypes = new ArrayList<>(2);
                 haplotypes.add(vt._1().composeHaplotype(0, padding, reference));
                 haplotypes.add(vt._1().composeHaplotype(1, padding, reference));
                 final TemplateHaplotypeScoreTable table = new TemplateHaplotypeScoreTable(vt._2(), haplotypes);
                 calculator.calculate(table);
+                table.dropUninformativeTemplates();
+                final GenotypeLikelihoods likelihoods = table.calculateGenotypeLikelihoods(2);
+                System.err.println("likelihoods = " + likelihoods.getAsString());
             } else {
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " not supported ");
             }

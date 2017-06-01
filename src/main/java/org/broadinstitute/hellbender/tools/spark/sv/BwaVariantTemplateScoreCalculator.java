@@ -41,6 +41,8 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
 
     private InsertSizeDistribution insertSizeDistribution;
 
+    private AlignmentPenalties penalties;
+
     public BwaVariantTemplateScoreCalculator(final JavaSparkContext ctx, final InsertSizeDistribution insertSizeDistribution) {
         this.ctx = Utils.nonNull(ctx);
         this.insertSizeDistribution = Utils.nonNull(insertSizeDistribution);

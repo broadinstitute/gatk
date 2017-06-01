@@ -70,7 +70,7 @@ public class InsertSizeDistribution implements Serializable {
     }
 
     public double probability(final int size) {
-        return dist().cumulativeProbability(size + .5) - dist().cumulativeProbability(size - .5);
+        return dist().density(size);
     }
 
     public double logProbability(final int size) {
