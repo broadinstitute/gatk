@@ -15,8 +15,6 @@
 #     -Otherwise uses the newest Spark jar in the same directory as the script or the BIN_PATH
 #      (in that order of precedence)
 #
-#
-#
 
 import sys
 from subprocess import check_call, CalledProcessError, call
@@ -58,13 +56,25 @@ PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
                   "-Dsamjdk.compression_level=1",
                   "-Dsnappy.disable=true"]
 
-DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
-"--conf", "spark.driver.maxResultSize=0",
-"--conf", "spark.driver.userClassPathFirst=true",
-"--conf", "spark.io.compression.codec=lzf",
-"--conf", "spark.yarn.executor.memoryOverhead=600",
-"--conf", "spark.driver.extraJavaOptions=" + EXTRA_JAVA_OPTIONS_SPARK,
-"--conf", "spark.executor.extraJavaOptions=" + EXTRA_JAVA_OPTIONS_SPARK]
+DEFAULT_SPARK_ARGS_PREFIX = '--conf'
+DEFAULT_SPARK_ARGS = {
+    "spark.kryoserializer.buffer.max" : "512m",
+    "spark.driver.maxResultSize" : "0",
+    "spark.driver.userClassPathFirst" : "true",
+    "spark.io.compression.codec" : "lzf",
+    "spark.yarn.executor.memoryOverhead" : "600",
+    "spark.driver.extraJavaOptions" : EXTRA_JAVA_OPTIONS_SPARK,
+    "spark.executor.extraJavaOptions" : EXTRA_JAVA_OPTIONS_SPARK
+}
+
+def createSparkConfArgs(javaOptions):
+    sparkConfArgs = DEFAULT_SPARK_ARGS
+
+    if javaOptions is not None:
+        sparkConfArgs["spark.driver.extraJavaOptions"] = sparkConfArgs["spark.driver.extraJavaOptions"] + ' ' + javaOptions
+        sparkConfArgs["spark.executor.extraJavaOptions"] = sparkConfArgs["spark.executor.extraJavaOptions"] + ' ' + javaOptions
+
+    return DEFAULT_SPARK_ARGS_PREFIX, sparkConfArgs
 
 class GATKLaunchException(Exception):
     pass
@@ -108,8 +118,9 @@ def main(args):
             print("                 to dataproc equivalents")
             print("")
             print("   --dryRun      may be specified to output the generated command line without running it")
-            print("   --javaOptions 'OPTION1=X[, OPTION2=Y ... ]'   optional - pass the given string of options to the ")
-            print("                 java JVM at runtime (for local runs only)")
+            print("   --javaOptions 'OPTION1[ OPTION2=Y ... ]'   optional - pass the given string of options to the ")
+            print("                 java JVM at runtime.  ")
+            print("                 Java options MUST be passed inside a single string with space-separated values.")
             sys.exit(0)
 
         if len(args) is 1 and args[0] == "--list":
@@ -171,7 +182,7 @@ def getLocalGatkRunCommand(javaOptions):
 
         # Add java options to our packaged local jar options
         if javaOptions is not None:
-            PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split(' '))
+            PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split())
 
         return formatLocalJarCommand(localJarFromEnv)
 
@@ -182,7 +193,7 @@ def getLocalGatkRunCommand(javaOptions):
         if javaOptions is not None:
             envJavaOpts = os.environ.get('JAVA_OPTS')
             if envJavaOpts is not None:
-                envJavaOpts + ' ' + javaOptions
+                envJavaOpts = envJavaOpts + ' ' + javaOptions
             else:
                 envJavaOpts = javaOptions
             os.environ['JAVA_OPTS'] = envJavaOpts
@@ -191,7 +202,7 @@ def getLocalGatkRunCommand(javaOptions):
 
     # Add java options to our packaged local jar options
     if javaOptions is not None:
-        PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split(' '))
+        PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split())
 
     return formatLocalJarCommand(getLocalJar())  # will throw if local jar not found
 
@@ -313,19 +324,29 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
         runCommand(cmd, dryrun)
     elif sparkRunner == "SPARK":
         sparkSubmitCmd = getSparkSubmitCommand(suppliedSparkSubmitCommand)
+
+        sparkConfArgsPrefix, sparkConfArgs = createSparkConfArgs(javaOptions)
+        sparkConfArgList = [[sparkConfArgsPrefix, "%s=%s" % (a, sparkConfArgs[a])] for a in sparkConfArgs];
+
         cmd = [ sparkSubmitCmd,
           "--master", getSparkMasterSpecified(gatkArgs)] \
-              + DEFAULT_SPARK_ARGS \
+              + [s for args in sparkConfArgList for s in args] \
               + sparkArgs \
               + [getSparkJar()] \
               + gatkArgs
+
         try:
             runCommand(cmd, dryrun)
         except OSError:
             raise GATKLaunchException("Tried to run %s but failed.\nMake sure %s is available in your path" % (sparkSubmitCmd, sparkSubmitCmd))
     elif sparkRunner == "GCS":
         jarPath = cacheJarOnGCS(getSparkJar(), dryrun)
-        dataprocargs = convertSparkSubmitToDataprocArgs(DEFAULT_SPARK_ARGS + sparkArgs)
+
+        # Note: For GCS we don't need the prefix for the sparkConfArgs, so we ignore it and only grab the second
+        # return value of createSparkConfArgs
+        sparkConfArgs = createSparkConfArgs(javaOptions)[1]
+
+        dataprocargs = convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs)
 
         sys.stderr.write("\nReplacing spark-submit style args with dataproc style args\n\n" + " ".join(sparkArgs) +" -> " + " ".join(dataprocargs) +"\n" )
 
@@ -396,7 +417,7 @@ def getSparkMasterSpecified(args):
 
 
 # translate select spark-submit parameters to their gcloud equivalent
-def convertSparkSubmitToDataprocArgs(args):
+def convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs):
     replacements = {"--driver-memory": "spark.driver.memory",
                     "--driver-cores": "spark.driver.cores",
                     "--executor-memory": "spark.executor.memory",
@@ -407,9 +428,16 @@ def convertSparkSubmitToDataprocArgs(args):
     filesToAdd = []
     properties = []
     try:
+
+        # Arguments passed as the sparkConfArgs should be passed through as properties.
+        # In practice yarn files will be added through the 'sparkArgs' argument that is parsed below,
+        # so we don't need to check for them up here.
+        properties.extend(['%s=%s' % (p, sparkConfArgs[p]) for p in sparkConfArgs])
+
+        # Iterate through sparkArgs
         i = 0
-        while i < len(args):
-            arg = args[i]
+        while i < len(sparkArgs):
+            arg = sparkArgs[i]
             if arg == "--conf":
                 i += 1
                 property = args[i]
@@ -418,10 +446,12 @@ def convertSparkSubmitToDataprocArgs(args):
                     filesToAdd = filesToAdd + files.split(",")
                 else:
                     properties.append(args[i])
+
             elif not replacements.get(arg) is None:
                 i += 1
                 propertyname = replacements.get(arg)
-                properties.append(propertyname + "=" + args[i])
+                properties.append(propertyname + "=" + sparkArgs[i])
+
             else:
                 dataprocargs.append(arg)
             i +=1
