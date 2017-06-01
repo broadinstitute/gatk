@@ -207,7 +207,7 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 final isRelease = Boolean.getBoolean("release")
-version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
+version = (isRelease ? gitVersion() : gitVersion() + "-tw-SNAPSHOT").replaceAll(".dirty", "")
 
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'

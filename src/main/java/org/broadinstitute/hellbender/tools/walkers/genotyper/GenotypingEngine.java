@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,7 +39,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     protected VariantAnnotatorEngine annotationEngine;
 
-    protected Logger logger;
+    protected transient Logger logger;
+
+    private void readObject(java.io.ObjectInputStream in)
+            throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        logger = LogManager.getLogger(this.getClass()); // Logger is not serializable (even by Kryo)
+    }
 
     protected final int numberOfGenomes;
 
