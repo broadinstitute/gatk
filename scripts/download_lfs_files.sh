@@ -30,3 +30,6 @@ md5sum src/test/resources/large/*.*
 
 echo "logs"
 GIT_TRACE=1 $GIT_LFS logs last
+
+echo "remove git lfs hooks"
+GIT_TRACE=1 $GIT_LFS uninstall

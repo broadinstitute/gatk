@@ -78,9 +78,8 @@ before_install:
 - if [[ $RUN_M2_WDL == true ]]; then
     wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
   fi
-# Install git-lfs and checkout files
-- bash scripts/install_git_lfs.sh;
-- export PATH=$PATH:$(pwd)/git-lfs
+# Download git lfs files
+- bash scripts/download_lfs_files.sh;
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
@@ -96,7 +95,6 @@ install:
   fi
 script:
 # run a basic sanity check to be sure that gatk-launch doesn't explode
-# install git-lfs
 # run tests
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
