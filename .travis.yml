@@ -80,7 +80,7 @@ before_install:
   fi
 # Install git-lfs and checkout files
 - bash scripts/install_git_lfs.sh;
-- export PATH=$PATH:git-lfs
+- export PATH=$PATH:$(pwd)/git-lfs
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
