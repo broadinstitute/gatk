@@ -70,8 +70,6 @@ before_install:
 - sudo apt-get install -y --force-yes r-base-dev=3.1.3-1trusty
 - sudo apt-get install -y --force-yes r-base-core=3.1.3-1trusty
 - sudo Rscript scripts/install_R_packages.R
-# Install git-lfs, and fetch the large test files
-- bash scripts/install_git_lfs.sh
 # Download Cromwell jar
 - if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
     wget -O ~/cromwell-0.25.jar https://github.com/broadinstitute/cromwell/releases/download/25/cromwell-25.jar;
@@ -116,6 +114,7 @@ script:
     sudo docker run -v src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${HASH} bash /root/run_unit_tests.sh;
   else
     ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
+    bash scripts/install_git_lfs.sh;
     travis_wait 50 ./gradlew jacocoTestReport;
   fi
 
