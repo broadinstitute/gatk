@@ -5,6 +5,8 @@ GIT_LFS_LINK=https://github.com/github/git-lfs/releases/download/v${GIT_LFS_VERS
 GIT_LFS="git-lfs-${GIT_LFS_VERSION}/git-lfs"
 echo "downloading and untarring git-lfs binary" 
 wget -qO- $GIT_LFS_LINK | tar xvz
+echo "sym-linking $GIT_LFS -> git-lfs"
+ln -s $GIT_LFS git-lfs
 
 echo "ls"
 ls
