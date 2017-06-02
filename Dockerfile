@@ -15,8 +15,8 @@ RUN ln -sFv /gatk/build/libs/gatk.jar
 RUN java -jar gatk.jar -h
 
 # Install git lfs and get latest big files
-#WORKDIR /gatk
-#RUN bash scripts/install_git_lfs.sh
+WORKDIR /gatk
+RUN bash scripts/install_git_lfs.sh
 
 #Setup test data
 WORKDIR /gatk
