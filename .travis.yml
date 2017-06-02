@@ -8,8 +8,6 @@ jdk:
 env:
   matrix:
   - TEST_TYPE=cloud
-  - TEST_TYPE=integration TEST_VERBOSITY=minimal
-  - TEST_TYPE=unit TEST_VERBOSITY=minimal
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - RUN_CNV_SOMATIC_WDL=true
