@@ -1,0 +1,64 @@
+/scripts/docker/cromwell-workflow-logs
+/scripts/docker/cromwell-executions
+/scripts/docker/test_m2_wdl.metadata
+/scripts/docker/mutect2.wdl
+/test_m2_wdl_multi_mod.json
+/mutect2.wdl
+/cnv_somatic_tasks.wdl
+/cnv_somatic_copy_ratio_bam_workflow.wdl
+/cnv_somatic_allele_fraction_pair_workflow.wdl
+/scripts/docker/clone_repo.sh
+/scripts/docker/checkout_tag.sh
+/scripts/docker/GITHUB_TAG
+/plotting_dump.rda
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Intellij Files
+hellbender-protected.iml
+
+# Mac files
+*.DS_Store
+
+#Emacs backup files
+*.*~
+.*~
+*~
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# IntelliJ project files.
+.idea
+
+# Build temporary files.
+.gradle
+build/
+
+# Build custom property files.
+gradle.properties
+
+# R Files
+.Rapp.history
+
+# Intellij iml file
+gatk-protected.iml
+
+# Spark log file
+adam.log
+debug.RData
+foo.patch
+
+# odt temp file
+/docs/PoN/.~lock.TangentNormalizationInSparkNotes.odt#
+
+gatk-launch
+
+#Temp files
+*.*~

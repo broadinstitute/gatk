@@ -1,0 +1,461 @@
+\documentclass[nofootinbib,amssymb,amsmath]{revtex4}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{mathrsfs}
+\usepackage{bm}
+
+%Put an averaged random variable between brackets
+\newcommand{\ave}[1]{\left\langle #1 \right\rangle}
+
+\newcommand{\vzero}{{\bf 0}}
+\newcommand{\vI}{{\bf I}}
+\newcommand{\vb}{{\bf b}}
+\newcommand{\vd}{{\bf d}}
+\newcommand{\vc}{{\bf c}}
+\newcommand{\vv}{{\bf v}}
+\newcommand{\vz}{{\bf z}}
+\newcommand{\vn}{{\bf n}}
+\newcommand{\vm}{{\bf m}}
+\newcommand{\vG}{{\bf G}}
+\newcommand{\vQ}{{\bf Q}}
+\newcommand{\vM}{{\bf M}}
+\newcommand{\vW}{{\bf W}}
+\newcommand{\vX}{{\bf X}}
+\newcommand{\vF}{{\bf F}}
+\newcommand{\vZ}{{\bf Z}}
+\newcommand{\vgamma}{{\bm \gamma}}
+
+\newcommand{\vPsi}{{\bf \Psi}}
+\newcommand{\vSigma}{{\bf \Sigma}}
+\newcommand{\vlambda}{{\bf \lambda}}
+\newcommand{\vLambda}{{\bf \Lambda}}
+\newcommand{\vDelta}{{\bf \Delta}}
+\newcommand{\vtheta}{{\boldsymbol \theta}}
+\newcommand{\vpi}{{\boldsymbol \pi}}
+\newcommand{\valpha}{{\boldsymbol \alpha}}
+\newcommand{\vA}{{\bf A}}
+\newcommand{\MM}{M}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\norm}{{\mathcal N}}
+\newcommand{\pois}{{\rm Poisson}}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+\def\SL#1{{\color [rgb]{0,0,0.8} [SL: #1]}}
+\def\DB#1{{\color [rgb]{0,0.8,0} [DB: #1]}}
+
+\newcommand{\epss}{\varepsilon}
+
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+\makeatletter
+\DeclareFontFamily{OMX}{MnSymbolE}{}
+\DeclareSymbolFont{MnLargeSymbols}{OMX}{MnSymbolE}{m}{n}
+\SetSymbolFont{MnLargeSymbols}{bold}{OMX}{MnSymbolE}{b}{n}
+\DeclareFontShape{OMX}{MnSymbolE}{m}{n}{
+    <-6>  MnSymbolE5
+   <6-7>  MnSymbolE6
+   <7-8>  MnSymbolE7
+   <8-9>  MnSymbolE8
+   <9-10> MnSymbolE9
+  <10-12> MnSymbolE10
+  <12->   MnSymbolE12
+}{}
+\DeclareFontShape{OMX}{MnSymbolE}{b}{n}{
+    <-6>  MnSymbolE-Bold5
+   <6-7>  MnSymbolE-Bold6
+   <7-8>  MnSymbolE-Bold7
+   <8-9>  MnSymbolE-Bold8
+   <9-10> MnSymbolE-Bold9
+  <10-12> MnSymbolE-Bold10
+  <12->   MnSymbolE-Bold12
+}{}
+
+\let\llangle\@undefined
+\let\rrangle\@undefined
+\DeclareMathDelimiter{\llangle}{\mathopen}%
+                     {MnLargeSymbols}{'164}{MnLargeSymbols}{'164}
+\DeclareMathDelimiter{\rrangle}{\mathclose}%
+                     {MnLargeSymbols}{'171}{MnLargeSymbols}{'171}
+\makeatother
+
+\begin{document}
+
+\title{A probabilistic model for coverage bias estimation and CNV detection}
+
+\author{Mehrtash Babadi}
+\email{mehrtash@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
+\author{David Benjamin}
+\email{davidben@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
+\author{Samuel K. Lee}
+\email{slee@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
+\date{\today}
+
+\begin{abstract}
+These notes exclusively cover the target coverage model in the GATK CNV pipeline.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+\noindent We wish to address several goals in this section:
+
+\begin{itemize}
+
+\item Connect copy ratio (or copy number) and raw read counts in a single sensible probabilistic model without heuristic data transformation.
+
+\item Take into account the Poisson nature of coverage depth, thereby giving less weight to low-coverage targets and separating the inherent variance due to Poisson statistics from experimental noise. We want to use the panel of normals to subtract only the latter.
+
+\item Choose the number of principal components to use in an automatic and principled manner.
+
+\item Use an algorithm that does not waste time calculating all principal components when we only want the few most significant ones.
+
+\item Make a universal panel of normals for both sexes by taking into account both autosomal and allosomal targets. This requires the flexibility to handle samples with ``missing data''.
+
+\item Correct for CNV events that occur in the panel of normals.
+
+\item Regularize the model property to ensure biological CNV events and laboratory biases are separable from each other, in particular when dealing with a small number of samples.
+
+\end{itemize}
+
+\subsection{Notation}
+We use bold symbols for vectors and matrices (e.g. $\mathbf{n}$) and the corresponding regular symbols when the indices are explicitly written (e.g. $n_{st}$). We use the notation $\mathbf{n}_s$ to refer to the $s$ row vector of the full matrix $\mathbf{n}$. Roman indices are used for sample and target indices whereas Greek indices are reserved for latent space indices.
+
+\section{The model}
+Suppose we have vectors of read counts over a set of $T$ targets for $S$ samples, $\vn_s, \, s = 1 \ldots S$ where $n_{st}$ is the coverage of sample $s$ at target $t$. In order to include both sexes on an equal footing, we further define a ``germline ploidy matrix'' $\PP_{st}$ such that $\PP_{st}$ is the germline ploidy\footnote{For human autosomal targets, $\PP_{st} = 2$ for both sexes. In female samples, $P_{st} = 2$ for X chromosome targets and $P_{st} = 0$ for Y chromosome targets. Finally, $P_{st} = 1$ for X and Y chromosomes in male samples} of target $t$ of sample $s$. We imagine that laboratory conditions for a particular sample yielding an underlying bias vector $\vb_s$, where $e^{b_{st}}$ is the propensity of target $t$ to be captured, sequenced, and mapped in the preparation of sample $s$. Suppose also that sample $s$ has an average depth $d_s$ and a vector of copy numbers $\vc_s$, where the latent variable $c_{st}$ is the copy number of sample $s$ at target $t$. Our model for read counts is:
+%
+\begin{equation}
+n_{st} \sim {\rm Poisson}(d_s \PP_{st} c_{st} e^{b_{st}})
+\label{coverage_model}
+\end{equation}
+We can achieve many of the goals listed above by performing probabilistic principal component analysis (PCA) not on directly $\vn$, but rather on $\vb$. One one hand, the Poisson parameters must be positive and therefore, $\exp(\vb)$ is a well-defined parametrization of the multiplicative bias. On the other hand, a Gaussian model for $\vb$ implies a log-normal distribution for $\exp(\vb)$ which is indeed the expected distribution when the multiplicative bias arises from several independent sources according to the central limit theorem\footnote{Let $B = \prod_{j=1}^{N_B} B_j$ be the total multiplicative bias where $B_j \in (0, \infty)$ are independent components of the bias. For $N_B \gg 1$, $\ln(B) \sim \mathcal{N}$ and therefore, $B$ has a log-normal distribution.}. We model $\vb_s$ as:
+%
+\begin{align}
+z_{s\mu} &\sim \norm(0, 1), \nonumber\\
+b_{st} &\sim \norm\left([\vW \vz_s]_t + m_t, \Psi_t + \gamma_s\right),
+\end{align}
+%
+where $\vz_s \in \mathbb{R}^D$ is a low-dimensional latent vector representing laboratory conditions, $\vW \in \mathbb{R}^{T \times D}$ is a linear map from latent space to target space, $\vm \in \mathbb{R}^T$ is the vector of mean biases, $\Psi_t$ is the residual variance not explained by the latent features, and finally $\gamma_s$ is the sample-specific residual variance. We approximate the Poisson as a Gaussian and expand the argument of the Gaussian exponential about the mode of $b_{st}$ to quadratic order to obtain:
+%
+\begin{equation}\label{eq:gaussian_approx_coverage}
+{\rm Poisson}(n_{st} | d_s \PP_{st} c_{st} e^{b_{st}}) \simeq \Sigma_{st} \, \norm(b_{st} | m_{st}, \Sigma_{st}),
+\end{equation}
+where:
+\begin{align}
+m_{st} &\equiv \ln(n_{st}/\PP_{st}) - \ln (c_{st}) - \ln(d_s), \nonumber\\
+\Sigma_{st} &\equiv 1/n_{st}.
+\label{eq:m_sigma_def}
+\end{align}
+
+% \begin{figure}
+% \center
+% \includegraphics[scale=0.7]{figs/{gauss_poisson_0.1}.pdf}
+% \includegraphics[scale=0.7]{figs/{gauss_poisson_10}.pdf}
+% \caption{Gaussian approximation to the Poisson likelihood (see Eq.~\ref{eq:gaussian_approx_coverage}). The left and right panels show $\mathrm{Poisson}(n|\alpha\,e^b)$ and $n^{-1}\mathcal{N}(b|\ln(n/\alpha), n^{-1})$, respectively for $\alpha=0.1$ (top) and $\alpha=10.0$ (bottom). The black lines show $b = \ln(n/\alpha)$ the maximum likelihood bias estimate. The Gaussian approximation breaks down at $n=0$ (no coverage). It also slightly overestimates the variance at small $n$. Otherwise, it is an excellent approximation.}
+% \label{fig:gaussian_approx_coverage}
+% \end{figure}
+
+Note that $\Sigma_{st}$ can be thought of as the width of the distribution of $b_{st}$ about its maximum likelihood estimate such that in the limit $n_{st}, d_s \rightarrow \infty$, ${\rm Poisson}(n_{st} | d_s c_{st} e^{b_{st}}) \rightarrow \delta(b_{st} - b^*_{st})$ where $b^*_{st} = \lim_{n,d \rightarrow \infty} m_{st}$ is the true bias. The above approximation, while being excellent for well-covered targets (see Fig.~\ref{fig:gaussian_approx_coverage}), inevitably breaks down for targets that are uncovered {\em ex ante} in some samples, such as $Y$ chromosome targets in female samples. To this end, we define a ``sample-target mask matrix'' $\MM_{st}$ such that $\MM_{st} = 0$ if $\PP_{st} = 0$, and $\MM_{st} = 1$ if $\PP_{st} \neq 0$, and for each sample-target pair $(s,t)$, we only consider targets where the $\MM_{st} \neq 0$ in the joint likelihood function. The latter is thus written as:
+\begin{equation}
+P(n_{st}, b_{st}, z_{st}, d_s | c_{st}, \vtheta) \propto \norm(\vz_s | \vzero, \vI) \, \Big[\norm(b_{st} | (\vW \vz_s)_t + m_t, \Psi_t + \gamma_s) \, \norm(b_{st} | m_{st}, \Sigma_{st})\Big]^{M_{st}},
+\end{equation}
+where $\vtheta = (\vW, \vm, \vPsi)$ denote the parameters we wish to learn. We can integrate out $b_{st}$ readily to obtain\footnote{The integration is easily performed using the identity $\int_{-\infty}^{+\infty} \norm(x | \mu_1, \sigma_1^2) \, \norm(x | \mu_2, \sigma_2^2) \, \mathrm{d}x = \norm(\mu_1 | \mu_2, \sigma_1^2 + \sigma_2^2)$.}:
+%
+\begin{equation}
+P(n_{st}, z_{st}, d_s | c_{st}, \vtheta) \propto \norm(\vz_s | \vzero, \vI) \, \Big[\norm(m_{st} | (\vW \vz_s)_t + m_t, \Psi_{st})\Big]^{M_{st}},
+\label{coverage_likelihood}
+\end{equation}
+where we have defined:
+\begin{equation}
+\Psi_{st} = \Psi_t + \Sigma_{st} + \gamma_s.
+\label{eq:psi_def}
+\end{equation}
+We model the copy number states (or copy ratios in case of somatic samples) using a finite state hidden Markov model (HMM). Put together, we obtain:
+\begin{align}
+P(\vn_s, \vz_s, \vc_s, d_s | \vtheta) &\propto P_\mathrm{HMM}\big(\vc_s \big|\vpi, \{\mathbf{T}_t\}\big)\, \prod_t P(n_{st}, z_{st}, d_s | c_{st}, \vtheta),\nonumber\\
+P_\mathrm{HMM}\big(\vc_s \big|\vpi, \{\mathbf{T}_t\}\big) &\equiv P(c_{s,0}|\vpi) \prod_{t=1}^{T-1}P(c_{s,t}| c_{s,t-1}, \mathbf{T}_t).
+\label{eq:complete_likelihood}
+\end{align}
+Here, $\vpi$ is a vector denoting the prior probabilities of various copy number states, and $\mathbf{T}_t$ is the transition matrix at target $t$. We treat HMM parameters as given (hyperparameters).\\
+
+It is illuminating to study Eq.~\eqref{coverage_likelihood} before we proceed. To this end, we marginalize the bias latent variable $\vz_s$ in Eq.~\eqref{coverage_likelihood} to obtain the incomplete-data likelihood function. The final result can be put in a simple form using the Woodbury identity and properties of projection matrices:
+%
+\begin{equation}
+P(\vn | \vc, \vtheta) \propto \exp \left( -\frac{1}{2} \sum_s (\vm_s - \vm)^T \vM_s (\vPsi + \vSigma_s + \vM_s \vW \vW^T \vM_s)^{-1} \vM_s (\vm_s - \vm) \right),
+\label{marginalized coverage_likelihood}
+\end{equation}
+%
+where $\vM_s$ and $\vSigma_{s}$ are $T \times T$ diagonal matrices having $M_{st}$ and $\Sigma_{st}$ in their diagonal entries for $t=0, \ldots, T-1$., respectively. The incomplete-data likelihood function poses a Gaussian distribution for $\ln(n_{st})$ (See Eq.~\ref{eq:m_sigma_def}). The covariance matrix is the diagonal in the target space and is composed of three terms: (1) $\vPsi$ denotes target-specific ``unexplained'' noises, (2) $\vM_s \vW \vW^T \vM_s$ denotes the variance explained by the model, and (3) $\Sigma_{st} = 1/n_{st}$ denotes the statistical variance in read counts. This term originates from the Poisson distribution for read counts and can be thought of as a penalty factor that decreases the role of lower-coverage samples in the likelihood.
+
+\subsection{A Laplace regularization scheme for separating latent features from biological CNV events}
+PCA-like approaches to denoising aim at minimizing the {\em total variance} of the data by learning and subtracting the contribution of the underlying latent features. In practice, this objective is achieved using either the maximum variance principle (usual PCA) or the maximum likelihood principle on a linear-Gaussian model as explained here. Using either method, when the number of samples largely exceeds the dimension of the latent space, sample-specific variations become immaterial and the true underlying latent features can be learned from the data. However, when the number of samples is comparable to the number of latent features, the statistical power for separating sample-specific variations from mutual variations is significantly reduced.
+
+Let us assume that we have an oracle for the first few major latent features, and that we have already subtracted the contribution arising from these features. Let $\sigma_\ell^2$ be the variance associated with the next leading latent feature. Subtracting this latent feature reduces the total variance by $S\sigma_\ell^2$, where $S$ is the number of samples. Now, if one of the samples has an individual leftover variance of magnitude $\sigma_s^2$ such that $\sigma_s^2 \gtrsim S\sigma_\ell^2$, then the maximum variance principle implies choosing the next principal component along the direction of that specific sample. In other words, the procedure erroneously learns a sample-specific signal as a source of noise. Note that this artifact occurs only if $S \lesssim \sigma_s^2 / \sigma_\ell^2$.\\
+
+\noindent {\bf What is at stake? ---} There is no obvious theoretical guarantee for the MLE problem for $\vtheta$ to be convex. In all likelihood, if one of the samples has a large germline CNV event, it may be picked up as a principal component and be interpreted as experimental noise such that the MAP estimator for $\vc$ fails to call that CNV event. It is possible that the likelihood function has numerous such local maxima. Therefore, we wish to ensure that sample-specific {\em nuisances} are not picked up as Gaussian noise, no matter how strong they are. We discuss a number of such approaches in what follows.\\
+
+\noindent {\bf (Idea 1) Blind source separation ---} One remedy is to use a blind source separation approach, such as independent component analysis (ICA), to separate the signal from the noise as a first step, followed by learning the latent features of the noise using PCA. In ICA-like methods, one decomposes the signal into additive subcomponents and minimizes the mutual information between them (or maximizes the non-Gaussianity by taking into account higher moments such as the kurtosis). Even though this method is quite appealing, we follow a more context-specific heuristic approach here.\\
+
+\noindent {\bf (Idea 2) Employing a CNV-sensitive regularizer ---} Fortunately, we have some idea about the spatial structure of the CNV events: they are amplification or attenuation of the read count over several consecutive targets. In the absence of noise, we expect the frequency spectrum of the CNV signal (as obtained by taking a Fourier transform of $m_{st}$ in $t$) to be significantly enhanced at spatial frequencies corresponding to the inverse length scale of the size of the CNV event. Similarly, the variation subtracted from sample $s$, i.e. $\vW \vz_s$, will exhibit an enhanced spectral power if a CNV event is erroneously picked up. Let $\tilde{f}(k)$ be the Fourier transform of a linear filter that approximately represents a range of CNV events. For example, we may use a midpass filter such as:
+\begin{equation}
+\tilde{f}(k) = \left\{
+\begin{array}{ll}
+  1 & \quad k_l \leq k^* \leq k_h,\\
+  \\
+  0 & \quad k^* > k_h \,\, \text{or} \,\, k^* < k_l,
+\end{array}
+\right.
+\end{equation}
+Here, $k^* = \min(k, T - 1 - k)$, $k_l \sim \lfloor T / \ell_\mathrm{max} \rfloor$ and $k_l \sim \lfloor T / \ell_\mathrm{min} \rfloor$, where $\ell_\mathrm{min}$ and $\ell_\mathrm{max}$ denote roughly the minimum and maximum length of the CNV events in the units of targets. The filtered spectral power of the noise in sample $s$ is given as:
+\begin{equation}
+\kappa_s \equiv \sum_{k=0}^{T-1} \tilde{f}(k) \left|\mathrm{FFT}\left[\vW \vz_s\right]_k\right|^2 = \frac{1}{T}\sum_{t,t'=0}^{T-1}F_{tt'} \, W_{t\mu} \, W_{t'\nu} \, z_{s\mu} \, z_{s\nu},
+\end{equation}
+where $F_{tt'} = f(t-t') \equiv T^{-1} \sum_{k=0}^{T-1} e^{2\pi i k (t-t')/T} \tilde{f}(k)$ is the inverse DFT of $\tilde{f}(k)$. Now, in order to avoid picking up event-like variations as noise, we simply penalize variations with large $\kappa$. To this end, we regularize the coverage likelihood function Eq.~\eqref{coverage_likelihood} with the following Laplace penalty:
+\begin{equation}
+R_f \equiv \exp\left(-\frac{\lambda}{2} \sum_{s=1}^S\kappa_s\right) = \exp\left(-\frac{\lambda}{T}\sum_{s=1}^S\sum_{t,t'=0}^{T-1}f(t-t') \, W_{t\mu} \, W_{t'\nu} \, z_{s\mu} \, z_{s\nu}\right).
+\end{equation}
+We define the matrix $F_{t,t'} \equiv f(t-t')/T$ for notational convenience. The regularizer ``kicks in'' when $\lambda \sim \Psi^{-1}$, as it can be inferred directly from Eq.~\eqref{eq:W_eq_reg}. One may initially choose $\lambda \sim 1000\,\Psi^{-1}$ and progressively relax it as the optimal solution is approached.
+
+\subsection{Automatic relevance determination (ARD) prior on $\vW$}
+The true dimension of the latent space is not known {\em a priori}. When abundant data is available (i.e. $S \gg D_\mathrm{true}$), this problem can be addressed using the automatic relevance determination (ARD) technique. To this end, one starts with a liberal estimate for $D$ and imposes a Gaussian prior on the rows of $\vW$ (principal components):
+\begin{equation}
+P(\vW) \propto \prod_\mu \alpha_\mu^{T/2} \exp \left( -\frac{1}{2} \alpha_\mu \sum_t W_{t\mu}^2  \right).
+\label{eq:ARD_prior}
+\end{equation}
+If $\alpha_\mu \rightarrow \infty$, the latent feature $\mu$ is effectively turned off whereas if $\alpha_\mu \rightarrow 0$, the flat prior is recovered. The recipe for ARD is to set $\alpha_\mu \simeq 0$ initially while calculating and maximizing the model evidence $P(\vn | \{\alpha_\mu\}$ with respect to $\{\alpha_\mu\}$ during the EM algorithm. If $D > D_\mathrm{true}$, we expect $D - D_\mathrm{true}$ elements of $\{\alpha_\mu\}$ to run to infinity. If $D < D_\mathrm{true}$, all of $\{\alpha_\mu\}$ will remain of the same order, signaling the necessity of increasing $D$.
+
+\section{Mean-field variational EM algorithm}
+We start by writing the complete-data log likelihood (see Eq.~\ref{eq:complete_log_likelihood}), including the ARD prior and the Laplace regularizer:
+\begin{subequations}
+\begin{align}
+\label{eq:complete_log_likelihood}
+\ln P(\vn, \vc, \vz, \vd | \vtheta, \valpha) =&\, \sum_{s} \ln P_\mathrm{HMM}\big(\vc_s \big|\vpi, \{\mathbf{T}_t\}\big) - \frac{1}{2}\sum_{st} M_{st} \, \bigg\{\ln \Psi_{st} + \Psi_{st}^{-1}\Big[(\vW \vz_s)_t^2 + \Delta_{st}^2 - 2\Delta_{st} (\vW \vz_s)_t\Big]\bigg\}\nonumber\\
+& - \frac{\lambda}{2} \, \sum_s \sum_{t,t'} F_{tt'} \, W_{t\mu} \, W_{t'\nu} \, z_{s\mu} \, z_{s\nu} - \frac{1}{2}\sum_{s} \vz_s^T \vz_s + \sum_{\mu=1}^{D}\left(\frac{T}{2} \, \ln \alpha_\mu -\frac{\alpha_\mu}{2} \sum_{t=0}^{T-1} W_{t\mu}^2  \right) + \mathrm{const.},\\
+\label{eq:delta_def}
+\Delta_{st} \equiv&\, \ln(n_{st}/\PP_{st}) - \ln c_{st} - \ln d_s - m_t.
+\end{align}
+\end{subequations}
+We notice that the latent variables $(\vc, \vd)$ are coupled to $\vz$ due to the cross term $\Delta \vW \vz$, and $\vc$ is coupled to $\vd$ due to $\Delta^2$, and all are coupled to $\vgamma$ via $\vPsi$. These couplings result in an intractable E step. We expect the posterior distribution for $\vz$ and $\vd$ to be quite sharp near the optimal solution, provided $D_\mathrm{true} \ll T$. Therefore, we do not foresee these couplings to play a substantial role, allowing us to utilize an approximate factorized variational ansatz for the latent posterior distribution:
+\begin{equation}
+\Phi(\vc, \vz, \vd) \equiv P(\vc, \vz, \vd | \vn, \vtheta_\mathrm{old}) \simeq \Phi_c(\vc) \, \Phi_z(\vz) \, \Phi_d(\vd) \, \Phi_\gamma(\vgamma).
+\end{equation}
+The E step requires solving the following set of mean-field self-consistency equations:
+\begin{subequations}
+\begin{align}
+\ln \Phi_c(\vc) &= \EE_{\vz, \vd, \vgamma}\big[\ln P(\vc, \vz, \vd, \vgamma | \vn, \vtheta_\mathrm{old})\big],\\
+\ln \Phi_z(\vz) &= \EE_{\vc, \vd, \vgamma}\big[\ln P(\vc, \vz, \vd, \vgamma | \vn, \vtheta_\mathrm{old})\big],\\
+\ln \Phi_d(\vd) &= \EE_{\vc, \vz, \vgamma}\big[\ln P(\vc, \vz, \vd, \vgamma | \vn, \vtheta_\mathrm{old})\big],\\
+\ln \Phi_\gamma(\vgamma) &= \EE_{\vc, \vz, \vd}\big[\ln P(\vc, \vz, \vd, \vgamma | \vn, \vtheta_\mathrm{old})\big],
+\end{align}
+\end{subequations}
+where the posterior expectation values are calculated with respect to the factorized distribution. Writing out the right hand side explicitly, we find:
+\begin{subequations}
+\begin{align}
+\label{eq:Phi_c}
+\Phi_c(\vc_s) &\propto P_\mathrm{HMM}\big(\vc_s \big|\vpi, \{\mathbf{T}_t\}\big)\prod_{t=0}^{T-1} \exp\left[- \frac{1}{2} M_{st}\EE[\Psi_{st}^{-1}]\big[\ln(n_{st}/\PP_{st}) - \ln c_{st} - \EE[\ln d_s] - m_t - (\vW \EE[\vz_s])_t\big]^2\right],\\
+\label{eq:Phi_z}
+\Phi_z(\vz_s) &\propto \exp\left[-\frac{1}{2} \, \vz_s^T \Big(\vI + \vW^T \vM_s \, \EE[\vPsi_s^{-1}] \, \vW + \lambda \vW^T \vF \vW \Big)\,\vz_s + \vW^T \vM_{s} \, \EE[\mathbf{\Delta}_{s}]\,\vz_s \right],\\
+\label{eq:Phi_d}
+\Phi_d(d_s) &\propto \exp\left[- \frac{1}{2} \sum_{t=0}^{T-1} M_{st}\EE[\Psi_{st}^{-1}]\big[\ln(n_{st}/\PP_{st}) - \EE[\ln c_{st}] - \ln d_s - m_t - (\vW \EE[\vz_s])_t\big]^2\right],\\
+\label{eq:Phi_gamma}
+\Phi_\gamma(\gamma_s) &\propto \exp\left[-\frac{1}{2}\sum_{t=0}^{T-1} M_{st} \left( \ln \Psi_{st} + \Psi_{st}^{-1} B_{st} \right)\right],
+\end{align}
+\end{subequations}
+where:
+\begin{equation}
+\label{eq:B_def}
+B_{st} = \big(\vW \EE[\vz_s \vz_s^T] \vW\big)_{tt} + \EE\big[\Delta_{st}^2\big] - 2 \, \EE\big[\vDelta_{st}^T\big] \, \vW \, \EE\big[\vz_s\big].
+\end{equation}
+All expectation values are found with respect to the factorized posterior distribution. We have completed the squares Eqs.~\eqref{eq:Phi_c} and~\eqref{eq:Phi_d} in exchange for different normalization factors (which we do not need to calculate). We observe that: (1) $\Phi_z(\vz_s)$ is conveniently Gaussian in $\vz_s$; (2) $\Phi_d(d_s)$ admits a Gaussian distribution over $\rho \equiv \ln d$:
+\begin{equation}
+\Phi_\rho(\rho_s) = e^{\rho_s}\,\Phi_d(e^{\rho_s}) \propto \exp\left[ \rho_s - \frac{1}{2} \sum_{t=0}^{T-1} M_{st}\Psi_{st}^{-1}\big[\ln(n_{st}/\PP_{st}) - \EE[\ln c_{st}] - \rho_s - m_t - (\vW \EE[\vz_s])_t\big]^2\right],
+\end{equation}
+which is normalizable and does not require regularization; (3) the factorized distribution for $\vc_s$ yields an emission model that is local in the target space. (4) It is impossible to calculate the required posterior expectations using $\Phi_\gamma$ analytically. Since the exponents scales like $\mathcal{O}(T)$, we will employ the Laplace approximation. First, we find $\gamma^*_s$ defined as:
+\begin{equation}
+\gamma^*_s = \mathrm{argmax}_{\gamma_s}\left[-\frac{1}{2}\sum_{t=0}^{T-1} M_{st} \, \ln(\Psi_t + \Sigma_{st} + \gamma_s) + (\Psi_t + \Sigma_{st} + \gamma_s)^{-1} B_{st} \right].
+\end{equation}
+Setting the derivative to zero, we find:
+\begin{equation}
+-\frac{1}{2} \sum_{t=0}^{T-1} M_{st}\left[\frac{1}{\Psi_t + \Sigma_{st} + \gamma^*_s} - \frac{B_{st}}{(\Psi_t + \Sigma_{st} + \gamma^*_s)^2}\right] = 0.
+\end{equation}
+We solve this equation numerically. Note that $\gamma_s^* > -\mathrm{min}_t (\Psi_t + \Sigma_{st})$. The Laplace approximation of $\Phi_\gamma(\gamma_s)$ is then given as:
+\begin{align}
+\Phi_\gamma(\gamma_s) &\simeq \frac{1}{\sqrt{2\pi g_s}}\exp\left[-\frac{1}{2}\,g_s\,(\gamma_s - \gamma^*_s)^2\right],\\
+g_s &= \frac{1}{2}\sum_{t=0}^{T-1}M_{st}\left[\frac{1}{(\Psi_t + \Sigma_{st} + \gamma^*_s)^2} - \frac{2\,B_{st}}{(\Psi_t + \Sigma_{st} + \gamma^*_s)^3}\right].
+\end{align}
+As a consistency check, we must ensure $g_s > 0$. We may take one step further and assume $g_s \sim \mathcal{O}(T) \gg 1$ and set $\Phi_\gamma(\gamma_s) \rightarrow \delta(\gamma_s - \gamma^*_s)$. Adopting this approximation, we have:
+\begin{equation}\label{eq:dirac_delta_gamma_posterior}
+\EE[\Psi_{st}^{-1}] \approx (\Psi_{t} + \Sigma_{st} + \gamma_s^*)^{-1}, \qquad \EE[\ln \Psi_{st}] \approx \ln(\Psi_t + \Sigma_{st} + \gamma_s^*).
+\end{equation}
+Put together, our recipe for the E step can be summarized as solving the following set of self-consistent mean-field equations:
+\begin{subequations}
+\begin{align}
+\EE\big[\ln d_s \big] &= \frac{1 + \sum_t M_{st} \EE[\Psi_{st}^{-1}]\left[\ln(n_{st}/\PP_{st}) - \EE[\ln c_{st}] - m_t - (\vW \EE[\vz_s])_t\right]}{\sum_t M_{st} \EE[\Psi_{st}^{-1}]},\\
+\mathrm{var}\big[\ln d_s\big] &= \Big(\sum_t M_{st} \EE[\Psi_{st}^{-1}]\Big)^{-1},\\
+\EE\big[\Delta_{st}\big] &= \ln(n_{st}/\PP_{st}) - \EE\big[\ln c_{st}\big] - \EE\big[\ln d_s\big] - m_t,\\
+\EE\big[\Delta_{st}^2\big] &= \EE[\Delta_{st}]^2 + \mathrm{var}\big[\ln c_{st}\big] + \mathrm{var}\big[\ln d_{s}\big],\\
+\EE\big[\vz_s\big] &= \vG_s \vW^T \vM_s \vPsi_s^{-1} \EE\big[\mathbf{\Delta}_s\big],\qquad \vG_s \equiv \left( \vI + \vW^T \vM_s \vPsi_s^{-1} \vW + \lambda \vW^T \vF \vW \right)^{-1}\\
+\EE\big[\vz_s \vz_s^T \big] &= \vG_s + \EE\big[\vz_s\big] \EE\big[\vz_s\big]^T,\\
+\EE\big[\ln c_{st}\big] &= \sum_{c} \mu_{st}(c) \ln(c),\\
+\mathrm{var}\big[\ln c_{st}\big] &= \sum_{c} \mu_{st}(c) \ln^2(c) - \EE\big[\ln c_{st}\big]^2,\\
+B_{st} &= \big(\vW \EE[\vz_s \vz_s^T] \vW\big)_{tt} + \EE\big[\Delta_{st}^2\big] - 2 \, \EE\big[\vDelta_{st}^T\big] \, \vW \, \EE\big[\vz_s\big],\\
+\gamma^*_s &= \mathrm{argmax}_{\gamma_s}\left[-\frac{1}{2}\sum_{t=0}^{T-1} M_{st} \, \ln(\Psi_t + \Sigma_{st} + \gamma_s) + (\Psi_t + \Sigma_{st} + \gamma_s)^{-1} B_{st} \right],\\
+\EE[\Psi_{st}^{-1}] &= (\Psi_{t} + \Sigma_{st} + \gamma_s^*)^{-1},\\
+\EE[\ln \Psi_{st}] &= \ln(\Psi_t + \Sigma_{st} + \gamma_s^*).
+\end{align}
+\end{subequations}
+where $\mu_{st}(c) \equiv P(c_{st} = c | \vn, \vtheta_\mathrm{old})$ is the single-target copy ratio posterior which can be found efficiently using forward-backward algorithm. In practice, we can set $\EE[\vz_s] = \EE[\ln c_{st}] = \gamma_s^* = 0$ initially and cycle through the mean-field equations for $d$, $z$ and $c$ in succession until convergence is achieved to a desired degree. An unlikely consequence of the Laplace approximation for $\Phi_\gamma$ is that $\Psi_{t} + \Sigma_{st} + \gamma_s^*$ might become negative for certain targets. We safeguard the routine by strictly requiring $\gamma_s > - \mathrm{min}_t(\Psi_{t})$.
+
+In the M step, we calculate the expectation value of the complete-data log likelihood with respect to the posterior distribution, and maximize it with respect to $\vtheta$. The quantity of interest is:
+%
+\begin{align}
+\mathcal{Q}(\vtheta|\vtheta_\mathrm{old}, \valpha) =&\, \EE_{q(\vc, \vz, \vd, \vgamma)}\big[\ln P(\vn, \vc, \vz, \vd | \vtheta)\big]\nonumber\\
+=&\, - \frac{1}{2}\sum_{st} M_{st} \, \bigg\{\ln \EE[\Psi_{st}] + \EE[\Psi_{st}^{-1}]\Big[\big(\vW \EE[\vz_s \vz_s^T] \vW\big)_{tt} + \EE\big[\Delta_{st}^2\big] - 2 \, \EE\big[\vDelta_{st}^T\big] \, \vW \, \EE\big[\vz_s\big]\Big]\bigg\}\nonumber\\
+&\,- \frac{\lambda}{2} \, \sum_s \mathrm{Tr}\Big(\vW^T \vF \vW \, \EE\big[\vz_s \vz_s^T\big]\Big) + \sum_{\mu=1}^{D}\left(\frac{T}{2} \, \ln \alpha_\mu -\frac{\alpha_\mu}{2} \sum_{t=0}^{T-1} W_{t\mu}^2  \right) + \mathrm{const.}
+\label{eq:posterior_exp_log_likelihood}
+\end{align}
+%
+Maximizing $\mathcal{Q}$ with respect to $\vm$ gives:
+\begin{align}
+m_t = \left(\sum_s \vM_s \EE[\vPsi_{s}^{-1}] \right)^{-1} \sum_s \left[ \vM_s \EE[\vPsi_{s}^{-1}]  (\vm_{s}  - \vW  \EE[\vz_{s}] ) \right].
+\end{align}
+Employing the approximation given in Eq.~\eqref{eq:dirac_delta_gamma_posterior}, maximizing $\mathcal{Q}$ with respect to $\Psi_t$ gives:
+\begin{equation}\label{eq:psi_stationarity}
+\sum_s M_{st}\left[\frac{1}{\Psi_t + \Sigma_{st} + \gamma^*_s} - \frac{B_{st}}{(\Psi_t + \Sigma_{st} + \gamma^*_s)^2} \right] = 0,
+\end{equation}
+where $B_{st}$ was defined earlier in Eq.~\eqref{eq:B_def}. The above nonlinear equation must be solved for each target. In practice, we found that the best approach was to use Brent solver for each target. On average, $10 \sim 15$ function calls yields the solution within a $10^{-6}$ tolerance. Newton's method required approximately 20 evaluations to converge within the same tolerance and was not stable all the time.\\
+
+\noindent Maximizing $\mathcal{Q}$ with respect to $\vW$ gives:
+\begin{equation}\label{eq:W_eq_reg}
+\sum_{\nu} \left(Q_{t\mu\nu} + A_{\mu\nu}\right) W_{t\nu} + \lambda \sum_{\nu,t'} Z_{\mu\nu} F_{tt'} W_{t'\nu} = v_{t\mu},
+\end{equation}
+where:
+\begin{align}
+Q_{t\mu\nu} &= \sum_s M_{st} \EE[\Psi_{st}^{-1}] \, \EE\big[z_{s\mu} z_{s\nu}\big],\nonumber\\
+v_{t\mu} &= \sum_s M_{st} \, \EE[\Psi_{st}^{-1}] \, \EE\big[\Delta_{st}\big] \, \EE\big[z_{s\mu}\big],\nonumber\\
+A_{\mu\nu} &= \delta_{\mu\nu}\,\alpha_{\mu},\nonumber\\
+Z_{\mu\nu} &= \sum_{s=1}^S \EE[z_{s\mu} z_{s\nu}].
+\end{align}
+The sparse structure of the above linear equation allows us to solve it efficiently using Krylov subspace methods (to be discussed later).\\
+
+\noindent Finally, to determine $\alpha_\mu$, we re-exponentiate $\mathcal{Q}(\vtheta|\vtheta_\mathrm{old}, \valpha)$ and integrate out $\vW$ to obtain the evidence for $\vA$:
+%
+\begin{align}
+P(\vn | \vA) \propto& \prod_\mu \alpha_\mu^{T/2} \int q(\vW) \, \mathrm{d} \vW,
+\label{ARD_evidence}
+\end{align}
+where:
+\begin{equation}
+q(\vW) \equiv \exp\left(-\frac{1}{2} \sum_{\mu\nu} \sum_{tt'} W_{t \mu} \left[\left(A_{\mu\nu} + Q_{t\mu\nu}\right)\delta_{tt'} + \lambda F_{tt'}\,Z_{\mu\nu}\right] W_{t' \nu} - \sum_\mu W_{t\mu} v_{t\mu}\right).
+\end{equation}
+%
+The ARD coefficients $\alpha$ are determined by maximizing the log evidence, i.e. $\partial/\partial \alpha_\mu \ln P(\vn | \vA) = 0$ which easily gives:
+\begin{equation}
+\frac{\alpha_\mu}{T} = \left(\frac{\displaystyle\int \sum_t W^2_{t\mu}\, q(\vW)\,\mathrm{d}\vW}{\displaystyle\int q(\vW) \, \mathrm{d}\vW}\right)^{-1} = \left(\sum_t \left(W_{t\mu}^*\right)^2 + \sum_t\left(\vA + \vQ + \lambda \vF \otimes \vZ \right)^{-1}_{\mu t, \mu t}\right)^{-1},
+\end{equation}
+where $\vW^*$ is the latest M step value for $\vW$. Unfortunately, the presence of the regularizer and the coupling it introduces between the targets makes calculating the required inverse matrix element a numerically challenging problem. Without the regularizer term, the inversion can be performed per-target and only within the low dimensional latent space. One approach is to extract the required matrix elements using stochastic methods. For example, one can efficiently calculate $\mathbf{w}^T \left(\ldots\right)^{-1} \mathbf{v}$ using Krylov subspace methods. If one calculates this scalar quantity for an ensemble of pairs $(\mathbf{v}, \mathbf{w})$ such that $\EE[v_{\alpha t} w_{\beta t'}] = \delta_{\alpha\beta}\delta_{\alpha\mu}\delta_{tt'}$, the ensemble average of $\mathbf{w}^T \left(\ldots\right)^{-1} \mathbf{v}$ yields the desired matrix element. Another approach is to disable the regularizer after a number of EM iterations, and enable the ARD prior instead.
+
+\subsection{On the emission probability (TO BE UPDATED)}
+The emission probability for the HMM is local in target and sample indices, and can be read from Eq.~\eqref{eq:Phi_c}:
+\begin{equation}
+P_\mathrm{em}(n_{st}|c_{st}) = \mathcal{N}_{st} \exp\left[- \frac{1}{2} \, \Lambda_{st} \, \big(\ln n_{st} - \mu_{st}\big)^2\right],
+\end{equation}
+where we have defined:
+\begin{align}
+\Lambda_{st} &= M_{st}\Psi_{st}^{-1},\nonumber\\
+\mu_{st} &= \ln(c_{st}) + \ln(\PP_{st}) + \EE[\ln d_s] + m_t + (\vW \EE[\vz_s])_t,
+\end{align}
+and $\mathcal{N}_{st}$ is a normalization factor. We will drop the $st$ indices for brevity hereafter in this section. The emission function must be a proper probability function, i.e. it must sum to unity by considering all possible read counts. Consequently, the (inverse) normalization factor is given by:
+\begin{equation}
+\mathcal{N}^{-1} = \sum_{n=1}^\infty \exp\left[-\frac{\Lambda}{2}\,(\ln n - \mu)^2\right].
+\end{equation}
+We have left out $n=0$ from the summation since we implicitly assume such targets are masked out\footnote{Only unmasked targets must be passed to the HMM.}. An excellent approximation in cases where target coverage is high is to replace the discrete sum with an integral:
+\begin{align}
+\mathcal{N}^{-1} &\simeq \int_{1}^\infty \mathrm{d}n\,\exp\left[-\frac{\Lambda}{2}\,(\ln n - \mu)^2\right]\nonumber\\
+&= \int_{0}^\infty \mathrm{d}x \, \exp\left[-\frac{\Lambda}{2}\,(x - \mu)^2 + x\right] = \exp\left(\mu + \frac{1}{2\Lambda}\right)\int_{0}^\infty \mathrm{d}x \, \exp\left[-\frac{\Lambda}{2}\,(x - \mu - \Lambda^{-1})^2\right]\nonumber\\
+&= \sqrt{\frac{\pi}{2\Lambda}}\,\exp\left(\mu + \frac{1}{2\Lambda}\right) \mathrm{erfc}\left(-\frac{\Lambda \mu + 1}{\sqrt{2\Lambda}}\right).
+\end{align}
+In summary, the log emission probability is given by:
+\begin{equation}
+\ln P_{\mathrm{em}}(n|c) \simeq -\frac{1}{2}\,\ln\left(\frac{\pi}{2\Lambda}\right) - \mu - \frac{1}{2\Lambda} - \ln \mathrm{erfc}\left(-\frac{\Lambda \mu + 1}{\sqrt{2\Lambda}}\right) - \frac{1}{2}\,\Lambda\,(\ln n - \mu)^2.
+\end{equation}
+Note that $c$ implicitly appears in $\mu$. Also, we recall that $\mathrm{erfc}(-x) = 1 + \mathrm{erf}(x)$ which is useful in numerics.
+
+\subsection{Efficient computational of expressions involving the regularizer}
+\noindent{\bf Calculating $\vW^T \vF \vW$ ---}
+Since $\vF$ is not diagonal in the target space, a naive matrix multiplication implies a multiplication complexity of $\mathcal{O}(D^2 T^2)$ for the new term. However, this complexity can be reduced to a manageable $\mathcal{O}(D^2 T \log T)$ using FFT:
+\begin{equation}
+(\vW^T \vF \vW)_{\mu\nu} = \sum_{t=0}^{T-1} W_{\mu t} \, \mathrm{FFT}_t^{-1}\left[\sum_{k=0}^{T-1} \tilde{f}(k) \, \mathrm{FFT}_k[W_{t\nu}]\right].
+\end{equation}
+
+\noindent{\bf Solving the M step equation for $\vW$ ---} Fortunately, the linear operator $\vQ + \vA + \lambda \vZ \otimes \vF$, is the sum of two sparse operators: $\vQ + \vA$ is diagonal in the target space, and $\vZ \otimes \vF$ is diagonal in Fourier space ($\vZ$ acts on the latent space, $\vF$ acts on the target space). Both $\vQ + \vA$ and $\vZ \otimes \vF$ are dense in the latent space, but this space has a low dimensionality and is not prohibitive in numerics. Eq.~\eqref{eq:W_eq_reg} can be solved very efficiently using preconditioned iterative Krylov space solvers such as conjugate gradients (CG) or generalized minimal residual (GMRES.) A decent preconditioner can be constructed by taking a target average of $Q_{t\mu\nu}$:
+\begin{equation}
+\mathbf{\Lambda} \equiv \tilde{\vQ} + \vA + \lambda \vZ \otimes \vF, \qquad \tilde{\vQ} = \frac{1}{T}\sum_t \vQ_t.
+\end{equation}
+Note that $\mathbf{\Lambda}$ is now easily invertible in the Fourier space. In iterative methods, we only need to be able to calculate $\mathbf{\Lambda}^{-1} \mathbf{W}$ for arbitrary $\vW$. The complexity for this is $\mathcal{O}(D^3 T \log T)$ using FFT:
+\begin{equation}
+\left(\mathbf{\Lambda}^{-1} \mathbf{W}\right)_{t\mu} = \mathrm{FFT}_t^{-1}\left[\left(\tilde{\vQ} + \vA + \lambda \tilde{f}(k) \vZ\right)^{-1} \mathrm{FFT}_k[\vW_t]\right].
+\end{equation}
+Note that if target-to-target variance $\vQ_t$ is small (which is the case if the targets have a comparable degree of unexplained variance), $\mathbf{\Lambda}^{-1} \vv$ is an excellent approximate solution to Eq.~\eqref{eq:W_eq_reg} and can be used as a starting point. In practice, we found preconditioned CG iterations to converge within an error tolerance of $10^{-6}$ within less than 10 steps. The complexity of each CG step is also $\mathcal{O}(D^3 T \log T)$.\\
+
+\section{Results}
+In this section, we present the result of the algorithm on synthetic coverage data where the ground truth is known (this section must be eventually supplemented with real data). We synthesize the data according to Eq.~\eqref{coverage_model} along with random duplication events of varying lengths. We choose $T=4000$ targets, $D=10$ true latent variables, $S=100$ samples, mean read depth $d$ uniformly sampled from $[50, 1000]$, mean bias $m_t \sim \norm(0, 1)$, eigenvalues of the covariance matrix $\vW \vW^T$ uniformly sampled from $[0, 10]$, and residual variance $\Psi_t$ uniformly sampled from $[0.01, 0.05]$. Finally, the length of CNV events are randomly sampled from $[50, 500]$ targets.\\
+
+Fig.~\ref{fig:comp_regularizer} compares PCA denoising against our probabilistic model with different features turned on/off (ARD, CNV event regularization) for random and correlated events, respectively. It is clearly observed that the regularized model retains all of the events even when the number of latent features chosen is greater than the true number.
+
+% \begin{figure}
+% \center
+% $D=10$\\
+% \vspace{10pt}
+% \includegraphics[scale=0.45]{figs/comp_random_events_10.pdf}
+% \vspace{20pt}
+% \includegraphics[scale=0.45]{figs/comp_corr_events_10.pdf}
+% $D=20$\\
+% \vspace{10pt}
+% \includegraphics[scale=0.45]{figs/comp_random_events_20.pdf}
+% \includegraphics[scale=0.45]{figs/comp_corr_events_20.pdf}
+% \caption{Comparison of PCA with the probabilistic coverage model in different modes. Top two rows: $D=10$; random events, correlated events. Bottom two rows: $D=20$; random events, correlated events.}
+% \label{fig:comp_regularizer}
+% \end{figure}
+
+
+\appendix
+
+\section{Approximate calculation of the bias integral}
+The starting point of our model was a Poisson distribution for read counts, and a log-normal distribution for the multiplicative bias:
+\begin{align}
+n_{st} &\sim \pois(\alpha_{st}\exp(b_{st}) + \beta_{st}),\nonumber\\
+b_{st} &\sim \norm(\mu_{st}, \Psi_{st}),
+\end{align}
+where $\mu_{st} \equiv \sum_\mu W_{t\mu} z_{s\mu} + m_t$ is the mean bias parameter and $\Psi_{st}$ is its standard deviation. Furthermore, $\alpha_{st} = (1-\epss_{st})\,d_s P_{st} c_{st}$, $\beta_{st} = \epss_{st} d_s$, and $\epss_{st}$ is a (small) probability of mapping error. We will drop the $st$ labels for brevity hereafter.
+
+In order to proceed, we need to either marginalize $b$ from the outset, or treat it as a latent variable within an EM framework. Either approach presents its own set of challenges. In order to marginalize $b$, one needs to calculate the following integral:
+\begin{equation}
+I \equiv \int_{-\infty}^{+\infty}\mathrm{d}b\,\exp\left[-\alpha e^b -\beta + n \ln(\alpha e^b + \beta) - \ln n! - \frac{(b-\mu)^2}{2\Psi} - \frac{1}{2}\,\ln(2\pi \Psi)\right]
+\end{equation}
+The integral has no closed form solution due to the complicated dependence of the integrand on $b$. Previously, we had proposed replacing the Poisson part with its Laplace approximation over $b$ which resulted in simple Gaussian integrals. This approach, however, is only valid if $n \gg 1$ {\em and} $\alpha \gg 1$. Otherwise, either the saddle point expansion becomes unwarranted, or the saddle point itself $b^* = \ln[(n-\beta)/\alpha]$ moves to $\pm \infty$. Thus, this approach fails in the low coverage regions or if $c \approx 0$, implying its inadequacy for treating homozygous deletions where $n \approx 0$ and $c \approx 0$.
+
+Treating $b$ within EM is also a non-trivial problem since we need to compute $\EE[e^b]$, $\EE[b]$, $\EE[b^2]$, and $\EE[\ln(\alpha e^b + \beta)]$. Computing these posterior expectation values is as difficult as marginalizing $b$, even using factorized and variational distributions.\\
+
+The most tractable alternative approach, in the spirit of our present formalism, is to perform a saddle point expansion on the full integrand, and not just on its Poisson part. The full saddle point equation is:
+\begin{equation}
+\frac{b_\mathrm{SP} - \mu}{\Psi} =  \frac{n\,\alpha\,e^{b_\mathrm{SP}}}{\alpha\,e^{b_\mathrm{SP}} + \beta} - \alpha\,e^{b_\mathrm{SP}}.
+\end{equation}
+The saddle point changes position as a function of $\Psi$: for $\Psi \approx 0$, we have $b_\mathrm{SP} \approx \mu$, i.e. it is dictated by the normal distribution of $b$; for $\Psi \gg 1$, $b_\mathrm{SP} \approx \ln[(n-\beta)/\alpha]$ (for $n \gg \beta$), i.e. it is dictated by the Poisson distribution. For $n \approx \beta$ and $\Psi \gg 1$, the saddle point will have a complicated dependence on all parameters. In general, we do not have a simple closed-form solution for $b_\mathrm{SP}$. 
+
+One idea is to assume low bias $|b| \ll 1$, and to expand the saddle point equation about $b_\mathrm{SP} = 0$. While this leads to tractable expressions that remain valid for all $\alpha, \beta, n, \ldots$, the assumption $|b| \ll 1$ is not empirically justified.   
+
+\end{document}

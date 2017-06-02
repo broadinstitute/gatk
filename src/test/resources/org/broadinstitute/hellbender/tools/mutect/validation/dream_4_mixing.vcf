@@ -1,0 +1,71 @@
+##fileformat=VCFv4.1
+##phasing=none
+##INDIVIDUAL=TRUTH
+##reference=Homo_sapiens_assembly19.fasta
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=DUP,Description="Duplication">
+##ALT=<ID=IGN,Description="Ignore SNVs/INDELs in Interval">
+##ALT=<ID=MSK,Description="Mask Variants in Interval">
+##ALT=<ID=INS,Description="Insertion">
+##ALT=<ID=INV,Description="Inversion">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
+##INFO=<ID=DPR,Number=1,Type=Float,Description="Avg Depth in Region (+/- 1bp)">
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
+##INFO=<ID=MATEID,Number=1,Type=String,Description="Breakend mate">
+##INFO=<ID=SOMATIC,Number=0,Type=Flag,Description="Somatic mutation in primary">
+##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=VAF,Number=1,Type=Float,Description="Variant Allele Frequency">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##SAMPLE=<ID=TRUTH,Individual="TRUTH",Description="bamsurgeon spike-in">
+##GATKCommandLine=<ID=LeftAlignAndTrimVariants,Version=nightly-2014-04-27-g64280d1,Date="Thu Jun 05 22:02:01 EST 2014",Epoch=1401969721030,CommandLineOptions="analysis_type=LeftAlignAndTrimVariants input_file=[] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=Homo_sapiens_assembly19.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null disable_auto_index_creation_and_locking_when_reading_rods=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 logging_level=INFO log_to_file=null help=false version=false variant=(RodBinding name=variant source=indel.truth.vcf) trimAlleles=false splitMultiallelics=false out=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub no_cmdline_in_header=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub bcf=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1	SAMPLE2
+20	246065	.	T	G	100	PASS	SOMATIC;VAF=0.142857142857;DPR=38.6666666667	GT	0/1	0/0
+20	417039	.	T	A	100	PASS	SOMATIC;VAF=0.142857142857;DPR=60.3333333333	GT	0/1	0/0
+20	449502	.	A	G	100	PASS	SOMATIC;VAF=0.25;DPR=26.0	GT	0/0	0/1
+20	670974	.	A	C	100	PASS	SOMATIC;VAF=0.145454545455;DPR=66.6666666667	GT	0/1	0/0
+20	784541	.	C	G	100	PASS	SOMATIC;VAF=0.296296296296;DPR=31.0	GT	0/0	0/1
+20	1069554	.	GGACACTTAA	G	100	PASS	SOMATIC	GT	0/1	0/1
+20	1248005	.	C	T	100	PASS	SOMATIC;VAF=0.272727272727;DPR=24.0	GT	0/0	0/1
+20	1276126	.	TCCCACCCA	T	100	PASS	SOMATIC	GT	0/1	0/0
+20	1327734	.	T	TCGTTCGTGATCAGATGCAGACGAAGGTTACGCTACATCACGAACCCGTACAGGTTTGACTACTGC	100	PASS	SOMATIC	GT	0/0	0/1
+20	1344480	.	T	C	100	PASS	SOMATIC;VAF=0.260869565217;DPR=31.0	GT	0/0	0/1
+20	1360381	.	GATTTCCCATAATCGAGTCCGAA	G	100	PASS	SOMATIC	GT	0/1	0/0
+20	1366255	.	G	A	100	PASS	SOMATIC;VAF=0.28;DPR=34.6666666667	GT	0/0	0/1
+20	1401389	.	G	C	100	PASS	SOMATIC;VAF=0.135135135135;DPR=40.3333333333	GT	0/1	0/0
+20	1488617	.	GCC	G	100	PASS	SOMATIC	GT	0/1	0/0
+20	1539229	.	T	C	100	PASS	SOMATIC;VAF=0.142857142857;DPR=36.0	GT	0/1	0/0
+20	1672603	.	T	TGCTGTAAAAA	100	PASS	SOMATIC	GT	0/1	0/1
+20	1730106	.	AT	A	100	PASS	SOMATIC	GT	1/1	0/1
+20	1791262	.	A	G	100	PASS	SOMATIC;VAF=0.136363636364;DPR=28.0	GT	0/1	0/0
+20	1818885	.	A	ACCAT	100	PASS	SOMATIC	GT	0/1	1/1
+20	1858486	.	C	G	100	PASS	SOMATIC;VAF=0.111111111111;DPR=20.0	GT	0/1	0/0
+20	1878799	.	G	T	100	PASS	SOMATIC;VAF=0.105263157895;DPR=23.0	GT	0/1	0/0
+20	1921186	.	A	T	100	PASS	SOMATIC;VAF=0.297297297297;DPR=49.0	GT	0/0	0/1
+20	1981964	.	C	CGCGGCTGCCCTAGAGGGA	100	PASS	SOMATIC	GT	1/1	0/1
+20	2010175	.	G	GCTGCACAA	100	PASS	SOMATIC	GT	0/1	0/1
+20	2057801	.	C	CTGTAGTGCTCACACACGT	100	PASS	SOMATIC	GT	0/1	1/1
+20	2146230	.	A	C	100	PASS	SOMATIC;VAF=0.275862068966;DPR=39.0	GT	0/0	0/1
+20	2289449	.	TCTGGGGACA	T	100	PASS	SOMATIC	GT	0/0	0/0
+20	2522395	.	T	G	100	PASS	SOMATIC;VAF=0.289473684211;DPR=43.3333333333	GT	0/0	0/1
+20	2684736	.	C	CTGCACGACAGACGACTATTTAT	100	PASS	SOMATIC	GT	0/1	0/0
+20	2964254	.	T	A	100	PASS	SOMATIC;VAF=0.115384615385;DPR=32.0	GT	0/1	0/0
+20	3071349	.	G	C	100	PASS	SOMATIC;VAF=0.282051282051;DPR=54.3333333333	GT	0/0	0/1
+20	3237435	.	A	G	100	PASS	SOMATIC;VAF=0.136363636364;DPR=30.0	GT	0/1	0/0
+20	3274523	.	A	G	100	PASS	SOMATIC;VAF=0.3;DPR=30.0	GT	0/0	0/1
+20	3390214	.	AGGCGTGAG	A	100	PASS	SOMATIC	GT	0/1	1/1
+20	3402360	.	C	CAAATCCACCGGCGGTAGGAAGT	100	PASS	SOMATIC	GT	0/1	0/0
+20	3458771	.	G	GTTCTCAA	100	PASS	SOMATIC	GT	0/1	1/1
+20	3540818	.	T	A	100	PASS	SOMATIC;VAF=0.136363636364;DPR=57.0	GT	0/1	0/0
+20	3550820	.	C	G	100	PASS	SOMATIC;VAF=0.125;DPR=41.6666666667	GT	0/1	0/0
+20	3738631	.	T	TTGGCCGTCAAA	100	PASS	SOMATIC	GT	0/1	1/1
+20	3768229	.	T	C	100	PASS	SOMATIC;VAF=0.139534883721;DPR=51.6666666667	GT	0/1	0/0
+20	3852480	.	A	AATT	100	PASS	SOMATIC	GT	0/0	1/1
+20	3980923	.	C	CAGGGGCTATA	100	PASS	SOMATIC	GT	0/0	0/1
+20	4084084	.	GAGTAAAAAGACAACTGACAGA	G	100	PASS	SOMATIC	GT	0/1	1/1
+20	4161143	.	TTAGC	T	100	PASS	SOMATIC	GT	0/1	1/1
+20	4252640	.	T	TTA	100	PASS	SOMATIC	GT	0/1	0/1
+20	4311027	.	G	A	100	PASS	SOMATIC;VAF=0.137931034483;DPR=35.0	GT	0/1	0/0
+20	4407906	.	C	CAGTCGGCAAGGTGTCTAGACATTTG	100	PASS	SOMATIC	GT	0/1	0/1
+20	4482303	.	T	C	100	PASS	SOMATIC;VAF=0.115384615385;DPR=36.0	GT	0/1	0/0
+20	4671624	.	C	G	100	PASS	SOMATIC;VAF=0.285714285714;DPR=70.3333333333	GT	0/0	0/1

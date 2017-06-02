@@ -1,0 +1,4 @@
+contig	start	stop	name
+1	5000	5200	target_5
+1	15000	15200	target_15
+1	25000	25200	target_25

@@ -84,7 +84,7 @@ if [ -n "$STAGING_DIR" ]; then
     set +e
     rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
     set -e
-    git clone https://github.com/${REPO}/${PROJECT}.git ${STAGING_DIR}/${STAGING_CLONE_DIR}
+    GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/${REPO}/${PROJECT}.git ${STAGING_DIR}/${STAGING_CLONE_DIR}
     cd ${STAGING_DIR}/${STAGING_CLONE_DIR}
     echo "Now in ${PWD}"
     GIT_CHECKOUT_COMMAND="git checkout ${GITHUB_DIR}${GITHUB_TAG}"
