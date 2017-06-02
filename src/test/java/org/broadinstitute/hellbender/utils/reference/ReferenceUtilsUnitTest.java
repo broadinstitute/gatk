@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.reference;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMSequenceDictionary;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -49,6 +50,25 @@ public class ReferenceUtilsUnitTest extends BaseTest {
             Assert.assertEquals(dictionary.size(), 4, "Wrong sequence dictionary size after loading");
 
             Assert.assertFalse(referenceDictionaryStream.isClosed(), "InputStream was improperly closed by ReferenceUtils.loadFastaDictionary()");
+        }
+    }
+
+    @Test
+    public void testLoadFastaDictionaryWithFastaFile() throws IOException {
+
+        File testFastaFile = new File(hg19MiniReference);
+
+        // Test loadFastaDictionary with File argument:
+        Assert.assertThrows(UserException.MalformedFile.class, () -> {
+            ReferenceUtils.loadFastaDictionary(testFastaFile);
+        });
+
+        // Test loadFastaDictionary with Stream argument:
+        try ( final ClosingAwareFileInputStream referenceDictionaryStream = new ClosingAwareFileInputStream(testFastaFile) ) {
+
+            Assert.assertThrows(UserException.MalformedFile.class, () -> {
+                ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);
+            });
         }
     }
 
