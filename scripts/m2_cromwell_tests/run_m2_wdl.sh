@@ -11,8 +11,6 @@ echo "Building docker image for M2 WDL tests (skipping unit tests)..."
 HASH_TO_USE=`git rev-parse ${TRAVIS_BRANCH}`
 #cd $WORKING_DIR/gatk/scripts/docker/
 #assume Dockerfile is in root
-cp -rfp $WORKING_DIR/gatk/scripts/docker/Dockerfile $WORKING_DIR/gatk/
-cp -rfp $WORKING_DIR/gatk/scripts/docker/build_docker.sh $WORKING_DIR/gatk/
 echo "Building docker without running unit tests... ========="
 cd $WORKING_DIR/gatk
 sudo bash build_docker.sh  -e $HASH_TO_USE -s -u
