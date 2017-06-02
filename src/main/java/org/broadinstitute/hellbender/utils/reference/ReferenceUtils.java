@@ -73,10 +73,10 @@ public final class ReferenceUtils {
         final SAMFileHeader header = codec.decode(reader, fastaDictionaryStream.toString());
 
         // Make sure we have a valid sequence dictionary before continuing:
-        if (header.getSequenceDictionary().isEmpty()) {
+        if (header.getSequenceDictionary() == null || header.getSequenceDictionary().isEmpty()) {
             throw new UserException.MalformedFile (
                     "Could not read sequence dictionary from given fasta stream " +
-                            fastaDictionaryStream.toString()
+                            fastaDictionaryStream
             );
         }
 

@@ -7,6 +7,10 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import org.testng.annotations.DataProvider;
+
+import java.lang.reflect.Method;
+import java.util.*;
 
 import java.io.*;
 
@@ -53,22 +57,31 @@ public class ReferenceUtilsUnitTest extends BaseTest {
         }
     }
 
-    @Test
-    public void testLoadFastaDictionaryWithFastaFile() throws IOException {
+    @DataProvider(name = "testData_testLoadWrongFormatFastaDictionary")
+    public Object[][] testData_testLoadWrongFormatFastaDictionary(final Method testMethod) {
 
-        File testFastaFile = new File(hg19MiniReference);
+        Object[][] tests = {
+                {hg19MiniReference, true},
+                {hg19MiniReference, false}
+        };
 
-        // Test loadFastaDictionary with File argument:
-        Assert.assertThrows(UserException.MalformedFile.class, () -> {
-            ReferenceUtils.loadFastaDictionary(testFastaFile);
-        });
+        return tests;
+    }
 
-        // Test loadFastaDictionary with Stream argument:
-        try ( final ClosingAwareFileInputStream referenceDictionaryStream = new ClosingAwareFileInputStream(testFastaFile) ) {
+    @Test(expectedExceptions = UserException.MalformedFile.class, dataProvider = "testData_testLoadWrongFormatFastaDictionary")
+    public void testLoadWrongFormatFastaDictionary(final String fastaFileName, boolean doLoadAsStream ) throws IOException {
 
-            Assert.assertThrows(UserException.MalformedFile.class, () -> {
+        File testFastaFile = new File(fastaFileName);
+
+        if ( doLoadAsStream ) {
+            // Test loadFastaDictionary with Stream argument:
+            try ( final ClosingAwareFileInputStream referenceDictionaryStream = new ClosingAwareFileInputStream(testFastaFile) ) {
                 ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);
-            });
+            }
+        }
+        else {
+            // Test loadFastaDictionary with File argument:
+            ReferenceUtils.loadFastaDictionary(testFastaFile);
         }
     }
 
