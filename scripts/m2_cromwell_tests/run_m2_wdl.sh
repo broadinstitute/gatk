@@ -13,7 +13,7 @@ HASH_TO_USE=`git rev-parse ${TRAVIS_BRANCH}`
 #assume Dockerfile is in root
 echo "Building docker without running unit tests... ========="
 cd $WORKING_DIR/gatk
-sudo bash build_docker.sh  -e $HASH_TO_USE -s -u
+sudo bash build_docker.sh  -e $HASH_TO_USE -s -u -d $PWD/temp_staging/
 echo "Docker build done =========="
 echo "Putting the newly built docker image into the json parameters"
 cd $WORKING_DIR/gatk/scripts/
