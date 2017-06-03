@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.segmentation;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
@@ -38,6 +39,7 @@ import java.util.List;
         oneLineSummary = "(Experimental) Segment genomic data into regions of constant minor allele fraction",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class PerformAlleleFractionSegmentation extends CommandLineProgram {
     protected static final String INITIAL_NUM_STATES_LONG_NAME = "initialNumberOfStates";
     protected static final String INITIAL_NUM_STATES_SHORT_NAME = "initialNumStates";
