@@ -38,7 +38,7 @@ import java.util.List;
  * java -Xmx4g -jar $gatk_jar PerformAlleleFractionSegmentation \
  *   --tumorHets tumor.hets.tsv \
  *   --initialNumberOfStates 10 \
- *   --segments tumor_allele_fraction.seg
+ *   --segments tumor_allelefraction.seg
  * </pre>
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
