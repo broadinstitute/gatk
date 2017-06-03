@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.segmentation;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
@@ -18,7 +19,7 @@ import java.util.List;
  * Groups contiguous targets with the same minor allele fraction for a single sample.
  *
  *  <p>
- *     The --tumorHets file is from {@link GetBayesianHetCoverage}, preferably, but can also come from {@link org.broadinstitute.hellbender.tools.exome.GetHetCoverage}.
+ *     The --tumorHets file is from {@link org.broadinstitute.hellbender.tools.exome.GetBayesianHetCoverage}, preferably, but can also come from {@link org.broadinstitute.hellbender.tools.exome.GetHetCoverage}.
  *      For example,
  * </p>
  *
@@ -31,6 +32,15 @@ import java.util.List;
  *     1	1021415	2	10
  * </pre>
  *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar PerformAlleleFractionSegmentation \
+ *   --tumorHets tumor.hets.tsv \
+ *   --initialNumberOfStates 10 \
+ *   --segments tumor_allele_fraction.seg
+ * </pre>
+ *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
@@ -38,6 +48,7 @@ import java.util.List;
         oneLineSummary = "(Experimental) Segment genomic data into regions of constant minor allele fraction",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
 public final class PerformAlleleFractionSegmentation extends CommandLineProgram {
     protected static final String INITIAL_NUM_STATES_LONG_NAME = "initialNumberOfStates";
     protected static final String INITIAL_NUM_STATES_SHORT_NAME = "initialNumStates";
