@@ -35,6 +35,18 @@ import java.util.stream.Collectors;
  *     Specify the sequence context(s) with the --artifactModes argument.
  * </p>
  *
+ * <p>
+ *     The metrics from CollectSequencingArtifactMetrics provide a global view across a sample's genome that empowers
+ *     decision making in ways site-specific analyses cannot. CollectSequencingArtifactMetrics should be run for both
+ *     the normal sample and the tumor sample, if the matched normal is available. Comparing the metrics helps to
+ *     determine whether additional filtering for a sequence context is necessary.
+ * </p>
+ *
+ * <p>
+ *     For example, FFPE artifacts stem from formaldehyde deamination of cytosines, which results in C to T transition mutations.
+ *     OxoG artifacts stem from oxidation of guanine to 8-oxoguanine, which results in G to T transversion mutations.
+ * </p>
+ *
  * <h3>Example</h3>
  *
  * For OxoG, specify G>
@@ -104,7 +116,9 @@ public class FilterByOrientationBias extends VariantWalker {
     protected File preAdapterMetricsFile;
 
     @Argument(
-            doc = "PreAdapter Detail artifacts of interest on the forward strand.  'C/A' for a single artifact.  Specify this parameter multiple times to process multiple artifacts at the same time:  'C/A,T/G'  Artifacts must be one base to one base (e.g. 'CC/CA' is illegal).  G>T is OxoG.",
+            doc = "PreAdapter Detail artifacts of interest on the forward strand.  'C/A' for a single artifact.  " +
+                    "Specify this parameter multiple times to process multiple artifacts at the same time:  'C/A,T/G'  " +
+                    "Artifacts must be one base to one base (e.g. 'CC/CA' is illegal).  G>T is OxoG.",
             shortName = ARTIFACT_MODES_SHORT_NAME,
             fullName = ARTIFACT_MODES_FULL_NAME,
             optional = true
