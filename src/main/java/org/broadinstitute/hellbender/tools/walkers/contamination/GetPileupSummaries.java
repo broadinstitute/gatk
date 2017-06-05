@@ -19,10 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Given a sites vcf of common SNPs and a BAM file, get summary of alt and ref counts along with population allele frequency.
+ * Given a sites VCF of common population SNPs and a BAM file, summarizes alt and ref counts along with population allele frequency.
  *
  * <p>
- *     The resulting table is the input for {@link CalculateContamination}.
+ *     The resulting table is the input for {@link CalculateContamination}. 
+ *     The sites VCF, e.g. gnomAD resource file, contains population allele frequencies (AF) in the INFO field.
  *     Note the default maximum population allele frequency (--maximumPopulationAlleleFrequency or -maxAF) is set to 0.2,
  *     which limits sites the tool considers to those in the variants resource file that have allele frequencies (AF) of 0.2 or less.
  * </p>
