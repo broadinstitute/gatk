@@ -111,7 +111,7 @@ dependencies {
     compileOnly(javadocJDKFiles)
     testCompile(javadocJDKFiles)
 
-    compile 'org.broadinstitute:barclay:1.0.0-24-g87c3fa2-SNAPSHOT'
+    compile 'org.broadinstitute:barclay:1.0.0-32-g78b1711-SNAPSHOT'
     compile ('com.intel:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'spark-core_2.10'
         exclude module: 'htsjdk'
