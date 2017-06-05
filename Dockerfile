@@ -1,9 +1,7 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-1.0
+FROM broadinstitute/gatk:gatkbase-1.1
 
 ADD . /gatk
-
-RUN Rscript /gatk/scripts/install_R_packages.R
 
 WORKDIR /gatk
 RUN /gatk/gradlew clean compileTestJava installAll localJar

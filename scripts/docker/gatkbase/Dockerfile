@@ -59,3 +59,6 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
     apt-get install -y --force-yes \
         r-base-dev=3.2.5-1xenial \
         r-base-core=3.2.5-1xenial
+
+COPY install_R_packages.R install_R_packages.R
+RUN Rscript install_R_packages.R
