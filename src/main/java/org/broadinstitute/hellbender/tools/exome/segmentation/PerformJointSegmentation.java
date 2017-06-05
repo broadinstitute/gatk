@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.segmentation;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public class PerformJointSegmentation extends CommandLineProgram {
     protected static final String INITIAL_NUM_COPY_RATIO_STATES_LONG_NAME = "initialNumberOfCopyRatioStates";
     protected static final String INITIAL_NUM_COPY_RATIO_STATES_SHORT_NAME = "initialNumCRStates";

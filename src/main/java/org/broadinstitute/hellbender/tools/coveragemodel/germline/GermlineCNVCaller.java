@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -113,6 +114,7 @@ import java.util.Map;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class GermlineCNVCaller extends SparkToggleCommandLineProgram {
 
     private static final long serialVersionUID = -1149969750485027900L;

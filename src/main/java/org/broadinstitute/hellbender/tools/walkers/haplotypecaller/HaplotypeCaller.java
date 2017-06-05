@@ -5,6 +5,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -155,6 +156,7 @@ import java.util.List;
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     public static final int DEFAULT_READSHARD_SIZE = 5000;

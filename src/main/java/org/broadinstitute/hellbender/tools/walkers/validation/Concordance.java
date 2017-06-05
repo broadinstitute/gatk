@@ -10,7 +10,9 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections4.Predicate;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -48,6 +50,8 @@ import java.util.Set;
         oneLineSummary = "Evaluate a vcf against a vcf of validated (true) variants",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
+@BetaFeature
 public class Concordance extends AbstractConcordanceWalker {
     public static final String SUMMARY_LONG_NAME = "summary";
     public static final String SUMMARY_SHORT_NAME = "S";

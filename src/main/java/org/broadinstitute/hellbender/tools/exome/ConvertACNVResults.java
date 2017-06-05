@@ -4,6 +4,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
@@ -46,6 +47,7 @@ import java.util.List;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public class ConvertACNVResults extends SparkCommandLineProgram {
 
     static final long serialVersionUID = 42123132L;

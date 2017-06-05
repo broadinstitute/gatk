@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -22,7 +23,7 @@ import java.util.List;
  * Given a sites VCF of common population SNPs and a BAM file, summarizes alt and ref counts along with population allele frequency.
  *
  * <p>
- *     The resulting table is the input for {@link CalculateContamination}. 
+ *     The resulting table is the input for {@link CalculateContamination}.
  *     The sites VCF, e.g. gnomAD resource file, contains population allele frequencies (AF) in the INFO field.
  *     Note the default maximum population allele frequency (--maximumPopulationAlleleFrequency or -maxAF) is set to 0.2,
  *     which limits sites the tool considers to those in the variants resource file that have allele frequencies (AF) of 0.2 or less.
@@ -38,12 +39,13 @@ import java.util.List;
  *   -O pileups.table
  * </pre>
  *
- * @author David Benjamin &lt;davidben@brgoadinstitute.org&gt;
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Calculate pileup statistics for inferring contamination",
         oneLineSummary = "Calculate pileup statistics for inferring contamination",
         programGroup = VariantProgramGroup.class)
+@BetaFeature
 @DocumentedFeature
 public class GetPileupSummaries extends MultiVariantWalker {
 

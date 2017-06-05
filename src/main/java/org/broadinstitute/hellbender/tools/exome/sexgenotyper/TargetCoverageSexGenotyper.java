@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -99,6 +100,7 @@ import java.util.List;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public class TargetCoverageSexGenotyper extends CommandLineProgram {
 
     private final Logger logger = LogManager.getLogger(TargetCoverageSexGenotyper.class);
