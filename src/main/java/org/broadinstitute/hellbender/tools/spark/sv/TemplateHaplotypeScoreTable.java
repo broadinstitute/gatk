@@ -22,7 +22,7 @@ import java.util.stream.IntStream;
  */
 public class TemplateHaplotypeScoreTable implements Serializable {
 
-    private static long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     private final double[][] values;
 

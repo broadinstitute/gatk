@@ -17,8 +17,9 @@ public enum StructuralVariantAllele {
 
     private final Allele allele;
 
+    @SuppressWarnings("RedundantTypeArguments")
     private static final Map<String, StructuralVariantAllele> instanceByName =
-            Stream.of(values()).collect(Collectors.toMap(Enum::name, v -> v));
+            Stream.of(values()).collect(Collectors.toMap(Enum<StructuralVariantAllele>::name, v -> v));
 
     /**
      * Creates a new {@link StructuralVariantAllele} instance.

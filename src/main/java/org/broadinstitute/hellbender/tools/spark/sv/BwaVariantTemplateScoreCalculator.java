@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  */
 public class BwaVariantTemplateScoreCalculator implements StructuralVariantTemplateHaplotypeScoreCalculator, Serializable {
 
-    private static long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     private transient final JavaSparkContext ctx;
 
