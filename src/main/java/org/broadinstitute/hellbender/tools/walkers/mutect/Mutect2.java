@@ -36,9 +36,16 @@ import java.util.List;
  *     <dd>(i) The filtering functionality is now a separate tool called {@link FilterMutectCalls}.
  *     To filter further based on sequence context artifacts, additionally use {@link FilterByOrientationBias}.</dd>
  *     <dd>(ii) If using a known germline variants resource, then it must contain population allele frequencies, e.g.
- *     from gnomAD or the 1000 Genomes Project. See below or the GATK Resource bundle for an example.</dd>
- *     <dd>(iii) To create the panel of normals (PoN), call on normal samples as if they are tumor samples with Mutect2 and then use GATK4's {@link CreateSomaticPanelOfNormals}.
- *     This contrasts with the GATK3 workflow, which uses an artifact mode in MuTect2 and CombineVariants for PoN creation.</dd>
+ *     from gnomAD or the 1000 Genomes Project. The VCF INFO field contains the allele frequency (AF) tag.
+ *     See below or the GATK Resource Bundle for an example.</dd>
+ *     <dd>(iii) To create the panel of normals (PoN), call on each normal sample using Mutect2's tumor-only mode and then use GATK4's {@link CreateSomaticPanelOfNormals}.
+ *     This contrasts with the GATK3 workflow, which uses an artifact mode in MuTect2 and CombineVariants for PoN creation.
+ *     In GATK4, omitting filtering with FilterMutectCalls achieves the same artifact mode.</dd>
+ *     <dd>(iv) Instead of using a maximum likelihood estimate, GATK4 Mutect2 marginalizes over allele fractions. 
+ *     GATK3 MuTect2 directly uses allele depths (AD) to estimate allele fractions and calculate likelihoods. In contrast, GATK4 Mutect2
+ *     factors for the statistical error inherent in allele depths by marginalizing over allele fractions when calculating likelihoods.</dd>
+ *     <dd>(v) GATK4 Mutect2 recommends including contamination estimates with the -contaminationFile option from {@link CalculateContamination}, 
+ *     which in turn relies on the results of {@link GetPileupSummaries}.</dd>
  * </dl>
  *
  * <p>
@@ -46,7 +53,7 @@ import java.util.List;
  *     To detect LoH, see the Copy Number Variant (CNV) and AllelicCNV workflows.
  * </p>
  *
- * <p>Here is an example of a known variants resource with populaton allele frequencies:</p>
+ * <p>Here is an example of a known variants resource with population allele frequencies:</p>
  *
  * <pre>
  *     #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
@@ -71,7 +78,7 @@ import java.util.List;
  *     (iii) Mutect2 also differs from the HaplotypeCaller in that it can apply various prefilters to sites and variants depending on the use of
  *     a matched normal (--normalSampleName), a panel of normals (PoN; --normal_panel) and/or a common population variant resource containing allele-specific frequencies (--germline_resource).
  *     If provided, Mutect2 uses the PoN to filter sites and the germline resource and matched normal to filter alleles.
- *     (iv) Mutect2 variant site annotations differ from that of HaplotypeCaller. See the --annotation parameter description for a list.
+ *     (iv) Mutect2's default variant site annotations differ from those of HaplotypeCaller. See the --annotation parameter description for a list.
  *     (v) Finally, Mutect2 has additional parameters not available to HaplotypeCaller that factor in the decision to reassemble a genomic region,
  *     factor in likelihood calculations that then determine whether to emit a variant, or factor towards filtering.
  *     These parameters include the following and are each described further in the arguments section.
@@ -87,6 +94,7 @@ import java.util.List;
  *     <dd>--tumor_lod_to_emit ==> cutoff for tumor variants to appear in callset</dd>
  * </dl>
  *
+ * <h3>Further points of interest</h3>
  * <p>
  *     Additional parameters that factor towards filtering, including normal_artifact_lod (default threshold 0.0) and
  *     tumor_lod (default threshold 5.3), are available in {@link FilterMutectCalls}. While the tool calculates
@@ -94,14 +102,17 @@ import java.util.List;
  *     normal_artifact_lod with the same approach it uses for tumor_lod, i.e. with a variable ploidy assumption.
  * </p>
  *
- * <p>
- *     If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filter.
- *     For matched normal samples with tumor contamination, consider increasing the normal_artifact_lod threshold.
- * </p>
+ * <dl>
+ *     <dd>If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filter.
+ *     For matched normal samples with tumor contamination, consider increasing the normal_artifact_lod threshold.</dd>
+ *     <dd>The tumor log odds, which is calculated independently of any matched normal, determines whether to filter a tumor
+ *     variant. Variants with tumor LODs exceeding the threshold pass filtering.</dd>
+ * </dl>
  *
  * <p>
- *     The tumor log odds, which is calculated independently of any matched normal, determines whether to filter a tumor
- *     variant. Variants with tumor LODs exceeding the threshold pass filtering.
+ *     If a variant is absent from a given germline resource, then the value for --af_of_alleles_not_in_resource applies. 
+ *     For example, gnomAD's 16,000 samples (~32,000 homologs per locus) becomes a probability of one in 32,000 or less.
+ *     Thus, an allele's absence from the germline resource becomes evidence that it is not a germline variant.
  * </p>
  *
  * <h3>Examples</h3>
@@ -111,7 +122,7 @@ import java.util.List;
  * <h4>Tumor with matched normal</h4>
  * <p>
  *     Given a matched normal, Mutect2 is designed to call somatic variants only. The tool includes logic to skip
- *     emitting variants that are clearly germline based on the evidence present in the matched normal. This is done at
+ *     emitting variants that are clearly present in the germline based on the evidence present in the matched normal. This is done at
  *     an early stage to avoid spending computational resources on germline events. If the variant's germline status is
  *     borderline, then Mutect2 will emit the variant to the callset with a germline-risk filter. Such filtered
  *     emissions enable manual review.
