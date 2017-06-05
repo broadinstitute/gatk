@@ -33,7 +33,11 @@
                         <#if datum.group == group.name>
                             <tr>
                                 <td><a href="${datum.filename}">${datum.name}</a></td>
-                                <td>${datum.summary}</td>
+                                <#if datum.beta?? && datum.beta == "true">
+                                    <td>**BETA** ${datum.summary}</td>
+                                    <#else>
+                                        <td>${datum.summary}</td>
+                                </#if>
                             </tr>
                         </#if>
                     </#list>

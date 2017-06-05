@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -37,6 +38,7 @@ import java.util.List;
         programGroup = SparkPipelineProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 /**
  * BQSR. The final result is analysis-ready reads.
  */
