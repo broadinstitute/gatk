@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -25,9 +26,42 @@ import java.io.FileReader;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Additionally filter Mutect2 somatic variant calls for sequence-context dependent artifacts.
+ *
+ * <p>
+ *     This tool is supplementary to {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
+ *     The tool requires the pre-adapter metrics calculated by Picard CollectSequencingArtifactMetrics.
+ *     Specify the sequence context(s) with the --artifactModes argument.
+ * </p>
+ *
+ * <h3>Example</h3>
+ *
+ * For OxoG, specify G>
+ * <pre>
+ * java -Xmx4G -jar $gatk_jar FilterByOrientationBias \
+ *   --artifactModes 'G/T'
+ *   --artifactModes 'C/T' \
+ -V ${unfiltered_vcf} -P ${pre_adapter_metrics} --output ob_filtered.vcf
+ penultimate_variants=ob_filtered.vcf
+ * </pre>
+ *
+ * if [[ ! -z "${pre_adapter_metrics}" ]]; then
+
+
+ CollectSequencingArtifactMetrics.pre_adapter_metrics
+
+
+ java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="metrics" R=${ref_fasta}
+
+ # Convert to GATK format
+ sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
+ "metrics.pre_adapter_detail_metrics" > "gatk.pre_adapter_detail_metrics"
+
+ */
 
 @CommandLineProgramProperties(
-        summary = "Filter M2 Somatic VCFs using the Orientation Bias Filter.\n" +
+        summary = "Filter Mutect2 somatic variant calls using the Orientation Bias Filter.\n" +
                 "Used for the OxoG (G/T) and Deamination (FFPE) (C/T) artifacts that get introduced into our SNV calling.\n" +
                 "\n" +
                 "Notes:  All variants are held in RAM.\n This tool will only catch artifacts in diploid organisms.  Others will cause an error.\n" +
@@ -41,9 +75,10 @@ import java.util.stream.Collectors;
                 " The Orientation Bias puts a filter tag in both the genotype (FORMAT) and variant (FILTER) fields.\n" +
                 " In multiallelic sites, only the first alternate allele is used for filtering.\n" +
                 " Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
-        oneLineSummary = "Filter M2 Somatic VCFs using the Orientation Bias Filter.",
+        oneLineSummary = "Filter Mutect2 somatic variant calls using orientation bias",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class FilterByOrientationBias extends VariantWalker {
 
     public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME = "P";
