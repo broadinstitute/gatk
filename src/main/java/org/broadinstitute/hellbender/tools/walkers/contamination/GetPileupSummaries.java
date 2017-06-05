@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -18,19 +19,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Given a sites vcf of common SNPs and a bam file, get summary of alt and ref counts along with population allele frequency.
+ * Given a sites vcf of common SNPs and a BAM file, get summary of alt and ref counts along with population allele frequency.
  *
- * The output of this tool is the input for {@link CalculateContamination}.  Use them as follows:
+ * <p>
+ *     The resulting table is the input for {@link CalculateContamination}.
+ *     Note the default maximum population allele frequency (--maximumPopulationAlleleFrequency or -maxAF) is set to 0.2,
+ *     which limits sites the tool considers to those in the variants resource file that have allele frequencies (AF) of 0.2 or less.
+ * </p>
  *
- * java -jar gatk.jar GetPileupSummaries -V ExAC.vcf -V thousand_genomes.vcf -I input.bam -O pileups.table
- * java -jar gatk.jar CalculateContamination -I pileups.table -O contamination.table
+ * <h3>Example</h3>
  *
- * Created by David Benjamin on 2/15/17.
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar GetPileupSummaries \
+ *   -I tumor.bam \
+ *   -L intervals.list \
+ *   -V variants_for_contamination.vcf.gz \
+ *   -O pileups.table
+ * </pre>
+ *
+ * @author David Benjamin &lt;davidben@brgoadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Calculate pileup statistics for inferring contamination",
         oneLineSummary = "Calculate pileup statistics for inferring contamination",
         programGroup = VariantProgramGroup.class)
+@DocumentedFeature
 public class GetPileupSummaries extends MultiVariantWalker {
 
     public final String MAX_SITE_AF_LONG_NAME = "maximumPopulationAlleleFrequency";
