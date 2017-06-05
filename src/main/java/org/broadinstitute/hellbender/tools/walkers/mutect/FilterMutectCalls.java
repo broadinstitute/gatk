@@ -26,7 +26,8 @@ import java.util.*;
  *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality.
  *     GATK4 Mutect2 retains variant calling and some prefiltering.
  *     Separating calling and filtering functionalities into two tools better enables an iterative filtering process
- *     that allows for context-specific optimizations.
+ *     that allows for context-specific optimizations. To filter further based on sequence context artifacts,
+ *     additionally use {@link FilterByOrientationBias}.
  * </p>
  *
  * <p>
