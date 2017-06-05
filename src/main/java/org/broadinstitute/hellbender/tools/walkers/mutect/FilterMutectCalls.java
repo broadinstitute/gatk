@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -18,11 +19,45 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.io.File;
 import java.util.*;
 
+/**
+ * Filter SNVs and indels from a Mutect2 callset.
+ *
+ * <p>
+ *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality.
+ *     GATK4 Mutect2 retains variant calling and some prefiltering.
+ *     Separating calling and filtering functionalities into two tools better enables an iterative filtering process
+ *     that allows for context-specific optimizations.
+ * </p>
+ *
+ * <p>
+ *     Filtering thresholds for both normal_artifact_lod (default threshold 0.0) and tumor_lod (default threshold 5.3) can be set in this tool.
+ *     If the normal artifact log odds is larger than the threshold, then FilterMutectCalls applies the artifact-in-normal filter.
+ *     For matched normal analyses with tumor contamination in the normal, consider increasing the normal_artifact_lod threshold.
+ *     If the tumor log odds is smaller than the threshold, then FilterMutectCalls filters the variant.
+ * </p>
+ *
+ * <p>
+ *     If given a --contaminationTable file, e.g. results from
+ *     {@link org.broadinstitute.hellbender.tools.walkers.contamination.CalculateContamination}, the tool will additionally
+ *     filter on contamination fractions. Alternatively, provide a numerical fraction to filter with --contamination_fraction_to_filter.
+ * </p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar FilterMutectCalls \
+ *   -V tumor_matched_m2_snvs_indels.vcf.gz \
+ *   -contaminationTable contamination.table \
+ *   -O tumor_matched_m2_filtered.vcf.gz
+ * </pre>
+ *
+ */
 @CommandLineProgramProperties(
-        summary = "Filter somatic SNPs and indels called by Mutect2",
-        oneLineSummary = "Filter somatic SNPs and indels called by Mutect2",
+        summary = "Filter somatic SNVs and indels called by Mutect2",
+        oneLineSummary = "Filter somatic SNVs and indels called by Mutect2",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class FilterMutectCalls extends VariantWalker {
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
