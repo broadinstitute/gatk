@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  */
 public class InsertSizeDistribution implements Serializable {
 
-    private static long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     public static final String MEAN_DISTR_PARAM_NAME = "mean";
     public static final String SD_DISTR_PARAM_NAME = "sd";

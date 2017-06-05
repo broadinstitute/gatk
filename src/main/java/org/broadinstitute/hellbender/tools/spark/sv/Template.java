@@ -25,7 +25,7 @@ import java.util.stream.StreamSupport;
  */
 public class Template implements Serializable {
 
-    private static long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     private List<Fragment> fragments;
 
@@ -33,7 +33,7 @@ public class Template implements Serializable {
 
     public static class Fragment implements Serializable {
 
-        private static long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1L;
 
         private final byte[] bases;
         private final int[] qualities;
