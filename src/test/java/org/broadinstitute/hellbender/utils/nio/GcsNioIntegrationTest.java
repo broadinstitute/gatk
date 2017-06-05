@@ -57,11 +57,20 @@ public final class GcsNioIntegrationTest extends BaseTest {
         }
     }
 
-    // TODO(jpmartin):uncomment once getAuthenticatedGcs is back
     /**
      * Opening the private file even when the user is not logged in on gcloud should work
      * when we provide explicit credentials.
      *
+     * How to run this test properly:
+     * - `gcloud auth revoke`
+     * - `gcloud beta auth application-default revoke`
+     * - unset GOOGLE_APPLICATION_CREDENTIALS
+     * - make sure HELLBENDER_JSON_SERVICE_ACCOUNT_KEY is set. It should
+     *   be the name of a file that holds your explicit credentials.
+     *
+     * The test "openPrivateFileUsingDefaultCredentials" should fail in those
+     * circumstances, but this test should pass.
+     **/
     @Test(groups = {"cloud"})
     public void openPrivateFileWithExplicitCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".

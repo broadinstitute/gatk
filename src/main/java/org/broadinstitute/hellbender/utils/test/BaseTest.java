@@ -150,11 +150,13 @@ public abstract class BaseTest {
     }
 
     /**
-     * A local path where the service account credentials are stored
-     * @return GOOGLE_APPLICATION_CREDENTIALS env. var if defined, throws otherwise.
+     * A local path where the non-default service account credentials are stored.
+     * GOOGLE_APPLICATION_CREDENTIALS contains the default credentials, but this is
+     * to test the code path for explicit credentials.
+     * @return HELLBENDER_JSON_SERVICE_ACCOUNT_KEY env. var if defined, throws otherwise.
      */
     public static String getGoogleServiceAccountKeyPath() {
-      return getNonNullEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+      return getNonNullEnvironmentVariable("HELLBENDER_JSON_SERVICE_ACCOUNT_KEY");
     }
 
     protected static String getNonNullEnvironmentVariable(String envVarName) {
