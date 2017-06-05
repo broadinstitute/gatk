@@ -68,6 +68,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String BATCHSIZE_ARG_NAME = "batchSize";
     public static final String CONSOLIDATE_ARG_NAME = "consolidate";
     public static final String SAMPLE_NAME_MAP_LONG_NAME = "sampleNameMap";
+    public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validateSampleNameMap";
 
     @Argument(fullName = WORKSPACE_ARG_NAME,
               shortName = WORKSPACE_ARG_NAME,
@@ -137,12 +138,20 @@ public final class GenomicsDBImport extends GATKTool {
             shortName = SAMPLE_NAME_MAP_LONG_NAME,
             doc = "Path to file containing a mapping of sample name to file uri in tab delimited format.  If this is " +
                     "specified then the header from the first sample will be treated as the merged header rather than " +
-                    "merging the headers, and the sample names will taken from this file.  This is a performance optimization " +
+                    "merging the headers, and the sample names will be taken from this file.  This is a performance optimization " +
                     "that relaxes the normal checks for consistent headers.  Using vcfs with incompatible headers may result " +
                     "in silent data corruption.",
             optional = true,
             mutex = {StandardArgumentDefinitions.VARIANT_LONG_NAME})
     private String sampleNameMapFile;
+
+    @Argument(fullName = VALIDATE_SAMPLE_MAP_LONG_NAME,
+            shortName = VALIDATE_SAMPLE_MAP_LONG_NAME,
+            doc = "Boolean flag to enable checks on the sampleNameMap file. If true, tool checks whether" +
+                "feature readers are valid and shows a warning if sample names do not match with the headers." +
+                "Defaults to false",
+            optional = true)
+    private Boolean validateSampleToReaderMap = false;
 
     @Override
     public boolean requiresIntervals() { return true; }
@@ -357,9 +366,11 @@ public final class GenomicsDBImport extends GATKTool {
                             i, (i+updatedBatchSize-1));
 
             try {
-                importer = new GenomicsDBImporter(sampleToReaderMap, mergedHeaderLines, intervals.get(0), importConfiguration);
+                importer = new GenomicsDBImporter(sampleToReaderMap, mergedHeaderLines, intervals.get(0), validateSampleToReaderMap, importConfiguration);
             } catch (final IOException e) {
                 throw new UserException("Error initializing GenomicsDBImporter in batch " + batchCount, e);
+            } catch (final IllegalArgumentException iae) {
+                throw new GATKException("Null feature reader found in sampleNameMap file: " + sampleNameMapFile, iae);
             }
 
             try {

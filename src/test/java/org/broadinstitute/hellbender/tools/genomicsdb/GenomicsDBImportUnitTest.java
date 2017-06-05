@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
+import com.intel.genomicsdb.GenomicsDBImporter;
+import htsjdk.tribble.FeatureReader;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -54,5 +57,12 @@ public class GenomicsDBImportUnitTest extends BaseTest{
         final LinkedHashMap<String, String> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNullFeatureReadersToFail() {
+        Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
+        sampleToReaderMap.put("Sample1", null);
+        GenomicsDBImporter.generateSortedCallSetMap(sampleToReaderMap, true, true, 0L);
     }
 }
