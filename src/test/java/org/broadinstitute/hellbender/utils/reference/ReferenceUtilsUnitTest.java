@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.reference;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -87,7 +86,6 @@ public class ReferenceUtilsUnitTest extends BaseTest {
     @Test(groups = {"bucket"})
     public void testLoadFastaDictionaryFromGCSBucket() throws IOException {
         final String bucketDictionary = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/ReferenceUtilsTest.dict";
-        final PipelineOptions popts = getAuthenticatedPipelineOptions();
 
         try ( final InputStream referenceDictionaryStream = BucketUtils.openFile(bucketDictionary) ) {
             final SAMSequenceDictionary dictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);

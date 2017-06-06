@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
@@ -165,23 +162,10 @@ public abstract class BaseTest {
         return value;
     }
 
-    /**
-     * Gets a PipelineOptions object containing our API key as specified in the HELLBENDER_TEST_APIKEY
-     * environment variable. Useful for tests that need to access data in a GCS bucket via the
-     * methods in the {@link org.broadinstitute.hellbender.utils.gcs.BucketUtils} class,
-     * but don't need to run an actual dataflow pipeline.
-     *
-     * @return a PipelineOptions object containing our API key
-     */
-    public static PipelineOptions getAuthenticatedPipelineOptions() {
-        final GCSOptions popts = PipelineOptionsFactory.as(GCSOptions.class);
-        popts.setApiKey(getGCPTestApiKey());
-        return popts;
-    }
-
     public static AuthHolder getAuthentication(){
         return new AuthHolder("test-app",getGCPTestApiKey());
     }
+
     @BeforeClass
     public void initGenomeLocParser() throws FileNotFoundException {
         hg19ReferenceReader = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
