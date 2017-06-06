@@ -520,13 +520,8 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             this.key = key;
             int bucketIndex = hashToIndex(key);
             if ( !isChainHead(bucketIndex) ) return;
-            while ( !equivalent(buckets[bucketIndex], key) ) {
-                prevIndex = bucketIndex;
-                final int offset = getOffset(bucketIndex);
-                if ( offset == 0 ) return;
-                bucketIndex = getIndex(bucketIndex, offset);
-            }
             currentIndex = bucketIndex;
+            ensureEquivalence();
         }
 
         @Override
@@ -538,6 +533,25 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             final T result = buckets[currentIndex];
             removeIndex = currentIndex;
             removePrevIndex = prevIndex;
+            advanceUntilEquivalent();
+            return result;
+        }
+
+        @Override
+        public void remove() {
+            super.remove();
+            if ( currentIndex != NO_ELEMENT_INDEX ) {
+                ensureEquivalence();
+            }
+        }
+
+        private void ensureEquivalence() {
+            if ( !equivalent(buckets[currentIndex], key) ) {
+                advanceUntilEquivalent();
+            }
+        }
+
+        private void advanceUntilEquivalent() {
             do {
                 final int offset = getOffset(currentIndex);
                 if ( offset == 0 ) {
@@ -548,7 +562,6 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
                 currentIndex = getIndex(currentIndex, offset);
             }
             while ( !equivalent(buckets[currentIndex], key) );
-            return result;
         }
     }
 
