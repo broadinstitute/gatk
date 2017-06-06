@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -19,6 +20,7 @@ import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.Or
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.glassfish.jersey.Beta;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -32,14 +34,15 @@ import java.util.stream.Collectors;
  * <p>
  *     This tool is complementary to {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
  *     The tool requires the pre-adapter detailed metrics calculated by Picard CollectSequencingArtifactMetrics.
- *     Specify the sequence context(s) to consider for filtering with the --artifactModes argument.
+ *     Specify the base substitution to consider for orientation bias. For a given base substitution specified with
+ *     the --artifactModes argument, the tool considers both the forward and reverse complement for filtering.
  * </p>
  *
  * <p>
  *     The metrics from CollectSequencingArtifactMetrics provide a global view across a sample's genome that empowers
  *     decision making in ways site-specific analyses cannot. CollectSequencingArtifactMetrics should be run for both
- *     the normal sample and the tumor sample, if the matched normal is available. The metrics help determine whether
- *     variant filtering for a sequence context is necessary.
+ *     the normal sample and the tumor sample, if the matched normal is available. The detailed metrics measure orientation
+ *     bias for all 3-base contexts and help determine whether variant filtering for a sequence context is necessary.
  * </p>
  *
  * <p>
@@ -77,10 +80,11 @@ import java.util.stream.Collectors;
                 " The Orientation Bias puts a filter tag in both the genotype (FORMAT) and variant (FILTER) fields.\n" +
                 " In multiallelic sites, only the first alternate allele is used for filtering.\n" +
                 " Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
-        oneLineSummary = "Filter Mutect2 somatic variant calls using orientation bias",
+        oneLineSummary = "(Experimental) Filter Mutect2 somatic variant calls using orientation bias",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public class FilterByOrientationBias extends VariantWalker {
 
     public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME = "P";
