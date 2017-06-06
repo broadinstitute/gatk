@@ -10,11 +10,11 @@ import java.util.Set;
 public final class PSPathogenReferenceTaxonProperties {
     public String name = null;
     public String rank = null;
-    public String parentTax = null;
+    public String parentTaxId = null;
     public long length = 0;
-    public final Set<String> refNames;
+    public final Set<String> accessions;
 
     public PSPathogenReferenceTaxonProperties() {
-        refNames = new HashSet<>(1);
+        accessions = new HashSet<>(1);
     }
 }
