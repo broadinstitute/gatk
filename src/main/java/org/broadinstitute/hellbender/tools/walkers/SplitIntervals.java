@@ -45,7 +45,7 @@ import java.util.stream.IntStream;
  *    The default --scatter_count is 1 and so this value should be changed to utilize the tool's functionality.
  * </p>
  *
- * @author David Benjamin &lt;davidben@brgoadinstitute.org&gt;
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Split intervals into sub-interval files.",
