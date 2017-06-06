@@ -30,46 +30,36 @@ import java.util.stream.Collectors;
  * Additionally filter Mutect2 somatic variant calls for sequence-context dependent artifacts.
  *
  * <p>
- *     This tool is supplementary to {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
- *     The tool requires the pre-adapter metrics calculated by Picard CollectSequencingArtifactMetrics.
- *     Specify the sequence context(s) with the --artifactModes argument.
+ *     This tool is complementary to {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
+ *     The tool requires the pre-adapter detailed metrics calculated by Picard CollectSequencingArtifactMetrics.
+ *     Specify the sequence context(s) to consider for filtering with the --artifactModes argument.
  * </p>
  *
  * <p>
  *     The metrics from CollectSequencingArtifactMetrics provide a global view across a sample's genome that empowers
  *     decision making in ways site-specific analyses cannot. CollectSequencingArtifactMetrics should be run for both
- *     the normal sample and the tumor sample, if the matched normal is available. Comparing the metrics helps to
- *     determine whether additional filtering for a sequence context is necessary.
+ *     the normal sample and the tumor sample, if the matched normal is available. The metrics help determine whether
+ *     variant filtering for a sequence context is necessary.
  * </p>
  *
  * <p>
- *     For example, FFPE artifacts stem from formaldehyde deamination of cytosines, which results in C to T transition mutations.
- *     OxoG artifacts stem from oxidation of guanine to 8-oxoguanine, which results in G to T transversion mutations.
+ *     The most common artifact to consider for filtering is the OxoG (8-Oxoguanine) artifact. OxoG artifacts stem from oxidation of
+ *     guanine to 8-oxoguanine, which results in G to T transversion mutations. If samples were derived from histological
+ *     slides, then consider the FFPE (formalin-fixed paraffin-embedded) artifact. FFPE artifacts stem from formaldehyde
+ *     deamination of cytosines, which results in C to T transition mutations.
  * </p>
  *
  * <h3>Example</h3>
  *
- * For OxoG, specify G>
+ * For OxoG artifacts, specify G to T artifacts.
  * <pre>
  * java -Xmx4G -jar $gatk_jar FilterByOrientationBias \
- *   --artifactModes 'G/T'
- *   --artifactModes 'C/T' \
- -V ${unfiltered_vcf} -P ${pre_adapter_metrics} --output ob_filtered.vcf
- penultimate_variants=ob_filtered.vcf
+ *   --artifactModes 'G/T' \
+ *   -V tumor_unfiltered.vcf.gz \
+ *   -P tumor.pre_adapter_detail_metrics \
+ *   --output oxog_filtered.vcf.gz
  * </pre>
  *
- * if [[ ! -z "${pre_adapter_metrics}" ]]; then
-
-
- CollectSequencingArtifactMetrics.pre_adapter_metrics
-
-
- java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="metrics" R=${ref_fasta}
-
- # Convert to GATK format
- sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
- "metrics.pre_adapter_detail_metrics" > "gatk.pre_adapter_detail_metrics"
-
  */
 
 @CommandLineProgramProperties(
