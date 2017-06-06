@@ -86,6 +86,6 @@ public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
     @Override
     protected void finish() {
         final MetricsFile<InsertSizeMetrics, Integer> metricsFile = getMetricsFile();
-        insertSizeCollector.finish(metricsFile, INPUT.getName(), null);
+        insertSizeCollector.finish(metricsFile, INPUT.getName());
     }
 }

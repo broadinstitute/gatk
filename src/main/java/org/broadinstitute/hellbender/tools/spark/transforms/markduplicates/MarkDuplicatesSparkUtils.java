@@ -18,7 +18,6 @@ import scala.Tuple2;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Utility classes and functions for Mark Duplicates.
@@ -345,7 +344,7 @@ public class MarkDuplicatesSparkUtils {
             result.setHistogram(nonEmptyMetricsByLibrary.values().iterator().next().calculateRoiHistogram());
         }
 
-        MetricsUtils.saveMetrics(result, metricsOutputPath, authHolder );
+        MetricsUtils.saveMetrics(result, metricsOutputPath);
     }
 
     /**

@@ -53,7 +53,7 @@ public class MetricsUtilsTest extends BaseTest {
 
         final MetricsFile<TestMetric, ?> metrics = new MetricsFile<>();
         metrics.addMetric(testMetric);
-        MetricsUtils.saveMetrics(metrics, outputPath,getAuthentication());
+        MetricsUtils.saveMetrics(metrics, outputPath);
         Assert.assertTrue(BucketUtils.fileExists(outputPath));
         File localCopy = copyFileToLocalTmpFile(outputPath);
 

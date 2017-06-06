@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.MetricsCollectorSpark;
@@ -95,11 +94,10 @@ public class ExampleMultiMetricsCollectorSpark
      * Save the metrics out to a file.
      * @param inputName name of the input from which metrics were collected; unused here
      *                  but optionally used by some collectors to label output plots, etc.
-     * @param authHolder authentication info. May be null.
      */
     @Override
-    public void saveMetrics(final String inputName, final AuthHolder authHolder) {
-        reducedResultMetrics.saveMetrics(metricsFile, authHolder);
+    public void saveMetrics(final String inputName) {
+        reducedResultMetrics.saveMetrics(metricsFile);
     }
 
 }

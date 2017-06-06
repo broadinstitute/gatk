@@ -8,7 +8,6 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetricsArgumentCollection;
@@ -66,8 +65,8 @@ public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSpark
     }
 
     @Override
-    protected void saveMetrics(final String inputName, final AuthHolder authHolder) {
-        qualityYieldCollector.saveMetrics(inputName, authHolder);
+    protected void saveMetrics(final String inputName) {
+        qualityYieldCollector.saveMetrics(inputName);
     }
 
 }

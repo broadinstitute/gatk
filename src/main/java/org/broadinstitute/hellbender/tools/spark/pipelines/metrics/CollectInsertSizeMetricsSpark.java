@@ -8,7 +8,6 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -67,7 +66,7 @@ public final class CollectInsertSizeMetricsSpark
     }
 
     @Override
-    protected void saveMetrics(final String inputName, final AuthHolder authHolder) {
-        insertSizeCollector.saveMetrics(inputName, authHolder);
+    protected void saveMetrics(final String inputName) {
+        insertSizeCollector.saveMetrics(inputName);
     }
 }
