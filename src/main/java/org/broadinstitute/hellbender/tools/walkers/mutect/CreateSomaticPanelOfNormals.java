@@ -13,6 +13,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
@@ -31,43 +32,68 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Mutect2 and its filtering engine optionally use a panel of normals to reduce false positive calls.  The idea is to
- * run Mutect2 -- without filtering -- on a large collection of normal samples.  Any resulting call is most likely a
- * sequencing artifact or a germline variant, neither of which are true somatic calls.  This tool takes these separate
- * normal vcfs and creates a single vcf of false positive variants.
+ * Create a panel of normals (PoN) containing germline and artifactual sites for use with Mutect2.
  *
- * Use:
+ * <p>
+ *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates them into a single
+ *     variant call format (VCF) file of false positive calls. The PoN captures common artifactual and germline variant sites.
+ *     Mutect2 then uses the PoN to filter variants at the site-level.
+ * </p>
  *
- * 1) Run Mutect without filtering on a large number of normal samples (note that the argument "-tumor normal1SampleName"
- * is NOT a typo -- the idea is to treat a normal as if it were a tumor in tumor-only mode)
- *  java -jar gatk.jar Mutect2 -R reference.fasta -I normal1.bam -tumor normal1SampleName -o output1.vcf
- *  java -jar gatk.jar Mutect2 -R reference.fasta -I normal2.bam -tumor normal1SampleName -o output2.vcf
- *  . . .
+ * <p>
+ *     This contrasts with the GATK3 workflow, which uses CombineVariants to retain variant sites called in at least
+ *     two samples and then uses Picard MakeSitesOnlyVcf to simplify the callset for use as a PoN.
+ * </p>
  *
- *  2) Create one or more files ending in ".list" with all the paths to the vcfs in step 1.  The following are the
- *     contents of vcfs.list:
- *  output1.vcf
- *  output2.vcf
- *  . . .
+ * <h3>Examples</h3>
  *
- *  3) Run this tool
- *  java jar gatk.jar CreateSomaticPanelOfNormals -vcfs vcfs.list -O pon.vcf
+ * <p>Step 1. Run Mutect2 in tumor-only mode for each normal sample.</p>
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar Mutect2 \
+ *   -R ref_fasta.fa \
+ *   -I normal1.bam \
+ *   -tumor normal1_sample_name \
+ *   --germline_resource af-only-gnomad.vcf.gz \
+ *   -L intervals.list \
+ *   -O normal1_for_pon.vcf.gz
+ * </pre>
  *
- *  4) Use the panel of normals vcf to improve Mutect calls
- *  java -jar gatk.jar -R reference.fasta -I tumor.bam -tumor tumorSampleName \
- *    [-I matchedNormal.bam -normal matchedNormalSampleName] \
- *    -PON pon.vcf
+ * <p>Step 2. Create a file ending with .list extension with the paths to the VCFs from step 1, one per line.
+ * This approach is optional. </p>
  *
- *  Note that multiple .list files may be passed in by specifying the -vcfs option multiple times. It's also possible
- *  to just provide the VCFs explicitly on the command line, rather than via .list files.
+ * <pre>
+ *     normal1_for_pon.vcf.gz
+ *     normal2_for_pon.vcf.gz
+ *     normal3_for_pon.vcf.gz
+ * </pre>
  *
- * Created by David Benjamin on 2/17/17.
+ * <p>Step 3. Combine the normal calls using CreateSomaticPanelOfNormals.</p>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CreateSomaticPanelOfNormals \
+ *   -vcfs normals_for_pon_vcf.list \
+ *   -O pon.vcf.gz
+ * </pre>
+ *
+ * <p>Alternatively, provide each normal's VCF as separate arguments.</p>
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CreateSomaticPanelOfNormals \
+ *   -vcfs normal1_for_pon_vcf.gz \
+ *   -vcfs normal2_for_pon_vcf.gz \
+ *   -vcfs normal3_for_pon_vcf.gz \
+ *   -O pon.vcf.gz
+ * </pre>
+ *
+ *  <p>The tool also accepts multiple .list files. Pass each in with the -vcfs option.</p>
+ *
+ * @author David Benjamin &lt;davidben@brgoadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Make a somatic panel of normals",
-        oneLineSummary = "Make a somatic panel of normals",
+        summary = "Make a panel of normals (PoN) for use with Mutect2",
+        oneLineSummary = "Make a panel of normals for use with Mutect2",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class CreateSomaticPanelOfNormals extends CommandLineProgram {
 
     public static final String INPUT_VCFS_LIST_LONG_NAME = "vcfsListFile";
