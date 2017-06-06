@@ -16,8 +16,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSp
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
-import org.broadinstitute.hellbender.tools.spark.utils.MapPartitioner;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -34,6 +34,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointEvidence.ReadEvidence;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 /**
@@ -78,10 +79,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      *
      * @return the in-memory representation of assembled contigs alignments, whose length equals the number of local assemblies (regardless of success of failure status)
      */
-    public static List<AlignedAssemblyOrExcuse> gatherEvidenceAndWriteContigSamFile(final JavaSparkContext ctx,
-                                                                                    final FindBreakpointEvidenceSparkArgumentCollection argumentCollection,
-                                                                                    final SAMFileHeader header, final JavaRDD<GATKRead> unfilteredReads,
-                                                                                    final String outputSAM, final Logger toolLogger) {
+    public static List<AlignedAssemblyOrExcuse> gatherEvidenceAndWriteContigSamFile(
+            final JavaSparkContext ctx,
+            final FindBreakpointEvidenceSparkArgumentCollection argumentCollection,
+            final SAMFileHeader header,
+            final JavaRDD<GATKRead> unfilteredReads,
+            final String outputSAM,
+            final Logger toolLogger) {
 
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
                 "The reads must be coordinate sorted.");
@@ -96,16 +100,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 new Params(argumentCollection.kSize, argumentCollection.maxDUSTScore,
                         argumentCollection.minEvidenceMapQ,
                         argumentCollection.minEvidenceMatchLength, argumentCollection.maxIntervalCoverage,
-                        argumentCollection.minEvidenceCount, argumentCollection.minCoherentEvidenceCount,
+                        argumentCollection.minEvidenceWeight, argumentCollection.minCoherentEvidenceWeight,
                         argumentCollection.minKmersPerInterval,
                         argumentCollection.cleanerMaxIntervals, argumentCollection.cleanerMinKmerCount,
                         argumentCollection.cleanerMaxKmerCount, argumentCollection.cleanerKmersPerPartitionGuess,
                         argumentCollection.maxQNamesPerKmer, argumentCollection.assemblyKmerMapSize,
                         argumentCollection.assemblyToMappedSizeRatioGuess, argumentCollection.maxFASTQSize,
                         argumentCollection.exclusionIntervalPadding);
-
-        final JavaRDD<GATKRead> allPrimaryLines =
-                unfilteredReads.filter(read -> !read.isSecondaryAlignment() && !read.isSupplementaryAlignment());
 
         // develop evidence, intervals, and, finally, a set of template names for each interval
         final Tuple2<List<SVInterval>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> intervalsAndQNameMap =
@@ -116,6 +117,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = intervalsAndQNameMap._2;
 
         // supplement the template names with other reads that share kmers
+        final JavaRDD<GATKRead> allPrimaryLines =
+                unfilteredReads.filter(read -> !read.isSecondaryAlignment() && !read.isSupplementaryAlignment());
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList;
         if ( argumentCollection.intervalOnlyAssembly ) {
             alignedAssemblyOrExcuseList = new ArrayList<>();
@@ -176,12 +179,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         log("Metadata retrieved.", logger);
 
         final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
-        List<SVInterval> intervals = getIntervals(params, broadcastMetadata, header, mappedReads, locations);
+        List<SVInterval> intervals =
+                getIntervals(params, broadcastMetadata, header, mappedReads, locations);
 
         final int nIntervals = intervals.size();
         log("Discovered " + nIntervals + " intervals.", logger);
 
-        if ( nIntervals == 0 ) return null;
+        if ( nIntervals == 0 ) return new Tuple2<>(intervals, null);
 
         if ( locations.exclusionIntervalsFile != null ) {
             intervals = removeIntervalsNearGapsAndLog(intervals, params.exclusionIntervalPadding, readMetadata,
@@ -410,8 +414,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final List<QNameAndInterval> qNames =
             reads
                 .mapPartitionsToPair(readItr ->
-                        new MapPartitioner<>(readItr,
-                                new QNamesForKmersFinder(kSize, maxDUSTScore, broadcastKmerMultiMap.value())).iterator(), false)
+                        new FlatMapGluer<>(
+                                new QNamesForKmersFinder(kSize, maxDUSTScore, broadcastKmerMultiMap.value()),
+                                readItr), false)
                 .mapPartitions(pairItr ->
                         new KmerQNameToQNameIntervalMapper(broadcastKmerMultiMap.value(),
                                                             maxQNamesPerKmer,
@@ -448,9 +453,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final List<KmerAndInterval> kmerIntervals =
             reads
                 .mapPartitionsToPair(readItr ->
-                        new MapPartitioner<>(readItr,
-                            new QNameKmerizer(broadcastQNameAndIntervalsMultiMap.value(),
-                                            broadcastKmerKillSet.value(), kSize, maxDUSTScore)).iterator(), false)
+                        new FlatMapGluer<>(
+                                new QNameKmerizer(
+                                        broadcastQNameAndIntervalsMultiMap.value(),
+                                        broadcastKmerKillSet.value(),
+                                        kSize,
+                                        maxDUSTScore),
+                                readItr), false)
                 .reduceByKey(Integer::sum)
                 .mapPartitions(itr -> new KmerCleaner(itr, kmersPerPartitionGuess, minKmers, maxKmers, maxIntervals).iterator())
                 .collect();
@@ -576,9 +585,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final List<QNameAndInterval> qNameAndIntervalList =
                 reads
                         .mapPartitions(readItr ->
-                                new MapPartitioner<>(readItr,
-                                        new QNameFinder(broadcastMetadata.value(),
-                                                broadcastIntervals.value())).iterator(), false)
+                                new FlatMapGluer<>(
+                                        new QNameFinder(broadcastMetadata.value(), broadcastIntervals.value()),
+                                        readItr), false)
                         .collect();
         broadcastIntervals.destroy();
 
@@ -596,68 +605,116 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final Params params,
             final Broadcast<ReadMetadata> broadcastMetadata,
             final SAMFileHeader header,
-            final JavaRDD<GATKRead> reads,
+            final JavaRDD<GATKRead> mappedReads,
             final Locations locations ) {
         // find all breakpoint evidence, then filter for pile-ups
-        final int maxFragmentSize = broadcastMetadata.value().getMaxMedianFragmentSize();
-        final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
-        final int nContigs = contigs.size();
+        final int nContigs = header.getSequenceDictionary().getSequences().size();
         final int minMapQ = params.minEvidenceMapQ;
         final int minMatchLen = params.minEvidenceMatchLength;
-        final int minEvidenceCount = params.minEvidenceCount;
-        final int minCoherentEvidenceCount = params.minCoherentEvidenceCount;
+        final int minEvidenceWeight = params.minEvidenceWeight;
+        final int minCoherentEvidenceWeight = params.minCoherentEvidenceWeight;
+
+        // 1) identify well-mapped reads
+        // 2) that look like they support a hypothesis of a breakpoint in the vicinity
+        // 3a) filter out those that lack supporting evidence from a sufficient number of other reads, except
+        // 3b) pass through everything within a fragment length of partition boundaries
         final JavaRDD<BreakpointEvidence> evidenceRDD =
-                reads
+                mappedReads
                     .filter(read ->
-                            read.getMappingQuality() >= minMapQ &&
-                            read.getCigarElements()
-                                    .stream()
-                                    .filter(ele -> ele.getOperator()==CigarOperator.MATCH_OR_MISMATCH ||
-                                                    ele.getOperator()==CigarOperator.EQ ||
-                                                    ele.getOperator()==CigarOperator.X)
-                                    .mapToInt(CigarElement::getLength)
-                                    .sum() >= minMatchLen)
+                            read.getMappingQuality() >= minMapQ && SVUtils.matchLen(read.getCigar()) >= minMatchLen)
                     .mapPartitions(readItr ->
-                            new MapPartitioner<>(readItr,
-                                    new ReadClassifier(broadcastMetadata.value())).iterator(), true)
-                    .mapPartitions(evidenceItr ->
-                            new BreakpointClusterer(broadcastMetadata.getValue(), minEvidenceCount,minCoherentEvidenceCount,evidenceItr), true);
+                            FlatMapGluer.applyMapFunc(new ReadClassifier(broadcastMetadata.value()),readItr), true)
+                    .mapPartitionsWithIndex( (idx, evidenceItr) -> {
+                            final ReadMetadata readMetadata = broadcastMetadata.value();
+                            final PartitionCrossingChecker xChecker =
+                                    new PartitionCrossingChecker(idx, readMetadata,
+                                                                 readMetadata.getMaxMedianFragmentSize());
+                            return new BreakpointDensityFilter(evidenceItr,readMetadata,
+                                                               minEvidenceWeight,minCoherentEvidenceWeight,xChecker);
+                        }, true);
+
+        evidenceRDD.cache();
 
         // record the evidence
         if ( locations.evidenceDir != null ) {
-            evidenceRDD.cache();
-            evidenceRDD.saveAsTextFile(locations.evidenceDir);
+            evidenceRDD
+                    .filter(BreakpointEvidence::isValidated)
+                    .saveAsTextFile(locations.evidenceDir);
         }
 
-        // find discrete intervals that contain the breakpoint evidence
-        final Iterator<SVInterval> intervalItr =
-                evidenceRDD
-                        .mapPartitions(evidenceItr ->
-                                new MapPartitioner<>(evidenceItr,
-                                        new EvidenceToIntervalMapper(maxFragmentSize),
-                                        new BreakpointEvidence(nContigs)).iterator(), true)
-                        .collect()
-                        .iterator();
+        List<BreakpointEvidence> allEvidence =
+                collectAllEvidence(evidenceRDD,nContigs,broadcastMetadata,
+                        minEvidenceWeight,minCoherentEvidenceWeight);
 
-        // coalesce overlapping intervals (can happen at partition boundaries)
-        final List<SVInterval> intervals = new ArrayList<>();
-        if ( intervalItr.hasNext() ) {
-            SVInterval prev = intervalItr.next();
-            while ( intervalItr.hasNext() ) {
-                final SVInterval next = intervalItr.next();
-                if ( prev.isDisjointFrom(next) ) {
-                    intervals.add(prev);
-                    prev = next;
-                } else {
-                    prev = prev.join(next);
+        // write additional validated read evidence from partition-boundary reads
+        if ( locations.evidenceDir != null ) {
+            final String crossPartitionFile = locations.evidenceDir+"/part-xxxxx";
+            try ( final OutputStreamWriter writer =
+                          new OutputStreamWriter(
+                                  new BufferedOutputStream(
+                                          BucketUtils.createFile(crossPartitionFile))) ) {
+                for ( final BreakpointEvidence ev : allEvidence ) {
+                    // Only tell 'em about the ReadEvidence that was validated in the driver's pass over the stream.
+                    // (The validated ReadEvidence instances well away from the partition boundaries that have already
+                    // been reported will have been replaced by a generic BreakpointEvidence object that represents
+                    // a whole cluster.  A few bits of validated ReadEvidence near the partition boundaries will
+                    // get double reported, unfortunately.)
+                    if ( ev instanceof ReadEvidence ) {
+                        writer.write(ev.toString());
+                        writer.write('\n');
+                    }
                 }
             }
-            intervals.add(prev);
+            catch ( IOException ioe ) {
+                throw new GATKException("Can't write cross-partition evidence to "+crossPartitionFile, ioe);
+            }
         }
 
-        if ( locations.evidenceDir != null ) evidenceRDD.unpersist();
+        // re-cluster the new evidence -- we can now glue across partition boundaries
+        final int maxFragmentSize = broadcastMetadata.value().getMaxMedianFragmentSize();
+        Iterator<BreakpointEvidence> evidenceIterator =
+            new FlatMapGluer<>(new BreakpointEvidenceClusterer(maxFragmentSize,new PartitionCrossingChecker()),
+                               allEvidence.iterator(),
+                               new BreakpointEvidence(new SVInterval(nContigs,1,1),0,false));
+
+        final List<SVInterval> intervals = new ArrayList<>(allEvidence.size());
+        while ( evidenceIterator.hasNext() ) {
+            intervals.add(evidenceIterator.next().getLocation());
+        }
+
+        evidenceRDD.unpersist();
 
         return intervals;
+    }
+
+    private static List<BreakpointEvidence> collectAllEvidence( final JavaRDD<BreakpointEvidence> evidenceRDD,
+                                                                final int nContigs,
+                                                                final Broadcast<ReadMetadata> broadcastMetadata,
+                                                                final int minEvidenceWeight,
+                                                                final int minCoherentEvidenceWeight ) {
+        // replace clumps of evidence from reads with a single aggregate indicator of evidence (to save memory), except
+        // don't clump anything within two fragment lengths of a partition boundary.
+        // collect the whole mess in the driver.
+        final int maxFragmentSize = broadcastMetadata.value().getMaxMedianFragmentSize();
+        final List<BreakpointEvidence> allEvidence =
+                evidenceRDD
+                        .mapPartitionsWithIndex( (idx, readEvidenceItr) ->
+                                new FlatMapGluer<>(
+                                        new BreakpointEvidenceClusterer(maxFragmentSize,
+                                                new PartitionCrossingChecker(idx,broadcastMetadata.value(),2*maxFragmentSize)),
+                                        readEvidenceItr,
+                                        new BreakpointEvidence(new SVInterval(nContigs,1,1),0,false)), true)
+                        .collect();
+
+        // reapply the density filter (all data collected -- no more worry about partition boundaries).
+        Iterator<BreakpointEvidence> evidenceIterator =
+                new BreakpointDensityFilter(allEvidence.iterator(), broadcastMetadata.value(),
+                        minEvidenceWeight, minCoherentEvidenceWeight, new PartitionCrossingChecker());
+        List<BreakpointEvidence> filteredEvidence = new ArrayList<>(allEvidence.size());
+        while ( evidenceIterator.hasNext() ) {
+            filteredEvidence.add(evidenceIterator.next());
+        }
+        return filteredEvidence;
     }
 
     private static void log(final String message, final Logger logger) {
@@ -697,8 +754,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public final int minEvidenceMapQ;
         public final int minEvidenceMatchLength;
         public final int maxIntervalCoverage;
-        public final int minEvidenceCount;
-        public final int minCoherentEvidenceCount;
+        public final int minEvidenceWeight;
+        public final int minCoherentEvidenceWeight;
         public final int minKmersPerInterval;
         public final int cleanerMaxIntervals;
         public final int cleanerMinKmerCount;
@@ -716,8 +773,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             minEvidenceMapQ = 20;                   // minimum map quality for evidential reads
             minEvidenceMatchLength = 45;            // minimum match length
             maxIntervalCoverage = 1000;             // maximum coverage on breakpoint interval
-            minEvidenceCount = 15;                  // minimum number of evidentiary reads in called cluster
-            minCoherentEvidenceCount = 7;           // minimum number of evidentiary reads in a cluster that all point to the same target locus
+            minEvidenceWeight = 15;                  // minimum number of evidentiary reads in called cluster
+            minCoherentEvidenceWeight = 7;           // minimum number of evidentiary reads in a cluster that all point to the same target locus
             minKmersPerInterval = 20;               // minimum number of good kmers in a valid interval
             cleanerMaxIntervals = 3;                // KmerCleaner maximum number of intervals a localizing kmer can appear in
             cleanerMinKmerCount = 3;                // KmerCleaner min kmer count
@@ -731,25 +788,26 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
 
         public Params( final int kSize, final int maxDUSTScore, final int minEvidenceMapQ,
-                       final int minEvidenceMatchLength, final int maxIntervalCoverage, final int minEvidenceCount, final int minCoherentEvidenceCount,
+                       final int minEvidenceMatchLength, final int maxIntervalCoverage,
+                       final int minEvidenceWeight, final int minCoherentEvidenceWeight,
                        final int minKmersPerInterval, final int cleanerMaxIntervals, final int cleanerMinKmerCount,
                        final int cleanerMaxKmerCount, final int cleanerKmersPerPartitionGuess,
-                       final int maxQNamesPerKmer, final int asemblyKmerMapSize, final int assemblyToMappedSizeRatioGuess,
+                       final int maxQNamesPerKmer, final int assemblyKmerMapSize, final int assemblyToMappedSizeRatioGuess,
                        final int maxFASTQSize, final int exclusionIntervalPadding ) {
             this.kSize = kSize;
             this.maxDUSTScore = maxDUSTScore;
             this.minEvidenceMapQ = minEvidenceMapQ;
             this.minEvidenceMatchLength = minEvidenceMatchLength;
             this.maxIntervalCoverage = maxIntervalCoverage;
-            this.minEvidenceCount = minEvidenceCount;
-            this.minCoherentEvidenceCount = minCoherentEvidenceCount;
+            this.minEvidenceWeight = minEvidenceWeight;
+            this.minCoherentEvidenceWeight = minCoherentEvidenceWeight;
             this.minKmersPerInterval = minKmersPerInterval;
             this.cleanerMaxIntervals = cleanerMaxIntervals;
             this.cleanerMinKmerCount = cleanerMinKmerCount;
             this.cleanerMaxKmerCount = cleanerMaxKmerCount;
             this.cleanerKmersPerPartitionGuess = cleanerKmersPerPartitionGuess;
             this.maxQNamesPerKmer = maxQNamesPerKmer;
-            this.assemblyKmerMapSize = asemblyKmerMapSize;
+            this.assemblyKmerMapSize = assemblyKmerMapSize;
             this.assemblyToMappedSizeRatioGuess = assemblyToMappedSizeRatioGuess;
             this.maxFASTQSize = maxFASTQSize;
             this.exclusionIntervalPadding = exclusionIntervalPadding;

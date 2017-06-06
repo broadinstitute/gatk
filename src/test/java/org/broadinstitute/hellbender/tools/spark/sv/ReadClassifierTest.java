@@ -16,10 +16,10 @@ public class ReadClassifierTest extends BaseTest {
         final String groupName = header.getReadGroups().get(0).getReadGroupId();
         final int readSize = 151;
         final int fragmentLen = 400;
-        final ReadMetadata.ReadGroupFragmentStatistics groupStats = new ReadMetadata.ReadGroupFragmentStatistics(fragmentLen, 175, 20);
+        final ReadMetadata.LibraryFragmentStatistics groupStats = new ReadMetadata.LibraryFragmentStatistics(fragmentLen, 175, 20);
         final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
         crossContigIgnoreSet.add(2);
-        final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, groupStats, 1, 2L, 2L, 1);
+        final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, groupStats, null, 2L, 2L, 1);
         final String templateName = "xyzzy";
         final int leftStart = 1010101;
         final int rightStart = leftStart + fragmentLen - readSize;

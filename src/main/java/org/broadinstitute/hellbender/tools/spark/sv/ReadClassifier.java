@@ -12,7 +12,7 @@ import java.util.function.Function;
  * Figures out what kind of BreakpointEvidence, if any, a read represents.
  */
 public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvidence>> {
-    public static final int ALLOWED_SHORT_FRAGMENT_OVERHANG = 10;
+    @VisibleForTesting static final int ALLOWED_SHORT_FRAGMENT_OVERHANG = 10;
     @VisibleForTesting static final int MIN_SOFT_CLIP_LEN = 30; // minimum length of an interesting soft clip
     @VisibleForTesting static final int MIN_INDEL_LEN = 40; // minimum length of an interesting indel
     private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
@@ -114,9 +114,9 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
             evidenceList.add(new BreakpointEvidence.InterContigPair(read, readMetadata));
         } else if ( read.isReverseStrand() == read.mateIsReverseStrand() ) {
             evidenceList.add(new BreakpointEvidence.SameStrandPair(read, readMetadata));
-        } else if ( (read.getStart()  + ALLOWED_SHORT_FRAGMENT_OVERHANG < read.getMateStart() && read.isReverseStrand()) ||
-                    (read.getStart() - ALLOWED_SHORT_FRAGMENT_OVERHANG >
-                            read.getMateStart() && !read.isReverseStrand()) ) {
+        } else if ( read.isReverseStrand() ?
+                read.getStart() + ALLOWED_SHORT_FRAGMENT_OVERHANG < read.getMateStart() :
+                read.getStart() - ALLOWED_SHORT_FRAGMENT_OVERHANG > read.getMateStart() ) {
             evidenceList.add(new BreakpointEvidence.OutiesPair(read, readMetadata));
         } else {
             final float zIshScore =

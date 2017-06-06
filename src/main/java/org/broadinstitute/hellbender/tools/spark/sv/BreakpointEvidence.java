@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -20,92 +21,29 @@ import java.util.List;
  * Each BreakpointEvidence object comes from examining a single read, and describing its funkiness, if any, by
  *   instantiating one of the subclasses that addresses that type of funkiness.
  */
+@DefaultSerializer(BreakpointEvidence.Serializer.class)
 public class BreakpointEvidence {
-    private final SVInterval eventLocation;
-    private final String templateName; // QNAME of the read that was funky (i.e., the name of the fragment)
-    private final TemplateEnd templateEnd; // which read we're talking about (first or last, for paired-end reads)
+    private static final SVInterval.Serializer intervalSerializer = new SVInterval.Serializer();
+    private final SVInterval location;
+    private final int weight;
+    private boolean validated; // this piece of evidence is consistent with enough other evidence to be taken seriously
 
-    // Typically UNPAIRED (single read from the template), PAIRED_FIRST (first read from the template), or
-    // PAIRED_LAST (second read from the template).  The SAM format, however, describes other weird possibilities,
-    // and to avoid lying, we also allow the pairedness to be unknown, or for a read to be paired, but neither
-    // first nor last (interior).
-    public enum TemplateEnd {
-        UNPAIRED(""), PAIRED_UNKNOWN("/?"), PAIRED_FIRST("/1"), PAIRED_SECOND("/2"), PAIRED_INTERIOR("/0");
-
-        TemplateEnd( final String value ) { this.value = value; }
-
-        @Override
-        public String toString() { return value; }
-
-        private final String value;
+    public BreakpointEvidence( final SVInterval location, final int weight, final boolean validated ) {
+        this.location = location;
+        this.weight = weight;
+        this.validated = validated;
     }
 
-    /**
-     * evidence offset and width is set to "the rest of the fragment" not covered by this read
-     */
-    protected BreakpointEvidence( final GATKRead read, final ReadMetadata metadata ) {
-        final int templateLen = metadata.getStatistics(read.getReadGroup()).getMedianFragmentSize();
-        int width;
-        int start;
-        if ( read.isReverseStrand() ) {
-            final int readStart = read.getStart();
-            width = readStart - (read.getUnclippedEnd() + 1 - templateLen);
-            start = readStart - width;
-            if ( start < 1 ) {
-                width += start - 1;
-                start = 1;
-            }
-        } else {
-            final int readEnd = read.getEnd() + 1;
-            width = read.getUnclippedStart() + templateLen - readEnd;
-            start = readEnd;
-        }
-        this.eventLocation = new SVInterval(metadata.getContigID(read.getContig()), start, start+width);
-        this.templateName = read.getName();
-        if ( templateName == null ) throw new GATKException("Read has no name.");
-        this.templateEnd = findTemplateEnd(read);
-    }
-
-    /**
-     * for use when the uncertainty in location has a fixed size
-     */
-    protected BreakpointEvidence( final GATKRead read, final ReadMetadata metadata,
-                        final int contigOffset, final int offsetUncertainty ) {
-        int width = 2*offsetUncertainty;
-        int start = contigOffset - offsetUncertainty;
-        if ( start < 1 ) {
-            width += start - 1;
-            start = 1;
-        }
-        this.eventLocation = new SVInterval(metadata.getContigID(read.getContig()), start, start+width);
-        this.templateName = read.getName();
-        if ( templateName == null ) throw new GATKException("Read has no name.");
-        this.templateEnd = findTemplateEnd(read);
-    }
-
-    /**
-     * a technical constructor for use in Kryo (de-)serialization.
-     * this creates an object by reading a Kryo-serialized stream.
-     * it will be called by subclasses in their own constructors from Kryo streams (as super(kryo, input)).
-     */
     protected BreakpointEvidence( final Kryo kryo, final Input input ) {
-        final int contig = input.readInt();
-        final int start = input.readInt();
-        final int end = input.readInt();
-        this.eventLocation = new SVInterval(contig, start, end);
-        this.templateName = input.readString();
-        this.templateEnd = TemplateEnd.values()[input.readByte()];
+        this.location = intervalSerializer.read(kryo, input, SVInterval.class);
+        this.weight = input.readInt();
+        this.validated = input.readBoolean();
     }
 
-    /**
-     * to make a sentinel (a bit of evidence that serves no function other than to mark the end of a stream).
-     * used by the MapPartitioner to flush pending evidence in the FindBreakEvidenceSpark.WindowSorter.
-     */
-    public BreakpointEvidence( final int contigIndex ) {
-        this.eventLocation = new SVInterval(contigIndex, 0, 0);
-        this.templateName = "sentinel";
-        this.templateEnd = TemplateEnd.PAIRED_UNKNOWN;
-    }
+    public SVInterval getLocation() { return location; }
+    public int getWeight() { return weight; }
+    public boolean isValidated() { return validated; }
+    public void setValidated( final boolean validated ) { this.validated = validated; }
 
     /**
      * Returns true if this piece of evidence specifies a possible distal target for the breakpoint.
@@ -119,39 +57,173 @@ public class BreakpointEvidence {
      * For example, in the case of a discordant read pair, this would be the region adjacent to the mate of the current
      * read. Returns null if the evidence does not specify or support a possible targeted region (for example, the case
      * of an read with an unmapped mate).
-     * @param readMetadata
      */
     public List<SVInterval> getDistalTargets(final ReadMetadata readMetadata) {
         return null;
     }
 
-    protected void serialize( final Kryo kryo, final Output output ) {
-        output.writeInt(eventLocation.getContig());
-        output.writeInt(eventLocation.getStart());
-        output.writeInt(eventLocation.getEnd());
-        output.writeString(templateName);
-        output.writeByte(templateEnd.ordinal());
-    }
-
-    public SVInterval getLocation() { return eventLocation; }
-    public String getTemplateName() { return templateName; }
-    public TemplateEnd getTemplateEnd() { return templateEnd; }
-
     @Override
     public String toString() {
-        return eventLocation+" "+templateName + templateEnd;
+        return location.toString() + "^" + weight;
     }
 
-    private static TemplateEnd findTemplateEnd( final GATKRead read ) {
-        return !read.isPaired() ? TemplateEnd.UNPAIRED :
-               !read.isFirstOfPair() && !read.isSecondOfPair() ? TemplateEnd.PAIRED_UNKNOWN :
-                read.isFirstOfPair() && !read.isSecondOfPair() ? TemplateEnd.PAIRED_FIRST :
-               !read.isFirstOfPair() &&  read.isSecondOfPair() ? TemplateEnd.PAIRED_SECOND :
-                       TemplateEnd.PAIRED_INTERIOR;
+    protected void serialize( final Kryo kryo, final Output output ) {
+        intervalSerializer.write(kryo, output, location);
+        output.writeInt(weight);
+        output.writeBoolean(validated);
+    }
+
+    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<BreakpointEvidence> {
+        @Override
+        public void write( final Kryo kryo, final Output output, final BreakpointEvidence evidence ) {
+            evidence.serialize(kryo, output);
+        }
+
+        @Override
+        public BreakpointEvidence read( final Kryo kryo, final Input input, final Class<BreakpointEvidence> klass ) {
+            return new BreakpointEvidence(kryo, input);
+        }
+    }
+
+    @DefaultSerializer(ReadEvidence.Serializer.class)
+    public static class ReadEvidence extends BreakpointEvidence {
+        private static final int SINGLE_READ_WEIGHT = 1;
+        private final String templateName; // QNAME of the read that was funky (i.e., the name of the fragment)
+        private final TemplateEnd templateEnd; // which read we're talking about (first or last, for paired-end reads)
+
+        // Typically UNPAIRED (single read from the template), PAIRED_FIRST (first read from the template), or
+        // PAIRED_LAST (second read from the template).  The SAM format, however, describes other weird possibilities,
+        // and to avoid lying, we also allow the pairedness to be unknown, or for a read to be paired, but neither
+        // first nor last (interior).
+        public enum TemplateEnd {
+            UNPAIRED(""), PAIRED_UNKNOWN("/?"), PAIRED_FIRST("/1"), PAIRED_SECOND("/2"), PAIRED_INTERIOR("/0");
+
+            TemplateEnd( final String value ) {
+                this.value = value;
+            }
+
+            @Override
+            public String toString() {
+                return value;
+            }
+
+            private final String value;
+        }
+
+        /**
+         * evidence offset and width is set to "the rest of the fragment" not covered by this read
+         */
+        protected ReadEvidence( final GATKRead read, final ReadMetadata metadata ) {
+            super(restOfFragmentInterval(read,metadata), SINGLE_READ_WEIGHT, false);
+            this.templateName = read.getName();
+            if ( templateName == null ) throw new GATKException("Read has no name.");
+            this.templateEnd = findTemplateEnd(read);
+        }
+
+        /**
+         * for use when the uncertainty in location has a fixed size
+         */
+        protected ReadEvidence( final GATKRead read, final ReadMetadata metadata,
+                                final int contigOffset, final int offsetUncertainty ) {
+            super(fixedWidthInterval(metadata.getContigID(read.getContig()),contigOffset,offsetUncertainty),
+                    SINGLE_READ_WEIGHT, false);
+            this.templateName = read.getName();
+            if ( templateName == null ) throw new GATKException("Read has no name.");
+            this.templateEnd = findTemplateEnd(read);
+        }
+
+        @VisibleForTesting ReadEvidence( final SVInterval interval, final int weight,
+                                         final String templateName, final TemplateEnd templateEnd,
+                                         final boolean validated ) {
+            super(interval, weight, validated);
+            this.templateName = templateName;
+            this.templateEnd = templateEnd;
+        }
+
+        /**
+         * a technical constructor for use in Kryo (de-)serialization.
+         * this creates an object by reading a Kryo-serialized stream.
+         * it will be called by subclasses in their own constructors from Kryo streams (as super(kryo, input)).
+         */
+        protected ReadEvidence( final Kryo kryo, final Input input ) {
+            super(kryo, input);
+            this.templateName = input.readString();
+            this.templateEnd = TemplateEnd.values()[input.readByte()];
+        }
+
+        protected void serialize( final Kryo kryo, final Output output ) {
+            super.serialize(kryo, output);
+            output.writeString(templateName);
+            output.writeByte(templateEnd.ordinal());
+        }
+
+        public String getTemplateName() {
+            return templateName;
+        }
+
+        public TemplateEnd getTemplateEnd() {
+            return templateEnd;
+        }
+
+        @Override
+        public String toString() {
+            return super.toString() + "\t" + templateName + templateEnd;
+        }
+
+        private static TemplateEnd findTemplateEnd( final GATKRead read ) {
+            return !read.isPaired() ? TemplateEnd.UNPAIRED :
+                    !read.isFirstOfPair() && !read.isSecondOfPair() ? TemplateEnd.PAIRED_UNKNOWN :
+                            read.isFirstOfPair() && !read.isSecondOfPair() ? TemplateEnd.PAIRED_FIRST :
+                                    !read.isFirstOfPair() && read.isSecondOfPair() ? TemplateEnd.PAIRED_SECOND :
+                                            TemplateEnd.PAIRED_INTERIOR;
+        }
+
+        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ReadEvidence> {
+            @Override
+            public void write( final Kryo kryo, final Output output, final ReadEvidence evidence ) {
+                evidence.serialize(kryo, output);
+            }
+
+            @Override
+            public ReadEvidence read( final Kryo kryo, final Input input, final Class<ReadEvidence> klass ) {
+                return new ReadEvidence(kryo, input);
+            }
+        }
+
+        private static SVInterval restOfFragmentInterval( final GATKRead read, final ReadMetadata metadata ) {
+            final int templateLen = metadata.getStatistics(read.getReadGroup()).getMedianFragmentSize();
+            int width;
+            int start;
+            if ( read.isReverseStrand() ) {
+                final int readStart = read.getStart();
+                width = readStart - (read.getUnclippedEnd() + 1 - templateLen);
+                start = readStart - width;
+                if ( start < 1 ) {
+                    width += start - 1;
+                    start = 1;
+                }
+            } else {
+                final int readEnd = read.getEnd() + 1;
+                width = read.getUnclippedStart() + templateLen - readEnd;
+                start = readEnd;
+            }
+            return new SVInterval(metadata.getContigID(read.getContig()), start, start + width);
+        }
+
+        private static SVInterval fixedWidthInterval( final int contigID,
+                                                      final int contigOffset, final int offsetUncertainty ) {
+            int width = 2 * offsetUncertainty;
+            int start = contigOffset - offsetUncertainty;
+            if ( start < 1 ) {
+                width += start - 1;
+                start = 1;
+            }
+            return new SVInterval(contigID, start, start + width);
+        }
     }
 
     @DefaultSerializer(SplitRead.Serializer.class)
-    public static final class SplitRead extends BreakpointEvidence {
+    public static final class SplitRead extends ReadEvidence {
         private static final int UNCERTAINTY = 2;
         private static final String SA_TAG_NAME = "SA";
         private final String cigar;
@@ -184,15 +256,7 @@ public class BreakpointEvidence {
 
         @Override
         public String toString() {
-            final StringBuffer out = new StringBuffer();
-            out.append(super.toString());
-            out.append("\t");
-            out.append("Split");
-            out.append("\t");
-            out.append(cigar);
-            out.append("\t");
-            out.append((tagSA == null ? " SA: None" : (" SA: " + tagSA)));
-            return out.toString();
+            return super.toString()+"\tSplit\t"+cigar+"\t"+(tagSA == null ? " SA: None" : (" SA: " + tagSA));
         }
 
         @Override
@@ -224,7 +288,7 @@ public class BreakpointEvidence {
                 throw new GATKException("Could not parse SATag: "+ saString);
             }
             final String contigId = values[0];
-            final int pos = Integer.parseInt(values[1]) - 1;
+            final int pos = Integer.parseInt(values[1]);
             final Cigar cigar = TextCigarCodec.decode(values[3]);
 
             return new SVInterval( readMetadata.getContigID(contigId),
@@ -247,7 +311,7 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(LargeIndel.Serializer.class)
-    public static final class LargeIndel extends BreakpointEvidence {
+    public static final class LargeIndel extends ReadEvidence {
         private static final int UNCERTAINTY = 4;
         private final String cigar;
 
@@ -270,7 +334,7 @@ public class BreakpointEvidence {
 
         @Override
         public String toString() {
-            return super.toString() + " Indel " + cigar;
+            return super.toString() + "\tIndel\t" + cigar;
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<LargeIndel> {
@@ -287,7 +351,7 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(MateUnmapped.Serializer.class)
-    public static final class MateUnmapped extends BreakpointEvidence {
+    public static final class MateUnmapped extends ReadEvidence {
 
         MateUnmapped( final GATKRead read, final ReadMetadata metadata ) {
             super(read, metadata);
@@ -297,7 +361,7 @@ public class BreakpointEvidence {
 
         @Override
         public String toString() {
-            return super.toString() + " UnmappedMate";
+            return super.toString() + "\tUnmappedMate";
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<MateUnmapped> {
@@ -314,7 +378,7 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(InterContigPair.Serializer.class)
-    public static final class InterContigPair extends BreakpointEvidence {
+    public static final class InterContigPair extends ReadEvidence {
         private final SVInterval target;
 
         InterContigPair( final GATKRead read, final ReadMetadata metadata ) {
@@ -324,7 +388,7 @@ public class BreakpointEvidence {
 
         private InterContigPair( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            target = new SVInterval(input.readInt(), input.readInt(), input.readInt());
+            target = intervalSerializer.read(kryo, input, SVInterval.class);
         }
 
         @Override
@@ -340,9 +404,7 @@ public class BreakpointEvidence {
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            output.writeInt(target.getContig());
-            output.writeInt(target.getStart());
-            output.writeInt(target.getEnd());
+            intervalSerializer.write(kryo, output, target);
         }
 
         @Override
@@ -381,7 +443,7 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(OutiesPair.Serializer.class)
-    public static final class OutiesPair extends BreakpointEvidence {
+    public static final class OutiesPair extends ReadEvidence {
         private final SVInterval target;
 
         OutiesPair( final GATKRead read, final ReadMetadata metadata ) {
@@ -391,16 +453,14 @@ public class BreakpointEvidence {
 
         private OutiesPair( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            target = new SVInterval(input.readInt(), input.readInt(), input.readInt());
+            target = intervalSerializer.read(kryo, input, SVInterval.class);
         }
 
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            output.writeInt(target.getContig());
-            output.writeInt(target.getStart());
-            output.writeInt(target.getEnd());
+            intervalSerializer.write(kryo, output, target);
         }
 
         @Override
@@ -432,7 +492,7 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(SameStrandPair.Serializer.class)
-    public static final class SameStrandPair extends BreakpointEvidence {
+    public static final class SameStrandPair extends ReadEvidence {
         private final SVInterval target;
 
         SameStrandPair( final GATKRead read, final ReadMetadata metadata ) {
@@ -442,7 +502,7 @@ public class BreakpointEvidence {
 
         private SameStrandPair( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            target = new SVInterval(input.readInt(), input.readInt(), input.readInt());
+            target = intervalSerializer.read(kryo, input, SVInterval.class);
         }
 
         @Override
@@ -458,9 +518,7 @@ public class BreakpointEvidence {
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            output.writeInt(target.getContig());
-            output.writeInt(target.getStart());
-            output.writeInt(target.getEnd());
+            intervalSerializer.write(kryo, output, target);
         }
 
         @Override
@@ -482,7 +540,7 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(WeirdTemplateSize.Serializer.class)
-    public static final class WeirdTemplateSize extends BreakpointEvidence {
+    public static final class WeirdTemplateSize extends ReadEvidence {
         private final int templateSize;
         private final int mateStartPosition;
         private final boolean mateReverseStrand;
@@ -501,7 +559,7 @@ public class BreakpointEvidence {
             templateSize = input.readInt();
             mateStartPosition = input.readInt();
             mateReverseStrand = input.readBoolean();
-            target = new SVInterval(input.readInt(), input.readInt(), input.readInt());
+            target = intervalSerializer.read(kryo, input, SVInterval.class);
         }
 
         @Override
@@ -520,9 +578,7 @@ public class BreakpointEvidence {
             output.writeInt(templateSize);
             output.writeInt(mateStartPosition);
             output.writeBoolean(mateReverseStrand);
-            output.writeInt(target.getContig());
-            output.writeInt(target.getStart());
-            output.writeInt(target.getEnd());
+            intervalSerializer.write(kryo, output, target);
         }
 
         @Override
@@ -542,5 +598,4 @@ public class BreakpointEvidence {
             }
         }
     }
-
 }

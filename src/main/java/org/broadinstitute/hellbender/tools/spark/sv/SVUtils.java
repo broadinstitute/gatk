@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.*;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -101,7 +100,7 @@ public final class SVUtils {
                 try {
                     final Integer contigId = contigNameMap.get(tokens[0]);
                     if ( contigId == null ) throw new GATKException("contig name "+tokens[0]+" not in dictionary");
-                    final int start = Integer.valueOf(tokens[1])-1;
+                    final int start = Integer.valueOf(tokens[1]);
                     final int end = Integer.valueOf(tokens[2]);
                     intervals.add(new SVInterval(contigId, start, end));
                 }
@@ -123,11 +122,18 @@ public final class SVUtils {
                 BucketUtils.createFile(intervalsFile)))) {
             for (final SVInterval interval : intervals) {
                 final String seqName = contigNames.get(interval.getContig());
-                writer.write(seqName + "\t" + (interval.getStart()+1) + "\t" + interval.getEnd() + "\n");
+                writer.write(seqName + "\t" + interval.getStart() + "\t" + interval.getEnd() + "\n");
             }
         } catch (final IOException ioe) {
             throw new GATKException("Can't write intervals file " + intervalsFile, ioe);
         }
+    }
+
+    public static int matchLen( final Cigar cigar ) {
+        return cigar.getCigarElements().stream()
+                .filter(cigarElement -> cigarElement.getOperator().isAlignment())
+                .mapToInt(CigarElement::getLength)
+                .sum();
     }
 
     /** return a good initialCapacity for a HashMap that will hold a given number of elements */
