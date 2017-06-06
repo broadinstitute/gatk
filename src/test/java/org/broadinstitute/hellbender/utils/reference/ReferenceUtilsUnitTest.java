@@ -57,23 +57,22 @@ public class ReferenceUtilsUnitTest extends BaseTest {
         }
     }
 
-    @DataProvider(name = "testData_testLoadWrongFormatFastaDictionary")
-    public Object[][] testData_testLoadWrongFormatFastaDictionary(final Method testMethod) {
+    @DataProvider
+    public Object[][] testData_testLoadWrongFormatFastaDictionary() {
 
-        Object[][] tests = {
+        // Trying to ingest a fasta file as a dict file to induce a MalformedFile Exception.
+        return new Object[][] {
                 {hg19MiniReference, true},
                 {hg19MiniReference, false}
         };
-
-        return tests;
     }
 
     @Test(expectedExceptions = UserException.MalformedFile.class, dataProvider = "testData_testLoadWrongFormatFastaDictionary")
-    public void testLoadWrongFormatFastaDictionary(final String fastaFileName, boolean doLoadAsStream ) throws IOException {
+    public void testLoadWrongFormatFastaDictionary(final String fastaFileName, boolean loadAsStream ) throws IOException {
 
         File testFastaFile = new File(fastaFileName);
 
-        if ( doLoadAsStream ) {
+        if ( loadAsStream ) {
             // Test loadFastaDictionary with Stream argument:
             try ( final ClosingAwareFileInputStream referenceDictionaryStream = new ClosingAwareFileInputStream(testFastaFile) ) {
                 ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);
