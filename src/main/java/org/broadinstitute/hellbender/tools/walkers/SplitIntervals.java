@@ -6,6 +6,7 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -21,17 +22,37 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 /**
- * This tool takes in intervals via the standard arguments (-L and -XL, but also interval padding, interval set rule etc) of
- * {@link IntervalArgumentCollection} and splits them into equal sub-intervals for scattering.  Except for the actual splitting
- * the GATK engine handles all of the logic.
+ * This tool takes in intervals via the standard arguments of
+ * {@link IntervalArgumentCollection} and splits them into equal sub-intervals for scattering.
  *
- * Created by David Benjamin on 4/25/17.
+ * <p>Standard GATK engine arguments include -L and -XL, interval padding, and interval set rule etc.
+ * For example, for the -L argument, the tool accepts gatk-style intervals (.list or .intervals), BED files
+ * and VCF files.</p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -jar $gatk_jar SplitIntervals \
+ *   -R ref_fasta.fa \
+ *   -L intervals.list \
+ *   -scatter 10 \
+ *   -O interval-files
+ * </pre>
+ *
+ * <p>
+ *    The -O argument specifies a directory name for the scatter intervals files. Each file will be named, e.g 0000-scattered.intervals,
+ *    0001-scattered.intervals, 0002-scattered.intervals and so on.
+ *    The default --scatter_count is 1 and so this value should be changed to utilize the tool's functionality.
+ * </p>
+ *
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Split intervals into sub-interval files.",
         oneLineSummary = "Split intervals into sub-interval files.",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class SplitIntervals extends GATKTool {
 
     public static final String SCATTER_COUNT_SHORT_NAME = "scatter";
