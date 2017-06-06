@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -58,6 +59,13 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection
     protected final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
+
+    public static final String SEQUENCE_DICTIONARY_NAME = "sequenceDictionary";
+
+    @Argument(fullName = SEQUENCE_DICTIONARY_NAME,
+            shortName = SEQUENCE_DICTIONARY_NAME,
+            doc = "Use the the given sequence dictionary for processing.", optional = true, common = true)
+    private String masterSequenceDictionary = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
@@ -450,10 +458,11 @@ public abstract class GATKTool extends CommandLineProgram {
      * Returns the "best available" sequence dictionary or {@code null} if there is no single best dictionary.
      *
      * The algorithm for selecting the best dictionary is as follows:
-     * 1) if there is a reference, then the best dictionary is the reference sequence dictionary
-     * 2) Otherwise, if there are reads, then the best dictionary is the sequence dictionary constructed from the reads.
-     * 3) Otherwise, if there are features and the feature data source has only one dictionary, then that one is the best dictionary.
-     * 4) Otherwise, the result is {@code null}.
+     * 1) If a master sequence dictionary was specified, use that dictionary
+     * 2) if there is a reference, then the best dictionary is the reference sequence dictionary
+     * 3) Otherwise, if there are reads, then the best dictionary is the sequence dictionary constructed from the reads.
+     * 4) Otherwise, if there are features and the feature data source has only one dictionary, then that one is the best dictionary.
+     * 5) Otherwise, the result is {@code null}.
      *
      * TODO: check interval file(s) as well for a sequence dictionary
      *
@@ -462,7 +471,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return best available sequence dictionary given our inputs or {@code null} if no one dictionary is the best one.
      */
     public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
-        if (hasReference()){
+        if (masterSequenceDictionary != null) {
+            return ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionary));
+        } else if (hasReference()){
             return reference.getSequenceDictionary();
         } else if (hasReads()){
             return reads.getSequenceDictionary();
@@ -547,6 +558,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * and so are not sensitive to contig ordering issues).
      */
     private void validateSequenceDictionaries() {
+        final SAMSequenceDictionary masterSequenceDict = (masterSequenceDictionary != null) ?
+                ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionary)) : null;
+
         final SAMSequenceDictionary refDict = hasReference() ? reference.getSequenceDictionary() : null;
         final SAMSequenceDictionary readDict = hasReads() ? reads.getSequenceDictionary() : null;
         final List<SAMSequenceDictionary> featureDicts = hasFeatures() ? features.getAllSequenceDictionaries() : Collections.emptyList();
@@ -572,6 +586,34 @@ public abstract class GATKTool extends CommandLineProgram {
             if (hasReads()) {
                 SequenceDictionaryUtils.validateDictionaries("reads", readDict, "features", featureDict);
             }
+        }
+
+        // Check the master dictionary against the reference / reads / features
+        if (masterSequenceDictionary != null) {
+
+            // Check against the reads
+            if (hasReads()) {
+                SequenceDictionaryUtils.validateDictionaries("sequence", masterSequenceDict, "reads", readDict);
+            }
+
+            // Check against the reference
+            if (hasReference()) {
+                SequenceDictionaryUtils.validateDictionaries("sequence", masterSequenceDict, "reads", refDict);
+            }
+
+            // Check against the features
+            for (final SAMSequenceDictionary featureDict : featureDicts) {
+                SequenceDictionaryUtils.validateDictionaries("sequence", masterSequenceDict, "features", featureDict);
+            }
+
+            // When overriding the master sequence dictionary and working with CRAM files, we need to make sure that the
+            // reference we're using is completely contained by the sequence dictionary (i.e. the sequence dictionary is
+            // equal to the reference OR the sequence dictionary is a superset of the reference).
+            // This is accomplished by the call to validateCRAMDictionaryAgainstReference.
+            if ( hasCramInput() ) {
+                SequenceDictionaryUtils.validateCRAMDictionaryAgainstReference(masterSequenceDict, refDict);
+            }
+
         }
 
         // we don't currently have access to seqdicts from intervals

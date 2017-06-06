@@ -53,6 +53,10 @@ public abstract class BaseTest {
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
+    public static final String moduleTestDataDir = publicTestDir + "org/broadinstitute/hellbender/";
+    public static final String toolTestDataDir = moduleTestDataDir + "tools/";
+    public static final String bqsrTestDataDir = toolTestDataDir + "BQSR/";
+
     public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
 
     public static final String GCS_b37_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "benchmark/human_g1k_v37.2bit";
@@ -104,6 +108,15 @@ public abstract class BaseTest {
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
+
+    public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
+
+    /**
+     * BQSR Test Files
+     */
+
+    public static final String BQSR_WGS_B37_CH20_21_10M_100_CRAM = bqsrTestDataDir +
+            "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.cram";
 
     public CachingIndexedFastaSequenceFile hg19ReferenceReader;
     public GenomeLocParser hg19GenomeLocParser;
