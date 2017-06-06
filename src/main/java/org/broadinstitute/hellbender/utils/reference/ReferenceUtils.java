@@ -49,6 +49,12 @@ public final class ReferenceUtils {
         catch ( IOException e ) {
             throw new UserException.CouldNotReadInputFile("Error loading fasta dictionary file " + fastaDictionaryFile, e);
         }
+        catch ( UserException.MalformedFile e ) {
+            throw new UserException.MalformedFile(
+                    "Could not read sequence dictionary from given fasta file " +
+                            fastaDictionaryFile
+            );
+        }
     }
 
     /**
@@ -65,6 +71,15 @@ public final class ReferenceUtils {
 
         final SAMTextHeaderCodec codec = new SAMTextHeaderCodec();
         final SAMFileHeader header = codec.decode(reader, fastaDictionaryStream.toString());
+
+        // Make sure we have a valid sequence dictionary before continuing:
+        if (header.getSequenceDictionary() == null || header.getSequenceDictionary().isEmpty()) {
+            throw new UserException.MalformedFile (
+                    "Could not read sequence dictionary from given fasta stream " +
+                            fastaDictionaryStream
+            );
+        }
+
         return header.getSequenceDictionary();
     }
 }
