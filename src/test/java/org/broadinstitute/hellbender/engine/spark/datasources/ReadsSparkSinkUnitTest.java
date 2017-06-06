@@ -14,13 +14,11 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
-import org.seqdoop.hadoop_bam.SplittingBAMIndexer;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -29,7 +27,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -125,11 +122,6 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
         ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE);
 
-        // check that a splitting bai file is created
-        if (IOUtils.isBamFileName(outputPath)) {
-            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + SplittingBAMIndexer.OUTPUT_FILE_EXTENSION)));
-        }
-
         JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputPath, referenceFile);
         final List<GATKRead> writtenReads = rddParallelReads2.collect();
 
@@ -210,5 +202,24 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
             Assert.assertEquals(observed.getMateAlignmentStart(), expected.getMateAlignmentStart(), "getMateAlignmentStart");
             Assert.assertEquals(observed.getCigar(), expected.getCigar(), "getCigar");
         }
+    }
+
+    @Test(groups = "spark")
+    public void testGetBamFragments() throws IOException {
+        final Path fragmentDir = new Path(getToolTestDataDir(), "fragments_test");
+        final FileSystem fs = fragmentDir.getFileSystem(new Configuration());
+
+        final FileStatus[] bamFragments = ReadsSparkSink.getBamFragments(fragmentDir, fs);
+        final List<String> expectedFragmentNames = Arrays.asList("part-r-00000", "part-r-00001", "part-r-00002", "part-r-00003");
+
+        Assert.assertEquals(bamFragments.length, expectedFragmentNames.size(), "Wrong number of fragments returned by ReadsSparkSink.getBamFragments()");
+        for ( int i = 0; i < bamFragments.length; ++i ) {
+            Assert.assertEquals(bamFragments[i].getPath().getName(), expectedFragmentNames.get(i), "Fragments are not in correct order");
+        }
+    }
+
+    @Test( expectedExceptions = GATKException.class, groups = "spark" )
+    public void testMergeIntoThrowsIfNoPartFiles() throws IOException {
+        ReadsSparkSink.mergeInto(null, new Path(getToolTestDataDir() + "directoryWithNoPartFiles"), new Configuration());
     }
 }
