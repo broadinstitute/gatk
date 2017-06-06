@@ -19,7 +19,7 @@ import java.util.List;
  * Groups contiguous targets with the same minor allele fraction for a single sample.
  *
  *  <p>
- *     The --tumorHets file is from {@link org.broadinstitute.hellbender.tools.exome.GetBayesianHetCoverage}, preferably, but can also come from {@link org.broadinstitute.hellbender.tools.exome.GetHetCoverage}.
+ *     The --tumorHets file is from {@link GetBayesianHetCoverage}, preferably, but can also come from {@link GetHetCoverage}.
  *      For example,
  * </p>
  *
