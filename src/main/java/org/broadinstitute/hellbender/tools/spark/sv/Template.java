@@ -112,5 +112,13 @@ public class Template implements Serializable {
         return name;
     }
 
+    public boolean equals(final Template other) {
+        return name.equals(other.name);
+    }
+
+    public int hashCode() {
+        return name.hashCode();
+    }
+
 
 }

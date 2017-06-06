@@ -9,6 +9,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.logging.log4j.LogManager;
 import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -25,10 +26,10 @@ import scala.Tuple2;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import org.apache.logging.log4j.Logger;
 
 /**
  * Created by valentin on 5/19/17.
@@ -42,6 +43,8 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
     private InsertSizeDistribution insertSizeDistribution;
 
     private AlignmentPenalties penalties;
+
+    private Logger logger = LogManager.getLogger(BwaVariantTemplateScoreCalculator.class);
 
     public BwaVariantTemplateScoreCalculator(final JavaSparkContext ctx, final InsertSizeDistribution insertSizeDistribution) {
         this.ctx = Utils.nonNull(ctx);
@@ -77,24 +80,51 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
 
             templatesAndMappedReads.toLocalIterator().forEachRemaining(p ->
                 table.set(alleleIndex, table.indexOf(p._1()), calculateLikelihood(haplotype, p._1(), p._2())));
-
-            System.err.println("table is " + table);
+            printOutCounters();
+            resetCounters();
             disposeReference(referenceImage);
         }
     }
 
+    private int unmapped = 0;
+    private int onlyOneMapped = 0;
+    private int nonProperlyMapped1 = 0;
+    private int nonProperlyMapped2 = 0;
+    private int properlyMapped = 0;
+
     private double calculateLikelihood(final Haplotype haplotype, final Template template, final Iterable<GATKRead> gatkReads) {
         final List<GATKRead> readList = new ArrayList<>(2);
+
         gatkReads.forEach(readList::add);
         final int mappedReads = (int) readList.stream().filter( r -> !r.isUnmapped()).count();
         if (mappedReads == 2) {
-            final int start = readList.stream().mapToInt(GATKRead::getUnclippedStart).min().getAsInt();
-            final int end = readList.stream().mapToInt(GATKRead::getUnclippedEnd).max().getAsInt();
+            final GATKRead forward = readList.stream().sorted(Comparator.comparingInt(GATKRead::getUnclippedStart)).findFirst().orElseThrow(IllegalStateException::new);
+            final GATKRead reverse = readList.stream().sorted(Comparator.comparingInt(GATKRead::getUnclippedStart)).skip(1).findFirst().orElseThrow(IllegalStateException::new);
+            final int start = forward.getUnclippedStart();
+            final int end = reverse.getUnclippedEnd();
+            if (forward.getUnclippedEnd() > end) {
+                nonProperlyMapped1++;
+                return Double.NaN;
+            }
+            properlyMapped++;
             final int size = end - start;
-            return insertSizeDistribution.logProbability(size);
+            final double result = insertSizeDistribution.logProbability(size);
+            return result;
         } else {
+            if (mappedReads == 1) onlyOneMapped++; else unmapped++;
             return Double.NaN;
         }
+    }
+
+    void printOutCounters() {
+        if (logger.isDebugEnabled()) {
+            logger.debug("DEBUG counts are " + String.format("[u=%d, 1=%d, np1=%d, np2=%d, p=%d, t=%d]", unmapped, onlyOneMapped, nonProperlyMapped1, nonProperlyMapped2, properlyMapped,
+                    unmapped + onlyOneMapped + properlyMapped + nonProperlyMapped1 + nonProperlyMapped2));
+        }
+    }
+
+    void resetCounters() {
+        unmapped = onlyOneMapped = properlyMapped = nonProperlyMapped1 = nonProperlyMapped2 = 0;
     }
 
     private void disposeReference(final File referenceImage) {
