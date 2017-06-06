@@ -178,12 +178,12 @@ def getSparkSubmitCommand(sparkSubmitCommand):
 
 def getLocalGatkRunCommand(javaOptions):
     localJarFromEnv = getJarFromEnv(GATK_LOCAL_JAR_ENV_VARIABLE)
+
+    # Add java options to our packaged local jar options
+    if javaOptions is not None:
+        PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split())
+
     if localJarFromEnv is not None:
-
-        # Add java options to our packaged local jar options
-        if javaOptions is not None:
-            PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split())
-
         return formatLocalJarCommand(localJarFromEnv)
 
     wrapperScript = getGatkWrapperScript(throwIfNotFound=False)
@@ -199,11 +199,7 @@ def getLocalGatkRunCommand(javaOptions):
             os.environ['JAVA_OPTS'] = envJavaOpts
 
         return [wrapperScript]
-
-    # Add java options to our packaged local jar options
-    if javaOptions is not None:
-        PACKAGED_LOCAL_JAR_OPTIONS.extend(javaOptions.split())
-
+    
     return formatLocalJarCommand(getLocalJar())  # will throw if local jar not found
 
 
