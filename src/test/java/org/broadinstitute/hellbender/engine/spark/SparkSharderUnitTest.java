@@ -22,9 +22,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.*;
 
 public class SparkSharderUnitTest extends BaseTest implements Serializable {
 
@@ -292,6 +290,26 @@ public class SparkSharderUnitTest extends BaseTest implements Serializable {
                         new SparkSharder.PartitionLocatable<>(1, new SimpleInterval("2", 1, 15)),
                         new SparkSharder.PartitionLocatable<>(2, new SimpleInterval("2", 12, 50))
                 ));
+
+        // Use a different dictionary with contig 1 missing
+        SAMSequenceDictionary sequenceDictionaryMissing1 = new SAMSequenceDictionary(
+                ImmutableList.of(new SAMSequenceRecord("2", 50)));
+        try {
+            SparkSharder.computePartitionReadExtents(ctx.parallelize(reads, 1), sequenceDictionaryMissing1, STANDARD_READ_LENGTH);
+            fail("Should throw IllegalStateException");
+        } catch (IllegalStateException e) {
+            // expected
+        }
+
+        // Use a different dictionary with contig 2 missing
+        SAMSequenceDictionary sequenceDictionaryMissing2 = new SAMSequenceDictionary(
+                ImmutableList.of(new SAMSequenceRecord("1", 50)));
+        try {
+            SparkSharder.computePartitionReadExtents(ctx.parallelize(reads, 2), sequenceDictionaryMissing2, STANDARD_READ_LENGTH);
+            fail("Should throw IllegalStateException");
+        } catch (IllegalStateException e) {
+            // expected
+        }
 
         // Use a different dictionary with contig 3 at the end
         SAMSequenceDictionary sequenceDictionary123 = new SAMSequenceDictionary(
