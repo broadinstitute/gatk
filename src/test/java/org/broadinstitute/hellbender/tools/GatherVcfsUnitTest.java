@@ -1,20 +1,15 @@
-package org.broadinstitute.hellbender.tools.picard.vcf;
+package org.broadinstitute.hellbender.tools;
 
 import com.beust.jcommander.internal.Lists;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextComparator;
-import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.hellbender.tools.GatherVcfs;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public final class GatherVcfsUnitTest {
     //tests for GatherVcfs, specifically areAllBlockCompressed()

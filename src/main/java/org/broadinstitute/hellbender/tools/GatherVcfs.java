@@ -1,7 +1,9 @@
-package org.broadinstitute.hellbender.tools.picard.vcf;
+package org.broadinstitute.hellbender.tools;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.seekablestream.SeekableStream;
+import htsjdk.samtools.seekablestream.SeekableStreamFactory;
 import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockCompressedStreamConstants;
@@ -23,12 +25,14 @@ import htsjdk.variant.vcf.VCFHeader;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -55,7 +59,10 @@ import java.util.stream.Collectors;
         programGroup = VariantProgramGroup.class
 )
 @BetaFeature
-public final class GatherVcfs extends PicardCommandLineProgram {
+public final class GatherVcfs extends CommandLineProgram {
+
+    public static final String IGNORE_SAFETY_CHECKS_LONG_NAME = "ignoreSafetyChecks";
+    public static final String GATHER_TYPE_LONG_NAME = "gatherType";
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,  doc = "Input VCF file(s).")
@@ -68,21 +75,27 @@ public final class GatherVcfs extends PicardCommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
     public int cloudPrefetchBuffer = 2;
 
-    @Argument(fullName = "ignoreSafetyChecks", doc = "Disable sanity checks to improve performance, may result in silently creating corrupted outputs data")
+    @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME,
+            shortName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_SHORT_NAME,
+            doc = "If true, create a VCF index when writing a coordinate-sorted VCF file.", optional=true)
+    public boolean createIndex = true;
+
+    @Argument(fullName = GATHER_TYPE_LONG_NAME, doc ="Choose which method should be used to gather, block gathering is faster but only" +
+            "works on bgzipped files and ignores safety checks, conventional gather is slower but should work on all vcf files" +
+            "automatic chooses BLOCK if possible and CONVENTIONAL otherwise")
+    public GatherType gatherType = GatherType.AUTOMATIC;
+
+    @Advanced
+    @Argument(fullName = IGNORE_SAFETY_CHECKS_LONG_NAME, doc = "Disable sanity checks to improve performance, may result in silently creating corrupted outputs data")
     public boolean ignoreSafetyChecks = false;
 
-    @Argument(fullName = "useConventionalGather", doc = "Use conventional vcf gathering by opening and parsing each vcf file rather than doing compressed block copies.  " +
-            "This is necessary when using NIO paths")
-    public boolean useConventionalGather = false;
-
+    @Advanced
     @Argument(fullName = "disableContigOrderingCheck", doc = "Don't check relative ordering of contigs when doing a conventional gather")
     public boolean disableContigOrderingCheck = false;
 
     private static final Logger log = LogManager.getLogger();
 
-    public GatherVcfs() {
-        CREATE_INDEX = true;
-    }
+    public enum GatherType { BLOCK, CONVENTIONAL, AUTOMATIC}
 
     @Override
     protected Object doWork() {
@@ -99,7 +112,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
         final SAMSequenceDictionary sequenceDictionary = getHeader(inputPaths.get(0)).getSequenceDictionary();
 
-        if (CREATE_INDEX && sequenceDictionary == null) {
+        if (createIndex && sequenceDictionary == null) {
             throw new UserException("In order to index the resulting VCF input VCFs must contain ##contig lines.");
         }
 
@@ -108,24 +121,45 @@ public final class GatherVcfs extends PicardCommandLineProgram {
             assertSameSamplesAndValidOrdering(inputPaths, disableContigOrderingCheck);
         }
 
-        if (!useConventionalGather && areAllBlockCompressed(inputPaths) && areAllBlockCompressed(CollectionUtil.makeList(output.toPath()))) {
-            final List<File> inputFiles = inputs.stream().map(File::new).collect(Collectors.toList());
-            log.info("Gathering by copying gzip blocks. Will not be able to validate position non-overlap of files.");
-            if (CREATE_INDEX) log.warn("Index creation not currently supported when gathering block compressed VCFs.");
-            gatherWithBlockCopying(inputFiles, output);
-        }
-        else {
-            log.info("Gathering by conventional means.");
-            gatherConventionally(sequenceDictionary, CREATE_INDEX, inputPaths, output, cloudPrefetchBuffer, disableContigOrderingCheck);
+        if(gatherType == GatherType.AUTOMATIC) {
+            if ( canBlockCopy(inputPaths, output) ) {
+                gatherType = GatherType.BLOCK;
+            } else {
+                gatherType = GatherType.CONVENTIONAL;
+            }
         }
 
+        if (gatherType == GatherType.BLOCK && !canBlockCopy(inputPaths, output)) {
+            throw new UserException.BadInput(
+                    "Requested block copy but some files are not bgzipped, all inputs and the output must be bgzipped to block copy");
+        }
+
+        switch (gatherType) {
+            case BLOCK:
+                log.info("Gathering by copying gzip blocks. Will not be able to validate position non-overlap of files.");
+                if (createIndex) {
+                    log.warn("Index creation not currently supported when gathering block compressed VCFs.");
+                }
+                gatherWithBlockCopying(inputPaths, output, cloudPrefetchBuffer);
+                break;
+            case CONVENTIONAL:
+                log.info("Gathering by conventional means.");
+                gatherConventionally(sequenceDictionary, createIndex, inputPaths, output, cloudPrefetchBuffer, disableContigOrderingCheck);
+                break;
+            default:
+                throw new GATKException.ShouldNeverReachHereException("Invalid gather type: " + gatherType + ".  Please report this bug to the developers.");
+        }
         return null;
+    }
+
+    private static boolean canBlockCopy(final List<Path> inputPaths, final File output) {
+        return areAllBlockCompressed(inputPaths) && areAllBlockCompressed(CollectionUtil.makeList(output.toPath()));
     }
 
     private static VCFHeader getHeader(final Path path) {
         try (FeatureReader<VariantContext> reader =  getReaderFromVCFUri(path, 0)) {
             return ((VCFHeader) reader.getHeader());
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(path, e.getMessage(), e);
         }
     }
@@ -156,7 +190,13 @@ public final class GatherVcfs extends PicardCommandLineProgram {
     private static void assertSameSamplesAndValidOrdering(final List<Path> inputFiles, final boolean disableContigOrderingCheck) {
         final VCFHeader firstHeader = getHeader(inputFiles.get(0));
         final SAMSequenceDictionary dict = firstHeader.getSequenceDictionary();
-        final VariantContextComparator comparator = new VariantContextComparator(firstHeader.getSequenceDictionary());
+        if ( dict == null) {
+            throw new UserException.BadInput("The first VCF specified is missing the required sequence dictionary. " +
+                                                     "This is required to perform validation.  You can skip this validation " +
+                                                     "using --"+IGNORE_SAFETY_CHECKS_LONG_NAME +" but ignoring safety checks " +
+                                                     "can result in invalid output.");
+        }
+        final VariantContextComparator comparator = new VariantContextComparator(dict);
         final List<String> samples = firstHeader.getGenotypeSamples();
 
         Path lastFile = null;
@@ -164,7 +204,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
         for (final Path f : inputFiles) {
             final FeatureReader<VariantContext> in = getReaderFromVCFUri(f, 0);
-            VCFHeader header = (VCFHeader)in.getHeader();
+            final VCFHeader header = (VCFHeader)in.getHeader();
             dict.assertSameDictionary(header.getSequenceDictionary());
             final List<String> theseSamples = header.getGenotypeSamples();
 
@@ -201,7 +241,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                     lastContext = currentContext;
                     lastFile = f;
                 }
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new UserException.CouldNotReadInputFile(f, e.getMessage(), e);
             }
 
@@ -272,7 +312,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
 
                     CloserUtil.close(variantIterator);
                     CloserUtil.close(variantReader);
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     throw new UserException.CouldNotReadInputFile(f, e.getMessage(), e);
                 }
             }
@@ -285,23 +325,27 @@ public final class GatherVcfs extends PicardCommandLineProgram {
      * (often the first block) and re-compress any data remaining in that block into a new block in the output file. Subsequent
      * blocks (excluding a terminator block if present) are copied directly from input to output.
      */
-    private static void gatherWithBlockCopying(final List<File> vcfs, final File output) {
+    private static void gatherWithBlockCopying(final List<Path> vcfs, final File output, final int cloudPrefetchBuffer) {
          try (final FileOutputStream out = new FileOutputStream(output)) {
             boolean isFirstFile = true;
 
-            for (final File f : vcfs) {
-                log.info("Gathering " + f.getAbsolutePath());
-                try (final FileInputStream in = new FileInputStream(f)) {
+            for (final Path f : vcfs) {
+                log.info("Gathering " + f.toUri());
+                final Function<SeekableByteChannel, SeekableByteChannel> prefetcher = cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher
+                        .addPrefetcher(cloudPrefetchBuffer, is) : Function.identity();
+                try (final SeekableStream in = SeekableStreamFactory.getInstance().getStreamFor(f.toUri().toString(), prefetcher)) {
                     // a) It's good to check that the end of the file is valid and b) we need to know if there's a terminator block and not copy it
                     final BlockCompressedInputStream.FileTermination term = BlockCompressedInputStream.checkTermination(f);
-                    if (term == BlockCompressedInputStream.FileTermination.DEFECTIVE)
-                        throw new UserException.MalformedFile(f.getAbsolutePath() + " does not have a valid GZIP block at the end of the file.");
+                    if (term == BlockCompressedInputStream.FileTermination.DEFECTIVE) {
+                        throw new UserException.MalformedFile(f.toUri() + " does not have a valid GZIP block at the end of the file.");
+                    }
 
                     if (!isFirstFile) {
                         final BlockCompressedInputStream blockIn = new BlockCompressedInputStream(in, false);
                         boolean lastByteNewline = true;
 
-                        while (in.available() > 0) {
+                        int firstNonHeaderByteIndex = -1;
+                        while (!in.eof()) {
                             // Read a block - blockIn.available() is guaranteed to return the bytes remaining in the block that has been
                             // read, and since we haven't consumed any yet, that is the block size.
                             final int blockLength = blockIn.available();
@@ -310,7 +354,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                             Utils.validate(blockLength > 0 && read == blockLength, "Could not read available bytes from BlockCompressedInputStream.");
 
                             // Scan forward within the block to see if we can find the end of the header within this block
-                            int firstNonHeaderByteIndex = -1;
+                            firstNonHeaderByteIndex = -1;
                             for (int i = 0; i < read; ++i) {
                                 final byte b = blockContents[i];
                                 final boolean thisByteNewline = (b == '\n' || b == '\r');
@@ -322,6 +366,10 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                                 }
 
                                 lastByteNewline = thisByteNewline;
+                            }
+
+                            if( firstNonHeaderByteIndex == -1 ){
+                                log.warn("Scanned the entire file " + f.toUri().toString() + " and found no variants");
                             }
 
                             // If we found the end of the header then write the remainder of this block out as a
@@ -337,8 +385,8 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                     }
 
                     // Copy remainder of input stream into output stream
-                    final long currentPos = in.getChannel().position();
-                    final long length = f.length();
+                    final long currentPos = in.position();
+                    final long length = in.length();
                     final long skipLast = (term == BlockCompressedInputStream.FileTermination.HAS_TERMINATOR_BLOCK) ?
                             BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK.length : 0;
                     final long bytesToWrite = length - skipLast - currentPos;
