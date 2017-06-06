@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * Additionally filter Mutect2 somatic variant calls for sequence-context dependent artifacts.
  *
  * <p>
- *     This tool is complementary to {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
+ *     This tool is complementary to {@link FilterMutectCalls}.
  *     The tool requires the pre-adapter detailed metrics calculated by Picard CollectSequencingArtifactMetrics.
  *     Specify the base substitution to consider for orientation bias. For a given base substitution specified with
  *     the --artifactModes argument, the tool considers both the forward and reverse complement for filtering.
