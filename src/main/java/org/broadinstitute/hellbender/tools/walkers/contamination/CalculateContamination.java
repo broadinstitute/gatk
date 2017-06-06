@@ -39,7 +39,7 @@ import java.util.stream.IntStream;
  *   -I pileups.table \
  *   -O contamination.table
  *
- * @author David Benjamin &lt;davidben@brgoadinstitute.org&gt;
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Calculate contamination",
