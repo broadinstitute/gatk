@@ -25,10 +25,7 @@ import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import scala.Tuple2;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -155,6 +152,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final int padding = this.padding;
         final ReferenceMultiSource reference = getReference();
         variantTemplates.collect().stream().forEach(vt -> {
+            logger.debug("Doing  " + vt._1().getContig() + ":" + vt._1().getStart());
             if (structuralVariantAlleleIsSupported(vt._1().getStructuralVariantAllele())) {
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates ");
                 final List<Haplotype> haplotypes = new ArrayList<>(2);
@@ -163,6 +161,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 final TemplateHaplotypeScoreTable table = new TemplateHaplotypeScoreTable(vt._2(), haplotypes);
                 calculator.calculate(table);
                 table.dropUninformativeTemplates();
+                System.err.println("table.0 is " + Arrays.toString(table.getRow(0)));
+                System.err.println("table.1 is " + Arrays.toString(table.getRow(1)));
+                System.err.println("table.n is " + Arrays.toString(table.templates().stream().map(Template::name).toArray()));
                 final GenotypeLikelihoods likelihoods = table.calculateGenotypeLikelihoods(2);
                 System.err.println("likelihoods = " + likelihoods.getAsString());
             } else {

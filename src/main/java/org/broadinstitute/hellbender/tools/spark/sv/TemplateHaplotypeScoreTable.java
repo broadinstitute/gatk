@@ -130,13 +130,16 @@ public class TemplateHaplotypeScoreTable implements Serializable {
                 }).toArray();
         if (informativeIndexes.length == 0) {
             templates.clear();
+            templateIndex.clear();
             for (int j = 0; j < values.length; j++) {
                 values[j] = new double[0];
             }
         } else if (informativeIndexes.length != templates.size()) {
             final List<Template> newTemplates = new ArrayList<>(informativeIndexes.length);
+            templateIndex.clear();
             for (int i = 0; i < informativeIndexes.length; i++) {
                 newTemplates.add(templates.get(informativeIndexes[i]));
+                templateIndex.put(newTemplates.get(newTemplates.size() - 1).name(), newTemplates.size() - 1);
             }
             templates.clear();
             templates.addAll(newTemplates);
@@ -157,5 +160,9 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         matrix.setAll(values);
         final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, haplotypes.size());
         return calculator.genotypeLikelihoods(matrix);
+    }
+
+    public double[] getRow(final int i) {
+        return values[Utils.validIndex(i, values.length)].clone();
     }
 }
