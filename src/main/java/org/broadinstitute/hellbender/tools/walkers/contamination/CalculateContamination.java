@@ -22,8 +22,7 @@ import java.util.stream.IntStream;
  * Given pileup data from {@link GetPileupSummaries}, calculates the fraction of reads coming from cross-sample contamination.
  *
  * <p>
- *     The resulting contamination table is used with either {@link org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2}
- *     or {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
+ *     The resulting contamination table is used with {@link FilterMutectCalls}.
  * </p>
  *
  * <p>This tool and GetPileupSummaries together replace GATK3's ContEst.</p>
