@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.Serializable;
 
 /**
- * Keep only reads whose length is >= min value and <= max value.
+ * Keep only reads whose length is &ge; min value and &le; max value.
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class ReadLengthReadFilter extends ReadFilter implements Serializable{
