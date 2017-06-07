@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -26,6 +28,8 @@ import java.util.List;
 /**
  * Created by Takuto Sato on 12/28/16.
  */
+@DocumentedFeature
+@BetaFeature
 public class CountFalsePositives extends VariantWalker {
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,

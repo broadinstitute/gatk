@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -34,6 +35,7 @@ import java.util.stream.Stream;
                          "or runtime error messages if the process erred for some breakpoints.",
         oneLineSummary = "Perform SGA-based local assembly on fasta files on Spark.",
         programGroup   = StructuralVariationSparkProgramGroup.class)
+@BetaFeature
 public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

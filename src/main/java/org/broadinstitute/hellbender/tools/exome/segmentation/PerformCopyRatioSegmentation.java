@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -27,6 +28,7 @@ import java.util.List;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class PerformCopyRatioSegmentation extends CommandLineProgram {
     protected static final String INITIAL_NUM_STATES_LONG_NAME = "initialNumberOfStates";
     protected static final String INITIAL_NUM_STATES_SHORT_NAME = "initialNumStates";

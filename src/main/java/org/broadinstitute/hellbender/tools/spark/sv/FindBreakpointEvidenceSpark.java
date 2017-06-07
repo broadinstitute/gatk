@@ -10,6 +10,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
@@ -49,6 +50,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
         "  Assemble breakpoint regions with FermiLite, and align assembled contigs to reference.",
         oneLineSummary="Prepare local assemblies of putative genomic breakpoints for structural variant discovery.",
         programGroup=StructuralVariationSparkProgramGroup.class)
+@BetaFeature
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

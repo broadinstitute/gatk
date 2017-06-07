@@ -12,6 +12,7 @@ import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
@@ -34,6 +35,7 @@ import java.util.*;
 @CommandLineProgramProperties(summary="Find the set of high copy number kmers in a reference.",
         oneLineSummary="find ref kmers with high copy number",
         programGroup = StructuralVariationSparkProgramGroup.class)
+@BetaFeature
 public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     @VisibleForTesting static final int MAX_KMER_FREQ = 3;
