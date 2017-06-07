@@ -8,7 +8,6 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -134,12 +133,10 @@ public final class InsertSizeMetricsCollector
      * Finish the metrics collection by saving any results to a metrics file.
      * @param metricsFile a metricsFile where the collected metrics should be stored. May not be null.
      * @param inputName the name of the input, for optional inclusion in the metrics file. May not be null.
-     * @param authHolder Authentication info for this context.
      */
     public void finish(
             final MetricsFile<InsertSizeMetrics, Integer> metricsFile,
-            final String inputName,
-            final AuthHolder authHolder)
+            final String inputName)
     {
         Utils.nonNull(metricsFile);
 
@@ -155,12 +152,7 @@ public final class InsertSizeMetricsCollector
                     allReadsCollector.getTotalInserts()));
         }
         else {
-            if (null != authHolder) {
-                MetricsUtils.saveMetrics(metricsFile, inputArgs.output, authHolder);
-            }
-            else {
-                metricsFile.write(new File(inputArgs.output));
-            }
+            MetricsUtils.saveMetrics(metricsFile, inputArgs.output);
             if (inputArgs.producePlot) {
                 writeHistogramPDF(inputName);
             }

@@ -94,7 +94,7 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         rddParallelReads = rddParallelReads.repartition(2);
         isSpark.collectMetrics(rddParallelReads.filter(r -> rf.test(r)), samHeader);
 
-        isSpark.saveMetrics(fileName, null);
+        isSpark.saveMetrics(fileName);
 
         IntegrationTestSpec.assertEqualTextFiles(
                 outfile,

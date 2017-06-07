@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
@@ -78,8 +77,8 @@ public class InsertSizeMetricsCollectorSpark
     }
 
     @Override
-    public void saveMetrics(final String inputName, final AuthHolder authHolder) {
-        resultMetrics.finish(metricsFile, inputName, authHolder);
+    public void saveMetrics(final String inputName) {
+        resultMetrics.finish(metricsFile, inputName);
     }
 
 }

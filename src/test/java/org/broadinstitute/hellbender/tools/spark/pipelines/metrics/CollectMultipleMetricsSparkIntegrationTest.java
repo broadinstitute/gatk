@@ -5,7 +5,6 @@ import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetrics;
@@ -128,7 +127,7 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
             count = filteredReads.count();
         }
         @Override
-        public void saveMetrics(String inputBaseName, AuthHolder authHolder) {
+        public void saveMetrics(String inputBaseName) {
             //no-op
         }
     }

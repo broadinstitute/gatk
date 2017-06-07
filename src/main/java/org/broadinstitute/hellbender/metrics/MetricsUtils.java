@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.metrics;
 
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.metrics.MetricsFile;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
@@ -19,9 +18,8 @@ public final class MetricsUtils {
      * Write a {@link MetricsFile} to the given path, can be any destination supported by {@link BucketUtils#createFile(String)}
      * @param metricsFile a {@link MetricsFile} object to write to disk
      * @param metricsOutputPath the path (or uri) to write the metrics to
-     * @param authHolder authentication for remote paths, can be null if the path is not remote
      */
-    public static void saveMetrics(final MetricsFile<?, ?> metricsFile, String metricsOutputPath, AuthHolder authHolder) {
+    public static void saveMetrics(final MetricsFile<?, ?> metricsFile, String metricsOutputPath) {
         try(PrintWriter out = new PrintWriter(BucketUtils.createFile(metricsOutputPath))) {
             metricsFile.write(out);
         } catch (SAMException e ){

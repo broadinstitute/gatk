@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
@@ -83,7 +82,7 @@ import java.util.List;
  *         getReads().filter(filter),
  *         samFileHeader
  *     );
- *     collector.saveMetrics(getReadSourceName(), getAuthHolder());
+ *     collector.saveMetrics(getReadSourceName());
  *
  */
 public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> extends Serializable
@@ -146,7 +145,6 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
      * gives the collector to serialize the resulting metrics, usually
      * to a metrics file.
      * @param inputBaseName base name of the input file
-     * @param authHolder authentication info. May be null.
      */
-     void saveMetrics(String inputBaseName, AuthHolder authHolder);
+     void saveMetrics(String inputBaseName);
 }

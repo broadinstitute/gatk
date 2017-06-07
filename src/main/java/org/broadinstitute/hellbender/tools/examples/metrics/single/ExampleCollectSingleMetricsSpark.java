@@ -6,7 +6,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.MetricsCollectorSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -116,10 +115,9 @@ public final class ExampleCollectSingleMetricsSpark
     /**
      * Finish the collection process and save any results.
      * @param inputName The name of the input source for optional inclusion in the saved metrics file.
-     * @param authHolder authentication info. May be null.
      */
     @Override
-    protected void saveMetrics(final String inputName, final AuthHolder authHolder) {
-        exampleSingleCollector.saveMetrics(inputName, authHolder);
+    protected void saveMetrics(final String inputName) {
+        exampleSingleCollector.saveMetrics(inputName);
     }
 }

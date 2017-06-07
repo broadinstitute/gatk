@@ -208,7 +208,7 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
     }
 
     protected void saveResults(final MetricsFile<?, Integer> metrics, final SAMFileHeader readsHeader, final String inputFileName) {
-        MetricsUtils.saveMetrics(metrics, out, getAuthHolder());
+        MetricsUtils.saveMetrics(metrics, out);
 
         if (metrics.getAllHistograms().isEmpty()) {
             logger.warn("No valid bases found in input file.");

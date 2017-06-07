@@ -6,7 +6,6 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.*;
@@ -123,23 +122,16 @@ public final class ExampleMultiMetricsCollector
     /**
      * Finish the metrics collection and save any results to the metrics file.
      * @param metricsFile a metricsFile where the collected metrics should be stored. May not be null.
-     * @param authHolder Authentication info for this context.
      */
     public void saveMetrics(
-            final MetricsFile<ExampleMultiMetrics, Integer> metricsFile,
-            final AuthHolder authHolder)
+            final MetricsFile<ExampleMultiMetrics, Integer> metricsFile)
     {
         Utils.nonNull(metricsFile);
 
         finish();
 
         addAllLevelsToFile(metricsFile);
-        if (null != authHolder) {
-            MetricsUtils.saveMetrics(metricsFile, inputArgs.output, authHolder);
-        }
-        else {
-            metricsFile.write(new File(inputArgs.output));
-        }
+        MetricsUtils.saveMetrics(metricsFile, inputArgs.output);
     }
 
 }

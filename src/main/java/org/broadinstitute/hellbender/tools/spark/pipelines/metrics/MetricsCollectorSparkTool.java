@@ -8,7 +8,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.barclay.argparser.CommandLinePluginProvider;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
@@ -44,7 +43,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
     abstract protected SortOrder getExpectedSortOrder();
     abstract protected void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
     abstract protected void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);
-    abstract protected void saveMetrics(String inputBaseName, AuthHolder authHolder);
+    abstract protected void saveMetrics(String inputBaseName);
 
     /**
      * To be implemented by subclasses; return the fully initialized and populated
@@ -85,7 +84,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
         initialize(collectorArgs, getHeaderForReads(), getDefaultHeaders());
         final JavaRDD<GATKRead> filteredReads = getReads();
         collectMetrics(filteredReads, getHeaderForReads());
-        saveMetrics(getReadSourceName(), getAuthHolder());
+        saveMetrics(getReadSourceName());
     }
 
 }

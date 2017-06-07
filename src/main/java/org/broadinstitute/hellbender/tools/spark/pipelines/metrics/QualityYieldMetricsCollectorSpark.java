@@ -4,9 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.AuthHolder;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetrics;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetricsArgumentCollection;
@@ -62,11 +59,10 @@ public class QualityYieldMetricsCollectorSpark
     /**
      * Write out the results of the metrics collection
      * @param inputBaseName base name of the input file
-     * @param authHolder
      */
     @Override
-    public void saveMetrics(final String inputBaseName, final AuthHolder authHolder) {
-        MetricsUtils.saveMetrics(metricsFile, args.output, authHolder);
+    public void saveMetrics(final String inputBaseName) {
+        MetricsUtils.saveMetrics(metricsFile, args.output);
     }
 
 }
