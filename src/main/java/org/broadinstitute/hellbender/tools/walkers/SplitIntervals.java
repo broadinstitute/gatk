@@ -71,7 +71,7 @@ public class SplitIntervals extends GATKTool {
 
     @Argument(doc = "The directory into which to write the scattered interval sub-directories.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = true)
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File outputDir;
 
     @Override
