@@ -66,7 +66,7 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * To create a zip archive containing a complete standalone GATK distribution, including our launcher `gatk-launch`, both the local and spark jars, and this README, run
 
-        ./gradlew gatkZipDistribution
+        ./gradlew zipBundle
         
     * The resulting zip file will be in `build` with a name like `gatk-VERSION.zip`
 

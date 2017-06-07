@@ -408,11 +408,10 @@ task sparkJar(type: ShadowJar) {
     }
 }
 
-task gatkZipDistribution(type: Zip) {
+task zipBundle(type: Zip) {
     dependsOn shadowJar, sparkJar
 
     doFirst {
-        assert file("settings.gradle").exists()
         assert file("gatk-launch").exists()
         assert file("README.md").exists()
     }
@@ -423,7 +422,6 @@ task gatkZipDistribution(type: Zip) {
 
     from(shadowJar.archivePath)
     from(sparkJar.archivePath)
-    from("settings.gradle")
     from("gatk-launch")
     from("README.md")
     into(baseName)
