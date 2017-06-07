@@ -64,7 +64,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      */
     public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases) {
-        this(featureInputs, queryLookaheadBases, 0, 0, null);
+        this(featureInputs, queryLookaheadBases, 0, 0, null, false);
     }
 
     /**
@@ -76,8 +76,9 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      * @param reference reference to use when creating FeatureDataSources, may be null, only needed by GenomicsDB
+     * @param errorOnOutOfDateIndex If true, will raise a UserException when an out of date index file is detected.
      */
-    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference, final boolean errorOnOutOfDateIndex) {
         Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         Utils.validateArg(featureInputs != null && featureInputs.size() > 0, "FeatureInputs list must be non-null and non-empty");
 
@@ -94,8 +95,8 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
         // 2) Create and cache a merged header using versions of the individual headers from each data source that
         //    have been updated to include the actual dictionary returned from that data source
         //
-        validateAllSequenceDictionaries();
-        mergedHeader = getMergedHeader();
+        validateAllSequenceDictionaries(errorOnOutOfDateIndex);
+        mergedHeader = getMergedHeader(errorOnOutOfDateIndex);
         if ((mergedHeader == null || mergedHeader.getSequenceDictionary() == null) && featureInputs.size() > 1) {
             throw new UserException(
                     "No sequence dictionary was found for any input. When using multiple inputs, at least one input " +
@@ -226,11 +227,13 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
     /**
      * Update each individual header with the sequence dictionary returned by the corresponding data source;
      * then merge the resulting headers.
+     *
+     * @param errorOnOutOfDateIndex If true, will raise a UserException when an out of date index file is detected.
      */
-    private VCFHeader getMergedHeader() {
+    private VCFHeader getMergedHeader(final boolean errorOnOutOfDateIndex) {
         final List<VCFHeader> headers = featureDataSources
                 .stream()
-                .map(ds -> getHeaderWithUpdatedSequenceDictionary(ds))
+                .map(ds -> getHeaderWithUpdatedSequenceDictionary(ds, errorOnOutOfDateIndex))
                 .collect(Collectors.toList());
 
         // Now merge the headers using htsjdk, which is pretty promiscuous, and which only works properly
@@ -245,11 +248,14 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * that was  returned from the data source and used during validation (which may or may not be the
      * one that was embedded in the input file itself), so get the embedded one from the data source and
      * update it to include the actual sequence dictionary.
+     *
+     * @param errorOnOutOfDateIndex If true, will raise a UserException when an out of date index file is detected.
      */
-    private VCFHeader getHeaderWithUpdatedSequenceDictionary(final FeatureDataSource<VariantContext> dataSource) {
+    private VCFHeader getHeaderWithUpdatedSequenceDictionary(final FeatureDataSource<VariantContext> dataSource,
+                                                             final boolean errorOnOutOfDateIndex) {
         final VCFHeader header = (VCFHeader) dataSource.getHeader();
-        if (header.getSequenceDictionary() == null && dataSource.getSequenceDictionary() != null) {
-            header.setSequenceDictionary(dataSource.getSequenceDictionary());
+        if (header.getSequenceDictionary() == null && dataSource.getSequenceDictionary(errorOnOutOfDateIndex) != null) {
+            header.setSequenceDictionary(dataSource.getSequenceDictionary(errorOnOutOfDateIndex));
         }
         return header;
     }
@@ -259,12 +265,14 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * all of the dictionaries against each other here by ensuring that each contig found in any dictionary has the
      * same length (and md5, when a value is present for that contig in both dictionaries) in every other dictionary
      * in which its present.
+     *
+     * @param errorOnOutOfDateIndex If true, will raise a UserException when an out of date index file is detected.
      */
-    private void validateAllSequenceDictionaries() {
+    private void validateAllSequenceDictionaries(final boolean errorOnOutOfDateIndex) {
         final Map<String, FeatureDataSource<VariantContext>> contigMap = new HashMap<>();
         featureDataSources.forEach(
             ds -> {
-                final SAMSequenceDictionary dictionary = ds.getSequenceDictionary();
+                final SAMSequenceDictionary dictionary = ds.getSequenceDictionary(errorOnOutOfDateIndex);
                 if (dictionary == null) {
                     logger.warn(
                             "A sequence dictionary is required for each input when using multiple inputs, and one could" +
@@ -276,7 +284,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
                             final String sourceSequenceName = sourceSequence.getSequenceName();
                             final FeatureDataSource<VariantContext> previousDataSource = contigMap.getOrDefault(sourceSequenceName, null);
                             if (previousDataSource != null) {
-                                final SAMSequenceDictionary previousDictionary = previousDataSource.getSequenceDictionary();
+                                final SAMSequenceDictionary previousDictionary = previousDataSource.getSequenceDictionary(errorOnOutOfDateIndex);
                                 final SAMSequenceRecord previousSequence = previousDictionary.getSequence(sourceSequenceName);
                                 validateSequenceDictionaryRecords(
                                         ds.getName(), dictionary, sourceSequence,

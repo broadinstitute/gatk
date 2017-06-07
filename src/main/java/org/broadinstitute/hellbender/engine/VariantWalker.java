@@ -31,7 +31,7 @@ public abstract class VariantWalker extends VariantWalkerBase {
     private FeatureInput<VariantContext> drivingVariantsFeatureInput;
 
     @Override
-    protected SAMSequenceDictionary getSequenceDictionaryForDrivingVariants() { return drivingVariants.getSequenceDictionary(); }
+    protected SAMSequenceDictionary getSequenceDictionaryForDrivingVariants() { return drivingVariants.getSequenceDictionary(errorOnOutOfDateIndex); }
 
     @Override
     protected Spliterator<VariantContext> getSpliteratorForDrivingVariants() { return drivingVariants.spliterator(); }

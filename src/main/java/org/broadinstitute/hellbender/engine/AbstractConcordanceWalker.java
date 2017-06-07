@@ -69,7 +69,7 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
     @Override
     public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
         initializeTruthVariantsIfNecessary();
-        return truthVariants.getSequenceDictionary();
+        return truthVariants.getSequenceDictionary(errorOnOutOfDateIndex);
     }
 
     private void initializeTruthVariantsIfNecessary() {

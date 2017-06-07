@@ -359,8 +359,11 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Uses the dictionary from the VCF header (if present) for variant inputs,
      * otherwise attempts to create a sequence dictionary from the index file (if present).
      * Returns null if no dictionary could be created from either the header or the index.
+     *
+     * @oaram errorOnOutOfDateIndex If true, will raise a UserException when an out of date index file is detected.
+     *
      */
-    public SAMSequenceDictionary getSequenceDictionary() {
+    public SAMSequenceDictionary getSequenceDictionary(final boolean errorOnOutOfDateIndex) {
         SAMSequenceDictionary dict = null;
         final Object header = getHeader();
         if (header instanceof VCFHeader) {
@@ -370,7 +373,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             return dict;
         }
         if (hasIndex) {
-            return IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(featureInput.getFeaturePath()));
+            return IndexUtils.createSequenceDictionaryFromFeatureIndex(
+                    new File(featureInput.getFeaturePath()),
+                    errorOnOutOfDateIndex
+            );
         }
         return null;
     }

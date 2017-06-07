@@ -198,7 +198,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         toolInstance.bedListFeatureInput.add(new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bed_file.bed"));
 
         FeatureManager manager = new FeatureManager(toolInstance);
-        final List<SAMSequenceDictionary> dictionaries = manager.getAllSequenceDictionaries();
+        final List<SAMSequenceDictionary> dictionaries = manager.getAllSequenceDictionaries(false);
         Assert.assertEquals(dictionaries.size(), 2);
         Assert.assertEquals(dictionaries.stream().map(dict -> dict.size()).collect(Collectors.toSet()), Sets.newHashSet(1, 4));
     }

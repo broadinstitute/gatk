@@ -72,6 +72,10 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true, common = true)
     private boolean disableSequenceDictionaryValidation = false;
 
+    public static final String ERROR_ON_OUT_OF_DATE_INDEX = "errorOnOutOfDateIndex";
+    @Argument(fullName = ERROR_ON_OUT_OF_DATE_INDEX, shortName = ERROR_ON_OUT_OF_DATE_INDEX, doc = "Throw an error when the index file is detected to be out of date (older than the indexed file).", optional = true, common = true)
+    protected boolean errorOnOutOfDateIndex = false;
+
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
             doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
@@ -585,7 +589,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         final SAMSequenceDictionary refDict = hasReference() ? reference.getSequenceDictionary() : null;
         final SAMSequenceDictionary readDict = hasReads() ? reads.getSequenceDictionary() : null;
-        final List<SAMSequenceDictionary> featureDicts = hasFeatures() ? features.getAllSequenceDictionaries() : Collections.emptyList();
+        final List<SAMSequenceDictionary> featureDicts = hasFeatures() ? features.getAllSequenceDictionaries(errorOnOutOfDateIndex) : Collections.emptyList();
 
         // Check the master dictionary against the reference / reads / features
         if (masterSequenceDictionary != null) {

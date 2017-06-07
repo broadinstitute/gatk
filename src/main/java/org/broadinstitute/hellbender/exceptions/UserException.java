@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.exceptions;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
+import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -90,6 +91,26 @@ public class UserException extends RuntimeException {
 
         public CouldNotReadInputFile(String message) {
             super(message);
+        }
+    }
+
+    public static class OutOfDateIndex extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public OutOfDateIndex(String fileName, String indexCreationClassName) {
+            super( "Index file " + fileName + " is out of date (index older than input file). Use "
+                    + indexCreationClassName + " to make a new index."
+            );
+        }
+    }
+
+    public static class OutdatedIndexVersion extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public OutdatedIndexVersion(String fileName, String indexCreationClassName) {
+            super( "Index file " + fileName + " is out of date (old version). Use "
+                    + indexCreationClassName + " to make a new index."
+            );
         }
     }
 

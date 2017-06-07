@@ -64,7 +64,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     @Test
     public void testGetSequenceDictionary() {
         try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "CustomName")) {
-            final SAMSequenceDictionary dict = featureSource.getSequenceDictionary();
+            final SAMSequenceDictionary dict = featureSource.getSequenceDictionary(false);
             Assert.assertEquals(dict.size(), 4);
             Assert.assertEquals(dict.getSequences().stream().map(s->s.getSequenceName()).collect(Collectors.toList()), Arrays.asList("1", "2", "3", "4"));
         }
