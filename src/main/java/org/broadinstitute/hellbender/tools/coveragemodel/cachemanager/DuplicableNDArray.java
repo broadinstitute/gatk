@@ -30,22 +30,12 @@ public class DuplicableNDArray implements Duplicable {
 
     @Override
     public boolean hasValue() {
-        return value == null;
+        return value != null;
     }
 
+    @Override
     public INDArray value() {
         return value;
-    }
-
-    public static INDArray of(final Duplicable obj) {
-        if (obj == null) {
-            throw new NullPointerException("The input duplicable object is null.");
-        }
-        if (obj instanceof DuplicableNDArray) {
-            return ((DuplicableNDArray)obj).value();
-        } else {
-            throw new ClassCastException("Can not cast " + obj + " to an INDArray.");
-        }
     }
 
     @Override

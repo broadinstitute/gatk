@@ -27,4 +27,9 @@ public interface Duplicable {
      * @return boolean
      */
     boolean hasValue();
+
+    /**
+     * Returns the stored value
+     */
+    Object value();
 }
