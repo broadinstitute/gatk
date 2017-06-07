@@ -2,8 +2,11 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
+import htsjdk.tribble.FeatureReader;
+import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -12,10 +15,7 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
@@ -1749,6 +1749,50 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
                              true,
                              Options.INDEX_ON_THE_FLY);
         vcw.close();
+    }
+
+    // This test verifies that we can write valid .gz/.tbi pair using a .gz input file with a large header.
+    // Specifically, we want to make sure that index queries on the result return the first variants emitted into
+    // the file, and that we don't encounter https://github.com/broadinstitute/gatk/issues/2821 and/or
+    // https://github.com/broadinstitute/gatk/issues/2801.
+    @Test
+    public void testOnTheFlyTabixCreation() throws IOException {
+        final File inputGZIPFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/8_mutect2_sorted.vcf.gz");
+        final File outputGZIPFile = createTempFile("testOnTheFlyTabixCreation", ".vcf.gz");
+
+        long recordCount = 0;
+        try (final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(
+                 outputGZIPFile,
+                 null,
+                 false,
+                 Options.INDEX_ON_THE_FLY);
+            final FeatureReader<VariantContext> inputFileReader =
+                     AbstractFeatureReader.getFeatureReader(inputGZIPFile.getAbsolutePath(), new VCFCodec(), false))
+        {
+            vcfWriter.writeHeader((VCFHeader)inputFileReader.getHeader());
+            final Iterator<VariantContext> it = inputFileReader.iterator();
+            while (it.hasNext()) {
+                vcfWriter.add(it.next());
+                recordCount++;
+            }
+        }
+
+        // make sure we got a tabix index
+        final File tabixIndexFile = new File(outputGZIPFile.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
+        Assert.assertTrue(tabixIndexFile.exists());
+        Assert.assertTrue(tabixIndexFile.length() > 0);
+
+        // verify the index via query
+        final SimpleInterval queryInterval = new SimpleInterval("chr6:33414233-118314029");
+        try (final FeatureReader<VariantContext> outputFileReader = AbstractFeatureReader.getFeatureReader(
+                outputGZIPFile.getAbsolutePath(),
+                new VCFCodec(),
+                true)) // require index
+        {
+            final long actualCount = outputFileReader.query(
+                    queryInterval.getContig(), queryInterval.getStart(), queryInterval.getEnd()).stream().count();
+            Assert.assertEquals(actualCount, recordCount);
+        }
     }
 
     private void writeHeader(final VariantContextWriter writer) {
