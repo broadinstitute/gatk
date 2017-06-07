@@ -1121,4 +1121,11 @@ public final class Utils {
     public static String getDateTimeForDisplay(final ZonedDateTime dateTime) {
         return dateTime.format(longDateTimeFormatter);
     }
+
+    /**
+     * A hack to ensure that numbers are always formatted in the US style.
+     */
+    public static void forceJVMLocaleToUSEnglish() {
+        Locale.setDefault(Locale.US);
+    }
 }

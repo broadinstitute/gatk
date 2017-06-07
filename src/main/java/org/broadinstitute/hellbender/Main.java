@@ -115,6 +115,15 @@ public class Main {
      * @return the result of running  {program} with the given args, possibly null
      */
     protected static Object runCommandLineProgram(CommandLineProgram program, String[] rawArgs) {
+
+        /**
+         * The very first thing that any GATK application does is forces the JVM locale into US English, so that we don't have
+         * to think about number formatting issues.
+         *
+         * Placing the call here so that it is enabled for integration tests as well.
+         */
+        Utils.forceJVMLocaleToUSEnglish();
+
         if (null == program) return null; // no program found!  This will happen if help was specified with no other arguments
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
