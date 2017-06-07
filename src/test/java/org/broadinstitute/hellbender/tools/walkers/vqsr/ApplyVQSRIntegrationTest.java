@@ -1,8 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.FeatureReader;
+import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
@@ -11,6 +16,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * These tests are scaled down versions of GATK3 tests (the reduction coming from smaller query intervals),
@@ -147,6 +153,60 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                 base,
                 Arrays.asList(getToolTestDataDir() + "expected/applyIndelAlleleSpecificResult.vcf"));
         spec.executeTest("testApplyRecalibrationAlleleSpecificINDELmode", this);
+    }
+
+    // This test verifies that we can write valid .gz/.tbi pair using a .gz input file with a large header.
+    // Specifically, we want to make sure that index queries on the result return the first variants emitted into
+    // the file, and that we don't encounter https://github.com/broadinstitute/gatk/issues/2821 and/or
+    // https://github.com/broadinstitute/gatk/issues/2801.
+    //
+    // The input file used was constructed as follows:
+    //
+    //  1) take the "VQSR.AStest.postSNPinput.vcf input file used in testApplyRecalibrationAlleleSpecificINDELmode above
+    //  2) Replace all of the contig header lines with header lines from hg38
+    //  3) Rename the contig "chr3" to "3" in the header, so it will match the variants in the input file
+    //  4) Convert to GZIP/.tbi, since we need to query on input
+    //
+    @Test
+    public void testApplyRecalibrationAlleleSpecificINDELmodeGZIPIndex() throws IOException {
+        final File tempGZIPOut = createTempFile("testApplyRecalibrationAlleleSpecificINDELmodeGZIP", ".vcf.gz");
+        final File expectedFile = new File(getToolTestDataDir(), "expected/applyIndelAlleleSpecificResult.vcf");
+        final SimpleInterval queryInterval = new SimpleInterval("3:113005755-195507036");
+
+        // The input file is the same file as used in testApplyRecalibrationAlleleSpecificINDELmode, except that the
+        // hg38 sequence dictionary has been transplanted into the header (the header itself has been modified so that
+        // contig "chr3" is renamed to "3" to match the variants in this file), and the file is a .gz.
+        final String base =
+                " -L " +  queryInterval.toString() +
+                        " -mode INDEL -AS" +
+                        " -ts_filter_level 99.3" +
+                        " --variant " + getToolTestDataDir() + "VQSR.AStest.postSNPinput.HACKEDhg38header.vcf.gz" +
+                        " --output " + tempGZIPOut.getAbsolutePath() +
+                        " -tranchesFile " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
+                        " -recalFile " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf" +
+                        " --addOutputVCFCommandLine false";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(base, Collections.emptyList());
+        spec.executeTest("testApplyRecalibrationAlleleSpecificINDELmodeGZIP", this);
+
+        // make sure we got a tabix index
+        final File tabixIndexFile = new File(tempGZIPOut.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
+        Assert.assertTrue(tabixIndexFile.exists());
+        Assert.assertTrue(tabixIndexFile.length() > 0);
+
+        // Now verify that the resulting index is valid by querying the same interval used above to run ApplyVQSR.
+        // This should return all the variants in the file. Compare that with the number of records returned by (a
+        // non-query) iterator that return all variants in the expected results file.
+        try (final FeatureReader<VariantContext> expectedFileReader =
+                     AbstractFeatureReader.getFeatureReader(expectedFile.getAbsolutePath(), new VCFCodec(), false);
+                final FeatureReader<VariantContext> outputFileReader =
+                     AbstractFeatureReader.getFeatureReader(tempGZIPOut.getAbsolutePath(), new VCFCodec())) {
+            // results from the query should match the expected file results
+            final long actualCount = outputFileReader.query(
+                    queryInterval.getContig(), queryInterval.getStart(), queryInterval.getEnd()).stream().count();
+            final long expectedCount = expectedFileReader.iterator().stream().count();
+            Assert.assertEquals(actualCount, expectedCount);
+        }
     }
 
 }
