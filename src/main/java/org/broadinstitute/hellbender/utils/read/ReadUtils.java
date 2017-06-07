@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -25,8 +26,7 @@ import java.util.*;
  */
 public final class ReadUtils {
 
-    private ReadUtils() {
-    }
+    private ReadUtils() { }
 
     private static final Logger logger = LogManager.getLogger();
 
@@ -34,7 +34,7 @@ public final class ReadUtils {
      * The default quality score for an insertion or deletion, if
      * none are provided for this read.
      */
-    public static final byte DEFAULT_INSERTION_DELETION_QUAL = (byte)45;
+    public static final byte DEFAULT_INSERTION_DELETION_QUAL = (byte) 45;
 
     // Base Quality Score Recalibrator specific attribute tags
     public static final String BQSR_BASE_INSERTION_QUALITIES = "BI";                // base qualities for insertions
@@ -55,11 +55,8 @@ public final class ReadUtils {
      * Really, SAMRecord should provide a copy constructor or a factory method.
      */
     public static SAMRecord cloneSAMRecord(final SAMRecord originalRead) {
-        if (originalRead == null) {
-            return null;
-        }
         try {
-            return (SAMRecord)originalRead.clone();
+            return originalRead == null ? null : (SAMRecord)originalRead.clone();
         } catch (final CloneNotSupportedException e) {
             throw new IllegalStateException(e);
         }
@@ -71,8 +68,7 @@ public final class ReadUtils {
      */
 
     public static SAMFileHeader cloneSAMFileHeader( final SAMFileHeader header ) {
-        if (header == null) return null;
-        return header.clone();
+        return header == null ? null : header.clone();
     }
 
     /**
@@ -115,10 +111,7 @@ public final class ReadUtils {
      */
     public static String getBaseQualityString( final GATKRead read ) {
         Utils.nonNull(read);
-        if ( Arrays.equals(SAMRecord.NULL_QUALS, read.getBaseQualities()) ) {
-            return SAMRecord.NULL_QUALS_STRING;
-        }
-        return SAMUtils.phredToFastq(read.getBaseQualities());
+        return Arrays.equals(SAMRecord.NULL_QUALS, read.getBaseQualities()) ? SAMRecord.NULL_QUALS_STRING : SAMUtils.phredToFastq(read.getBaseQualities());
     }
 
     /**
@@ -129,12 +122,8 @@ public final class ReadUtils {
     public static void setBaseQualityString(final GATKRead read, final String baseQualityString) {
         Utils.nonNull(read);
         Utils.nonNull(baseQualityString);
-
-        if ( SAMRecord.NULL_QUALS_STRING.equals(baseQualityString) ) {
-            read.setBaseQualities(SAMRecord.NULL_QUALS);
-        } else {
-            read.setBaseQualities(SAMUtils.fastqToPhred(baseQualityString));
-        }
+        final byte[] baseQualities = SAMRecord.NULL_QUALS_STRING.equals(baseQualityString) ? SAMRecord.NULL_QUALS : SAMUtils.fastqToPhred(baseQualityString);
+        read.setBaseQualities(baseQualities);
     }
 
     /**
@@ -147,11 +136,7 @@ public final class ReadUtils {
      *         or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read is unmapped.
      */
     public static int getReferenceIndex( final GATKRead read, final SAMFileHeader header ) {
-        if ( read.isUnmapped() ) {
-            return SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX;
-        }
-
-        return header.getSequenceIndex(read.getContig());
+        return read.isUnmapped() ? SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX : header.getSequenceIndex(read.getContig());
     }
 
     /**
@@ -201,11 +186,7 @@ public final class ReadUtils {
      *         or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read's mate is unmapped.
      */
     public static int getMateReferenceIndex( final GATKRead read, final SAMFileHeader header ) {
-        if ( read.mateIsUnmapped() ) {
-            return SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX;
-        }
-
-        return header.getSequenceIndex(read.getMateContig());
+        return read.mateIsUnmapped() ? SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX : header.getSequenceIndex(read.getMateContig());
     }
 
     /**
@@ -316,13 +297,8 @@ public final class ReadUtils {
      * @throws IllegalArgumentException if the attribute name is illegal according to the SAM spec.
      */
     public static void assertAttributeNameIsLegal( final String attributeName ) {
-        if ( attributeName == null ||
-             attributeName.length() != 2 ||
-             ! Character.isLetter(attributeName.charAt(0)) ||
-             ! Character.isLetterOrDigit(attributeName.charAt(1)) ) {
-
-            throw new IllegalArgumentException("Read attribute " + attributeName + " invalid: attribute names must be non-null two-character Strings matching the pattern /[A-Za-z][A-Za-z0-9]/");
-        }
+        Utils.validateArg(attributeName != null && attributeName.length() == 2 && Character.isLetter(attributeName.charAt(0)) && Character.isLetterOrDigit(attributeName.charAt(1)),
+                () -> "Read attribute " + attributeName + " invalid: attribute names must be non-null two-character Strings matching the pattern /[A-Za-z][A-Za-z0-9]/");
     }
 
     /**
@@ -442,38 +418,18 @@ public final class ReadUtils {
      * @return true if it can, false otherwise
      */
     public static boolean hasWellDefinedFragmentSize(final GATKRead read) {
-        if ( read.getFragmentLength() == 0 )
-            // no adaptors in reads with mates in another chromosome or unmapped pairs
-        {
-            return false;
-	    }
-        if ( ! read.isPaired() )
-            // only reads that are paired can be adaptor trimmed
-        {
-            return false;
-	}
-        if ( read.isUnmapped() || read.mateIsUnmapped() )
-            // only reads when both reads are mapped can be trimmed
-        {
-            return false;
-	}
-//        if ( ! read.isProperlyPaired() )
-//            // note this flag isn't always set properly in BAMs, can will stop us from eliminating some proper pairs
-//            // reads that aren't part of a proper pair (i.e., have strange alignments) can't be trimmed
-//            return false;
-        if ( read.isReverseStrand() == read.mateIsReverseStrand() )
-            // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
-	    {
+        // we require a pair of reads mapped to the same chromosome on opposite strands
+        // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
+        if ( read.getFragmentLength() == 0 || !read.isPaired() || read.isUnmapped() || read.mateIsUnmapped()
+                || read.isReverseStrand() == read.mateIsReverseStrand()) {
             return false;
         }
 
-        if ( read.isReverseStrand() ) {
-            // we're on the negative strand, so our read runs right to left
-            return read.getEnd() > read.getMateStart();
-        } else {
-            // we're on the positive strand, so our mate should be to our right (his start + insert size should be past our start)
-            return read.getStart() <= read.getMateStart() + read.getFragmentLength();
-        }
+        // on the reverse strand our read runs right to left
+        // on the positive strand its mate should be to its right (its start + insert size should be past our start)
+        return read.isReverseStrand() ? (read.getEnd() > read.getMateStart())
+                : (read.getStart() <= read.getMateStart() + read.getFragmentLength());
+
     }
 
     /**
@@ -486,11 +442,7 @@ public final class ReadUtils {
      */
     public static int getFirstInsertionOffset(final GATKRead read) {
         final CigarElement e = read.getCigarElement(0);
-        if ( e.getOperator() == CigarOperator.I ) {
-            return e.getLength();
-        } else {
-            return 0;
-        }
+        return e.getOperator() == CigarOperator.I ? e.getLength() : 0;
     }
 
     /**
@@ -504,11 +456,7 @@ public final class ReadUtils {
     public static int getLastInsertionOffset(final GATKRead read) {
         final List<CigarElement> cigarElements = read.getCigarElements();
         final CigarElement e = cigarElements.get(cigarElements.size() - 1);
-        if ( e.getOperator() == CigarOperator.I ) {
-            return e.getLength();
-        } else {
-            return 0;
-        }
+        return e.getOperator() == CigarOperator.I ? e.getLength() : 0;
     }
 
     /**
@@ -558,10 +506,9 @@ public final class ReadUtils {
                 break;
             }
         }
-        if( !foundAlignedBase ) { // for example 64H14S, the soft end is actually the same as the alignment end
-            softEnd = read.getEnd();
-        }
-        return softEnd;
+
+        // for example 64H14S, the soft end is actually the same as the alignment end
+        return foundAlignedBase ? softEnd : read.getEnd();
     }
 
     public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {
@@ -652,12 +599,7 @@ public final class ReadUtils {
             int shift = 0;
 
             if (cigarElement.getOperator().consumesReferenceBases() || cigarElement.getOperator() == CigarOperator.SOFT_CLIP) {
-                if (refBases + cigarElement.getLength() < goal) {
-                    shift = cigarElement.getLength();
-                } else {
-                    shift = goal - refBases;
-                }
-
+                shift = refBases + cigarElement.getLength() < goal ? cigarElement.getLength() : goal - refBases;
                 refBases += shift;
             }
             goalReached = refBases == goal;
@@ -808,13 +750,8 @@ public final class ReadUtils {
      * @return      non-negative integer
      */
     public static int getMaxReadLength( final List<GATKRead> reads ) {
-        if( reads == null ) { throw new IllegalArgumentException("Attempting to check a null list of reads."); }
-
-        int maxReadLength = 0;
-        for( final GATKRead read : reads ) {
-            maxReadLength = Math.max(maxReadLength, read.getLength());
-        }
-        return maxReadLength;
+        Utils.nonNull(reads, "Attempting to check a null list of reads.");
+        return reads.stream().mapToInt(GATKRead::getLength).max().orElseGet(() -> 0);
     }
 
     /**
@@ -935,17 +872,12 @@ public final class ReadUtils {
      * Check to ensure that the alignment makes sense based on the contents of the header.
      * @param header The SAM file header.
      * @param read The read to verify.
-     * @return true if alignment agrees with header, false otherwise.
+     * @return false if read is mapped to a nonexistent contig or past end of contig, true otherwise
      */
     public static boolean alignmentAgreesWithHeader(final SAMFileHeader header, final GATKRead read) {
         final int referenceIndex = getReferenceIndex(read, header);
-        // Read is aligned to nonexistent contig
-        if( ! read.isUnmapped() && referenceIndex == SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX ) {
-            return false;
-        }
-        final SAMSequenceRecord contigHeader = header.getSequence(referenceIndex);
-        // Read is aligned to a point after the end of the contig
-        return read.isUnmapped() || read.getStart() <= contigHeader.getSequenceLength();
+        return read.isUnmapped() || (referenceIndex != SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX
+                && read.getStart() <= header.getSequence(referenceIndex).getSequenceLength());
     }
 
     /**
@@ -966,8 +898,7 @@ public final class ReadUtils {
             final SAMFileHeader header,
             final boolean preSorted,
             boolean createOutputBamIndex,
-            final boolean createMD5)
-    {
+            final boolean createMD5) {
         Utils.nonNull(outputFile);
         Utils.nonNull(header);
 
@@ -997,8 +928,7 @@ public final class ReadUtils {
             final File outputFile,
             final File referenceFile,
             final SAMFileHeader header,
-            final boolean preSorted)
-    {
+            final boolean preSorted) {
         Utils.nonNull(outputFile);
         Utils.nonNull(header);
 
@@ -1020,8 +950,7 @@ public final class ReadUtils {
         try (final FileInputStream fileStream = new FileInputStream(putativeCRAMFile);
              final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
             return SamStreams.isCRAMFile(bis);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new UserException.CouldNotReadInputFile(e.getMessage());
         }
     }
@@ -1062,17 +991,10 @@ public final class ReadUtils {
      */
     public static Set<String> getSamplesFromHeader( final SAMFileHeader header ) {
         // get all of the unique sample names
-        final Set<String> samples = new TreeSet<>();
-        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-
-        for ( SAMReadGroupRecord readGroup : readGroups ) {
-            final String sample = readGroup.getSample();
-            if ( sample != null ) {
-                samples.add(sample);
-            }
-        }
-
-        return samples;
+        return header.getReadGroups().stream()
+                .map(SAMReadGroupRecord::getSample)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(() -> new TreeSet<>()));
     }
 
     /**
@@ -1094,29 +1016,18 @@ public final class ReadUtils {
             final SAMFileHeader.SortOrder actualSortOrder,
             final SAMFileHeader.SortOrder expectedSortOrder,
             final boolean assumeSorted,
-            final String sourceName)
-    {
-        boolean isValid = true;
-        if (expectedSortOrder != SAMFileHeader.SortOrder.unsorted &&
-                actualSortOrder != expectedSortOrder) {
-            final String message = String.format("Input \"%s\" has sort order \"%s\" but \"%s\" is required.",
-                    sourceName,
-                    actualSortOrder.name(),
-                    expectedSortOrder.name());
-            isValid = false;
-            if (assumeSorted) {
-                logger.warn(message + " Assuming it's properly sorted anyway.");
-            }
-            else {
-                throw new UserException(
-                        message +
-                                "If you believe the file to be sorted correctly, use " +
-                                StandardArgumentDefinitions.ASSUME_SORTED_LONG_NAME +
-                                "=true"
-                );
-            }
+            final String sourceName) {
+        if (expectedSortOrder == SAMFileHeader.SortOrder.unsorted || actualSortOrder == expectedSortOrder) {
+            return true;
         }
 
-        return isValid;
+        final String message = String.format("Input %s has sort order %s but %s is required.",
+                sourceName, actualSortOrder.name(), expectedSortOrder.name());
+        if (assumeSorted) {
+            logger.warn(message + " Assuming it's properly sorted anyway.");
+        } else {
+            throw new UserException(String.format("%s If you believe the file to be sorted correctly, use %s = true", message, StandardArgumentDefinitions.ASSUME_SORTED_LONG_NAME));
+        }
+        return false;
     }
 }
