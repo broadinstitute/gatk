@@ -21,6 +21,7 @@ This project is in an alpha development stage and is not yet ready for general u
 If you are looking for the current version of GATK to use in production work, please see the [GATK website](http://www.broadinstitute.org/gatk), where you can download a precompiled executable, read documentation, ask questions and receive technical support.
 
 If you are looking for the codebase of the current production version of GATK, please see either the [GATK development framework repository](https://github.com/broadgsa/gatk/) or the [full GATK tools repository](https://github.com/broadgsa/gatk-protected/).
+(Developers) git lfs 1.1.0 (or greater) is needed for testing GATK-Protected builds.  It is needed to download large files for the complete test suite. Run ``git lfs install`` after downloading, followed by ``git lfs pull`` in ``src/test/resources/large`` to download the large files. The download is ~500 MB.
 
 ## Requirements
 * Java 8
