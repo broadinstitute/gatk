@@ -25,17 +25,7 @@ import re
 
 script = os.path.dirname(os.path.realpath(__file__))
 
-def readProperties(propertiesFile):
-    properties = {}
-    with open(propertiesFile) as f:
-        lines = f.readlines()
-        for line in lines:
-            (k,v) = [value.strip() for value in line.split("=")]
-            properties[k] = v.replace('"','')
-    return properties
-
-properties = readProperties(script + "/settings.gradle")
-projectName = properties["rootProject.name"]
+projectName = "gatk"
 
 BUILD_LOCATION = script +"/build/install/" + projectName + "/bin/"
 GATK_RUN_SCRIPT = BUILD_LOCATION + projectName
