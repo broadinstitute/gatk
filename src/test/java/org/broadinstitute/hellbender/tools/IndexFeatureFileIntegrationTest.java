@@ -19,7 +19,7 @@ import java.util.List;
 
 public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTest {
 
-    @Test
+    @Test(enabled = false)
     public void testVCFIndex() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
         final File outName = createTempFile("test_variants_for_index.vcf", ".idx");
@@ -39,7 +39,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     }
 
 
-    @Test
+    @Test(enabled = false)
     public void testVCFIndex_inferredName() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
 
@@ -57,7 +57,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
-    @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
+    @Test(enabled = false, expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testIndexNonFeatureFileGZ() {
         final File ORIG_FILE = getTestFile("test_nonFeature_file.txt.blockgz.gz"); //made by bgzip
         final File outName = createTempFile("test_nonFeature_file.txt.blockgz.gz.", ".tbi");
@@ -69,7 +69,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
+    @Test(enabled=false, expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testIndexBCFFileGZ() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.bcf.blockgz.gz");  //made by bgzip
         final File outName = createTempFile("test_variants_for_index.bcf.blockgz.gz.", ".tbi");
@@ -81,7 +81,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(enabled=false, expectedExceptions = UserException.class)
     public void testVCFGZIndex_tabixRequires_tbi_name() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
         final File outName = createTempFile("test_variants_for_index.blockgz.gz.", ".idx");
@@ -93,7 +93,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         this.runCommandLine(args);
     }
 
-    @Test
+    @Test(enabled=false)
     public void testVCFGZIndex_tabix() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
         final File outName = createTempFile("test_variants_for_index.blockgz.gz.", TabixUtils.STANDARD_INDEX_EXTENSION);
@@ -112,7 +112,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
-    @Test
+    @Test(enabled=false)
     public void testVCFGZIndex_inferredName(){
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
         final String[] args = {
@@ -131,7 +131,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
-    @Test(expectedExceptions = UserException.MalformedFile.class)
+    @Test(enabled=false, expectedExceptions = UserException.MalformedFile.class)
     public void testVCFGZIPIndex() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
@@ -143,7 +143,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.MalformedFile.class)
+    @Test(enabled=false, expectedExceptions = UserException.MalformedFile.class)
     public void testVCFGZIPIndex_inferredName() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
@@ -153,7 +153,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test
+    @Test(enabled=false)
     public void testBCFIndex() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.bcf");
         final File outName = createTempFile("test_variants_for_index.bcf.", ".idx");
@@ -171,7 +171,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1"));
     }
 
-    @Test(expectedExceptions = TribbleException.InvalidHeader.class)
+    @Test(enabled=false, expectedExceptions = TribbleException.InvalidHeader.class)
     public void testUncompressedBCF2_2Index() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.BCF22uncompressed.bcf");
         final File outName = createTempFile("test_variants_for_index.BCF22uncompressed.bcf", ".idx");
@@ -183,7 +183,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
+    @Test(enabled=false, expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testCompressedBCF2_2Index() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.BCF22compressed.bcf.blockgz.gz"); //made by bgzip
         final File outName = createTempFile("test_variants_for_index.BCF22compressed.bcf.blockgz.gz", ".idx");
@@ -195,7 +195,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test
+    @Test(enabled=false)
     public void testGVCFTreatedAsVCFIndex() {
         // Here we're testing what happens when we have a GVCF that is treated by the tool as a
         // regular VCF due to the lack of a .g.vcf extension
@@ -215,7 +215,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1"));
     }
 
-    @Test
+    @Test(enabled=false)
     public void testGVCFIndex() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.g.vcf");
         final File outName = createTempFile("test_variants_for_index.g.vcf.", ".idx");
@@ -264,7 +264,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "4"));
     }
 
-    @Test
+    @Test(enabled=false)
     public void testBedIndex() {
         testBedIndex(getTestFile("test_bed_for_index.bed"), LinearIndex.class);
     }
@@ -277,7 +277,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         testBedIndex(getTestFile("test_bed_for_index.bed.gz"), TabixIndex.class);
     }
 
-    @Test
+    @Test(enabled=false)
     public void testSAMPileupGZIndex() {
         final File ORIG_FILE = getTestFile("test_sampileup_for_index.pileup.gz"); // made with bgzip
         final File outName = createTempFile(ORIG_FILE.getName(), TabixUtils.STANDARD_INDEX_EXTENSION);
@@ -304,7 +304,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "3", "4"));
     }
 
-    @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
+    @Test(enabled=false, expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testVCFIndex_missingFile() {
         final File ORIG_FILE = getTestFile("missing_file.vcf");
         final File outName = createTempFile("test_variants_for_index.vcf.", ".idx");
@@ -316,7 +316,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.CouldNotCreateOutputFile.class)
+    @Test(enabled=false, expectedExceptions = UserException.CouldNotCreateOutputFile.class)
     public void testVCFIndex_cannotWrite() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
         final File tempDir = createTempDir("fred");
