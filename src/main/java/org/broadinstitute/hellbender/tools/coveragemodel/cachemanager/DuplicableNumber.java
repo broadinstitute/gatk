@@ -24,19 +24,12 @@ public class DuplicableNumber<NUMBER extends Number> implements Duplicable {
 
     @Override
     public boolean hasValue() {
-        return value == null;
+        return value != null;
     }
 
+    @Override
     public NUMBER value() {
         return value;
-    }
-
-    public static double of(final Duplicable obj) {
-        if (obj instanceof DuplicableNumber) {
-            return ((DuplicableNumber)obj).value().doubleValue();
-        } else {
-            throw new ClassCastException("Can not cast " + obj + " to a number.");
-        }
     }
 
     @Override

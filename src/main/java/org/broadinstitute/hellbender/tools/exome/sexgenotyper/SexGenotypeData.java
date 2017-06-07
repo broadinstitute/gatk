@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -32,7 +33,7 @@ public final class SexGenotypeData implements Serializable {
     /**
      * Public constructor.
      *
-     * @param sampleName string identifer of the sample
+     * @param sampleName string identifier of the sample
      * @param sexGenotype string identifier for the sex genotype of the sample
      * @param sexGenotypesList list of all sex genotypes
      * @param logLikelihoods log likelihood of all sex genotypes in the same order as {@param sexGenotypesList}
@@ -123,5 +124,19 @@ public final class SexGenotypeData implements Serializable {
     @Override
     public int hashCode() {
         return 31 * sampleName.hashCode() + sexGenotype.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        final String basic =  String.format("Sample name: %s, Sex genotype: %s", sampleName, sexGenotype);
+        final String extended;
+        if (hasExtendedGenotypingInfo) {
+            extended = ", Log likelihoods: " + logLikelihoodMap.entrySet().stream()
+                    .map(entry -> String.format("(%s, %e)", entry.getKey(), entry.getValue()))
+                    .collect(Collectors.joining(", "));
+        } else {
+            extended = "";
+        }
+        return basic + extended;
     }
 }
