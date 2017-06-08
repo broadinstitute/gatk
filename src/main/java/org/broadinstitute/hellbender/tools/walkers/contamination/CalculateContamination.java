@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
@@ -18,20 +19,34 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Given pileup data from {@link GetPileupSummaries} calculate the fraction of reads coming from exogenous human DNA.
+ * Given pileup data from {@link GetPileupSummaries}, calculates the fraction of reads coming from cross-sample contamination.
  *
- * This tool is run as follows:
+ * <p>
+ *     The resulting contamination table is used with {@link FilterMutectCalls}.
+ * </p>
  *
- * java -jar gatk.jar GetPileupSummaries -V ExAC.vcf -V thousand_genomes.vcf -I input.bam -O pileups.table
- * java -jar gatk.jar CalculateContamination -I pileups.table -O contamination.table
+ * <p>This tool and GetPileupSummaries together replace GATK3's ContEst.</p>
  *
- * Created by David Benjamin on 2/7/17.
+ * <p>
+ *     The resulting table provides the fraction contamination, one line per sample, e.g. SampleID--TAB--Contamination.
+ *     The file has no header.
+ * </p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * java -Xmx4g -jar $gatk_jar CalculateContamination \
+ *   -I pileups.table \
+ *   -O contamination.table
+ *
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Calculate contamination",
         oneLineSummary = "Calculate contamination",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class CalculateContamination extends CommandLineProgram {
 
     private static final Logger logger = LogManager.getLogger(CalculateContamination.class);
