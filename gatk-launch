@@ -426,12 +426,12 @@ def convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs):
             arg = sparkArgs[i]
             if arg == "--conf":
                 i += 1
-                property = args[i]
+                property = sparkArgs[i]
                 if "spark.yarn.dist.files" in property:  #intercept yarn files and pass it through --files instead
                     files = property.split("=")[1]
                     filesToAdd = filesToAdd + files.split(",")
                 else:
-                    properties.append(args[i])
+                    properties.append(sparkArgs[i])
 
             elif not replacements.get(arg) is None:
                 i += 1
