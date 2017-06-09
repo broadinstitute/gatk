@@ -183,21 +183,31 @@ public class CigarReadFilter extends ReadFilter {
         // Check for trivial cases here:
         if ( description.compareTo("*") == 0 )
         {
-            CigarMatchElement e = new CigarMatchElement();
+            final CigarMatchElement e = new CigarMatchElement();
             e.setUnavailable(true);
             matchElementList.add(e);
         }
         else
         {
             // Iterate through the string and parse out each match element
-            String buf;
-            Matcher matcher = nextCigarMatchElementPattern.matcher(description);
-
-            for ( int i = 0; matcher.groupCount()
+            final Matcher matcher = nextCigarMatchElementPattern.matcher(description);
+            while (matcher.find())
+            {
+                // Add a new element to our list based on the string match
+                matchElementList.add(createMatchElementFromMatchString(matcher.group()));
+            }
 
         }
 
         return matchElementList;
+    }
+
+    private CigarMatchElement createMatchElementFromMatchString(final String match) {
+        CigarMatchElement e = new CigarMatchElement();
+
+        // We scan through the 
+
+        return e;
     }
 
     /**
