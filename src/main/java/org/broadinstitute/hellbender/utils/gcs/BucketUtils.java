@@ -38,7 +38,7 @@ public final class BucketUtils {
     public static final String FILE_PREFIX = "file:";
 
     // if the channel errors out, re-open up to this many times
-    public static final int NIO_MAX_REOPENS = 3;
+    public static final int NIO_MAX_REOPENS = 20;
 
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
@@ -366,18 +366,18 @@ public final class BucketUtils {
     private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {
         return builder
             .setTransportOptions(HttpTransportOptions.newBuilder()
-                .setConnectTimeout(60000)
-                .setReadTimeout(60000)
+                .setConnectTimeout(120000)
+                .setReadTimeout(120000)
                 .build())
             .setRetrySettings(RetrySettings.newBuilder()
                 .setMaxAttempts(15)
-                .setMaxRetryDelay(Duration.ofMillis(30_000L))
-                .setTotalTimeout(Duration.ofMillis(180_000L))
-                .setInitialRetryDelay(Duration.ofMillis(500L))
+                .setMaxRetryDelay(Duration.ofMillis(256_000L))
+                .setTotalTimeout(Duration.ofMillis(4000_000L))
+                .setInitialRetryDelay(Duration.ofMillis(1000L))
                 .setRetryDelayMultiplier(2.0)
-                .setInitialRpcTimeout(Duration.ofMillis(120_000L))
+                .setInitialRpcTimeout(Duration.ofMillis(180_000L))
                 .setRpcTimeoutMultiplier(1.0)
-                .setMaxRpcTimeout(Duration.ofMillis(120_000L))
+                .setMaxRpcTimeout(Duration.ofMillis(180_000L))
                 .build());
     }
 
