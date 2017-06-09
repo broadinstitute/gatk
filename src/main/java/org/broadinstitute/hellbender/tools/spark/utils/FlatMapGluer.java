@@ -25,10 +25,7 @@ public class FlatMapGluer<I,O> implements Iterator<O> {
 
     public FlatMapGluer( final Function<I,Iterator<O>> flatMapFunc,
                          final Iterator<? extends I> inputIterator ) {
-        this.flatMapFunc = flatMapFunc;
-        this.inputIterator = inputIterator;
-        this.sentinel = null;
-        this.outputIterator = Collections.emptyIterator();
+        this(flatMapFunc, inputIterator, null);
     }
 
     public FlatMapGluer( final Function<I,Iterator<O>> flatMapFunc,

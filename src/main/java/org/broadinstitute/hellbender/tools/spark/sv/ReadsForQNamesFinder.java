@@ -11,28 +11,19 @@ import java.util.List;
 /**
  * Find <intervalId,list<fastqread>> pairs for interesting template names.
  */
-public final class ReadsForQNamesFinder {
-    private final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap;
-    private final int nIntervals;
-    private final int nReadsPerInterval;
-    private final boolean includeMappingLocation;
-    private final boolean dumpFASTQs;
+public final class ReadsForQNamesFinder implements Iterable<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> {
+    private final List<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> fastQRecords;
 
     public ReadsForQNamesFinder( final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
-                                 final int nIntervals, final boolean includeMappingLocation, final boolean dumpFASTQs ) {
-        this.qNamesMultiMap = qNamesMultiMap;
-        this.nIntervals = nIntervals;
-        this.nReadsPerInterval = 2 * qNamesMultiMap.size() / nIntervals;
-        this.includeMappingLocation = includeMappingLocation;
-        this.dumpFASTQs = dumpFASTQs;
-    }
-
-    public Iterable<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> call(final Iterator<GATKRead> readsItr ) {
+                                 final int nIntervals, final boolean includeMappingLocation, final boolean dumpFASTQs,
+                                 final Iterator<GATKRead> unfilteredReadItr, final SVReadFilter filter ) {
+        final int nReadsPerInterval = 2 * qNamesMultiMap.size() / nIntervals;
         @SuppressWarnings({ "unchecked", "rawtypes" })
         final List<SVFastqUtils.FastqRead>[] intervalReads = new List[nIntervals];
         int nPopulatedIntervals = 0;
-        while ( readsItr.hasNext() ) {
-            final GATKRead read = readsItr.next();
+        final Iterator<GATKRead> readItr = filter.applyFilter(unfilteredReadItr, SVReadFilter::isPrimaryLine);
+        while ( readItr.hasNext() ) {
+            final GATKRead read = readItr.next();
             final Iterator<QNameAndInterval> namesItr = qNamesMultiMap.findEach(read.getName());
             SVFastqUtils.FastqRead FastqRead = null;
             while ( namesItr.hasNext() ) {
@@ -49,13 +40,15 @@ public final class ReadsForQNamesFinder {
                 intervalReads[intervalId].add(FastqRead);
             }
         }
-        final List<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> fastQRecords = new ArrayList<>(nPopulatedIntervals);
+        fastQRecords = new ArrayList<>(nPopulatedIntervals);
         if ( nPopulatedIntervals > 0 ) {
             for ( int idx = 0; idx != nIntervals; ++idx ) {
                 final List<SVFastqUtils.FastqRead> readList = intervalReads[idx];
                 if ( readList != null ) fastQRecords.add(new Tuple2<>(idx, readList));
             }
         }
-        return fastQRecords;
     }
+
+    @Override
+    public Iterator<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> iterator() { return fastQRecords.iterator(); }
 }

@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -16,17 +17,22 @@ import java.util.function.Function;
 public final class QNamesForKmersFinder implements Function<GATKRead, Iterator<Tuple2<SVKmer, String>>> {
     private final int kSize;
     private final int maxDUSTScore;
+    private final SVReadFilter filter;
     private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap;
 
     public QNamesForKmersFinder( final int kSize, final int maxDUSTScore,
-                                 final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap ) {
+                                 final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
+                                 final SVReadFilter filter ) {
         this.kSize = kSize;
         this.maxDUSTScore = maxDUSTScore;
         this.kmerMultiMap = kmerMultiMap;
+        this.filter = filter;
     }
 
     @Override
     public Iterator<Tuple2<SVKmer, String>> apply( final GATKRead read ) {
+        if ( !filter.notJunk(read) || !filter.isPrimaryLine(read) ) return Collections.emptyIterator();
+
         final List<Tuple2<SVKmer, String>> results = new ArrayList<>();
         SVDUSTFilteredKmerizer.stream(read.getBases(), kSize, maxDUSTScore, new SVKmerLong())
                 .map(kmer -> kmer.canonical(kSize))
