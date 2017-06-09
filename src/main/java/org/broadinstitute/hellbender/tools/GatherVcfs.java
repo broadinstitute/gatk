@@ -298,8 +298,7 @@ public final class GatherVcfs extends CommandLineProgram {
      * (often the first block) and re-compress any data remaining in that block into a new block in the output file. Subsequent
      * blocks (excluding a terminator block if present) are copied directly from input to output.
      */
-    @VisibleForTesting
-    static void gatherWithBlockCopying(final List<Path> vcfs, final File output, int cloudPrefetchBuffer) {
+    private static void gatherWithBlockCopying(final List<Path> vcfs, final File output, final int cloudPrefetchBuffer) {
          try (final FileOutputStream out = new FileOutputStream(output)) {
             boolean isFirstFile = true;
 
