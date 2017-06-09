@@ -73,7 +73,7 @@ gcloud dataproc clusters create ${CLUSTER_NAME} \
     --image-version preview \
     --project ${PROJECT} \
     --initialization-actions ${INIT_ACTION} \
-    --initialization-action-timeout 60m
+    --initialization-action-timeout 10m
 
 MASTER_NODE="hdfs://""$CLUSTER_NAME""-m:8020"
 

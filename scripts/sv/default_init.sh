@@ -15,5 +15,5 @@ if [[ ! "${ROLE}" == 'Master' ]]; then
     if  [[ ! $REFLOC =~ .+/$ ]]; then
       REFLOC+="/"
     fi
-    mkdir -p /reference && gsutil -m cp "$REFLOC"*.img /reference/
+    mkdir -p /mnt/1/reference && gsutil -m cp "$REFLOC"*.img /mnt/1/reference/
 fi
