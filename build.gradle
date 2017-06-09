@@ -512,7 +512,7 @@ uploadArchives {
                 authentication(userName: project.findProperty("sonatypeUsername"), password: project.findProperty("sonatypePassword"))
             }
 
-            snapshotRepository(url: "https://artifactory.broadinstitute.org/artifactory/libs-snapshot-local/") {
+            snapshotRepository(url: "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/") {
                 authentication(userName: System.env.ARTIFACTORY_USERNAME, password: System.env.ARTIFACTORY_PASSWORD)
             }
 
