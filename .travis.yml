@@ -8,7 +8,7 @@ jdk:
 env:
   matrix:
   - TEST_TYPE=cloud
-  - TEST_TYPE=integration TEST_VERBOSITY=minimal
+  - TEST_TYPE=integration TEST_VERBOSITY=minimal UPLOAD=true
   - TEST_TYPE=unit TEST_VERBOSITY=minimal
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
@@ -122,9 +122,9 @@ script:
 
 after_success:
 - bash <(curl -s https://codecov.io/bash)
-- if [[ $TRAVIS_BRANCH == master && $TEST_TYPE == integration ]]; then ./gradlew uploadArchives; fi
+- if [[ $TRAVIS_BRANCH == master && $UPLOAD == true ]]; then ./gradlew uploadArchives; fi
 # if this is actually a commit to master and not a pull request build into master, then publish master-snapshot
-- if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $TEST_TYPE == integration ]]; then 
+- if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $UPLOAD == true ]]; then
     git tag master;
     ./gradlew uploadArchives; 
   fi
