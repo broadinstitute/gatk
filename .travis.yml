@@ -14,6 +14,7 @@ env:
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - RUN_CNV_SOMATIC_WDL=true
   - RUN_M2_WDL=true
+  - RUN_CNV_GERMLINE_WDL=true
   global:
   #for genomics db
   - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
@@ -73,8 +74,8 @@ before_install:
    sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi
 # Download Cromwell jar
-- if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
-    wget -O ~/cromwell-0.25.jar https://github.com/broadinstitute/cromwell/releases/download/25/cromwell-25.jar;
+- if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
+    wget -O ~/cromwell-0.26.jar https://github.com/broadinstitute/cromwell/releases/download/26/cromwell-26.jar;
   fi
 # Download Picard jar
 - if [[ $RUN_M2_WDL == true ]]; then
@@ -90,7 +91,7 @@ install:
   else
     ./gradlew assemble;
     ./gradlew installDist;
-    if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
+    if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
     fi
@@ -103,6 +104,9 @@ script:
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
     bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+  elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
+    echo "Running CNV germline workflows";
+    bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     echo "Running M2 WDL";
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
