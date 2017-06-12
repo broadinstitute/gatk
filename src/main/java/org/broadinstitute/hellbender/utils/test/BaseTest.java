@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -53,9 +52,8 @@ public abstract class BaseTest {
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
-    public static final String moduleTestDataDir = publicTestDir + "org/broadinstitute/hellbender/";
-    public static final String toolTestDataDir = moduleTestDataDir + "tools/";
-    public static final String bqsrTestDataDir = toolTestDataDir + "BQSR/";
+    public static final String packageRootTestDir = publicTestDir + "org/broadinstitute/hellbender/";
+    public static final String toolTestDir = packageRootTestDir + "tools/";
 
     public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
 
@@ -109,14 +107,8 @@ public abstract class BaseTest {
     public static final String exampleReference = hg19MiniReference;
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
 
+    // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
     public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
-
-    /**
-     * BQSR Test Files
-     */
-
-    public static final String BQSR_WGS_B37_CH20_21_10M_100_CRAM = bqsrTestDataDir +
-            "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.cram";
 
     public CachingIndexedFastaSequenceFile hg19ReferenceReader;
     public GenomeLocParser hg19GenomeLocParser;
