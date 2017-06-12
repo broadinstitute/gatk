@@ -38,7 +38,7 @@ public final class SortReadFileSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> reads = getReads();
         int numReducers = getRecommendedNumReducers();
-        logger.info("Using %s reducers" + numReducers);
+        logger.info("Using %s reducers", numReducers);
 
         final SAMFileHeader readsHeader = getHeaderForReads();
         ReadCoordinateComparator comparator = new ReadCoordinateComparator(readsHeader);
