@@ -1123,7 +1123,7 @@ public final class Utils {
     }
 
     /**
-     * A hack to ensure that numbers are always formatted in the US style.
+     * Set the Locale to US English so that numbers will always be formatted in the US style.
      */
     public static void forceJVMLocaleToUSEnglish() {
         Locale.setDefault(Locale.US);
