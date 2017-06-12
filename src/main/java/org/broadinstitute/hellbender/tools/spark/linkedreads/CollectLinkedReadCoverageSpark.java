@@ -104,6 +104,12 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Argument(fullName = "minMaxMapq", shortName = "minMaxMapq", doc="Minimum highest mapq read to create a fragment", optional=true)
     public int minMaxMapq = 30;
 
+    @Argument(fullName = "molSizeDeviationFile", shortName = "molSizeDeviationFile", doc="file containing estiamtes of molecule size deviations across the genome", optional=true)
+    public String molSizeDeviationFile;
+
+    @Argument(fullName = "molSizeDeviationTestBinSize", shortName = "molSizeDeviationTestBinSize", doc="width of windows within which to sample mol sizes", optional=true)
+    public int molSizeDeviationTestBinSize = 10000;
+
     private static final int REF_RECORD_LEN = 10000;
     // assuming we have ~1Gb/core, we can process ~1M kmers per partition
     private static final int REF_RECORDS_PER_PARTITION = 1024*1024 / REF_RECORD_LEN;
@@ -151,10 +157,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             computeFragmentCounts(barcodeIntervals, barcodeFragmentCountsFile);
         }
 
+        final Tuple2<double[], long[]> molSizeHistogram = molSizeHistogramFile != null ? computeMolSizeHistogram(barcodeIntervals, molSizeHistogramFile) : null;
 
-        if (molSizeHistogramFile != null) {
-            computeMolSizeHistogram(barcodeIntervals, molSizeHistogramFile);
-        }
+
 
 //        if (molSizeReadDensityFile != null) {
 //            barcodeIntervals.flatMapToPair(kv -> {
@@ -227,6 +232,33 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 phaseSetIntervals.saveAsTextFile(shardedOutputDirectory);
                 unshardOutput(phaseSetIntervalsFile, shardedOutputDirectory, phaseSetIntervals.getNumPartitions());
             }
+        }
+
+        final int molSizeDeviationTestBinSizeFinal = molSizeDeviationTestBinSize;
+
+        if (molSizeHistogram != null && molSizeDeviationFile != null) {
+            final JavaPairRDD<SVInterval, Integer> molSizesBySamplePoints = barcodeIntervals.flatMapToPair(t -> {
+                        final List<Tuple2<SVInterval, Integer>> results = new ArrayList<>();
+                        final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = t._2().myTree.iterator();
+                        while (iterator.hasNext()) {
+                            final SVIntervalTree.Entry<List<ReadInfo>> next = iterator.next();
+                            final List<ReadInfo> readInfos = next.getValue();
+                            readInfos.sort((o1, o2) -> new Integer(o1.getStart()).compareTo(o2.getStart()));
+                            final int contig = readInfos.get(0).getContig();
+                            final int minStart = readInfos.get(0).getStart();
+                            final int maxEnd = readInfos.get(0).getStart();
+                            final int length = maxEnd - minStart;
+
+                            int sample = minStart + minStart % molSizeDeviationTestBinSizeFinal;
+                            while (sample < maxEnd) {
+                                results.add(new Tuple2<>(new SVInterval(contig, sample, sample), length));
+                                sample += molSizeDeviationTestBinSizeFinal;
+                            }
+                        }
+                        return results.iterator();
+                    }
+            );
+            //molSizesBySamplePoints.
         }
     }
 
@@ -358,7 +390,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         }
     }
 
-    private static void computeMolSizeHistogram(final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final String molSizeHistogramFile) {
+    private static Tuple2<double[], long[]> computeMolSizeHistogram(final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final String molSizeHistogramFile) {
         final JavaDoubleRDD moleculeSizes = barcodeIntervals.flatMapToDouble(kv -> {
             final MySVIntervalTree mySVIntervalTree = kv._2();
             List<Double> results = new ArrayList<>(mySVIntervalTree.myTree.size());
@@ -378,6 +410,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         } catch (final IOException ioe) {
             throw new GATKException("Can't write read histogram file.", ioe);
         }
+
+        return moleculeLengthHistogram;
     }
 
     private static void computeFragmentCounts(final JavaPairRDD<String, MySVIntervalTree> barcodeIntervals, final String barcodeFragmentCountsFile) {
