@@ -30,6 +30,21 @@ import static org.testng.Assert.assertEquals;
 public final class UtilsUnitTest extends BaseTest {
 
     @Test
+    public void testForceJVMLocaleToUSEnglish() {
+
+        // Set locale to Canada
+        Locale.setDefault(Locale.CANADA);
+
+        // Force Locale to US English
+        Utils.forceJVMLocaleToUSEnglish();
+
+        // Get the current locale
+        Locale l = Locale.getDefault();
+
+        Assert.assertEquals(l, Locale.US);
+    }
+
+    @Test
     public void testConcat() {
         check(ImmutableList.of(ImmutableList.of()), ImmutableList.of());
         check(ImmutableList.of(ImmutableList.of("a")), ImmutableList.of("a"));

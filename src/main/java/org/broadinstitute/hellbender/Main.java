@@ -34,6 +34,14 @@ import java.util.*;
  */
 public class Main {
 
+    static {
+        /**
+         * The very first thing that any GATK application does is forces the JVM locale into US English, so that we don't have
+         * to think about number formatting issues.
+         */
+        Utils.forceJVMLocaleToUSEnglish();
+    }
+
     /**
      * Provides ANSI colors for the terminal output *
      */
@@ -115,6 +123,7 @@ public class Main {
      * @return the result of running  {program} with the given args, possibly null
      */
     protected static Object runCommandLineProgram(CommandLineProgram program, String[] rawArgs) {
+
         if (null == program) return null; // no program found!  This will happen if help was specified with no other arguments
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
