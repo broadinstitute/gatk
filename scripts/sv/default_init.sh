@@ -19,6 +19,6 @@ if [[ ! "${ROLE}" == 'Master' ]]; then
     if [[ -d "/mnt/1/" ]]; then 
         mkdir -p /mnt/1/reference && gsutil -m cp "$REFLOC"*.img /mnt/1/reference/
     else
-        mkdir /reference/ && gsutil -m cp "$REFLOC"*.img /reference/
+        mkdir -p /reference && gsutil -m cp "$REFLOC"*.img /reference/
     fi
 fi
