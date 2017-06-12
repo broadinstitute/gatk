@@ -31,6 +31,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -76,9 +77,10 @@ public final class GatherVcfs extends CommandLineProgram {
             doc = "If true, create a VCF index when writing a coordinate-sorted VCF file.", optional=true)
     public boolean createIndex = true;
 
-    @Argument(fullName = "useConventionalGather", doc = "Use conventional vcf gathering by opening and parsing each vcf file rather than doing compressed block copies.  " +
-            "This is necessary when using NIO paths")
-    public boolean useConventionalGather = false;
+    @Argument(fullName = "gatherType", doc ="Choose which method should be used to gather, block gathering is faster but only" +
+            "works on bgzipped files and ignores safety checks, conventional gather is slower but should work on all vcf files" +
+            "automatic chooses BLOCK if possible and CONVENTIONAL otherwise")
+    public GatherType gatherType = GatherType.AUTOMATIC;
 
     @Advanced
     @Argument(fullName = IGNORE_SAFETY_CHECKS_LONG_NAME, doc = "Disable sanity checks to improve performance, may result in silently creating corrupted outputs data")
@@ -89,6 +91,8 @@ public final class GatherVcfs extends CommandLineProgram {
     public boolean disableContigOrderingCheck = false;
 
     private static final Logger log = LogManager.getLogger();
+
+    public enum GatherType { BLOCK, CONVENTIONAL, AUTOMATIC}
 
     @Override
     protected Object doWork() {
@@ -114,19 +118,39 @@ public final class GatherVcfs extends CommandLineProgram {
             assertSameSamplesAndValidOrdering(inputPaths, disableContigOrderingCheck);
         }
 
-        if (!useConventionalGather && areAllBlockCompressed(inputPaths) && areAllBlockCompressed(CollectionUtil.makeList(output.toPath()))) {
-            log.info("Gathering by copying gzip blocks. Will not be able to validate position non-overlap of files.");
-            if (createIndex) {
-                log.warn("Index creation not currently supported when gathering block compressed VCFs.");
+        if(gatherType == GatherType.AUTOMATIC) {
+            if ( canBlockCopy(inputPaths, output) ) {
+                gatherType = GatherType.BLOCK;
+            } else {
+                gatherType = GatherType.CONVENTIONAL;
             }
-            gatherWithBlockCopying(inputPaths, output, cloudPrefetchBuffer);
-        }
-        else {
-            log.info("Gathering by conventional means.");
-            gatherConventionally(sequenceDictionary, createIndex, inputPaths, output, cloudPrefetchBuffer, disableContigOrderingCheck);
         }
 
+        if (gatherType == GatherType.BLOCK && !canBlockCopy(inputPaths, output)) {
+            throw new UserException.BadInput(
+                    "Requested block copy but some files are not bgzipped, all inputs and the output must be bgzipped to block copy");
+        }
+
+        switch (gatherType) {
+            case BLOCK:
+                log.info("Gathering by copying gzip blocks. Will not be able to validate position non-overlap of files.");
+                if (createIndex) {
+                    log.warn("Index creation not currently supported when gathering block compressed VCFs.");
+                }
+                gatherWithBlockCopying(inputPaths, output, cloudPrefetchBuffer);
+                break;
+            case CONVENTIONAL:
+                log.info("Gathering by conventional means.");
+                gatherConventionally(sequenceDictionary, createIndex, inputPaths, output, cloudPrefetchBuffer, disableContigOrderingCheck);
+                break;
+            default:
+                throw new GATKException.ShouldNeverReachHereException("Invalid gather type: " + gatherType + "there must be a bug");
+        }
         return null;
+    }
+
+    private static boolean canBlockCopy(final List<Path> inputPaths, final File output) {
+        return areAllBlockCompressed(inputPaths) && areAllBlockCompressed(CollectionUtil.makeList(output.toPath()));
     }
 
     private static VCFHeader getHeader(final Path path) {
@@ -309,14 +333,16 @@ public final class GatherVcfs extends CommandLineProgram {
                 try (final SeekableStream in = SeekableStreamFactory.getInstance().getStreamFor(f.toUri().toString(), prefetcher)) {
                     // a) It's good to check that the end of the file is valid and b) we need to know if there's a terminator block and not copy it
                     final BlockCompressedInputStream.FileTermination term = BlockCompressedInputStream.checkTermination(f);
-                    if (term == BlockCompressedInputStream.FileTermination.DEFECTIVE)
+                    if (term == BlockCompressedInputStream.FileTermination.DEFECTIVE) {
                         throw new UserException.MalformedFile(f.toUri() + " does not have a valid GZIP block at the end of the file.");
+                    }
 
                     if (!isFirstFile) {
                         final BlockCompressedInputStream blockIn = new BlockCompressedInputStream(in, false);
                         boolean lastByteNewline = true;
 
-                        while (in.available() > 0) {
+                        int firstNonHeaderByteIndex = -1;
+                        while (!in.eof()) {
                             // Read a block - blockIn.available() is guaranteed to return the bytes remaining in the block that has been
                             // read, and since we haven't consumed any yet, that is the block size.
                             final int blockLength = blockIn.available();
@@ -325,7 +351,7 @@ public final class GatherVcfs extends CommandLineProgram {
                             Utils.validate(blockLength > 0 && read == blockLength, "Could not read available bytes from BlockCompressedInputStream.");
 
                             // Scan forward within the block to see if we can find the end of the header within this block
-                            int firstNonHeaderByteIndex = -1;
+                            firstNonHeaderByteIndex = -1;
                             for (int i = 0; i < read; ++i) {
                                 final byte b = blockContents[i];
                                 final boolean thisByteNewline = (b == '\n' || b == '\r');
@@ -337,6 +363,10 @@ public final class GatherVcfs extends CommandLineProgram {
                                 }
 
                                 lastByteNewline = thisByteNewline;
+                            }
+
+                            if( firstNonHeaderByteIndex == -1 ){
+                                log.warn("Scanned the entire file " + f.toUri().toString() + " and found no variants");
                             }
 
                             // If we found the end of the header then write the remainder of this block out as a
