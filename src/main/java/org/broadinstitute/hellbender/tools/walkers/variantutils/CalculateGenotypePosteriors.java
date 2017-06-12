@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -23,19 +24,19 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Calculate genotype posterior probabilities given panel data
+ * Calculate genotype posterior probabilities given family genotypes or known population genotypes
  *
  * <p>
- * Given a VCF with genotype likelihoods from the HaplotypeCaller, UnifiedGenotyper, or another source which provides
- * <b>unbiased</b> genotype likelihoods, calculate the posterior genotype state and probability given allele frequency
- * information from both the samples themselves and input VCFs describing allele frequencies in related populations.</p>
+ * Given a VCF with genotype likelihoods from HaplotypeCaller, UnifiedGenotyper, or another source which provides
+ * <b>unbiased</b> genotype likelihoods, calculates the posterior genotype probability given genotype likelihoods
+ * from both the samples themselves and input VCFs describing allele frequencies in related populations.</p>
  *
  * <p>The AF field will not be used in this calculation as it does not provide a way to estimate the confidence interval
  * or uncertainty around the allele frequency, while AN provides this necessary information. This uncertainty is
  * modeled by a Dirichlet distribution: that is, the frequency is known up to a Dirichlet distribution with
  * parameters AC1+q,AC2+q,...,(AN-AC1-AC2-...)+q, where "q" is the global frequency prior (typically q << 1). The
  * genotype priors applied then follow a Dirichlet-Multinomial distribution, where 2 alleles per sample are drawn
- * independently. This assumption of independent draws is the assumption Hardy-Weinberg Equilibrium. Thus, HWE is
+ * independently. This assumption of independent draws is assuming Hardy-Weinberg Equilibrium. Thus, HWE is
  * imposed on the likelihoods as a result of CalculateGenotypePosteriors.</p>
  *
  * <h3>Input</h3>
@@ -59,17 +60,17 @@ import java.util.*;
  * <h3>Output</h3>
  * <p>A new VCF with:</p>
  * <ul>
- *     <li>Genotype posteriors added to the genotype fields ("PP")</li>
- *     <li>Genotypes and GQ assigned according to these posteriors</li>
+ *     <li>Genotype posteriors added to the FORMAT fields ("PP")</li>
+ *     <li>Genotypes and GQ assigned according to these posteriors (note the original genotype and GQ may change)</li>
  *     <li>Per-site genotype priors added to the INFO field ("PG")</li>
  *     <li>(Optional) Per-site, per-trio joint likelihoods (JL) and joint posteriors (JL) given as Phred-scaled probability
  *  of all genotypes in the trio being correct based on the PLs for JL and the PPs for JP. These annotations are added to
- *  the genotype fields.</li>
+ *  the FORMAT fields.</li>
  * </ul>
  *
  * <h3>Notes</h3>
  * <p>
- * Using the default behavior, priors will only be applied for each variants (provided each variant has at least 10
+ * Using the default behavior, priors will be applied to each variant separately (provided each variant has at least 10
  * called samples.) SNP sites in the input callset that have a SNP at the matching site in the supporting VCF will have
  * priors applied based on the AC from the supporting samples and the input callset (unless the --ignoreInputSamples
  * flag is used). If the site is not called in the supporting VCF, priors will be applied using the discovered AC from
@@ -80,50 +81,45 @@ import java.util.*;
  * <h3>Usage examples</h3>
  * <h4>Inform the genotype assignment of NA12878 using the 1000G Euro panel</h4>
  * <pre>
- * ./gatk-launch \
- *   CalculateGenotypePosteriors \
- *   -V NA12878.wgs.HC.vcf \
+ * ./gatk-launch CalculateGenotypePosteriors \
+ *   -V NA12878.vcf \
  *   -supporting 1000G_EUR.genotypes.combined.vcf \
- *   -O NA12878.wgs.HC.posteriors.vcf
+ *   -O NA12878.CalculateGenotypePosteriors1000GEuropean.vcf
  * </pre>
  *
- * <h4>Refine the genotypes of a large panel based on the discovered allele frequency</h4>
+ * <h4>Refine the genotypes of a large panel based on the discovered allele frequency in the input VCF</h4>
  * <pre>
- * ./gatk-launch \
- *   CalculateGenotypePosteriors \
+ * ./gatk-launch CalculateGenotypePosteriors \
  *   -V input.vcf \
- *   -O output.withPosteriors.vcf
+ *   -O output.vcf
  * </pre>
  *
  * <h4>Apply frequency and HWE-based priors to the genotypes of a family without including the family allele counts
  * in the allele frequency estimates the genotypes of a large panel based on the discovered allele frequency</h4>
  * <pre>
- * ./gatk-launch \
- *   CalculateGenotypePosteriors \
+ * ./gatk-launch CalculateGenotypePosteriors \
  *   -V input.vcf \
- *   -O output.withPosteriors.vcf \
+ *   -O output.vcf \
  *   --ignoreInputSamples
  * </pre>
  *
  * <h4>Calculate the posterior genotypes of a callset, and impose that a variant *not seen* in the external panel
  * is tantamount to being AC=0, AN=100 within that panel</h4>
  * <pre>
- * ./gatk-launch \
- *   CalculateGenotypePosteriors \
+ * ./gatk-launch CalculateGenotypePosteriors \
  *   -supporting external.panel.vcf \
  *   -V input.vcf \
- *   -O output.withPosteriors.vcf \
+ *   -O output.vcf \
  *   --numRefSamplesIfNoCall 100
  * </pre>
  *
  * <h4>Apply only family priors to a callset</h4>
  * <pre>
- * ./gatk-launch \
- *   CalculateGenotypePosteriors \
+ * ./gatk-launch CalculateGenotypePosteriors \
  *   -V input.vcf \
  *   --skipPopulationPriors \
  *   -ped family.ped \
- *   -O output.withPosteriors.vcf
+ *   -O output.vcf
  * </pre>
  *
  */
@@ -134,6 +130,7 @@ import java.util.*;
         oneLineSummary = "Calculate genotype posterior probabilities given panel data",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class CalculateGenotypePosteriors extends VariantWalker {
 
     private static final Logger logger = LogManager.getLogger(CalculateGenotypePosteriors.class);
