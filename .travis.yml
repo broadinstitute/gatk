@@ -16,8 +16,6 @@ env:
   - RUN_M2_WDL=true
   - RUN_CNV_GERMLINE_WDL=true
   global:
-  #for genomics db
-  - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
   #gradle needs this
   - TERM=dumb
   #limit gradle jvm memory and disable daemon
@@ -27,8 +25,6 @@ env:
   - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 
   - CLOUDSDK_PYTHON_SITEPACKAGES=1 
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
-  #Path to GenomicsDB binaries
-  - GATK_GENOMICSDB_BIN=src/test/resources/large/tiledb_bin
   #hellbender specific variables
   - HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/
   - HELLBENDER_TEST_STAGING=gs://hellbender/test/staging/
@@ -46,12 +42,15 @@ matrix:
      - jdk: oraclejdk8
        env: TEST_TYPE=integration TEST_VERBOSITY=minimal
 before_cache:
-  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 cache:
   directories:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
+    - $HOME/.m2
     - $HOME/gcloud/
+    - $HOME/site-library
 before_install:
 #setup google stuff
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
