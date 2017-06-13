@@ -11,19 +11,19 @@ There is also some data in a GCS bucket for this evaluation: _gs://hellbender/q4
 To copy the exome data into the cluster run:
 
 ```bash
-./prep_data_exome.sh
+./prep_data_exome_gcs.sh
 ```
 
 For the whole genome data, run:
 
 ```bash
-./prep_data_genome.sh
+./prep_data_genome_gcs.sh
 ```
 
 By default these copy the data into a directory in the current user's directory. To copy to different directory, add an argument like this:
 
 ```bash
-./prep_data_genome.sh /data/shared/spark_eval
+./prep_data_genome_gcs.sh /data/shared/spark_eval
 ```
 
 ## Running test cases
@@ -31,7 +31,6 @@ By default these copy the data into a directory in the current user's directory.
 If you want to run tests from the [test definition document](https://docs.google.com/document/d/1OEfV2XNXdbGQQdW-gRaQYY2QRgGsWHUNKJUSAj3qFlE/edit), then run a command like the following:
 
 ```bash
-export GATK_HOME=`pwd`/../..
 nohup ./test_case_2.sh &
 ```
 
@@ -46,7 +45,6 @@ The following shows how to run pipelines - from aligned reads to variants.
 For exome data, try `n1-standard-16` GCS worker instances, which have 60GB of memory, and 16 vCPUs. 2000GB of disk space per worker should be sufficient. Use 1 master + 5 workers. The master has lower resource requirements so `n1-standard-4`, 500GB disk is enough.
 
 ```bash
-export GATK_HOME=`pwd`/../..
 export API_KEY=...
 export GCS_CLUSTER=...
 
@@ -60,7 +58,6 @@ This will take less than an hour.
 For whole genome data, use the same instance types but try 10 workers.
 
 ```bash
-export GATK_HOME=`pwd`/../..
 export API_KEY=...
 export GCS_CLUSTER=...
 
