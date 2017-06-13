@@ -1,13 +1,13 @@
-package org.broadinstitute.gatk.tools.walkers.indels;
+package org.broadinstitute.hellbender.tools.walkers.indels;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.ProgressLoggerInterface;
-import org.broadinstitute.gatk.utils.BaseTest;
-import org.broadinstitute.gatk.utils.GenomeLocParser;
-import org.broadinstitute.gatk.utils.sam.ArtificialSAMUtils;
-import org.broadinstitute.gatk.utils.sam.GATKSAMRecord;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -23,23 +23,23 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
 
     @BeforeClass
     public void beforeClass() {
-        header = ArtificialSAMUtils.createArtificialSamHeader(3, 1, 10000);
+        header = ArtificialReadUtils.createArtificialSamHeader(3, 1, 10000);
         genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
     }
 
     @Test
     public void testSecondaryAlignmentsDoNotInterfere() {
-        final List<GATKSAMRecord> properReads = ArtificialSAMUtils.createPair(header, "foo", 1, 10, 30, true, false);
-        final GATKSAMRecord read1 = properReads.get(0);
+        final List<GATKRead> properReads = ArtificialReadUtils.createPair(header, "foo", 1, 10, 30, true, false);
+        final SAMRecord read1 = properReads.get(0).convertToSAMRecord(header);
         read1.setAlignmentStart(8); // move the read
         read1.setFlags(99);   // first in proper pair, mate negative strand
 
-        final GATKSAMRecord read2Primary = properReads.get(1);
+        final SAMRecord read2Primary = properReads.get(1).convertToSAMRecord(header);
         read2Primary.setFlags(147);   // second in pair, mate unmapped, not primary alignment
 
         Assert.assertEquals(read1.getInferredInsertSize(), 21);
 
-        final GATKSAMRecord read2NonPrimary = new GATKSAMRecord(read2Primary);
+        final SAMRecord read2NonPrimary = read2Primary.deepCopy();
         read2NonPrimary.setFlags(393);   // second in proper pair, on reverse strand
 
         final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(null, genomeLocParser, 1000, 1000, 1000);
@@ -65,15 +65,15 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
 
     @Test
     public void testSecondaryAlignmentsDoNotCauseAccidentalRemovalOfMate() {
-        final List<GATKSAMRecord> properReads = ArtificialSAMUtils.createPair(header, "foo", 1, 530, 1594, true, false);
-        final GATKSAMRecord read1 = properReads.get(0);
+        final List<GATKRead> properReads = ArtificialReadUtils.createPair(header, "foo", 1, 530, 1594, true, false);
+        final SAMRecord read1 = properReads.get(0).convertToSAMRecord(header);
         read1.setFlags(99);   // first in proper pair, mate negative strand
 
-        final GATKSAMRecord read2Primary = properReads.get(1);
+        final SAMRecord read2Primary = properReads.get(1).convertToSAMRecord(header);
         read2Primary.setFlags(147);   // second in pair, mate unmapped, not primary alignment
         read2Primary.setAlignmentStart(1596); // move the read
 
-        final GATKSAMRecord read2NonPrimary = new GATKSAMRecord(read2Primary);
+        final SAMRecord read2NonPrimary = read2Primary.deepCopy();
         read2NonPrimary.setReadName("foo");
         read2NonPrimary.setFlags(393);   // second in proper pair, on reverse strand
         read2NonPrimary.setAlignmentStart(451);
@@ -84,21 +84,21 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
         manager.addRead(read1, false, false);
 
         for ( int i = 0; i < ConstrainedMateFixingManager.EMIT_FREQUENCY; i++ )
-            manager.addRead(ArtificialSAMUtils.createArtificialRead(header, "foo" + i, 0, 1500, 10), false, false);
+            manager.addRead(ArtificialReadUtils.createArtificialRead(header, "foo" + i, 0, 1500, 10).convertToSAMRecord(header), false, false);
 
         Assert.assertTrue(manager.forMateMatching.containsKey("foo"));
     }
 
     @Test
     public void testSupplementaryAlignmentsDoNotCauseBadMateFixing() {
-        final List<GATKSAMRecord> properReads = ArtificialSAMUtils.createPair(header, "foo", 1, 1000, 2000, true, false);
-        final GATKSAMRecord read1 = properReads.get(0);
+        final List<GATKRead> properReads = ArtificialReadUtils.createPair(header, "foo", 1, 1000, 2000, true, false);
+        final SAMRecord read1 = properReads.get(0).convertToSAMRecord(header);
         read1.setFlags(99);   // first in pair, negative strand
 
-        final GATKSAMRecord read2 = properReads.get(1);
+        final SAMRecord read2 = properReads.get(1).convertToSAMRecord(header);
         read2.setFlags(161);   // second in pair, mate negative strand
 
-        final GATKSAMRecord read2Supp = new GATKSAMRecord(read2);
+        final SAMRecord read2Supp = read2.deepCopy();
         read2Supp.setReadName("foo");
         read2Supp.setFlags(2209);   // second in pair, mate negative strand, supplementary
         read2Supp.setAlignmentStart(100);
