@@ -33,10 +33,10 @@ Recommended default values (where possible) are found in ``mutect2_multi_sample_
 - ``Mutect2_Multi.ref_dict`` -- For Broad internal VM:  ``/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.dict``
 - ``Mutect2_Multi.pon`` -- (optional) Panel of normals VCF to use for false positive reduction.
 - ``Mutect2_Multi.pon_index`` -- (optional, but required if ``Mutect2_Multi.pon`` is specified)  VCF index for the panel of normals.  Please see GATK4 tool ``IndexFeatureFile`` for creation of an index.
-- ``Mutect2_Multi.dbsnp`` -- (optional)  dbSNP VCF file for pruning of false positives.
-- ``Mutect2_Multi.dbsnp_index`` -- (optional, but required if ``Mutect2_Multi.dbsnp`` is specified)  VCF index for dbSNP.  Please see GATK4 tool ``IndexFeatureFile`` for creation of an index.
-- ``Mutect2_Multi.cosmic`` -- (optional)  COSMIC VCF file to inform potential true positives.
-- ``Mutect2_Multi.cosmic_index`` -- (optional, but required if ``Mutect2_Multi.cosmic`` is specified)  VCF index for COSMIC.  Please see GATK4 tool ``IndexFeatureFile`` for creation of an index.
+- ``Mutect2_Multi.gnomad`` -- (optional)  gnomAD vcf containing population allele frequencies (AF) of common and rare alleles.  Essential for determining possible germline variants in tumor-only calling and helpful in tumor-normal calling as well.
+- ``Mutect2_Multi.gnomad_index`` -- (optional, but required if ``Mutect2_Multi.gnomad`` is specified)  VCF index for gnomAD.  Please see GATK4 tool ``IndexFeatureFile`` for creation of an index.
+- ``Mutect2_Multi.variants_for_contamination`` -- (optional)  vcf containing population allele frequencies (AF) of common SNPs.  If omitted, cross-sample contamination will not be calculated and contamination filtering will not be applied.
+- ``Mutect2_Multi.variants_for_contamination_index`` -- (optional, but required if ``Mutect2_Multi.variants_for_contamination`` is specified)  VCF index for contamination variants.  Please see GATK4 tool ``IndexFeatureFile`` for creation of an index.
 - ``Mutect2_Multi.is_run_orientation_bias_filter`` -- ``true``/``false`` whether the orientation bias filter should be run.
 - ``Mutect2_Multi.is_run_oncotator`` -- ``true``/``false`` whether the command-line version of oncotator should be run.  If ``false``, ``Mutect2_Multi.oncotator_docker`` parameter is ignored.
 - ``Mutect2_Multi.m2_docker`` -- Docker image to use for Mutect2 tasks.  This is only used for backends configured to use docker.
@@ -47,22 +47,22 @@ Recommended default values (where possible) are found in ``mutect2_multi_sample_
 - ``Mutect2_Multi.onco_ds_tar_gz`` -- (optional)  A tar.gz file of the oncotator datasources -- often quite large (>15GB).  This will be uncompressed as part of the oncotator task.  Depending on backend used, this can be specified as a path on the local filesystem of a cloud storage container (e.g. gs://...).  Typically the Oncotator default datasource can be downloaded at ``ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/oncotator/``.  Do not put the FTP URL into the json file.
 - ``Mutect2_Multi.onco_ds_local_db_dir`` -- (optional)  A direct path to the Oncotator datasource directory (uncompressed).  While this is the fastest approach, it cannot be used with docker unless your docker image already has the datasources in it.  For cromwell backends without docker, this can be a local filesystem path.  *This cannot be a cloud storage location*
 - ``Mutect2_Multi.picard_jar`` -- A direct path to a picard jar for using ``CollectSequencingArtifactMetrics``.  This parameter requirement will be eliminated in the future.
-
+- ``Mutect2_Multi.m2_args`` -- (optional) a string of additional command line arguments of the form "-argument1 value1 -argument2 value2" for Mutect 2
+- ``Mutect2_Multi.m2_filtering_args`` -- (optional) a string of additional command line arguments of the form "-argument1 value1 -argument2 value2" for Mutect 2 filtering
  Note:  If neither ``Mutect2_Multi.onco_ds_tar_gz`` nor ``Mutect2_Multi.onco_ds_local_db_dir`` are specified, the Oncotator task will download and uncompress for each execution.
 
-- ``Mutect2_Multi.pair_list`` -- a tab-separated table with no header in the following format:
+- ``Mutect2_Multi.pair_list`` -- a tab-separated table with no header in the following formats.  For tumor-normal mode:
  ```
  TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX</TAB>NORMAL_1_SAMPLE</TAB>
  TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NORMAL_2_BAM</TAB>NORMAL_2_BAM_INDEX</TAB>NORMAL_2_SAMPLE</TAB>
  . . .
  ```
-Temporarily, while waiting for a Cromwell bug to be resolved, tumor-only input looks like:
+For tumor-only mode:
 ```
-TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>
-TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>
+TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE
+TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE
 . . .
 ```
- That is, you actually write out "NO NORMAL" thrice per row
 
 #### mutect2 (single pair/sample)
 
@@ -82,10 +82,10 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.pon`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.pon_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.scatter_count`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.dbsnp`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.dbsnp_index`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.cosmic`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.cosmic_index`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.gnomad`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.gnomad_index`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.variants_for_contamination`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.variants_for_contamination_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.is_run_orientation_bias_filter`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.is_run_oncotator`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.m2_docker`` -- Please see parameter description above in the mutect2_multi_sample.
@@ -96,6 +96,8 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.onco_ds_local_db_dir`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.artifact_modes`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.picard_jar`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.m2_args`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.m2_filtering_args`` -- Please see parameter description above in the mutect2_multi_sample.
 
 #### mutect2-replicate-validation
 
@@ -103,8 +105,6 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 
 Recommended default values (where possible) are found in ``mutect2-replicate-validation_template.json``
 
-- ``Mutect2ReplicateValidation.cosmic_index`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2ReplicateValidation.dbsnp`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.gatk4_jar`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.is_run_orientation_bias_filter`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.Mutect2.onco_ds_tar_gz`` -- Please see parameter description above in the mutect2_multi_sample.
@@ -114,16 +114,21 @@ Recommended default values (where possible) are found in ``mutect2-replicate-val
 - ``Mutect2ReplicateValidation.preemptible_attempts`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.oncotator_docker`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.pon`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2ReplicateValidation.dbsnp_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.pon_index`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.gnomad`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.gnomad_index`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.variants_for_contamination`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.variants_for_contamination_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.m2_docker`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.cosmic`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.ref_fasta`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2ReplicateValidation.artifact_modes`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.ref_fasta_index`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.ref_dict`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.artifact_modes`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.Mutect2.onco_ds_local_db_dir`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.gatk4_jar_override`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2ReplicateValidation.ref_dict`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.m2_args`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.m2_filtering_args`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.replicate_pair_list`` -- tab-separated values with six columns in the following format:
  ```
  REP_1_BAM</TAB>REP_1_BAM_INDEX</TAB>REP_1_SAMPLE</TAB>REP_2_BAM</TAB>REP_2_BAM_INDEX</TAB>REP_2_SAMPLE</TAB>
@@ -162,16 +167,18 @@ gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-
   "Mutect2_Multi.pon": "/data/m1/refseq_exome_10bp_hg19_300_1kg_normal_panel.vcf",
   "Mutect2_Multi.pon_index": "/data/m1/refseq_exome_10bp_hg19_300_1kg_normal_panel.vcf.idx",
   "Mutect2_Multi.scatter_count": 2,
-  "Mutect2_Multi.dbsnp": "/data/m1/dbsnp_134_b37.leftAligned.vcf",
-  "Mutect2_Multi.dbsnp_index": "/data/m1/dbsnp_134_b37.leftAligned.vcf.idx",
-  "Mutect2_Multi.cosmic": "/data/m1/hg19_cosmic_v54_120711.vcf",
-  "Mutect2_Multi.cosmic_index": "/data/m1/hg19_cosmic_v54_120711.vcf.idx",
+  "Mutect2_Multi.gnomad": "/data/m2/gnomad.vcf",
+  "Mutect2_Multi.gnomad_index": "/data/m2/gnomad.vcf.idx",
+  "Mutect2_Multi.variants_for_contamination": "/data/m2/gnomad-common-biallelic-snps.vcf",
+  "Mutect2_Multi.variants_for_contamination_index": "/data/m2/gnomad-common-biallelic-snps.vcf",
   "Mutect2_Multi.is_run_orientation_bias_filter": true,
   "Mutect2_Multi.is_run_oncotator": true,
   "Mutect2_Multi.m2_docker": "broadinstitute/gatk:1.0.0.0-alpha1.2.4",
   "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.2.0",
   "Mutect2_Multi.preemptible_attempts": 2,
-  "Mutect2_Multi.onco_ds_tar_gz": "/data/onco_dir/oncotator_v1_ds_April052016.tar.gz"
+  "Mutect2_Multi.onco_ds_tar_gz": "/data/onco_dir/oncotator_v1_ds_April052016.tar.gz",
+  "Mutect2_Multi.m2_args": "--maxNumHaplotypesInPopulation 50 --tumor_lod_to_emit 4.0",
+  "Mutect2_Multi.m2_filtering_args": "--maxAltAllelesThreshold 2"
 }
 
 ```
