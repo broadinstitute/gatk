@@ -11,7 +11,7 @@
 #  gnomad, gnomad_index: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
 #  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
 #  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
-#  is_run_oncotator: if true, annotate the M2 VCFs using oncotator.  Important:  This requires a docker image and should
+#  is_run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a docker image and should
 #   not be run in environments where docker is unavailable (e.g. SGE cluster on a Broad on-prem VM).  Access to docker
 #   hub is also required, since the task will download a public docker image.
 #
@@ -54,6 +54,9 @@ workflow Mutect2 {
   File picard_jar
   String? m2_extra_args
   String? m2_extra_filtering_args
+  String? sequencing_center
+  String? sequence_source
+  File? default_config_file
 
   call ProcessOptionalArguments {
     input:
@@ -157,7 +160,10 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 oncotator_docker = oncotator_docker,
                 onco_ds_tar_gz = onco_ds_tar_gz,
-                onco_ds_local_db_dir = onco_ds_local_db_dir
+                onco_ds_local_db_dir = onco_ds_local_db_dir,
+                sequencing_center = sequencing_center,
+                sequence_source = sequence_source,
+                default_config_file = default_config_file
         }
   }
 
@@ -167,8 +173,8 @@ workflow Mutect2 {
         File filtered_vcf = Filter.filtered_vcf
         File filtered_vcf_index = Filter.filtered_vcf_index
 
-        # select_first() fails if nothing resulve to non-null, so putting in "/dev/null" for now.
-        File? oncotated_m2_vcf = select_first([oncotate_m2.oncotated_m2_vcf, "null"])
+        # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
+        File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
   }
 }
 
@@ -426,6 +432,10 @@ task oncotate_m2 {
     String oncotator_docker
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
+    String? oncotator_exe
+    String? sequencing_center
+    String? sequence_source
+    File? default_config_file
     command {
 
           # fail if *any* command below (not just the last) doesn't return 0, in particular if wget fails
@@ -439,8 +449,8 @@ task oncotate_m2 {
 
           elif [[ "${onco_ds_tar_gz}" == *.tar.gz ]]; then
               echo "Using given tar file: ${onco_ds_tar_gz}"
-              tar zxvf ${onco_ds_tar_gz}
-              ln -s oncotator_v1_ds_April052016 onco_dbdir
+              mkdir onco_dbdir
+              tar zxvf ${onco_ds_tar_gz} -C onco_dbdir --strip-components 1
 
           else
               echo "Downloading and installing oncotator datasources from Broad FTP site..."
@@ -450,20 +460,22 @@ task oncotate_m2 {
               ln -s oncotator_v1_ds_April052016 onco_dbdir
           fi
 
-
-        /root/oncotator_venv/bin/oncotator --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
-            -v ${m2_vcf} ${entity_id}.oncotated.vcf hg19 -i VCF -o VCF --infer-onps --collapse-number-annotations --log_name oncotator.log
+        ${default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
+            -v ${m2_vcf} ${entity_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
+            -a Center:${default="Unknown" sequencing_center} \
+            -a source:${default="Unknown" sequence_source} \
+            ${"--default_config " + default_config_file}
     }
 
     runtime {
         docker: "${oncotator_docker}"
-        memory: "5 GB"
-        bootDiskSizeGb: 10
-        disks: "local-disk 150 SSD"
+        memory: "3 GB"
+        bootDiskSizeGb: 12
+        disks: "local-disk 100 HDD"
         preemptible: "${preemptible_attempts}"
     }
 
     output {
-        File oncotated_m2_vcf="${entity_id}.oncotated.vcf"
+        File oncotated_m2_maf="${entity_id}.maf.annotated"
     }
 }

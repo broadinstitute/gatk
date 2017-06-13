@@ -40,8 +40,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
      * DREAM challenge vcfs):
      *
      * Sample 1: pure monoclonal sample, SNVs only
-     * Sample2: 80% pure monoclonal sample, SNVs only
-     * Sample3: pure triclonal sample, subclone minor allele frequencies are 1/2, 1/3, and 1/5, SNVs and indels
+     * Sample 2: 80% pure monoclonal sample, SNVs only
+     * Sample 3: pure triclonal sample, subclone minor allele frequencies are 1/2, 1/3, and 1/5, SNVs and indels
      * Sample 4: 80% biclonal sample, subclone minor allele fractions are 50% and 35%, SNVs and indels
      *
      * @throws Exception

@@ -76,6 +76,9 @@ workflow Mutect2_Multi {
     File picard_jar
     String? m2_extra_args
     String? m2_extra_filtering_args
+    String? sequencing_center
+    String? sequence_source
+    File? default_config_file
 
 	scatter( row in pairs ) {
 	    #      If the condition is true, variables inside the 'if' block retain their values outside the block.
@@ -117,7 +120,10 @@ workflow Mutect2_Multi {
                     artifact_modes = artifact_modes,
                     picard_jar = picard_jar,
                     m2_extra_args = m2_extra_args,
-                    m2_extra_filtering_args = m2_extra_filtering_args
+                    m2_extra_filtering_args = m2_extra_filtering_args,
+                    sequencing_center = sequencing_center,
+                    sequence_source = sequence_source,
+                    default_config_file = default_config_file
             }
     }
 
@@ -142,5 +148,7 @@ workflow Mutect2_Multi {
         Array[File] unfiltered_vcf_files = Mutect2.unfiltered_vcf
         Array[File] filtered_vcf_files = Mutect2.filtered_vcf
         Array[File] filtered_vcf_index_files = Mutect2.filtered_vcf_index
+
+        Array[File?] oncotated_m2_mafs = Mutect2.oncotated_m2_maf
     }
 }
