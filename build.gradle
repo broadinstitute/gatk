@@ -68,7 +68,7 @@ configurations.all {
     resolutionStrategy {
         force 'com.google.http-client:google-http-client:1.21.0'
         // the snapshot folder contains a dev version of guava, we don't want to use that.
-        force 'com.google.guava:guava:18.0'
+        force 'com.google.guava:guava:22.0'
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
         // later versions explode Hadoop
@@ -118,7 +118,7 @@ dependencies {
         exclude module: 'protobuf-java'
     }
     compile 'com.opencsv:opencsv:3.4'
-    compile 'com.google.guava:guava:18.0'
+    compile 'com.google.guava:guava:22.0'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
     // Using the shaded version to avoid conflicts between its protobuf dependency
     // and that of Hadoop/Spark (either the one we reference explicitly, or the one
