@@ -74,8 +74,8 @@ workflow Mutect2_Multi {
     String? onco_ds_local_db_dir
     Array[String] artifact_modes
     File picard_jar
-    String? m2_args
-    String? m2_filtering_args
+    String? m2_extra_args
+    String? m2_extra_filtering_args
 
 	scatter( row in pairs ) {
 	    #      If the condition is true, variables inside the 'if' block retain their values outside the block.
@@ -116,8 +116,8 @@ workflow Mutect2_Multi {
                     onco_ds_local_db_dir = onco_ds_local_db_dir,
                     artifact_modes = artifact_modes,
                     picard_jar = picard_jar,
-                    m2_args = m2_args,
-                    m2_filtering_args = m2_filtering_args
+                    m2_extra_args = m2_extra_args,
+                    m2_extra_filtering_args = m2_extra_filtering_args
             }
     }
 
