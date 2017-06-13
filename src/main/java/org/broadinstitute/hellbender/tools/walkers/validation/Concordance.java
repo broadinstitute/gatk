@@ -27,27 +27,38 @@ import java.util.EnumMap;
 import java.util.Set;
 
 /**
+ * Evaluate concordance of an input VCF against a validated truth VCF
  *
- * This tool evaluates a vcf against a validated truth vcf. We assume that the truth vcf only contains PASS variants.
- * The summary statistics (# true positives, # false positives, # false negatives, sensitivity, precision)
- * are reported as a summary tsv (--summary).
+ * <p>This tool evaluates an input VCF against a VCF that has been validated and is considered to represent ground truth.
+ * The summary statistics (# true positives, # false positives, # false negatives, sensitivity, precision) are reported
+ * in a TSV file (--summary). Note that this tool assumes that the truth VCF only contains PASS variants.</p>
  *
- * Optionally, the tool also produces vcfs of
- * 1) true positives and false negatives (i.e. all variants in the truth vcf)
- *      This mode is useful for calculating sensitivity
- * 2) true positives and false positives (i.e. all variants in the eval vcf)
- *      This mode is useful for obtaining a training data set for machine learning classifiers of artifacts.
+ * <p>Optionally, the tool also produces VCFs of the following variant records, annotated with each variant's concordance status:</p>
+ * <ul>
+ *     <li>True positives and false negatives (i.e. all variants in the truth VCF): useful for calculating sensitivity</li>
+ *     <li>True positives and false positives (i.e. all variants in the eval VCF): useful for obtaining a training data
+ *     set for machine learning classifiers of artifacts</li>
+ * </ul>
  *
- * These vcfs can be passed to {@link VariantsToTable} to produce a tsv for statistical analysis in R or Python.
+ * <p>These output VCFs can be passed to {@link VariantsToTable} to produce a TSV file for statistical analysis in R
+ * or Python.</p>
  *
+ * <h3>Usage examples</h3>
  *
- * java -jar gatk.jar Concordance -eval na12878-eval.vcf --truth na12878-truth.vcf  --summary summary.tsv
+ * <pre>
+ * ./gatk-launch Concordance \
+ *   -R reference.fasta \
+ *   -eval eval.vcf \
+ *   --truth truth.vcf \
+ *   --summary summary.tsv    
+ * </pre>
  *
- * Created by Takuto Sato on 1/30/17.
  */
 @CommandLineProgramProperties(
-        summary = "Evaluate a vcf against a vcf of validated (true) variants",
-        oneLineSummary = "Evaluate a vcf against a vcf of validated (true) variants",
+        summary = "This tool evaluates an input VCF against a VCF that has been validated and is considered to represent ground truth.\n" +
+                " The summary statistics (# true positives, # false positives, # false negatives, sensitivity, precision) are reported \n" +
+                " in a TSV file (--summary). Note that this tool assumes that the truth VCF only contains PASS variants.",
+        oneLineSummary = "Evaluate concordance of an input VCF against a validated truth VCF",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
