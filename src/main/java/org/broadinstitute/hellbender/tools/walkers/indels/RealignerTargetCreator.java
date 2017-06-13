@@ -1,4 +1,4 @@
-package org.broadinstitute.gatk.tools.walkers.indels;
+package org.broadinstitute.hellbender.tools.walkers.indels;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.IOUtil;
@@ -6,30 +6,26 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.io.FilenameUtils;
-import org.broadinstitute.gatk.engine.CommandLineGATK;
-import org.broadinstitute.gatk.engine.filters.*;
-import org.broadinstitute.gatk.engine.iterators.ReadTransformer;
-import org.broadinstitute.gatk.engine.walkers.*;
-import org.broadinstitute.gatk.utils.GenomeLoc;
-import org.broadinstitute.gatk.utils.commandline.Argument;
-import org.broadinstitute.gatk.utils.commandline.Input;
-import org.broadinstitute.gatk.utils.commandline.Output;
-import org.broadinstitute.gatk.utils.commandline.RodBinding;
-import org.broadinstitute.gatk.utils.contexts.AlignmentContext;
-import org.broadinstitute.gatk.utils.contexts.ReferenceContext;
-import org.broadinstitute.gatk.utils.exceptions.GATKException;
-import org.broadinstitute.gatk.utils.exceptions.UserException;
-import org.broadinstitute.gatk.utils.help.DocumentedGATKFeature;
-import org.broadinstitute.gatk.utils.help.HelpConstants;
-import org.broadinstitute.gatk.utils.pileup.PileupElement;
-import org.broadinstitute.gatk.utils.pileup.ReadBackedPileup;
-import org.broadinstitute.gatk.utils.refdata.RefMetaDataTracker;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -88,66 +84,107 @@ import java.util.TreeSet;
  * <li>This tool also ignores MQ0 reads and reads with consecutive indel operators in the CIGAR string.</li>
  * </ul>
  */
-@DocumentedGATKFeature(groupName = HelpConstants.DOCS_CAT_DATA, extraDocs = {CommandLineGATK.class})
-@ReadFilters({MappingQualityZeroFilter.class, MappingQualityUnavailableFilter.class, BadMateFilter.class, Platform454Filter.class})
-@Reference(window = @Window(start = -1, stop = 50))
-@Allows(value = {DataSource.READS, DataSource.REFERENCE})
-@By(DataSource.REFERENCE)
-@BAQMode(ApplicationTime = ReadTransformer.ApplicationTime.FORBIDDEN)
-public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Event, RealignerTargetCreator.EventPair> implements TreeReducible<RealignerTargetCreator.EventPair> {
+@CommandLineProgramProperties(oneLineSummary = "Define intervals to target for local realignment",
+        summary = "The local realignment process is designed to consume one or more BAM files and to locally realign reads such that the number of mismatching bases " +
+                "is minimized across all the reads. In general, a large percent of regions requiring local realignment are due to the presence of an insertion " +
+                "or deletion (indels) in the individual's genome with respect to the reference genome.  Such alignment artifacts result in many bases mismatching " +
+                "the reference near the misalignment, which are easily mistaken as SNPs.  Moreover, since read mapping algorithms operate on each read independently, " +
+                "it is impossible to place reads on the reference genome such at mismatches are minimized across all reads.  Consequently, even when some reads are " +
+                "correctly mapped with indels, reads covering the indel near just the start or end of the read are often incorrectly mapped with respect the true indel, " +
+                "also requiring realignment.  Local realignment serves to transform regions with misalignments due to indels into clean reads containing a consensus " +
+                "indel suitable for standard variant discovery approaches.",
+        programGroup = ReadProgramGroup.class
+
+)
+public class RealignerTargetCreator extends LocusWalker {
 
     /**
      * The target intervals for realignment.
      */
-    @Output
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     protected File out;
 
     /**
      * Any number of VCF files representing known SNPs and/or indels.  Could be e.g. dbSNP and/or official 1000 Genomes indel calls.
      * SNPs in these files will be ignored unless the --mismatchFraction argument is used.
      */
-    @Input(fullName = "known", shortName = "known", doc = "Input VCF file with known indels", required = false)
-    public List<RodBinding<VariantContext>> known = Collections.emptyList();
+    @Argument(fullName = "known", shortName = "known", doc = "Input VCF file with known indels", optional = true)
+    public List<FeatureInput<VariantContext>> known = new ArrayList<>();
 
     /**
      * Any two SNP calls and/or high entropy positions are considered clustered when they occur no more than this many basepairs apart. Must be > 1.
      */
-    @Argument(fullName = "windowSize", shortName = "window", doc = "window size for calculating entropy or SNP clusters", required = false)
+    @Argument(fullName = "windowSize", shortName = "window", doc = "window size for calculating entropy or SNP clusters", optional = true)
     protected int windowSize = 10;
 
     /**
      * To disable this behavior, set this value to <= 0 or > 1.  This feature is really only necessary when using an ungapped aligner
      * (e.g. MAQ in the case of single-end read data) and should be used in conjunction with '--model USE_SW' in the IndelRealigner.
      */
-    @Argument(fullName = "mismatchFraction", shortName = "mismatch", doc = "fraction of base qualities needing to mismatch for a position to have high entropy", required = false)
+    @Argument(fullName = "mismatchFraction", shortName = "mismatch", doc = "fraction of base qualities needing to mismatch for a position to have high entropy", optional = true)
     protected double mismatchThreshold = 0.0;
 
-    @Argument(fullName = "minReadsAtLocus", shortName = "minReads", doc = "minimum reads at a locus to enable using the entropy calculation", required = false)
+    @Argument(fullName = "minReadsAtLocus", shortName = "minReads", doc = "minimum reads at a locus to enable using the entropy calculation", optional = true)
     protected int minReadsAtLocus = 4;
 
     /**
      * Because the realignment algorithm is N^2, allowing too large an interval might take too long to completely realign.
      */
-    @Argument(fullName = "maxIntervalSize", shortName = "maxInterval", doc = "maximum interval size; any intervals larger than this value will be dropped", required = false)
+    @Argument(fullName = "maxIntervalSize", shortName = "maxInterval", doc = "maximum interval size; any intervals larger than this value will be dropped", optional = true)
     protected int maxIntervalSize = 500;
 
+    // genome location parser and sam file header
+    private GenomeLocParser genomeLocParser;
 
     @Override
-    public boolean includeReadsWithDeletionAtLoci() {
+    public boolean requiresReference() {
         return true;
     }
 
+    @Override
+    public boolean includeDeletions() {
+        return true;
+    }
+
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> defaultFilters = new ArrayList<>(9);
+        // read filters from Walker (original implementation)
+        defaultFilters.add(new WellformedReadFilter());
+        defaultFilters.add(ReadFilterLibrary.GOOD_CIGAR);
+        // read filters from LocusWalker (original implementation)
+        defaultFilters.add(ReadFilterLibrary.MAPPED);
+        defaultFilters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        defaultFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        defaultFilters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        // read filters from RealignerTargetCreator (original implementation)
+        defaultFilters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        defaultFilters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
+        defaultFilters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
+        // TODO: original had Platform454Filter
+
+        return defaultFilters;
+    }
 
     private boolean lookForMismatchEntropy;
 
-    public void initialize() {
+    @Override
+    public String[] customCommandLineValidation() {
         if (windowSize < 2)
-            throw new UserException.BadArgumentValue("windowSize", "Window Size must be an integer greater than 1");
+            throw new CommandLineException.BadArgumentValue("windowSize", "Window Size must be an integer greater than 1");
 
         lookForMismatchEntropy = mismatchThreshold > 0.0 && mismatchThreshold <= 1.0;
+        return super.customCommandLineValidation();
     }
 
-    public Event map(RefMetaDataTracker tracker, ReferenceContext ref, AlignmentContext context) {
+    @Override
+    public void onTraversalStart() {
+        genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
+    }
+
+    @Override
+    public void apply(AlignmentContext context, ReferenceContext ref, FeatureContext tracker) {
+        // TODO: this comes from the annotation @Reference(window=@Window(start=-1,stop=50))
+        ref.setWindow(0, 50);
 
         boolean hasIndel = false;
         boolean hasInsertion = false;
@@ -156,7 +193,7 @@ public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Eve
         int furthestStopPos = -1;
 
         // look at the rods for indels or SNPs
-        if (tracker != null) {
+        if (!known.isEmpty()) {
             for (VariantContext vc : tracker.getValues(known)) {
                 switch (vc.getType()) {
                     case INDEL:
@@ -182,14 +219,14 @@ public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Eve
         }
 
         // look at the normal context to get deletions and positions with high entropy
-        final ReadBackedPileup pileup = context.getBasePileup();
+        final ReadPileup pileup = context.getBasePileup();
 
         int mismatchQualities = 0, totalQualities = 0;
         final byte refBase = ref.getBase();
         for (PileupElement p : pileup) {
 
             // check the ends of the reads to see how far they extend
-            furthestStopPos = Math.max(furthestStopPos, p.getRead().getAlignmentEnd());
+            furthestStopPos = Math.max(furthestStopPos, p.getRead().getEnd());
 
             // is it a deletion or insertion?
             if (p.isDeletion() || p.isBeforeInsertion()) {
@@ -208,28 +245,33 @@ public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Eve
 
         // make sure we're supposed to look for high entropy
         if (lookForMismatchEntropy &&
-                pileup.getNumberOfElements() >= minReadsAtLocus &&
+                pileup.size() >= minReadsAtLocus &&
                 (double) mismatchQualities / (double) totalQualities >= mismatchThreshold)
             hasPointEvent = true;
 
         // return null if no event occurred
-        if (!hasIndel && !hasPointEvent)
-            return null;
-
+        if (!hasIndel && !hasPointEvent) {
+            return;
+        }
         // return null if we didn't find any usable reads/rods associated with the event
-        if (furthestStopPos == -1)
-            return null;
+        if (furthestStopPos == -1) {
+            return;
+        }
 
-        GenomeLoc eventLoc = context.getLocation();
+        GenomeLoc eventLoc = genomeLocParser.createGenomeLoc(context.getLocation());
         if (hasInsertion)
-            eventLoc = getToolkit().getGenomeLocParser().createGenomeLoc(eventLoc.getContig(), eventLoc.getStart(), eventLoc.getStart() + 1);
+            eventLoc = genomeLocParser.createGenomeLoc(eventLoc.getContig(), eventLoc.getStart(), eventLoc.getStart() + 1);
 
         EVENT_TYPE eventType = (hasIndel ? (hasPointEvent ? EVENT_TYPE.BOTH : EVENT_TYPE.INDEL_EVENT) : EVENT_TYPE.POINT_EVENT);
 
-        return new Event(eventLoc, furthestStopPos, eventType);
+        reduce(new Event(eventLoc, furthestStopPos, eventType), sum);
     }
 
-    public void onTraversalDone(EventPair sum) {
+    // accumulator
+    private final EventPair sum = new EventPair(null, null);
+
+    @Override
+    public Object onTraversalSuccess() {
         if (sum.left != null && sum.left.isReportableEvent())
             sum.intervals.add(sum.left.getLoc());
         if (sum.right != null && sum.right.isReportableEvent())
@@ -237,7 +279,7 @@ public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Eve
 
         if (FilenameUtils.getExtension(out.getName()).equals("interval_list")) {
             final SAMFileHeader masterSequenceDictionaryHeader = new SAMFileHeader();
-            masterSequenceDictionaryHeader.setSequenceDictionary(getToolkit().getMasterSequenceDictionary());
+            masterSequenceDictionaryHeader.setSequenceDictionary(getBestAvailableSequenceDictionary());
             final IntervalList intervalList = new IntervalList(masterSequenceDictionaryHeader);
             for (GenomeLoc loc : sum.intervals) {
                 intervalList.add(new Interval(loc.getContig(), loc.getStart(), loc.getStop()));
@@ -250,61 +292,10 @@ public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Eve
                     bufferedWriter.newLine();
                 }
             } catch (final IOException e) {
-                throw new GATKException("Error writing out intervals to file: " + out.getAbsolutePath(), e);
+                throw new UserException.CouldNotCreateOutputFile(out, "error writing out intervals to file", e);
             }
         }
-    }
-
-    public EventPair reduceInit() {
-        return new EventPair(null, null);
-    }
-
-    public EventPair treeReduce(EventPair lhs, EventPair rhs) {
-        EventPair result;
-
-        if (lhs.left == null) {
-            result = rhs;
-        } else if (rhs.left == null) {
-            result = lhs;
-        } else if (lhs.right == null) {
-            if (rhs.right == null) {
-                if (canBeMerged(lhs.left, rhs.left))
-                    result = new EventPair(mergeEvents(lhs.left, rhs.left), null, lhs.intervals, rhs.intervals);
-                else
-                    result = new EventPair(lhs.left, rhs.left, lhs.intervals, rhs.intervals);
-            } else {
-                if (canBeMerged(lhs.left, rhs.left))
-                    result = new EventPair(mergeEvents(lhs.left, rhs.left), rhs.right, lhs.intervals, rhs.intervals);
-                else {
-                    if (rhs.left.isReportableEvent())
-                        rhs.intervals.add(rhs.left.getLoc());
-                    result = new EventPair(lhs.left, rhs.right, lhs.intervals, rhs.intervals);
-                }
-            }
-        } else if (rhs.right == null) {
-            if (canBeMerged(lhs.right, rhs.left))
-                result = new EventPair(lhs.left, mergeEvents(lhs.right, rhs.left), lhs.intervals, rhs.intervals);
-            else {
-                if (lhs.right.isReportableEvent())
-                    lhs.intervals.add(lhs.right.getLoc());
-                result = new EventPair(lhs.left, rhs.left, lhs.intervals, rhs.intervals);
-            }
-        } else {
-            if (canBeMerged(lhs.right, rhs.left)) {
-                Event merge = mergeEvents(lhs.right, rhs.left);
-                if (merge.isReportableEvent())
-                    lhs.intervals.add(merge.getLoc());
-            } else {
-                if (lhs.right.isReportableEvent())
-                    lhs.intervals.add(lhs.right.getLoc());
-                if (rhs.left.isReportableEvent())
-                    rhs.intervals.add(rhs.left.getLoc());
-            }
-
-            result = new EventPair(lhs.left, rhs.right, lhs.intervals, rhs.intervals);
-        }
-
-        return result;
+        return null;
     }
 
     public EventPair reduce(Event value, EventPair sum) {
@@ -331,11 +322,12 @@ public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Eve
     }
 
     static private boolean canBeMerged(Event left, Event right) {
-        return left.loc.getContigIndex() == right.loc.getContigIndex() && left.furthestStopPos >= right.loc.getStart();
+        return left.loc.getContig().equals(right.loc.getContig()) && left.furthestStopPos >= right.loc.getStart();
     }
 
-    @com.google.java.contract.Requires({"left != null", "right != null"})
     static private Event mergeEvents(Event left, Event right) {
+        Utils.nonNull(left);
+        Utils.nonNull(right);
         left.merge(right);
         return left;
     }
@@ -419,11 +411,11 @@ public class RealignerTargetCreator extends RodWalker<RealignerTargetCreator.Eve
         }
 
         public boolean isReportableEvent() {
-            return getToolkit().getGenomeLocParser().isValidGenomeLoc(loc.getContig(), eventStartPos, eventStopPos, true) && eventStopPos >= 0 && eventStopPos - eventStartPos < maxIntervalSize;
+            return genomeLocParser.isValidGenomeLoc(loc.getContig(), eventStartPos, eventStopPos, true) && eventStopPos >= 0 && eventStopPos - eventStartPos < maxIntervalSize;
         }
 
         public GenomeLoc getLoc() {
-            return getToolkit().getGenomeLocParser().createGenomeLoc(loc.getContig(), eventStartPos, eventStopPos);
+            return genomeLocParser.createGenomeLoc(loc.getContig(), eventStartPos, eventStopPos);
         }
     }
 }
