@@ -85,8 +85,8 @@ workflow HapmapSensitivity {
     Array[String] artifact_modes
     File picard_jar
     File truth_list
-    String? m2_args
-    String? m2_filtering_args
+    String? m2_extra_args
+    String? m2_extra_filtering_args
 
     File python_sensitivity_script
 
@@ -109,8 +109,8 @@ workflow HapmapSensitivity {
         artifact_modes = artifact_modes,
         picard_jar = picard_jar,
         truth_list = truth_list,
-        m2_args = m2_args,
-        m2_filtering_args = m2_filtering_args
+        m2_extra_args = m2_extra_args,
+        m2_extra_filtering_args = m2_extra_filtering_args
   }
 
   scatter(n in range(length(read_tsv(pair_list)))) {

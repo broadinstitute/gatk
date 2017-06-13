@@ -86,8 +86,8 @@ workflow Mutect2ReplicateValidation {
 	Int preemptible_attempts
 	Array[String] artifact_modes
 	File picard_jar
-	String? m2_args
-    String? m2_filtering_args
+	String? m2_extra_args
+    String? m2_extra_filtering_args
 
 	scatter(pair in pairs) {
 		call m2.Mutect2 {
@@ -116,8 +116,8 @@ workflow Mutect2ReplicateValidation {
                 gatk4_jar_override = gatk4_jar_override,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes,
-                m2_args = m2_args,
-                m2_filtering_args = m2_filtering_args
+                m2_extra_args = m2_extra_args,
+                m2_extra_filtering_args = m2_extra_filtering_args
 		}
 
 		call CountFalsePositives {
