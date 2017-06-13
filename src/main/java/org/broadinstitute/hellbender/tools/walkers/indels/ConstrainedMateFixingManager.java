@@ -1,4 +1,4 @@
-package org.broadinstitute.gatk.tools.walkers.indels;
+package org.broadinstitute.hellbender.tools.walkers.indels;
 
 import htsjdk.samtools.SamPairUtil;
 import htsjdk.samtools.SAMFileWriter;
@@ -6,10 +6,9 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordComparator;
 import htsjdk.samtools.SAMRecordCoordinateComparator;
 import org.apache.log4j.Logger;
-import org.broadinstitute.gatk.utils.GenomeLoc;
-import org.broadinstitute.gatk.utils.GenomeLocParser;
-import org.broadinstitute.gatk.utils.exceptions.UserException;
-import org.broadinstitute.gatk.utils.sam.GATKSAMRecord;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
 
 import java.util.*;
 
@@ -166,8 +165,8 @@ public class ConstrainedMateFixingManager {
         addRead(newRead, readWasModified, true);
     }
 
-    public void addReads(List<GATKSAMRecord> newReads, Set<GATKSAMRecord> modifiedReads) {
-        for ( GATKSAMRecord newRead : newReads )
+    public void addReads(List<SAMRecord> newReads, Set<SAMRecord> modifiedReads) {
+        for ( SAMRecord newRead : newReads )
             addRead(newRead, modifiedReads.contains(newRead), false);
     }
 
