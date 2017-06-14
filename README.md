@@ -158,7 +158,7 @@ If you are looking for the codebase of the current production version of GATK, p
       --conf spark.yarn.executor.memoryOverhead=600
     ```
 
-* You can also omit the "--num-executors" to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructins).
+* You can also omit the "--num-executors" to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructions).
 * Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
 * Running a Spark tool on a cluster requires Spark to have been installed from http://spark.apache.org/, since
    `gatk-launch` invokes the `spark-submit` tool behind-the-scenes.
@@ -198,7 +198,7 @@ If you are looking for the codebase of the current production version of GATK, p
           --num-executors 5 --executor-cores 2 --executor-memory 4g \
           --conf spark.yarn.executor.memoryOverhead=600
       ```
-  * When using Dataproc you can access the web interfaces for YARN, Hadoop and HDFS. Follow [these instructions] (https://cloud.google.com/dataproc/cluster-web-interfaces) to create an SSH tunnel and connect with your browser.
+  * When using Dataproc you can access the web interfaces for YARN, Hadoop and HDFS. Follow [these instructions](https://cloud.google.com/dataproc/cluster-web-interfaces) to create an SSH tunnel and connect with your browser.
   * Note that the spark-specific arguments are separated from the tool-specific arguments by a `--`.
   * If you want to avoid uploading the GATK jar to GCS on every run, set the `GATK_GCS_STAGING`
     environment variable to a bucket you have write access to (eg., `export GATK_GCS_STAGING=gs://<my_bucket>/`)
@@ -307,7 +307,7 @@ If you are looking for the codebase of the current production version of GATK, p
 * Note: Some GATK Spark tools by default require the reference file to be in 2bit format (notably `BaseRecalibratorSpark`,`BQSRPipelineSpark` and `ReadsPipelineSpark`). You can convert your fasta to 2bit by using the `faToTwoBit` utility from [UCSC](http://hgdownload.soe.ucsc.edu/admin/exe/) - see also the [documentation for `faToTwoBit`](https://genome.ucsc.edu/goldenpath/help/blatSpec.html#faToTwoBitUsage).
 
 ## R Dependency
-Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.1.3** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convinience rather than a primary output.  
+Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.1.3** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
 
 R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
 * for ubuntu see these [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README)
