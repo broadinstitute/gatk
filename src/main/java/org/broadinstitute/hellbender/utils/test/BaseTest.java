@@ -53,7 +53,7 @@ public abstract class BaseTest {
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
     public static final String packageRootTestDir = publicTestDir + "org/broadinstitute/hellbender/";
-    public static final String toolTestDir = packageRootTestDir + "tools/";
+    public static final String toolsTestDir = packageRootTestDir + "tools/";
 
     public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
 
@@ -102,13 +102,12 @@ public abstract class BaseTest {
 
     public static final String hg19_chr1_1M_exampleVCF = publicTestDir + "joint_calling.chr1_1M.1kg_samples.10samples.noINFO.vcf";
     public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
+    // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
+    public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
 
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
-
-    // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
-    public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
 
     public CachingIndexedFastaSequenceFile hg19ReferenceReader;
     public GenomeLocParser hg19GenomeLocParser;

@@ -62,7 +62,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
-            doc = "Use the given sequence dictionary for processing.  Must be a .dict file.", optional = true, common = true)
+            doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
     private String masterSequenceDictionaryFilename = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
@@ -450,11 +450,14 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Load the master sequence dictionary as specified in the
+     * Load the master sequence dictionary as specified in {@code masterSequenceDictionaryFilename}.
+     * Will only load the master sequence dictionary if it has not already been loaded.
      */
     private void loadMasterSequenceDictionary() {
-        if (masterSequenceDictionaryFilename != null) {
-            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
+        if ( masterSequenceDictionary == null ) {
+            if (masterSequenceDictionaryFilename != null) {
+                masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
+            }
         }
     }
 
@@ -468,10 +471,11 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Returns the master sequence dictionary if it has been set, otherwise null.
+     * In practice, this should only be called after engine initialization in {@code onStartup()}
      * @return Master sequence dictionary if specified, or null.
      */
     public final SAMSequenceDictionary getMasterSequenceDictionary() {
-        return masterSequenceDictionaryFilename != null ? ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename)) : null;
+        return masterSequenceDictionary;
     }
 
     /**
@@ -589,16 +593,20 @@ public abstract class GATKTool extends CommandLineProgram {
         if (masterSequenceDictionary != null) {
 
             // Check against the reads
-            if (hasReads()) {
+            if ( hasReads() ) {
                 // When overriding the master sequence dictionary and working with CRAM files, we need to make sure that the
                 // reference we're using is completely contained by the sequence dictionary (i.e. the sequence dictionary is
                 // equal to the reference OR the sequence dictionary is a superset of the reference).
                 // This is accomplished by the call to validateCRAMDictionaryAgainstReference.
-                if ( hasCramInput() ) {
-                    SequenceDictionaryUtils.validateCRAMDictionaryAgainstReference(masterSequenceDictionary, refDict);
-                }
-                else {
-                    SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary, "reads", readDict);
+
+                final boolean requireMasterDictionaryIsSuperSet = hasCramInput();
+
+                SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
+                        "reads", readDict, requireMasterDictionaryIsSuperSet, false);
+
+                if ( hasReference() ) {
+                    SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
+                            "reference", refDict, requireMasterDictionaryIsSuperSet, false);
                 }
             }
 
