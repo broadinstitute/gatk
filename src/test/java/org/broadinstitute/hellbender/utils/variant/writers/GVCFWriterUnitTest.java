@@ -351,7 +351,9 @@ public class GVCFWriterUnitTest extends BaseTest {
                 {Arrays.asList(1, 10), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL+1))},
                 {Arrays.asList(1, 10, 30), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, 30),Range.closedOpen(30,MAX_GENOTYPE_QUAL+1))},
                 {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL - 1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL - 1),Range.closedOpen(MAX_GENOTYPE_QUAL - 1,MAX_GENOTYPE_QUAL+1))},
-                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL), Range.closedOpen(MAX_GENOTYPE_QUAL, MAX_GENOTYPE_QUAL+1))}
+                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL), Range.closedOpen(MAX_GENOTYPE_QUAL, MAX_GENOTYPE_QUAL+1))},
+                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL + 1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL+1))},
+                {Collections.singletonList(VCFConstants.MAX_GENOTYPE_QUAL + 1), Arrays.asList(Range.closedOpen(0,MAX_GENOTYPE_QUAL+1))}
         };
     }
 
@@ -370,7 +372,7 @@ public class GVCFWriterUnitTest extends BaseTest {
                 {Arrays.asList(-1, 1)},
                 {Arrays.asList(1, null, 10)},
                 {Arrays.asList(1, 1, 10)},
-                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL+1)}
+                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL+2)}
         };
     }
 
