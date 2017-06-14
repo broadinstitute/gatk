@@ -18,7 +18,7 @@ import java.util.*;
  * the size estimate passed to the constructor and does not resize dynamically.
  */
 @DefaultSerializer(LargeLongHopscotchSet.Serializer.class)
-public final class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
+public final class LargeLongHopscotchSet implements Serializable {
 
     private static final long serialVersionUID = 1L;
     private final List<LongHopscotchSet> sets;

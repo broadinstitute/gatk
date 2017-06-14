@@ -18,24 +18,27 @@ import java.util.Arrays;
  * for a given number of elements to be inserted and false prositive probability.
  */
 @DefaultSerializer(LongBloomFilter.Serializer.class)
-public final class LongBloomFilter implements QueryableLongSet {
+public final class LongBloomFilter {
 
     private final transient Logger logger = LogManager.getLogger(this.getClass());
+
     private final long totalBits; //Bloom filter bits
+    private final int numHashes; //Number of Bloom filter hash functions
     private final long totalBuckets; //Number of 8-bit buckets
     private final int numBucketArrays; //Number of arrays of buckets
     private final int bucketArraySize; //Size of each bucket array (except the last one)
     private final int finalBucketArraySize; //Size of the last bucket array
-    private final int numHashes; //Number of Bloom filter hash functions
     private final byte[][] buckets;
 
     //Allowable number of bits. These are primes near powers of 2. Supports up to ~100GB.
-    private final long[] legalBitSizes = {10007L, 16411L, 32771L, 65537L,
+    private final static long[] legalBitSizes = {10007L, 16411L, 32771L, 65537L,
             131101L, 262147L, 524309L, 1048583L, 2097169L,
             4194319L, 8388617L, 16777259L, 33554467L, 67108879L,
             134217757L, 268435459L, 536870923L, 1073741827L, 2147483659L,
             4294967311L, 8589934609L, 17179869209L, 34359738337L, 68719476767L,
             137438953481L, 274877906951L, 549755813881L, 1099511627791L};
+
+    private final static long HASH_SEED_2 = 0x6cebe6dca7f118a6L;
 
     public LongBloomFilter(final long numElements, final double fpp) {
         Utils.validateArg(numElements > 0, "Number of elements must be greater than 0");
@@ -58,7 +61,7 @@ public final class LongBloomFilter implements QueryableLongSet {
         final int optimalNumberOfHashes = (int) Math.ceil(-Math.log(fpp) / Math.log(2));
         numHashes = optimalNumberOfHashes > 0 ? optimalNumberOfHashes : 1;
 
-        totalBuckets = (int) ((totalBits / 8) + (totalBits % 8 > 0 ? 1 : 0));
+        totalBuckets = ((totalBits / 8) + (totalBits % 8 > 0 ? 1 : 0));
         bucketArraySize = SetSizeUtils.legalSizes[SetSizeUtils.legalSizes.length - 1];
         numBucketArrays = (int) (totalBuckets / bucketArraySize) + 1;
         finalBucketArraySize = (int) (totalBuckets % bucketArraySize);
@@ -107,6 +110,10 @@ public final class LongBloomFilter implements QueryableLongSet {
         return (long) Math.ceil(-numElements * Math.log(fpp) / (Math.log(2) * Math.log(2)));
     }
 
+    public double getTheoreticalFPP(final long numElements) {
+        return Math.pow(1.0 - Math.pow(1.0 - (1.0/totalBits), numHashes * numElements), numHashes);
+    }
+
     private long countBits() {
         final int[] bitCountMap = new int[256];
         for (int b = 0; b < 256; b++) {
@@ -129,12 +136,25 @@ public final class LongBloomFilter implements QueryableLongSet {
     }
 
     public boolean add(final long entryValue) {
-        final long hashValue = SVUtils.fnvLong64(entryValue);
+        final long hash1 = SVUtils.fnvLong64(entryValue);
+        final long hash2 = SVUtils.fnvLong64(HASH_SEED_2, entryValue);
         for (int i = 0; i < numHashes; i++) {
-            final long bitIndex = applyHashFunction(i, hashValue);
+            final long bitIndex = applyHashFunction(i, hash1, hash2);
             final int bucketArray = bitIndexToBucketArray(bitIndex);
             final int bucketIndex = bitIndexToBucketIndex(bitIndex);
             buckets[bucketArray][bucketIndex] |= bucketMask(bitIndex);
+        }
+        return true;
+    }
+
+    public boolean contains(final long key) {
+        final long hash1 = SVUtils.fnvLong64(key);
+        final long hash2 = SVUtils.fnvLong64(HASH_SEED_2, key);
+        for (int i = 0; i < numHashes; i++) {
+            final long bitIndex = applyHashFunction(i, hash1, hash2);
+            final int bucketArray = bitIndexToBucketArray(bitIndex);
+            final int bucketIndex = bitIndexToBucketIndex(bitIndex);
+            if ((bucketMask(bitIndex) & buckets[bucketArray][bucketIndex]) == 0) return false;
         }
         return true;
     }
@@ -143,17 +163,6 @@ public final class LongBloomFilter implements QueryableLongSet {
         for (final long val : entryValues) {
             add(val);
         }
-    }
-
-    public boolean contains(final long key) {
-        final long hashValue = SVUtils.fnvLong64(key);
-        for (int i = 0; i < numHashes; i++) {
-            final long bitIndex = applyHashFunction(i, hashValue);
-            final int bucketArray = bitIndexToBucketArray(bitIndex);
-            final int bucketIndex = bitIndexToBucketIndex(bitIndex);
-            if ((bucketMask(bitIndex) & buckets[bucketArray][bucketIndex]) == 0) return false;
-        }
-        return true;
     }
 
     public boolean containsAll(final long[] vals) {
@@ -171,8 +180,9 @@ public final class LongBloomFilter implements QueryableLongSet {
      * Kirsch and Mitzenmacher. 2008. Less hashing, same performance: Building a better Bloom filter. Random
      * Structures & Algorithms. 33:2, 187-218.
      */
-    private long applyHashFunction(final int i, final long fnvHash) {
-        return ((fnvHash >>> 32) + i * (fnvHash & 0xffffffffL)) % totalBits;
+    private long applyHashFunction(final int i, final long fnvHash1, final long fnvHash2) {
+        final long result = (fnvHash1+ i * fnvHash2) % totalBits;
+        return result < 0 ? result + totalBits : result;
     }
 
     /**
@@ -186,7 +196,7 @@ public final class LongBloomFilter implements QueryableLongSet {
      * Determines index within the partition corresponding to the given the bit index
      */
     private int bitIndexToBucketIndex(final long bitIndex) {
-        return ((int) (bitIndex >>> 3) % bucketArraySize);
+        return (int) ((bitIndex >>> 3) % bucketArraySize);
     }
 
     /**

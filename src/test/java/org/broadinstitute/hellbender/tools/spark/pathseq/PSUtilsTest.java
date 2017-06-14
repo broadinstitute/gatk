@@ -1,12 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -14,7 +10,6 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -27,30 +22,34 @@ public class PSUtilsTest extends BaseTest {
     }
 
     @DataProvider(name = "maskData")
-    public Object[][] getAlignmentData() {
+    public Object[][] getMaskData() {
         return new Object[][]{
-                {"", 0, new byte[0], Boolean.FALSE},
-                {"0,1", 31, new byte[]{0, 1}, Boolean.FALSE},
-                {"0,1,", 31, new byte[]{0, 1}, Boolean.FALSE},
-                {"0,1,10,8", 31, new byte[]{0, 1, 10, 8}, Boolean.FALSE},
-                {"0,-1", 31, null, Boolean.TRUE},
-                {"0,31", 31, null, Boolean.TRUE}
+                {"", 31, new byte[]{}},
+                {"0,1", 31, new byte[]{0,1}},
+                {"0,1,", 31, new byte[]{0,1}},
+                {"0,1,10,8", 31, new byte[]{0,1,10,8}},
+                {"30", 31, new byte[]{30}}
         };
     }
 
     @Test(dataProvider = "maskData")
-    public void testParseMask(final String maskArg, final int kSize, final byte[] expected, final Boolean throwsException) {
-        if (throwsException) {
-            try {
-                PSUtils.parseMask(maskArg, kSize);
-                Assert.fail("Did not throw error for mask " + maskArg + " and kSize " + kSize);
-            } catch (Exception e) {
-            }
-        } else {
-            byte[] result = PSUtils.parseMask(maskArg, kSize);
-            Assert.assertNotNull(result, "Parser should return empty array instead of null value");
-            Assert.assertEquals(result, expected);
-        }
+    public void testParseMask(final String maskArg, final int kSize, final byte[] expected) {
+        final byte[] result = PSUtils.parseMask(maskArg, kSize);
+        Assert.assertNotNull(result);
+        Assert.assertEquals(result, expected);
+    }
+
+    @DataProvider(name = "badMaskData")
+    public Object[][] getBadMaskData() {
+        return new Object[][]{
+                {"0,-1", 31},
+                {"0,31", 31}
+        };
+    }
+
+    @Test(dataProvider = "badMaskData", expectedExceptions = IllegalArgumentException.class)
+    public void testParseMaskException(final String maskArg, final int kSize) {
+        PSUtils.parseMask(maskArg, kSize);
     }
 
     @Test(groups = "spark")
@@ -74,29 +73,6 @@ public class PSUtilsTest extends BaseTest {
 
         Assert.assertTrue(result.contains(primaryRead));
         Assert.assertTrue(result.size() == 1);
-
-    }
-
-    @Test(expectedExceptions = UserException.CouldNotCreateOutputFile.class)
-    @SuppressWarnings("unchecked")
-    public void testWriteTwoKryo() throws Exception {
-        final File tempFile = createTempFile("test", ".dat");
-        final Integer int_in = 29382;
-        final String str_in = "test string";
-        PSUtils.writeKryoTwo(tempFile.getPath(), int_in, str_in);
-
-        final Kryo kryo = new Kryo();
-        kryo.setReferences(false);
-        final Input input = new Input(BucketUtils.openFile(tempFile.getPath()));
-        final Integer int_out = (Integer) kryo.readClassAndObject(input);
-        final String str_out = (String) kryo.readClassAndObject(input);
-        input.close();
-
-        Assert.assertEquals(int_in, int_out);
-        Assert.assertEquals(str_in, str_out);
-
-        // Point to a subdir that does not exist, so that we get a FNF excpetion
-        PSUtils.writeKryoTwo(tempFile.getAbsolutePath() + "/bad_dir/bad_subdir/", int_out, str_out);
     }
 
     @Test

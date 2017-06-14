@@ -20,7 +20,7 @@ import java.util.stream.LongStream;
  * Non-negative longs only! We set the MSB to say that a bin is not empty.
  */
 @DefaultSerializer(LongHopscotchSet.Serializer.class)
-public final class LongHopscotchSet implements Serializable, QueryableLongSet {
+public final class LongHopscotchSet implements Serializable {
 
     static final int bytesPerEntry = 9;
     @VisibleForTesting

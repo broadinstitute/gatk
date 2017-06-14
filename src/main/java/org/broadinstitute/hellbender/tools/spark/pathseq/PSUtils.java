@@ -1,16 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Output;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.util.Collection;
 
 /**
@@ -21,7 +16,6 @@ public final class PSUtils {
     public static JavaRDD<GATKRead> primaryReads(final JavaRDD<GATKRead> reads) {
         return reads.filter(read -> !(read.isSecondaryAlignment() || read.isSupplementaryAlignment()));
     }
-
 
     public static String[] parseCommaDelimitedArgList(final String arg) {
         if (arg == null || arg.isEmpty()) {
@@ -53,24 +47,6 @@ public final class PSUtils {
             for (final String acc : items) str += acc + ", ";
             str = str.substring(0, str.length() - 2);
             logger.warn(warning + " : " + str);
-        }
-    }
-
-    /**
-     * Writes two objects using Kryo to specified local file path.
-     * NOTE: using setReferences(false), which must also be set when reading the file. Does not work with nested
-     * objects that reference its parent.
-     */
-    public static void writeKryoTwo(final String filePath, final Object obj1, final Object obj2) {
-        try {
-            final Kryo kryo = new Kryo();
-            kryo.setReferences(false);
-            Output output = new Output(new FileOutputStream(filePath));
-            kryo.writeClassAndObject(output, obj1);
-            kryo.writeClassAndObject(output, obj2);
-            output.close();
-        } catch (final FileNotFoundException e) {
-            throw new UserException.CouldNotCreateOutputFile("Could not serialize objects to file", e);
         }
     }
 

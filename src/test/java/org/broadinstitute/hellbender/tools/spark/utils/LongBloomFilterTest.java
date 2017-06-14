@@ -5,7 +5,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,14 +13,14 @@ import java.io.ByteArrayOutputStream;
 import java.util.HashSet;
 import java.util.Random;
 
-public final class LongBloomFilterTest extends BaseTest {
+public final class LongBloomFilterTest {
 
     private static final long[] testVals = {0, 1, 2, 8, 16, 42, 97, 100, 2894765};
     private static final long[] notAllTestVals = {0, 1, 2, 3, 7, 22, 61};
     private static final long notInTestVals = 6;
     private static final int RAND_SEED = 0xdeadf00;
     private static final int HHASH_NVALS = 1000000;
-    private static final int FPR_NVALS = 10000;
+    private static final int FPR_NVALS = 100000;
     private static final float FPP = 0.01F;
 
     private static long randomLong(Random rng) {
@@ -85,8 +84,8 @@ public final class LongBloomFilterTest extends BaseTest {
         final LongBloomFilter bloomFilter = new LongBloomFilter(HHASH_NVALS, FPP);
         for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
             final long randLong = randomLong(rng);
-            bloomFilter.add(randLong);
             hashSet.add(new Long(randLong));
+            bloomFilter.add(randLong);
         }
         for (final Long val : hashSet) {
             Assert.assertTrue(bloomFilter.contains(val), "testVal=" + val);
@@ -102,7 +101,34 @@ public final class LongBloomFilterTest extends BaseTest {
                 }
             }
         }
-        Assert.assertTrue(num_false_pos < num_total * FPP * 1.5);
+        final double theoreticalFpp = bloomFilter.getTheoreticalFPP(HHASH_NVALS);
+        Assert.assertTrue(num_false_pos >= num_total * theoreticalFpp * 0.9);
+        Assert.assertTrue(num_false_pos <= num_total * theoreticalFpp * 1.1);
+    }
+
+    @Test
+    void testRandomLongsLarge() {
+        final Random rng = new Random(RAND_SEED);
+        final HashSet<Long> hashSet = new HashSet<>();
+        final LongBloomFilter bloomFilter = new LongBloomFilter(3000000000L, FPP);
+        for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
+            final long randLong = randomLong(rng);
+            bloomFilter.add(randLong);
+            hashSet.add(new Long(randLong));
+        }
+        for (final Long val : hashSet) {
+            Assert.assertTrue(bloomFilter.contains(val), "testVal=" + val);
+        }
+        int num_false_pos = 0;
+        for (int valNo = 0; valNo != FPR_NVALS; ++valNo) {
+            final long randLong = randomLong(rng);
+            if (!hashSet.contains(new Long(randLong))) {
+                if (bloomFilter.contains(randLong)) {
+                    num_false_pos++;
+                }
+            }
+        }
+        Assert.assertEquals(num_false_pos, 0);
     }
 
     @Test
