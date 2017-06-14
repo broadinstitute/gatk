@@ -72,12 +72,15 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
                 {LARGE_VCF, 10},
                 {LARGE_VCF, 100},
                 {LARGE_VCF, 1000},
-                {LARGE_VCF, 10000},
+                {LARGE_VCF, 8536},
         };
     }
     
     @Test(dataProvider = "getVcfsToShard")
     public void testBlockGather(final File vcf, final int numShards) throws IOException {
+        Assert.assertEquals(System.getProperty("samjdk.compression_level"), "9");
+        logger.error(System.getProperty("samjdk.compression_level"));
+        
         final FeatureDataSource<VariantContext> input = new FeatureDataSource<>( vcf );
         final ArrayList<VariantContext> expected = Lists.newArrayList(input);
         final List<File> shards = scatterVariants(expected, (VCFHeader) input.getHeader(), numShards,
@@ -91,7 +94,8 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
                 .addArgument(StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, "0")
                 .addArgument("gatherType", GatherVcfs.GatherType.BLOCK.toString())
                 .addBooleanArgument(GatherVcfs.IGNORE_SAFETY_CHECKS_LONG_NAME, true) // much faster this way
-                .addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, false);
+                .addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, false)
+                .addBooleanArgument("use_jdk_deflater", true);
         runCommandLine(args);
 
         try(final FeatureDataSource<VariantContext> outputDataSource = new FeatureDataSource<>(output)) {

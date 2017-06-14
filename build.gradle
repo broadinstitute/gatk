@@ -283,7 +283,7 @@ test {
     systemProperty "samjdk.use_async_io_read_samtools", "false"
     systemProperty "samjdk.use_async_io_write_samtools", "true"
     systemProperty "samjdk.use_async_io_write_tribble", "false"
-    systemProperty "samjdk.compression_level", "1"
+    systemProperty "samjdk.compression_level", "9"
     systemProperty "snappy.disable", "true"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
