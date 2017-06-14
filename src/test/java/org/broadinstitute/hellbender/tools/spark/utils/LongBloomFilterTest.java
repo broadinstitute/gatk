@@ -107,31 +107,6 @@ public final class LongBloomFilterTest {
     }
 
     @Test
-    void testRandomLongsLarge() {
-        final Random rng = new Random(RAND_SEED);
-        final HashSet<Long> hashSet = new HashSet<>();
-        final LongBloomFilter bloomFilter = new LongBloomFilter(3000000000L, FPP);
-        for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
-            final long randLong = randomLong(rng);
-            bloomFilter.add(randLong);
-            hashSet.add(new Long(randLong));
-        }
-        for (final Long val : hashSet) {
-            Assert.assertTrue(bloomFilter.contains(val), "testVal=" + val);
-        }
-        int num_false_pos = 0;
-        for (int valNo = 0; valNo != FPR_NVALS; ++valNo) {
-            final long randLong = randomLong(rng);
-            if (!hashSet.contains(new Long(randLong))) {
-                if (bloomFilter.contains(randLong)) {
-                    num_false_pos++;
-                }
-            }
-        }
-        Assert.assertEquals(num_false_pos, 0);
-    }
-
-    @Test
     void serializationTest() {
         final Random rng = new Random(RAND_SEED);
         final LongBloomFilter bloomFilter = new LongBloomFilter(HHASH_NVALS, FPP);
