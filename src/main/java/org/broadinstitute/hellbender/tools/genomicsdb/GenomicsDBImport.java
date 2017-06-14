@@ -166,16 +166,20 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Override
     public int getDefaultCloudPrefetchBufferSize() {
-        // Since this tool is typically run with many inputs, we want a smaller NIO buffer size
-        // than normal:
-        return 2;
+        // Empirical testing has shown that this tool performs best at scale with cloud buffering
+        // disabled. With cloud buffering on and thousands of concurrent GenomicsDBImport tasks,
+        // we do too many simultaneous GCS accesses (since the prefetcher spawns a new thread for each
+        // reader upon a query) and start seeing intermittent failures, even with aggressive retries.
+        return 0;
     }
 
     @Override
     public int getDefaultCloudIndexPrefetchBufferSize() {
-        // Since this tool is typically run with many inputs, we want a smaller NIO buffer size for the index
-        // than normal:
-        return 2;
+        // Empirical testing has shown that this tool performs best at scale with cloud buffering
+        // disabled. With cloud buffering on and thousands of concurrent GenomicsDBImport tasks,
+        // we do too many simultaneous GCS accesses (since the prefetcher spawns a new thread for each
+        // reader upon a query) and start seeing intermittent failures, even with aggressive retries.
+        return 0;
     }
 
     @Override
