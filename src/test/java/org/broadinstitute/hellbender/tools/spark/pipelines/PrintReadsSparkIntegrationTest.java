@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -71,6 +72,26 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         runCommandLine(args);
 
         SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
+    }
+
+    @DataProvider
+    public Object[][] gcsTestingData() {
+        return new Object[][] {
+                { "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam", ".bam", false, null},
+                { "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam", ".bam", true, null},
+        };
+    }
+
+    @Test(dataProvider = "gcsTestingData", groups = "bucket")
+    public void testGCSInputsAndOutputs(final String gcsInput, final String outputExtension, final boolean outputToGCS, final File expectedOutput) {
+        final String gcsInputPath = getGCPTestInputPath() + gcsInput;
+        final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
+        final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
+
+        final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+        argBuilder.addArgument("input", gcsInputPath)
+                .addArgument("output", outputPath);
+        runCommandLine(argBuilder);
     }
 
     @Test(groups = "spark")
