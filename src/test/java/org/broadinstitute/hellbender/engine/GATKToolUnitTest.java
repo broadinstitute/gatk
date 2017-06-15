@@ -44,9 +44,10 @@ public final class GATKToolUnitTest extends BaseTest{
     public static final String BQSR_WGS_B37_CH20_21_10M_100_CRAM = bqsrTestDir +
             "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.cram";
 
-    public static final String hg19MiniDictFileName = ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference);
+    public static final String hg19MicroDictFileName = ReferenceUtils.getFastaDictionaryFileName(hg19MicroReference);
+    public static final String hg19MiniDictFileName  = ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference);
     public static final String v37_chr17DictFileName = ReferenceUtils.getFastaDictionaryFileName(v37_chr17_1Mb_Reference);
-    public static final String b37_20_21DictFile = ReferenceUtils.getFastaDictionaryFileName(b37_reference_20_21);
+    public static final String b37_20_21DictFile     = ReferenceUtils.getFastaDictionaryFileName(b37_reference_20_21);
 
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithSequenceDictionary",
@@ -171,6 +172,7 @@ public final class GATKToolUnitTest extends BaseTest{
                 { v37_chr17DictFileName, "--input", NA12878_chr17_1k_BAM, null, null },
                 { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", b37_reference_20_21 },
                 { hg19MiniDictFileName, "--reference", hg19MicroReference, null, null },
+                { hg19MicroDictFileName, "--reference", hg19MiniReference, null, null },
                 { v37_chr17DictFileName, "--reference", v37_chr17_1Mb_Reference, null, null },
         };
     }
@@ -263,20 +265,13 @@ public final class GATKToolUnitTest extends BaseTest{
     @DataProvider
     public Object[][] provideMultipleSequenceDictionaries() {
 
-        final String v37_chr19DictFileName = ReferenceUtils.getFastaDictionaryFileName(v37_chr17_1Mb_Reference);
-        final SAMSequenceDictionary v37_chr19Dict = ReferenceUtils.loadFastaDictionary(new File(v37_chr19DictFileName));
-
-        final String b37_20_21DictFile = ReferenceUtils.getFastaDictionaryFileName(b37_reference_20_21);
+        final SAMSequenceDictionary v37_chr17Dict = ReferenceUtils.loadFastaDictionary(new File(v37_chr17DictFileName));
         final SAMSequenceDictionary b37_20_21Dict = ReferenceUtils.loadFastaDictionary(new File(b37_20_21DictFile));
-
-        final String hg19MiniDictFileName = ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference);
         final SAMSequenceDictionary hg19MiniDict = ReferenceUtils.loadFastaDictionary(new File(hg19MiniDictFileName));
-
-        final String hg19MicroDictFileName = ReferenceUtils.getFastaDictionaryFileName(hg19MicroReference);
         final SAMSequenceDictionary hg19MicroDict = ReferenceUtils.loadFastaDictionary(new File(hg19MicroDictFileName));
 
         return new Object[][] {
-                { v37_chr19DictFileName, "--input", NA12878_chr17_1k_BAM, null, null, v37_chr19Dict },
+                { v37_chr17DictFileName, "--input", NA12878_chr17_1k_BAM, null, null, v37_chr17Dict },
                 { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", b37_reference_20_21, b37_20_21Dict },
                 { hg19MiniDictFileName, "--reference", hg19MicroReference, null, null, hg19MiniDict },
                 { hg19MicroDictFileName, "--reference", hg19MiniReference, null, null, hg19MicroDict },

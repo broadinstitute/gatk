@@ -454,10 +454,8 @@ public abstract class GATKTool extends CommandLineProgram {
      * Will only load the master sequence dictionary if it has not already been loaded.
      */
     private void loadMasterSequenceDictionary() {
-        if ( masterSequenceDictionary == null ) {
-            if (masterSequenceDictionaryFilename != null) {
-                masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
-            }
+        if ( (masterSequenceDictionary == null) && (masterSequenceDictionaryFilename != null) ) {
+            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
         }
     }
 
@@ -471,7 +469,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Returns the master sequence dictionary if it has been set, otherwise null.
-     * In practice, this should only be called after engine initialization in {@code onStartup()}
+     * In practice, this should only be called after engine initialization in {@link #onStartup()}
      * @return Master sequence dictionary if specified, or null.
      */
     public final SAMSequenceDictionary getMasterSequenceDictionary() {
@@ -592,6 +590,8 @@ public abstract class GATKTool extends CommandLineProgram {
         // Check the master dictionary against the reference / reads / features
         if (masterSequenceDictionary != null) {
 
+            final boolean requireMasterDictionaryIsSuperSet = hasCramInput();
+
             // Check against the reads
             if ( hasReads() ) {
                 // When overriding the master sequence dictionary and working with CRAM files, we need to make sure that the
@@ -599,20 +599,14 @@ public abstract class GATKTool extends CommandLineProgram {
                 // equal to the reference OR the sequence dictionary is a superset of the reference).
                 // This is accomplished by the call to validateCRAMDictionaryAgainstReference.
 
-                final boolean requireMasterDictionaryIsSuperSet = hasCramInput();
-
                 SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
                         "reads", readDict, requireMasterDictionaryIsSuperSet, false);
-
-                if ( hasReference() ) {
-                    SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
-                            "reference", refDict, requireMasterDictionaryIsSuperSet, false);
-                }
             }
 
             // Check against the reference
-            if (hasReference()) {
-                SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary, "reference", refDict);
+            if ( hasReference() ) {
+                SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
+                        "reference", refDict, requireMasterDictionaryIsSuperSet, false);
             }
 
             // Check against the features
