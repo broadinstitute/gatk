@@ -24,6 +24,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    private final TemplateMappingInformation[][] mappingInfo;
     private final double[][] values;
 
     private final List<Template> templates;
@@ -32,12 +33,42 @@ public class TemplateHaplotypeScoreTable implements Serializable {
 
     private final List<Haplotype> haplotypes;
 
+
+
+    public int maximumInsertSize() {
+        int result = 0;
+        for (int i = 0; i < mappingInfo.length; i++) {
+            for (int j = 0; j < mappingInfo[i].length; j++) {
+                if (mappingInfo[i][j] != null && mappingInfo[i][j].insertSize.isPresent() && mappingInfo[i][j].insertSize.getAsInt() > result) {
+                    result =  mappingInfo[i][j].insertSize.getAsInt();
+                }
+            }
+        }
+        return result;
+    }
+
+    public double minimumAlignmentScore() {
+        double result = 0;
+        for (final TemplateMappingInformation[] row : mappingInfo) {
+            for (final TemplateMappingInformation ti : row) {
+                if (ti == null)
+                    continue;
+                if (ti.firstAlignmentScore.isPresent() && ti.firstAlignmentScore.getAsDouble() > result)
+                    result = ti.firstAlignmentScore.getAsDouble();
+                if (ti.secondAlignmentScore.isPresent() && ti.secondAlignmentScore.getAsDouble() > result)
+                    result = ti.secondAlignmentScore.getAsDouble();
+            }
+        }
+        return result;
+    }
+
     public TemplateHaplotypeScoreTable(final Iterable<Template> templates, final Iterable<Haplotype> haplotypes)
 
     {
         this.templates = CollectionUtils.collect(templates, t -> t, new ArrayList<>(1000));
         this.haplotypes = CollectionUtils.collect(haplotypes, t -> t, new ArrayList<>());
         values = new double[this.haplotypes.size()][this.templates.size()];
+        mappingInfo = new TemplateMappingInformation[this.haplotypes.size()][this.templates.size()];
         this.templateIndex = composeTemplateIndex(this.templates);
     }
 
@@ -82,6 +113,18 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         values[alleleIndex][templateIndex] = value;
     }
 
+    public TemplateMappingInformation getMappingInfo(final int alleleIndex, final int templateIndex) {
+        Utils.validIndex(alleleIndex, haplotypes.size());
+        Utils.validIndex(templateIndex, templates.size());
+        return mappingInfo[alleleIndex][templateIndex];
+    }
+
+    public void setMappingInfo(final int alleleIndex, final int templateIndex, final TemplateMappingInformation mappingInformation) {
+        Utils.validIndex(alleleIndex, haplotypes.size());
+        Utils.validIndex(templateIndex, templates.size());
+        mappingInfo[alleleIndex][templateIndex] = mappingInformation;
+    }
+
     public int numberOfTemplates() {
         return templates.size();
     }
@@ -110,8 +153,8 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         return sb.toString();
     }
 
-    public void dropUninformativeTemplates() {
-        final int[] informativeIndexes = IntStream.range(0, templates.size())
+    public int[] informativeTemplateIndexes() {
+        return IntStream.range(0, templates.size())
                 .filter(i -> {
                     final double firstLikelihood = values[0][i];
                     if (Double.isNaN(firstLikelihood)) {
@@ -128,6 +171,10 @@ public class TemplateHaplotypeScoreTable implements Serializable {
                         return foundDifference;
                     }
                 }).toArray();
+    }
+
+    public void dropUninformativeTemplates() {
+        final int[] informativeIndexes = informativeTemplateIndexes();
         if (informativeIndexes.length == 0) {
             templates.clear();
             templateIndex.clear();
@@ -137,8 +184,8 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         } else if (informativeIndexes.length != templates.size()) {
             final List<Template> newTemplates = new ArrayList<>(informativeIndexes.length);
             templateIndex.clear();
-            for (int i = 0; i < informativeIndexes.length; i++) {
-                newTemplates.add(templates.get(informativeIndexes[i]));
+            for (final int informativeIndexe : informativeIndexes) {
+                newTemplates.add(templates.get(informativeIndexe));
                 templateIndex.put(newTemplates.get(newTemplates.size() - 1).name(), newTemplates.size() - 1);
             }
             templates.clear();
