@@ -195,7 +195,7 @@ public class Main {
         if(printStackTraceOnUserExceptions()) {
             e.printStackTrace();
         } else {
-            System.err.println("Use -DSTACK_TRACE_ON_USEREXCEPTION to print the stack trace.");
+            System.err.println("Use -D" + STACK_TRACE_ON_USER_EXCEPTION_PROPERTY + "to print the stack trace.");
         }
     }
 
