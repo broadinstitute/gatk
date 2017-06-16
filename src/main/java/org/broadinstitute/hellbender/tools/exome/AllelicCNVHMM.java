@@ -4,6 +4,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
@@ -36,6 +38,8 @@ import java.util.stream.Collectors;
         oneLineSummary = "(EXPERIMENTAL) Detect copy-number events using allelic-count data and GATK CNV output",
         programGroup = CopyNumberProgramGroup.class
 )
+@DocumentedFeature
+@BetaFeature
 public class AllelicCNVHMM extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1l;
 
