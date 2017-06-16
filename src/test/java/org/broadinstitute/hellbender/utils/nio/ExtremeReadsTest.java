@@ -21,6 +21,8 @@ public final class ExtremeReadsTest extends BaseTest implements Runnable {
 
     String fname = GCS_GATK_TEST_RESOURCES + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
 
+    static int THREAD_COUNT = 1000;
+    static int CHANNELS_PER_THREAD = 1000;
     static volatile int errors = 0;
 
     /**
@@ -30,26 +32,30 @@ public final class ExtremeReadsTest extends BaseTest implements Runnable {
     public void run() {
         try {
             Path path = IOUtils.getPath(fname);
-            SeekableByteChannel chan = new SeekableByteChannelPrefetcher(
-                Files.newByteChannel(path), 2*1024*1024);
-            long size = chan.size();
+            ArrayList<SeekableByteChannel> chans = new ArrayList<SeekableByteChannel>();
+            for (int i=0; i<CHANNELS_PER_THREAD; i++) {
+                SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
+                    Files.newByteChannel(path), 2 * 1024 * 1024);
+                // skip the first half
+                chan.position(chan.position()/2);
+                chans.add(chan);
+            }
+            long size = chans.get(0).size();
             ByteBuffer buf = ByteBuffer.allocate(1024*1024 - 5);
-            // skip the first half
-            chan.position(chan.position()/2);
-            int count = 0;
-            int totalRead = 0;
-            while (true) {
+            while (!chans.isEmpty()) {
+                SeekableByteChannel chan = chans.remove(0);
                 buf.clear();
                 int read = chan.read(buf);
-                if (read<0) break;
-                count++;
-                totalRead += read;
-            }
-
-            long position = chan.position();
-            if (size != position) {
-                System.out.println("Done at wrong position! " + position + " != " + size);
-                errors++;
+                if (read>=0) {
+                    chans.add(chan);
+                    continue;
+                }
+                // EOF
+                long position = chan.position();
+                if (size != position) {
+                    System.out.println("Done at wrong position! " + position + " != " + size);
+                    errors++;
+                }
             }
         } catch (Exception x) {
             errors++;
@@ -70,13 +76,14 @@ public final class ExtremeReadsTest extends BaseTest implements Runnable {
         List<Thread> threads = new ArrayList<>();
         Stopwatch sw = Stopwatch.createStarted();
         errors = 0;
-        int count = 1000;
+        int count = THREAD_COUNT;
         for (int i=0; i<count; i++) {
             Thread t = new Thread(this);
             threads.add(t);
             t.start();
         }
-        System.out.println("Reading on " + count + " threads (this will take a while).");
+        long parallel_reads = THREAD_COUNT * CHANNELS_PER_THREAD;
+        System.out.println(parallel_reads + " parallel reads via " + THREAD_COUNT + " threads (this will take a while).");
         for (Thread t : threads) {
             t.join();
         }
