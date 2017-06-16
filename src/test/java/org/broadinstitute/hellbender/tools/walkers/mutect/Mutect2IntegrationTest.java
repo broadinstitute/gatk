@@ -206,6 +206,27 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    // some bams from external pipelines use faulty adapter trimming programs that introduce identical repeated reads
+    // into bams.  Although these bams fail the Picard tool ValidateSamFile, one can run HaplotypeCaller and Mutect on them
+    // and get fine results.  This test ensures that this remains the case.  The test bam is a small chunk of reads surrounding
+    // a germline SNP in NA12878, where we have duplicated 40 of the reads. (In practice bams of this nature might have one bad read
+    // per megabase).
+    @Test
+    public void testBamWithRepeatedReads() {
+        final String repeatedReadsBam = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam";
+        final File outputVcf = createTempFile("output", ".vcf");
+
+        final String[] args = {
+                "-I", repeatedReadsBam,
+                "-tumor", "SM-612V3",
+                "-R", b37_reference_20_21,
+                "-L", "20:10018000-10020000",
+                "-O", outputVcf.getAbsolutePath()
+        };
+
+        runCommandLine(args);
+    }
+
     // tumor bam, tumor sample name, normal bam, normal sample name, truth vcf, required sensitivity
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
