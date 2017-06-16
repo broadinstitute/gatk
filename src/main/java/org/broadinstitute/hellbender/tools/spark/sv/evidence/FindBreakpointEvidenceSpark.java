@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSp
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
@@ -95,14 +94,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
                 "The reads must be coordinate sorted.");
 
-        final Locations locations =
-                new Locations(argumentCollection.metadataFile, argumentCollection.evidenceDir,
+        final FindBreakpointEvidenceSparkArgumentCollection.Locations locations =
+                new FindBreakpointEvidenceSparkArgumentCollection.Locations(argumentCollection.metadataFile, argumentCollection.evidenceDir,
                         argumentCollection.intervalFile, argumentCollection.qNamesMappedFile,
                         argumentCollection.kmerFile, argumentCollection.qNamesAssemblyFile,
                         argumentCollection.exclusionIntervalsFile, argumentCollection.crossContigsToIgnoreFile,
                         argumentCollection.alignerIndexImageFile);
-        final Params params =
-                new Params(argumentCollection.kSize, argumentCollection.maxDUSTScore,
+        final FindBreakpointEvidenceSparkArgumentCollection.Params params =
+                new FindBreakpointEvidenceSparkArgumentCollection.Params(argumentCollection.kSize, argumentCollection.maxDUSTScore,
                         argumentCollection.minEvidenceMapQ,
                         argumentCollection.minEvidenceMatchLength, argumentCollection.maxIntervalCoverage,
                         argumentCollection.minEvidenceWeight, argumentCollection.minCoherentEvidenceWeight,
@@ -163,11 +162,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * and return a set of template names and the intervals to which they belong.
      */
     private static Tuple2<List<SVInterval>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> getMappedQNamesSet(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final JavaSparkContext ctx,
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
-            final Locations locations,
+            final FindBreakpointEvidenceSparkArgumentCollection.Locations locations,
             final Logger logger)
     {
         final Set<Integer> crossContigsToIgnoreSet;
@@ -240,13 +239,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * The return is a description (as intervalId and explanatory String) of the intervals that were killed.
      */
     private static List<AlignedAssemblyOrExcuse> addAssemblyQNames(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final JavaSparkContext ctx,
             final String kmersToIgnoreFile,
             final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
             final int nIntervals,
             final JavaRDD<GATKRead> allPrimaryLines,
-            final Locations locations,
+            final FindBreakpointEvidenceSparkArgumentCollection.Locations locations,
             final Logger logger)
     {
         final JavaRDD<GATKRead> goodPrimaryLines =
@@ -279,13 +278,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * and _2 describes the good kmers that we want to use in local assemblies (as a multimap from kmer onto intervalId).
      */
     private static Tuple2<List<AlignedAssemblyOrExcuse>, HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> getKmerAndIntervalsSet(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final JavaSparkContext ctx,
             final String kmersToIgnoreFile,
             final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
             final int nIntervals,
             final JavaRDD<GATKRead> goodPrimaryLines,
-            final Locations locations,
+            final FindBreakpointEvidenceSparkArgumentCollection.Locations locations,
             final Logger logger)
     {
         final Set<SVKmer> kmerKillSet = SVUtils.readKmersFile(params.kSize, kmersToIgnoreFile, new SVKmerLong(params.kSize));
@@ -405,7 +404,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * Grab template names for all reads that contain kmers associated with a given breakpoint.
      */
     @VisibleForTesting static List<QNameAndInterval> getAssemblyQNames(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final JavaSparkContext ctx,
             final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
             final JavaRDD<GATKRead> reads ) {
@@ -435,13 +434,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     /** find kmers for each interval */
     @VisibleForTesting static Tuple2<List<AlignedAssemblyOrExcuse>, List<KmerAndInterval>> getKmerIntervals(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final JavaSparkContext ctx,
             final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
             final int nIntervals,
             final Set<SVKmer> kmerKillSet,
             final JavaRDD<GATKRead> reads,
-            final Locations locations ) {
+            final FindBreakpointEvidenceSparkArgumentCollection.Locations locations ) {
 
         final Broadcast<Set<SVKmer>> broadcastKmerKillSet = ctx.broadcast(kmerKillSet);
         final Broadcast<HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> broadcastQNameAndIntervalsMultiMap =
@@ -543,7 +542,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 .collect(Collectors.toCollection(() -> new ArrayList<>(intervals.size())));
     }
 
-    private static List<SVInterval> removeHighCoverageIntervalsAndLog( final Params params,
+    private static List<SVInterval> removeHighCoverageIntervalsAndLog( final FindBreakpointEvidenceSparkArgumentCollection.Params params,
                                                                        final JavaSparkContext ctx,
                                                                        final Broadcast<ReadMetadata> broadcastMetadata,
                                                                        final List<SVInterval> intervals,
@@ -557,7 +556,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     /** figure out the coverage for each interval and filter out those with ridiculously high coverage */
     @VisibleForTesting static List<SVInterval> removeHighCoverageIntervals(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final JavaSparkContext ctx,
             final Broadcast<ReadMetadata> broadcastMetadata,
             final List<SVInterval> intervals,
@@ -581,7 +580,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     /** find template names for reads mapping to each interval */
     @VisibleForTesting static HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> getQNames(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final JavaSparkContext ctx,
             final Broadcast<ReadMetadata> broadcastMetadata,
             final List<SVInterval> intervals,
@@ -607,11 +606,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * and declare a breakpoint interval where there is sufficient density of evidence.
      */
     @VisibleForTesting static List<SVInterval> getIntervals(
-            final Params params,
+            final FindBreakpointEvidenceSparkArgumentCollection.Params params,
             final Broadcast<ReadMetadata> broadcastMetadata,
             final SAMFileHeader header,
             final JavaRDD<GATKRead> mappedReads,
-            final Locations locations ) {
+            final FindBreakpointEvidenceSparkArgumentCollection.Locations locations ) {
         // find all breakpoint evidence, then filter for pile-ups
         final int nContigs = header.getSequenceDictionary().getSequences().size();
         final int minMapQ = params.minEvidenceMapQ;
@@ -724,99 +723,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     private static void log(final String message, final Logger logger) {
         logger.info(message);
-    }
-
-    @VisibleForTesting static class Locations {
-        public final String metadataFile;
-        public final String evidenceDir;
-        public final String intervalFile;
-        public final String qNamesMappedFile;
-        public final String kmerFile;
-        public final String qNamesAssemblyFile;
-        public final String exclusionIntervalsFile;
-        public final String crossContigsToIgnoreFile;
-        public final String alignerIndexImageFile;
-
-        public Locations( final String metadataFile, final String evidenceDir, final String intervalFile,
-                          final String qNamesMappedFile, final String kmerFile, final String qNamesAssemblyFile,
-                          final String exclusionIntervalsFile, final String crossContigsToIgnoreFile ,
-                          final String alignerIndexImageFile ) {
-            this.metadataFile = metadataFile;
-            this.evidenceDir = evidenceDir;
-            this.intervalFile = intervalFile;
-            this.qNamesMappedFile = qNamesMappedFile;
-            this.kmerFile = kmerFile;
-            this.qNamesAssemblyFile = qNamesAssemblyFile;
-            this.exclusionIntervalsFile = exclusionIntervalsFile;
-            this.crossContigsToIgnoreFile = crossContigsToIgnoreFile;
-            this.alignerIndexImageFile = alignerIndexImageFile;
-        }
-    }
-
-    @VisibleForTesting public static class Params {
-        public final int kSize;
-        public final int maxDUSTScore;
-        public final int minEvidenceMapQ;
-        public final int minEvidenceMatchLength;
-        public final int maxIntervalCoverage;
-        public final int minEvidenceWeight;
-        public final int minCoherentEvidenceWeight;
-        public final int minKmersPerInterval;
-        public final int cleanerMaxIntervals;
-        public final int cleanerMinKmerCount;
-        public final int cleanerMaxKmerCount;
-        public final int cleanerKmersPerPartitionGuess;
-        public final int maxQNamesPerKmer;
-        public final int assemblyKmerMapSize;
-        public final int assemblyToMappedSizeRatioGuess;
-        public final int maxFASTQSize;
-        public final int exclusionIntervalPadding;
-
-        public Params() {
-            kSize = SVConstants.KMER_SIZE;          // kmer size
-            maxDUSTScore = SVConstants.MAX_DUST_SCORE;// maximum for DUST-like kmer complexity score
-            minEvidenceMapQ = 20;                   // minimum map quality for evidential reads
-            minEvidenceMatchLength = 45;            // minimum match length
-            maxIntervalCoverage = 1000;             // maximum coverage on breakpoint interval
-            minEvidenceWeight = 15;                  // minimum number of evidentiary reads in called cluster
-            minCoherentEvidenceWeight = 7;           // minimum number of evidentiary reads in a cluster that all point to the same target locus
-            minKmersPerInterval = 20;               // minimum number of good kmers in a valid interval
-            cleanerMaxIntervals = 3;                // KmerCleaner maximum number of intervals a localizing kmer can appear in
-            cleanerMinKmerCount = 3;                // KmerCleaner min kmer count
-            cleanerMaxKmerCount = 125;              // KmerCleaner max kmer count
-            cleanerKmersPerPartitionGuess = 600000; // KmerCleaner guess for number of unique error-free kmers per partition
-            maxQNamesPerKmer = 500;                 // maximum template names for an assembly kmer
-            assemblyKmerMapSize = 250000;           // guess for unique, error-free, scrubbed kmers per assembly partition
-            assemblyToMappedSizeRatioGuess = 7;     // guess for ratio of total reads in assembly to evidentiary reads in interval
-            maxFASTQSize = 3000000;                 // maximum assembly size (total input bases)
-            exclusionIntervalPadding = 0;           // exclusion interval extra padding
-        }
-
-        public Params( final int kSize, final int maxDUSTScore, final int minEvidenceMapQ,
-                       final int minEvidenceMatchLength, final int maxIntervalCoverage,
-                       final int minEvidenceWeight, final int minCoherentEvidenceWeight,
-                       final int minKmersPerInterval, final int cleanerMaxIntervals, final int cleanerMinKmerCount,
-                       final int cleanerMaxKmerCount, final int cleanerKmersPerPartitionGuess,
-                       final int maxQNamesPerKmer, final int assemblyKmerMapSize, final int assemblyToMappedSizeRatioGuess,
-                       final int maxFASTQSize, final int exclusionIntervalPadding ) {
-            this.kSize = kSize;
-            this.maxDUSTScore = maxDUSTScore;
-            this.minEvidenceMapQ = minEvidenceMapQ;
-            this.minEvidenceMatchLength = minEvidenceMatchLength;
-            this.maxIntervalCoverage = maxIntervalCoverage;
-            this.minEvidenceWeight = minEvidenceWeight;
-            this.minCoherentEvidenceWeight = minCoherentEvidenceWeight;
-            this.minKmersPerInterval = minKmersPerInterval;
-            this.cleanerMaxIntervals = cleanerMaxIntervals;
-            this.cleanerMinKmerCount = cleanerMinKmerCount;
-            this.cleanerMaxKmerCount = cleanerMaxKmerCount;
-            this.cleanerKmersPerPartitionGuess = cleanerKmersPerPartitionGuess;
-            this.maxQNamesPerKmer = maxQNamesPerKmer;
-            this.assemblyKmerMapSize = assemblyKmerMapSize;
-            this.assemblyToMappedSizeRatioGuess = assemblyToMappedSizeRatioGuess;
-            this.maxFASTQSize = maxFASTQSize;
-            this.exclusionIntervalPadding = exclusionIntervalPadding;
-        }
     }
 
 }
