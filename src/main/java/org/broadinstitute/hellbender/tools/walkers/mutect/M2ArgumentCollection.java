@@ -34,13 +34,13 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /**
      * A panel of normals can be a useful (optional) input to help filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
      */
-    @Argument(fullName="normal_panel", shortName = "PON", doc="VCF file of sites observed in normal", optional = true)
+    @Argument(fullName="normal_panel", shortName = "PON", doc="VCF file of sites observed in normal.", optional = true)
     public FeatureInput<VariantContext> pon;
 
     /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
      */
-    @Argument(fullName="germline_resource", doc="Population vcf of germline sequencing containing allele fractions", optional = true)
+    @Argument(fullName="germline_resource", doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
     public FeatureInput<VariantContext> germlineResource;
 
     /**
@@ -91,41 +91,46 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public double minNormalVariantFraction = 0.1;
 
     /**
-     * Only variants with tumor LODs exceeding this threshold will be written to the VCF, irregardless of filter status.
-     * Set to less than or equal to tumor_lod. Increase argument value to reduce false positive calls in the callset.
-     * Default setting of 3 is permissive and will emit some amount of false-positive calls that
-     * filtering should filter and that allows for downstream training outside of the current workflow, e.g. akin to germline VQSR.
+     * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
+     * Set to less than or equal to tumor_lod. Increase argument value to reduce false positives in the callset.
+     * Default setting of 3 is permissive and will emit some amount of false-positives that
+     * filtering should filter and that allows for downstream training outside of the current workflow.
      */
-    @Argument(fullName = "tumor_lod_to_emit", optional = true, doc = "LOD threshold to emit tumor variant to results")
+    @Argument(fullName = "tumor_lod_to_emit", optional = true, doc = "LOD threshold to emit tumor variant to results.")
     public double emissionLodThreshold = 3.0;
 
     /**
      * This is a measure of the minimum evidence to support that a variant observed in the tumor is not also present in the normal.
-     * Applies to normal data in a tumor with matched normal analysis.
+     * Applies to normal data in a tumor with matched normal analysis. The default has been tuned for diploid somatic analyses.
+     * It is unlikely such analyses will require changing the default value. Increasing the parameter may increase the sensitivity of somatic calling,
+     * but may also increase calling false positive, i.e. germline, variants.
      */
-    @Argument(fullName = "normal_lod", optional = true, doc = "LOD threshold for calling normal variant non-germline")
+    @Argument(fullName = "normal_lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double NORMAL_LOD_THRESHOLD = 2.2;
 
     /**
-     * This argument is used for the M1-style strand bias filter
+     * @deprecated This argument is obsolete as of June 2017. It was previously used for the M1-style strand bias filter.
      */
-    @Argument(fullName="power_constant_qscore", doc="Phred scale quality score constant to use in power calculations", optional = true)
+    @Deprecated
+    @Argument(fullName="power_constant_qscore", doc="Phred scale quality score constant to use in power calculations.", optional = true)
     public int POWER_CONSTANT_QSCORE = 30;
 
     /**
-     * Which annotations to add to the output VCF file. See the VariantAnnotator -list argument to view available annotations.
+     * Which annotations to add to the output VCF file. By default the tool adds all annotations.
+     * If an annotation that a filter depends upon is absent, then the particular filtering will not occur and no warning will be given.
      */
     @Advanced
-    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to apply to variant calls", optional = true)
+    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to apply to variant calls.", optional = true)
     protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"Coverage", "DepthPerAlleleBySample",
             "TandemRepeat", "OxoGReadCounts", "ClippedBases", "ReadPosition", "BaseQuality", "MappingQuality",
             "FragmentLength", "StrandArtifact"}));
 
     /**
-     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See
-     * the VariantAnnotator -list argument to view available groups. Note that this usage is not recommended because
-     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
-     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
+     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group.
+     * Note that this usage is not recommended because it obscures the specific requirements of individual annotations.
+     * Any requirements that are not met, e.g. failing to provide a pedigree file for a pedigree-based annotation, may cause the run to fail.
+     * For somatic analyses, the StandardSomaticAnnotation group currently contains two annotations: BaseQualitySumPerAlleleBySample and StrandArtifact.
+     * Note the latter is redundant to an annotation given by the --annotation argument default.
      */
     @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)
     public List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{}));
