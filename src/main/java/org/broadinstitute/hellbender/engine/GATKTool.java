@@ -594,11 +594,6 @@ public abstract class GATKTool extends CommandLineProgram {
 
             // Check against the reads
             if ( hasReads() ) {
-                // When overriding the master sequence dictionary and working with CRAM files, we need to make sure that the
-                // reference we're using is completely contained by the sequence dictionary (i.e. the sequence dictionary is
-                // equal to the reference OR the sequence dictionary is a superset of the reference).
-                // This is accomplished by the call to validateCRAMDictionaryAgainstReference.
-
                 SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
                         "reads", readDict, requireMasterDictionaryIsSuperSet, false);
             }
