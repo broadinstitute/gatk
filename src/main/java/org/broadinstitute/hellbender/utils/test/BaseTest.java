@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -53,6 +52,9 @@ public abstract class BaseTest {
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
+    public static final String packageRootTestDir = publicTestDir + "org/broadinstitute/hellbender/";
+    public static final String toolsTestDir = packageRootTestDir + "tools/";
+
     public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
 
     public static final String GCS_b37_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "benchmark/human_g1k_v37.2bit";
@@ -100,6 +102,8 @@ public abstract class BaseTest {
 
     public static final String hg19_chr1_1M_exampleVCF = publicTestDir + "joint_calling.chr1_1M.1kg_samples.10samples.noINFO.vcf";
     public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
+    // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
+    public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
 
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;

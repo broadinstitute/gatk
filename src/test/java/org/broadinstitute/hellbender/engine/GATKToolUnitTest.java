@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -37,6 +38,29 @@ import java.io.IOException;
 import java.util.Set;
 
 public final class GATKToolUnitTest extends BaseTest{
+
+    public static final String bqsrTestDir = toolsTestDir + "BQSR/";
+
+    public static final String BQSR_WGS_B37_CH20_21_10M_100_CRAM = bqsrTestDir +
+            "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.cram";
+
+    public static final String hg19MicroDictFileName = ReferenceUtils.getFastaDictionaryFileName(hg19MicroReference);
+    public static final String hg19MiniDictFileName  = ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference);
+    public static final String v37_chr17DictFileName = ReferenceUtils.getFastaDictionaryFileName(v37_chr17_1Mb_Reference);
+    public static final String b37_20_21DictFile     = ReferenceUtils.getFastaDictionaryFileName(b37_reference_20_21);
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithSequenceDictionary",
+            oneLineSummary = "TestGATKToolWithSequenceDictionary",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithSequenceDictionary extends GATKTool {
+
+        @Override
+        public void traverse() {
+            //no op
+        }
+    }
 
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithReads",
@@ -139,6 +163,141 @@ public final class GATKToolUnitTest extends BaseTest{
         public void traverse() {
             //no op
         }
+    }
+
+    @DataProvider
+    public Object[][] sequenceDictionaryTestValuesCompatible() {
+
+        return new Object[][] {
+                { v37_chr17DictFileName, "--input", NA12878_chr17_1k_BAM, null, null },
+                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", b37_reference_20_21 },
+                { hg19MiniDictFileName, "--reference", hg19MicroReference, null, null },
+                { hg19MicroDictFileName, "--reference", hg19MiniReference, null, null },
+                { v37_chr17DictFileName, "--reference", v37_chr17_1Mb_Reference, null, null },
+        };
+    }
+
+    @DataProvider
+    public Object[][] sequenceDictionaryTestValuesIncompatible() {
+
+        return new Object[][] {
+                { v37_chr17DictFileName, "--input", NA12878_20_21_WGS_bam, null, null },
+                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", v37_chr17_1Mb_Reference },
+                { b37_20_21DictFile, "--reference", hg19MiniReference, null, null },
+                { v37_chr17DictFileName, "--reference", hg19_chr1_1M_Reference, null, null },
+        };
+    }
+
+    private void testGATKToolWithSequenceDictionaryHelper(String masterSequenceDictionaryFile,
+                                                         String otherSeqArg, String otherSequenceFile,
+                                                         String cramRefArg, String cramRefFile) throws Exception {
+
+        final GATKTool tool = new TestGATKToolWithSequenceDictionary();
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
+
+        final String[] args = (cramRefArg == null)
+                ? new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile }
+                : new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+
+        clp.parseArguments(System.out, args);
+
+        // This method would throw if sequence dictionary validation failed.
+        // Here we are testing that it throws when the input arguments are incompatible,
+        // and that it functions normally when the arguments are correct.
+        tool.onStartup();
+    }
+
+    @Test(dataProvider= "sequenceDictionaryTestValuesCompatible")
+    public void TestGATKToolWithSequenceDictionaryOk(String masterSequenceDictionaryFile,
+                                                     String otherSeqArg, String otherSequenceFile,
+                                                     String cramRefArg, String cramRefFile) throws Exception {
+
+        testGATKToolWithSequenceDictionaryHelper(masterSequenceDictionaryFile,
+                                                 otherSeqArg,
+                                                 otherSequenceFile,
+                                                 cramRefArg,
+                                                 cramRefFile);
+    }
+
+    @Test(dataProvider="sequenceDictionaryTestValuesIncompatible",
+            expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
+    public void TestGATKToolWithSequenceDictionaryException(String masterSequenceDictionaryFile,
+                                                            String otherSeqArg, String otherSequenceFile,
+                                                            String cramRefArg, String cramRefFile) throws Exception {
+
+        testGATKToolWithSequenceDictionaryHelper(masterSequenceDictionaryFile,
+                                                 otherSeqArg,
+                                                 otherSequenceFile,
+                                                 cramRefArg,
+                                                 cramRefFile);
+    }
+
+    @DataProvider
+    public Object[][] provideForGetMasterSequenceTest() {
+
+        final String dictFileName = ReferenceUtils.getFastaDictionaryFileName(v37_chr17_1Mb_Reference);
+        final SAMSequenceDictionary dict = ReferenceUtils.loadFastaDictionary(new File(dictFileName));
+
+        return new Object[][] {
+                { null, NA12878_chr17_1k_BAM, null },
+                { dictFileName, NA12878_chr17_1k_BAM, dict },
+        };
+    }
+
+    @Test(dataProvider = "provideForGetMasterSequenceTest")
+    public void testGetMasterSequenceDictionary(String masterSequenceFileName, String inputFileName, SAMSequenceDictionary expectedDict) {
+        final GATKTool tool = new TestGATKToolWithSequenceDictionary();
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
+
+        final String[] args = (masterSequenceFileName == null)
+                ? new String[] { "--input", inputFileName, }
+                : new String[] { "--sequenceDictionary", masterSequenceFileName, "--input", inputFileName, };
+
+        clp.parseArguments(System.out, args);
+
+        // This initializes our tool
+        tool.onStartup();
+
+        // Make sure that the master sequence dictionary dictionary is the expected dictionary
+        Assert.assertEquals( tool.getMasterSequenceDictionary(), expectedDict );
+    }
+
+    @DataProvider
+    public Object[][] provideMultipleSequenceDictionaries() {
+
+        final SAMSequenceDictionary v37_chr17Dict = ReferenceUtils.loadFastaDictionary(new File(v37_chr17DictFileName));
+        final SAMSequenceDictionary b37_20_21Dict = ReferenceUtils.loadFastaDictionary(new File(b37_20_21DictFile));
+        final SAMSequenceDictionary hg19MiniDict = ReferenceUtils.loadFastaDictionary(new File(hg19MiniDictFileName));
+        final SAMSequenceDictionary hg19MicroDict = ReferenceUtils.loadFastaDictionary(new File(hg19MicroDictFileName));
+
+        return new Object[][] {
+                { v37_chr17DictFileName, "--input", NA12878_chr17_1k_BAM, null, null, v37_chr17Dict },
+                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", b37_reference_20_21, b37_20_21Dict },
+                { hg19MiniDictFileName, "--reference", hg19MicroReference, null, null, hg19MiniDict },
+                { hg19MicroDictFileName, "--reference", hg19MiniReference, null, null, hg19MicroDict },
+        };
+    }
+
+    @Test(dataProvider = "provideMultipleSequenceDictionaries")
+    public void testGetBestAvailableSequenceDictionaryWithMasterDictionary(String sequenceFileName,
+                                                               String otherSeqArg, String otherSequenceFile,
+                                                               String cramRefArg, String cramRefFile,
+                                                               SAMSequenceDictionary expectedDict) {
+
+        final GATKTool tool = new TestGATKToolWithSequenceDictionary();
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
+
+        final String[] args = (cramRefArg == null)
+            ? new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, }
+            : new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+
+        clp.parseArguments(System.out, args);
+
+        // This initializes our tool
+        tool.onStartup();
+
+        // Make sure that the best available dictionary is the expected dictionary
+        Assert.assertEquals( tool.getBestAvailableSequenceDictionary(), expectedDict );
     }
 
     @Test

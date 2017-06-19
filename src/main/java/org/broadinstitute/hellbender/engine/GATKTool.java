@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -58,6 +59,11 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection
     protected final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
+
+    @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
+            shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
+            doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
+    private String masterSequenceDictionaryFilename = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
@@ -109,6 +115,11 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "If true, don't cache bam indexes, this will reduce memory requirements but may harm performance if many intervals are specified.  Caching is automatically disabled if there are no intervals specified.",
             optional = true)
     public boolean disableBamIndexCaching = false;
+
+    /**
+     * Master sequence dictionary to be used instead of all other dictionaries (if provided).
+     */
+    private SAMSequenceDictionary masterSequenceDictionary = null;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -439,6 +450,16 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
+     * Load the master sequence dictionary as specified in {@code masterSequenceDictionaryFilename}.
+     * Will only load the master sequence dictionary if it has not already been loaded.
+     */
+    private void loadMasterSequenceDictionary() {
+        if ( (masterSequenceDictionary == null) && (masterSequenceDictionaryFilename != null) ) {
+            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
+        }
+    }
+
+    /**
      * Returns the reference sequence dictionary if there is a reference (hasReference() == true), otherwise null.
      * @return reference sequence dictionary if any, or null
      */
@@ -447,13 +468,23 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
+     * Returns the master sequence dictionary if it has been set, otherwise null.
+     * In practice, this should only be called after engine initialization in {@link #onStartup()}
+     * @return Master sequence dictionary if specified, or null.
+     */
+    public final SAMSequenceDictionary getMasterSequenceDictionary() {
+        return masterSequenceDictionary;
+    }
+
+    /**
      * Returns the "best available" sequence dictionary or {@code null} if there is no single best dictionary.
      *
      * The algorithm for selecting the best dictionary is as follows:
-     * 1) if there is a reference, then the best dictionary is the reference sequence dictionary
-     * 2) Otherwise, if there are reads, then the best dictionary is the sequence dictionary constructed from the reads.
-     * 3) Otherwise, if there are features and the feature data source has only one dictionary, then that one is the best dictionary.
-     * 4) Otherwise, the result is {@code null}.
+     * 1) If a master sequence dictionary was specified, use that dictionary
+     * 2) if there is a reference, then the best dictionary is the reference sequence dictionary
+     * 3) Otherwise, if there are reads, then the best dictionary is the sequence dictionary constructed from the reads.
+     * 4) Otherwise, if there are features and the feature data source has only one dictionary, then that one is the best dictionary.
+     * 5) Otherwise, the result is {@code null}.
      *
      * TODO: check interval file(s) as well for a sequence dictionary
      *
@@ -462,7 +493,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return best available sequence dictionary given our inputs or {@code null} if no one dictionary is the best one.
      */
     public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
-        if (hasReference()){
+        if (masterSequenceDictionary != null) {
+            return masterSequenceDictionary;
+        } else if (hasReference()){
             return reference.getSequenceDictionary();
         } else if (hasReads()){
             return reads.getSequenceDictionary();
@@ -516,6 +549,8 @@ public abstract class GATKTool extends CommandLineProgram {
     protected void onStartup() {
         super.onStartup();
 
+        loadMasterSequenceDictionary();
+
         initializeReference();
 
         initializeReads(); // Must be initialized after reference, in case we are dealing with CRAM and a reference is required
@@ -547,9 +582,33 @@ public abstract class GATKTool extends CommandLineProgram {
      * and so are not sensitive to contig ordering issues).
      */
     private void validateSequenceDictionaries() {
+
         final SAMSequenceDictionary refDict = hasReference() ? reference.getSequenceDictionary() : null;
         final SAMSequenceDictionary readDict = hasReads() ? reads.getSequenceDictionary() : null;
         final List<SAMSequenceDictionary> featureDicts = hasFeatures() ? features.getAllSequenceDictionaries() : Collections.emptyList();
+
+        // Check the master dictionary against the reference / reads / features
+        if (masterSequenceDictionary != null) {
+
+            final boolean requireMasterDictionaryIsSuperSet = hasCramInput();
+
+            // Check against the reads
+            if ( hasReads() ) {
+                SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
+                        "reads", readDict, requireMasterDictionaryIsSuperSet, false);
+            }
+
+            // Check against the reference
+            if ( hasReference() ) {
+                SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary,
+                        "reference", refDict, requireMasterDictionaryIsSuperSet, false);
+            }
+
+            // Check against the features
+            for (final SAMSequenceDictionary featureDict : featureDicts) {
+                SequenceDictionaryUtils.validateDictionaries("master sequence dictionary", masterSequenceDictionary, "features", featureDict);
+            }
+        }
 
         // Check the reference dictionary against the reads dictionary
         if ( hasReference() && hasReads() ) {

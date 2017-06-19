@@ -32,6 +32,7 @@ public final class StandardArgumentDefinitions {
     public static final String DISABLE_SEQUENCE_DICT_VALIDATION_NAME = "disableSequenceDictionaryValidation";
     public static final String ADD_OUTPUT_SAM_PROGRAM_RECORD = "addOutputSAMProgramRecord";
     public static final String ADD_OUTPUT_VCF_COMMANDLINE = "addOutputVCFCommandLine";
+    public static final String SEQUENCE_DICTIONARY_NAME = "sequenceDictionary";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
