@@ -187,6 +187,22 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     /**
+     * Creates a FeatureDataSource backed by the resource at the provided path.
+     *
+     * @param featurePath path to file or GenomicsDB url containing features
+     * @param name logical name for this data source (may be null)
+     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     */
+    public FeatureDataSource(final String featurePath, final String name, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
+        this(new FeatureInput<>(featurePath, name != null ? name : featurePath), queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+    }
+
+    /**
      * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
      * during queries that produce cache misses.
      *
