@@ -24,15 +24,23 @@ import java.util.Optional;
 
 
 /**
- * Tool to analyze and evaluate base recalibration tables.
- * <p/>
- * It generates plots to assess the quality of a recalibration run.
+ * Evaluate and compare base quality score recalibration tables
  *
- * <h3>Input</h3>
+ * <p>This tool generates plots to assess the quality of a recalibration run as part of the Base Quality Score
+ * Recalibration (BQSR) procedure. </p>
  *
- * The tool can take up to three different sets of recalibration tables.
+ * <h4>Summary of the BQSR procedure</h4>
+ * <p>The goal of this procedure is to correct for systematic bias that affect the assignment of base quality scores
+ * by the sequencer. The first pass consists of calculating error empirically and finding patterns in how error varies
+ * with basecall features over all bases. The relevant observations are written to a recalibration table. The second
+ * pass consists of applying numerical corrections to each individual basecall based on the patterns identified in the
+ * first step (recorded in the recalibration table) and write out the recalibrated data to a new BAM or CRAM file.</p>
+ *
+ * <h3>Inputs</h3>
+ *
+ * <p>The tool can take up to three different sets of recalibration tables.
  * The resulting plots will be overlaid on top of each other to make
- * comparisons easy.
+ * comparisons easy.</p>
  *
  * <table style="text-align: left">
  *     <thead>
@@ -53,109 +61,99 @@ import java.util.Optional;
  * </table>
  * <br/>
  *
- * You need to specify one set at least. Multiple sets need to have the same values for the following parameters:
- * <br/></br>
- * <i>covariate (order is not important), no_standard_covs, run_without_dbsnp, solid_recal_mode,
+ * <p>You need to specify at least one set. Multiple sets need to have the same values for the following parameters:</p>
+ * <p><i>covariate (order is not important), no_standard_covs, run_without_dbsnp, solid_recal_mode,
  * solid_nocall_strategy, mismatches_context_size, mismatches_default_quality, deletions_default_quality,
  * insertions_default_quality, maximum_cycle_value, low_quality_tail, default_platform, force_platform,
- * quantizing_levels</i> and <i>binary_tag_name</i>
- * <h3>Output</h3>
+ * quantizing_levels</i> and <i>binary_tag_name</i></p>
  *
- * Currently this tool generates two outputs:
+ * <h3>Outputs</h3>
+ *
+ * <p>Currently this tool generates two outputs:</p>
  *
  * <dl>
  *   <dt style="font-weight: normal">-plots <i>my-report.pdf</i></dt>
- *   <dd>A pdf document that encloses plots to assess the quality of the recalibration.</dd>
+ *   <dd>A pdf document that encloses plots to assess the quality of the recalibration</dd>
  *   <dt style="font-weight: normal">-csv <i>my-report.csv</i></dt>
- *   <dd>A csv file that contains a table with all the data required to generate those plots.</dd>
+ *   <dd>A csv file that contains a table with all the data required to generate those plots</dd>
  * </dl>
  *
- * You need to specify at least one of them.
+ * <p>You need to specify at least one of them.</p>
  *
- * <h3>Other Arguments</h3>
- *
- * <h4>-ignoreLMT, --ignoreLastModificationTimes</h4>
- *
- * when set, no warning message will be displayed in the -before recalibration table file is older than the -after one.
- *
- * <h3>Examples</h3>
- *
+ * <h3>Usage examples</h3>
  *
  * <h4>Plot a single recalibration table</h4>
  * <pre>
- * java -jar GenomeAnalysisTK.jar \
- *      -T AnalyzeCovariates \
- *      -R myrefernce.fasta \
- *      -bqsr myrecal.table \
- *      -plots BQSR.pdf
+ *      ./gatk-launch AnalyzeCovariates \
+ *      -R reference.fasta \
+ *      -bqsr recal1.table \
+ *      -plots AnalyzeCovariates.pdf
  * </pre>
  *
- * <h4>Plot before (first pass) and after (second pass) recalibration table to compare them</h4>
- *
+ * <h4>Plot "before" (first pass) and "after" (second pass) recalibration tables to compare them</h4>
  * <pre>
- * java -jar GenomeAnalysisTK.jar \
- *      -T AnalyzeCovariates \
- *      -R myrefernce.fasta \
- *      -before recal2.table \
- *      -after recal3.table \
- *      -plots recalQC.pdf
+ *      ./gatk-launch AnalyzeCovariates \
+ *      -R reference.fasta \
+ *      -before recal1.table \
+ *      -after recal2.table \
+ *      -plots AnalyzeCovariates.pdf
  * </pre>
  *
  * <h4>Plot up to three recalibration tables for comparison</h4>
- *
  * <pre>
- *
- * # You can ignore the before/after semantics completely if you like (if you do add -ignoreLMT
- * # to avoid a possible warning), but all tables should have been generated using the same parameters.
- *
- * java -jar GenomeAnalysisTK.jar \
- *      -T AnalyzeCovariates \
- *      -R myrefernce.fasta \
+ *      ./gatk-launch AnalyzeCovariates \
+ *      -R reference.fasta \
  *      -ignoreLMT \
- *      -bqsr recal1.table \   # you can discard any two
+ *      -bqsr recal1.table \
  *      -before recal2.table \
  *      -after recal3.table \
- *      -plots myrecals.pdf
+ *      -plots AnalyzeCovariates.pdf
  * </pre>
  *
  * <h4>Full BQSR quality assessment pipeline</h4>
- *
+ * <p>Generate the first pass recalibration table file</p>
  * <pre>
- * # Generate the first pass recalibration table file.
- * java -jar GenomeAnalysisTK.jar \
- *      -T BaseRecalibrator \
- *      -R myreference.fasta \
- *      -I myinput.bam \
- *      -knownSites bundle/my-trusted-snps.vcf \ # optional but recommendable
- *      -knownSites bundle/my-trusted-indels.vcf \ # optional but recommendable
- *      ... other options
- *      -o firstpass.table
+ *      ./gatk-launch BaseRecalibrator \
+ *      -R reference.fasta \
+ *      -I input.bam \
+ *      -knownSites my-trusted-snps.vcf \
+ *      -knownSites my-trusted-indels.vcf \
+ *      -O recal1.table
+ * </pre>
  *
- * # Generate the second pass recalibration table file.
- * java -jar GenomeAnalysisTK.jar \
- *      -T BaseRecalibrator \
- *      -bqsr firstpass.table \
- *      -R myreference.fasta \
- *      -I myinput.bam \
+ * <p>Generate the second pass recalibration table file</p>
+ * <pre>
+ *      ./gatk-launch BaseRecalibrator \
+ *      -R reference.fasta \
+ *      -I input.bam \
+ *      -bqsr recal1.table \
  *      -knownSites bundle/my-trusted-snps.vcf \
  *      -knownSites bundle/my-trusted-indels.vcf \
- *      ... other options \
- *      -o secondpass.table
- *
- * # Finally generate the plots and also keep a copy of the csv (optional).
- * java -jar GenomeAnalysisTK.jar \
- *      -T AnalyzeCovariates \
- *      -R myrefernce.fasta \
- *      -before firstpass.table \
- *      -after secondpass.table \
- *      -csv BQSR.csv \ # optional
- *      -plots BQSR.pdf
+ *      -O recal2.table
  * </pre>
+ *
+ * <p>Finally, generate the plots and also keep a copy of the csv (optional)</p>
+ * <pre>
+ *      ./gatk-launch AnalyzeCovariates \
+ *      -R reference.fasta \
+ *      -before recal1.table \
+ *      -after recal2.table \
+ *      -csv BQSR.csv \
+ *      -plots AnalyzeCovariates.pdf
+ * </pre>
+ *
+ * <h3>Notes</h3>
+ * <ul>
+ *     <li>Sometimes you may want to compare recalibration tables where the "after" table was actually generated first. To
+ * suppress warnings about the dates of creation of the files, use the `--ignoreLastModificationTimes` argument.</li>
+ *     <li>You can ignore the before/after semantics completely if you like, but all tables must have been generated using
+ * the same parameters.</li>
+ * </ul>
  *
  */
 @CommandLineProgramProperties(
-        summary = "Tool to analyze and evaluate base recalibration tables for BQSR",
-        oneLineSummary = "Tool to analyze and evaluate base recalibration tables for BQSR",
+        summary = "Evaluate and compare base quality score recalibration (BQSR) tables",
+        oneLineSummary = "Evaluate and compare base quality score recalibration (BQSR) tables",
         programGroup = QCProgramGroup.class
 )
 @DocumentedFeature
