@@ -22,7 +22,7 @@ import java.util.List;
  * <p>For whole exome sequencing (WES) targets: </p>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" PadTargets \
+ * gatk-launch --javaOptions "-Xmx1g" PadTargets \
  *   --targets targets.tsv \
  *   --output targets.padded.tsv
  * </pre>
