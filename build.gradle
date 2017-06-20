@@ -408,7 +408,7 @@ task sparkJar(type: ShadowJar) {
     }
 }
 
-task zipBundle(type: Zip) {
+task bundle(type: Zip) {
     dependsOn shadowJar, sparkJar
 
     doFirst {
@@ -425,6 +425,10 @@ task zipBundle(type: Zip) {
     from("gatk-launch")
     from("README.md")
     into(baseName)
+
+    doLast {
+        logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
+    }
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
@@ -552,3 +556,5 @@ task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
 installDist.dependsOn downloadGsaLibFile
+
+defaultTasks 'bundle'

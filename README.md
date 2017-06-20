@@ -35,7 +35,7 @@ If you are looking for the codebase of the current production version of GATK, p
 
 ## Quick Start Guide
 
-* Build the GATK: `./gradlew installAll`
+* Build the GATK: `./gradlew bundle`
 * Get help on running the GATK: `./gatk-launch --help`
 * Get a list of available tools: `./gatk-launch --list`
 * Run a tool: `./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam`
@@ -66,7 +66,7 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * To create a zip archive containing a complete standalone GATK distribution, including our launcher `gatk-launch`, both the local and spark jars, and this README, run
 
-        ./gradlew zipBundle
+        ./gradlew bundle
         
     * The resulting zip file will be in `build` with a name like `gatk-VERSION.zip`
 
