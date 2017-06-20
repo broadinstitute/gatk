@@ -22,67 +22,56 @@ import java.util.*;
 
 
 /**
- * Validates a VCF file with an extra strict set of criteria.
+ * Validate a VCF file with a strict set of criteria
  *
- * <p>
- * ValidateVariants is a GATK tool that takes a VCF file and validates much of the information inside it.
- * In addition to standard adherence to the VCF specification, this tool performs extra strict validations to ensure
- * the information contained within the file is correct. These include:
- * </p><p>
- * <dl>
- *   <dt>REF</dt><dd>the correctness of the reference base(s).</dd>
- *   <dt>CHR_COUNTS</dt><dd>accuracy of AC & AN values.</dd>
- *   <dt>IDS</dt><dd>tests against rsIDs when a dbSNP file is provided. Notice that for this one to work, you need
- *    to provide a reference to the dbsnp variant containing file using the <code>--dbsnp</code> as show in examples below.</dd>
- *   <dt>ALLELES</dt><dd>and that all alternate alleles are present in at least one sample.</dd>
- * </dl>
- *
+ * <p>This tool is designed to validate the correctness of the formatting of VCF files. In addition to standard
+ * adherence to the VCF specification, this tool performs extra strict validations to ensure that the information
+ * contained within the file is correctly encoded. These include:
  * </p>
  *
+ * <ul>
+ *   <li><b>REF</b> - correctness of the reference base(s)</li>
+ *   <li><b>CHR_COUNTS</b> - accuracy of AC and AN values</li>
+ *   <li><b>IDS</b> - tests against rsIDs when a dbSNP file is provided (requires a dbsnp VCF provided via `--dbsnp`).</li>
+ *   <li><b>ALLELES</b> - that all alternate alleles are present in at least one sample</li>
+ * </ul>
+ *
  * <p>
- *     By default it will apply all the strict validations unless you indicate which one you want you want to exclude
- *     using <code>-Xtype|--validationTypeToExclude &lt;<i>code</i>&gt;</code>, where <i>code</i> is one of the listed above. You
- *     can exclude as many types as you want
- * <p>
- *     You can exclude all strict validations with the special code <code><b>ALL</b></code>. In this case the tool will only
- *     test the adherence to the VCF specification.
+ *     By default the tool applies all the strict validations unless you indicate which one you want you want to
+ *     exclude using `--validationTypeToExclude`. You can exclude as many types as you want. You can exclude all strict
+ *     validations with the special code `ALL`. In this case the tool will only test for adherence to the VCF
+ *     specification.
  * </p>
  *
  * <h3>Input</h3>
  * <p>
- * A variant set to validate using <code>-V</code> or <code>--variant</code> as shown below.
+ * A VCF file to validate.
  * </p>
  *
- * <h3>Examples</h3>
+ * <h3>Usage examples</h3>
  *
- * <p>To perform VCF format and all strict validations: </p>
- *
+ * <h4>To perform VCF format and all strict validations: </h4>
  * <pre>
- * java -Xmx2g -jar GenomeAnalysisTK.jar \
+ *   ./gatk-launch ValidateVariants \
  *   -R ref.fasta \
- *   -T ValidateVariants \
- *   --variant input.vcf \
+ *   -V input.vcf \
  *   --dbsnp dbsnp.vcf
  * </pre>
  *
- * <p>To perform only VCF format tests:</p>
- *
+ * <h4>To perform only VCF format tests:</h4>
  * <pre>
- * java -Xmx2g -jar GenomeAnalysisTK.jar \
+ *   ./gatk-launch ValidateVariants
  *   -R ref.fasta \
- *   -T ValidateVariants \
- *   <b>--validationTypeToExclude ALL</b> \
- *   --variant input.vcf
+ *   -V input.vcf \
+ *   --validationTypeToExclude ALL
  * </pre>
  *
- * <p>To perform all validations except the strict <i>ALLELE</i> validation:</p>
- *
+ * <h4>To perform all validations except the strict `ALLELE` validation:</h4>
  * <pre>
- * java -Xmx2g -jar GenomeAnalysisTK.jar \
+ *   ./gatk-launch ValidateVariants \
  *   -R ref.fasta \
- *   -T ValidateVariants \
- *   <b>--validationTypeToExclude ALLELES</b>
- *   --variant input.vcf \
+ *   -V input.vcf \
+ *   --validationTypeToExclude ALLELES \
  *   --dbsnp dbsnp.vcf
  * </pre>
  *
