@@ -73,7 +73,7 @@ public class XHMMSegmentCallerIntegrationTest extends XHMMSegmentCallerBaseInteg
         runCommandLine(chain, inputFile, outputFile);
 
         Assert.assertTrue(outputFile.exists());
-        final TargetCollection<Target> targets = TargetArgumentCollection.readTargetCollection(REALISTIC_TARGETS_FILE);
+        final TargetCollection<Target> targets = TargetArgumentCollection.readTargetCollection(TRUNCATED_REALISTIC_TARGETS_FILE);
         final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> outputRecords = readOutputRecords(outputFile);
         assertOutputIsInOrder(outputRecords, targets);
         assertOutputHasConsistentNumberOfTargets(outputRecords, targets);

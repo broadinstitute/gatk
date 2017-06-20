@@ -30,11 +30,11 @@ public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLinePr
 
     private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
 
-    public static final File REALISTIC_TARGETS_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "realistic-targets.tab");
+    public static final File TRUNCATED_REALISTIC_TARGETS_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "truncated-realistic-targets.tab");
     public static final TargetCollection<Target> REALISTIC_TARGETS;
 
     static {
-        try (final TargetTableReader reader = new TargetTableReader(REALISTIC_TARGETS_FILE)) {
+        try (final TargetTableReader reader = new TargetTableReader(TRUNCATED_REALISTIC_TARGETS_FILE)) {
             REALISTIC_TARGETS = new HashedListTargetCollection<>(reader.stream().collect(Collectors.toList()));
         } catch (final IOException ex) {
             throw new GATKException("could not read the realistic-targets file", ex);

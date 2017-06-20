@@ -47,11 +47,6 @@ public final class XHMMModel extends CopyNumberTriStateHMM<XHMMEmissionData> {
     private static final double EMISSION_SD = 1.0;
 
     /**
-     * A random seed for instantiating a random number generator for {@link XHMMEmissionProbabilityCalculator}
-     */
-    private static final int RANDOM_SEED = 1767;
-
-    /**
      * Creates a new model instance.
      *
      * @param eventStartProbability the probability per base pair of a transition from neutral to a CNV
@@ -64,19 +59,15 @@ public final class XHMMModel extends CopyNumberTriStateHMM<XHMMEmissionData> {
                      final double meanEventSize,
                      final double deletionMeanShift,
                      final double duplicationMeaShift) {
-        super(new XHMMEmissionProbabilityCalculator(
-                deletionMeanShift,
-                duplicationMeaShift,
-                EMISSION_SD, RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED))),
-                eventStartProbability,
-                meanEventSize);
+        super(new XHMMEmissionProbabilityCalculator(deletionMeanShift, duplicationMeaShift, EMISSION_SD),
+                eventStartProbability, meanEventSize);
     }
 
     @VisibleForTesting
     public Double randomDatum(final CopyNumberTriState state, final Random rdn) {
         Utils.nonNull(state);
         Utils.nonNull(rdn);
-        return ((XHMMEmissionProbabilityCalculator)targetLikelihoodCalculator).generateRandomZScoreData(state.copyRatio);
+        return ((XHMMEmissionProbabilityCalculator)targetLikelihoodCalculator).generateRandomZScoreData(state.copyRatio, rdn);
     }
 
     /**

@@ -52,7 +52,7 @@ public class XHMMSegmentGenotyperIntegrationTest extends XHMMSegmentCallerBaseIn
         arguments.add("-" + XHMMSegmentGenotyper.DISCOVERY_FILE_SHORT_NAME);
         arguments.add(segmentsFile.getAbsolutePath());
         arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
-        arguments.add(XHMMSegmentCallerBaseIntegrationTest.REALISTIC_TARGETS_FILE.getAbsolutePath());
+        arguments.add(XHMMSegmentCallerBaseIntegrationTest.TRUNCATED_REALISTIC_TARGETS_FILE.getAbsolutePath());
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
         loadModelArguments(chain, arguments);
