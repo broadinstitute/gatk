@@ -21,10 +21,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /*
@@ -301,8 +298,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     private static Map<GATKRead, byte[]> buildGapContinuationPenalties(final List<GATKRead> reads, final byte gapPenalty) {
-        return reads.stream().collect(Collectors.toMap(read -> read,
-                                                       read -> Utils.dupBytes(gapPenalty, read.getLength())));
+        final Map<GATKRead, byte[]> result = new HashMap<>(reads.size());
+        reads.stream().forEach(read -> result.put(read, Utils.dupBytes(gapPenalty, read.getLength())));
+        return result;
     }
 
     private void writeDebugLikelihoods(final LikelihoodMatrix<Haplotype> likelihoods) {
