@@ -16,14 +16,14 @@ time_gatk() {
   mkdir -p results
   LOG=logs/${COMMAND}_$(date +%Y%m%d_%H%M%S).log
   mkdir -p logs
-  echo "$GATK_HOME/gatk-launch $GATK_ARGS $API_KEY_ARGS \\
+  echo "${GATK_HOME:-../..}/gatk-launch $GATK_ARGS $API_KEY_ARGS \\
     -- \\
     $SPARK_RUNNER_ARGS \\
     --num-executors $NUM_EXECUTORS --executor-cores $EXECUTOR_CORES --executor-memory $EXECUTOR_MEMORY \\
     --driver-memory $DRIVER_MEMORY \\
     --conf spark.dynamicAllocation.enabled=false" \
   > $LOG
-  $GATK_HOME/gatk-launch $GATK_ARGS $API_KEY_ARGS \
+  ${GATK_HOME:-../..}/gatk-launch $GATK_ARGS $API_KEY_ARGS \
     -- \
     $SPARK_RUNNER_ARGS \
     --num-executors $NUM_EXECUTORS --executor-cores $EXECUTOR_CORES --executor-memory $EXECUTOR_MEMORY \
