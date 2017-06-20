@@ -31,6 +31,10 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.util.List;
+
+/**
+ * BQSR. The final result is analysis-ready reads.
+ */
 @CommandLineProgramProperties(
         summary = "This tools performs 2 steps of BQSR - creation of recalibration tables and rewriting of the bam, without writing the tables to disk. ",
         oneLineSummary = "Both steps of BQSR (BaseRecalibrator and ApplyBQSR) on Spark",
@@ -39,9 +43,6 @@ import java.util.List;
 )
 @DocumentedFeature
 @BetaFeature
-/**
- * BQSR. The final result is analysis-ready reads.
- */
 public final class BQSRPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

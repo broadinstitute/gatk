@@ -8,6 +8,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
@@ -25,6 +26,7 @@ import java.util.List;
 @CommandLineProgramProperties(summary="Builds library of reference kmers used in the PathSeq subtraction phase.",
         oneLineSummary="Builds library of reference kmers",
         programGroup = SparkProgramGroup.class)
+@BetaFeature
 public final class PathSeqKmerSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -51,6 +52,7 @@ import java.util.List;
  * and BQSR. The final result is analysis-ready reads.
  */
 @DocumentedFeature
+@BetaFeature
 public class ReadsPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

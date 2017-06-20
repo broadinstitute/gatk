@@ -11,6 +11,7 @@ import htsjdk.samtools.ValidationStringency;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -34,6 +35,7 @@ import java.io.IOException;
         oneLineSummary = "create a hadoop-bam splitting index" ,
         programGroup = SparkProgramGroup.class)
 @DocumentedFeature
+@BetaFeature
 public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(CreateHadoopBamSplittingIndex.class);
 

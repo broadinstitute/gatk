@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
@@ -20,6 +21,7 @@ import java.util.List;
 @CommandLineProgramProperties(summary = "Sorts the input SAM/BAM/CRAM",
         oneLineSummary = "SortSam on Spark (works on SAM/BAM/CRAM)",
         programGroup = SparkProgramGroup.class)
+@BetaFeature
 public final class SortReadFileSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

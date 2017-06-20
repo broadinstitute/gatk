@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
@@ -22,6 +23,7 @@ import java.util.List;
         oneLineSummary = "Collect Insert Size Distribution on Spark",
         programGroup   = SparkProgramGroup.class)
 @DocumentedFeature
+@BetaFeature
 public final class CollectInsertSizeMetricsSpark
         extends MetricsCollectorSparkTool<InsertSizeMetricsArgumentCollection> {
 

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -30,6 +31,7 @@ import java.util.*;
 @CommandLineProgramProperties(summary = "Builds PathSeq taxonomy database for a given pathogen reference",
         oneLineSummary = "PathSeq taxonomy database builder",
         programGroup = ReadProgramGroup.class)
+@BetaFeature
 public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
 
     @ArgumentCollection

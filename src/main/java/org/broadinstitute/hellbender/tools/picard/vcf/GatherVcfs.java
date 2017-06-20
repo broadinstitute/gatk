@@ -24,6 +24,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -53,6 +54,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "Gathers multiple VCF files from a scatter operation into a single VCF file",
         programGroup = VariantProgramGroup.class
 )
+@BetaFeature
 public final class GatherVcfs extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,

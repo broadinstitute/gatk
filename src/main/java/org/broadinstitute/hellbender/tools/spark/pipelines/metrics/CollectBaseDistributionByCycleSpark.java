@@ -7,6 +7,7 @@ import htsjdk.samtools.util.StringUtil;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -34,6 +35,7 @@ import java.util.List;
         programGroup = SparkProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;

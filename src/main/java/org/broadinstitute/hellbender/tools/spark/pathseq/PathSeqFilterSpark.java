@@ -11,6 +11,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
@@ -67,6 +68,7 @@ import java.util.Set;
 @CommandLineProgramProperties(summary = "Read preprocessing and host organism filtering on reads from a BAM file",
         oneLineSummary = "PathSeqFilter on Spark",
         programGroup = SparkProgramGroup.class)
+@BetaFeature
 public final class PathSeqFilterSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;

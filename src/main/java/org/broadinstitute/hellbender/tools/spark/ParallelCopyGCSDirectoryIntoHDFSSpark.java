@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(summary="Parallel copy a file or directory (non-recursive) from GCS into HDFS",
         oneLineSummary="Parallel copy a file or directory from GCS into HDFS.",
         programGroup = SparkProgramGroup.class)
+@BetaFeature
 public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
