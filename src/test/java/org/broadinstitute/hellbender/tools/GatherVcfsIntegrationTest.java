@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
 import com.google.common.collect.Lists;
-import com.intel.gkl.compression.IntelDeflaterFactory;
-import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
@@ -10,9 +8,6 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
-import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -22,10 +17,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,7 +25,6 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
 
     private static final File TINY_HG_19_VCF = new File(hg19_chr1_1M_exampleVCF);
     private static final File LARGE_VCF = new File(largeFileTestDir, "gvcfs/combined.gatk3.7_30_ga4f720357.expected.vcf");
-
 
     @DataProvider
     public Object[][] getGatherTypes(){
@@ -46,32 +37,36 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
 
     @Test(groups = "bucket", dataProvider = "getGatherTypes")
     public void testGatherOverNIO(final GatherVcfs.GatherType gatherType){
-        final File output = createTempFile("gathered", ".vcf.gz");
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput( getTestFile("cloud-inputs.list"))
-            .addOutput(output)
-            .addArgument(GatherVcfs.GATHER_TYPE_LONG_NAME, gatherType.toString());
-        runCommandLine(args);
-
-        final List<VariantContext> actual = Lists.newArrayList(new FeatureDataSource<VariantContext>(output));
-        final List<VariantContext> expected = Lists.newArrayList(new FeatureDataSource<VariantContext>(
-                new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf")));
-        VariantContextTestUtils.assertEqualVariants(actual, expected);
+        assertGatherProducesCorrectVariants(gatherType,
+                                            new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf"),
+                                            getTestFile("cloud-inputs.list"));
     }
 
     @Test(dataProvider = "getGatherTypes")
-    public void testGatherOverNIO(final GatherVcfs.GatherType gatherType){
+    public void testLocalGathers(final GatherVcfs.GatherType gatherType){
+        assertGatherProducesCorrectVariants(gatherType,
+                                            getTestFile("gzipped.vcf.gz"),
+                                            getTestFile("bgzipped_shards.list"));
+    }
+
+    private void assertGatherProducesCorrectVariants(GatherVcfs.GatherType gatherType, File expected, File inputs) {
         final File output = createTempFile("gathered", ".vcf.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput( getTestFile("bgzipped_shards.list"))
+        args.addInput(inputs)
                 .addOutput(output)
                 .addArgument(GatherVcfs.GATHER_TYPE_LONG_NAME, gatherType.toString());
         runCommandLine(args);
 
-        final List<VariantContext> actual = Lists.newArrayList(new FeatureDataSource<VariantContext>(output));
-        final List<VariantContext> expected = Lists.newArrayList(new FeatureDataSource<VariantContext>(
-                new File(, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf")));
-        VariantContextTestUtils.assertEqualVariants(actual, expected);
+        try (  final FeatureDataSource<VariantContext> actualReader = new FeatureDataSource<>(output);
+               final FeatureDataSource<VariantContext> expectedReader = new FeatureDataSource<>(expected);){
+
+            final List<VariantContext> actualVariants = Lists.newArrayList(actualReader);
+            final List<VariantContext> expectedVariants = Lists.newArrayList(expectedReader);
+            VariantContextTestUtils.assertEqualVariants(actualVariants, expectedVariants);
+
+            Assert.assertEquals(((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder(),
+                                ((VCFHeader) expectedReader.getHeader()).getMetaDataInInputOrder());
+        }
     }
 
 
@@ -127,11 +122,11 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
 
             //test that the files have the same number of header lines as well as that the headers are identical
             //this catches a case we saw where header blocks were being inserted into the middle of the file
-            assertSameNumberOfHeaderLines(vcf, output);
+            assertFilesHaveSameNumberOfHeaderLines(vcf, output);
         }
     }
 
-    private static void assertSameNumberOfHeaderLines(File vcf, File output) throws IOException {
+    private static void assertFilesHaveSameNumberOfHeaderLines(File vcf, File output) throws IOException {
         //test that the files have the same number of header lines as well as that the headers are identical
         //this catches a case we saw where header blocks were being inserted into the middle of the file
         try (final XReadLines actualReader = new XReadLines(output);
