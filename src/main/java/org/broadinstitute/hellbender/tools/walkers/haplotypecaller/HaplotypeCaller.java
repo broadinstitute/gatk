@@ -27,36 +27,37 @@ import java.util.List;
  *
  * <p>The HaplotypeCaller is capable of calling SNPs and indels simultaneously via local de-novo assembly of haplotypes in an active region. In other words, whenever the program encounters a region showing signs of variation, it discards the existing mapping information and completely reassembles the reads in that region. This allows the HaplotypeCaller to be more accurate when calling regions that are traditionally difficult to call, for example when they contain different types of variants close to each other. It also makes the HaplotypeCaller much better at calling indels than position-based callers like UnifiedGenotyper.</p>
  *
- * <p>In the so-called GVCF mode used for scalable variant calling in DNA sequence data, HaplotypeCaller runs per-sample to generate an intermediate genomic gVCF (gVCF), which can then be used for joint genotyping of multiple samples in a very efficient way, which enables rapid incremental processing of samples as they roll off the sequencer, as well as scaling to very large cohort sizes (e.g. the 92K exomes of ExAC).</p>
+ * <p>In the GVCF workflow used for scalable variant calling in DNA sequence data, HaplotypeCaller runs per-sample to generate an intermediate GVCF (not to be used in final analysis), which can then be used in GenotypeGVCFs for joint genotyping of multiple samples in a very efficient way. The GVCF workflow enables rapid incremental processing of samples as they roll off the sequencer, as well as scaling to very large cohort sizes (e.g. the 92K exomes of ExAC).</p>
  *
  * <p>In addition, HaplotypeCaller is able to handle non-diploid organisms as well as pooled experiment data. Note however that the algorithms used to calculate variant likelihoods is not well suited to extreme allele frequencies (relative to ploidy) so its use is not recommended for somatic (cancer) variant discovery. For that purpose, use Mutect2 instead.</p>
  *
- * <p>Finally, HaplotypeCaller is also able to correctly handle the splice junctions that make RNAseq a challenge for most variant callers.</p>
+ * <p>Finally, HaplotypeCaller is also able to correctly handle the splice junctions that make RNAseq a challenge for most variant callers,
+ * on the condition that the input read data has previously been processed according to our recommendations as documented <a href='https://software.broadinstitute.org/gatk/documentation/article?id=4067'>here</a>.</p>
  *
  * <h3>How HaplotypeCaller works</h3>
  *
  * <br />
- * <h4>1. Define active regions </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4147'>1. Define active regions </h4>
  *
- * <p>The program determines which regions of the genome it needs to operate on, based on the presence of significant
- * evidence for variation.</p>
+ * <p>The program determines which regions of the genome it needs to operate on (active regions), based on the presence of
+ * evidence for variation.
  *
  * <br />
- * <h4>2. Determine haplotypes by assembly of the active region </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4146'>2. Determine haplotypes by assembly of the active region </h4>
  *
- * <p>For each ActiveRegion, the program builds a De Bruijn-like graph to reassemble the ActiveRegion, and identifies
+ * <p>For each active region, the program builds a De Bruijn-like graph to reassemble the active region and identifies
  * what are the possible haplotypes present in the data. The program then realigns each haplotype against the reference
  * haplotype using the Smith-Waterman algorithm in order to identify potentially variant sites. </p>
  *
  * <br />
- * <h4>3. Determine likelihoods of the haplotypes given the read data </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4441'>3. Determine likelihoods of the haplotypes given the read data </h4>
  *
- * <p>For each ActiveRegion, the program performs a pairwise alignment of each read against each haplotype using the
+ * <p>For each active region, the program performs a pairwise alignment of each read against each haplotype using the
  * PairHMM algorithm. This produces a matrix of likelihoods of haplotypes given the read data. These likelihoods are
  * then marginalized to obtain the likelihoods of alleles for each potentially variant site given the read data.   </p>
  *
  * <br />
- * <h4>4. Assign sample genotypes </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4442'>4. Assign sample genotypes </h4>
  *
  * <p>For each potentially variant site, the program applies Bayes' rule, using the likelihoods of alleles given the
  * read data to calculate the likelihoods of each genotype per sample given the read data observed for that
@@ -64,89 +65,68 @@ import java.util.List;
  *
  * <h3>Input</h3>
  * <p>
- * Input bam file(s) from which to make calls
+ * Input bam file(s) from which to make variant calls
  * </p>
  *
  * <h3>Output</h3>
  * <p>
- * Either a VCF or gVCF file with raw, unfiltered SNP and indel calls. Regular VCFs must be filtered either by variant
- * recalibration (best) or hard-filtering before use in downstream analyses. If using the reference-confidence model
- * workflow for cohort analysis, the output is a GVCF file that must first be run through GenotypeGVCFs and then
- * filtering before further analysis.
+ * Either a VCF or GVCF file with raw, unfiltered SNP and indel calls. Regular VCFs must be filtered either by variant
+ * recalibration (Best Practice) or hard-filtering before use in downstream analyses. If using the GVCF workflow, the
+ * output is a GVCF file that must first be run through GenotypeGVCFs and then filtering before further analysis.
  * </p>
  *
  * <h3>Usage examples</h3>
  *
- * <p>These are example commands that show how to run HaplotypeCaller for typical use cases. Square brackets ("[ ]")
- * indicate optional arguments. Note that parameter values shown here may not be the latest recommended; see the
- * Best Practices documentation for detailed recommendations. </p>
+ * <p>These are example commands that show how to run HaplotypeCaller for typical use cases. Have a look at the <a href='https://software.broadinstitute.org/gatk/documentation/article?id=3893'>method documentation</a> for the basic GVCF workflow. </p>
  *
  * <br />
- * <h4>Single-sample GVCF calling on DNAseq (for `-ERC GVCF` cohort analysis workflow)</h4>
+ * <h4>Single-sample GVCF calling (outputs intermediate GVCF)</h4>
  * <pre>
- *   java -jar GenomeAnalysisTK.jar \
- *     -R reference.fasta \
- *     -T HaplotypeCaller \
- *     -I sample1.bam \
- *     --emitRefConfidence GVCF \
- *     [--dbsnp dbSNP.vcf] \
- *     [-L targets.interval_list] \
- *     -o output.raw.snps.indels.g.vcf
+ * ./gatk-launch HaplotypeCaller  \
+ *   -R reference.fasta \
+ *   -I input.bam \
+ *   -O output.g.vcf \
+ *   -ERC GVCF
  * </pre>
  *
- * <h4>Single-sample GVCF calling on DNAseq with allele-specific annotations (for allele-specific cohort analysis workflow)</h4>
+ * <h4>Single-sample GVCF calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=9622'>allele-specific annotations</a></h4>
  * <pre>
- *   java -jar GenomeAnalysisTK.jar \
- *     -R reference.fasta \
- *     -T HaplotypeCaller \
- *     -I sample1.bam \
- *     --emitRefConfidence GVCF \
- *     [--dbsnp dbSNP.vcf] \
- *     [-L targets.interval_list] \
- *     -G Standard -G AS_Standard \
- *     -o output.raw.snps.indels.AS.g.vcf
+ * ./gatk-launch HaplotypeCaller  \
+ *   -R reference.fasta \
+ *   -I input.bam \
+ *   -O output.g.vcf \
+ *   -ERC GVCF \
+ *   -G Standard \
+ *   -G AS_Standard
  * </pre>
  *
- * <h4>Variant-only calling on DNAseq</h4>
+ * <h4>Variant calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=5484'>bamout</a> to show realigned reads</h4>
  * <pre>
- *   java -jar GenomeAnalysisTK.jar \
- *     -R reference.fasta \
- *     -T HaplotypeCaller \
- *     -I sample1.bam [-I sample2.bam ...] \
- *     [--dbsnp dbSNP.vcf] \
- *     [-stand_call_conf 30] \
- *     [-L targets.interval_list] \
- *     -o output.raw.snps.indels.vcf
- * </pre>
- *
- * <h4>Variant-only calling on RNAseq</h4>
- * <pre>
- *   java -jar GenomeAnalysisTK.jar \
- *     -R reference.fasta \
- *     -T HaplotypeCaller \
- *     -I sample1.bam \
- *     [--dbsnp dbSNP.vcf] \
- *     -stand_call_conf 20 \
- *     -o output.raw.snps.indels.vcf
+ * ./gatk-launch HaplotypeCaller  \
+ *   -R reference.fasta \
+ *   -I input.bam \
+ *   -O output.vcf \
+ *   -bamout bamout.bam
  * </pre>
  *
  * <h3>Caveats</h3>
  * <ul>
  * <li>We have not yet fully tested the interaction between the GVCF-based calling or the multisample calling and the
  * RNAseq-specific functionalities. Use those in combination at your own risk.</li>
- * <li>Many users have reported issues running HaplotypeCaller with the -nct argument, so we recommend using Queue to
- * parallelize HaplotypeCaller instead of multithreading.</li>
  * </ul>
  *
  * <h3>Special note on ploidy</h3>
- * <p>This tool is able to handle almost any ploidy (except very high ploidies in large pooled experiments); the ploidy can be specified using the -ploidy argument for non-diploid organisms.</p>
+ * <p>This tool is able to handle many non-diploid use cases; the desired ploidy can be specified using the -ploidy
+ * argument. Note however that very high ploidies (such as are encountered in large pooled experiments) may cause
+ * performance challenges including excessive slowness. We are working on resolving these limitations.</p>
  *
  * <h3>Additional Notes</h3>
  * <ul>
  *     <li>When working with PCR-free data, be sure to set `-pcr_indel_model NONE` (see argument below).</li>
- *     <li>When running in `-ERC GVCF` or `-ERC BP_RESOLUTION` modes, the emitting and calling confidence thresholds
- *     are automatically set to 0. This cannot be overridden by the command line. The thresholds can be set manually
- *     to the desired levels in the next step of the workflow (GenotypeGVCFs)</li>
+ *     <li>When running in `-ERC GVCF` or `-ERC BP_RESOLUTION` modes, the confidence threshold
+ *     is automatically set to 0. This cannot be overridden by the command line. The threshold can be set manually
+ *     to the desired level in the next step of the workflow (GenotypeGVCFs)</li>
+ *     <li>We recommend using a list of intervals to speed up analysis. See <a href='https://software.broadinstitute.org/gatk/documentation/article?id=4133'>this document</a> for details.</li>
  * </ul>
  *
  */
