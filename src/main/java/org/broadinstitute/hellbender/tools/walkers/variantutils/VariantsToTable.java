@@ -32,40 +32,38 @@ import java.util.function.Function;
  *
  * <p>
  * This tool is designed to extract fields from the VCF to a table format that is more convenient to work with in
- * downstream analyses.</p>
+ * downstream analyses. It can extract both INFO/site-level fields and FORMAT/sample-level fields.</p>
  *
- * <p>The user specifies one or more
- * fields to print with the -F NAME, each of which appears as a single column in
- * the output file, with a header named NAME, and the value of this field in the VCF
- * one per line.  NAME can be any standard VCF column (CHROM, ID, QUAL) or any annotation name
- * in the INFO field (AC=10).  In addition, there are specially supported values like
- * EVENTLENGTH (length of the event), TRANSITION (for SNPs), HET (count of het genotypes),
- * HOM-REF (count of homozygous reference genotypes), HOM-VAR (count of homozygous variant
- * genotypes), NO-CALL (count of no-call genotypes), TYPE (the type of event), VAR (count of
- * non-reference genotypes), NSAMPLES (number of samples), NCALLED (number of called samples),
- * GQ (from the genotype field; works only for a file with a single sample), and MULTI-ALLELIC
- * (is the record from a multi-allelic site).  </p>
+ * <h4>INFO/site-level fields</h4>
+ * <p>Use the `-F` argument to extract INFO/site-level fields, which will appear as a single column each in the output
+ * file.  The field can be any standard VCF column (CHROM, ID, QUAL) or any annotation name in the INFO field (AC=10).
+ * In addition, there are specially supported values like EVENTLENGTH (length of the event), TRANSITION (for SNPs), HET
+ * (count of het genotypes), HOM-REF (count of homozygous reference genotypes), HOM-VAR (count of homozygous variant
+ * genotypes), NO-CALL (count of no-call genotypes), TYPE (the type of event), VAR (count of non-reference genotypes),
+ * NSAMPLES (number of samples), NCALLED (number of called samples), GQ (from the genotype field; works only for a file
+ * with a single sample), and MULTI-ALLELIC (is the record from a multi-allelic site).</p>
  *
- * </p>
+ * <h4>FORMAT/sample-level fields</h4>
+ * <p>Use the `-GF` argument to extract FORMAT/sample-level fields, which will appear as a single column each per
+ * sample in the output file.</p>
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  * <ul>
- *     <li>A VCF file</li>
- *     <li>A list of -F fields to write</li>
+ *     <li>A VCF file from which to extract fields.</li>
+ *     <li>A list of -F and/or -GF fields to extract.</li>
  * </ul>
  *
  * <h3>Output</h3>
  * <p>
- * A tab-delimited file containing the values of the requested fields in the VCF file
+ * A tab-delimited file containing the values of the requested fields in the VCF file.
  * </p>
  *
  * <h3>Usage example</h3>
  * <pre>
- *     ./gatk-launch \
- *     VariantsToTable \
- *     -V file.vcf \
+ *     ./gatk-launch VariantsToTable \
+ *     -V input.vcf \
  *     -F CHROM -F POS -F ID -F QUAL -F AC \
- *     -o results.table
+ *     -O output.table
  * </pre>
  * <p>would produce a file that looks like:</p>
  * <pre>
@@ -76,14 +74,13 @@ import java.util.function.Function;
  *
  * <h3>Caveats</h3>
  * <ul>
- *     <li>Some annotations cannot be applied to all variant sites, so VCFs typically contain records where some annotation values are missing. By default this tool throws an error if you request export of an annotation for which not all records have values. You can override this behavior by setting --allowMissingData in the command line. As a result, the tool will emit the special value NA for the missing annotations in those records.</li>
- *     <li>When you request export of sample-level annotations (FORMAT field annotations such as GT), the annotations will be identified per-sample. If multiple samples are present in the VCF, the columns will be ordered alphabetically by sample name (SM tag).</li>
+ *     <li>Some annotations cannot be applied to all variant sites, so VCFs typically contain records where some annotation values are missing. By default this tool throws an error if you request export of an annotation for which not all records have values. You can override this behavior by setting `--allowMissingData` in the command line. As a result, the tool will emit the special value NA for the missing annotations in those records.</li>
+ *     <li>When you request export of FORMAT/sample-level annotations (such as GT), the annotations will be identified per-sample. If multiple samples are present in the VCF, the columns will be ordered alphabetically by sample name (SM tag).</li>
  * </ul>
  */
 @CommandLineProgramProperties(
         summary = "This tool is designed to extract fields from the VCF to a table format " +
-                "that is more convenient to work with in " +
-                "downstream analyses",
+                "that is more convenient to work with in downstream analyses.",
         oneLineSummary = "Extract specific fields from a VCF file to a tab-delimited table",
         programGroup = VariantProgramGroup.class
 )
