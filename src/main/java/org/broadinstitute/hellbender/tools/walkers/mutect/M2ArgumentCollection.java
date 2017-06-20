@@ -53,7 +53,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public double afOfAllelesNotInGermlineResource = 0.001;
 
     /**
-     * Prior probability that any given site has a somatic allele. Impacts germline probability calculation.
+     * Prior log-10 probability that any given site has a somatic allele. Impacts germline probability calculation.
+     * The workflow uses this parameter only towards the germline event filter. It does NOT relate to the LOD threshold.
      * For example, -6 translates to one in a million or ~3000 somatic mutations per human genome.
      * Depending on tumor type, mutation rate ranges vary (Lawrence et al. Nature 2013), and so adjust parameter accordingly.
      * For higher expected rate of mutation, adjust number up, e.g. -5. For lower expected rate of mutation, adjust number down, e.g. -7.
@@ -84,19 +85,19 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     /**
      * Minimum fraction of variant reads in normal for a pileup to be considered inactive. Applies to normal data in a tumor with matched normal analysis.
-     * For value of 0.1, at least one tenth of pileup must be variant for tool to consider it a germline variant site and therefore not a region of interest
+     * For value of 0.1, at least one tenth of pileup must be variant for tool to consider it a germline variant site and therefore not a locus of interest 
      * in the somatic analysis.
      */
-    @Argument(fullName = "minNormalVariantFraction", optional = true, doc = "Minimum fraction of variant reads in normal pileup to be considered germline.")
+    @Argument(fullName = "minNormalVariantFraction", optional = true, doc = "Minimum fraction of variant reads in normal pileup to be considered a germline variant site and thus not of further interest.")
     public double minNormalVariantFraction = 0.1;
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
      * Set to less than or equal to tumor_lod. Increase argument value to reduce false positives in the callset.
-     * Default setting of 3 is permissive and will emit some amount of false-positives that
-     * filtering should filter and that allows for downstream training outside of the current workflow.
+     * Default setting of 3 is permissive and will emit some amount of negative training data that 
+     * {@link FilterMutectCalls} should then filter.
      */
-    @Argument(fullName = "tumor_lod_to_emit", optional = true, doc = "LOD threshold to emit tumor variant to results.")
+    @Argument(fullName = "tumor_lod_to_emit", optional = true, doc = "LOD threshold to emit tumor variant to VCF.")
     public double emissionLodThreshold = 3.0;
 
     /**
@@ -116,7 +117,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public int POWER_CONSTANT_QSCORE = 30;
 
     /**
-     * Which annotations to add to the output VCF file. By default the tool adds all annotations.
+     * Which annotations to add to the output VCF file. By default the tool adds all of the following annotations.
      * If an annotation that a filter depends upon is absent, then the particular filtering will not occur and no warning will be given.
      */
     @Advanced
