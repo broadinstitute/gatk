@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
@@ -26,6 +27,7 @@ import java.io.*;
         oneLineSummary = "Convert a headerless hadoop bam shard into a readable bam",
         programGroup = TestSparkProgramGroup.class
 )
+@BetaFeature
 public final class ConvertHeaderlessHadoopBamShardToBam extends CommandLineProgram {
 
     @Argument(shortName = "bamShard", fullName = "bamShard", doc = "Headerless Hadoop BAM shard to be converted into a readable BAM", optional = false)

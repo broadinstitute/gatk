@@ -12,6 +12,7 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFUtils;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -94,6 +95,7 @@ import java.util.stream.StreamSupport;
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public class CreateSomaticPanelOfNormals extends CommandLineProgram {
 
     public static final String INPUT_VCFS_LIST_LONG_NAME = "vcfsListFile";

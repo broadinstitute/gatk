@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -181,6 +182,7 @@ import java.util.List;
          programGroup = VariantProgramGroup.class
  )
 @DocumentedFeature
+@BetaFeature
 public final class Mutect2 extends AssemblyRegionWalker {
 
     @ArgumentCollection

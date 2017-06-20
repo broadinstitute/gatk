@@ -5,6 +5,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "Print read alignments in Pileup-style format on Spark",
         programGroup = SparkProgramGroup.class)
 @DocumentedFeature
+@BetaFeature
 public final class PileupSpark extends LocusWalkerSpark {
     private static final long serialVersionUID = 1L;
 

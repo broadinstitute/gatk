@@ -6,6 +6,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -21,6 +22,7 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
         oneLineSummary="ApplyBQSR on Spark",
         programGroup = SparkProgramGroup.class)
 @DocumentedFeature
+@BetaFeature
 public final class ApplyBQSRSpark extends GATKSparkTool {
     private static final long serialVersionUID = 0l;
 
