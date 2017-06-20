@@ -52,7 +52,7 @@ import java.util.Map;
  * <h3>Examples</h3>
 
  * <pre>
- * java -Xmx4g -jar $gatk_jar AnnotateTargets \
+ * gatk-launch --javaOptions "-Xmx4g" AnnotateTargets \
  *   --targets targets.tsv \
  *   --reference ref_fasta.fa \
  *   --output targets.annotated.tsv

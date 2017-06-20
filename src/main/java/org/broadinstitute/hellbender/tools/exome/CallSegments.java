@@ -21,10 +21,10 @@ import java.util.List;
  * <h3>Examples</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar CallSegments \
- *   --tangentNormalized tn_coverage.tn.tsv \
- *   --segments segments.seg \
- *   --output entity_id.called
+ * gatk-launch --javaOptions "-Xmx4g" CallSegments \
+ *   --tangentNormalized tumor.tn.tsv \
+ *   --segments tumor.seg \
+ *   --output tumor.called
  * </pre>
  *
  * <p>To call on ReCapSeg legacy format data, set --legacy option to true. </p>

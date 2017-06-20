@@ -38,21 +38,21 @@ import java.util.stream.Collectors;
  * <p>For whole exome sequencing (WES) data: </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar AllelicCNV \
+ * gatk-launch --javaOptions "-Xmx4g" AllelicCNV \
  *   --tumorHets hets.tsv \
  *   --tangentNormalized tn_coverage.tsv \
  *   --segments called_segments.seg \
- *   --outputPrefix entity_id
+ *   --outputPrefix basename
  * </pre>
  *
  * <p>For whole genome sequencing (WGS) data: </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar AllelicCNV \
+ * gatk-launch --javaOptions "-Xmx4g" AllelicCNV \
  *   --tumorHets hets.tsv \
  *   --tangentNormalized tn_coverage.tsv \
  *   --segments called_segments.seg \
- *   --outputPrefix entity_id \
+ *   --outputPrefix basename \
  *   --maxNumIterationsSNPSeg 5 \
  *   --numSamplesCopyRatio 50 \
  *   --numBurnInCopyRatio 25 \

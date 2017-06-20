@@ -32,7 +32,7 @@ import java.util.List;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar GetPileupSummaries \
+ * gatk-launch --javaOptions "-Xmx4g" GetPileupSummaries \
  *   -I tumor.bam \
  *   -L intervals.list \
  *   -V variants_for_contamination.vcf.gz \

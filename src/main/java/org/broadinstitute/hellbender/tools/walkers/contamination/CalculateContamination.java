@@ -35,7 +35,7 @@ import java.util.stream.IntStream;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar CalculateContamination \
+ * gatk-launch --javaOptions "-Xmx4g" CalculateContamination \
  *   -I pileups.table \
  *   -O contamination.table
  *

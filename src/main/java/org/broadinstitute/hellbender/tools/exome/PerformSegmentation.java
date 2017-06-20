@@ -31,21 +31,21 @@ import java.io.File;
  * <p>For whole exome sequencing (WES) data: </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar PerformSegmentation \
- *   --tangentNormalized tn_coverage.tn.tsv \
+ * gatk-launch --javaOptions "-Xmx4g" PerformSegmentation \
+ *   --tangentNormalized tumor.tn.tsv \
  *   --log2Input true \
  *   --undoSD 2 \
- *   --output entity_id.seg
+ *   --output tumor.seg
  * </pre>
  *
  * <p>For whole genome sequencing (WGS) data: </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar PerformSegmentation \
- *   --tangentNormalized tn_coverage.tn.tsv \
+ * gatk-launch --javaOptions "-Xmx4g" PerformSegmentation \
+ *   --tangentNormalized tumor.tn.tsv \
  *   --log2Input true \
  *   --undoSplits SDUNDO \
- *   --output entity_id.seg
+ *   --output tumor.seg
  * </pre>
  *
  */

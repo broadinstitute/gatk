@@ -61,7 +61,7 @@ import java.util.stream.Stream;
  * <h3>Example</h3>
  *
  * <pre>
- * java -jar $gatk_jar ConvertGSVariantsToSegments \
+ * gatk-launch --javaOptions "-Xmx4g" ConvertGSVariantsToSegments \
  *   --variant genomestrip.vcf.gz \
  *   --output copynumbertristate.seg
  * </pre>

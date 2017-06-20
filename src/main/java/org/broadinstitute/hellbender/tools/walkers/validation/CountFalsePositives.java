@@ -26,6 +26,16 @@ import java.util.List;
 )
 
 /**
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * gatk-launch --javaOptions "-Xmx4g" CountFalsePositives \
+ *   -V filtered.vcf.gz \
+ *   -R ref_fasta.fa \
+ *   -O false-positives.txt
+ * </pre>
+ *
  * Created by Takuto Sato on 12/28/16.
  */
 @DocumentedFeature

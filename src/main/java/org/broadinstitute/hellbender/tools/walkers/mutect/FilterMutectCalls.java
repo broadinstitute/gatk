@@ -47,7 +47,7 @@ import java.util.*;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar FilterMutectCalls \
+ * gatk-launch --javaOptions "-Xmx4g" FilterMutectCalls \
  *   -V tumor_matched_m2_snvs_indels.vcf.gz \
  *   -contaminationTable contamination.table \
  *   -O tumor_matched_m2_filtered.vcf.gz

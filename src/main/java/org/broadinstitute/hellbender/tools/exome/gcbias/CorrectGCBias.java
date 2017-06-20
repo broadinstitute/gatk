@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar CorrectGCBias \
+ * gatk-launch --javaOptions "-Xmx4g" CorrectGCBias \
  *   --input coverage.tsv \
  *   --targets targets.annotated.tsv \
  *   --output coverage.gc_corrected.tsv

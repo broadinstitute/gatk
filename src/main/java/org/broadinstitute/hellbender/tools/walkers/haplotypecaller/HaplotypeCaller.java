@@ -82,7 +82,7 @@ import java.util.List;
  * <br />
  * <h4>Single-sample GVCF calling (outputs intermediate GVCF)</h4>
  * <pre>
- * ./gatk-launch HaplotypeCaller  \
+ * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
  *   -R reference.fasta \
  *   -I input.bam \
  *   -O output.g.vcf \
@@ -91,7 +91,7 @@ import java.util.List;
  *
  * <h4>Single-sample GVCF calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=9622'>allele-specific annotations</a></h4>
  * <pre>
- * ./gatk-launch HaplotypeCaller  \
+ * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
  *   -R reference.fasta \
  *   -I input.bam \
  *   -O output.g.vcf \
@@ -102,7 +102,7 @@ import java.util.List;
  *
  * <h4>Variant calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=5484'>bamout</a> to show realigned reads</h4>
  * <pre>
- * ./gatk-launch HaplotypeCaller  \
+ * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
  *   -R reference.fasta \
  *   -I input.bam \
  *   -O output.vcf \

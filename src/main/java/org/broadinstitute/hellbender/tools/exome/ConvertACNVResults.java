@@ -27,7 +27,7 @@ import java.util.List;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar ConvertACNVResults \
+ * gatk-launch --javaOptions "-Xmx4g" ConvertACNVResults \
  *   --tumorHets heterozygous_coverage.het \
  *   --tangentNormalized tn_coverage.tn.tsv \
  *   --segments acnv_segments.seg \

@@ -63,13 +63,20 @@ import java.util.stream.IntStream;
  * <p>
  *     Example 1:
  *     <pre>
- *         java -jar $gatk_jar CombineReadCounts -I sample1.tab -I sample2.tab ... -I sampleN.tab -O all-samples.tab
+ *         gatk-launch --javaOptions "-Xmx4g" CombineReadCounts \
+ *            -I sample1.tab \
+ *            -I sample2.tab \
+ *            ... \
+ *            -I sampleN.tab \
+ *            -O all-samples.tab
  *     </pre>
  * </p>
  * <p>
  *     Example 2:
  *     <pre>
- *         java -jar $gatk_jar CombineReadCounts -inputList my-samples.list -O all-samples.tab
+ *         gatk-launch --javaOptions "-Xmx4g" CombineReadCounts \
+ *            -inputList my-samples.list \
+ *            -O all-samples.tab
  *     </pre>
  *     where {@code my-samples.list} contains:
  *     <pre>

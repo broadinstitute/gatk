@@ -32,7 +32,7 @@ import java.util.stream.IntStream;
  * <h3>Example</h3>
  *
  * <pre>
- * java -jar $gatk_jar SplitIntervals \
+ * gatk-launch --javaOptions "-Xmx4g" SplitIntervals \
  *   -R ref_fasta.fa \
  *   -L intervals.list \
  *   -scatter 10 \
