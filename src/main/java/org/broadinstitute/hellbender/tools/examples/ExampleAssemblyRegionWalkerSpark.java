@@ -7,7 +7,7 @@ import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -25,7 +25,7 @@ import java.io.Serializable;
 @CommandLineProgramProperties(
         summary = "Example AssemblyRegionWalker that prints out the bounds of each assembly region with and without padding, as well as the number of reads in each region",
         oneLineSummary = "Example AssemblyRegionWalker",
-        programGroup = ReadProgramGroup.class
+        programGroup = ExampleProgramGroup.class
 )
 public final class ExampleAssemblyRegionWalkerSpark extends AssemblyRegionWalkerSpark {
     private static final long serialVersionUID = 1L;

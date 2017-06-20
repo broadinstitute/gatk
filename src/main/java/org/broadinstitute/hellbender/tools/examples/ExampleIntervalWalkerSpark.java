@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalVariantInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.spark.IntervalWalkerContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -26,7 +26,7 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Example tool that prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
         oneLineSummary = "Print intervals with optional contextual data",
-        programGroup = IntervalProgramGroup.class
+        programGroup = ExampleProgramGroup.class
 )
 public final class ExampleIntervalWalkerSpark extends IntervalWalkerSpark {
     private static final long serialVersionUID = 1L;
