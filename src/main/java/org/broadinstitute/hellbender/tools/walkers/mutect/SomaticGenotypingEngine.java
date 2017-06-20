@@ -71,8 +71,6 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         this.tumorSampleName = tumorSampleName;
         this.matchedNormalSampleName = matchedNormalSampleName;
         hasNormal = matchedNormalSampleName != null;
-
-        final double errorProbability = QualityUtils.qualToErrorProb(MTAC.POWER_CONSTANT_QSCORE);
     }
 
     /**
