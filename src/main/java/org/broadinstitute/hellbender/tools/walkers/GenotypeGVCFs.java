@@ -26,35 +26,48 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Perform joint genotyping on gVCF files produced by HaplotypeCaller
+ * Perform joint genotyping on one or more samples pre-called with HaplotypeCaller
  *
  * <p>
- * GenotypeGVCFs merges gVCF records that were produced as part of the Best Practices workflow for variant discovery
- * (see Best Practices documentation for more details) using the '-ERC GVCF' or '-ERC BP_RESOLUTION' mode of the
- * HaplotypeCaller, or result from combining such gVCF files using CombineGVCFs. This tool will produce correct genotype
- * likelihoods, re-genotype the newly merged record, and then re-annotate it.</p>
+ * This tool is designed to perform joint genotyping on multiple samples pre-called with HaplotypeCaller to produce a
+ * multi-sample callset in a highly scalable manner. However it can also be run on a single sample at a time to produce
+ * a single-sample callset. In any case, the input samples must possess genotype likelihoods produced by HaplotypeCaller
+ * with `-ERC GVCF` or `-ERC BP_RESOLUTION`.
  *
  * <h3>Input</h3>
  * <p>
- * One HaplotypeCaller gVCF to genotype
+ * One or more GVCFs produced by in HaplotypeCaller with the `-ERC GVCF` or `-ERC BP_RESOLUTION` settings, containing
+ * the samples to joint-genotype.
  * </p>
  *
  * <h3>Output</h3>
  * <p>
- * A combined, genotyped VCF.
+ * A final VCF in which all samples have been jointly genotyped.
  * </p>
  *
  * <h3>Usage example</h3>
+ *
+ * <h4>Perform joint genotyping on a set of GVCFs enumerated in the command line</h4>
  * <pre>
- * gatk-launch GenotypeGVCFs \
+ * ./gatk-launch GenotypeGVCFs \
  *   -R reference.fasta \
- *   -V sample1.g.vcf \
+ *   -V input1.g.vcf \
+ *   -V input2.g.vcf \
+ *   -V input3.g.vcf \
+ *   -O output.vcf
+ * </pre>
+ *
+ * <h4>Perform joint genotyping on a set of GVCFs listed in a text file, one per line</h4>
+ * <pre>
+ * ./gatk-launch GenotypeGVCFs \
+ *   -R reference.fasta \
+ *   -V input_gvcfs.list \
  *   -O output.vcf
  * </pre>
  *
  * <h3>Caveat</h3>
- * <p>Only gVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
- * programs produce files that they call gVCFs but those lack some important information (accurate genotype likelihoods
+ * <p>Only GVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
+ * programs produce files that they call GVCFs but those lack some important information (accurate genotype likelihoods
  * for every position) that GenotypeGVCFs requires for its operation.</p>
  *
  * <h3>Special note on ploidy</h3>
@@ -62,7 +75,7 @@ import java.util.*;
  * for non-diploid organisms.</p>
  *
  */
-@CommandLineProgramProperties(summary = "genotype a gvcf file to produce a vcf", oneLineSummary = "genotype a gvcf file", programGroup = VariantProgramGroup.class)
+@CommandLineProgramProperties(summary = "Perform joint genotyping on one or more samples pre-called with HaplotypeCaller", oneLineSummary = "Perform joint genotyping on one or more samples pre-called with HaplotypeCaller", programGroup = VariantProgramGroup.class)
 @DocumentedFeature
 public final class GenotypeGVCFs extends VariantWalker {
 
@@ -85,32 +98,35 @@ public final class GenotypeGVCFs extends VariantWalker {
      * Which annotations to recompute for the combined output VCF file.
      */
     @Advanced
-    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to recompute.", optional=true)
+    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to recompute", optional=true)
     private List<String> annotationsToUse = new ArrayList<>();
 
 
     @Advanced
-    @Argument(fullName="annotationsToExclude", shortName="AX", doc="One or more specific annotations to exclude from recomputation.", optional=true)
+    @Argument(fullName="annotationsToExclude", shortName="AX", doc="One or more specific annotations to exclude from recomputation", optional=true)
     private List<String> annotationsToExclude = new ArrayList<>();
 
     /**
-     * Which groups of annotations to add to the output VCF file.
-     * Note that this usage is not recommended because
-     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
-     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
+     * This argument controls which groups of annotations to add to the output VCF file. Not recommended for normal
+     * operation of the tool because it obscures the specific requirements of individual annotations. Any requirements
+     * that are not met (e.g. failing to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
      */
     @Advanced
     @Argument(fullName="group", shortName="G", doc="One or more classes/groups of annotations to apply to variant calls", optional=true)
     private List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{StandardAnnotation.class.getSimpleName()}));
 
+    /**
+     * This option can only be activated if intervals are specified.
+     */
     @Advanced
     @Argument(fullName= ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME,
-            doc="restrict variant output to sites that start within the given intervals, may only be specified if intervals are specified",
+            doc="Restrict variant output to sites that start within provided intervals",
             optional=true)
     private boolean onlyOutputCallsStartingInIntervals = false;
 
     /**
-     * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set when appropriate. Note that dbSNP is not used in any way for the calculations themselves.
+     * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set
+     * when appropriate. Note that dbSNP is not used in any way for the genotyping calculations themselves.
      */
     @ArgumentCollection
     private final DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
