@@ -10,11 +10,12 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
     private static final long serialVersionUID = 1L;
 
     /**
-     * This flag tells GATK not to modify quality scores less than this value. Instead they will be written out unmodified in the recalibrated BAM file.
-     * In general it's unsafe to change qualities scores below < 6, since base callers use these values to indicate random or bad bases.
-     * For example, Illumina writes Q2 bases when the machine has really gone wrong. This would be fine in and of itself,
-     * but when you select a subset of these reads based on their ability to align to the reference and their dinucleotide effect,
-     * your Q2 bin can be elevated to Q8 or Q10, leading to issues downstream.
+     * This flag tells GATK not to modify quality scores less than this value. Instead they will be written out
+     * unmodified in the recalibrated BAM file. In general it's unsafe to change qualities scores below < 6, since
+     * base callers use these values to indicate random or bad bases. For example, Illumina writes Q2 bases when the
+     * machine has really gone wrong. This would be fine in and of itself, but when you select a subset of these reads
+     * based on their ability to align to the reference and their dinucleotide effect, your Q2 bin can be elevated to
+     * Q8 or Q10, leading to issues downstream.
      */
     //TODO: add those when https://github.com/broadinstitute/hellbender/issues/143 is fixed
     //TODO: minValue = 0, minRecommendedValue = QualityUtils.MIN_USABLE_Q_SCORE
@@ -24,7 +25,7 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
     /**
      * This flag tells GATK to use the original base qualities (that were in the data before BQSR/recalibration) which
      * are stored in the OQ tag, if they are present, rather than use the post-recalibration quality scores. If no OQ
-     * tag is present for a read, the standard qual score will be used.
+     * tag is present for a read, the standard quality score will be used.
      */
     @Argument(fullName="useOriginalQualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
     public Boolean useOriginalBaseQualities = false;
