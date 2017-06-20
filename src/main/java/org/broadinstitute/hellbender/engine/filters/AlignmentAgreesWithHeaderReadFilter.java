@@ -9,9 +9,13 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.io.Serializable;
 
 /**
- * Checks to ensure that the alignment of each read makes sense based on the contents of the header.
+ * Filter out reads where the alignment does not match the contents of the header:
+ * <ul>
+ *     <li>Read aligned to non-existent contig</li>
+ *     <li>Read aligned to a point after the end of the contig</li>
+ * </ul>
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filters out reads where the alignment does not match the contents of the header")
 public final class AlignmentAgreesWithHeaderReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1l;
 

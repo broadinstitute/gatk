@@ -15,7 +15,7 @@ import java.util.Set;
  * Keep only reads for a given sample.
  * Matching is done by case-sensitive exact match.
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads for a given sample")
 public final class SampleReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 

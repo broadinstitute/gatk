@@ -14,73 +14,97 @@ public final class ReadFilterLibrary {
 
     private ReadFilterLibrary(){ /*no instance*/ }
 
-    /**
-     * local classes for static read filters
-     */
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Do not filter out any read. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Do not filter out any read")
     public static class AllowAllReadsReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){return true;}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads containing skipped region from the reference (CIGAR strings with 'N' operator). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with CIGAR containing N operator")
     //Note: do not call getCigar to avoid creation of new Cigar objects
     public static class CigarContainsNoNOperator extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return ! CigarUtils.containsNOperator(read.getCigarElements());}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Keep only reads that are first of pair (0x1 and 0x40). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads that are first of pair")
     public static class FirstOfPairReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test (final GATKRead read) {
             return read.isFirstOfPair();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /**
+     * Keep only reads containing good CIGAR strings:
+     * <ul>
+     *     <li>Valid according to the <a href="http://samtools.github.io/hts-specs/SAMv1.pdf">SAM specifications.</a></li>
+     *     <li>Does not start or end with deletions (with or without preceding clips).</li>
+     *     <li>Does not have consecutive deletion/insertion operators.</li>
+     * </ul>
+     */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads containing good CIGAR string")
     public static class GoodCigarReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test (final GATKRead read) {
             return CigarUtils.isGood(read.getCigar());}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads with fragment length (insert size) different from zero. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with fragment length different from zero")
     public static class NonZeroFragmentLengthReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return read.getFragmentLength() != 0;}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads where the bases and qualities do not match in length. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads where the bases and qualities do not match")
     public static class MatchingBasesAndQualsReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return read.getLength() == read.getBaseQualityCount();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads without the SAM record RG (Read Group) tag. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads without Read Group")
     public static class HasReadGroupReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return read.getReadGroup() != null;}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /**
+     * Filter out unmapped reads. Umapped reads are defined by three criteria:
+     *
+     * <ul>
+     *     <li>SAM flag value 0x4</li>
+     *     <li>An asterisk for reference name or RNAME (column 3 of a SAM record)</li>
+     *     <li>A zero value for leftmost mapping position for POS (column 4 of SAM record)</li>
+     * </ul>
+     */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out unmapped reads")
     public static class MappedReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return !read.isUnmapped();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads without available mapping quality (MAPQ=255). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads without available mapping quality")
     public static class MappingQualityAvailableReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads with mapping quality equal to zero. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with mapping quality equal to zero")
     public static class MappingQualityNotZeroReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return read.getMappingQuality() != 0;}}
 
     /**
-     * Reads that either have a mate that maps to the same contig, or don't have a mapped mate.
+     * Keep only reads that have a mate that maps to the same contig (RNEXT is "="), is single ended (not 0x1) or has an unmapped mate (0x8).
+     *
+     * See MappedReadFilter for criteria defining an unmapped read.
      */
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads whose mate maps to the same contig or is unmapped", extraDocs = MappedReadFilter.class)
     public static class MateOnSameContigOrNoMappedMateReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
@@ -89,9 +113,12 @@ public final class ReadFilterLibrary {
                     (! read.isUnmapped() && read.getContig().equals(read.getMateContig()));}}
 
     /**
-     * Reads that have a mapped mate and both mate and read are on different same strands (ie the usual situation).
+     * For paired reads (0x1), keep only reads that are mapped, have a mate that is mapped (read is not 0x8), and both
+     * the read and its mate are on different strands (when read is 0x20, it is not 0x10), as is the typical case.
+     *
+     * See MappedReadFilter for criteria defining an mapped read.
      */
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with mates mapped on the different strand", extraDocs = MappedReadFilter.class)
     public static class MateDifferentStrandReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
@@ -100,7 +127,8 @@ public final class ReadFilterLibrary {
                     ! read.mateIsUnmapped() &&
                     read.mateIsReverseStrand() != read.isReverseStrand();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads that do not align to the reference. Filter interprets each of the CIGAR operators M, D, N, = and X as alignment. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads that do not align to the reference")
     public static class NonZeroReferenceLengthAlignmentReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test (final GATKRead read) {
@@ -109,80 +137,116 @@ public final class ReadFilterLibrary {
                     .anyMatch(c -> c.getOperator().consumesReferenceBases() && c.getLength() > 0);
         }}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads marked as duplicate (0x400). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads marked as duplicate")
     public static class NotDuplicateReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return ! read.isDuplicate();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads representing secondary alignments (0x100). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads representing secondary alignments")
     public static class NotSecondaryAlignmentReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return !read.isSecondaryAlignment();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads representing supplementary alignments (0x800). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads representing supplementary alignments")
     public static class NotSupplementaryAlignmentReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return !read.isSupplementaryAlignment();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out unpaired reads (not 0x1). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out unpaired reads")
     public static class PairedReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return read.isPaired();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Filter out reads failing platform/vendor quality checks (0x200). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads failing platfor/vendor quality checks")
     public static class PassesVendorQualityCheckReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return ! read.failsVendorQualityCheck();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Keep only paired reads that are properly paired (0x1 and 0x2). Removes single ended reads. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads that are properly paired")
     public static class ProperlyPairedReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return read.isProperlyPaired();}}
 
+    /**
+     * Keep only reads representing primary alignments.
+     *
+     * <p>Warning: currently PrimaryAlignmentReadFilter filters out only secondary alignments (0x100).
+     *
+     * <p>The NotSecondaryAlignmentReadFilter also filters based solely on secondary alignment status.
+     * The PrimaryAlignmentReadFilter will therefore undergo changes in the future to also filter supplementary alignments.
+     */
     //TODO: should this reject supplementary alignments ? If not it should be
     //removed since its redundant with NotSecondaryAlignmentReadFilter
     //https://github.com/broadinstitute/gatk/issues/2165
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads representing primary alignments", extraDocs = NotSecondaryAlignmentReadFilter.class)
     public static class PrimaryAlignmentReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return ! read.isSecondaryAlignment();}}
 
+    /**
+     * Filter out reads where the read and CIGAR do not match in length.
+     *
+     * <p>Note: unmapped reads pass this filter. See MappedReadFilter for criteria defining an unmapped read.
+     */
     //Note: do not call getCigar to avoid creation of new Cigar objects
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads  where the read and CIGAR do not match in length", extraDocs = MappedReadFilter.class)
     public static class ReadLengthEqualsCigarLengthReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test (final GATKRead read) {
             return read.isUnmapped() ||
                     read.getLength() == Cigar.getReadLength(read.getCigarElements());}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Keep only paired reads (0x1) that are second of pair (0x80). */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only paired reads that are second of pair")
     public static class SecondOfPairReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test (final GATKRead read) {
             return read.isSecondOfPair();}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /** Keep only reads with sequenced bases. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with sequenced bases")
     public static class SeqIsStoredReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return read.getLength() > 0;}}
 
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /**
+     * Keep only reads with a valid alignment start (POS larger than 0) or is unmapped.
+     * See MappedReadFilter for criteria defining an unmapped read.
+     */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with a valid alignment start", extraDocs = MappedReadFilter.class)
     public static class ValidAlignmentStartReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){
             return read.isUnmapped() || read.getStart() > 0;}}
 
-    // Alignment doesn't align to a negative number of bases in the reference.
-    //Note: to match gatk3 we must keep reads that align to zero bases in the reference.
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    /**
+     * Keep only reads where the read end corresponds to a proper alignment -- that is, the read ends after the start
+     * (non-negative number of bases in the reference), calculated as:
+     *
+     * <code>
+     * end - start + 1 &ge; 0
+     * where
+     *  start = 1-based inclusive leftmost position of the clipped sequence (0 if no position)
+     *  end = 1-based inclusive rightmost position of the clipped sequence (0 if unmapped)
+     * </code>
+     *
+     * <p>Note: keep also unmapped reads (align to zero bases in the reference). See MappedReadFilter for criteria defining an unmapped read.
+     */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads where the read end is properly aligned", extraDocs = MappedReadFilter.class)
     public static class ValidAlignmentEndReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {

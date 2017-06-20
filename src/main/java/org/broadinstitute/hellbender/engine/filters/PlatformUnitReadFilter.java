@@ -13,15 +13,16 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Keep reads that do not have blacklisted platform unit tags.
- * Matching is done by exact case-sensitive text matching.
+ * Filter out reads where the the platform unit attribute (PU tag) contains the given string.
+ *
+ * <p>Note: Matching is done by exact case-sensitive text matching.
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with matching platform unit attribute")
 public final class PlatformUnitReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = "blackListedLanes",
-            shortName = "blackListedLanes", doc="Keep reads with platform units not on the list",
+            shortName = "blackListedLanes", doc="Platform unit (PU) to filter out",
             optional=false)
     public Set<String> blackListedLanes = new LinkedHashSet<>();
 

@@ -4,6 +4,15 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+/**
+ * Filter out reads that:
+ *
+ * <ul>
+ *     <li>Fail platform/vendor quality checks (0x200)</li>
+ *     <li>Are unmapped (0x4)</li>
+ *     <li>Represent secondary/supplementary alignments (0x100 or 0x800)</li>
+ * </ul>
+ */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class MetricsReadFilter extends ReadFilter {
   // TODO: Should this be something more unique, such as a timestamp, in order

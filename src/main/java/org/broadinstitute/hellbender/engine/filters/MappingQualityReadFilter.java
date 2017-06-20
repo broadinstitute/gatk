@@ -8,12 +8,14 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.Serializable;
 
 /**
- * Keep reads with mapping qualities within a specified range.
+ * Keep only reads with mapping qualities within a specified range.
  *
- * Note: this filter does not handle specially the unavailable mapping quality ({@link org.broadinstitute.hellbender.utils.QualityUtils#MAPPING_QUALITY_UNAVAILABLE}).
- * Use {@link org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MappingQualityAvailableReadFilter} to explicitly filter out reads with unavailable quality.
+ * <p>Note: this filter is not designed to handle the unavailable mapping quality (255).
+ * Use MappingQualityAvailableReadFilter to explicitly filter out reads with unavailable quality.
+ * @see org.broadinstitute.hellbender.utils.QualityUtils#MAPPING_QUALITY_UNAVAILABLE
+ * @see org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MappingQualityAvailableReadFilter
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with mapping qualities within a specified range", extraDocs = {ReadFilterLibrary.MappingQualityAvailableReadFilter.class})
 public final class MappingQualityReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
