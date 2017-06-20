@@ -36,7 +36,7 @@ import java.util.List;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar PerformAlleleFractionSegmentation \
+ * gatk-launch --javaOptions "-Xmx4g" PerformAlleleFractionSegmentation \
  *   --tumorHets tumor.hets.tsv \
  *   --initialNumberOfStates 10 \
  *   --segments tumor_allelefraction.seg

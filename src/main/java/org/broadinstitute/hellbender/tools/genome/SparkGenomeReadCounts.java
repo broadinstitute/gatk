@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  * <p>For whole genome sequencing (WGS) data: </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar SparkGenomeReadCounts \
+ * gatk-launch --javaOptions "-Xmx4g" SparkGenomeReadCounts \
  *   --input sample.bam \
  *   --disableReadFilter NotDuplicateReadFilter \
  *   --outputFile sample.coverage.tsv

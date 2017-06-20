@@ -29,7 +29,7 @@ import java.io.File;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar CollectAllelicCounts \
+ * gatk-launch --javaOptions "-Xmx4g" CollectAllelicCounts \
  *   --input sample.bam \
  *   --reference ref_fasta.fa \
  *   --siteIntervals sites.interval_list \

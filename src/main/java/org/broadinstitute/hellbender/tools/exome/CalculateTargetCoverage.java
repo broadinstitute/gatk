@@ -46,7 +46,7 @@ import java.util.stream.IntStream;
  * <p>For whole exome sequencing (WES) data: </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar CalculateTargetCoverage \
+ * gatk-launch --javaOptions "-Xmx4g" CalculateTargetCoverage \
  *   --input sample.bam \
  *   --targets padded_targets.tsv \
  *   --groupBy SAMPLE \
@@ -56,6 +56,10 @@ import java.util.stream.IntStream;
  *   --output sample.coverage.tsv
  * </pre>
  *
+ * <p>
+ *     Panel of Normal (PoN) creation uses the --transform PCOV parameter as shown.
+ *     To collect raw coverage for tumor sample copy number analysis, omit this option.
+ * </p>
  * <p>
  *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
  *     Target intervals do NOT overlap. Use the {@link PadTargets} tool to generate non-overlapping padded intervals from exome targets.

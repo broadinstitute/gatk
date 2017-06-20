@@ -34,7 +34,7 @@ import java.util.List;
  * </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar NormalizeSomaticReadCounts \
+ * gatk-launch --javaOptions "-Xmx4g" NormalizeSomaticReadCounts \
  *   --input tumor.coverage.tsv \
  *   --targets padded_targets.tsv \
  *   --panelOfNormals panel_of_normals.pon \

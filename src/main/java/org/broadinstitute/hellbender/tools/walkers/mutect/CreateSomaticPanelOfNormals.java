@@ -50,7 +50,7 @@ import java.util.stream.StreamSupport;
  *
  * <p>Step 1. Run Mutect2 in tumor-only mode for each normal sample.</p>
  * <pre>
- * java -Xmx4g -jar $gatk_jar Mutect2 \
+ * gatk-launch --javaOptions "-Xmx4g" Mutect2 \
  *   -R ref_fasta.fa \
  *   -I normal1.bam \
  *   -tumor normal1_sample_name \
@@ -71,14 +71,14 @@ import java.util.stream.StreamSupport;
  * <p>Step 3. Combine the normal calls using CreateSomaticPanelOfNormals.</p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar CreateSomaticPanelOfNormals \
+ * gatk-launch --javaOptions "-Xmx4g" CreateSomaticPanelOfNormals \
  *   -vcfs normals_for_pon_vcf.list \
  *   -O pon.vcf.gz
  * </pre>
  *
  * <p>Alternatively, provide each normal's VCF as separate arguments.</p>
  * <pre>
- * java -Xmx4g -jar $gatk_jar CreateSomaticPanelOfNormals \
+ * gatk-launch --javaOptions "-Xmx4g" CreateSomaticPanelOfNormals \
  *   -vcfs normal1_for_pon_vcf.gz \
  *   -vcfs normal2_for_pon_vcf.gz \
  *   -vcfs normal3_for_pon_vcf.gz \

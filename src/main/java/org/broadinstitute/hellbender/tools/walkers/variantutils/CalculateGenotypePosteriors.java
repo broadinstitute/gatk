@@ -85,14 +85,14 @@ import java.util.*;
  *
  * <h4>Refine genotypes based on the discovered allele frequency in an input VCF containing many samples</h4>
  * <pre>
- * ./gatk-launch CalculateGenotypePosteriors \
+ * gatk-launch --javaOptions "-Xmx4g" CalculateGenotypePosteriors \
  *   -V multisample_input.vcf \
  *   -O output.vcf
  * </pre>
  *
  * <h4>Inform the genotype assignment of a single sample using the 1000G_EUR European panel</h4>
  * <pre>
- * ./gatk-launch CalculateGenotypePosteriors \
+ * gatk-launch --javaOptions "-Xmx4g" CalculateGenotypePosteriors \
  *   -V sample_input.vcf \
  *   -O sample_output.1000G_EUR.vcf \
  *   -supporting 1000G_EUR.genotypes.vcf
@@ -100,7 +100,7 @@ import java.util.*;
  *
  * <h4>Apply only family priors to a callset</h4>
  * <pre>
- * ./gatk-launch CalculateGenotypePosteriors \
+ * gatk-launch --javaOptions "-Xmx4g" CalculateGenotypePosteriors \
  *   -V input.vcf \
  *   -O output.vcf \
  *   -ped family.ped \
@@ -110,7 +110,7 @@ import java.util.*;
  * <h4>Apply frequency and HWE-based priors to the genotypes of a family without including the family allele counts
  * in the allele frequency estimates</h4>
  * <pre>
- * ./gatk-launch CalculateGenotypePosteriors \
+ * gatk-launch --javaOptions "-Xmx4g" CalculateGenotypePosteriors \
  *   -V input.vcf \
  *   -O output.vcf \
  *   --ignoreInputSamples
@@ -119,7 +119,7 @@ import java.util.*;
  * <h4>Calculate the posterior genotypes of a callset, and impose that a variant *not seen* in the external panel
  * is tantamount to being AC=0, AN=100 within that panel</h4>
  * <pre>
- * ./gatk-launch CalculateGenotypePosteriors \
+ * gatk-launch --javaOptions "-Xmx4g" CalculateGenotypePosteriors \
  *   -V input.vcf \
  *   -O output.vcf \
  *   -supporting external.panel.vcf \

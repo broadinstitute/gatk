@@ -27,7 +27,7 @@ import java.util.ArrayDeque;
  * <h3>Example</h3>
  *
  * <pre>
- * java -jat gatk.jar RemoveNearbyIndels \
+ * gatk-launch --javaOptions "-Xmx4g" RemoveNearbyIndels \
  *   -V input.vcf \
  *   -O output.vcf \
  *   -minIndelSpacing 20

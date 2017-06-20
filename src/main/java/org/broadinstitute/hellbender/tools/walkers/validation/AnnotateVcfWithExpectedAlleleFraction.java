@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * <h3>Example</h3>
  *
  * <pre>
- * java -jar gatk.jar AnnotateVcfWithExpectedAlleleFraction \
+ * gatk-launch --javaOptions "-Xmx4g" AnnotateVcfWithExpectedAlleleFraction \
  *   -V input.vcf \
  *   -O output.vcf \
  *   -mixingFractions mixingFractions.table

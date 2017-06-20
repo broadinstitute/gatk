@@ -91,7 +91,7 @@ import java.io.File;
  * <p>For MATCHED_NORMAL_TUMOR mode:</p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar GetBayesianHetCoverage \
+ * gatk-launch --javaOptions "-Xmx4g" GetBayesianHetCoverage \
  *   --reference ref_fasta.fa \
  *   --snpIntervals common_sites.interval_list \
  *   --tumor tumor.bam \
@@ -108,7 +108,7 @@ import java.io.File;
  * <p>For TUMOR_ONLY mode:</p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar GetBayesianHetCoverage \
+ * gatk-launch --javaOptions "-Xmx4g" GetBayesianHetCoverage \
  *   --reference ref_fasta.fa \
  *   --snpIntervals common_sites.interval_list \
  *   --tumor tumor.bam \

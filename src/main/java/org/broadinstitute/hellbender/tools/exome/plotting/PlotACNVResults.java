@@ -29,13 +29,13 @@ import java.util.stream.Collectors;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar PlotACNVResults \
+ * gatk-launch --javaOptions "-Xmx4g" PlotACNVResults \
  *   --hets tumor.hets.tsv \
  *   --tangentNormalized tn_coverage.tn.tsv \
  *   --segments acnv_segments.seg \
- *   -SD ref_fasta_dict.dict \
- *   --output output_dir \
- *    --outputPrefix basename
+ *   -SD ref_fasta.dict \
+ *   --output folder_name \
+ *   --outputPrefix basename
  * </pre>
  *
  * <p>The --output parameter specifies a directory.</p>

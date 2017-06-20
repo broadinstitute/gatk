@@ -46,8 +46,8 @@ import java.util.stream.StreamSupport;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar ConvertBedToTargetFile
- *   --input targets.bed
+ * gatk-launch --javaOptions "-Xmx4g" ConvertBedToTargetFile \
+ *   --input targets.bed \
  *   --output targets.tsv
  * </pre>
  */

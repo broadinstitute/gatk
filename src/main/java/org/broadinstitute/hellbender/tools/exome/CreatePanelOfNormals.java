@@ -48,7 +48,7 @@ import java.util.stream.DoubleStream;
  * </p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar CreatePanelOfNormals \
+ * gatk-launch --javaOptions "-Xmx4g" CreatePanelOfNormals \
  *   --input gc_corrected_coverages.tsv \
  *   --output panel_of_normals.pon
  * </pre>

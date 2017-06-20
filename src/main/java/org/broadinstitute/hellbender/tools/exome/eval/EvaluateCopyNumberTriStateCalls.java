@@ -43,7 +43,7 @@ import java.util.stream.StreamSupport;
  * <p>Example:</p>
  *
  * <pre>
- * java -jar $gatk_jar EvaluateCopyNumberTriStateCalls \
+ * gatk-launch --javaOptions "-Xmx4g" EvaluateCopyNumberTriStateCalls \
  *      --callsFile genotyped_segments.vcf \
  *      --truthFile genomestrip_cnv.vcf \
  *      --targets pca_filtered_targets.tsv \

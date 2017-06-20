@@ -71,7 +71,7 @@ import java.util.Map;
  *
  * <p>To make CNV calls and simultaneously create a Panel of Normals (PoN), use --jobType LEARN_AND_CALL:</p>
  * <pre>
- * java -Xmx16g -jar $gatk_jar GermlineCNVCaller \
+ * gatk-launch --javaOptions "-Xmx16g" GermlineCNVCaller \
  *   --jobType LEARN_AND_CALL \
  *   --input combined_read_counts.tsv \
  *   --contigAnnotationsTable grch37_contig_annotations.tsv \
@@ -89,7 +89,7 @@ import java.util.Map;
  * <p>To make CNV calls using a Panel of Normals (PoN), use --jobType CALL_ONLY:</p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar GermlineCNVCaller \
+ * gatk-launch --javaOptions "-Xmx4g" GermlineCNVCaller \
  *   --jobType CALL_ONLY \
  *   --input combined_read_counts.tsv \
  *   --inputModelPath learn_and_call_results/model_final \

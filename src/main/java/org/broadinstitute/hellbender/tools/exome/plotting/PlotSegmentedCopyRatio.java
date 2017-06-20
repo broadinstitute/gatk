@@ -27,15 +27,15 @@ import java.util.stream.Collectors;
  *
  * <h3>Examples</h3>
  *
- * <p>The --output parameter specifies a directory.</p>
+ * <p>The --output parameter specifies a pre-existing directory.</p>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar PlotSegmentedCopyRatio \
- *   --tangentNormalized tn_coverage.tn.tsv \
- *   --preTangentNormalized pre_tn_coverage.ptn.tsv \
- *   --segments called_segments.seg \
- *   -SD ref_fasta_dict.dict \
- *   --output output_dir \
+ * gatk-launch --javaOptions "-Xmx4g" PlotSegmentedCopyRatio \
+ *   --tangentNormalized tumor.tn.tsv \
+ *   --preTangentNormalized tumor.preTN.tsv \
+ *   --segments tumor.seg \
+ *   -SD ref_fasta.dict \
+ *   --output folder_name \
  *   --outputPrefix basename
  * </pre>
  */

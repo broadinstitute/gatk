@@ -78,7 +78,7 @@ import java.util.List;
  * <h3>Example</h3>
  *
  * <pre>
- * java -Xmx4g -jar $gatk_jar TargetCoverageSexGenotyper \
+ * gatk-launch --javaOptions "-Xmx4g" TargetCoverageSexGenotyper \
  *   --input combined_read_counts.tsv \
  *   --contigAnnotations grch37_contig_annotations.tsv \
  *   --targets targets.tsv \
