@@ -17,6 +17,7 @@ import scala.Tuple2;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
@@ -119,35 +120,39 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
         expectedAssemblyQNames.stream()
                 .map(qName -> new QNameAndInterval(qName, 0))
                 .forEach(qNameMultiMap::add);
-        FindBreakpointEvidenceSpark.handleAssemblies(ctx,qNameMultiMap,reads,filter,2,true,true,new LocalAssemblyComparator(fastqFile));
+        FindBreakpointEvidenceSpark.handleAssemblies(ctx,qNameMultiMap,reads,filter,2,true,new LocalAssemblyComparator(fastqFile));
     }
 
     /** This LocalAssemblyHandler compares an assembly with expected results. */
     private static final class LocalAssemblyComparator implements FindBreakpointEvidenceSpark.LocalAssemblyHandler {
         private static final long serialVersionUID = 1L;
-        private final String expectedFastqFile;
+        private final String expectedFastqFilePrefix;
 
-        public LocalAssemblyComparator( final String expectedFastqFile ) { this.expectedFastqFile = expectedFastqFile; }
+        public LocalAssemblyComparator( final String expectedFastqFilePrefix ) { this.expectedFastqFilePrefix = expectedFastqFilePrefix; }
 
         @Override
         public AlignedAssemblyOrExcuse
                     apply( final Tuple2<Integer,List<SVFastqUtils.FastqRead>> intervalAndFastqBytes ) {
             final List<SVFastqUtils.FastqRead> fastqList = intervalAndFastqBytes._2();
-            fastqList.sort(Comparator.comparing(SVFastqUtils.FastqRead::getName));
-            final ByteArrayOutputStream os = new ByteArrayOutputStream();
-            try { SVFastqUtils.writeFastqStream(os, fastqList.iterator()); }
-            catch ( final IOException ioe ) { throw new GATKException("can't stream fastqs into memory", ioe); }
-            final byte[] concatenatedFastqs = os.toByteArray();
-            final String expectedFile = expectedFastqFile+intervalAndFastqBytes._1();
-            final ByteArrayInputStream actualStream = new ByteArrayInputStream(concatenatedFastqs);
-            try( InputStream expectedStream = new BufferedInputStream(new FileInputStream(expectedFile)) ) {
-                int val;
-                while ( (val = expectedStream.read()) != -1 )
-                    Assert.assertEquals(actualStream.read(), val);
-                Assert.assertEquals(actualStream.read(), -1);
+            Collections.sort(fastqList, Comparator.comparing(SVFastqUtils.FastqRead::getHeader));
+            final File outputFile = createTempFile("output", ".fastq");
+            try {
+                SVFastqUtils.writeFastqFile(outputFile.getAbsolutePath() , fastqList.iterator());
+            } catch (final RuntimeException ex) {
+                throw ex;
             }
-            catch ( final IOException ioe2 ) {
-                throw new GATKException("can't read expected values", ioe2);
+            try (final BufferedReader actualReader = new BufferedReader(new FileReader(outputFile));
+                 final BufferedReader expectedReader = new BufferedReader(new FileReader(expectedFastqFilePrefix + intervalAndFastqBytes._1()))){
+                final List<String> actualLines = actualReader.lines().collect(Collectors.toList());
+                final List<String> expectedLines = expectedReader.lines().collect(Collectors.toList());
+                Assert.assertEquals(actualLines.size(), expectedLines.size(), "different number of lines");
+                for (int i = 0; i < actualLines.size(); i++) {
+                    Assert.assertEquals(actualLines.get(i), expectedLines.get(i), "difference in fastq line " + (i + 1));
+                }
+            } catch (final IOException ex) {
+                throw new GATKException("test problems", ex);
+            } finally {
+                try { outputFile.delete(); } catch (final Throwable t) {};
             }
             return new AlignedAssemblyOrExcuse(intervalAndFastqBytes._1(), "hello");
         }

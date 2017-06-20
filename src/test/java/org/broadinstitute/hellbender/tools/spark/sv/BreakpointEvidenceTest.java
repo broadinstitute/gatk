@@ -41,7 +41,7 @@ public class BreakpointEvidenceTest extends BaseTest {
         Assert.assertEquals(evidence1.getLocation(), new SVInterval(0,evidenceLocus-uncertainty,evidenceLocus+uncertainty));
         Assert.assertEquals(evidence1.getLocation().getLength(), 2*uncertainty);
         Assert.assertEquals(evidence1.getTemplateName(), templateName);
-        Assert.assertEquals(evidence1.getTemplateEnd(), BreakpointEvidence.ReadEvidence.TemplateEnd.UNPAIRED);
+        Assert.assertEquals(evidence1.getFragmentOrdinal(), TemplateFragmentOrdinal.UNPAIRED);
         Assert.assertEquals(evidence1.toString(), evidence2.toString());
         read.setIsReverseStrand(false);
         final BreakpointEvidence evidence3 = new BreakpointEvidence.ReadEvidence(read, readMetadata);

@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointEvidence.ReadEvidence.TemplateEnd;
 
 public class BreakpointDensityFilterTest extends BaseTest {
     private static final SAMFileHeader artificialSamHeader =
@@ -229,6 +228,6 @@ public class BreakpointDensityFilterTest extends BaseTest {
     }
 
     private BreakpointEvidence.ReadEvidence makeEvidence( final int start ) {
-        return new BreakpointEvidence.ReadEvidence(new SVInterval(0,start,start+100),1,"Test",TemplateEnd.UNPAIRED,false);
+        return new BreakpointEvidence.ReadEvidence(new SVInterval(0,start,start+100),1,"Test", TemplateFragmentOrdinal.UNPAIRED,false);
     }
 }
