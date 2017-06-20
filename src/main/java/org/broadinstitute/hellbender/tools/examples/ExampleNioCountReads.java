@@ -4,7 +4,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.nio.NioBam;
@@ -19,7 +19,7 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
     summary = "Example of how to use Spark on Google Cloud Storage directly, without using the GCS Hadoop Connector",
     oneLineSummary = "Example of how to use Spark on Google Cloud Storage directly, without using the GCS Hadoop Connector",
-    programGroup = ReadProgramGroup.class
+    programGroup = ExampleProgramGroup.class
 )
 public class ExampleNioCountReads extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;

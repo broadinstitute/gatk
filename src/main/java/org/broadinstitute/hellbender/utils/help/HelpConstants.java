@@ -63,7 +63,8 @@ public final class HelpConstants {
     public final static String DOC_CAT_VAREVAL = "Variant Evaluation Tools";
     public final static String DOC_CAT_VARMANIP = "Variant Manipulation Tools";
 
-    public final static String DOC_CAT_EXAMPLE = "Examples (Exclude)";
+    public final static String DOC_CAT_EXAMPLE = "Example Tools";
+    public final static String DOC_CAT_EXAMPLE_SUMMARY = "Example tools that show developers how to implement new tools";
 
     /**
      * List of "supercategory" values used for doc purposes. Every doc group name can/should be put into

@@ -5,7 +5,7 @@ import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.MetricsCollectorSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -31,7 +31,7 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary        = "Program to collect example single-level metrics in SAM/BAM/CRAM file(s)",
         oneLineSummary = "Collect example single-level metrics on Spark",
-        programGroup   = TestProgramGroup.class)
+        programGroup   = ExampleProgramGroup.class)
 public final class ExampleCollectSingleMetricsSpark
         extends MetricsCollectorSparkTool<ExampleSingleMetricsArgumentCollection> {
 

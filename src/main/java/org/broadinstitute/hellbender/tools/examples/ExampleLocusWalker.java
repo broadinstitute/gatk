@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -23,7 +23,7 @@ import java.util.List;
 @CommandLineProgramProperties(
     summary = "Example tool that prints locus-based coverage from supplied read to the specified output file (stdout if none provided), along with overlapping reference bases/features (if provided)",
     oneLineSummary = "Example tool that prints locus-based coverage with optional contextual data",
-    programGroup = ReadProgramGroup.class
+    programGroup = ExampleProgramGroup.class
 )
 public class ExampleLocusWalker extends LocusWalker {
 

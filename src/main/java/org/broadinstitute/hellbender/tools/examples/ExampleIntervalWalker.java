@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.examples;
 
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -7,7 +8,6 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalVariantInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -23,7 +23,7 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
         summary = "Example tool that prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
         oneLineSummary = "Print intervals with optional contextual data",
-        programGroup = IntervalProgramGroup.class
+        programGroup = ExampleProgramGroup.class
 )
 public final class ExampleIntervalWalker extends IntervalWalker {
 

@@ -6,7 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -22,7 +22,7 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
         summary = "Example tool that prints features supplied to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
         oneLineSummary = "Example tool that prints features with optional contextual data",
-        programGroup = VariantProgramGroup.class
+        programGroup = ExampleProgramGroup.class
 )
 public final class ExampleFeatureWalker extends FeatureWalker<BEDFeature> {
 
