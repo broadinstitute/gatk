@@ -4,8 +4,13 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -20,11 +25,75 @@ import java.util.List;
  */
 public class SVFastqUtils {
 
+    public static final class SATag implements Locatable {
+        private final String contig;
+        private final int start;
+        private final boolean forwardStrand;
+        private final Cigar cigar;
+        private final int mapQ;
+        private final int nMismatches;
+
+        public SATag( final GATKRead read ) {
+            this.contig = read.getContig();
+            this.start = read.getStart();
+            this.forwardStrand = !read.isReverseStrand();
+            this.cigar = read.getCigar();
+            this.mapQ = read.getMappingQuality();
+            final Integer nm = read.getAttributeAsInteger("NM");
+            this.nMismatches = nm == null ? -1 : nm;
+        }
+
+        public SATag( final String contig, final int start, final boolean forwardStrand, final Cigar cigar,
+                      final int mapQ, final int nMismatches ) {
+            this.contig = contig;
+            this.start = start;
+            this.forwardStrand = forwardStrand;
+            this.cigar = cigar;
+            this.mapQ = mapQ;
+            this.nMismatches = nMismatches;
+        }
+
+        @Override public String getContig() { return contig; }
+        @Override public int getStart() { return start; }
+        @Override public int getEnd() { return start + cigar.getReferenceLength() - 1; }
+        public boolean isForwardStrand() { return forwardStrand; }
+        public Cigar getCigar() { return cigar; }
+        public int getMapQ() { return mapQ; }
+        public int getNMismatches() { return nMismatches; }
+
+        @Override public String toString() {
+            return contig+","+start+(forwardStrand ? ",+," : ",-,")+cigar+","+mapQ+","+nMismatches+";";
+        }
+
+        public static SATag fromString( final String saString ) {
+            final String[] tokens = saString.split(",");
+            try {
+                return new SATag(tokens[0], Integer.parseInt(tokens[1]), tokens[2].charAt(0)=='+',
+                        TextCigarCodec.decode(tokens[3]), Integer.parseInt(tokens[4]),
+                        Integer.parseInt(tokens[5].substring(0, tokens[5].length() - 1)));
+            } catch ( final Exception e ) {
+                throw new GATKException("Not in SA tag format: "+saString, e);
+            }
+        }
+    }
+
     @DefaultSerializer(FastqRead.Serializer.class)
     public static final class FastqRead implements FermiLiteAssembler.BasesAndQuals {
         private final String name;
         private final byte[] bases;
         private final byte[] quals;
+
+        public FastqRead( final GATKRead read, final boolean includeMappingLocation ) {
+            name = readToFastqSeqId(read, includeMappingLocation);
+            if ( read.isReverseStrand() ) {
+                bases = BaseUtils.simpleReverseComplement(read.getBases());
+                quals = read.getBaseQualities();
+                SequenceUtil.reverseQualities(quals);
+            } else {
+                bases = read.getBases();
+                quals = read.getBaseQualities();
+            }
+        }
 
         public FastqRead( final String name, final byte[] bases, final byte[] quals ) {
             this.name = name;
@@ -109,15 +178,21 @@ public class SVFastqUtils {
         return reads;
     }
 
-    /** Convert a read's name into a FASTQ record sequence ID */
+    /** Convert a read into a FASTQ record sequence ID */
     public static String readToFastqSeqId( final GATKRead read, final boolean includeMappingLocation ) {
         final String nameSuffix = read.isPaired() ? (read.isFirstOfPair() ? "/1" : "/2") : "";
         String mapLoc = "";
-        if ( includeMappingLocation ) {
-            if ( read.isUnmapped() ) mapLoc = " mapping=unmapped";
-            else mapLoc = " mapping=" + read.getContig() + ":" + read.getStart() + ";" + read.getCigar().toString();
+        if ( includeMappingLocation && !read.isUnmapped() ) {
+            mapLoc = " mapping=" + new SATag(read);
         }
         return read.getName() + nameSuffix + mapLoc;
+    }
+
+    /** Convert a FASTQ record sequence ID into an SA tag, if present. */
+    public static SATag seqIdToSATag( final String seqId ) {
+        final int tagPos = seqId.indexOf("mapping=");
+        if ( tagPos == -1 ) return null;
+        return SATag.fromString(seqId.substring(tagPos + 8));
     }
 
     /** Write a list of FASTQ records into a file. */
