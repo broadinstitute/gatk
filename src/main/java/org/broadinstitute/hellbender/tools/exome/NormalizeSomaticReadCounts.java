@@ -41,6 +41,8 @@ import java.util.List;
  *   --tangentNormalized tumor.tn.tsv \
  *   --preTangentNormalized tumor.preTN.tsv
  * </pre>
+ *
+ * The resulting data are log2 transformed. Currently, the tool can only produce log2-transformed counts.
  */
 @CommandLineProgramProperties(
         summary = "Normalize PCOV read counts using a panel of normals",
