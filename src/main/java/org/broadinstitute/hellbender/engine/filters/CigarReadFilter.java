@@ -146,7 +146,14 @@ public class CigarReadFilter extends ReadFilter {
     // =======================================================
 
     /**
-     * Create a CigarReadFilter with the given description.
+     * Create a {@link CigarReadFilter}.
+     */
+    public CigarReadFilter() {
+        this.setDescription(description);
+    }
+
+    /**
+     * Create a {@link CigarReadFilter} with the given description.
      * @param description String describing the format of the cigar string on which to filter.
      */
     public CigarReadFilter(final String description) {
@@ -171,10 +178,10 @@ public class CigarReadFilter extends ReadFilter {
     }
 
     /**
-     * Parses the description string into individual CigarMatchElements
+     * Parses the description string into individual {@link CigarMatchElement} objects.
      * NOTE: Assumes that the passed description string is valid.
      * @param description String describing the format of the cigar string on which to filter.
-     * @return A list of CigarMatchElements that corresponds to the given description.
+     * @return A list of {@link CigarMatchElement} that corresponds to the given description.
      */
     private Collection<CigarMatchElement> extractMatchElementsFromString(final String description) {
 
@@ -196,14 +203,21 @@ public class CigarReadFilter extends ReadFilter {
                 // Add a new element to our list based on the string match
                 matchElementList.add(createMatchElementFromMatchString(matcher.group()));
             }
-
         }
 
         return matchElementList;
     }
 
+    /**
+     * Creates a CigarMatchElement from the given string.
+     * Assumes the string is a valid {@link CigarMatchElement}.
+     * @param match The string representation of a {@link CigarMatchElement}.
+     * @return The {@link CigarMatchElement} representation of the given string.
+     */
     private CigarMatchElement createMatchElementFromMatchString(final String match) {
         CigarMatchElement e = new CigarMatchElement();
+
+        //TODO: Finish ME!
 
         // We scan through the 
 
@@ -211,8 +225,8 @@ public class CigarReadFilter extends ReadFilter {
     }
 
     /**
-     * Check whether this->description is a valid filter.
-     * @return True if {@code description} is valid; False otherwise.
+     * Check whether {@link CigarMatchElement#description} is a valid filter.
+     * @return True if {@link CigarMatchElement#description} is valid; False otherwise.
      */
     public boolean validate() {
         return validate(description);
@@ -225,7 +239,7 @@ public class CigarReadFilter extends ReadFilter {
      */
     public static boolean validate(final String description) {
 
-        //     Cigar strings take the (regex) form:
+//     Cigar strings take the (regex) form:
 //
 //          \*|([0-9]+[H])?([0-9]+[S])?([0-9]+[MIDNPX=])+([0-9]+[S])?([0-9]+[H])?
 //
@@ -256,6 +270,9 @@ public class CigarReadFilter extends ReadFilter {
 
     @Override
     public boolean test(GATKRead read) {
+
+        //TODO: Go through each cigar read element and see if it matches.
+
         return false;
     }
 }
