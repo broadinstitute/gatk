@@ -3,11 +3,18 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -15,13 +22,6 @@ import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 
 public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -45,6 +45,36 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
                 {"print_reads.sorted.cram", ".bam", "print_reads.fasta"},
                 {"print_reads.sorted.cram", ".cram", "print_reads.fasta"}
         };
+    }
+
+    @DataProvider
+    public Object[][] gcsTestingData() {
+        return new Object[][]{
+            {"org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam",
+                ".bam", false, null},
+// TODO: uncomment once we upgrade to the version of gcloud that includes JP's fix (#2124)
+//            {"org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam",
+//                ".bam", true, null},
+        };
+    }
+
+    /**
+     * Test the Spark code locally, including GCS access.
+     *
+     * For this to work, the settings in src/main/resources/core-site.xml must be correct,
+     * and the project name and credential file it points to must be present.
+     */
+    @Test(dataProvider = "gcsTestingData", groups = "bucket")
+    public void testGCSInputsAndOutputs(final String gcsInput, final String outputExtension,
+        final boolean outputToGCS, final File expectedOutput) {
+        final String gcsInputPath = getGCPTestInputPath() + gcsInput;
+        final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
+        final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
+
+        final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+        argBuilder.addArgument("input", gcsInputPath)
+            .addArgument("output", outputPath);
+        runCommandLine(argBuilder);
     }
 
     @Test(dataProvider="testingData", groups="spark")
