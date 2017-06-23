@@ -57,9 +57,8 @@ import java.util.stream.IntStream;
  * </pre>
  *
  * <p>
- *     To collect raw coverage, omit the --transform PCOV option.
- *     "Raw" in the context of the workflow can refer to either (i) raw coverage counts from this step or 
- *     (ii) non-normalized raw proportional coverage counts.
+ *     To collect raw coverage in terms of integer count, i.e. not normalized by the total number of targets,
+ *     use the --transform RAW option.
  * </p>
  * <p>
  *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
