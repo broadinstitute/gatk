@@ -34,19 +34,21 @@ public final class ReadsForQNamesFinder {
         while ( readsItr.hasNext() ) {
             final GATKRead read = readsItr.next();
             final Iterator<QNameAndInterval> namesItr = qNamesMultiMap.findEach(read.getName());
-            SVFastqUtils.FastqRead FastqRead = null;
+            SVFastqUtils.FastqRead fastqRead = null;
             while ( namesItr.hasNext() ) {
                 final int intervalId = namesItr.next().getIntervalId();
                 if ( intervalReads[intervalId] == null ) {
                     intervalReads[intervalId] = new ArrayList<>(nReadsPerInterval);
                     nPopulatedIntervals += 1;
                 }
-                if ( FastqRead == null ) {
-                    final String readName =
-                            dumpFASTQs ? SVFastqUtils.readToFastqSeqId(read, includeMappingLocation) : null;
-                    FastqRead = new SVFastqUtils.FastqRead(readName, read.getBases(), read.getBaseQualities());
+                if ( fastqRead == null ) {
+                    if ( dumpFASTQs ) {
+                        fastqRead = new SVFastqUtils.FastqRead(read, includeMappingLocation);
+                    } else {
+                        fastqRead = new SVFastqUtils.FastqRead(null, read.getBases(), read.getBaseQualities());
+                    }
                 }
-                intervalReads[intervalId].add(FastqRead);
+                intervalReads[intervalId].add(fastqRead);
             }
         }
         final List<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> fastQRecords = new ArrayList<>(nPopulatedIntervals);

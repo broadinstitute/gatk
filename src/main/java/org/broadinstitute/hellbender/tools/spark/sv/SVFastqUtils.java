@@ -195,6 +195,14 @@ public class SVFastqUtils {
         return SATag.fromString(seqId.substring(tagPos + 8));
     }
 
+    /** Extract template name from FASTQ sequence ID */
+    public static String seqIdToTemplate( final String seqId ) {
+        int tokLen = seqId.indexOf(' ');
+        if ( tokLen == -1 ) tokLen = seqId.length();
+        if ( tokLen > 2 && seqId.charAt(tokLen-2)=='/' ) tokLen -= 2;
+        return seqId.substring(0, tokLen);
+    }
+
     /** Write a list of FASTQ records into a file. */
     public static void writeFastqFile(
             final String fileName,
