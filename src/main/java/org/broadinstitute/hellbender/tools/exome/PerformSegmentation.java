@@ -48,6 +48,10 @@ import java.io.File;
  *   --output tumor.seg
  * </pre>
  *
+ * While the tangent normalized (tn) data are log2 transformed, as indicated by the --log2Input true option, 
+ * the resulting segment means in the .seg file are not. Currently, NormalizeSomaticReadCounts can only produce 
+ * log2-transformed counts.
+ *
  */
 @CommandLineProgramProperties(
         summary = "Segment genomic data into regions of constant copy-ratio.  Only supports one sample input.",
