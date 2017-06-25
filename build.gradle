@@ -475,7 +475,12 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
     options.destinationDirectory(gatkDocDir)
 
     options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates");
-    options.addStringOption("output-file-extension", "html")
+    if (project.hasProperty('phpDoc')) {
+        // use -PphpDoc to generate .php file extensions, otherwise rely on default of .html
+        final String phpExtension = "php"
+        options.addStringOption("output-file-extension", phpExtension)
+        options.addStringOption("index-file-extension", phpExtension)
+    }
     options.addStringOption("absolute-version", getVersion())
     options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
     options.addStringOption("verbose")
