@@ -15,23 +15,10 @@ import java.util.*;
  */
 public class Mutect2FilteringEngine {
 
-    public final static String ARTIFACT_IN_NORMAL_FILTER_NAME = "artifact_in_normal";
-    public final static String MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME = "base_quality";
-    public final static String MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME = "mapping_quality";
-    public final static String MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME = "clipping";
-    public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment_length";
-    public final static String READ_POSITION_FILTER_NAME = "read_position";
-    public final static String CONTAMINATION_FILTER_NAME = "contamination";
-
-    public static final List<String> M_2_FILTER_NAMES = Arrays.asList(GATKVCFConstants.STR_CONTRACTION_FILTER_NAME, GATKVCFConstants.PON_FILTER_NAME,
-            GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME, GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME,
-            GATKVCFConstants.TUMOR_LOD_FILTER_NAME, GATKVCFConstants.GERMLINE_RISK_FILTER_NAME, GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME,
-            GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
-
     private M2FiltersArgumentCollection MTFAC;
     private final double contamination;
     private final String tumorSample;
-
+    public static final String FILTERING_STATUS_VCF_KEY = "filtering_status";
 
     public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample) {
         this.MTFAC = MTFAC;
@@ -46,7 +33,7 @@ public class Mutect2FilteringEngine {
                 () -> new double[] {1.0}, 1.0);
         final double maxFraction = MathUtils.arrayMax(alleleFractions);
         if (maxFraction < contamination) {
-            filters.add(CONTAMINATION_FILTER_NAME);
+            filters.add(GATKVCFConstants.CONTAMINATION_FILTER_NAME);
         }
     }
 
@@ -56,11 +43,9 @@ public class Mutect2FilteringEngine {
             final long numPassingAltAlleles = Arrays.stream(tumorLods).filter(x -> x > MTFAC.TUMOR_LOD_THRESHOLD).count();
 
             if (numPassingAltAlleles > MTFAC.numAltAllelesThreshold) {
-                filters.add(GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME);
+                filters.add(GATKVCFConstants.MULTIALLELIC_FILTER_NAME);
             }
         }
-
-
     }
 
     private static void applySTRFilter(final VariantContext vc, final Collection<String> filters) {
@@ -81,7 +66,7 @@ public class Mutect2FilteringEngine {
     }
 
     private static void applyPanelOfNormalsFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        final boolean siteInPoN = vc.hasAttribute(SomaticGenotypingEngine.IN_PON_VCF_ATTRIBUTE);
+        final boolean siteInPoN = vc.hasAttribute(GATKVCFConstants.IN_PON_VCF_ATTRIBUTE);
         if (siteInPoN) {
             filters.add(GATKVCFConstants.PON_FILTER_NAME);
         }
@@ -90,28 +75,28 @@ public class Mutect2FilteringEngine {
     private void applyMedianBaseQualityDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final int[] baseQualityByAllele = getIntArrayTumorField(vc, BaseQuality.KEY);
         if (baseQualityByAllele != null && baseQualityByAllele[0] - baseQualityByAllele[1] > MTFAC.maxMedianBaseQualityDifference) {
-            filters.add(MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME);
+            filters.add(GATKVCFConstants.MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME);
         }
     }
 
     private void applyMedianMappingQualityDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final int[] mappingQualityByAllele = getIntArrayTumorField(vc, MappingQuality.KEY);
         if (mappingQualityByAllele != null && mappingQualityByAllele[0] - mappingQualityByAllele[1] > MTFAC.maxMedianMappingQualityDifference) {
-            filters.add(MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME);
+            filters.add(GATKVCFConstants.MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME);
         }
     }
 
     private void applyMedianClippingDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final int[] clippingCountsByAllele = getIntArrayTumorField(vc, ClippedBases.KEY);
         if (clippingCountsByAllele != null && clippingCountsByAllele[1] - clippingCountsByAllele[0] > MTFAC.maxMedianClippingDifference) {
-            filters.add(MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME);
+            filters.add(GATKVCFConstants.MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME);
         }
     }
 
     private void applyMedianFragmentLengthDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final int[] fragmentLengthByAllele = getIntArrayTumorField(vc, FragmentLength.KEY);
         if (fragmentLengthByAllele != null && Math.abs(fragmentLengthByAllele[1] - fragmentLengthByAllele[0]) > MTFAC.maxMedianFragmentLengthDifference) {
-            filters.add(MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME);
+            filters.add(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME);
         }
     }
 
@@ -120,7 +105,7 @@ public class Mutect2FilteringEngine {
         if (readPositionByAllele != null) {
             final int insertionSize =  Math.max(vc.getAltAlleleWithHighestAlleleCount().getBases().length - vc.getReference().getBases().length, 0);
             if (insertionSize + readPositionByAllele[1] < MTFAC.minMedianReadPosition) {
-                filters.add(READ_POSITION_FILTER_NAME);
+                filters.add(GATKVCFConstants.READ_POSITION_FILTER_NAME);
             }
         }
 
@@ -128,18 +113,18 @@ public class Mutect2FilteringEngine {
         // thus we add the insertion length
         final int insertionSize =  Math.max(vc.getAltAlleleWithHighestAlleleCount().getBases().length - vc.getReference().getBases().length, 0);
         if (insertionSize + vc.getAttributeAsInt(ReadPosition.KEY, 100) < MTFAC.minMedianReadPosition) {
-            filters.add(READ_POSITION_FILTER_NAME);
+            filters.add(GATKVCFConstants.READ_POSITION_FILTER_NAME);
         }
     }
 
 
 
     private static void applyGermlineVariantFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY) && vc.hasAttribute(GermlineProbabilityCalculator.GERMLINE_POSTERIORS_VCF_ATTRIBUTE)) {
+        if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY) && vc.hasAttribute(GATKVCFConstants.GERMLINE_POSTERIORS_VCF_ATTRIBUTE)) {
             final double[] tumorLods = getArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
             final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
-            final double[] log10GermlinePosteriors = getArrayAttribute(vc, GermlineProbabilityCalculator.GERMLINE_POSTERIORS_VCF_ATTRIBUTE);
+            final double[] log10GermlinePosteriors = getArrayAttribute(vc, GATKVCFConstants.GERMLINE_POSTERIORS_VCF_ATTRIBUTE);
             if (log10GermlinePosteriors[indexOfMaxTumorLod] > Math.log10(MTFAC.maxGermlinePosterior)) {
                 filters.add(GATKVCFConstants.GERMLINE_RISK_FILTER_NAME);
             }
@@ -159,17 +144,17 @@ public class Mutect2FilteringEngine {
     // filter out anything called in tumor that would also be called in the normal if it were treated as a tumor.
     // this handles shared artifacts, such as ones due to alignment and any shared aspects of sequencing
     private static void applyArtifactInNormalFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        if (!( vc.hasAttribute(SomaticGenotypingEngine.NORMAL_ARTIFACT_LOD_ATTRIBUTE)
+        if (!( vc.hasAttribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE)
                 && vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY))) {
             return;
         }
 
-        final double[] normalArtifactLods = getArrayAttribute(vc, SomaticGenotypingEngine.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
+        final double[] normalArtifactLods = getArrayAttribute(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
         final double[] tumorLods = getArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
         if (normalArtifactLods[indexOfMaxTumorLod] > MTFAC.NORMAL_ARTIFACT_LOD_THRESHOLD) {
-            filters.add(ARTIFACT_IN_NORMAL_FILTER_NAME);
+            filters.add(GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME);
         }
     }
 
@@ -200,10 +185,10 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private void applyEventDistanceFilters(final VariantContext vc, final Collection<String> filters) {
+    private void applyClusteredEventFilter(final VariantContext vc, final Collection<String> filters) {
         final Integer eventCount = vc.getAttributeAsInt(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, -1);
         if (eventCount > MTFAC.maxEventsInHaplotype) {
-            filters.add(GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME);
+            filters.add(GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME);
         }
     }
 
@@ -211,7 +196,7 @@ public class Mutect2FilteringEngine {
     public Set<String> calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc) {
         final Set<String> filters = new HashSet<>();
         applyInsufficientEvidenceFilter(MTFAC, vc, filters);
-        applyEventDistanceFilters(vc, filters);
+        applyClusteredEventFilter(vc, filters);
         applyTriallelicFilter(vc, filters);
         applyPanelOfNormalsFilter(MTFAC, vc, filters);
         applyGermlineVariantFilter(MTFAC, vc, filters);

@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.variantcontext.Allele;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * This class contains any constants (primarily FORMAT/INFO keys) in VCF files used by the GATK.
  * Note that VCF-standard constants are in VCFConstants, in htsjdk.  Keys in header lines should
@@ -37,15 +40,12 @@ public final class GATKVCFConstants {
     public static final String ORIGINAL_DP_KEY =                    "DP_Orig"; //SelectVariants
     public static final String DOWNSAMPLED_KEY =                    "DS";
     public static final String EVENT_COUNT_IN_HAPLOTYPE_KEY =       "ECNT"; //M2
-    public static final String EVENT_DISTANCE_MAX_KEY =             "MAX_ED"; //M2
-    public static final String EVENT_DISTANCE_MIN_KEY =             "MIN_ED"; //M2
     public static final String FISHER_STRAND_KEY =                  "FS";
     public static final String AS_FISHER_STRAND_KEY =               "AS_FS";
     public static final String AS_SB_TABLE_KEY =                    "AS_SB_TABLE";
     public static final String GC_CONTENT_KEY =                     "GC";
     public static final String GQ_MEAN_KEY =                        "GQ_MEAN";
     public static final String GQ_STDEV_KEY =                       "GQ_STDDEV";
-    public static final String HAPLOTYPE_COUNT_KEY =                "HCNT"; //M2
     public static final String HAPLOTYPE_SCORE_KEY =                "HaplotypeScore";
     public static final String HI_CONF_DENOVO_KEY =                 "hiConfDeNovo";
     public static final String HOMOPOLYMER_RUN_KEY =                "HRun";
@@ -103,15 +103,12 @@ public final class GATKVCFConstants {
     // Mutect2-specific INFO keys
     public static final String TUMOR_LOD_KEY =                      "TLOD";
     public static final String NORMAL_LOD_KEY =                     "NLOD";
-    public static final String PANEL_OF_NORMALS_COUNT_KEY =         "PON";
-    public static final String TUMOR_SB_POWER_FWD_KEY =             "TUMOR_SB_POWER_FWD";
-    public static final String TLOD_FWD_KEY =                       "TLOD_FWD";
-    public static final String TLOD_REV_KEY =                       "TLOD_REV";
-    public static final String TUMOR_SB_POWER_REV_KEY =             "TUMOR_SB_POWER_REV";
-    public static final String MEDIAN_LEFT_OFFSET_KEY =             "MEDIAN_LEFT_OFFSET";
-    public static final String MEDIAN_RIGHT_OFFSET_KEY =            "MEDIAN_RIGHT_OFFSET";
-    public static final String MAD_MEDIAN_LEFT_OFFSET_KEY =         "MAD_LEFT_OFFSET";
-    public static final String MAD_MEDIAN_RIGHT_OFFSET_KEY =        "MAD_RIGHT_OFFSET";
+    public static final String IN_PON_VCF_ATTRIBUTE =               "IN_PON";
+    public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "N_ART_LOD";
+    public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POP_AF";
+    public static final String GERMLINE_POSTERIORS_VCF_ATTRIBUTE =  "P_GERMLINE";
+    public static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(NORMAL_LOD_KEY, TUMOR_LOD_KEY, NORMAL_ARTIFACT_LOD_ATTRIBUTE,
+            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_POSTERIORS_VCF_ATTRIBUTE);
 
     //FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
@@ -127,7 +124,6 @@ public final class GATKVCFConstants {
     public static final String HAPLOTYPE_CALLER_PHASING_GT_KEY =    "PGT";
     public static final String HAPLOTYPE_CALLER_PHASING_ID_KEY =    "PID";
     public static final String PHRED_SCALED_POSTERIORS_KEY =        "PP"; //FamilyLikelihoodsUtils / PosteriorLikelihoodsUtils
-    public static final String QUALITY_SCORE_SUM_KEY =              "QSS"; //M2
     public static final String REFERENCE_GENOTYPE_QUALITY =         "RGQ";
     public static final String STRAND_COUNT_BY_SAMPLE_KEY =         "SAC";
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
@@ -138,25 +134,36 @@ public final class GATKVCFConstants {
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,
        their names (or descriptions) depend on some threshold.  Those filters are not included here
      */
-    public static final String ALT_ALLELE_IN_NORMAL_FILTER_NAME =             "alt_allele_in_normal"; //M2
     public static final String CLUSTERED_EVENTS_FILTER_NAME =                 "clustered_events"; //M2
     public static final String GERMLINE_RISK_FILTER_NAME =                    "germline_risk"; //M2
-    public static final String HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME =         "homologous_mapping_event"; //M2
     public static final String LOW_QUAL_FILTER_NAME =                         "LowQual";
-    public static final String MULTI_EVENT_ALT_ALLELE_IN_NORMAL_FILTER_NAME = "multi_event_alt_allele_in_normal"; //M2
     public static final String PON_FILTER_NAME =                              "panel_of_normals"; //M2
     public static final String STR_CONTRACTION_FILTER_NAME =                  "str_contraction"; //M2
-    public static final String TUMOR_LOD_FILTER_NAME =                        "t_lod_fstar"; //M2
-    public static final String TRIALLELIC_SITE_FILTER_NAME =                  "triallelic_site"; //M2
+    public static final String TUMOR_LOD_FILTER_NAME =                        "t_lod"; //M2
+    public static final String MULTIALLELIC_FILTER_NAME =                     "multiallelic"; //M2
     public static final String STRAND_ARTIFACT_FILTER_NAME =                  "strand_artifact"; // M2
-    public static final String CLUSTERED_READ_POSITION_FILTER_NAME =          "clustered_read_position"; // M2
+    public final static String ARTIFACT_IN_NORMAL_FILTER_NAME =                "artifact_in_normal";
+    public final static String MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME =     "base_quality";
+    public final static String MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME = "mapping_quality";
+    public final static String MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME =         "clipping";
+    public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment_length";
+    public final static String READ_POSITION_FILTER_NAME =                      "read_position";
+    public final static String CONTAMINATION_FILTER_NAME =                      "contamination";
+
+    public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(STR_CONTRACTION_FILTER_NAME,
+            PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_LOD_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
+            MULTIALLELIC_FILTER_NAME, STRAND_ARTIFACT_FILTER_NAME, ARTIFACT_IN_NORMAL_FILTER_NAME,
+            MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME, MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME,
+            MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME, MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
+            READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";
     public final static String NON_REF_SYMBOLIC_ALLELE_NAME = "NON_REF";
     public final static Allele NON_REF_SYMBOLIC_ALLELE = Allele.create("<" + NON_REF_SYMBOLIC_ALLELE_NAME + ">", false); // represents any possible non-ref allele at this site
     public final static String SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED = "*:DEL";
-    public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this site
+    public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this si
+
 
     public static boolean isSpanningDeletion(final Allele allele){
         return allele.equals(Allele.SPAN_DEL) || allele.equals(SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED);

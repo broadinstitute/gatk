@@ -47,17 +47,20 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(LOW_QUAL_FILTER_NAME, "Low quality"));
 
         // M2-related filters
-        addFilterLine(new VCFFilterHeaderLine(ALT_ALLELE_IN_NORMAL_FILTER_NAME, "Evidence seen in the normal sample"));
         addFilterLine(new VCFFilterHeaderLine(CLUSTERED_EVENTS_FILTER_NAME, "Clustered events observed in the tumor"));
         addFilterLine(new VCFFilterHeaderLine(GERMLINE_RISK_FILTER_NAME, "Evidence indicates this site is germline, not somatic"));
-        addFilterLine(new VCFFilterHeaderLine(HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME, "More than three events were observed in the tumor"));
-        addFilterLine(new VCFFilterHeaderLine(MULTI_EVENT_ALT_ALLELE_IN_NORMAL_FILTER_NAME, "Multiple events observed in tumor and normal"));
-        addFilterLine(new VCFFilterHeaderLine(PON_FILTER_NAME, "Seen in at least 2 samples in the panel of normals"));
+        addFilterLine(new VCFFilterHeaderLine(PON_FILTER_NAME, "Blacklisted site in panel of normals"));
         addFilterLine(new VCFFilterHeaderLine(TUMOR_LOD_FILTER_NAME, "Tumor does not meet likelihood threshold"));
         addFilterLine(new VCFFilterHeaderLine(STR_CONTRACTION_FILTER_NAME, "Site filtered due to contraction of short tandem repeat region"));
-        addFilterLine(new VCFFilterHeaderLine(TRIALLELIC_SITE_FILTER_NAME, "Site filtered because more than two alt alleles pass tumor LOD"));
+        addFilterLine(new VCFFilterHeaderLine(MULTIALLELIC_FILTER_NAME, "Site filtered because too many alt alleles pass tumor LOD"));
         addFilterLine(new VCFFilterHeaderLine(STRAND_ARTIFACT_FILTER_NAME, "Evidence for alt allele comes from one read direction only"));
-        addFilterLine(new VCFFilterHeaderLine(CLUSTERED_READ_POSITION_FILTER_NAME, "Evidence for somatic variant clusters near the ends of reads"));
+        addFilterLine(new VCFFilterHeaderLine(ARTIFACT_IN_NORMAL_FILTER_NAME, "artifact_in_normal"));
+        addFilterLine(new VCFFilterHeaderLine(MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median base quality"));
+        addFilterLine(new VCFFilterHeaderLine(MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median mapping quality"));
+        addFilterLine(new VCFFilterHeaderLine(MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME, "ref - alt median clipping"));
+        addFilterLine(new VCFFilterHeaderLine(MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME, "abs(ref - alt) median fragment length"));
+        addFilterLine(new VCFFilterHeaderLine(READ_POSITION_FILTER_NAME, "median distance of alt variants from end of reads"));
+        addFilterLine(new VCFFilterHeaderLine(CONTAMINATION_FILTER_NAME, "contamination"));
 
         addFormatLine(new VCFFormatHeaderLine(ALLELE_BALANCE_KEY, 1, VCFHeaderLineType.Float, "Allele balance for each het genotype"));
         addFormatLine(new VCFFormatHeaderLine(MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY, 1, VCFHeaderLineType.Integer, "Number of Mapping Quality Zero Reads per sample"));
@@ -81,15 +84,13 @@ public class GATKVCFHeaderLines {
         addFormatLine(new VCFFormatHeaderLine(JOINT_LIKELIHOOD_TAG_NAME, 1, VCFHeaderLineType.Integer, "Phred-scaled joint likelihood of the genotype combination (before applying family priors)"));
         addFormatLine(new VCFFormatHeaderLine(JOINT_POSTERIOR_TAG_NAME, 1, VCFHeaderLineType.Integer, "Phred-scaled joint posterior probability of the genotype combination (after applying family priors)"));
 
-        // M2-related info lines
-        addFormatLine(new VCFFormatHeaderLine(ALLELE_FRACTION_KEY, 1, VCFHeaderLineType.Float, "Allele fraction of the event in the tumor"));
+        // M2-related format lines
+        addFormatLine(new VCFFormatHeaderLine(ALLELE_FRACTION_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele fractions of alternate alleles in the tumor"));
         addFormatLine(new VCFFormatHeaderLine(OXOG_ALT_F1R2_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting the alternate allele"));
         addFormatLine(new VCFFormatHeaderLine(OXOG_ALT_F2R1_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting the alternate allele"));
         addFormatLine(new VCFFormatHeaderLine(OXOG_REF_F1R2_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting the reference allele"));
         addFormatLine(new VCFFormatHeaderLine(OXOG_REF_F2R1_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting the reference allele"));
         addFormatLine(new VCFFormatHeaderLine(OXOG_FRACTION_KEY, 1, VCFHeaderLineType.Float, "Fraction of alt reads indicating OxoG error"));
-        addFormatLine(new VCFFormatHeaderLine(QUALITY_SCORE_SUM_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Sum of base quality scores for each allele"));
-
 
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed"));
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed"));
@@ -168,21 +169,11 @@ public class GATKVCFHeaderLines {
 
         // M2-related info lines
         addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.String, "Number of events in this haplotype"));
-        addInfoLine(new VCFInfoHeaderLine(EVENT_DISTANCE_MAX_KEY, 1, VCFHeaderLineType.Integer, "Maximum distance between events in this active region"));
-        addInfoLine(new VCFInfoHeaderLine(EVENT_DISTANCE_MIN_KEY, 1, VCFHeaderLineType.Integer, "Minimum distance between events in this active region"));
-        addInfoLine(new VCFInfoHeaderLine(HAPLOTYPE_COUNT_KEY, 1, VCFHeaderLineType.String, "Number of haplotypes that support this variant"));
-        addInfoLine(new VCFInfoHeaderLine(NORMAL_LOD_KEY, 1, VCFHeaderLineType.String, "Normal LOD score"));
-        addInfoLine(new VCFInfoHeaderLine(PANEL_OF_NORMALS_COUNT_KEY, 1, VCFHeaderLineType.String, "Count from Panel of Normals"));
-        addInfoLine(new VCFInfoHeaderLine(TUMOR_LOD_KEY, 1, VCFHeaderLineType.String, "Tumor LOD score"));
-        addInfoLine(new VCFInfoHeaderLine(TLOD_FWD_KEY,1,VCFHeaderLineType.Float, "Tumor LOD from forward reads only"));
-        addInfoLine(new VCFInfoHeaderLine(TLOD_REV_KEY,1,VCFHeaderLineType.Float, "Tumor LOD from reverse reads only"));
-        addInfoLine(new VCFInfoHeaderLine(TUMOR_SB_POWER_FWD_KEY,1,VCFHeaderLineType.Float, "Power to detect a variant with forward reads"));
-        addInfoLine(new VCFInfoHeaderLine(TUMOR_SB_POWER_REV_KEY,1,VCFHeaderLineType.Float, "Power to detect a variant with reverse reads"));
-        addInfoLine(new VCFInfoHeaderLine(MEDIAN_LEFT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median of the numbers of bases between the left end and the variant in ALT reads"));
-        addInfoLine(new VCFInfoHeaderLine(MEDIAN_RIGHT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median of the numbers of bases between the variant and the right end in ALT reads"));
-        addInfoLine(new VCFInfoHeaderLine(MAD_MEDIAN_LEFT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median absolute deviation of the numbers of bases between the left end and the variant in ALT reads"));
-        addInfoLine(new VCFInfoHeaderLine(MAD_MEDIAN_RIGHT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median absolute deviation of the numbers of bases between the variant and the right end in ALT reads"));
-
-
+        addInfoLine(new VCFInfoHeaderLine(NORMAL_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Normal LOD score"));
+        addInfoLine(new VCFInfoHeaderLine(TUMOR_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Tumor LOD score"));
+        addInfoLine(new VCFInfoHeaderLine(IN_PON_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
+        addInfoLine(new VCFInfoHeaderLine(POPULATION_AF_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "population allele frequencies of alt alleles"));
+        addInfoLine(new VCFInfoHeaderLine(GERMLINE_POSTERIORS_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Posterior probability for alt allele to be germline variants"));
+        addInfoLine(new VCFInfoHeaderLine(NORMAL_ARTIFACT_LOD_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "log odds of artifact in normal with same allele fraction as tumor"));
     }
 }

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -14,11 +13,13 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.tools.exome.FilterByOrientationBias;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Filter SNVs and indels from a Mutect2 callset.
@@ -79,15 +80,13 @@ public final class FilterMutectCalls extends VariantWalker {
     @Override
     public void onTraversalStart() {
         final VCFHeader inputHeader = getHeaderForVariants();
-        final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());
-        Mutect2FilteringEngine.M_2_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerLines::add);
-        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.ARTIFACT_IN_NORMAL_FILTER_NAME, "artifact_in_normal"));
-        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median base quality"));
-        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median mapping quality"));
-        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME, "ref - alt median clipping"));
-        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME, "abs(ref - alt) median fragment length"));
-        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.READ_POSITION_FILTER_NAME, "median distance of alt variants from end of reads"));
-        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.CONTAMINATION_FILTER_NAME, "contamination"));
+        final Set<VCFHeaderLine> headerLines = inputHeader.getMetaDataInSortedOrder().stream()
+                .filter(line -> !line.getKey().equals(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY)) //remove header line from Mutect2 stating that calls are unfiltered.
+                .collect(Collectors.toSet());
+        headerLines.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "These calls have been filtered by " + FilterMutectCalls.class.getSimpleName() + " to label false positives with a list of failed filters and true positives with PASS."));
+
+        GATKVCFConstants.MUTECT_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerLines::add);
+
         headerLines.addAll(getDefaultToolVCFHeaderLines());
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
         vcfWriter = createVCFWriter(new File(outputVcf));

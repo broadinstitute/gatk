@@ -130,7 +130,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group.
      * Note that this usage is not recommended because it obscures the specific requirements of individual annotations.
      * Any requirements that are not met, e.g. failing to provide a pedigree file for a pedigree-based annotation, may cause the run to fail.
-     * For somatic analyses, the StandardSomaticAnnotation group currently contains two annotations: BaseQualitySumPerAlleleBySample and StrandArtifact.
+     * For somatic analyses, the StandardSomaticAnnotation group currently contains one annotations: StrandArtifact.
      * Note the latter is redundant to an annotation given by the --annotation argument default.
      */
     @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)

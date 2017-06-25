@@ -37,9 +37,6 @@ import static org.broadinstitute.hellbender.utils.OptimizationUtils.argmax;
 
 public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine {
 
-    public static final String IN_PON_VCF_ATTRIBUTE = "IN_PON";
-    public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE = "N_ART_LOD";
-
     private final M2ArgumentCollection MTAC;
 
     public final String tumorSampleName;
@@ -149,10 +146,10 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                     .attribute(GATKVCFConstants.TUMOR_LOD_KEY, somaticAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
 
             normalLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, values.asDoubleArray(somaticAltAlleles)));
-            normalArtifactLog10Odds.ifPresent(values -> callVcb.attribute(NORMAL_ARTIFACT_LOD_ATTRIBUTE, values.asDoubleArray(somaticAltAlleles)));
+            normalArtifactLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE, values.asDoubleArray(somaticAltAlleles)));
 
             if (!featureContext.getValues(MTAC.pon, mergedVC.getStart()).isEmpty()) {
-                callVcb.attribute(IN_PON_VCF_ATTRIBUTE, true);
+                callVcb.attribute(GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, true);
             }
 
             addGenotypes(subsettedLog10TumorMatrix, subsettedLog10NormalMatrix, callVcb);
@@ -196,7 +193,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final double[] tumorAlleleCounts = SomaticLikelihoodsEngine.getEffectiveCounts(getAsRealMatrix(tumorLog10Matrix));
         final Genotype tumorGenotype = new GenotypeBuilder(tumorSampleName, tumorLog10Matrix.alleles())
                 .AD(Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
-                .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, MathUtils.normalizeFromRealSpace(tumorAlleleCounts))
+                .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(tumorAlleleCounts))
                 .make();
         final List<Genotype> genotypes = new ArrayList<>(Arrays.asList(tumorGenotype));
 
@@ -209,7 +206,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final double[] normalAlleleCounts = SomaticLikelihoodsEngine.getEffectiveCounts(getAsRealMatrix(normalLog10Matrix.get()));
             final Genotype normalGenotype = new GenotypeBuilder(matchedNormalSampleName, homRefAllelesforNormalGenotype)
                     .AD(Arrays.stream(normalAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
-                    .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, MathUtils.normalizeFromRealSpace(normalAlleleCounts))
+                    .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(normalAlleleCounts))
                     .make();
             genotypes.add(normalGenotype);
         }
@@ -217,6 +214,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         callVcb.genotypes(genotypes);
     }
 
+
+    private static double[] getAltAlleleFractions(final double[] alleleCounts) {
+        final double[] allAlleleFractions = MathUtils.normalizeFromRealSpace(alleleCounts);
+        return Arrays.copyOfRange(allAlleleFractions, 1, allAlleleFractions.length);
+    }
     /**
      * Calculate the log10 likelihoods of the ref/alt het genotype for each alt allele, then subtracts
      * these from the hom ref log10 likelihood to get the log-odds.

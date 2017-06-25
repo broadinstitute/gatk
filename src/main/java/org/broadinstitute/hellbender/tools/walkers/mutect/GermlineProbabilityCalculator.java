@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -17,9 +18,6 @@ import java.util.stream.IntStream;
  * Created by David Benjamin on 5/4/17.
  */
 public class GermlineProbabilityCalculator {
-
-    public static final String POPULATION_AF_VCF_ATTRIBUTE = "POP_AF";
-    public static final String GERMLINE_POSTERIORS_VCF_ATTRIBUTE = "P_GERMLINE";
 
     public static Map<String, Object> calculateAnnotations(List<VariantContext> germlineResourceVariants,
                                                            final List<Allele> altAlleles,
@@ -36,8 +34,8 @@ public class GermlineProbabilityCalculator {
         final double[] germlineLog10Posteriors = new IndexRange(0, altAlleles.size()).mapToDouble(n ->
                 log10PosteriorProbabilityOfGermlineVariant(-normalLog10OddsOrFlat[n], tumorLog10Odds[n], populationAlleleFrequencies[n], log10PriorProbOfSomaticEvent));
 
-        return ImmutableMap.of(POPULATION_AF_VCF_ATTRIBUTE, populationAlleleFrequencies,
-                GERMLINE_POSTERIORS_VCF_ATTRIBUTE, germlineLog10Posteriors);
+        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, populationAlleleFrequencies,
+                GATKVCFConstants.GERMLINE_POSTERIORS_VCF_ATTRIBUTE, germlineLog10Posteriors);
     }
 
     @VisibleForTesting
