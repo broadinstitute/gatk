@@ -5,17 +5,17 @@
 
         -->
 
-    <#global siteRoot = "http://www.broadinstitute.org/gatk/" />
-    <#global guideIndex = "http://www.broadinstitute.org/gatk/guide/" />
-    <#global forum = "http://gatkforums.broadinstitute.org/" />
+    <#global siteRoot = "http://software.broadinstitute.org/gatk/" />
+    <#global guideIndex = "http://software.broadinstitute.org/gatk/documentation/" />
+    <#global forum = "http://gatkforums.broadinstitute.org/gatk/" />
 
     <#macro footerInfo>
         <hr>
         <p><a href='#top'><i class='fa fa-chevron-up'></i> Return to top</a></p>
         <hr>
         <p class="see-also">See also 
-        	<a href="${guideIndex}">GATK Documentation Index</a> |
-        	<a href="index">Tool Docs Index</a> |
+        	<a href="${guideIndex}">General Documentation</a> |
+        	<a class="hide_me_php" href="index.html">Tool Docs Index</a> <a class="hide_me_html" href="index">Tool Docs Index</a> |
         	<a href="${forum}">Support Forum</a>
         </p>
 
@@ -29,6 +29,7 @@
     </#macro>
 
     <#macro getCategories groups>
+
         <style>
             #sidenav .accordion-body a {
                 color : gray;
@@ -38,6 +39,7 @@
                 list-style : none;
             }
         </style>
+
         <ul class="nav nav-pills nav-stacked" id="sidenav">
         	<#assign seq = ["engine", "tools", "other", "utilities"]>
         	<#list seq as supercat>
@@ -63,3 +65,4 @@
         	</#list>
         </ul>
     </#macro>
+
