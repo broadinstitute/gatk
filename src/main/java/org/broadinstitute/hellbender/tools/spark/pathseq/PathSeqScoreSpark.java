@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -18,11 +19,12 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * This Spark tool classifies reads taxonomically, assigning each taxon abundance scores. This is the last
- *   step of the PathSeq pipeline for abundance quantification. The output is a tab-delimited table with the
- *   following columns:
+ * step of the PathSeq pipeline for abundance quantification. The output is a tab-delimited table with the
+ * following columns:
  * <p>
  * 1) taxonomic id
  * 2) taxonomic classification
@@ -40,14 +42,14 @@ import java.io.IOException;
  * 9) total taxon reference sequence length
  * <p>
  * For unpaired reads, a particular alignment is considered a hit if it aligned with minimal coverage score (read length
- *   less padding) given as a fraction of the full read length, and identity score (matches less deletions) given as a
- *   fraction of the read with padded bases removed.
+ * less padding) given as a fraction of the full read length, and identity score (matches less deletions) given as a
+ * fraction of the read with padded bases removed.
  * For paired-end reads, an alignment to a particular taxon is considered a hit only if both reads aligned to that
- *   taxon with minimal coverage and identity.
+ * taxon with minimal coverage and identity.
  */
 
-@CommandLineProgramProperties(summary = "Performs taxonomic classification of BAM file reads that have been aligned to a reference of pathogens",
-        oneLineSummary = "PathSeq read classification tool",
+@CommandLineProgramProperties(summary = "Performs taxonomic classification of reads that have been aligned to a microbe reference",
+        oneLineSummary = "PathSeq abundance scoring tool",
         programGroup = SparkProgramGroup.class)
 public class PathSeqScoreSpark extends GATKSparkTool {
 
@@ -90,6 +92,44 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         return new Tuple2<>(null, null);
     }
 
+    public JavaRDD<GATKRead> scoreReads(final JavaSparkContext ctx,
+                                        final JavaRDD<GATKRead> pairedReads,
+                                        final JavaRDD<GATKRead> unpairedReads,
+                                        final SAMFileHeader header) {
+
+        //Group reads into pairs
+        final JavaRDD<Iterable<GATKRead>> groupedReads = PSScoreUtils.groupReadsIntoPairs(pairedReads,
+                unpairedReads, scoreArgs.readsPerPartition);
+
+        //Load taxonomy database, created by running PathSeqBuildReferenceTaxonomy with this reference
+        final PSTaxonomyDatabase taxDB = PSScoreUtils.readTaxonomyDatabase(scoreArgs.taxonomyDatabasePath);
+        final Broadcast<Map<String, String>> accessionToTaxIdBroadcast = ctx.broadcast(taxDB.accessionToTaxId);
+
+        //Check header against database
+        if (scoreArgs.headerWarningFile != null) {
+            PSScoreUtils.writeMissingReferenceAccessions(scoreArgs.headerWarningFile, header, taxDB, logger);
+        }
+
+        //Determine which alignments are valid hits and return their tax IDs in PSPathogenAlignmentHit
+        //Also adds pathseq tags containing the hit IDs to the reads
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> readHits = PSScoreUtils.mapGroupedReadsToTax(groupedReads,
+                scoreArgs.minCoverage, scoreArgs.minIdentity, accessionToTaxIdBroadcast);
+
+        //Collect PSPathogenAlignmentHit objects
+        final Iterable<PSPathogenAlignmentHit> hitInfo = PSScoreUtils.collectValues(readHits);
+
+        //Get the original reads, now with their pathseq hit tags set
+        final JavaRDD<GATKRead> readsFinal = PSScoreUtils.flattenIterableKeys(readHits);
+
+        //Compute taxonomic scores
+        final Map<String, PSPathogenTaxonScore> taxScores = PSScoreUtils.computeTaxScores(hitInfo, taxDB.tree);
+
+        //Write scores to file
+        PSScoreUtils.writeScoresFile(taxScores, taxDB.tree, scoreArgs.scoresPath);
+
+        return readsFinal;
+    }
+
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
@@ -116,7 +156,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         final SAMFileHeader header = PSScoreUtils.joinBamHeaders(pairedHeader, unpairedHeader);
 
         //Main tool routine
-        final JavaRDD<GATKRead> readsFinal = PSScoreUtils.scoreReads(ctx, pairedReads, unpairedReads, header, scoreArgs);
+        final JavaRDD<GATKRead> readsFinal = scoreReads(ctx, pairedReads, unpairedReads, header);
 
         //Write reads to BAM, if specified
         //Note writeReads() is not used because we determine recommendedNumReducers differently with 2 input BAMs

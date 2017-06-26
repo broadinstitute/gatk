@@ -131,7 +131,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         header.addSequence(new SAMSequenceRecord("seq1", 1000));
         header.addSequence(new SAMSequenceRecord("seq2", 1000));
         header.addSequence(new SAMSequenceRecord("seq3", 1000));
-        PSScoreUtils.writeHeaderWarnings(file.getAbsolutePath(), header, taxDB, logger);
+        PSScoreUtils.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
         try {
             final BufferedReader inputStream = new BufferedInputStreamReader(new FileInputStream(file));
             Assert.assertNull(inputStream.readLine());
@@ -141,7 +141,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
 
         //Add sequence not in taxDB -> expect warning to be written
         header.addSequence(new SAMSequenceRecord("seq4", 1000));
-        PSScoreUtils.writeHeaderWarnings(file.getAbsolutePath(), header, taxDB, logger);
+        PSScoreUtils.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
         try {
             final BufferedReader inputStream = new BufferedInputStreamReader(new FileInputStream(file));
             Assert.assertNotNull(inputStream.readLine());
@@ -384,7 +384,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         Assert.assertEquals(result.size(), 3);
         Assert.assertEquals(result.get("1").score, result.get("2").score);
         Assert.assertEquals(result.get("2").score, result.get("3").score);
-        Assert.assertEquals(result.get("1").score, PSScoreUtils.SCORE_NORMALIZATION_FACTOR * 2.0 / 100);
+        Assert.assertEquals(result.get("1").score, PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100);
         Assert.assertEquals(result.get("1").scoreNormalized, 100.0);
         Assert.assertEquals(result.get("2").scoreNormalized, 100.0);
         Assert.assertEquals(result.get("3").scoreNormalized, 100.0);
@@ -405,9 +405,9 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("8"), 2)); //Invalid hit, not in tree
         result = PSScoreUtils.computeTaxScores(readTaxHits, tree);
 
-        final double score3 = PSScoreUtils.SCORE_NORMALIZATION_FACTOR * (0.5 * 2.0 + 2.0) / 100;
-        final double score5 = PSScoreUtils.SCORE_NORMALIZATION_FACTOR * 2.0 / 100;
-        final double score6 = PSScoreUtils.SCORE_NORMALIZATION_FACTOR * (0.5 * 2.0 + 1.0) / 100;
+        final double score3 = PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 2.0) / 100;
+        final double score5 = PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100;
+        final double score6 = PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 1.0) / 100;
         final double score2 = score3 + score5;
         final double score4 = score6;
         final double score1 = score2 + score4;
@@ -484,7 +484,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final JavaRDD<Tuple2<Object, Integer>> dataRDD = ctx.parallelize(data);
 
         //Test
-        final Iterable<Integer> result = PSScoreUtils.collectTupleSecond(dataRDD);
+        final Iterable<Integer> result = PSScoreUtils.collectValues(dataRDD);
 
         //Check that the result is equal to the original integer list, allowing for different order
         final List<Integer> resultList = StreamSupport.stream(result.spliterator(), false)
@@ -521,7 +521,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final JavaRDD<Tuple2<Iterable<Integer>, Object>> dataRDD = ctx.parallelize(data);
 
         //Check that the result is equal to the original integer list, allowing for different order
-        final List<Integer> resultList = new ArrayList<>(PSScoreUtils.flattenTupleFirstIterable(dataRDD).collect());
+        final List<Integer> resultList = new ArrayList<>(PSScoreUtils.flattenIterableKeys(dataRDD).collect());
         final List<Integer> truthList = iterableList.stream()
                 .flatMap(list -> list.stream())
                 .collect(Collectors.toList());

@@ -6,7 +6,6 @@ import htsjdk.samtools.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -14,69 +13,29 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.Charset;
+import java.io.PrintStream;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class PSScoreUtils {
 
     public static final String HITS_TAG = "YP";
-    public static final double SCORE_NORMALIZATION_FACTOR = 1e6;
+    //Convert scores to per million reference base pairs
+    public static final double SCORE_GENOME_LENGTH_UNITS = 1e6;
     private static final Logger logger = LogManager.getLogger(PSScoreUtils.class);
-
-    public static JavaRDD<GATKRead> scoreReads(final JavaSparkContext ctx,
-                                               final JavaRDD<GATKRead> pairedReads,
-                                               final JavaRDD<GATKRead> unpairedReads,
-                                               final SAMFileHeader header,
-                                               final PSScoreArgumentCollection scoreArgs) {
-
-        //Group reads into pairs
-        final JavaRDD<Iterable<GATKRead>> groupedReads = PSScoreUtils.groupReadsIntoPairs(pairedReads,
-                unpairedReads, scoreArgs.readsPerPartition);
-
-        //Load taxonomy database, created by running PathSeqBuildReferenceTaxonomy with this reference
-        final PSTaxonomyDatabase taxDB = PSScoreUtils.readTaxonomyDatabase(scoreArgs.taxonomyDatabasePath);
-        final Broadcast<Map<String, String>> accessionToTaxIdBroadcast = ctx.broadcast(taxDB.accessionToTaxId);
-
-        //Check header against database
-        if (scoreArgs.headerWarningFile != null) {
-            PSScoreUtils.writeHeaderWarnings(scoreArgs.headerWarningFile, header, taxDB, logger);
-        }
-
-        //Determine which alignments are valid hits and return their tax IDs in PSPathogenAlignmentHit
-        //Also adds pathseq tags containing the hit IDs to the reads
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> readHits = PSScoreUtils.mapGroupedReadsToTax(groupedReads,
-                scoreArgs.minCoverage, scoreArgs.minIdentity, accessionToTaxIdBroadcast);
-
-        //Collect PSPathogenAlignmentHit objects
-        final Iterable<PSPathogenAlignmentHit> hitInfo = PSScoreUtils.collectTupleSecond(readHits);
-
-        //Get the original reads, now with their pathseq hit tags set
-        final JavaRDD<GATKRead> readsFinal = PSScoreUtils.flattenTupleFirstIterable(readHits);
-
-        //Compute taxonomic scores
-        final Map<String, PSPathogenTaxonScore> taxScores = PSScoreUtils.computeTaxScores(hitInfo, taxDB.tree);
-
-        //Write scores to file
-        PSScoreUtils.writeScoresFile(taxScores, taxDB.tree, scoreArgs.scoresPath);
-
-        return readsFinal;
-    }
 
     /**
      * Collects the second elements of all tuples in an RDD
      */
-    public static <T, C> Iterable<C> collectTupleSecond(final JavaRDD<Tuple2<T, C>> tupleRdd) {
+    static <T, C> Iterable<C> collectValues(final JavaRDD<Tuple2<T, C>> tupleRdd) {
         return tupleRdd.map(tuple -> tuple._2).collect();
     }
 
     /**
      * Flattens RDD of tuples, in which the first elements are Iterable, to an RDD of the items in the Iterables
      */
-    public static <T, C> JavaRDD<T> flattenTupleFirstIterable(final JavaRDD<Tuple2<Iterable<T>, C>> tupleRdd) {
+    static <T, C> JavaRDD<T> flattenIterableKeys(final JavaRDD<Tuple2<Iterable<T>, C>> tupleRdd) {
         return tupleRdd.flatMap(tuple -> tuple._1.iterator());
     }
 
@@ -107,7 +66,7 @@ public final class PSScoreUtils {
     private static Iterator<Iterable<GATKRead>> groupPairedReadsPartition(final Iterator<GATKRead> iter,
                                                                           final int readsPerPartitionGuess) {
         //Traverse name-sorted partition, pairing reads as we go
-        final List<Iterable<GATKRead>> newPartitionList = new ArrayList<>(readsPerPartitionGuess / 2);
+        final ArrayList<Iterable<GATKRead>> newPartitionList = new ArrayList<>(readsPerPartitionGuess / 2);
         while (iter.hasNext()) {
             final GATKRead read1 = iter.next();
             GATKRead read2 = null;
@@ -124,10 +83,9 @@ public final class PSScoreUtils {
         }
 
         //Minimize memory footprint (don't rely on readsPerPartitionGuess)
-        final List<Iterable<GATKRead>> newPartitionListResized = new ArrayList<>(newPartitionList.size());
-        newPartitionListResized.addAll(newPartitionList);
+        newPartitionList.trimToSize();
 
-        return newPartitionListResized.iterator();
+        return newPartitionList.iterator();
     }
 
     /**
@@ -163,22 +121,18 @@ public final class PSScoreUtils {
     /**
      * Writes accessions contained in a SAM header that do not exist in the taxonomy database
      */
-    public static void writeHeaderWarnings(final String path, final SAMFileHeader header, final PSTaxonomyDatabase taxDB,
-                                           final Logger logger) {
+    public static void writeMissingReferenceAccessions(final String path, final SAMFileHeader header, final PSTaxonomyDatabase taxDB,
+                                                       final Logger logger) {
         if (header != null && header.getSequenceDictionary() != null && header.getSequenceDictionary().getSequences() != null) {
             final Set<String> unknownSequences = header.getSequenceDictionary().getSequences().stream()
                     .map(SAMSequenceRecord::getSequenceName)
                     .filter(name -> !taxDB.accessionToTaxId.containsKey(name))
                     .collect(Collectors.toSet());
-            try {
-                final OutputStream file = BucketUtils.createFile(path);
-                for (final String acc : unknownSequences) {
-                    final String line = acc + "\n";
-                    file.write(line.getBytes(Charset.defaultCharset()));
+            try (final PrintStream file = new PrintStream(BucketUtils.createFile(path))) {
+                unknownSequences.stream().forEach(file::print);
+                if (file.checkError()) {
+                    logger.warn("Error writing to header warnings file");
                 }
-                file.close();
-            } catch (final IOException e) {
-                logger.warn("Could not write header warnings to " + path, e);
             }
         }
 
@@ -194,32 +148,35 @@ public final class PSScoreUtils {
                                                                                             final Broadcast<Map<String, String>> refNameToTaxBroadcast) {
         return pairs.map(readIter -> {
 
-            final Collection<List<String>> taxIDLists = Utils.stream(readIter)
-                    //Flat map the taxID's of all alignments meeting the coverage/identity criteria.
-                    //Throw out duplicates so it returns a list of unique tax ID's for each read in the pair
-                    .flatMap(read -> getValidHits(read, minCoverage, minIdentity).stream()
-                            .map(contig -> refNameToTaxBroadcast.value().containsKey(contig) ? refNameToTaxBroadcast.value().get(contig) : null)
-                            .filter(Objects::nonNull).distinct()
-                    ).collect(Collectors.groupingBy(Function.identity())).values(); //Group the flattened stream by tax ID into lists
-
+            //Number of reads in the pair (1 for unpaired reads)
             final int numReads = (int) Utils.stream(readIter).count();
 
-            //Count the length of each list - if it's equal to the number of reads, we have a hit
-            final List<String> hitTaxIds = taxIDLists.stream()
-                    .filter(ids -> ids.size() == numReads)
-                    .map(ids -> ids.iterator().next())
-                    .collect(Collectors.toList());
+            //Get tax IDs of all alignments in all reads that meet the coverage/identity criteria.
+            final Stream<String> taxIds = Utils.stream(readIter)
+                    .flatMap(read -> getValidHits(read, refNameToTaxBroadcast, minCoverage, minIdentity).stream());
+
+            //Get list of tax IDs that are hits in all reads
+            final List<String> hitTaxIds;
+            if (numReads > 1) {
+
+                //Group the flattened stream by tax id, e.g. 3453 -> {3453, 3453}, 938 -> {938}, etc., so that the
+                // length of the list is the number of reads with that tax ID. Then map the lists to list lengths.
+                final Map<String, Long> taxIdCounts = taxIds.collect(Collectors.groupingBy(e -> e, Collectors.counting()));
+
+                //Filter hits that didn't occur in all reads
+                hitTaxIds = taxIdCounts.entrySet().stream().map(entry -> entry.getValue() == numReads ? entry.getKey() : null)
+                        .filter(Objects::nonNull).collect(Collectors.toList());
+
+            } else {
+                //Unpaired reads
+                hitTaxIds = taxIds.collect(Collectors.toList());
+            }
 
             final PSPathogenAlignmentHit info = new PSPathogenAlignmentHit(hitTaxIds, numReads);
 
             //If there was at least one hit, append a tag to each read with the list of hits
             if (hitTaxIds.size() > 0) {
-                final StringBuilder stringBuilder = new StringBuilder();
-                for (final String hit : hitTaxIds) {
-                    stringBuilder.append(hit);
-                    stringBuilder.append(",");
-                }
-                final String hitString = stringBuilder.substring(0, stringBuilder.length() - 1);
+                final String hitString = String.join(",", hitTaxIds);
                 Utils.stream(readIter).forEach(read -> read.setAttribute(HITS_TAG, hitString));
             } else {
                 Utils.stream(readIter).forEach(GATKRead::setIsUnmapped);
@@ -232,10 +189,13 @@ public final class PSScoreUtils {
     /**
      * Gets set of sufficiently well-mapped hits
      */
-    private static Collection<String> getValidHits(final GATKRead read, final double minCoverage, final double minIdentity) {
+    private static Set<String> getValidHits(final GATKRead read,
+                                            final Broadcast<Map<String, String>> refNameToTaxBroadcast,
+                                            final double minCoverage,
+                                            final double minIdentity) {
 
         //Short circuit if read isn't mapped
-        if (read.isUnmapped()) return new ArrayList<>(0);
+        if (read.isUnmapped()) return Collections.emptySet();
 
         //Check that NM tag is set
         if (!read.hasAttribute("NM")) {
@@ -249,11 +209,17 @@ public final class PSScoreUtils {
         }
         hits.addAll(getValidAlternateHits(read, "XA", 0, 2, 3, minCoverage, minIdentity));
         hits.addAll(getValidAlternateHits(read, "SA", 0, 3, 5, minCoverage, minIdentity));
-        return hits;
+
+        //Throw out duplicates and accessions not in the taxonomic database so it returns a list of unique tax ID's
+        // for each read in the pair
+        return hits.stream().map(contig -> refNameToTaxBroadcast.value().containsKey(contig) ? refNameToTaxBroadcast.value().get(contig) : null)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
     /**
      * Parses alternate alignments tag of form TAG:Z:val_A0,val_A1,val_A2,...;val_B0,val_B1,val_B2,...;...
+     * Each alignment is delimited by a semicolon (";") and is represented as a sub-list of values containing the
+     * accession, cigar, and number of mismatches, which are delimited by commas (",") and expected at the given indices.
      */
     private static Collection<String> getValidAlternateHits(final GATKRead read, final String tag, final int contigIndex,
                                                             final int cigarIndex, final int numMismatchesIndex, final double minCoverage,
@@ -331,7 +297,7 @@ public final class PSScoreUtils {
             //Scores normalized by genome length and degree of ambiguity (number of hits)
             final Set<String> hitPathNodes = new HashSet<>(); //Set of all unique hits and ancestors
             for (final String taxId : hitTaxIds) {
-                final Double score = SCORE_NORMALIZATION_FACTOR * hit.numMates / (numHits * tree.getLengthOf(taxId));
+                final Double score = SCORE_GENOME_LENGTH_UNITS * hit.numMates / (numHits * tree.getLengthOf(taxId));
                 sum += score;
                 final List<String> path = tree.getPathOf(taxId);
                 hitPathNodes.addAll(path);
@@ -400,26 +366,18 @@ public final class PSScoreUtils {
      */
     public static void writeScoresFile(final Map<String, PSPathogenTaxonScore> scores,
                                        final PSTree tree, final String filePath) {
-        try {
-            final OutputStream file = BucketUtils.createFile(filePath);
-            final String header = "tax_id\ttaxonomy\ttype\tname\t" + PSPathogenTaxonScore.outputHeader + "\n";
-            file.write(header.getBytes(Charset.defaultCharset()));
+        final String header = "tax_id\ttaxonomy\ttype\tname\t" + PSPathogenTaxonScore.outputHeader;
+        try (final PrintStream file = new PrintStream(BucketUtils.createFile(filePath))) {
+            file.println(header);
             for (final String key : scores.keySet()) {
-                final String name = tree.getNameOf(key).replace(" ", "_");
-                final String rank = tree.getRankOf(key).replace(" ", "_");
-                final List<String> path = tree.getPathOf(key);
-                StringBuilder stringBuilder = new StringBuilder();
-                for (int i = path.size() - 1; i >= 0; i--) {
-                    stringBuilder.append(tree.getNameOf(path.get(i)).replace(" ", "_"));
-                    stringBuilder.append("|");
-                }
-                final String taxonomy = stringBuilder.toString();
-                final String line = key + "\t" + taxonomy + "\t" + rank + "\t" + name + "\t" + scores.get(key) + "\n";
-                file.write(line.getBytes(Charset.defaultCharset()));
+                final String name = tree.getNameOf(key);
+                final String rank = tree.getRankOf(key);
+                final List<String> path = tree.getPathOf(key).stream().map(tree::getNameOf).collect(Collectors.toList());
+                Collections.reverse(path);
+                final String taxonomy = String.join("|", path);
+                final String line = key + "\t" + taxonomy + "\t" + rank + "\t" + name + "\t" + scores.get(key);
+                file.println(line.replace(" ", "_"));
             }
-            file.close();
-        } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(filePath, e);
         }
     }
 
