@@ -210,7 +210,7 @@ public final class HDF5PCACoveragePoNCreationUtils {
         final int maximumColumnZerosCount = calculateMaximumZerosCount(readCounts.targets().size(), maximumPercentageZeroColumns);
         final int maximumTargetZerosCount = calculateMaximumZerosCount(readCounts.columnNames().size(), maximumPercentageZeroTargets);
         ReadCountCollection cleanedCounts = ReadCountCollectionUtils.removeColumnsWithTooManyZeros(readCounts, maximumColumnZerosCount, false, logger);
-        cleanedCounts = ReadCountCollectionUtils.removeTargetsWithTooManyZeros(cleanedCounts, maximumTargetZerosCount, true, logger);
+        cleanedCounts = ReadCountCollectionUtils.removeTargetsWithTooManyZeros(cleanedCounts, maximumTargetZerosCount, false, logger);
         cleanedCounts = ReadCountCollectionUtils.removeColumnsWithExtremeMedianCounts(cleanedCounts, extremeColumnMedianCountPercentileThreshold, logger);
 
         // Impute zero counts to be same as the median for the same target.
