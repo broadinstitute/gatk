@@ -474,8 +474,14 @@ public final class ReadCountCollectionUtils {
      * <p>The imputation is done in-place, thus the input matrix is modified as a result of this call.</p>
      *
      * @param readCounts the input and output read-count matrix.
+     * @param percentile must be in [0, 100].
      */
     public static void truncateExtremeCounts(final ReadCountCollection readCounts, final double percentile, final Logger logger) {
+        ParamUtils.inRange(percentile, 0., 100., "Percentile must be in [0, 100].");
+
+        if (percentile == 0.) {
+            return;
+        }
 
         final RealMatrix counts = readCounts.counts();
         final int targetCount = counts.getRowDimension();
@@ -518,16 +524,23 @@ public final class ReadCountCollectionUtils {
     }
 
     /**
-     * Creates a new read-count collection that is a copy of the input but dropping columns with extreme median coverage.
+     * Creates a new read-count collection that is a copy of the input but dropping columns with extreme median coverage
+     * (unless {@code extremeColumnMedianCountPercentileThreshold} is 0, in which case the original read-count collection is returned).
      *
      * @param readCounts the input read-counts.
-     * @param extremeColumnMedianCountPercentileThreshold bottom percentile to use as an exclusion threshold.
+     * @param extremeColumnMedianCountPercentileThreshold bottom percentile to use as an exclusion threshold.  Must be in [0, 100].
      * @return never {@code null}. It might be a reference to the input read-counts if
      * there are no columns to be dropped.
      */
     public static ReadCountCollection removeColumnsWithExtremeMedianCounts(final ReadCountCollection readCounts,
                                                                            final double extremeColumnMedianCountPercentileThreshold,
                                                                            final Logger logger) {
+        ParamUtils.inRange(extremeColumnMedianCountPercentileThreshold, 0., 100., "Percentile must be in [0, 100].");
+
+        if (extremeColumnMedianCountPercentileThreshold == 0.) {
+            return readCounts;
+        }
+
         final List<String> columnNames = readCounts.columnNames();
         final RealMatrix counts = readCounts.counts();
         final double[] columnMedians = MatrixSummaryUtils.getColumnMedians(counts);
