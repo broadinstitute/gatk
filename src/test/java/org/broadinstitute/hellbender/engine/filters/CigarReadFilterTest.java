@@ -9,7 +9,7 @@ public class CigarReadFilterTest {
     @DataProvider
     public Object[][] createCigarFilterStrings(){
 
-        //"\\*|\\^(?:\\d*H)?(?:\\d*S)?(?:\\d*[MIDNPX=%])*(?:\\d*S)*(?:\\d*H)*\\$"
+        //"\\^*$|\\^(?:\\d*H)?(?:\\d*S)?(?:\\d*[MIDNPX=%])*(?:\\d*S)*(?:\\d*H)*\\$"
         return new Object[][]{
                 {"^", false},
                 {"$", false},

@@ -22,7 +22,7 @@ public class CigarReadFilter extends ReadFilter {
 
     //\*|([0-9]+[H])?([0-9]+[S])?([0-9]+[MIDNPX=])+([0-9]+[S])?([0-9]+[H])?
     private static final Pattern validFilterPattern = Pattern.compile (
-            "\\*|\\^(?:\\d*H)?(?:\\d*S)?(?:\\d*[MIDNPX=%])*(?:\\d*S)*(?:\\d*H)*\\$"
+            "^\\*$|^\\^?(?:\\d*H)*(?:\\d*S)*(?:\\d*[MIDNPX=%])*(?:\\d*S)*(?:\\d*H)*\\$?$"
     );
 
     private static final Pattern nextCigarMatchElementPattern = Pattern.compile (
@@ -241,7 +241,7 @@ public class CigarReadFilter extends ReadFilter {
 
 //     Cigar strings take the (regex) form:
 //
-//          \*|([0-9]+[H])?([0-9]+[S])?([0-9]+[MIDNPX=])+([0-9]+[S])?([0-9]+[H])?
+//          \^*$|([0-9]+[H])?([0-9]+[S])?([0-9]+[MIDNPX=])+([0-9]+[S])?([0-9]+[H])?
 //
 //        The significance of each character is the following:
 //
@@ -262,6 +262,13 @@ public class CigarReadFilter extends ReadFilter {
         // We check that the length is not zero so that we can ensure that if we are on the right-hand side of the match
         // that there is some content there.
         boolean isValid = description.length() != 0;
+
+        if (description.length() == 1) {
+            // Since we're allowing for the user to input ^ and $, we need to make sure
+            // that the pattern we match against
+            isValid = isValid && (description.compareTo("^") != 0);
+            isValid = isValid && (description.compareTo("$") != 0);
+        }
 
         isValid = isValid && validFilterPattern.matcher(description).matches();
 
