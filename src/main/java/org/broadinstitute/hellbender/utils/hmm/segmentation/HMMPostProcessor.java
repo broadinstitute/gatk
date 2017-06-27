@@ -548,9 +548,11 @@ public class HMMPostProcessor<D, S extends AlleleMetadataProducer & CallStringPr
             final Set<String> sampleNamesFromSegmentsFile = allRecords.stream()
                     .map(HiddenStateSegmentRecord::getSampleName)
                     .collect(Collectors.toSet());
-            if (!new HashSet<>(sampleNames).equals(sampleNamesFromSegmentsFile)) {
-                throw new UserException.BadInput("The sample names in the provided segments file does not match" +
-                        " those on which HMM output is given");
+            if (!new HashSet<>(sampleNames).containsAll(sampleNamesFromSegmentsFile)) {
+                throw new UserException.BadInput(String.format("Some samples in the genotyping segments file" +
+                                " do not have HMM results; queried samples: %s, samples with available HMM results: %s",
+                        sampleNamesFromSegmentsFile.stream().collect(Collectors.joining(", ", "[", "]")),
+                        sampleNames.stream().collect(Collectors.joining(", ", "[", "]"))));
             }
             final List<GenotypingSegment> result = new ArrayList<>();
             for (final HiddenStateSegmentRecord<S, T> record : nonRefAndSortedRecords) {

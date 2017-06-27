@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nonnull;
+import java.util.Random;
 
 /**
  * Implements the {@link TargetLikelihoodCalculator} interface for the original XHMM-based germline model.
@@ -17,23 +18,20 @@ import javax.annotation.Nonnull;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class XHMMEmissionProbabilityCalculator implements TargetLikelihoodCalculator<XHMMEmissionData> {
-    private final RandomGenerator rng;
     private final double emissionStandardDeviation;
     private final double deletionMean;
     private final double duplicationMean;
     private static final double NEUTRAL_MEAN = 0.0;
 
-    public XHMMEmissionProbabilityCalculator(final double deletionMean, final double duplicationMean, final double emissionStdDev,
-                                             @Nullable final RandomGenerator rng) {
+    public XHMMEmissionProbabilityCalculator(final double deletionMean, final double duplicationMean, final double emissionStdDev) {
         this.deletionMean = ParamUtils.isNegativeOrZero(deletionMean, "Deletion coverage shift must be negative.");
         this.duplicationMean = ParamUtils.isPositiveOrZero(duplicationMean, "Duplication coverage shift must be positive");
         emissionStandardDeviation = ParamUtils.isPositive(emissionStdDev, "Emission standard deviation must be positive");
-        this.rng = rng;
     }
 
     @Override
     public double logLikelihood(@Nonnull final XHMMEmissionData emissionData, final double copyRatio, final Target target) {
-        return new NormalDistribution(rng, getEmissionMean(copyRatio), emissionStandardDeviation)
+        return new NormalDistribution(null, getEmissionMean(copyRatio), emissionStandardDeviation)
                 .logDensity(emissionData.getCoverageZScore());
     }
 
@@ -49,7 +47,7 @@ public final class XHMMEmissionProbabilityCalculator implements TargetLikelihood
         }
     }
 
-    public double generateRandomZScoreData(final double copyRatio) {
+    public double generateRandomZScoreData(final double copyRatio, final Random rng) {
         Utils.nonNull(rng, "Random z-score sampling is called by the random number generator is null. This" +
                 " instance of the class can not produce random samples.");
         return getEmissionMean(copyRatio) + rng.nextGaussian() * emissionStandardDeviation;

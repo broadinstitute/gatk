@@ -75,7 +75,7 @@ public final class XHMMSegmentGenotyper extends XHMMSegmentCallerBase {
         final HMMPostProcessor<XHMMEmissionData, CopyNumberTriState, Target> processor =
                 new HMMPostProcessor<>(inputCounts.columnNames(),
                         Collections.nCopies(inputCounts.columnNames().size(), targets),
-                        sampleForwardBackwardResults, sampleBestPaths,  CopyNumberTriState.NEUTRAL);
+                        sampleForwardBackwardResults, sampleBestPaths, CopyNumberTriState.NEUTRAL);
         processor.writeVariantsToVCFWriterOnGivenSegments(segmentsFile, CopyNumberTriState::fromCallString,
                 outputWriter, "CNV", this.getCommandLine());
     }
