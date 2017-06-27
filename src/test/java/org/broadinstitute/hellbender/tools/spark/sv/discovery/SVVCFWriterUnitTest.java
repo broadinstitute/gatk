@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -28,24 +28,24 @@ public class SVVCFWriterUnitTest extends BaseTest{
 
         final VariantContext inversionOne = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV)
+                .alleles("G", StructuralVariationDiscoveryArgumentCollection.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV)
                 .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insOne)
                 .make();
         final VariantContext inversionTwo = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV)
+                .alleles("G", StructuralVariationDiscoveryArgumentCollection.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV)
                 .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insTwo)
                 .make();
 
         final VariantContext upstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos-50).stop(end)
-                .alleles("T", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_DUP)
+                .alleles("T", StructuralVariationDiscoveryArgumentCollection.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_DUP)
                 .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insOne)
                 .make();
 
         final VariantContext downstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos+20).stop(end+20)
-                .alleles("C", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INS)
+                .alleles("C", StructuralVariationDiscoveryArgumentCollection.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INS)
                 .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insOne)
                 .make();
 

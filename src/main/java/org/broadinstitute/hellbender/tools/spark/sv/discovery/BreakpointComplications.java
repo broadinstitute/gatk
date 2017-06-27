@@ -117,8 +117,8 @@ final class BreakpointComplications {
         final SimpleInterval leftReferenceInterval  = chimericAlignment.getCoordSortedReferenceIntervals()._1;
         final SimpleInterval rightReferenceInterval = chimericAlignment.getCoordSortedReferenceIntervals()._2;
 
-        final AlignedAssembly.AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
-        final AlignedAssembly.AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
+        final AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
+        final AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
 
 
         // a segment with lower coordinate on the locally-assembled contig could map to a higher reference coordinate region
@@ -136,7 +136,7 @@ final class BreakpointComplications {
         }
     }
 
-    private void initForSimpleInversion(final AlignedAssembly.AlignmentInterval firstContigRegion, final AlignedAssembly.AlignmentInterval secondContigRegion, final byte[] contigSeq) {
+    private void initForSimpleInversion(final AlignmentInterval firstContigRegion, final AlignmentInterval secondContigRegion, final byte[] contigSeq) {
         homologyForwardStrandRep = getHomology(firstContigRegion, secondContigRegion, contigSeq);
         insertedSequenceForwardStrandRep = getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
         dupSeqRepeatUnitRefSpan = null;
@@ -148,8 +148,8 @@ final class BreakpointComplications {
 
     private void initForInsDel(final ChimericAlignment chimericAlignment, final SimpleInterval leftReferenceInterval, final SimpleInterval rightReferenceInterval, final byte[] contigSeq) {
 
-        final AlignedAssembly.AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
-        final AlignedAssembly.AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
+        final AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
+        final AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
 
         final int r1e = leftReferenceInterval.getEnd(),
                   r2b = rightReferenceInterval.getStart(),
@@ -183,7 +183,7 @@ final class BreakpointComplications {
         }
     }
 
-    private void resolveComplicationForSimpleTandupExpansion(SimpleInterval leftReferenceInterval, byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int r1e, int r2b, int distBetweenAlignRegionsOnCtg) {
+    private void resolveComplicationForSimpleTandupExpansion(SimpleInterval leftReferenceInterval, byte[] contigSeq, AlignmentInterval firstContigRegion, AlignmentInterval secondContigRegion, int r1e, int r2b, int distBetweenAlignRegionsOnCtg) {
         insertedSequenceForwardStrandRep = distBetweenAlignRegionsOnCtg == 0 ? "" : getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq); // note this does not incorporate the duplicated reference sequence
         hasDuplicationAnnotation  = true;
         dupSeqRepeatUnitRefSpan   = new SimpleInterval(leftReferenceInterval.getContig(), r2b, r1e);
@@ -199,7 +199,7 @@ final class BreakpointComplications {
         }
     }
 
-    private void resolveComplicationForSimpleTandupContraction(SimpleInterval leftReferenceInterval, byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int r1e, int c1e, int c2b) {
+    private void resolveComplicationForSimpleTandupContraction(SimpleInterval leftReferenceInterval, byte[] contigSeq, AlignmentInterval firstContigRegion, AlignmentInterval secondContigRegion, int r1e, int c1e, int c2b) {
         homologyForwardStrandRep = getHomology(firstContigRegion, secondContigRegion, contigSeq);
         hasDuplicationAnnotation = true;
         dupSeqRepeatUnitRefSpan  = new SimpleInterval(leftReferenceInterval.getContig(), r1e - ( c1e - c2b ), r1e);
@@ -208,7 +208,7 @@ final class BreakpointComplications {
         cigarStringsForDupSeqOnCtg = DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG;
     }
 
-    private void resolveComplicationForSimpleDel(byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int distBetweenAlignRegionsOnCtg) {
+    private void resolveComplicationForSimpleDel(byte[] contigSeq, AlignmentInterval firstContigRegion, AlignmentInterval secondContigRegion, int distBetweenAlignRegionsOnCtg) {
         if (distBetweenAlignRegionsOnCtg>=0) {
             // either: a clean deletion, deleted sequence is [r1e+1, r2b-1] on the reference
             // or    : deletion with scar, i.e. large non-conserved substitution, reference bases [r1e+1, r2b-1] is substituted with contig bases [c1e+1, c2b-1]
@@ -219,7 +219,7 @@ final class BreakpointComplications {
         }
     }
 
-    private void resolveComplicationForComplexTandup(byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int r1e, int distBetweenAlignRegionsOnRef, int distBetweenAlignRegionsOnCtg) {
+    private void resolveComplicationForComplexTandup(byte[] contigSeq, AlignmentInterval firstContigRegion, AlignmentInterval secondContigRegion, int r1e, int distBetweenAlignRegionsOnRef, int distBetweenAlignRegionsOnCtg) {
         final TandemRepeatStructure duplicationComplication = new TandemRepeatStructure(distBetweenAlignRegionsOnRef, distBetweenAlignRegionsOnCtg);
 
         final boolean isExpansion = distBetweenAlignRegionsOnRef<distBetweenAlignRegionsOnCtg;
@@ -237,14 +237,14 @@ final class BreakpointComplications {
 
 
     /**
-     * Given a {@link AlignedAssembly.AlignmentInterval} from a pair of ARs that forms a {@link ChimericAlignment} signalling a tandem duplication,
-     * extract a CIGAR from the {@link AlignedAssembly.AlignmentInterval#cigarAlong5to3DirectionOfContig}
+     * Given a {@link AlignmentInterval} from a pair of ARs that forms a {@link ChimericAlignment} signalling a tandem duplication,
+     * extract a CIGAR from the {@link AlignmentInterval#cigarAlong5to3DirectionOfContig}
      * that corresponds to the alignment between the suspected repeated sequence on reference between
      * [{@code alignmentIntervalTwoReferenceIntervalSpanBegin}, {@code alignmentIntervalOneReferenceIntervalSpanEnd}],
-     * and the sequence in {@link AlignedAssembly.AlignmentInterval#referenceInterval}.
+     * and the sequence in {@link AlignmentInterval#referenceInterval}.
      */
     @VisibleForTesting
-    static Cigar extractCigarForTandup(final AlignedAssembly.AlignmentInterval contigRegion,
+    static Cigar extractCigarForTandup(final AlignmentInterval contigRegion,
                                        final int alignmentIntervalOneReferenceIntervalSpanEnd,
                                        final int alignmentIntervalTwoReferenceIntervalSpanBegin) {
 
@@ -285,7 +285,7 @@ final class BreakpointComplications {
      *          Empty if they don't overlap on the contig.
      */
     @VisibleForTesting
-    static String getHomology(final AlignedAssembly.AlignmentInterval current, final AlignedAssembly.AlignmentInterval next, final byte[] contigSequence) {
+    static String getHomology(final AlignmentInterval current, final AlignmentInterval next, final byte[] contigSequence) {
 
         if (current.endInAssembledContig >= next.startInAssembledContig) {
             final byte[] homologyBytes = Arrays.copyOfRange(contigSequence, next.startInAssembledContig-1, current.endInAssembledContig);
@@ -303,7 +303,7 @@ final class BreakpointComplications {
      * @return Inserted sequence using two alignments of the same contig: as indicated by their separation on the the contig itself.
      */
     @VisibleForTesting
-    static String getInsertedSequence(final AlignedAssembly.AlignmentInterval current, final AlignedAssembly.AlignmentInterval next, final byte[] contigSequence) {
+    static String getInsertedSequence(final AlignmentInterval current, final AlignmentInterval next, final byte[] contigSequence) {
 
         if (current.endInAssembledContig < next.startInAssembledContig - 1) {
             final byte[] insertedSequenceBytes = Arrays.copyOfRange(contigSequence, current.endInAssembledContig, next.startInAssembledContig - 1);

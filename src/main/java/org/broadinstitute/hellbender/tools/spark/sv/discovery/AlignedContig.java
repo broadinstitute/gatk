@@ -20,9 +20,9 @@ public final class AlignedContig {
 
     public final String contigName;
     public final byte[] contigSequence;
-    public final List<AlignedAssembly.AlignmentInterval> alignmentIntervals;
+    public final List<AlignmentInterval> alignmentIntervals;
 
-    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignedAssembly.AlignmentInterval> alignmentIntervals) {
+    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
         this.contigName = contigName;
         this.contigSequence = contigSequence;
         this.alignmentIntervals = alignmentIntervals;
@@ -41,7 +41,7 @@ public final class AlignedContig {
         final int nAlignments = input.readInt();
         alignmentIntervals = new ArrayList<>(nAlignments);
         for (int i = 0; i < nAlignments; ++i) {
-            alignmentIntervals.add(new AlignedAssembly.AlignmentInterval(kryo, input));
+            alignmentIntervals.add(new AlignmentInterval(kryo, input));
         }
     }
 

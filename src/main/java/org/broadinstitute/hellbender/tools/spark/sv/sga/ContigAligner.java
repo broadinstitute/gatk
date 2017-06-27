@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.sga;
 import htsjdk.samtools.SAMFlag;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedAssembly;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -49,11 +50,11 @@ public class ContigAligner {
                 final int contigLen = seqs.get(contigIdx).length;
 
                 // filter out secondary alignments, convert to AlignmentInterval objects and sort by alignment start pos
-                final List<AlignedAssembly.AlignmentInterval> alignmentIntervals
+                final List<AlignmentInterval> alignmentIntervals
                         = allAlignments.get(contigIdx).stream()
                         .filter(a -> (a.getSamFlag()&SAMFlag.NOT_PRIMARY_ALIGNMENT.intValue())==0)
                         .filter(a -> (a.getSamFlag()&SAMFlag.READ_UNMAPPED.intValue())==0)
-                        .map(a -> new AlignedAssembly.AlignmentInterval(a, refNames, contigLen))
+                        .map(a -> new AlignmentInterval(a, refNames, contigLen))
                         .sorted(Comparator.comparing(a -> a.startInAssembledContig))
                         .collect(Collectors.toList());
 

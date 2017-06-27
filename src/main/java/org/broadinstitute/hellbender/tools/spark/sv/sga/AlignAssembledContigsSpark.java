@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSp
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedAssembly;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
@@ -83,8 +84,8 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
      * <pre>
      * contigName ({@link AlignedAssemblyOrExcuse#formatContigName(int, int)}) + TAB + {ALIGNMENT_INTERVAL}
      * </pre>
-     * where {ALIGNMENT_INTERVAL} is a list of formatted {@link AlignedAssembly.AlignmentInterval}'s separated by TAB's,
-     * and each {@link AlignedAssembly.AlignmentInterval} is formatted as:
+     * where {ALIGNMENT_INTERVAL} is a list of formatted {@link AlignmentInterval}'s separated by TAB's,
+     * and each {@link AlignmentInterval} is formatted as:
      * <pre>
      * startInAssembledContig + "-" + endInAssembledContig + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
      * referenceInterval({@link org.broadinstitute.hellbender.utils.SimpleInterval#toString()} + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +

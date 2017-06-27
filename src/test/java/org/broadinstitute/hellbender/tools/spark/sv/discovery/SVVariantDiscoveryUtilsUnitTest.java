@@ -16,12 +16,12 @@ public class SVVariantDiscoveryUtilsUnitTest {
     @Test(groups = "sv")
     public void testAlignmentIntervalOverlap() throws Exception {
 
-        final AlignedAssembly.AlignmentInterval ar1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0);
-        final AlignedAssembly.AlignmentInterval ar2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",10,16), 5,10, TextCigarCodec.decode("4S6M"),true, 60, 0);
+        final AlignmentInterval ar1 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0);
+        final AlignmentInterval ar2 = new AlignmentInterval(new SimpleInterval("1",10,16), 5,10, TextCigarCodec.decode("4S6M"),true, 60, 0);
         Assert.assertEquals(SVVariantDiscoveryUtils.overlapOnContig(ar1, ar2), 1);
 
-        final AlignedAssembly.AlignmentInterval ar3 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0);
-        final AlignedAssembly.AlignmentInterval ar4 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",11,16), 6,10, TextCigarCodec.decode("5S5M"),true, 60, 0);
+        final AlignmentInterval ar3 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0);
+        final AlignmentInterval ar4 = new AlignmentInterval(new SimpleInterval("1",11,16), 6,10, TextCigarCodec.decode("5S5M"),true, 60, 0);
         Assert.assertEquals(SVVariantDiscoveryUtils.overlapOnContig(ar3, ar4), 0);
     }
 

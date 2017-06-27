@@ -23,7 +23,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -103,18 +102,20 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                     .filter(r -> !r.isSecondaryAlignment())
                     .groupBy(GATKRead::getName)
                     .map(Tuple2::_2)
-                    .map(iterable -> parseReadsAndBreakGaps(Utils.stream(iterable).map(r->r.convertToSAMRecord(header)).collect(Collectors.toList()), header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger));
+                    .map(iterable ->
+                            parseReadsAndBreakGaps(Utils.stream(iterable).map(r->r.convertToSAMRecord(header)).collect(Collectors.toList()),
+                                                   StructuralVariationDiscoveryArgumentCollection.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
+                                                   toolLogger));
         }
 
         /**
          * Iterates through the input {@code noSecondaryAlignments}, which are assumed to contain no secondary alignment (i.e. records with "XA" tag),
-         * converts to custom {@link AlignedAssembly.AlignmentInterval} format and
+         * converts to custom {@link AlignmentInterval} format and
          * split the records when the gap in the alignment reaches the specified {@code sensitivity}.
-         * The size of the returned iterable of {@link AlignedAssembly.AlignmentInterval}'s is guaranteed to be no lower than that of the input iterable.
+         * The size of the returned iterable of {@link AlignmentInterval}'s is guaranteed to be no lower than that of the input iterable.
          */
         @VisibleForTesting
         public static AlignedContig parseReadsAndBreakGaps(final Iterable<SAMRecord> noSecondaryAlignments,
-                                                           final SAMFileHeader header,
                                                            final int sensitivity,
                                                            final Logger toolLogger) {
 
@@ -133,9 +134,9 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             }
             final int unClippedContigLength = primaryAlignment.getReadLength();
 
-            final List<AlignedAssembly.AlignmentInterval> parsedAlignments =
+            final List<AlignmentInterval> parsedAlignments =
                     Utils.stream(noSecondaryAlignments)
-                            .map(AlignedAssembly.AlignmentInterval::new)
+                            .map(AlignmentInterval::new)
                             .map(ar -> GappedAlignmentSplitter.split(ar, sensitivity, unClippedContigLength))
                             .flatMap(Utils::stream).collect(Collectors.toList());
             return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments);
@@ -151,9 +152,16 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                                    final PipelineOptions pipelineOptions, final String vcfFileName,
                                                    final Logger toolLogger) {
 
-        final JavaRDD<VariantContext> variants
-                = SVVariantConsensusDiscovery.discoverNovelAdjacencyFromChimericAlignments(contigAlignments, toolLogger)
-                .map(tuple2 -> SVVariantConsensusDiscovery.discoverVariantsFromConsensus(tuple2, broadcastReference));
+        final JavaRDD<VariantContext> variants =
+                NovelAdjacencyReferenceLocations.discoverFromContigAlignments(contigAlignments, toolLogger)
+                .mapToPair(novelAdjacencyAndContigAlignments ->
+                        new Tuple2<>(novelAdjacencyAndContigAlignments._1,
+                                new Tuple2<>(SvTypeInference.inferFromNovelAdjacency(novelAdjacencyAndContigAlignments._1),
+                                        novelAdjacencyAndContigAlignments._2)))
+                .map(novelAdjacencyAndContigAlignments ->
+                        AnnotatedVariantProducer.produceAnnotatedVcFromNovelAdjacency(novelAdjacencyAndContigAlignments._1,
+                                novelAdjacencyAndContigAlignments._2._1, novelAdjacencyAndContigAlignments._2._2,
+                                broadcastReference));
 
         SVVCFWriter.writeVCF(pipelineOptions, vcfFileName, fastaReference, variants, toolLogger);
     }

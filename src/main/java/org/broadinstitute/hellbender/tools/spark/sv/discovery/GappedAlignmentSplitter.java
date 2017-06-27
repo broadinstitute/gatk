@@ -5,7 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -49,14 +49,14 @@ public final class GappedAlignmentSplitter {
      * @return an iterable of size >= 1. if size==1, the returned iterable contains only the input (i.e. either no gap or hasn't reached sensitivity)
      */
     @VisibleForTesting
-    public static Iterable<AlignedAssembly.AlignmentInterval> split(final AlignedAssembly.AlignmentInterval oneRegion,
-                                                                    final int sensitivity,
-                                                                    final int unclippedContigLen) {
+    public static Iterable<AlignmentInterval> split(final AlignmentInterval oneRegion,
+                                                    final int sensitivity,
+                                                    final int unclippedContigLen) {
 
         final List<CigarElement> cigarElements = checkCigarAndConvertTerminalInsertionToSoftClip(oneRegion.cigarAlong5to3DirectionOfContig);
         if (cigarElements.size() == 1) return new ArrayList<>( Collections.singletonList(oneRegion) );
 
-        final List<AlignedAssembly.AlignmentInterval> result = new ArrayList<>(3); // blunt guess
+        final List<AlignmentInterval> result = new ArrayList<>(3); // blunt guess
         final int originalMapQ = oneRegion.mapQual;
 
         final List<CigarElement> cigarMemoryList = new ArrayList<>();
@@ -107,7 +107,7 @@ public final class GappedAlignmentSplitter {
                     }
                     final Cigar cigarForNewAlignmentInterval = new Cigar(cigarMemoryList);
 
-                    final AlignedAssembly.AlignmentInterval split = new AlignedAssembly.AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd, cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH);
+                    final AlignmentInterval split = new AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd, cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ, StructuralVariationDiscoveryArgumentCollection.DiscoveryStepConstants.ARTIFICIAL_MISMATCH);
 
                     result.add(split);
 
@@ -142,9 +142,9 @@ public final class GappedAlignmentSplitter {
 
         final Cigar lastForwardStrandCigar = new Cigar(cigarMemoryList);
         int clippedNBasesFromEnd = SVVariantDiscoveryUtils.getNumClippedBases(false, cigarElements);
-        result.add(new AlignedAssembly.AlignmentInterval(lastReferenceInterval,
+        result.add(new AlignmentInterval(lastReferenceInterval,
                 contigIntervalStart, unclippedContigLen-clippedNBasesFromEnd, lastForwardStrandCigar,
-                oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH));
+                oneRegion.forwardStrand, originalMapQ, StructuralVariationDiscoveryArgumentCollection.DiscoveryStepConstants.ARTIFICIAL_MISMATCH));
 
 
         return result;

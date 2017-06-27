@@ -12,6 +12,11 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class FindBreakpointEvidenceSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        //--------- constants ----------
+
+        public static final int KMER_SIZE = 51;
+        public static final int MAX_DUST_SCORE = KMER_SIZE - 2;
+
         //--------- parameters ----------
 
         // no-arg constructor for Params object establishes default values
@@ -22,7 +27,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public int kSize = defaultParams.kSize;
 
         @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
-        public int maxDUSTScore = SVConstants.MAX_DUST_SCORE;
+        public int maxDUSTScore = MAX_DUST_SCORE;
 
         @Argument(doc = "The minimum mapping quality for reads used to gather evidence of breakpoints.",
                 fullName = "minEvidenceMapQ", optional = true)
@@ -102,8 +107,8 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
             public final int exclusionIntervalPadding;
 
             public Params() {
-                kSize = SVConstants.KMER_SIZE;          // kmer size
-                maxDUSTScore = SVConstants.MAX_DUST_SCORE;// maximum for DUST-like kmer complexity score
+                kSize = KMER_SIZE;          // kmer size
+                maxDUSTScore = MAX_DUST_SCORE;// maximum for DUST-like kmer complexity score
                 minEvidenceMapQ = 20;                   // minimum map quality for evidential reads
                 minEvidenceMatchLength = 45;            // minimum match length
                 maxIntervalCoverage = 1000;             // maximum coverage on breakpoint interval
@@ -235,6 +240,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         private static final long serialVersionUID = 1L;
 
         // todo: document this better
+        // TODO: 6/26/17 see Github issue [2037] (https://github.com/broadinstitute/gatk/issues/2037)
         // Currently the discovery stage requires a reference parameter in 2bit format (to broadcast) and
         // a reference in FASTA format (to get a good sequence dictionary for sorting variants).
         @Argument(doc = "FASTA formatted reference", shortName = "fastaReference",
@@ -243,7 +249,24 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
                 fullName = "minAlignLength", optional = true)
-        public Integer minAlignLength = SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
+        public Integer minAlignLength = DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
     }
 
+    public static final class DiscoveryStepConstants {
+
+        public static final String VCF_ALT_ALLELE_STRING_INV = "<INV>";
+        public static final String VCF_ALT_ALLELE_STRING_INS = "<INS>";
+        public static final String VCF_ALT_ALLELE_STRING_DEL = "<DEL>";
+        public static final String VCF_ALT_ALLELE_STRING_DUP = "<DUP>";
+        public static final String TANDUP_CONTRACTION_STRING = "CONTRACTION";
+        public static final String TANDUP_EXPANSION_STRING = "EXPANSION";
+
+        public static final String VARIANT_ID_FIELD_SEPARATOR = "_";
+
+        public static final Integer DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
+        public static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
+        public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = 50; // alignment with gap of size >= 50 will be broken apart.
+        public static final int MISSING_NM = Integer.MIN_VALUE;
+        public static final int ARTIFICIAL_MISMATCH = MISSING_NM;
+    }
 }

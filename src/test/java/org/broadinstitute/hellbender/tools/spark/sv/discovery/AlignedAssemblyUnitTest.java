@@ -51,8 +51,8 @@ public class AlignedAssemblyUnitTest extends BaseTest{
      * [4] expected start in assembled contig, 1-based, inclusive
      * [5] expected end in assembled contig, 1-based, inclusive
      * [6] expected contig length,
-     * [7] expected {@link AlignedAssembly.AlignmentInterval} object (generated manually with all fields explicitly spell out and given to
-     *                                      {@link AlignedAssembly.AlignmentInterval#AlignmentInterval(SimpleInterval, int, int, Cigar, boolean, int, int)}
+     * [7] expected {@link AlignmentInterval} object (generated manually with all fields explicitly spell out and given to
+     *                                      {@link AlignmentInterval#AlignmentInterval(SimpleInterval, int, int, Cigar, boolean, int, int)}
      *                                      intended to be used for testing concordance between the two constructors)
      */
     @DataProvider(name = "AlignmentIntervalCtorTestForSimpleInversion")
@@ -77,7 +77,7 @@ public class AlignedAssemblyUnitTest extends BaseTest{
                     mapQualForBwaMemAlgn[i], 0, 1, 1, cigarStrings[i],
                     null, null, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
             final SimpleInterval referenceInterval = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[i]+1, bwaMemAlignment.getRefEnd());
-            final AlignedAssembly.AlignmentInterval alignmentInterval = new AlignedAssembly.AlignmentInterval(referenceInterval, alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentEndsOnTig_0BasedExclusive[i],
+            final AlignmentInterval alignmentInterval = new AlignmentInterval(referenceInterval, alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentEndsOnTig_0BasedExclusive[i],
                     strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]),
                     strandedness[i], Math.max(SAMRecord.NO_MAPPING_QUALITY, bwaMemAlignment.getMapQual()), bwaMemAlignment.getNMismatches());
             data[i] = new Object[]{bwaMemAlignment, referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]),
@@ -89,9 +89,9 @@ public class AlignedAssemblyUnitTest extends BaseTest{
     @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
     public void testConstructionFromBwaMemAlignment(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
                                                     final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
-                                                    final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignedAssembly.AlignmentInterval expectedAlignmentInterval) {
+                                                    final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final AlignedAssembly.AlignmentInterval alignmentInterval = new AlignedAssembly.AlignmentInterval(bwaMemAlignment, refNames, expectedContigLength);
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(bwaMemAlignment, refNames, expectedContigLength);
         Assert.assertEquals(alignmentInterval.referenceInterval, expectedReferenceInterval);
         Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);
         Assert.assertEquals(alignmentInterval.forwardStrand, expectedIsPositiveStrand);
@@ -106,10 +106,10 @@ public class AlignedAssemblyUnitTest extends BaseTest{
     @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
     public void testConstructionFromSAMRecord(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
                                               final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
-                                              final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignedAssembly.AlignmentInterval expectedAlignmentInterval) {
+                                              final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
         final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
-        final AlignedAssembly.AlignmentInterval alignmentInterval = new AlignedAssembly.AlignmentInterval(samRecord);
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(samRecord);
         Assert.assertEquals(alignmentInterval.referenceInterval, expectedReferenceInterval);
         Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);
         Assert.assertEquals(alignmentInterval.forwardStrand, expectedIsPositiveStrand);
@@ -152,14 +152,14 @@ public class AlignedAssemblyUnitTest extends BaseTest{
 
         for(int pair=0; pair<cigars.length/2; ++pair) {
 
-            final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForSimpleInversion = new ArrayList<>(8);
+            final List<AlignmentInterval> alignmentIntervalsForSimpleInversion = new ArrayList<>(8);
             final SimpleInterval referenceIntervalLeft = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair]+1, alignmentStartsOnRef_0Based[2*pair]+cigars[2*pair].getReferenceLength()+1);
-            final AlignedAssembly.AlignmentInterval alignmentIntervalLeft = new AlignedAssembly.AlignmentInterval(referenceIntervalLeft, alignmentStartsOnTig_0BasedInclusive[2*pair]+1, alignmentEndsOnTig_0BasedExclusive[2*pair],
+            final AlignmentInterval alignmentIntervalLeft = new AlignmentInterval(referenceIntervalLeft, alignmentStartsOnTig_0BasedInclusive[2*pair]+1, alignmentEndsOnTig_0BasedExclusive[2*pair],
                     strandedness[2*pair] ? cigars[2*pair] : CigarUtils.invertCigar(cigars[2*pair]),
                     strandedness[2*pair], mapQual[2*pair], mismatches[2*pair]);
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalLeft);
             final SimpleInterval referenceIntervalRight = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair+1]+1, alignmentStartsOnRef_0Based[2*pair+1]+cigars[2*pair+1].getReferenceLength()+1);
-            final AlignedAssembly.AlignmentInterval alignmentIntervalRight = new AlignedAssembly.AlignmentInterval(referenceIntervalRight, alignmentStartsOnTig_0BasedInclusive[2*pair+1]+1, alignmentEndsOnTig_0BasedExclusive[2*pair+1],
+            final AlignmentInterval alignmentIntervalRight = new AlignmentInterval(referenceIntervalRight, alignmentStartsOnTig_0BasedInclusive[2*pair+1]+1, alignmentEndsOnTig_0BasedExclusive[2*pair+1],
                     strandedness[2*pair+1] ? cigars[2*pair+1] : CigarUtils.invertCigar(cigars[2*pair+1]),
                     strandedness[2*pair+1], mapQual[2*pair+1], mismatches[2*pair+1]);
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
