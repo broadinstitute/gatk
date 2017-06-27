@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.cmdline;
 
 import com.intel.gkl.compression.IntelDeflaterFactory;
 import com.intel.gkl.compression.IntelInflaterFactory;
+import com.intel.gkl.IntelGKLUtils;
 import htsjdk.samtools.Defaults;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
@@ -73,9 +74,14 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = "use_jdk_inflater", shortName = "jdk_inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
     public boolean useJdkInflater = false;
 
+    @Argument(fullName = "disable_flush_to_zero", shortName = "disable_ftz", doc = "Whether to enable flush-to-zero behavior in the processor", common=true)
+    public boolean disableFlushToZero = false;
+
     private CommandLineParser commandLineParser;
 
     private final List<Header> defaultHeaders = new ArrayList<>();
+
+    private final IntelGKLUtils gklUtils = new IntelGKLUtils();
 
     /**
      * The reconstructed commandline used to run this program. Used for logging
@@ -146,6 +152,14 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         }
         if (! useJdkInflater) {
             BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
+        }
+
+        gklUtils.load(null);
+        if (disableFlushToZero) {
+            gklUtils.setFlushToZero(false);
+        }
+        else {
+            gklUtils.setFlushToZero(true);
         }
 
         if (!QUIET) {
@@ -296,6 +310,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
         final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
+        final boolean usingFtz = gklUtils.getFlushToZero();
+        logger.info("FlushToZero: " + (usingFtz ? "enabled" : "disabled"));
     }
 
     /**
