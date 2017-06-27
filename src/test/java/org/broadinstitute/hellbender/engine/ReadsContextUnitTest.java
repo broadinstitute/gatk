@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,7 +24,7 @@ public final class ReadsContextUnitTest extends BaseTest {
                 { new ReadsContext() },
                 { new ReadsContext(null, null) },
                 { new ReadsContext(null, new SimpleInterval("1", 1, 1) ) },
-                { new ReadsContext(new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")), null) }
+                { new ReadsContext(new ReadsDataSource(IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")), null) }
         };
     }
 
@@ -43,12 +43,12 @@ public final class ReadsContextUnitTest extends BaseTest {
         readNameFilter.readName = "d";
         return new Object[][]{
                 {new ReadsContext(
-                        new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
+                        new ReadsDataSource(IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
                         new SimpleInterval("1", 200, 210), // query over small interval, with no read filter
                         ReadFilterLibrary.ALLOW_ALL_READS), new String[] { "a", "b", "c" },
                 },
                 {new ReadsContext(
-                        new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
+                        new ReadsDataSource(IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
                         new SimpleInterval("1", 200, 1000), // query over larger interval with readNameFilter on "d"
                         readNameFilter), new String[] { "d" }
                 }

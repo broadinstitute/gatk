@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeDataCol
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
@@ -46,7 +47,7 @@ import java.util.stream.IntStream;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class GermlineCNVCallerIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/coveragemodel";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/coveragemodel";
     private static final File TEST_CONTIG_PLOIDY_ANNOTATIONS_FILE = new File(TEST_SUB_DIR,
             "sim_contig_anots.tsv");
     private static final File TEST_HMM_PRIORS_TABLE_FILE = new File(TEST_SUB_DIR,

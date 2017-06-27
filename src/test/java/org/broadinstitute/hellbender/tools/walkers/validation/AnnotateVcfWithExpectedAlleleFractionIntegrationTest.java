@@ -4,8 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.walkers.validation.AnnotateVcfWithExpectedAlleleFraction;
-import org.broadinstitute.hellbender.tools.walkers.validation.MixingFraction;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -20,7 +19,7 @@ import java.util.stream.StreamSupport;
  */
 public class AnnotateVcfWithExpectedAlleleFractionIntegrationTest extends CommandLineProgramTest {
 
-    private static final String VCF_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
+    private static final String VCF_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
     private static final File INPUT_VCF = new File(VCF_DIRECTORY, "dream_4_mixing.vcf");
 
     // run with made-up mixing fractions and the doctored 2-sample version of DREAM challenge sample 4

@@ -5,11 +5,15 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
@@ -35,14 +39,14 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
 
     private final class TestManager extends OverhangFixingManager {
         public TestManager( final SAMFileHeader header , DummyTestWriter writer) {
-            super(header, writer, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, true);
+            super(header, writer, TestResources.getGenomeLocParser(), TestResources.getHg19ReferenceReader(), 10000, 1, 40, false, true);
         }
     }
 
     @Test
     public void testBogusNSplits() {
         DummyTestWriter writer = new DummyTestWriter();
-        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        header.setSequenceDictionary(TestResources.getGenomeLocParser().getSequenceDictionary());
         TestManager manager = new TestManager(header, writer);
         manager.activateWriting();
 
@@ -58,7 +62,7 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
     public void testBogusMidNSection() {
         //Testing that bogus subsections dont end up clipped
         DummyTestWriter writer = new DummyTestWriter();
-        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        header.setSequenceDictionary(TestResources.getGenomeLocParser().getSequenceDictionary());
         TestManager manager = new TestManager(header, writer);
         manager.activateWriting();
 
@@ -76,7 +80,7 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
     public void testSplitNComplexCase() {
         //Complex Case involving insertions & deletions
         DummyTestWriter writer = new DummyTestWriter();
-        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        header.setSequenceDictionary(TestResources.getGenomeLocParser().getSequenceDictionary());
         TestManager manager = new TestManager(header, writer);
 
         manager.activateWriting();
@@ -117,7 +121,7 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
 
             if(numOfSplits != 0 && isCigarDoesNotHaveEmptyRegionsBetweenNs(cigar)){
                 final SAMFileHeader header = new SAMFileHeader();
-                header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+                header.setSequenceDictionary(TestResources.getGenomeLocParser().getSequenceDictionary());
                 final TestManager manager = new TestManager(header, new DummyTestWriter());
                 manager.activateWriting();
 

@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.tools.spark;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.*;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -42,7 +39,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
 
     final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
     final String hiSeqBam = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
-    final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+    final String hg18Reference = TestResources.publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
     final String hiSeqCram = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.cram";
 
     @DataProvider(name = "ApplyBQSRTest")

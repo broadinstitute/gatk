@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,7 +22,7 @@ import java.util.stream.Stream;
  */
 public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File REFERENCE = new File(b37_reference_20_21);
+    private static final File REFERENCE = new File(TestResources.b37_reference_20_21);
     private static final GenomeLocParser GLP = new GenomeLocParser(ReferenceDataSource.of(REFERENCE).getSequenceDictionary());
 
     @Test

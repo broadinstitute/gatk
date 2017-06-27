@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -272,7 +273,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationGroupsToUse= Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude= Collections.emptyList();
-        final String path = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
+        final String path = TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
         final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(path, "dbsnp", Collections.emptyMap());
 
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
@@ -304,7 +305,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationGroupsToUse= Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude= Collections.emptyList();
-        final String path = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
+        final String path = TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
         final FeatureInput<VariantContext> dbSNPBinding = null;
 
         final String featureSourceName = "fred";
@@ -345,7 +346,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationGroupsToUse= Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude= Collections.emptyList();
-        final String dbSNPPath= publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
+        final String dbSNPPath= TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
         final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(dbSNPPath, "dbsnp", Collections.emptyMap());
 
         final File fredFile = getTestFile("one_entry_source.vcf");
@@ -393,7 +394,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationGroupsToUse = Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude = Collections.emptyList();
-        final File dbSNPFile = new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final File dbSNPFile = new File(TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(dbSNPFile.getAbsolutePath(), VCFConstants.DBSNP_KEY, Collections.emptyMap());
 
         final File fredFile = getTestFile("one_entry_source.vcf");
@@ -405,7 +406,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
 
     @Test
     public void testCoverageAnnotationViaEngine() throws Exception {
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final File file= new File(TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(file.getAbsolutePath(), "dbsnp", Collections.emptyMap());
 
         final List<String> annotationGroupsToUse= Collections.emptyList();

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -10,16 +11,16 @@ import java.util.List;
 
 class SVIntegrationTestDataProvider extends CommandLineProgramTest {
 
-    static final File reference = new File(b37_reference_20_21);
-    static final File reference_2bit = new File(b37_2bit_reference_20_21);
-    static final File reference_fai = new File(b37_reference_20_21+".fai");
-    static final File reference_dict = new File(b37_reference_20_21.replace(".fasta", ".dict"));
+    static final File reference = new File(TestResources.b37_reference_20_21);
+    static final File reference_2bit = new File(TestResources.b37_2bit_reference_20_21);
+    static final File reference_fai = new File(TestResources.b37_reference_20_21+".fai");
+    static final File reference_dict = new File(TestResources.b37_reference_20_21.replace(".fasta", ".dict"));
 
     private static final String THIS_TEST_FOLDER = getTestDataDir() + "/spark/sv/integration";
     static final String TEST_BAM_LEFT = THIS_TEST_FOLDER + "/hg19_DEL_leftReads.bam";
     static final String TEST_BAM_RIGHT = THIS_TEST_FOLDER + "/hg19_DEL_rightReads.bam";
     static final String KMER_KILL_LIST = THIS_TEST_FOLDER + "/dummy.kill.kmers";
-    static final String ALIGNER_INDEX_IMG = largeFileTestDir + "human_g1k_v37.20.21.fasta.img";
+    static final String ALIGNER_INDEX_IMG = TestResources.largeFileTestDir + "human_g1k_v37.20.21.fasta.img";
     static final String TEST_CONTIG_SAM = THIS_TEST_FOLDER + "/hg19_DEL_contigAssemblies.sam";
 
     static final String EXPECTED_SIMPLE_DEL_VCF = THIS_TEST_FOLDER + "/hg19_DEL.vcf";

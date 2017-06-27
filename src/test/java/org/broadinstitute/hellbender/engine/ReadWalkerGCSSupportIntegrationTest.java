@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.PrintReads;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -18,7 +19,7 @@ import java.util.List;
 public class ReadWalkerGCSSupportIntegrationTest extends CommandLineProgramTest {
 
     private static final String TEST_BAM_ON_GCS = "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam";
-    private static final String EXPECTED_OUTPUT_DIR = publicTestDir + "org/broadinstitute/hellbender/engine/GCSTests/";
+    private static final String EXPECTED_OUTPUT_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/GCSTests/";
 
     @Override
     public String getTestedToolName() {

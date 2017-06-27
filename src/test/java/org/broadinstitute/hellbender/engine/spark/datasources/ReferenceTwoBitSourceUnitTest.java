@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,8 +13,8 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 
 public class ReferenceTwoBitSourceUnitTest extends BaseTest {
-    private static String fastaRefURL = publicTestDir + "large/human_g1k_v37.20.21.fasta";
-    private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
+    private static String fastaRefURL = TestResources.publicTestDir + "large/human_g1k_v37.20.21.fasta";
+    private static String twoBitRefURL = TestResources.publicTestDir + "large/human_g1k_v37.20.21.2bit";
 
     @DataProvider(name = "goodIntervals")
     public Object[][] goodIntervals() throws IOException {
@@ -37,7 +38,7 @@ public class ReferenceTwoBitSourceUnitTest extends BaseTest {
 
     @DataProvider(name = "outOfBoundsIntervals")
     public Object[][] getOutOfBoundsIntervals() throws IOException {
-        final ReferenceTwoBitSource twoBitRef = new ReferenceTwoBitSource(null, publicTestDir + "large/human_g1k_v37.20.21.2bit");
+        final ReferenceTwoBitSource twoBitRef = new ReferenceTwoBitSource(null, TestResources.publicTestDir + "large/human_g1k_v37.20.21.2bit");
         final int chr20End = 63025520;
 
         return new Object[][] {

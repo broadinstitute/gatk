@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -30,7 +31,7 @@ public class VariantFilterUnitTest extends BaseTest {
     VariantContext mnpVC;
 
     public VariantFilterUnitTest() throws FileNotFoundException {
-        initGenomeLocParser();
+        TestResources.getGenomeLocParser();
         snpVC = createArtificialVC(
                 "id1",
                 new SimpleInterval("1", 42, 42),

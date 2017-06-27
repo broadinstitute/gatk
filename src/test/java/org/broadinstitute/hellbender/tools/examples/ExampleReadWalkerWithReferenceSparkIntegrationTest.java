@@ -3,14 +3,15 @@ package org.broadinstitute.hellbender.tools.examples;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 
 public final class ExampleReadWalkerWithReferenceSparkIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
+    private static final String TEST_DATA_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/";
+    private static final String TEST_OUTPUT_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
 
     @Test
     public void testExampleIntervalWalker() throws IOException {
@@ -23,7 +24,7 @@ public final class ExampleReadWalkerWithReferenceSparkIntegrationTest extends Co
         args.add("--output");
         args.add(out.getAbsolutePath());
         args.add("--reference");
-        args.add(hg19MiniReference);
+        args.add(TestResources.hg19MiniReference);
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleReadWalkerWithReferenceIntegrationTest_output.txt");
         IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);

@@ -1,22 +1,16 @@
 package org.broadinstitute.hellbender.tools.spark;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -39,11 +33,11 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
+        args.add(TestResources.NA12878_20_21_WGS_bam);
         args.add("--output");
         args.add(out.getAbsolutePath());
         args.add("--reference");
-        args.add(b37_reference_20_21);
+        args.add(TestResources.b37_reference_20_21);
         args.add("-L 20:9999900-10000000");
         if (useShuffle) {
             args.add("--shuffle");
@@ -58,11 +52,11 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
+        args.add(TestResources.NA12878_20_21_WGS_bam);
         args.add("--output");
         args.add(out.getAbsolutePath());
         args.add("--reference");
-        args.add(b37_reference_20_21);
+        args.add(TestResources.b37_reference_20_21);
         args.add("-L 20:9999990-10000000");
         args.add("-verbose");
         if (useShuffle) {
@@ -78,13 +72,13 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
+        args.add(TestResources.NA12878_20_21_WGS_bam);
         args.add("--output");
         args.add(out.getAbsolutePath());
         args.add("--reference");
-        args.add(b37_reference_20_21);
+        args.add(TestResources.b37_reference_20_21);
         args.add("-L 20:10000092-10000112");
-        args.add("-metadata " + dbsnp_138_b37_20_21_vcf);
+        args.add("-metadata " + TestResources.dbsnp_138_b37_20_21_vcf);
         if (useShuffle) {
             args.add("--shuffle");
         }
@@ -98,11 +92,11 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         final File out = createTempFile();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--input");
-        args.add(NA12878_20_21_WGS_bam);
+        args.add(TestResources.NA12878_20_21_WGS_bam);
         args.add("--output");
         args.add(out.getAbsolutePath());
         args.add("--reference");
-        args.add(b37_reference_20_21);
+        args.add(TestResources.b37_reference_20_21);
         args.add("-L 20:10000092-10000112");
         args.add("-outputInsertLength");
         if (useShuffle) {
@@ -120,17 +114,17 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
             final Path vcfPath = new Path(workingDirectory, "dbsnp_138.b37.20.21.vcf");
             final Path idxPath = new Path(workingDirectory, "dbsnp_138.b37.20.21.vcf.idx");
-            cluster.getFileSystem().copyFromLocalFile(new Path(dbsnp_138_b37_20_21_vcf), vcfPath);
-            cluster.getFileSystem().copyFromLocalFile(new Path(dbsnp_138_b37_20_21_vcf + ".idx"), idxPath);
+            cluster.getFileSystem().copyFromLocalFile(new Path(TestResources.dbsnp_138_b37_20_21_vcf), vcfPath);
+            cluster.getFileSystem().copyFromLocalFile(new Path(TestResources.dbsnp_138_b37_20_21_vcf + ".idx"), idxPath);
 
             final File out = createTempFile();
             final ArgumentsBuilder args = new ArgumentsBuilder();
             args.add("--input");
-            args.add(NA12878_20_21_WGS_bam);
+            args.add(TestResources.NA12878_20_21_WGS_bam);
             args.add("--output");
             args.add(out.getAbsolutePath());
             args.add("--reference");
-            args.add(b37_reference_20_21);
+            args.add(TestResources.b37_reference_20_21);
             args.add("-L 20:10000092-10000112");
             args.add("-metadata " + vcfPath.toString());
             if (useShuffle) {

@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -39,7 +40,7 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
 
     @BeforeClass
     public void setup() throws FileNotFoundException {
-        seq = new CachingIndexedFastaSequenceFile(new File(hg19_chr1_1M_Reference));
+        seq = new CachingIndexedFastaSequenceFile(new File(TestResources.hg19_chr1_1M_Reference));
         header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
     }
 

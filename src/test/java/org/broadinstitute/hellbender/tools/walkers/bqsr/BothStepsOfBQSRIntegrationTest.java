@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.tools.validation.CompareBaseQualities;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +18,7 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
     @Test //Tests that BQSR with and without indel recalibration produces the same bam file
     public void testIndelRemoval() throws Exception {
         //Note; using a small 27M file for speed
-        final File bamIn = new File(NA12878_20_21_WGS_bam);
+        final File bamIn = new File(TestResources.NA12878_20_21_WGS_bam);
         final String interval = "20";
 
         final File recalOutWithIndels = baseRecalibrator(bamIn, interval, false);
@@ -52,8 +53,8 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
         args1.addInput(bamIn);
         args1.addOutput(recalOut);
         args1.addArgument("L", interval);
-        args1.addFileArgument("knownSites", new File(dbsnp_138_b37_20_21_vcf));
-        args1.addReference(new File(b37_reference_20_21));
+        args1.addFileArgument("knownSites", new File(TestResources.dbsnp_138_b37_20_21_vcf));
+        args1.addReference(new File(TestResources.b37_reference_20_21));
         args1.addBooleanArgument("indelBQSR", !skipIndels);
         new Main().instanceMain(makeCommandLineArgs(args1.getArgsList(), BaseRecalibrator.class.getSimpleName()));
         return recalOut;

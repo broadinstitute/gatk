@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -47,7 +48,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     }
 
     final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
-    final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+    final String hg18Reference = TestResources.publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
     final String hiSeqBam = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.bam";
     final String hiSeqCram = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate.cram";
     final String hiSeqBamAligned = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";

@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -25,7 +26,7 @@ import java.util.List;
  * Basic unit test for CachingIndexedFastaSequenceFile
  */
 public final class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
-    private File simpleFasta = new File(publicTestDir + "/exampleFASTA.fasta");
+    private File simpleFasta = new File(TestResources.publicTestDir + "/exampleFASTA.fasta");
     private static final int STEP_SIZE = 1;
     private final static boolean DEBUG = false;
 
@@ -140,9 +141,9 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
     // make sure some bases are lower case and some are upper case
     @Test
     public void testMixedCasesInExample() throws FileNotFoundException, InterruptedException {
-        final IndexedFastaSequenceFile original = new IndexedFastaSequenceFile(new File(exampleFASTA));
-        final CachingIndexedFastaSequenceFile casePreserving = new CachingIndexedFastaSequenceFile(new File(exampleFASTA), true);
-        final CachingIndexedFastaSequenceFile allUpper = new CachingIndexedFastaSequenceFile(new File(exampleFASTA));
+        final IndexedFastaSequenceFile original = new IndexedFastaSequenceFile(new File(TestResources.exampleFASTA));
+        final CachingIndexedFastaSequenceFile casePreserving = new CachingIndexedFastaSequenceFile(new File(TestResources.exampleFASTA), true);
+        final CachingIndexedFastaSequenceFile allUpper = new CachingIndexedFastaSequenceFile(new File(TestResources.exampleFASTA));
 
         int nMixedCase = 0;
         for ( SAMSequenceRecord contig : original.getSequenceDictionary().getSequences() ) {
@@ -184,7 +185,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
 
     @Test
     public void testIupacChanges() throws FileNotFoundException, InterruptedException {
-        final String testFasta = publicTestDir + "iupacFASTA.fasta";
+        final String testFasta = TestResources.publicTestDir + "iupacFASTA.fasta";
         final CachingIndexedFastaSequenceFile iupacPreserving = new CachingIndexedFastaSequenceFile(new File(testFasta), CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, false, true);
         final CachingIndexedFastaSequenceFile makeNs = new CachingIndexedFastaSequenceFile(new File(testFasta));
 
@@ -203,7 +204,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
 
     @Test(expectedExceptions = {UserException.class})
     public void testFailOnBadBase() throws FileNotFoundException, InterruptedException {
-        final String testFasta = publicTestDir + "problematicFASTA.fasta";
+        final String testFasta = TestResources.publicTestDir + "problematicFASTA.fasta";
         final CachingIndexedFastaSequenceFile fasta = new CachingIndexedFastaSequenceFile(new File(testFasta));
 
         for ( SAMSequenceRecord contig : fasta.getSequenceDictionary().getSequences() ) {

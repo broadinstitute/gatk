@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.conversion.acsconversion.ACSModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.conversion.acsconversion.ACSModeledSegmentUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,8 +18,8 @@ import java.util.List;
 
 
 public class ConvertACNVResultsIntegrationTest extends CommandLineProgramTest {
-    private static final String ACNV_TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/conversion/allelicbalancecaller";
+    private static final String ACNV_TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/conversion/allelicbalancecaller";
 
     // Typically, this next file would be the output of a tangent normalization run.
     private static final File COVERAGES_FILE = new File(ACNV_TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");

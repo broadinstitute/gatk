@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.table.TableCodec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -27,10 +28,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 public final class FeatureManagerUnitTest extends BaseTest {
-    private static final String FEATURE_MANAGER_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
+    private static final String FEATURE_MANAGER_TEST_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/";
 
     @DataProvider(name = "DetectCorrectFileFormatTestData")
     public Object[][] getDetectCorrectFileFormatTestData() {

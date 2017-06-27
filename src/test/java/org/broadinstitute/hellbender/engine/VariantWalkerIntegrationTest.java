@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -91,8 +92,8 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     public void testBestSequenceDictionary_FromVariantReference() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/example_variants_noSequenceDict.vcf");
-        final String[] args = {"-V", vcfFile.getCanonicalPath(), "-R", hg19MiniReference};
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/example_variants_noSequenceDict.vcf");
+        final String[] args = {"-V", vcfFile.getCanonicalPath(), "-R", TestResources.hg19MiniReference};
         clp.parseArguments(System.out, args);
         tool.onStartup();
         // make sure we DON'T get the seq dictionary from the VCF index, and instead get the one from
@@ -100,7 +101,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         final SAMSequenceDictionary toolDict = tool.getBestAvailableSequenceDictionary();
         Assert.assertFalse(toolDict.getSequences().stream().allMatch(seqRec -> seqRec.getSequenceLength() == 0));
 
-        SAMSequenceDictionary refDict = new ReferenceFileSource(new File(hg19MiniReference)).getSequenceDictionary();
+        SAMSequenceDictionary refDict = new ReferenceFileSource(new File(TestResources.hg19MiniReference)).getSequenceDictionary();
         toolDict.assertSameDictionary(refDict);
         refDict.assertSameDictionary(toolDict);
         Assert.assertEquals(toolDict, refDict);
@@ -110,7 +111,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     public void testBestSequenceDictionary_FromVariantIndex() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/example_variants_noSequenceDict.vcf");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/example_variants_noSequenceDict.vcf");
         final String[] args = {"--variant", vcfFile.getCanonicalPath()};
         clp.parseArguments(System.out, args);
         tool.onStartup();
@@ -122,8 +123,8 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testReadFilterOff() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.vcf");
-        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.bam");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.vcf");
+        final File bamFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.bam");
 
         final String[] args = {
                 "--variant", vcfFile.getCanonicalPath(),
@@ -139,8 +140,8 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testReadFilterOn() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.vcf");
-        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.bam");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.vcf");
+        final File bamFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.bam");
         final String[] args = {
                 "--variant", vcfFile.getCanonicalPath(),
                 "--input", bamFile.getCanonicalPath(),

@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 import org.testng.Assert;
@@ -49,9 +50,9 @@ public final class VariantsSparkSinkUnitTest extends BaseTest {
     @DataProvider(name = "loadVariants")
     public Object[][] loadVariants() {
         return new Object[][]{
-                {hg19_chr1_1M_dbSNP, ".vcf"},
-                {hg19_chr1_1M_dbSNP, ".vcf.bgz"},
-                {hg19_chr1_1M_dbSNP_modified, ".vcf"},
+                {TestResources.hg19_chr1_1M_dbSNP, ".vcf"},
+                {TestResources.hg19_chr1_1M_dbSNP, ".vcf.bgz"},
+                {TestResources.hg19_chr1_1M_dbSNP_modified, ".vcf"},
         };
     }
 

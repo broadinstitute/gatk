@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -24,7 +25,7 @@ public class QualityScoreDistributionIntegrationTest extends CommandLineProgramT
     private Iterator<Object[]> makeQualityScoreDistributionData(){
         final List<Object[]> list= new ArrayList<>();
         list.add(new Object[]{"first5000a.bam", "qualscoredist.txt", null, true, false, false});
-        list.add(new Object[]{"first5000a.cram", "qualscoredist.txt", b37_reference_20_21, true, false, false});
+        list.add(new Object[]{"first5000a.cram", "qualscoredist.txt", TestResources.b37_reference_20_21, true, false, false});
         list.add(new Object[]{"originalQuals.chr1.1-1K.bam", "originalQuals.chr1.1-1K.QualityScoreDistribution.txt", null, true, false, false});
 
         list.add(new Object[]{"example_pfFail_reads.bam", "pfFailBam.pf.txt", null, true, false, false});

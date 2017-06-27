@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -152,7 +153,7 @@ public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "AnnotateRsIDData")
     public void testRsIDFeatureContext(final VariantContext toAnnotate, final List<VariantContext> dbSNPRecords, final String expectedID, final boolean expectOverlap) throws Exception {
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final File file= new File(TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureContext ctx = new FeatureContext(new FeatureManager(new ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap(file)), new SimpleInterval(toAnnotate));
         final VariantOverlapAnnotator annotator = makeAnnotator(file, "dbsnp");
         final VariantContext annotated = annotator.annotateRsID(ctx, toAnnotate);
@@ -162,7 +163,7 @@ public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "AnnotateRsIDData")
     public void testRsIDFeatureContextWith2Sets(final VariantContext toAnnotate, final List<VariantContext> dbSNPRecords, final String expectedID, final boolean expectOverlap) throws Exception {
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final File file= new File(TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureContext ctx = new FeatureContext(new FeatureManager(new ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap(file)), new SimpleInterval(toAnnotate));
         final VariantOverlapAnnotator annotator = makeAnnotator(file, "dbsnp", "binding");
         final VariantContext annotated = annotator.annotateRsID(ctx, toAnnotate);
@@ -172,7 +173,7 @@ public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "AnnotateRsIDData")
     public void testRsIDFeatureContextWithNoDBSnP(final VariantContext toAnnotate, final List<VariantContext> dbSNPRecords, final String expectedID, final boolean expectOverlap) throws Exception {
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final File file= new File(TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureContext ctx = new FeatureContext(new FeatureManager(new ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap(file)), new SimpleInterval(toAnnotate));
         final VariantOverlapAnnotator annotator = makeAnnotator(file, null, "binding");
         final VariantContext annotated = annotator.annotateRsID(ctx, toAnnotate);
@@ -182,7 +183,7 @@ public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "AnnotateRsIDData")
     public void testAnnotateOverlapsFeatureContext(final VariantContext toAnnotate, final List<VariantContext> records, final String expectedID, final boolean expectOverlap) throws Exception {
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final File file= new File(TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureContext ctx = new FeatureContext(new FeatureManager(new ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap(file)), new SimpleInterval(toAnnotate));
         final VariantOverlapAnnotator annotator = makeAnnotator(file, "dbsnp");
         final VariantContext annotated = annotator.annotateOverlaps(ctx, toAnnotate);
@@ -191,7 +192,7 @@ public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "AnnotateRsIDData")
     public void testAnnotateOverlapsFeatureContextWith2Sets(final VariantContext toAnnotate, final List<VariantContext> records, final String expectedID, final boolean expectOverlap) throws Exception {
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final File file= new File(TestResources.publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureContext ctx = new FeatureContext(new FeatureManager(new ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap(file)), new SimpleInterval(toAnnotate));
         final VariantOverlapAnnotator annotator = makeAnnotator(file, "dbsnp", "binding");
         final VariantContext annotated = annotator.annotateOverlaps(ctx, toAnnotate);

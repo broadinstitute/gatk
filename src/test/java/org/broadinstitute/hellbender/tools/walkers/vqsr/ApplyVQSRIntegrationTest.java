@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -30,11 +31,11 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
 
     @Override
     public String getToolTestDataDir(){
-        return publicTestDir + "org/broadinstitute/hellbender/tools/VQSR/";
+        return TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/VQSR/";
     }
 
     private String getLargeVQSRTestDataDir(){
-        return largeFileTestDir + "VQSR/";
+        return TestResources.largeFileTestDir + "VQSR/";
     }
 
     @Test

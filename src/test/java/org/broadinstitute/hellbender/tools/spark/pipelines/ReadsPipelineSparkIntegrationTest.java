@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -57,12 +58,12 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "ReadsPipeline")
     public Object[][] createReadsPipelineSparkTestData() {
-        final String GRCh37Ref_2021 = b37_reference_20_21;
-        final String GRCh37Ref2bit_chr2021 = b37_2bit_reference_20_21;
+        final String GRCh37Ref_2021 = TestResources.b37_reference_20_21;
+        final String GRCh37Ref2bit_chr2021 = TestResources.b37_2bit_reference_20_21;
         final String hiSeqBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.bam";
         final String hiSeqBam_chr20_queryNameSorted = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.queryNameSorted.bam";
         final String hiSeqCram_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.cram";
-        final String dbSNPb37_20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String dbSNPb37_20 = getResourceDir() + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String more20Sites = getResourceDir() + "dbsnp_138.b37.20.10m-10m100.vcf"; //for testing 2 input files
 
         final String expectedSingleKnownSites = "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.md.bqsr.bam";

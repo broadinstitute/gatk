@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.util.Collections;
 
 public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLineProgramTest {
 
-    private final String largeDir = largeFileTestDir;
+    private final String largeDir = TestResources.largeFileTestDir;
     private final String dir= getToolTestDataDir();
 
     private String CEUtrioFamilyFile = dir + "CEUtrio.ped";
@@ -24,7 +25,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
     public void testUsingDiscoveredAF() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                         " -O %s" +
-                        " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
+                        " -R " + TestResources.b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,001,432" +
                         " -V " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
                         " -addOutputVCFCommandLine false",
@@ -40,7 +41,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
         IntegrationTestSpec spec = new IntegrationTestSpec(
                         "-useACoff" +
                         " -O %s" +
-                        " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
+                        " -R " + TestResources.b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,001,432" +
                         " -V " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
                         " -addOutputVCFCommandLine false",
@@ -54,7 +55,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
         IntegrationTestSpec spec = new IntegrationTestSpec(
                         "-useACoff" +
                         " -O %s" +
-                        " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
+                        " -R " + TestResources.b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,100,000" +
                         " -V " + dir + "NA12878.Jan2013.haplotypeCaller.subset.indels.vcf" +
                         " -supporting " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +

@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -68,9 +69,9 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final String localResources =  getResourceDir();
         final String hg19Ref = ReferenceAPISource.HG19_REF_ID;
         final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
-        final String HiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
-        final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
-        final String GRCh37RefLocal = b37_reference_20_21;
+        final String HiSeqBam_chr20 = localResources + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
+        final String dbSNPb37_chr20 = localResources + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String GRCh37RefLocal = TestResources.b37_reference_20_21;
         final String more20Sites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr20.vcf"; //for testing 2 input files
 
         return new Object[][]{
@@ -97,8 +98,8 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
     public Object[][] createBQSRTestDataBucket() {
         final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
         final String localResources =  getResourceDir();
-        final String HiSeqBamCloud_chr20 = getCloudInputs() + WGS_B37_CH20_1M_1M1K_BAM;
-        final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String HiSeqBamCloud_chr20 = getCloudInputs() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
+        final String dbSNPb37_chr20 = localResources + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
         return new Object[][]{
                 // input in cloud, computation local.
@@ -134,7 +135,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
         final String GRCh37Ref = ReferenceAPISource.GRCH37_REF_ID; // that's the "full" version
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
-        final String HiSeqBam = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
+        final String HiSeqBam = getResourceDir() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
 
         final File actualHiSeqBam_recalibrated = createTempFile("actual.NA12878.chr17_69k_70k.dictFix.recalibrated", ".bam");
 

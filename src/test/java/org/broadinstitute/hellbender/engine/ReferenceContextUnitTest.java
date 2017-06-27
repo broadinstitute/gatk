@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +15,7 @@ import java.util.List;
 
 public final class ReferenceContextUnitTest extends BaseTest {
 
-    private static final File TEST_REFERENCE = new File(hg19MiniReference);
+    private static final File TEST_REFERENCE = new File(TestResources.hg19MiniReference);
 
     @DataProvider(name = "EmptyReferenceContextDataProvider")
     public Object[][] getEmptyReferenceContextData() {

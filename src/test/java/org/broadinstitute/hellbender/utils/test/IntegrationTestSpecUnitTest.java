@@ -42,13 +42,13 @@ public final class IntegrationTestSpecUnitTest extends BaseTest {
 
     @Test(expectedExceptions = AssertionError.class, dataProvider = "differentFilesButSameContent")
     public void compareFilesWithAndWithoutComments(final String f1, final String f2) throws IOException {
-        final String dir = publicTestDir + "org/broadinstitute/hellbender/utils/testing/";
+        final String dir = TestResources.publicTestDir + "org/broadinstitute/hellbender/utils/testing/";
         IntegrationTestSpec.assertEqualTextFiles(new File(dir + f1), new File(dir + f2));
     }
 
     @Test(dataProvider = "differentFilesButSameContent")
     public void compareFilesWithAndWithoutComments_ignoreComments(final String f1, final String f2) throws IOException {
-        final String dir = publicTestDir + "org/broadinstitute/hellbender/utils/testing/";
+        final String dir = TestResources.publicTestDir + "org/broadinstitute/hellbender/utils/testing/";
         IntegrationTestSpec.assertEqualTextFiles(new File(dir + f1), new File(dir + f2), "#");
     }
 

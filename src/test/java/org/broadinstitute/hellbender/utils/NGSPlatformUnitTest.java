@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -31,7 +32,7 @@ public final class NGSPlatformUnitTest extends BaseTest {
     @BeforeClass
     public void setup() throws FileNotFoundException {
         // sequence
-        seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
+        seq = new CachingIndexedFastaSequenceFile(new File(TestResources.exampleReference));
     }
 
     @DataProvider(name = "TestPrimary")

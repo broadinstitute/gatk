@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -28,7 +29,7 @@ import java.util.stream.Stream;
  */
 public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLineProgramTest {
 
-    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(TestResources.largeFileTestDir, "cnv");
 
     public static final File TRUNCATED_REALISTIC_TARGETS_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "truncated-realistic-targets.tab");
     public static final TargetCollection<Target> REALISTIC_TARGETS;

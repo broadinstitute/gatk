@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithReference;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -18,10 +19,10 @@ public class ReadWalkerIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testManuallySpecifiedIndices() throws IOException {
-        final String BAM_PATH = publicTestDir + "org/broadinstitute/hellbender/engine/readIndexTest/";
+        final String BAM_PATH = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/readIndexTest/";
         final String INDEX_PATH = BAM_PATH + "indices/";
         final File outFile = createTempFile("testManuallySpecifiedIndices", ".txt");
-        final File expectedFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/expected_ReadWalkerIntegrationTest_testManuallySpecifiedIndices.txt");
+        final File expectedFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/expected_ReadWalkerIntegrationTest_testManuallySpecifiedIndices.txt");
 
         final String[] args = new String[] {
             "-I", BAM_PATH + "reads_data_source_test1.bam",
@@ -37,7 +38,7 @@ public class ReadWalkerIntegrationTest extends CommandLineProgramTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testManuallySpecifiedIndicesWrongNumberOfIndices() throws IOException {
-        final String BAM_PATH = publicTestDir + "org/broadinstitute/hellbender/engine/readIndexTest/";
+        final String BAM_PATH = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/readIndexTest/";
         final String INDEX_PATH = BAM_PATH + "indices/";
 
         final String[] args = new String[] {

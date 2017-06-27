@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -28,7 +29,7 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
         list.add(new Object[]{"valid.cram", new File(TEST_DATA_DIR, "valid.fasta").getAbsolutePath(), "valid.CollectBaseDistributionByCycle.txt", true, false, false});
 
         list.add(new Object[]{"first5000a.bam", null, "CollectBaseDistributionByCycle.txt", true, false, false});
-        list.add(new Object[]{"first5000a.cram", b37_reference_20_21, "CollectBaseDistributionByCycle.txt", true, false, false});
+        list.add(new Object[]{"first5000a.cram", TestResources.b37_reference_20_21, "CollectBaseDistributionByCycle.txt", true, false, false});
 
         list.add(new Object[]{"originalQuals.chr1.1-1K.bam", null, "CollectBaseDistributionByCycle.origQuals.txt", true, false, false});
 

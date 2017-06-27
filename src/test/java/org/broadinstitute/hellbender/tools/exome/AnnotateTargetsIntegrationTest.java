@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.tribble.Tribble;
-import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.util.LittleEndianOutputStream;
@@ -12,10 +11,9 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.TargetCodec;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -32,7 +30,7 @@ import java.util.stream.Collectors;
  */
 public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File REFERENCE = new File(BaseTest.hg19MiniReference);
+    private static final File REFERENCE = new File(TestResources.hg19MiniReference);
 
     // Test meta-parameters:
     private static final int MIN_TARGET_SIZE = 10;

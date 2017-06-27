@@ -4,13 +4,11 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.OverhangFixingManager;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.SplitNCigarReads;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.SplitNCigarReadsUnitTest;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -412,7 +410,7 @@ public final class ReadClipperUnitTest extends BaseTest {
     @Test
     public void testSoftClippingOpEdgeCase() {
         final SAMFileHeader header = new SAMFileHeader();
-        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        header.setSequenceDictionary(TestResources.getGenomeLocParser().getSequenceDictionary());
 
         GATKRead read = ReadClipperTestUtils.makeReadFromCigar("8M");
         ReadClipper clipper = new ReadClipper(read);

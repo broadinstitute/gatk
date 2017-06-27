@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.CountVariants;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,7 +33,7 @@ public final class CountVariantsIntegrationTest extends CommandLineProgramTest {
                 {new File(getTestDataDir(), "count_variants.blockgz.gz"), "", 26L},
                 {new File(getTestDataDir(), "count_variants_withSequenceDict.vcf"), "", 26L},
                 {new File(getTestDataDir(), "count_variants_withSequenceDict.vcf"), "-L 1", 14L},
-                {new File(dbsnp_138_b37_1_65M_vcf), "", 1375319L},
+                {new File(TestResources.dbsnp_138_b37_1_65M_vcf), "", 1375319L},
         };
     }
 }

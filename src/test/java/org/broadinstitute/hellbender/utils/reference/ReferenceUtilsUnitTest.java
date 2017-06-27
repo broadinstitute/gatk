@@ -4,12 +4,10 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
-
-import java.lang.reflect.Method;
-import java.util.*;
 
 import java.io.*;
 
@@ -18,7 +16,7 @@ public class ReferenceUtilsUnitTest extends BaseTest {
 
     @Test
     public void testLoadFastaDictionaryFromFile() {
-        final File referenceDictionaryFile = new File(ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference));
+        final File referenceDictionaryFile = new File(ReferenceUtils.getFastaDictionaryFileName(TestResources.hg19MiniReference));
         final SAMSequenceDictionary dictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryFile);
 
         Assert.assertNotNull(dictionary, "Sequence dictionary null after loading");
@@ -46,7 +44,7 @@ public class ReferenceUtilsUnitTest extends BaseTest {
 
     @Test
     public void testLoadFastaDictionaryFromStream() throws IOException {
-        try ( final ClosingAwareFileInputStream referenceDictionaryStream = new ClosingAwareFileInputStream(new File(ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference))) ) {
+        try ( final ClosingAwareFileInputStream referenceDictionaryStream = new ClosingAwareFileInputStream(new File(ReferenceUtils.getFastaDictionaryFileName(TestResources.hg19MiniReference))) ) {
             final SAMSequenceDictionary dictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);
 
             Assert.assertNotNull(dictionary, "Sequence dictionary null after loading");
@@ -61,8 +59,8 @@ public class ReferenceUtilsUnitTest extends BaseTest {
 
         // Trying to ingest a fasta file as a dict file to induce a MalformedFile Exception.
         return new Object[][] {
-                {hg19MiniReference, true},
-                {hg19MiniReference, false}
+                {TestResources.hg19MiniReference, true},
+                {TestResources.hg19MiniReference, false}
         };
     }
 

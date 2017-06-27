@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,7 +21,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testSimple() throws Exception {
-        final String testDir =  publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir =  TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
         final File evalVcf = new File(testDir, "gatk4-dream3-mini.vcf");
         final File truthVcf = new File(testDir, "gatk3-dream3-mini.vcf");
         final File summary = createTempFile("summary", ".txt");
@@ -55,7 +55,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     // Test going from an integer chromosome (22) to a character chromosome (X)
     @Test
     public void testt22X() throws Exception {
-        final String testDir = publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
         final File truthVcf = new File(testDir, "gatk3-dream3-x.vcf");
         final File evalVcf = new File(testDir, "gatk4-dream3-x.vcf");
         final File tpfp = createTempFile("tpfp", ".vcf");
@@ -109,7 +109,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     // The truth file only contains the PASS sites; should get 100% sensitivity and specificity.
     @Test
     public void testPerfectMatchVcf() throws Exception {
-        final String testDir = publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
         final File truthVcf = new File(testDir, "same-truth.vcf");
         final File evalVcf = new File(testDir, "same-eval.vcf");
         final File summary = createTempFile("summary", ".txt");
@@ -138,7 +138,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testDreamSensitivity() throws Exception {
-        final String testDir = publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
         final File evalVcf = new File(testDir, "dream3-chr21.vcf");
         final File truthVcf = new File(testDir, "dream3-truth-minus-SV-chr21.vcf");
         final File summary = createTempFile("summary", ".txt");

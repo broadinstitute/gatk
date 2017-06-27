@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.walkers.validation.FalsePositiveRecord;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.testng.Assert;
@@ -17,11 +17,11 @@ import static org.broadinstitute.hellbender.tools.walkers.validation.FalsePositi
 public class CountFalsePositivesIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testSimple() throws Exception {
-        final File dreamDir =  new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/dream");
+        final File dreamDir =  new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/tools/mutect/dream");
         final File output = createTempFile("output", ".txt");
         final String[] args = {
                 "-V", dreamDir + "/vcfs/dream3-chr20.vcf",
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", dreamDir + "/dream-chr20.interval_list",
                 "-O", output.toString()
         };

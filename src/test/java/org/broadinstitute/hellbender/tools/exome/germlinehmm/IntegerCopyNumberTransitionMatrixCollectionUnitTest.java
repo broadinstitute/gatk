@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
 import org.broadinstitute.hellbender.utils.MathObjectAsserts;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -10,7 +11,7 @@ import java.io.File;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class IntegerCopyNumberTransitionMatrixCollectionUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/germlinehmm";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/germlinehmm";
     private static final File HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE = new File(TEST_SUB_DIR,
             "homo_sapiens_germline_HMM_priors.tsv");
 

@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -52,16 +53,16 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
     @DataProvider(name = "BQSRTest")
     public Object[][] createBQSRTestData() {
-        final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+        final String hg18Reference = TestResources.publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String b36Reference = getResourceDir() + "human_b36_both.chr1_1k.fasta";
-        final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
+        final String hiSeqBam_chr20 = getResourceDir() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
         final String hiSeqBam_1read = getResourceDir() + "overlappingRead.bam";
         final String hiSeqBam_readNithNoRefBases = getResourceDir() + "NA12878.oq.read_consumes_zero_ref_bases.chr20.bam";
         final String HiSeqBam_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
         final String HiSeqCram_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.cram";
         final String trickyBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.bam";
         final String dbSNPb37_chr17 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
-        final String dbSNPb37_chr20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String dbSNPb37_chr20 = getResourceDir() + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String origQualsBam_chr1 = getResourceDir() + "originalQuals.1kg.chr1.1-1K.1RG.dictFix.bam";
         final String dbSNPb36_chr1 = getResourceDir() + "dbsnp_132.b36.excluding_sites_after_129.chr1_1k.vcf";
         final String GRCh37Ref_chr2021 = "src/test/resources/large/human_g1k_v37.20.21.fasta";
@@ -78,8 +79,8 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
-                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_1read, dbsnp_138_b37_20_21_vcf, "-indelBQSR -enableBAQ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
-                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_readNithNoRefBases, dbsnp_138_b37_20_21_vcf, "-indelBQSR -enableBAQ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_NOREFBASES_RECAL)},
+                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_1read, TestResources.dbsnp_138_b37_20_21_vcf, "-indelBQSR -enableBAQ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
+                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_readNithNoRefBases, TestResources.dbsnp_138_b37_20_21_vcf, "-indelBQSR -enableBAQ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_NOREFBASES_RECAL)},
 
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " + "--indels_context_size 4",  getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " + "--low_quality_tail 5",     getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
@@ -108,7 +109,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322")
     public void testPlottingWorkflow() throws IOException {
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
-        final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+        final String hg18Reference = TestResources.publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String dbSNPb37_chr17 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
         final String HiSeqBam_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
 
@@ -137,7 +138,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
     public void testBQSRFailWithoutDBSNP() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
 
-        final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+        final String hg18Reference = TestResources.publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String  NO_DBSNP = "";
@@ -157,7 +158,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String HiSeqBam_Hg18 = resourceDir + "HiSeq.1mb.1RG.2k_lines.bam";
 
         final String  NO_ARGS = "";
-        final BQSRTest params = new BQSRTest(hg19MiniReference, HiSeqBam_Hg18, hg19_chr1_1M_dbSNP, NO_ARGS, resourceDir + "expected.txt");
+        final BQSRTest params = new BQSRTest(TestResources.hg19MiniReference, HiSeqBam_Hg18, TestResources.hg19_chr1_1M_dbSNP, NO_ARGS, resourceDir + "expected.txt");
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,
@@ -169,11 +170,11 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
     public void testBQSRFailWithIncompatibleSequenceDictionaries() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
 
-        final String bam_chr20 = resourceDir + WGS_B37_CH20_1M_1M1K_BAM;
+        final String bam_chr20 = resourceDir + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr17 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
 
         final String  NO_ARGS = "";
-        final BQSRTest params = new BQSRTest(b37_reference_20_21, bam_chr20, dbSNPb37_chr17, NO_ARGS, resourceDir + "expected.txt");
+        final BQSRTest params = new BQSRTest(TestResources.b37_reference_20_21, bam_chr20, dbSNPb37_chr17, NO_ARGS, resourceDir + "expected.txt");
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,

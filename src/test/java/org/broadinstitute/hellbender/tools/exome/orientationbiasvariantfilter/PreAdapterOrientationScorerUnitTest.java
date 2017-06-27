@@ -5,6 +5,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,7 +15,7 @@ import java.util.Map;
 
 public class PreAdapterOrientationScorerUnitTest extends BaseTest {
 
-    public static final String testPreAdapterDetailsMetrics = publicTestDir + "picard_metrics_test.pre_adapter_detail_metrics";
+    public static final String testPreAdapterDetailsMetrics = TestResources.publicTestDir + "picard_metrics_test.pre_adapter_detail_metrics";
 
     /**
      * Note that (due to raw data), this test includes collapsing over libraries (not just the contexts).

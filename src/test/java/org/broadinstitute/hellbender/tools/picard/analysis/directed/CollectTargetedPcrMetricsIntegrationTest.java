@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis.directed;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -20,7 +21,7 @@ public final class CollectTargetedPcrMetricsIntegrationTest extends CommandLineP
         final File target_intervals = new File(TEST_DATA_PATH, "lifted_Chr20test_regions_t.interval_list");
         final File expectedFile = new File(TEST_DATA_PATH, "PCR_new_Metrics.txt");
         final File outfile = BaseTest.createTempFile("PCRMetrics", ".txt");
-        final File reference = new File(largeFileTestDir, "human_g1k_v37.20.21.fasta");
+        final File reference = new File(TestResources.largeFileTestDir, "human_g1k_v37.20.21.fasta");
         final File pertargetcoverage = new File(TEST_DATA_PATH, "pcr_metrics_pertarg_new.txt");
         final File pertargetcoverageout = BaseTest.createTempFile("pcr_metrics_pertarg_new_out", ".txt");
 

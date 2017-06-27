@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -37,14 +38,14 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
         return new Object[][]{
                 {COUNT_VARIANTS_VCF, 26L},
                 {new File(getTestDataDir(), "count_variants.blockgz.gz"), 26L},
-                {new File(dbsnp_138_b37_1_65M_vcf), 1375319L},
+                {new File(TestResources.dbsnp_138_b37_1_65M_vcf), 1375319L},
         };
     }
 
     @DataProvider(name="intervals")
     public Object[][] intervals(){
-        File vcf = new File(largeFileTestDir, "dbsnp_138.b37.20.21.vcf");
-        File vcf_gz = new File(largeFileTestDir, "dbsnp_138.b37.20.21.vcf.blockgz.gz");
+        File vcf = new File(TestResources.largeFileTestDir, "dbsnp_138.b37.20.21.vcf");
+        File vcf_gz = new File(TestResources.largeFileTestDir, "dbsnp_138.b37.20.21.vcf.blockgz.gz");
         return new Object[][]{
                 new Object[]{vcf, "", 9594L}, // no intervals specified
                 new Object[]{vcf, "-L 20", 5657L},
@@ -67,7 +68,7 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addVCF(fileIn);
         args.add(intervalArgs);
-        args.addReference(new File(largeFileTestDir, "human_g1k_v37.20.21.fasta"));
+        args.addReference(new File(TestResources.largeFileTestDir, "human_g1k_v37.20.21.fasta"));
         args.addOutput(outputTxt);
         this.runCommandLine(args.getArgsArray());
 

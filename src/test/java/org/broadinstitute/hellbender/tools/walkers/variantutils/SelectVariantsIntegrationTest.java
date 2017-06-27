@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -27,7 +28,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                " -R " + hg19MiniReference
+                " -R " + TestResources.hg19MiniReference
                         + " --variant " + testFile
                         + " -sn NA11918 "
                         + " -sr " // suppress reference file path in output for test differencing
@@ -44,7 +45,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "filteringDepthInFormat.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                " -R " + hg19MiniReference
+                " -R " + TestResources.hg19MiniReference
                         + " --variant " + testFile
                         + " -select 'DP < 7' "
                         + " -sr " // suppress reference file path in output for test differencing

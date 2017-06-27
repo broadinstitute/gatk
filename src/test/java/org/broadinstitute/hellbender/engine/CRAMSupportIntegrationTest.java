@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.PrintReads;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -31,7 +32,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
 
     @DataProvider(name = "ReadEntireCramTestData")
     public Object[][] readEntireCramTestData() {
-        final File ref = new File(hg19MiniReference);
+        final File ref = new File(TestResources.hg19MiniReference);
         final List<Object[]> testCases = new ArrayList<>();
         for ( final String outputExtension : Arrays.asList(".sam", ".bam", ".cram") ) {
             // cram, reference, output file extension, expected read names
@@ -57,7 +58,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
 
     @DataProvider(name = "ReadCramWithIntervalsIndexTestData")
     public Object[][] readCramWithIntervalsBAIIndexTestData() {
-        final File ref = new File(hg19MiniReference);
+        final File ref = new File(TestResources.hg19MiniReference);
         final List<Object[]> testCases = new ArrayList<>();
         for ( final String outputExtension : Arrays.asList(".sam", ".bam", ".cram") ) {
             // cram, reference, output file extension, intervals, expected read names

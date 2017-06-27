@@ -11,11 +11,11 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -23,7 +23,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -37,7 +36,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
     @BeforeClass
     public void init() throws FileNotFoundException {
         // sequence
-        seq = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
+        seq = new CachingIndexedFastaSequenceFile(new File(TestResources.hg19MiniReference));
         contig = "1";
         contigLength = seq.getSequence(contig).length();
         header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
@@ -398,8 +397,8 @@ public final class AssemblyRegionUnitTest extends BaseTest {
 
     @Test
     public void testCreateFromReadShard() {
-        final Path testBam = IOUtils.getPath(NA12878_20_21_WGS_bam);
-        final File reference = new File(b37_reference_20_21);
+        final Path testBam = IOUtils.getPath(TestResources.NA12878_20_21_WGS_bam);
+        final File reference = new File(TestResources.b37_reference_20_21);
         final SimpleInterval shardInterval = new SimpleInterval("20", 10000000, 10001000);
         final SimpleInterval paddedShardInterval = new SimpleInterval(shardInterval.getContig(), shardInterval.getStart() - 100, shardInterval.getEnd() + 100);
 

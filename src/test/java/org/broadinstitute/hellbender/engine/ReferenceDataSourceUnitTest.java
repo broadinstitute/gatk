@@ -5,6 +5,7 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +18,7 @@ import java.util.List;
 
 public final class ReferenceDataSourceUnitTest extends BaseTest {
 
-    private static final File TEST_REFERENCE = new File(hg19MiniReference);
+    private static final File TEST_REFERENCE = new File(TestResources.hg19MiniReference);
 
     @Test(expectedExceptions = UserException.class)
     public void testNonExistentReference() {
@@ -26,12 +27,12 @@ public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.MissingReferenceFaiFile.class)
     public void testReferenceWithMissingFaiFile() {
-        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(publicTestDir + "fastaWithoutFai.fasta"));
+        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(TestResources.publicTestDir + "fastaWithoutFai.fasta"));
     }
 
     @Test(expectedExceptions = UserException.MissingReferenceDictFile.class)
     public void testReferenceWithMissingDictFile() {
-        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(publicTestDir + "fastaWithoutDict.fasta"));
+        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(TestResources.publicTestDir + "fastaWithoutDict.fasta"));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

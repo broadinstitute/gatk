@@ -6,6 +6,7 @@ import java.util.function.Function;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.test.XorWrapper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -21,7 +22,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class ReadsDataSourceUnitTest extends BaseTest {
-    private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
+    private static final String READS_DATA_SOURCE_TEST_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/";
     private final Path FIRST_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
     private final Path SECOND_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
     private final Path THIRD_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test3.bam");
@@ -354,15 +355,15 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @DataProvider(name = "TraversalWithUnmappedReadsTestData")
     public Object[][] traversalWithUnmappedReadsTestData() {
         // This bam has only mapped reads
-        final Path mappedBam = IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final Path mappedBam = IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
 
         // This bam has mapped reads from various contigs, plus a few unmapped reads with no mapped mate
-        final Path unmappedBam = IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
+        final Path unmappedBam = IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
 
         // This is a snippet of the CEUTrio.HiSeq.WGS.b37.NA12878 bam from large, with mapped reads
         // from chromosome 20 (with one mapped read having an unmapped mate), plus several unmapped
         // reads with no mapped mate.
-        final Path ceuSnippet = IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
+        final Path ceuSnippet = IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
 
         return new Object[][] {
                 // One interval, no unmapped
@@ -434,8 +435,8 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @DataProvider(name = "QueryUnmappedTestData")
     public Object[][] queryUnmappedTestData() {
         return new Object[][] {
-                { IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam"), Arrays.asList("u1", "u2", "u3", "u4", "u5") },
-                { IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam"), Arrays.asList("g", "h", "h", "i", "i") }
+                { IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam"), Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                { IOUtils.getPath(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam"), Arrays.asList("g", "h", "h", "i", "i") }
         };
     }
 

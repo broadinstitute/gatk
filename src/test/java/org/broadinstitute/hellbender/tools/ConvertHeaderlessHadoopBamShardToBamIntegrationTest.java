@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,9 +15,9 @@ public class ConvertHeaderlessHadoopBamShardToBamIntegrationTest extends Command
 
     @Test
     public void testConvertHeaderlessHadoopBamShardToBam() {
-        final File bamShard = new File(publicTestDir + "org/broadinstitute/hellbender/utils/spark/reads_data_source_test1.bam.headerless.part-r-00000");
+        final File bamShard = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/utils/spark/reads_data_source_test1.bam.headerless.part-r-00000");
         final File output = createTempFile("testConvertHeaderlessHadoopBamShardToBam", ".bam");
-        final File headerSource = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final File headerSource = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
         final int expectedReadCount = 11;
 
         List<String> args = Arrays.asList(

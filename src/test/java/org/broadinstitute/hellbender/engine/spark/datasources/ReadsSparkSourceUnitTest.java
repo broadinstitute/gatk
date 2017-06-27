@@ -10,12 +10,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -23,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -45,10 +42,10 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
     @DataProvider(name = "loadReads")
     public Object[][] loadReads() {
         return new Object[][]{
-                {NA12878_chr17_1k_BAM, null},
+                {TestResources.NA12878_chr17_1k_BAM, null},
                 {dirBQSR + "HiSeq.1mb.1RG.2k_lines.alternate.bam", null},
                 {dirBQSR + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam", null},
-                {NA12878_chr17_1k_CRAM, v37_chr17_1Mb_Reference},
+                {TestResources.NA12878_chr17_1k_CRAM, TestResources.v37_chr17_1Mb_Reference},
                 {dir + "valid.cram", dir + "valid.fasta"}
         };
     }
@@ -64,8 +61,8 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
     @DataProvider(name = "loadReadsValidation") // these require validation lenient or silent
     public Object[][] loadReadsValidation() {
         return new Object[][]{
-                {NA12878_chr17_1k_BAM, null},
-                {NA12878_chr17_1k_CRAM, v37_chr17_1Mb_Reference},
+                {TestResources.NA12878_chr17_1k_BAM, null},
+                {TestResources.NA12878_chr17_1k_CRAM, TestResources.v37_chr17_1Mb_Reference},
         };
     }
 
@@ -146,12 +143,12 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
 
     @Test(groups = "spark", expectedExceptions=UserException.class)
     public void testReject2BitCRAMReference() {
-        doLoadReadsTest(NA12878_chr17_1k_CRAM, b37_2bit_reference_20_21);
+        doLoadReadsTest(TestResources.NA12878_chr17_1k_CRAM, TestResources.b37_2bit_reference_20_21);
     }
 
     @Test(groups = "spark", expectedExceptions=UserException.class)
     public void testCRAMReferenceRequired() {
-        doLoadReadsTest(NA12878_chr17_1k_CRAM, null);
+        doLoadReadsTest(TestResources.NA12878_chr17_1k_CRAM, null);
     }
 
     @Test(groups = "spark")
@@ -190,9 +187,9 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
 
     @Test(groups = "spark")
     public void testCRAMReferenceFromHDFS() throws Exception {
-        final File cram = new File(NA12878_chr17_1k_CRAM);
-        final File reference = new File(v37_chr17_1Mb_Reference);
-        final File referenceIndex = new File(v37_chr17_1Mb_Reference + ".fai");
+        final File cram = new File(TestResources.NA12878_chr17_1k_CRAM);
+        final File reference = new File(TestResources.v37_chr17_1Mb_Reference);
+        final File referenceIndex = new File(TestResources.v37_chr17_1Mb_Reference + ".fai");
 
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
@@ -219,10 +216,10 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         List<SimpleInterval> intervals =
                 ImmutableList.of(new SimpleInterval("17", 69010, 69040), new SimpleInterval("17", 69910, 69920));
-        JavaRDD<GATKRead> reads = readSource.getParallelReads(NA12878_chr17_1k_BAM, null, intervals);
+        JavaRDD<GATKRead> reads = readSource.getParallelReads(TestResources.NA12878_chr17_1k_BAM, null, intervals);
 
         SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
-        try (SamReader samReader = samReaderFactory.open(new File(NA12878_chr17_1k_BAM))) {
+        try (SamReader samReader = samReaderFactory.open(new File(TestResources.NA12878_chr17_1k_BAM))) {
             int seqIndex = samReader.getFileHeader().getSequenceIndex("17");
             SAMRecordIterator query = samReader.query(new QueryInterval[]{new QueryInterval(seqIndex, 69010, 69040), new QueryInterval(seqIndex, 69910, 69920)}, false);
             Assert.assertEquals(reads.count(), Iterators.size(query));

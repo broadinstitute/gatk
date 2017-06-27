@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -18,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class PCATangentNormalizationUtilsUnitTest extends BaseTest {
-    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(TestResources.largeFileTestDir, "cnv");
     private static final File TEST_PCOV_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");
     private static final File TEST_FULL_NORMALS_TN_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-all-targets.pon.normal_projection");
     private static final File TEST_SOME_NORMALS_TN_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-some-targets.pon.normal_projection");

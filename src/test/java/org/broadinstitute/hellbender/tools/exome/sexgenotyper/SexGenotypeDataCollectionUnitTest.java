@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.ImmutableMap;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -22,7 +23,7 @@ import java.util.stream.IntStream;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class SexGenotypeDataCollectionUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/sexgenotyper/";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/sexgenotyper/";
     private static final File TEST_SEX_GENOTYPE_BASIC_FILE = new File(TEST_SUB_DIR, "sex_genotypes_broadies_basic.tsv");
     private static final File TEST_SEX_GENOTYPE_EXTENDED_FILE = new File(TEST_SUB_DIR, "sex_genotypes_broadies_extended.tsv");
 

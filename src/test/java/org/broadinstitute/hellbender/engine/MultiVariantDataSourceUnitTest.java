@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,8 +14,8 @@ import java.io.File;
 import java.util.*;
 
 public final class MultiVariantDataSourceUnitTest extends BaseTest {
-    private static final String ENGINE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String MULTI_VARIANT_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/MultiVariantDataSource/";
+    private static final String ENGINE_TEST_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/";
+    private static final String MULTI_VARIANT_TEST_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/MultiVariantDataSource/";
 
     private static final File QUERY_TEST_VCF = new File(ENGINE_TEST_DIRECTORY + "feature_data_source_test.vcf");
     private static final File QUERY_TEST_GVCF = new File(ENGINE_TEST_DIRECTORY + "feature_data_source_test_gvcf.vcf");

@@ -33,7 +33,7 @@ public final class SamAssertionUtilsUnitTest extends BaseTest{
         };
     }
 
-    private static final File TEST_DATA_DIR = new File(publicTestDir, "org/broadinstitute/hellbender/utils/test/SamAssertionUtilsUnitTest");
+    private static final File TEST_DATA_DIR = new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/utils/test/SamAssertionUtilsUnitTest");
 
     @Test(dataProvider = "bamPairs")
     public void testCompareStringent(final String expectedFile, final String actualFile, boolean expectedEqual) throws Exception {

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -20,7 +21,7 @@ import java.util.*;
 public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
 
     private static final int KMER_SIZE = SVConstants.KMER_SIZE;
-    private static final String REFERENCE_FILE_NAME = hg19MiniReference;
+    private static final String REFERENCE_FILE_NAME = TestResources.hg19MiniReference;
 
     @Test(groups = "spark")
     public void badKmersTest() throws IOException {

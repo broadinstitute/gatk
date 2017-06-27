@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.codecs;
 
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,7 +13,7 @@ public class TargetCodecUnitTest extends BaseTest {
     @Test
     public void testTargetCodecCanDecodeFileURIs() {
         final TargetCodec codec = new TargetCodec();
-        final String tsvURI = new File(publicTestDir + "org/broadinstitute/hellbender/tools/exome/targets.tsv").toURI().toString();
+        final String tsvURI = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/targets.tsv").toURI().toString();
         Assert.assertTrue(tsvURI.startsWith("file:"));
         Assert.assertTrue(codec.canDecode(tsvURI), "TargetCodec should be able to decode file URIs");
     }
@@ -20,7 +21,7 @@ public class TargetCodecUnitTest extends BaseTest {
     @Test
     public void testTargetCodecCanDecodeAbsoluteFilePath() {
         final TargetCodec codec = new TargetCodec();
-        final String tsvPath = new File(publicTestDir + "org/broadinstitute/hellbender/tools/exome/targets.tsv").getAbsolutePath();
+        final String tsvPath = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/targets.tsv").getAbsolutePath();
         Assert.assertTrue(codec.canDecode(tsvPath), "TargetCodec should be able to decode absolute file paths");
     }
 

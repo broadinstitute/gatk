@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +18,7 @@ import java.io.IOException;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class AllelicCountCollectionUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/allelic";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/allelic";
     private static final File ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "allelic-count-collection-normal.tsv");
     private static final File ALLELIC_COUNTS_MISSING_NUCLEOTIDES_FILE = new File(TEST_SUB_DIR, "allelic-count-collection-normal-missing-nucleotides.tsv");
     private static final AllelicCountCollection ALLELIC_COUNTS_EXPECTED = new AllelicCountCollection();

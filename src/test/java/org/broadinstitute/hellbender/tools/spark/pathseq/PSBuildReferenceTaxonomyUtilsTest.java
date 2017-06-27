@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.TestException;
 import org.testng.annotations.Test;
@@ -302,7 +303,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
     public void testCloseReader() {
         final BufferedReader r;
         try {
-            r = new BufferedReader(new FileReader(hg19MiniReference));
+            r = new BufferedReader(new FileReader(TestResources.hg19MiniReference));
         } catch (IOException e) {
             throw new TestException(e);
         }

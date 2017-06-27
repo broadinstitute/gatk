@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,10 +25,10 @@ import java.util.stream.StreamSupport;
  */
 public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // positions 10,000,000 - 11,000,000 of chr 20 and with most annotations removed
-    private static final File GNOMAD = new File(largeFileTestDir, "very-small-gnomad.vcf");
-    private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
-    private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
-    private static final String DREAM_MASKS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/masks/";
+    private static final File GNOMAD = new File(TestResources.largeFileTestDir, "very-small-gnomad.vcf");
+    private static final String DREAM_BAMS_DIR = TestResources.largeFileTestDir + "mutect/dream_synthetic_bams/";
+    private static final String DREAM_VCFS_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
+    private static final String DREAM_MASKS_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/masks/";
 
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
@@ -58,7 +59,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-tumor", tumorSample,
                 "-I", normalBam.getAbsolutePath(),
                 "-normal", normalSample,
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20",
                 "-germline_resource", GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
@@ -96,7 +97,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-tumor", tumorSample,
                 "-I", normalBam.getAbsolutePath(),
                 "-normal", normalSample,
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20",
                 "-O", ponVcf.getAbsolutePath()
         };
@@ -111,7 +112,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-I", normalBam.getAbsolutePath(),
                 "-normal", normalSample,
                 "-normal_panel", ponVcf.getAbsolutePath(),
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20",
                 "-O", unfilteredVcf.getAbsolutePath()
         };
@@ -146,7 +147,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-tumor", tumorName,
                 "-I", normalBam.getAbsolutePath(),
                 "-normal", normalName,
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000", // this is 1/3 of the chr 20 interval of our mini-dbSNP
                 "-O", outputVcf.getAbsolutePath()
         };
@@ -165,9 +166,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
                 "-tumor", "NA12878",
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10010000",
                 "-germline_resource", GNOMAD.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
@@ -195,12 +196,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // e.g. read name HAVCYADXX150109:1:2102:20528:2129 with cigar 23S53I
     @Test
     public void testReadsThatConsumeZeroReferenceReads() throws Exception {
-        final String CONSUMES_ZERO_REFERENCE_BASES = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/na12878-chr20-consumes-zero-reference-bases.bam";
+        final String CONSUMES_ZERO_REFERENCE_BASES = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/na12878-chr20-consumes-zero-reference-bases.bam";
         final File outputVcf = createTempFile("output", ".vcf");
         final String[] args = {
                 "-I", CONSUMES_ZERO_REFERENCE_BASES,
                 "-tumor", "SM-612V3",
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-O", outputVcf.getAbsolutePath()
         };
         runCommandLine(args);
@@ -213,13 +214,13 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // per megabase).
     @Test
     public void testBamWithRepeatedReads() {
-        final String repeatedReadsBam = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam";
+        final String repeatedReadsBam = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam";
         final File outputVcf = createTempFile("output", ".vcf");
 
         final String[] args = {
                 "-I", repeatedReadsBam,
                 "-tumor", "SM-612V3",
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10018000-10020000",
                 "-O", outputVcf.getAbsolutePath()
         };

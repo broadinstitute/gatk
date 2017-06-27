@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -39,15 +40,15 @@ import java.util.Set;
 
 public final class GATKToolUnitTest extends BaseTest{
 
-    public static final String bqsrTestDir = toolsTestDir + "BQSR/";
+    public static final String bqsrTestDir = TestResources.toolsTestDir + "BQSR/";
 
     public static final String BQSR_WGS_B37_CH20_21_10M_100_CRAM = bqsrTestDir +
             "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.cram";
 
-    public static final String hg19MicroDictFileName = ReferenceUtils.getFastaDictionaryFileName(hg19MicroReference);
-    public static final String hg19MiniDictFileName  = ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference);
-    public static final String v37_chr17DictFileName = ReferenceUtils.getFastaDictionaryFileName(v37_chr17_1Mb_Reference);
-    public static final String b37_20_21DictFile     = ReferenceUtils.getFastaDictionaryFileName(b37_reference_20_21);
+    public static final String hg19MicroDictFileName = ReferenceUtils.getFastaDictionaryFileName(TestResources.hg19MicroReference);
+    public static final String hg19MiniDictFileName  = ReferenceUtils.getFastaDictionaryFileName(TestResources.hg19MiniReference);
+    public static final String v37_chr17DictFileName = ReferenceUtils.getFastaDictionaryFileName(TestResources.v37_chr17_1Mb_Reference);
+    public static final String b37_20_21DictFile     = ReferenceUtils.getFastaDictionaryFileName(TestResources.b37_reference_20_21);
 
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithSequenceDictionary",
@@ -169,11 +170,11 @@ public final class GATKToolUnitTest extends BaseTest{
     public Object[][] sequenceDictionaryTestValuesCompatible() {
 
         return new Object[][] {
-                { v37_chr17DictFileName, "--input", NA12878_chr17_1k_BAM, null, null },
-                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", b37_reference_20_21 },
-                { hg19MiniDictFileName, "--reference", hg19MicroReference, null, null },
-                { hg19MicroDictFileName, "--reference", hg19MiniReference, null, null },
-                { v37_chr17DictFileName, "--reference", v37_chr17_1Mb_Reference, null, null },
+                { v37_chr17DictFileName, "--input", TestResources.NA12878_chr17_1k_BAM, null, null },
+                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", TestResources.b37_reference_20_21 },
+                { hg19MiniDictFileName, "--reference", TestResources.hg19MicroReference, null, null },
+                { hg19MicroDictFileName, "--reference", TestResources.hg19MiniReference, null, null },
+                { v37_chr17DictFileName, "--reference", TestResources.v37_chr17_1Mb_Reference, null, null },
         };
     }
 
@@ -181,10 +182,10 @@ public final class GATKToolUnitTest extends BaseTest{
     public Object[][] sequenceDictionaryTestValuesIncompatible() {
 
         return new Object[][] {
-                { v37_chr17DictFileName, "--input", NA12878_20_21_WGS_bam, null, null },
-                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", v37_chr17_1Mb_Reference },
-                { b37_20_21DictFile, "--reference", hg19MiniReference, null, null },
-                { v37_chr17DictFileName, "--reference", hg19_chr1_1M_Reference, null, null },
+                { v37_chr17DictFileName, "--input", TestResources.NA12878_20_21_WGS_bam, null, null },
+                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", TestResources.v37_chr17_1Mb_Reference },
+                { b37_20_21DictFile, "--reference", TestResources.hg19MiniReference, null, null },
+                { v37_chr17DictFileName, "--reference", TestResources.hg19_chr1_1M_Reference, null, null },
         };
     }
 
@@ -235,12 +236,12 @@ public final class GATKToolUnitTest extends BaseTest{
     @DataProvider
     public Object[][] provideForGetMasterSequenceTest() {
 
-        final String dictFileName = ReferenceUtils.getFastaDictionaryFileName(v37_chr17_1Mb_Reference);
+        final String dictFileName = ReferenceUtils.getFastaDictionaryFileName(TestResources.v37_chr17_1Mb_Reference);
         final SAMSequenceDictionary dict = ReferenceUtils.loadFastaDictionary(new File(dictFileName));
 
         return new Object[][] {
-                { null, NA12878_chr17_1k_BAM, null },
-                { dictFileName, NA12878_chr17_1k_BAM, dict },
+                { null, TestResources.NA12878_chr17_1k_BAM, null },
+                { dictFileName, TestResources.NA12878_chr17_1k_BAM, dict },
         };
     }
 
@@ -271,10 +272,10 @@ public final class GATKToolUnitTest extends BaseTest{
         final SAMSequenceDictionary hg19MicroDict = ReferenceUtils.loadFastaDictionary(new File(hg19MicroDictFileName));
 
         return new Object[][] {
-                { v37_chr17DictFileName, "--input", NA12878_chr17_1k_BAM, null, null, v37_chr17Dict },
-                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", b37_reference_20_21, b37_20_21Dict },
-                { hg19MiniDictFileName, "--reference", hg19MicroReference, null, null, hg19MiniDict },
-                { hg19MicroDictFileName, "--reference", hg19MiniReference, null, null, hg19MicroDict },
+                { v37_chr17DictFileName, "--input", TestResources.NA12878_chr17_1k_BAM, null, null, v37_chr17Dict },
+                { b37_20_21DictFile, "--input", BQSR_WGS_B37_CH20_21_10M_100_CRAM, "--reference", TestResources.b37_reference_20_21, b37_20_21Dict },
+                { hg19MiniDictFileName, "--reference", TestResources.hg19MicroReference, null, null, hg19MiniDict },
+                { hg19MicroDictFileName, "--reference", TestResources.hg19MiniReference, null, null, hg19MicroDict },
         };
     }
 
@@ -304,7 +305,7 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testReadsHeader() throws Exception {
         final GATKTool tool = new TestGATKToolWithReads();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final File bamFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
         final String[] args = {"-I", bamFile.getCanonicalPath()};
         clp.parseArguments(System.out, args);
         tool.onStartup();
@@ -324,7 +325,7 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testFeaturesHeader() throws Exception {
         final TestGATKToolWithFeatures tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test_with_bigHeader.vcf");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test_with_bigHeader.vcf");
         final String[] args = {"--mask", vcfFile.getCanonicalPath()};
         clp.parseArguments(System.out, args);
         tool.onStartup();
@@ -349,7 +350,7 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testAllowLexicographicallySortedVariantHeader() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/lexicographically_sorted_dict.vcf");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/lexicographically_sorted_dict.vcf");
         final String[] args = {"--mask", vcfFile.getCanonicalPath() };
         clp.parseArguments(System.out, args);
 
@@ -371,9 +372,9 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testDisallowLexicographicallySortedVariantHeader_ifClashWithReference() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/lexicographically_sorted_dict.vcf");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/lexicographically_sorted_dict.vcf");
         final String[] args = {"--mask", vcfFile.getCanonicalPath(),
-                "--reference", hg19MiniReference};
+                "--reference", TestResources.hg19MiniReference};
         clp.parseArguments(System.out, args);
 
         // This method throws despite the lexicographically-sorted sequence dictionary in the vcf.
@@ -384,7 +385,7 @@ public final class GATKToolUnitTest extends BaseTest{
     @DataProvider(name="validationStringency")
     public Object[][] validationStringency() {
         return new Object[][]{
-                {NA12878_chr17_1k_CRAM, v37_chr17_1Mb_Reference, 493}
+                {TestResources.NA12878_chr17_1k_CRAM, TestResources.v37_chr17_1Mb_Reference, 493}
         };
     }
 
@@ -395,8 +396,8 @@ public final class GATKToolUnitTest extends BaseTest{
     {
         final TestGATKToolValidationStringency tool = new TestGATKToolValidationStringency();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File bamFile = new File(NA12878_chr17_1k_CRAM);
-        final File refFile = new File(v37_chr17_1Mb_Reference);
+        final File bamFile = new File(TestResources.NA12878_chr17_1k_CRAM);
+        final File refFile = new File(TestResources.v37_chr17_1Mb_Reference);
         final String[] args = {
                 "-I", bamFileName,
                 "-R", referenceFileName,
@@ -430,7 +431,7 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testBestSequenceDictionary_fromReads() throws Exception {
         final GATKTool tool = new TestGATKToolWithReads();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final File bamFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
         final String[] args = {"-I", bamFile.getCanonicalPath()};
         clp.parseArguments(System.out, args);
         tool.onStartup();
@@ -448,8 +449,8 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testBestSequenceDictionary_fromReadsAndReference() throws Exception {
         final GATKTool tool = new TestGATKToolWithReads();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
-        final String fastaFile =   hg19MiniReference;
+        final File bamFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final String fastaFile =   TestResources.hg19MiniReference;
         final String[] args = {"-I", bamFile.getCanonicalPath(),
                                "-R", fastaFile};
         clp.parseArguments(System.out, args);
@@ -467,7 +468,7 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testBestSequenceDictionary_fromVariants() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test_withSequenceDict.vcf");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test_withSequenceDict.vcf");
         final String[] args = {"--mask", vcfFile.getCanonicalPath()};
         clp.parseArguments(System.out, args);
         tool.onStartup();
@@ -496,15 +497,15 @@ public final class GATKToolUnitTest extends BaseTest{
     @DataProvider(name="createVCFWriterData")
     public Object[][] createVCFWriterData() {
         return new Object[][]{
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", false, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, false},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", true, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", false, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", true, false},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.bgz", ".tbi", true, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.gz", ".tbi", false, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.bgz", ".tbi", true, false}
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", false, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, false},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", true, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", false, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", true, false},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.bgz", ".tbi", true, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.gz", ".tbi", false, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.bgz", ".tbi", true, false}
         };
     }
 
@@ -570,9 +571,9 @@ public final class GATKToolUnitTest extends BaseTest{
     @DataProvider(name="createVCFWriterLenientData")
     public Object[][] createVCFWriterLenientData() {
         return new Object[][]{
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", false, true},
-                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, false}
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", false, true},
+                {new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, false}
         };
     }
 
@@ -689,7 +690,7 @@ public final class GATKToolUnitTest extends BaseTest{
     @Test
     public void testGetDefaultToolVCFHeaderLines() throws IOException {
         final TestGATKToolWithFeatures tool = new TestGATKToolWithFeatures();
-        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test_with_bigHeader.vcf");
+        final File vcfFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test_with_bigHeader.vcf");
         final String[] args = {"--mask", vcfFile.getCanonicalPath(), "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "true"};
         tool.instanceMain(args);
 

@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,14 +15,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by David Benjamin on 2/17/17.
  */
 public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File PON_VCFS_DIR = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/createpon/");
+    private static final File PON_VCFS_DIR = new File(TestResources.publicTestDir, "org/broadinstitute/hellbender/tools/mutect/createpon/");
 
     /**
      * In the following test, we have sample1.vcf:
