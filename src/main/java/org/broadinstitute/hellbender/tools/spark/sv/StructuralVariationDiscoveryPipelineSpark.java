@@ -17,12 +17,14 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSp
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import scala.Serializable;
+import scala.Tuple2;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -74,15 +76,17 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
         // gather evidence, run assembly, and align
-        final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList =
+        final Tuple2<List<AlignedAssemblyOrExcuse>, List<EvidenceTargetLink>> alignedAssemblyOrExcuseAndLinkList =
                 FindBreakpointEvidenceSpark
                         .gatherEvidenceAndWriteContigSamFile(ctx, evidenceAndAssemblyArgs, header, getUnfilteredReads(),
                                 outputAssemblyAlignments, localLogger);
-        if (alignedAssemblyOrExcuseList.isEmpty()) return;
+        // todo: when we call imprecise variants don't return here
+        if (alignedAssemblyOrExcuseAndLinkList._1().isEmpty()) return;
 
         // parse the contig alignments and extract necessary information
         final JavaRDD<AlignedContig> parsedAlignments =
-                new InMemoryAlignmentParser(ctx, alignedAssemblyOrExcuseList, header, localLogger).getAlignedContigs();
+                new InMemoryAlignmentParser(ctx, alignedAssemblyOrExcuseAndLinkList._1(), header, localLogger).getAlignedContigs();
+        // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
         // discover variants and write to vcf

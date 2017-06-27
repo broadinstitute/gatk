@@ -16,8 +16,7 @@ public class SVIntegrationTestDataProvider extends CommandLineProgramTest {
     static final File reference_dict = new File(b37_reference_20_21.replace(".fasta", ".dict"));
 
     private static final String THIS_TEST_FOLDER = getTestDataDir() + "/spark/sv/integration";
-    static final String TEST_BAM_LEFT = "src/test/resources/large/SVIntegrationTest.bam";
-    static final String TEST_BAM_RIGHT = TEST_BAM_LEFT;
+    static final String TEST_BAM_NEW = "src/test/resources/large/SVIntegrationTest.bam";
     static final String KMER_KILL_LIST = THIS_TEST_FOLDER + "/dummy.kill.kmers";
     static final String ALIGNER_INDEX_IMG = largeFileTestDir + "human_g1k_v37.20.21.fasta.img";
     static final String TEST_CONTIG_SAM = THIS_TEST_FOLDER + "/hg19_DEL_contigAssemblies.sam";

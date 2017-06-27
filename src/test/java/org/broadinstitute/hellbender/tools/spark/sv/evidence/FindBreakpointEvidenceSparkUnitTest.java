@@ -10,6 +10,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
+import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -24,7 +26,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final SVInterval[] testIntervals =
-            { new SVInterval(1, 43349732, 43350393), new SVInterval(1, 43353208, 43353870) };
+            { new SVInterval(1, 43349482, 43350671), new SVInterval(1, 43353045, 43353870) };
 
     private final String readsFile = largeFileTestDir + "SVIntegrationTest.bam";
     private final String toolDir = getToolTestDataDir();
@@ -41,7 +43,10 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(readsFile, null, null, 0L);
     private final SVReadFilter filter = new SVReadFilter(params);
     private final ReadMetadata readMetadataExpected =
-            new ReadMetadata(Collections.emptySet(), header, params.maxTrackedFragmentLength, reads, filter);
+            new ReadMetadata(Collections.emptySet(), header,
+                                new LibraryStatistics(new IntHistogram.CDF(IntHistogramTest.genLogNormalSample(320, 129, 10000)),
+                                        60000000000L, 600000000L, 3000000000L),
+                new ReadMetadata.PartitionBounds[]{ new ReadMetadata.PartitionBounds(0, 0, 1, 10000)}, 100, 10, 30);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
     private final List<List<BreakpointEvidence>> externalEvidence =
             FindBreakpointEvidenceSpark.readExternalEvidence(null, readMetadataExpected,
@@ -54,7 +59,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     @Test(groups = "spark")
     public void getIntervalsTest() {
         final List<SVInterval> actualIntervals =
-                FindBreakpointEvidenceSpark.getIntervals(params,broadcastMetadata,broadcastExternalEvidence,header,reads,filter);
+                FindBreakpointEvidenceSpark.getIntervalsAndEvidenceTargetLinks(params,broadcastMetadata,broadcastExternalEvidence,header,reads,filter)._1();
         Assert.assertEquals(actualIntervals, expectedIntervalList);
     }
 

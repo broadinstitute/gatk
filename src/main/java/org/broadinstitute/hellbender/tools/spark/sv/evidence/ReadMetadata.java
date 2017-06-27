@@ -150,6 +150,7 @@ public class ReadMetadata {
             final LibraryStatistics stats = statsSerializer.read(kryo, input, LibraryStatistics.class);
             libraryToFragmentStatistics.put(libraryName, stats);
         }
+
     }
 
     private void serialize( final Kryo kryo, final Output output ) {
@@ -187,6 +188,7 @@ public class ReadMetadata {
             output.writeString(entry.getKey());
             statsSerializer.write(kryo, output, entry.getValue());
         }
+
     }
 
     public boolean ignoreCrossContigID( final int contigID ) { return crossContigIgnoreSet.contains(contigID); }
@@ -300,8 +302,8 @@ public class ReadMetadata {
         return readGroupToLibraryMap;
     }
 
-    public static void writeMetadata( final ReadMetadata readMetadata,
-                                      final String filename ) {
+    public static void writeMetadata(final ReadMetadata readMetadata,
+                                     final String filename ) {
         try ( final Writer writer =
                       new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(filename))) ) {
             writer.write("#reads:\t" + readMetadata.getNReads() + "\n");
