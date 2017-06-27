@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -349,7 +350,7 @@ public final class PSScoreUtils {
     }
 
     /**
-     * Reads taxonomy database that has been written using PSUtils.writeKryoTwo()
+     * Reads taxonomy database that has been serialized to a file
      */
     @SuppressWarnings("unchecked")
     public static PSTaxonomyDatabase readTaxonomyDatabase(final String filePath) {
@@ -367,8 +368,8 @@ public final class PSScoreUtils {
     public static void writeScoresFile(final Map<String, PSPathogenTaxonScore> scores,
                                        final PSTree tree, final String filePath) {
         final String header = "tax_id\ttaxonomy\ttype\tname\t" + PSPathogenTaxonScore.outputHeader;
-        try (final PrintStream file = new PrintStream(BucketUtils.createFile(filePath))) {
-            file.println(header);
+        try (final PrintStream printStream = new PrintStream(BucketUtils.createFile(filePath))) {
+            printStream.println(header);
             for (final String key : scores.keySet()) {
                 final String name = tree.getNameOf(key);
                 final String rank = tree.getRankOf(key);
@@ -376,7 +377,10 @@ public final class PSScoreUtils {
                 Collections.reverse(path);
                 final String taxonomy = String.join("|", path);
                 final String line = key + "\t" + taxonomy + "\t" + rank + "\t" + name + "\t" + scores.get(key);
-                file.println(line.replace(" ", "_"));
+                printStream.println(line.replace(" ", "_"));
+            }
+            if (printStream.checkError()) {
+                throw new UserException.CouldNotCreateOutputFile(filePath, new IOException());
             }
         }
     }
