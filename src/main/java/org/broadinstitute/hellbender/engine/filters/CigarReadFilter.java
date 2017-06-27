@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -20,13 +21,22 @@ public class CigarReadFilter extends ReadFilter {
 
     private static final long serialVersionUID = 1L;
 
-    //\*|([0-9]+[H])?([0-9]+[S])?([0-9]+[MIDNPX=])+([0-9]+[S])?([0-9]+[H])?
+    /** Regular Expression {@link Pattern} to validate the {@link CigarReadFilter} pattern as given to this {@link CigarReadFilter}. */
     private static final Pattern validFilterPattern = Pattern.compile (
-            "^\\*$|^\\^?(?:\\d*H)*(?:\\d*S)*(?:\\d*[MIDNPX=%])*(?:\\d*S)*(?:\\d*H)*\\$?$"
+            "\\*$" +
+            "|" +
+            "^\\^?" +
+            "(?:(?:[<>]|[<>]=)?\\d*H)?" +
+            "(?:(?:[<>]|[<>]=)?\\d*S)?" +
+            "(?:(?:[<>]|[<>]=)?\\d*[MIDNPX=*])*" +
+            "(?:(?:[<>]|[<>]=)?\\d*S)?" +
+            "(?:(?:[<>]|[<>]=)?\\d*H)?" +
+            "\\$?$"
     );
 
-    private static final Pattern nextCigarMatchElementPattern = Pattern.compile (
-            "(\\^?\\d*[MIDNPX=%]\\$?)"
+    /** Regular Expression {@link Pattern} to match the next {@link CigarMatchElement} in the description string. */
+    protected static final Pattern nextCigarMatchElementPattern = Pattern.compile (
+            "(\\^?(?:[<>]|[<>]=)?\\d*[SHMIDNPX=*]\\$?)"
     );
 
     private String description;
@@ -141,6 +151,9 @@ public class CigarReadFilter extends ReadFilter {
         }
     }
 
+    /**
+     * The list of CigarMatchElements comprising this {@link CigarReadFilter}.
+     */
     private Collection<CigarMatchElement> matchElementCollection;
 
     // =======================================================
@@ -162,6 +175,10 @@ public class CigarReadFilter extends ReadFilter {
 
     public String getDescription() { return description; }
 
+    /**
+     * Validates the given description and then stores it as {@link CigarReadFilter#description}.
+     * @param description String describing the format of the cigar string on which to filter.
+     */
     public void setDescription(final String description) {
 
         // Before we set our description string, we must make sure it's valid
@@ -214,12 +231,63 @@ public class CigarReadFilter extends ReadFilter {
      * @param match The string representation of a {@link CigarMatchElement}.
      * @return The {@link CigarMatchElement} representation of the given string.
      */
-    private CigarMatchElement createMatchElementFromMatchString(final String match) {
+    private CigarMatchElement createMatchElementFromMatchString(String match) {
         CigarMatchElement e = new CigarMatchElement();
 
-        //TODO: Finish ME!
+//        "(\\^?(:?[<>]|[<>]=)?\\d*[SHMIDNPX=%]\\$?)"
 
-        // We scan through the 
+        // If we have a ^ character, we set the appropriate flag and cut it off the front:
+        if ( match.charAt(0) == '^' ) {
+            e.setAnchoredStart(true);
+            match = match.substring(1);
+        }
+
+        // If we have a $ character, we set the appropriate flag and cut it off the end:
+        if ( match.charAt(match.length()-1) == '$' ) {
+            e.setAnchoredStart(true);
+            match = match.substring(0, match.length()-1);
+        }
+
+        // If we have qualifiers for numerical values:
+        // NOTE: We know these must be at the new start of the string if they exist,
+        //       so we can remove them from the start of the string if they're there.
+        if ( match.charAt(0) == '<' ) {
+            if ( match.charAt(1) == '=' ) {
+                e.setLessThanEqualTo(true);
+                match = match.substring(2);
+            }
+            else {
+                e.setLessThan(true);
+                match = match.substring(1);
+            }
+        }
+        else if ( match.charAt(0) == '>' ) {
+            if ( match.charAt(1) == '=' ) {
+                e.setGreaterThanEqualTo(true);
+                match = match.substring(2);
+            }
+            else {
+                e.setGreaterThan(true);
+                match = match.substring(1);
+            }
+        }
+
+        // At this point, all that's left is a numerical designator at the front of the string
+        // and a character representing the cigar type.
+
+        // Get the cigar type now:
+        if ( match.charAt(match.length()-1) == '*' ) {
+            e.setWildCard(true);
+        }
+        else {
+            e.setOperator( CigarOperator.characterToEnum( match.charAt(match.length()-1)) );
+        }
+        match = match.substring(0, match.length()-1);
+
+        // Now we can just use the rest of the string as a number:
+        if (match.length() > 0) {
+            e.setLength( Integer.valueOf(match) );
+        }
 
         return e;
     }
@@ -241,8 +309,7 @@ public class CigarReadFilter extends ReadFilter {
 
 //     Cigar strings take the (regex) form:
 //
-//          \^*$|([0-9]+[H])?([0-9]+[S])?([0-9]+[MIDNPX=])+([0-9]+[S])?([0-9]+[H])?
-//
+//        \\*$|^\\^?(?:[<>]?=?\\d*H)?(?:[<>]?=?\\d*S)?(?:[<>]?=?\\d*[MIDNPX=%])*(?:[<>]?=?\\d*S)*(?:[<>]?=?\\d*H)*\\$?$
 //        The significance of each character is the following:
 //
 //          M alignment match (can be a sequence match or mismatch)
@@ -279,6 +346,9 @@ public class CigarReadFilter extends ReadFilter {
     public boolean test(GATKRead read) {
 
         //TODO: Go through each cigar read element and see if it matches.
+        String cigarString = read.getCigar().toString();
+
+
 
         return false;
     }

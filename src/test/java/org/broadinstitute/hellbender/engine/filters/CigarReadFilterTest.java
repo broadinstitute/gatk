@@ -9,25 +9,65 @@ public class CigarReadFilterTest {
     @DataProvider
     public Object[][] createCigarFilterStrings(){
 
-        //"\\^*$|\\^(?:\\d*H)?(?:\\d*S)?(?:\\d*[MIDNPX=%])*(?:\\d*S)*(?:\\d*H)*\\$"
-        return new Object[][]{
+        return new Object[][] {
                 {"^", false},
                 {"$", false},
                 {"*", true },
                 {"H", true},
                 {"HS", true},
                 {"SH", true},
+                {"=H", true},
                 {"SHSH", false},
-                {"^", false},
-                {"^", false},
-                {"^", false},
-                {"^", false},
+                {"105H", true},
+                {"329H3S", true},
+                {"329", false},
+                {"^M$", true},
+                {"M", true},
+                {"M%", false},
+                {"M*", true},
+                {"*M", true},
+                {"10P", true},
+                {"=10P", true},
+                {"10P<>34X", false},
+                {"10P<>=34X", false},
+                {"10P=34X", true},
+                {"10P<34X", true},
+                {"10P<=34X", true},
+                {"10P>34X", true},
+                {"10P>=34X", true},
+                {"10P>=34X3S2H", true},
+                {"12H<3S10P>=34X3S2H", true},
+                {"12H<3SH10P>=34X3S2H", false},
+                {"^12H<3S10P>=34X3S2H$", true},
         };
     }
 
     @Test(dataProvider="createCigarFilterStrings")
     public void testValidate(String cigarFilterString, boolean isValid) {
         Assert.assertEquals( CigarReadFilter.validate(cigarFilterString), isValid );
+    }
+
+    @DataProvider
+    public Object[][] createCigarMatchElementStrings() {
+
+//        "(\\^?(?:[<>]|[<>]=)?\\d*[SHMIDNPX=*]\\$?)"
+        return new Object[][] {
+                {"^", false},
+                {"$", false},
+                {"M$", true},
+                {"^*$", true},
+                {"107X$", true},
+                {"=19X", false},
+                {"<=19X", true},
+                {">=19X", true},
+                {">19X", true},
+                {"<19X", true},
+        };
+    }
+
+    @Test(dataProvider="createCigarMatchElementStrings")
+    public void testNextCigarMatchElementPattern(String cigarFilterString, boolean isValid) {
+        Assert.assertEquals( CigarReadFilter.nextCigarMatchElementPattern.matcher(cigarFilterString).matches(), isValid );
     }
 
 }
