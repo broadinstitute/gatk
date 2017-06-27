@@ -170,13 +170,19 @@ public final class HDF5PCACoveragePoNCreationUtils {
      * </p>
      *
      * @param readCounts the input read-counts.
-     * @param targetFactorPercentileThreshold the minimum median count percentile under which targets are not considered useful.
+     * @param targetFactorPercentileThreshold the minimum median count percentile under which targets are not considered useful.  Must be in [0, 100].
      * @return never {@code null}.
      */
     @VisibleForTesting
     static Pair<ReadCountCollection, double[]> subsetReadCountsToUsableTargets(final ReadCountCollection readCounts,
                                                                                final double targetFactorPercentileThreshold, final Logger logger) {
+        ParamUtils.inRange(targetFactorPercentileThreshold, 0., 100., "Percentile must be in [0, 100].");
+
         final double[] targetFactors = calculateTargetFactors(readCounts);
+        if (targetFactorPercentileThreshold == 0.) {
+            return new ImmutablePair<>(readCounts, targetFactors);
+        }
+
         final double threshold = new Percentile(targetFactorPercentileThreshold).evaluate(targetFactors);
         final List<Target> targetByIndex = readCounts.targets();
         final Set<Target> result = IntStream.range(0, targetFactors.length).filter(i -> targetFactors[i] >= threshold)
@@ -200,12 +206,15 @@ public final class HDF5PCACoveragePoNCreationUtils {
      * {@link ReadCountCollectionUtils#removeColumnsWithExtremeMedianCounts},
      * {@link ReadCountCollectionUtils#imputeZeroCountsAsTargetMedians}, and
      * {@link ReadCountCollectionUtils#truncateExtremeCounts}.
+     *
+     * The input {@link ReadCountCollection} should contain proportional coverage.
      */
-    private static ReadCountCollection cleanNormalizedCounts(final ReadCountCollection readCounts, final Logger logger,
-                                                             double maximumPercentageZeroColumns,
-                                                             double maximumPercentageZeroTargets,
-                                                             double extremeColumnMedianCountPercentileThreshold,
-                                                             double countTruncatePercentile) {
+    @VisibleForTesting
+    static ReadCountCollection cleanNormalizedCounts(final ReadCountCollection readCounts, final Logger logger,
+                                                     double maximumPercentageZeroColumns,
+                                                     double maximumPercentageZeroTargets,
+                                                     double extremeColumnMedianCountPercentileThreshold,
+                                                     double countTruncatePercentile) {
         // Remove column and targets with too many zeros and targets with extreme median coverage:
         final int maximumColumnZerosCount = calculateMaximumZerosCount(readCounts.targets().size(), maximumPercentageZeroColumns);
         final int maximumTargetZerosCount = calculateMaximumZerosCount(readCounts.columnNames().size(), maximumPercentageZeroTargets);

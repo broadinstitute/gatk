@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.pon.coverage.pca;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -14,6 +15,7 @@ import org.apache.logging.log4j.spi.AbstractLogger;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
@@ -29,10 +31,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.OptionalInt;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -136,6 +135,19 @@ public final class HDF5PCACoveragePoNCreationUtilsUnitTest extends BaseTest {
             } else {
                 Assert.assertEquals(result.getLeft().targets().indexOf(readCount.targets().get(i)), -1);
             }
+        }
+    }
+
+    @Test
+    public void testCleanNormalizedCountsForRounding() {
+        final List<Target> targets = Arrays.asList(new Target("target_1"), new Target("target_2"), new Target("target_3"));
+        final List<String> columnNames = Arrays.asList("sample_1", "sample_2", "sample_3");
+        final RealMatrix counts = MatrixUtils.createRealMatrix(new double[][]{{0.4999, 0.4999, 0.4999}, {0.4999, 0.4999, 0.4999}, {0.4999, 0.4999, 1.}});
+        final ReadCountCollection rcc = new ReadCountCollection(targets, columnNames, counts);
+        try {
+            HDF5PCACoveragePoNCreationUtils.cleanNormalizedCounts(rcc, NULL_LOGGER, 0., 0.5, 0., 0.);
+        } catch (final UserException.BadInput e) {
+            Assert.fail("Rounding should not be used in HDF5PCACoveragePoNCreationUtils.cleanNormalizedCounts when filtering on maximum percentage of zeros for either targets or samples.");
         }
     }
 
