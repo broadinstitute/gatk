@@ -11,7 +11,7 @@ import java.util.*;
  */
 public final class TargetAnnotationCollection {
 
-    private final EnumMap<TargetAnnotation, String> values = new EnumMap<TargetAnnotation, String>(TargetAnnotation.class);
+    private final EnumMap<TargetAnnotation, String> values = new EnumMap<>(TargetAnnotation.class);
 
     public TargetAnnotationCollection() { }
 

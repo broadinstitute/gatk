@@ -73,14 +73,20 @@ public class TargetWriter extends TableWriter<Target> {
         }
     }
 
+    public static void writeTargetsToFile(final File outputFile, final Collection<Target> targets) {
+        writeTargetsToFile(outputFile, targets, Collections.emptySet());
+    }
+
     /**
      * Utility method that wraps the try. . . catch block of writing targets to file.
      *
      * @param outputFile    file for output
      * @param targets       targets to write to file
+     * @param annotations   annotations to include in the output file
      */
-    public static void writeTargetsToFile(final File outputFile, final Collection<Target> targets) {
-        try (final TargetWriter writer = new TargetWriter(outputFile)) {
+    public static void writeTargetsToFile(final File outputFile, final Collection<Target> targets,
+                                          final Set<TargetAnnotation> annotations) {
+        try (final TargetWriter writer = new TargetWriter(outputFile, annotations)) {
             writer.writeAllRecords(targets);
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile("Could not write output targets file", ex);

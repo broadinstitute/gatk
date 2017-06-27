@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils;
 
-import avro.shaded.com.google.common.annotations.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
