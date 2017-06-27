@@ -102,6 +102,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 new Params(argumentCollection.kSize, argumentCollection.maxDUSTScore,
                         argumentCollection.minEvidenceMapQ,
                         argumentCollection.minEvidenceMatchLength, argumentCollection.maxIntervalCoverage,
+                        argumentCollection.maxIntervalLength, argumentCollection.splitIntervalMinOverlap,
                         argumentCollection.minEvidenceWeight, argumentCollection.minCoherentEvidenceWeight,
                         argumentCollection.minKmersPerInterval,
                         argumentCollection.cleanerMaxIntervals, argumentCollection.cleanerMinKmerCount,
@@ -681,12 +682,45 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         final List<SVInterval> intervals = new ArrayList<>(allEvidence.size());
         while ( evidenceIterator.hasNext() ) {
-            intervals.add(evidenceIterator.next().getLocation());
+            //intervals.add(evidenceIterator.next().getLocation());
+            intervals.addAll( splitInterval( evidenceIterator.next().getLocation(), params ) );
         }
 
         evidenceRDD.unpersist();
 
         return intervals;
+    }
+
+    /** Split SVInterval into length-numIntervals List<SVInterval> with requested overlap **/
+    public static List<SVInterval> splitInterval( final SVInterval interval, final Params params ) {
+        List<SVInterval> splitIntervals;
+        final int originalLen = interval.getLength();
+        if( originalLen <= params.maxIntervalLength ) {
+            splitIntervals = new java.util.ArrayList<SVInterval>();
+            splitIntervals.add(interval);
+        }
+        else {
+            // Split interval into numIntervals SVIntervals. Nominally each has length exactly equal to maxLen, and
+            // overlap at least equal to requested amount. Matching condition, up to rounding error:
+            //     originalLen ~ maxLen * numIntervals - overlapLen * (numIntervals - 1)
+            final int numIntervals = (int)Math.ceil( (originalLen - params.splitIntervalMinOverlap)
+                    / (double)(params.maxIntervalLength - params.splitIntervalMinOverlap ) );
+            // If the interval is *slightly* larger than params.maxIntervalLength, you may end up with an absurd amount
+            // of overlap. In this case, shorten the split intervals a bit
+            final int maxOverlap = Math.max( params.maxIntervalLength / 3, params.splitIntervalMinOverlap );
+            final int overlap = (numIntervals * params.maxIntervalLength - originalLen) / (numIntervals - 1);
+            final int splitIntervalLen = (numIntervals == 2 && overlap > maxOverlap) ?
+                    (originalLen + maxOverlap) / 2:
+                    params.maxIntervalLength;
+            // Have numIntervals and splitIntervalLen, so make the intervals
+            final double startShift = (originalLen - splitIntervalLen) / (double)(numIntervals - 1);
+            splitIntervals =
+                    java.util.stream.IntStream.range(0, numIntervals)
+                            .map( (idx) -> interval.getStart() + (int)Math.round( startShift * (double)idx ) )
+                            .mapToObj( (startIdx) -> new SVInterval( interval.getContig(), startIdx, startIdx + splitIntervalLen ) )
+                            .collect( java.util.stream.Collectors.toList() );
+        }
+        return splitIntervals;
     }
 
     private static List<BreakpointEvidence> collectAllEvidence( final JavaRDD<BreakpointEvidence> evidenceRDD,
@@ -756,6 +790,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public final int minEvidenceMapQ;
         public final int minEvidenceMatchLength;
         public final int maxIntervalCoverage;
+        public final int maxIntervalLength;
+        public final int splitIntervalMinOverlap;
         public final int minEvidenceWeight;
         public final int minCoherentEvidenceWeight;
         public final int minKmersPerInterval;
@@ -775,6 +811,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             minEvidenceMapQ = 20;                   // minimum map quality for evidential reads
             minEvidenceMatchLength = 45;            // minimum match length
             maxIntervalCoverage = 1000;             // maximum coverage on breakpoint interval
+            maxIntervalLength = 1500;               // maximum length for interval before splitting it
+            splitIntervalMinOverlap = 500;          // minimum amount of overlap for intervals after splitting
             minEvidenceWeight = 15;                  // minimum number of evidentiary reads in called cluster
             minCoherentEvidenceWeight = 7;           // minimum number of evidentiary reads in a cluster that all point to the same target locus
             minKmersPerInterval = 20;               // minimum number of good kmers in a valid interval
@@ -791,6 +829,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         public Params( final int kSize, final int maxDUSTScore, final int minEvidenceMapQ,
                        final int minEvidenceMatchLength, final int maxIntervalCoverage,
+                       final int maxIntervalLength, final int splitIntervalMinOverlap,
                        final int minEvidenceWeight, final int minCoherentEvidenceWeight,
                        final int minKmersPerInterval, final int cleanerMaxIntervals, final int cleanerMinKmerCount,
                        final int cleanerMaxKmerCount, final int cleanerKmersPerPartitionGuess,
@@ -801,6 +840,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.minEvidenceMapQ = minEvidenceMapQ;
             this.minEvidenceMatchLength = minEvidenceMatchLength;
             this.maxIntervalCoverage = maxIntervalCoverage;
+            this.maxIntervalLength = maxIntervalLength;
+            this.splitIntervalMinOverlap = splitIntervalMinOverlap;
             this.minEvidenceWeight = minEvidenceWeight;
             this.minCoherentEvidenceWeight = minCoherentEvidenceWeight;
             this.minKmersPerInterval = minKmersPerInterval;
