@@ -3,6 +3,7 @@ sudo: required
 dist: trusty
 git:
   depth: 9999999
+  lfs_skip_smudge: true
 jdk:
 - openjdk8
 env:
@@ -52,13 +53,18 @@ cache:
     - $HOME/gcloud/
     - $HOME/site-library
 before_install:
-#setup google stuff
+#setup google cloud and github authentication
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
     openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
     scripts/install_gcloud.sh;
     printf 'y\n' | $GCLOUD/gcloud components update app;
     $GCLOUD/gcloud config set project broad-dsde-dev;
     $GCLOUD/gcloud auth activate-service-account --key-file servicekey.json;
+    openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
+    chmod 600 ~/.ssh/id_rsa;
+    echo "Testing github authentication:";
+    ssh -T git@github.com;
+    echo "Done testing github authentication";  
   fi
 #install R
 - if [[ $TEST_DOCKER != true ]]; then
