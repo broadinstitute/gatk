@@ -7,6 +7,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -45,22 +46,23 @@ public final class PSBwaUtils {
      * Returns list of sequence names that were aligned to at least once in the reads
      */
     static List<String> getAlignedSequenceNames(final JavaRDD<GATKRead> reads) {
-        return reads.flatMap(read -> {
-            if (read.isUnmapped() || read.getAssignedContig().equals("*")) Collections.emptySet().iterator();
-            final Set<String> sequenceNames;
-            if (read.hasAttribute("SA")) {
-                final String[] saTokens = read.getAttributeAsString("SA").split(";");
-                sequenceNames = new HashSet<>(1 + saTokens.length);
-                sequenceNames.add(read.getAssignedContig());
-                for (final String token : saTokens) {
-                    final String[] alignmentTokens = token.split(",", 1);
-                    sequenceNames.add(alignmentTokens[0]);
-                }
-            } else {
-                sequenceNames = Collections.singleton(read.getAssignedContig());
-            }
-            return sequenceNames.iterator();
-        }).filter(Objects::nonNull).distinct().collect();
+        return reads.flatMap(PSBwaUtils::getSequenceNames).distinct().collect();
+    }
+
+    /**
+     * Returns set of sequence names of the read
+     */
+    private static Iterator<String> getSequenceNames(final GATKRead read) {
+        if (read.isUnmapped() || read.getAssignedContig().equals("*")) return Collections.emptyIterator();
+        if (!read.hasAttribute("SA")) return Collections.singleton(read.getAssignedContig()).iterator();
+        final String[] saTokens = read.getAttributeAsString("SA").split(";");
+        final Set<String> sequenceNames = new HashSet<>(SVUtils.hashMapCapacity(1 + saTokens.length));
+        sequenceNames.add(read.getAssignedContig());
+        for (final String token : saTokens) {
+            final String[] alignmentTokens = token.split(",", 1);
+            sequenceNames.add(alignmentTokens[0]);
+        }
+        return sequenceNames.iterator();
     }
 
 }

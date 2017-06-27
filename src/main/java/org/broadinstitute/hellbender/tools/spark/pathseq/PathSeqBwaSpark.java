@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
@@ -22,7 +23,8 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(summary = "Aligns reads to a reference using Bwa-mem. This is a specialized version of " +
@@ -31,6 +33,7 @@ import java.util.stream.Collectors;
         "order to increase parallelism.",
         oneLineSummary = "Aligns reads to reference using Bwa-mem",
         programGroup = SparkProgramGroup.class)
+@BetaFeature
 public final class PathSeqBwaSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
@@ -83,6 +86,10 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         //Only retain header sequences that were aligned to
         reads.cache();
         final List<String> usedSequences = PSBwaUtils.getAlignedSequenceNames(reads);
+        usedSequences.stream().forEach(seqName -> {
+            if (header.getSequence(seqName) == null)
+                logger.warn("One or more reads are aligned to sequence " + seqName + " but it is not in the header");
+        });
         final List<SAMSequenceRecord> usedSequenceRecords = usedSequences.stream()
                 .map(seqName -> header.getSequence(seqName))
                 .filter(Objects::nonNull)
