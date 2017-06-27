@@ -462,6 +462,11 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
                     gatkDocDir.getAbsolutePath(),
                     it.name));
         }
+        copy {
+            from('src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates')
+            include 'gatkDoc.css'
+            into gatkDocDir
+        }
     }
     source = sourceSets.main.allJava
 
