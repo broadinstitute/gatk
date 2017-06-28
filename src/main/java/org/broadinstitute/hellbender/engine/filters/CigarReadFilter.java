@@ -28,17 +28,17 @@ public class CigarReadFilter extends ReadFilter {
             "\\*$" +
             "|" +
             "^\\^?" +
-            "(?:(?:[<>]|[<>]=)?\\d*H)?" +
-            "(?:(?:[<>]|[<>]=)?\\d*S)?" +
-            "(?:(?:[<>]|[<>]=)?\\d*[MIDNPX=*])*" +
-            "(?:(?:[<>]|[<>]=)?\\d*S)?" +
-            "(?:(?:[<>]|[<>]=)?\\d*H)?" +
+            "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*H)*" +
+            "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*S)*" +
+            "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*[MIDNPX=*])*" +
+            "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*S)*" +
+            "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*H)*" +
             "\\$?$"
     );
 
     /** Regular Expression {@link Pattern} to match the next {@link CigarMatchElement} in the description string. */
     protected static final Pattern nextCigarMatchElementPattern = Pattern.compile (
-            "(\\^?(?:[<>]|[<>]=)?\\d*[SHMIDNPX=*]\\$?)"
+            "(\\^?(?:[<>]\\d+|[<>]=\\d+)?\\d*[SHMIDNPX=*]\\$?)"
     );
 
     private String description;
