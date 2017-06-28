@@ -24,7 +24,7 @@ public class CigarReadFilter extends ReadFilter {
 
     /** Regular Expression {@link Pattern} to validate the {@link CigarReadFilter} pattern as given to this {@link CigarReadFilter}. */
     private static final Pattern validFilterPattern = Pattern.compile (
-            "\\*$" +
+            "^\\*$" +
             "|" +
             "^\\^?" +
             "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*H)*" +
@@ -40,7 +40,8 @@ public class CigarReadFilter extends ReadFilter {
             "(\\^?(?:[<>]\\d+|[<>]=\\d+)?\\d*[SHMIDNPX=*]\\$?)"
     );
 
-    private String description;
+    // Set the default description to be completely permissive.
+    private String description = "*";
 
     /**
      * The list of CigarMatchElements comprising this {@link CigarReadFilter}.
