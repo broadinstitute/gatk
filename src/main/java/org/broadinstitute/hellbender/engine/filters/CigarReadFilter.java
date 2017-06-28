@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -43,126 +42,10 @@ public class CigarReadFilter extends ReadFilter {
 
     private String description;
 
-    // =======================================================
-
-    /**
-     * Class to hold a single Cigar character (with modifiers).
-     */
-    private static class CigarMatchElement {
-
-        private CigarOperator operator          = null;
-
-        private int length                      = -1;
-
-        private boolean lessThan                = false;
-        private boolean lessThanEqualTo         = false;
-        private boolean greaterThan             = false;
-        private boolean greaterThanEqualTo      = false;
-
-        private boolean anchoredStart           = false;
-        private boolean anchoredEnd             = false;
-
-        private boolean isWildCard              = false;
-        private boolean isUnavailable           = false;
-
-        public CigarMatchElement() {}
-
-        public CigarMatchElement(final CigarOperator operator)
-        {
-            this.operator = operator;
-        }
-
-        public boolean requiresLength() { return length != -1; }
-
-        public CigarOperator getOperator() {
-            return operator;
-        }
-
-        public void setOperator(CigarOperator operator) {
-            this.operator = operator;
-        }
-
-        public int getLength() {
-            return length;
-        }
-
-        public void setLength(int length) {
-            this.length = length;
-        }
-
-        public boolean isLessThan() {
-            return lessThan;
-        }
-
-        public void setLessThan(boolean lessThan) {
-            this.lessThan = lessThan;
-        }
-
-        public boolean isLessThanEqualTo() {
-            return lessThanEqualTo;
-        }
-
-        public void setLessThanEqualTo(boolean lessThanEqualTo) {
-            this.lessThanEqualTo = lessThanEqualTo;
-        }
-
-        public boolean isGreaterThan() {
-            return greaterThan;
-        }
-
-        public void setGreaterThan(boolean greaterThan) {
-            this.greaterThan = greaterThan;
-        }
-
-        public boolean isGreaterThanEqualTo() {
-            return greaterThanEqualTo;
-        }
-
-        public void setGreaterThanEqualTo(boolean greaterThanEqualTo) {
-            this.greaterThanEqualTo = greaterThanEqualTo;
-        }
-
-        public boolean isAnchoredStart() {
-            return anchoredStart;
-        }
-
-        public void setAnchoredStart(boolean anchoredStart) {
-            this.anchoredStart = anchoredStart;
-        }
-
-        public boolean isAnchoredEnd() {
-            return anchoredEnd;
-        }
-
-        public void setAnchoredEnd(boolean anchoredEnd) {
-            this.anchoredEnd = anchoredEnd;
-        }
-
-        public boolean isWildCard() {
-            return isWildCard;
-        }
-
-        public void setWildCard(boolean wildCard) {
-            isWildCard = wildCard;
-        }
-
-        public boolean isUnavailable() {
-            return isUnavailable;
-        }
-
-        public void setUnavailable(boolean unavailable) {
-            isUnavailable = unavailable;
-        }
-    }
-
     /**
      * The list of CigarMatchElements comprising this {@link CigarReadFilter}.
      */
     private Collection<CigarMatchElement> matchElementCollection;
-
-    public Collection<CigarMatchElement> getMatchElementCollection() {
-        return matchElementCollection;
-    }
 
     // =======================================================
 
@@ -179,6 +62,10 @@ public class CigarReadFilter extends ReadFilter {
      */
     public CigarReadFilter(final String description) {
         this.setDescription(description);
+    }
+
+    public Collection<CigarMatchElement> getMatchElementCollection() {
+        return matchElementCollection;
     }
 
     public String getDescription() { return description; }
@@ -476,5 +363,117 @@ public class CigarReadFilter extends ReadFilter {
         // If we get out of all the checks and have gotten to the end
         // of our cigar string and our match string, then we're good to go:
         return true;
+    }
+
+    // =======================================================
+
+    /**
+     * Class to hold a single Cigar character (with modifiers).
+     */
+    private static class CigarMatchElement {
+
+        private CigarOperator operator          = null;
+
+        private int length                      = -1;
+
+        private boolean lessThan                = false;
+        private boolean lessThanEqualTo         = false;
+        private boolean greaterThan             = false;
+        private boolean greaterThanEqualTo      = false;
+
+        private boolean anchoredStart           = false;
+        private boolean anchoredEnd             = false;
+
+        private boolean isWildCard              = false;
+        private boolean isUnavailable           = false;
+
+        public CigarMatchElement() {}
+
+        public CigarMatchElement(final CigarOperator operator)
+        {
+            this.operator = operator;
+        }
+
+        public boolean requiresLength() { return length != -1; }
+
+        public CigarOperator getOperator() {
+            return operator;
+        }
+
+        public void setOperator(CigarOperator operator) {
+            this.operator = operator;
+        }
+
+        public int getLength() {
+            return length;
+        }
+
+        public void setLength(int length) {
+            this.length = length;
+        }
+
+        public boolean isLessThan() {
+            return lessThan;
+        }
+
+        public void setLessThan(boolean lessThan) {
+            this.lessThan = lessThan;
+        }
+
+        public boolean isLessThanEqualTo() {
+            return lessThanEqualTo;
+        }
+
+        public void setLessThanEqualTo(boolean lessThanEqualTo) {
+            this.lessThanEqualTo = lessThanEqualTo;
+        }
+
+        public boolean isGreaterThan() {
+            return greaterThan;
+        }
+
+        public void setGreaterThan(boolean greaterThan) {
+            this.greaterThan = greaterThan;
+        }
+
+        public boolean isGreaterThanEqualTo() {
+            return greaterThanEqualTo;
+        }
+
+        public void setGreaterThanEqualTo(boolean greaterThanEqualTo) {
+            this.greaterThanEqualTo = greaterThanEqualTo;
+        }
+
+        public boolean isAnchoredStart() {
+            return anchoredStart;
+        }
+
+        public void setAnchoredStart(boolean anchoredStart) {
+            this.anchoredStart = anchoredStart;
+        }
+
+        public boolean isAnchoredEnd() {
+            return anchoredEnd;
+        }
+
+        public void setAnchoredEnd(boolean anchoredEnd) {
+            this.anchoredEnd = anchoredEnd;
+        }
+
+        public boolean isWildCard() {
+            return isWildCard;
+        }
+
+        public void setWildCard(boolean wildCard) {
+            isWildCard = wildCard;
+        }
+
+        public boolean isUnavailable() {
+            return isUnavailable;
+        }
+
+        public void setUnavailable(boolean unavailable) {
+            isUnavailable = unavailable;
+        }
     }
 }
