@@ -44,9 +44,9 @@ public final class PSFilter implements AutoCloseable {
 
     public PSFilter(final JavaSparkContext ctx, final PSFilterArgumentCollection filterArgs, final JavaRDD<GATKRead> inputReads,
                     final SAMFileHeader header) {
-        Utils.nonNull(ctx);
-        Utils.nonNull(filterArgs);
-        Utils.nonNull(inputReads);
+        Utils.nonNull(ctx, "JavaSparkContext cannot be null");
+        Utils.nonNull(filterArgs, "Filter arguments cannot be null");
+        Utils.nonNull(inputReads, "Input reads cannot be null");
         this.ctx = ctx;
         this.filterArgs = filterArgs;
         this.metricsState = initializeMetics(filterArgs.metricsFileUri);
@@ -71,12 +71,18 @@ public final class PSFilter implements AutoCloseable {
         newRead.setName(read.getName());
         newRead.setBases(read.getBases());
         newRead.setBaseQualities(read.getBaseQualities());
+        if (read.isReverseStrand()) {
+            SequenceUtil.reverseComplement(newRead.getBases());
+            SequenceUtil.reverseQualities(newRead.getBaseQualities());
+        }
         newRead.setIsUnmapped();
         newRead.setIsPaired(read.isPaired());
-        if (read.isFirstOfPair()) {
-            newRead.setIsFirstOfPair();
-        } else if (read.isSecondOfPair()) {
-            newRead.setIsSecondOfPair();
+        if (read.isPaired()) {
+            if (read.isFirstOfPair()) {
+                newRead.setIsFirstOfPair();
+            } else if (read.isSecondOfPair()) {
+                newRead.setIsSecondOfPair();
+            }
         }
         final String readGroup = read.getReadGroup();
         if (readGroup != null) {
@@ -102,7 +108,7 @@ public final class PSFilter implements AutoCloseable {
     }
 
     /**
-     * Maps partition to a Tuple of two Lists, the first containing the paired reads, the second containing unpaired
+     * Repartitions reads so that reads with the same name will be on the same partition
      */
     static JavaRDD<GATKRead> repartitionPairedReads(final JavaRDD<GATKRead> reads) {
         //Shuffle reads into partitions by read name hash code
@@ -161,24 +167,10 @@ public final class PSFilter implements AutoCloseable {
     @VisibleForTesting
     static Tuple2<Long, GATKRead> canonicalizeRead(final GATKRead read) {
         final byte[] bases = read.getBases();
-        final long hashForward = fnvByteArray64(1099511628211L, bases);
+        final long hashForward = SVUtils.fnvByteArray64(bases);
         SequenceUtil.reverseComplement(bases);
-        final long hashReverse = fnvByteArray64(1099511628211L, bases);
+        final long hashReverse = SVUtils.fnvByteArray64(bases);
         return new Tuple2<>(Math.min(hashForward, hashReverse), read);
-    }
-
-    /**
-     * 64-bit FNV-1a hash for byte arrays
-     */
-    private static long fnvByteArray64(long start, final byte[] toHash) {
-        for (int i = 0; i < toHash.length; i += 8) {
-            long val = 0;
-            for (int j = 0; j < 8 && i + j < toHash.length; j++) {
-                val = (val << 8) | toHash[i + j];
-            }
-            start = SVUtils.fnvLong64(start, val);
-        }
-        return start;
     }
 
     @SuppressWarnings("unchecked")
@@ -254,6 +246,10 @@ public final class PSFilter implements AutoCloseable {
             reads = filterDuplicateSequences(reads);
             recordReadCountMetric(reads, "duplicates");
         }
+
+        //Sets pairedness flags properly
+        reads = setPairFlags(reads, filterArgs.readsPerPartition);
+        reads = clearAllAlignments(reads, header);
 
         //Unset paired read flags for reads that are not paired
         final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.readsPerPartition);

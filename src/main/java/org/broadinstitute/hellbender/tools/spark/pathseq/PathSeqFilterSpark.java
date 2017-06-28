@@ -86,14 +86,13 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
             final JavaRDD<GATKRead> unpairedReads = result._2;
 
             if (!pairedReads.isEmpty()) {
-                final SAMFileHeader.SortOrder oldSortOrder = header.getSortOrder();
                 header.setSortOrder(SAMFileHeader.SortOrder.queryname);
                 writeReads(ctx, outputPath + ".paired.bam", pairedReads, header);
-                header.setSortOrder(oldSortOrder);
             } else {
                 logger.info("No paired reads to write - BAM will not be written.");
             }
             if (!unpairedReads.isEmpty()) {
+                header.setSortOrder(SAMFileHeader.SortOrder.unsorted);
                 writeReads(ctx, outputPath + ".unpaired.bam", unpairedReads, header);
             } else {
                 logger.info("No unpaired reads to write - BAM will not be written.");

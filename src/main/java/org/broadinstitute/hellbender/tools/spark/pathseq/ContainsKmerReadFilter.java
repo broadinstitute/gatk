@@ -15,11 +15,12 @@ public class ContainsKmerReadFilter extends ReadFilter {
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
     private static final long serialVersionUID = 1L;
-    private static PSKmerCollection kmerLib = null;
+    private static volatile PSKmerCollection kmerLib = null; //Must be volatile for proper initialization
     private final int kSize, kmerCountThreshold;
 
     public ContainsKmerReadFilter(final String kmerLibPath, final int kmerCountThreshold) {
         this.kmerCountThreshold = kmerCountThreshold;
+        //Double-checked locking pattern for lazy initialization of kmerLib
         if (kmerLib == null) {
             synchronized (ContainsKmerReadFilter.class) {
                 if (kmerLib == null) {

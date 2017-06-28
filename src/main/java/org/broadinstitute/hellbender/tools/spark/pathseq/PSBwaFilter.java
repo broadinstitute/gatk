@@ -2,18 +2,16 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Tuple2;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Aligns using BWA and filters out reads above the minimum coverage and identity.
@@ -54,30 +52,37 @@ public class PSBwaFilter {
         while (itr.hasNext()) {
             reads.add(itr.next());
         }
+
         final int numReads = reads.size();
         if (bPaired && (numReads & 1) != 0) {
             throw new GATKException("Cannot do paired alignment with an odd number of reads");
         }
+        if (numReads == 0) {
+            return Collections.emptyIterator();
+        }
 
         //Do alignment
-        final List<byte[]> seqs = reads.stream().map(GATKRead::getBases).collect(Collectors.toList());
-        final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(seqs);
-        final List<Tuple2<GATKRead, List<BwaMemAlignment>>> results = new ArrayList<>(numReads);
-        for (int i = 0; i < numReads; i++) {
-            results.add(new Tuple2<>(reads.get(i), alignments.get(i)));
-        }
+        final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(reads, GATKRead::getBases);
 
         //Filter reads if they map sufficiently well to the reference
         final HostAlignmentReadFilter hostFilter = new HostAlignmentReadFilter(minCov, minIdent);
-        return Utils.stream(results).filter(item -> {
-            final List<BwaMemAlignment> alignmentList = item._2;
-            for (final BwaMemAlignment alignment : alignmentList) {
-                if (alignment.getCigar() != null && !alignment.getCigar().isEmpty()
-                        && !hostFilter.test(TextCigarCodec.decode(alignment.getCigar()), alignment.getNMismatches())) {
-                    return false;
-                }
+        final ArrayList<GATKRead> results = new ArrayList<>(numReads);
+        for (int i = 0; i < numReads; i++) {
+            if (testReadAlignments(hostFilter, alignments.get(i))) {
+                results.add(reads.get(i));
             }
-            return true;
-        }).map(Tuple2::_1).iterator();
+        }
+        results.trimToSize();
+        return results.iterator();
+    }
+
+    private static boolean testReadAlignments(final HostAlignmentReadFilter hostFilter, final List<BwaMemAlignment> alignmentList) {
+        for (final BwaMemAlignment alignment : alignmentList) {
+            if (alignment.getCigar() != null && !alignment.getCigar().isEmpty()
+                    && !hostFilter.test(TextCigarCodec.decode(alignment.getCigar()), alignment.getNMismatches())) {
+                return false;
+            }
+        }
+        return true;
     }
 }

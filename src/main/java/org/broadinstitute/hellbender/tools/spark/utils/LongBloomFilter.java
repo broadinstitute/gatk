@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -88,7 +89,7 @@ public final class LongBloomFilter {
         buckets[numBucketArrays - 1] = input.readBytes(finalBucketArraySize);
 
         if (logger.isDebugEnabled()) {
-            final long X = countBits();
+            final long X = countBits(buckets);
             final long estimatedSize = estimateSize(X);
             logger.debug("Deserialized: totalBits : " + totalBits + ", totalBuckets: " + totalBuckets + ", numHashes: " + numHashes + ", bits set: " + X + ", approximate size: " + estimatedSize);
         }
@@ -114,15 +115,16 @@ public final class LongBloomFilter {
         return Math.pow(1.0 - Math.pow(1.0 - (1.0/totalBits), numHashes * numElements), numHashes);
     }
 
-    private long countBits() {
+    @VisibleForTesting
+    static long countBits(byte[][] arr) {
         final int[] bitCountMap = new int[256];
         for (int b = 0; b < 256; b++) {
             bitCountMap[b] = Integer.bitCount((byte)b);
         }
         long sum = 0;
-        for (int i = 0; i < numBucketArrays; i++) {
-            for (final byte b : buckets[i]) {
-                sum += bitCountMap[0 & b];
+        for (int i = 0; i < arr.length; i++) {
+            for (final byte b : arr[i]) {
+                sum += bitCountMap[b];
             }
         }
         return sum;

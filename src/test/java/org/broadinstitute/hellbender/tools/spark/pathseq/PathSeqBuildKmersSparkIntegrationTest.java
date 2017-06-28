@@ -63,7 +63,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
         }
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addFileArgument("referencePath", ref);
-        args.addArgument("bloomFalsePositiveProbability", new Double(BLOOM_FPP).toString());
+        args.addArgument("bloomFalsePositiveProbability", Double.toString(BLOOM_FPP));
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
 

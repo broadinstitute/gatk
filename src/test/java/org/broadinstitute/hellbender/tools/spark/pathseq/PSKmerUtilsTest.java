@@ -80,7 +80,7 @@ public class PSKmerUtilsTest extends CommandLineProgramTest {
         for (int i = 0; i < listSize; i++) {
             final List<Long> longList = rand.longs(listSize).map(val -> val >>> 2).boxed().collect(Collectors.toList());
             longArrays.add(longList.stream().mapToLong(Long::longValue).toArray());
-            truthSet.addAll(longList.stream().collect(Collectors.toList()));
+            truthSet.addAll(longList);
         }
         final LargeLongHopscotchSet result = PSKmerUtils.longArrayCollectionToSet(longArrays, PSKmerUtils.longArrayCollectionSize(longArrays));
 
@@ -98,7 +98,7 @@ public class PSKmerUtilsTest extends CommandLineProgramTest {
         for (int i = 0; i < listSize; i++) {
             final List<Long> longList = rand.longs(listSize).map(val -> val >>> 2).boxed().collect(Collectors.toList());
             longArrays.add(longList.stream().mapToLong(Long::longValue).toArray());
-            truthSet.addAll(longList.stream().collect(Collectors.toList()));
+            truthSet.addAll(longList);
         }
 
         final double fpp = 0.5;

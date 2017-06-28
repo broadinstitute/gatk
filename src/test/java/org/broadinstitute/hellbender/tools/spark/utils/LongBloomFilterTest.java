@@ -132,4 +132,22 @@ public final class LongBloomFilterTest {
             Assert.assertTrue(bloomFilter2.contains(val));
         }
     }
+
+    @Test
+    void countBitsTest() {
+        final byte[][] arr = new byte[10][10];
+        Assert.assertEquals(0, LongBloomFilter.countBits(arr));
+
+        arr[2][5] = 1;
+        Assert.assertEquals(1, LongBloomFilter.countBits(arr));
+
+        arr[3][0] = 3;
+        Assert.assertEquals(3, LongBloomFilter.countBits(arr));
+
+        arr[1][9] = 4;
+        Assert.assertEquals(4, LongBloomFilter.countBits(arr));
+
+        arr[1][8] = 65;
+        Assert.assertEquals(6, LongBloomFilter.countBits(arr));
+    }
 }

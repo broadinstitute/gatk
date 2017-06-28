@@ -43,9 +43,7 @@ public final class PSUtils {
      */
     public static void logItemizedWarning(final Logger logger, final Collection<String> items, final String warning) {
         if (!items.isEmpty()) {
-            String str = "";
-            for (final String acc : items) str += acc + ", ";
-            str = str.substring(0, str.length() - 2);
+            final String str = String.join(", ", items);
             logger.warn(warning + " : " + str);
         }
     }

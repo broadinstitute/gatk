@@ -56,7 +56,7 @@ public class PSKmerUtils {
             //Kmerize the record
             final byte[] bases = records.get(recName).getBases();
             final long[] list = SVKmerizer.stream(bases, kSize, kSpace, new SVKmerShort(kSize))
-                    .mapToLong(kmer -> new Long(PSKmerCollection.canonicalizeAndMask((SVKmerShort) kmer, kSize, mask)))
+                    .mapToLong(kmer -> PSKmerCollection.canonicalizeAndMask((SVKmerShort) kmer, kSize, mask))
                     .toArray();
 
             //Add kmers to the result
@@ -113,7 +113,7 @@ public class PSKmerUtils {
 
     public static void writeKmerSet(final String uri, final PSKmerSet set) {
         String filePath = uri;
-        if (HOPSCOTCH_SET_EXTENSION != null && !uri.toLowerCase().endsWith(HOPSCOTCH_SET_EXTENSION.toLowerCase())) {
+        if (!uri.toLowerCase().endsWith(HOPSCOTCH_SET_EXTENSION.toLowerCase())) {
             filePath = filePath + HOPSCOTCH_SET_EXTENSION;
         }
         writeKryoObject(set, filePath);
@@ -121,7 +121,7 @@ public class PSKmerUtils {
 
     public static void writeKmerBloomFilter(final String uri, final PSKmerBloomFilter bloomFilter) {
         String filePath = uri;
-        if (BLOOM_FILTER_EXTENSION != null && !uri.toLowerCase().endsWith(BLOOM_FILTER_EXTENSION.toLowerCase())) {
+        if (!uri.toLowerCase().endsWith(BLOOM_FILTER_EXTENSION.toLowerCase())) {
             filePath = filePath + BLOOM_FILTER_EXTENSION;
         }
         writeKryoObject(bloomFilter, filePath);

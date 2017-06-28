@@ -68,11 +68,11 @@ public class PSFilterTest extends CommandLineProgramTest {
     final static List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
         final List<GATKRead> readList1 = getReadsFromFastq(fastqFile1);
         final List<GATKRead> readList2 = getReadsFromFastq(fastqFile2);
-        readList1.stream().forEach(read -> {
+        readList1.forEach(read -> {
             read.setIsPaired(true);
             read.setIsFirstOfPair();
         });
-        readList2.stream().forEach(read -> {
+        readList2.forEach(read -> {
             read.setIsPaired(true);
             read.setIsSecondOfPair();
         });

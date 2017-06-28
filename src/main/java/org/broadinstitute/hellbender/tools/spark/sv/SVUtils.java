@@ -192,6 +192,25 @@ public final class SVUtils {
     }
 
     /**
+     * 64-bit FNV-1a hash for byte arrays
+     */
+    public static long fnvByteArray64(final byte[] toHash) {
+        return fnvByteArray64(1099511628211L, toHash);
+    }
+
+    public static long fnvByteArray64(long start, final byte[] toHash) {
+        for (int i = 0; i < toHash.length; i += 8) {
+            long val = 0;
+            for (int j = 0; j < 8 && i + j < toHash.length; j++) {
+                val = (val << 8) | toHash[i + j];
+            }
+            start = fnvLong64(start, val);
+        }
+        return start;
+    }
+
+
+    /**
      * Create an RDD from the reference sequences.
      * The reference sequences are transformed into a single, large collection of byte arrays. The collection is then
      * parallelized into an RDD.
