@@ -70,4 +70,33 @@ public class CigarReadFilterTest {
         Assert.assertEquals( CigarReadFilter.nextCigarMatchElementPattern.matcher(cigarFilterString).matches(), isValid );
     }
 
+    @Test
+    public void testSetDescription() {
+        //FIXME
+        throw new RuntimeException("MUST BE IMPLEMENTED");
+    }
+
+    @Test
+    public void testReadFilterTestMethod() {
+        //FIXME
+        throw new RuntimeException("MUST BE IMPLEMENTED");
+    }
+
+    @Test
+    public void testConstructor() {
+        //FIXME
+        throw new RuntimeException("MUST BE IMPLEMENTED");
+    }
+
+    @Test
+    public void testGetDescription() {
+        //FIXME
+        throw new RuntimeException("MUST BE IMPLEMENTED");
+    }
+
+    @Test
+    public void testGetMatchElementCollection() {
+        //FIXME
+        throw new RuntimeException("MUST BE IMPLEMENTED");
+    }
 }
