@@ -48,6 +48,10 @@ import java.io.File;
  *   --output tumor.seg
  * </pre>
  *
+ * {@link NormalizeSomaticReadCounts}, which calculates pretangent and tangent normalized coverage, can only produce log2-transformed counts.
+ * These example commands show the tangent normalized (tn) coverage data are log2 transformed with the --log2Input true option.
+ * PerformSegmentation accepts either non-log2 (specify --log2Input false) or log2 data and for either case gives segment means as non-log2 values.
+ *
  */
 @CommandLineProgramProperties(
         summary = "Segment genomic data into regions of constant copy-ratio.  Only supports one sample input.",
