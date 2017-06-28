@@ -196,7 +196,7 @@ gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-
   "Mutect2_Multi.is_run_orientation_bias_filter": true,
   "Mutect2_Multi.is_run_oncotator": true,
   "Mutect2_Multi.m2_docker": "broadinstitute/gatk:1.0.0.0-alpha1.2.4",
-  "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.2.0",
+  "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.3.0",
   "Mutect2_Multi.preemptible_attempts": 2,
   "Mutect2_Multi.onco_ds_tar_gz": "/data/onco_dir/oncotator_v1_ds_April052016.tar.gz",
   "Mutect2_Multi.m2_extra_args": "--maxNumHaplotypesInPopulation 50 --tumor_lod_to_emit 4.0",
