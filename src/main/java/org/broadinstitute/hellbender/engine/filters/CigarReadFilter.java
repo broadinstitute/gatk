@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -69,6 +71,8 @@ public class CigarReadFilter extends ReadFilter {
         {
             this.operator = operator;
         }
+
+        public boolean requiresLength() { return length != -1; }
 
         public CigarOperator getOperator() {
             return operator;
@@ -309,7 +313,7 @@ public class CigarReadFilter extends ReadFilter {
 
 //     Cigar strings take the (regex) form:
 //
-//        \\*$|^\\^?(?:[<>]?=?\\d*H)?(?:[<>]?=?\\d*S)?(?:[<>]?=?\\d*[MIDNPX=%])*(?:[<>]?=?\\d*S)*(?:[<>]?=?\\d*H)*\\$?$
+//        \\*$|^(?:\\d*H)?(?:\\d*S)?(?:\\d*[MIDNPX=%])*(?:\\d*S)*(?:\\d*H)*$
 //        The significance of each character is the following:
 //
 //          M alignment match (can be a sequence match or mismatch)
@@ -342,14 +346,113 @@ public class CigarReadFilter extends ReadFilter {
         return isValid;
     }
 
+    /**
+     * Tests the given {@link GATKRead} to see if its cigar string matches the specified match description in {@link CigarMatchElement#description}.
+     * NOTE: Assumes the given read's cigar string and the match description {@link CigarMatchElement#description} are both valid.
+     * @param read
+     * @return {@code true} if the given read's cigar string matches {@link CigarMatchElement#description}, {@code false} otherwise.
+     */
     @Override
     public boolean test(GATKRead read) {
 
         //TODO: Go through each cigar read element and see if it matches.
-        String cigarString = read.getCigar().toString();
+        //TODO: We'll need to check each cigar element and can't assume a normalized cigar.
+        //      This is OK.  It'll be faster to do this than to normalize and then check it.
+
+        Cigar cigar = read.getCigar();
+
+        // Keep track of our position in the cigar string out here, so we can have control over where we are
+        int cigarIndex = 0;
+
+        // We go through our match elements to make sure that the cigar string matches each one:
+        for ( CigarMatchElement matchElement : matchElementCollection ) {
+
+            // Make sure we can keep track of the number of operators we've seen:
+            int cigarOperatorCount = 0;
+            CigarElement lastElement = null;
+
+            for ( ; cigarIndex < cigar.numCigarElements() ; ++cigarIndex ) {
+
+                // Get the next cigar element:
+                CigarElement cigarElement = cigar.getCigarElement(cigarIndex);
+
+                // Now we check to see if it matches.
+
+                // Now check the "greater-than" and "equals" length cases if this is a new (different) element than the last one
+                // and only if we care about length:
+                if ( (matchElement.requiresLength()) && (lastElement != null) && (lastElement.getOperator().ordinal() != cigarElement.getOperator().ordinal()) ) {
+                    if (matchElement.isGreaterThan() && (cigarOperatorCount <= matchElement.getLength()) ) {
+                        // We have too few operators of the right type.
+                        // We do not pass:
+                        return false;
+                    } else if (matchElement.isGreaterThan() && (cigarOperatorCount < matchElement.getLength()) ) {
+                        // We have too few operators of the right type.
+                        // We do not pass:
+                        return false;
+                    //The strictly equals case:
+                    } else if ( !(matchElement.isLessThanEqualTo() && matchElement.isLessThan())
+                                && (cigarOperatorCount != matchElement.getLength()) ) {
+                        // We do not have the exact number of operators required.
+                        // We do not pass:
+                        return false;
+                    }
+
+                    // If we have gotten here, then we're still OK
+                    // but we need to get the next matchElement, so we break
+                    // to cause the outer loop to iterate:
+                    break;
+                }
+
+
+                // Check the cigar operator first:
+                if ( !matchElement.isWildCard() &&
+                     (cigarElement.getOperator().ordinal() != matchElement.getOperator().ordinal())
+                   ) {
+                        // We don't match what we should match.
+                        // This filter doesn't pass.
+                        return false;
+                }
+
+                // If we need to worry about length:
+                if ( matchElement.requiresLength() ) {
+
+                    // Increment the length of the operators so far:
+                    cigarOperatorCount += cigarElement.getLength();
+
+                    // Check the "less than" cases here at the end of the loop:
+                    if (matchElement.isLessThan() && (cigarOperatorCount >= cigarOperatorCount)) {
+                        // We have too many elements of this type.
+                        // We don't match.
+                        return false;
+                    } else if (matchElement.isLessThanEqualTo() && (cigarOperatorCount > cigarOperatorCount)) {
+                        // We have too many elements of this type.
+                        // We don't match.
+                        return false;
+                    }
+                }
+
+                // Check to see if the operator must be anchored:
+                if ( matchElement.isAnchoredStart() ) {
+
+                    // If we're an anchored start, we only want to continue
+                    // if we are at the beginning of the cigar string:
+                    if ( cigarIndex != 0 ) {
+                        return false;
+                    }
+                }
+                else if ( matchElement.isAnchoredEnd() ) {
+                    //TODO: this case is acutally more complicated than this because of non-normalized cigar strings
+                    // If we're an anchored end, we only want to continue
+                    // if we are at the very end of the cigar string:
+                    if ( cigarIndex != cigar.numCigarElements()-1 ) {
+                        return false;
+                    }
+                }
+            }
+        }
 
 
 
-        return false;
+        return true;
     }
 }
