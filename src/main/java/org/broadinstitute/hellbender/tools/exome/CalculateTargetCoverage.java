@@ -57,8 +57,8 @@ import java.util.stream.IntStream;
  * </pre>
  *
  * <p>
- *     Panel of Normal (PoN) creation uses the --transform PCOV parameter as shown.
- *     To collect raw coverage for tumor sample copy number analysis, omit this option.
+ *     To collect raw coverage in terms of integer count, i.e. not normalized by the total number of targets,
+ *     use the --transform RAW option.
  * </p>
  * <p>
  *     The interval targets are exome target intervals padded, e.g. with 250 bases on either side.
