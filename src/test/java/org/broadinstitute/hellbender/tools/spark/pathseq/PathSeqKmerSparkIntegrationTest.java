@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmer;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.annotations.Test;
