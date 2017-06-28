@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
@@ -43,10 +42,6 @@ import java.util.stream.StreamSupport;
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private static final String MUTECT_VERSION = "2.1-beta";
-
-    //TODO: move these lists to GATKVCFConstants
-    public static final List<String> STANDARD_M_2_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY,
-            GATKVCFConstants.PANEL_OF_NORMALS_COUNT_KEY, GATKVCFConstants.HAPLOTYPE_COUNT_KEY, GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY);
 
     public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
     public static final String NORMAL_SAMPLE_KEY_IN_VCF_HEADER = "normal_sample";
@@ -148,13 +143,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return filters;
     }
 
-
-    final Predicate<GATKRead> isInReadGroupsToKeep = read ->  MTAC.keepRG == null || read.getReadGroup().equals(MTAC.keepRG);
-
-
     public void writeHeader(final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary,
                             final Set<VCFHeaderLine>  defaultToolHeaderLines) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
 
         // all annotation fields from VariantAnnotatorEngine
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions());
@@ -181,12 +173,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         headerInfo.add(new VCFHeaderLine("Mutect Version", MUTECT_VERSION));
 
-        STANDARD_M_2_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
-
-        headerInfo.add(new VCFInfoHeaderLine(SomaticGenotypingEngine.IN_PON_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
-        headerInfo.add(new VCFInfoHeaderLine(GermlineProbabilityCalculator.POPULATION_AF_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "population allele frequencies of alt alleles"));
-        headerInfo.add(new VCFInfoHeaderLine(GermlineProbabilityCalculator.GERMLINE_POSTERIORS_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Posterior probability for alt allele to be germline variants"));
-        headerInfo.add(new VCFInfoHeaderLine(SomaticGenotypingEngine.NORMAL_ARTIFACT_LOD_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "log odds of artifact in normal with same allele fraction as tumor"));
+        GATKVCFConstants.STANDARD_MUTECT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
 
         headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.ALLELE_FRACTION_KEY));
 
