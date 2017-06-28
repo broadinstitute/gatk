@@ -20,7 +20,7 @@ public class PathSeqKmerSparkIntegrationTest extends CommandLineProgramTest {
     }
 
     @SuppressWarnings("unchecked")
-    @Test(groups = "spark")
+    @Test(groups = "spark", enabled = false)
     public void test() throws Exception {
         final File expectedFile = getTestFile("kmer.hss");
         final File ref = getTestFile("hg19mini.fasta");
