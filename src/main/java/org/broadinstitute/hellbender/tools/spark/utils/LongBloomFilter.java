@@ -124,7 +124,7 @@ public final class LongBloomFilter {
         long sum = 0;
         for (int i = 0; i < arr.length; i++) {
             for (final byte b : arr[i]) {
-                sum += bitCountMap[b];
+                sum += bitCountMap[0xFF & b]; //Bit operation gets unsigned value of the byte
             }
         }
         return sum;
