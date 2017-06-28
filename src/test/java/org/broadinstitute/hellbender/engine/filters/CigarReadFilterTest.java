@@ -1,15 +1,23 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import lombok.Data;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class CigarReadFilterTest {
+
+    @DataProvider
+    public Object[][] createGatkReadsForFilterTest() {
+        return new Object[][] {
+                { ReadClipperTestUtils.makeReadFromCigar("D") }
+        };
+    }
 
     @DataProvider
     public Object[][] createInvalidCigarFilterStrings() {
@@ -34,6 +42,7 @@ public class CigarReadFilterTest {
                 {"H", true},
                 {"HS", true},
                 {"HHHHSSSSDSSSSHHH", true},
+                {"SS==3I<=24DMMMDMDMDDSHHHH", true},
                 {"SH", true},
                 {"=H", true},
                 {"105H", true},
@@ -57,17 +66,26 @@ public class CigarReadFilterTest {
     }
 
     @DataProvider
+    public Object[][] createExhaustiveValidCigarList() {
+
+        ArrayList<String> masterList = new ArrayList<>();
+
+        for (int i = 0; i < 10; ++i) {
+            ReadClipperTestUtils.generateCigarList(i).stream().forEach(c -> masterList.add(c.toString()));
+        }
+
+        Object[][] exhaustiveValues = { masterList.toArray() };
+
+        return exhaustiveValues;
+    }
+
+    @DataProvider
     public Object[][] createCigarFilterStrings() {
 
         return Stream.concat(   Arrays.stream( createValidCigarFilterStrings() ),
                                 Arrays.stream( createInvalidCigarFilterStrings() )
                             ).toArray(Object[][]::new);
 
-    }
-
-    @Test(dataProvider="createCigarFilterStrings")
-    public void testValidate(String cigarFilterString, boolean isValid) {
-        Assert.assertEquals( CigarReadFilter.validate(cigarFilterString), isValid );
     }
 
     @DataProvider
@@ -81,11 +99,21 @@ public class CigarReadFilterTest {
                 {"^*$", true},
                 {"107X$", true},
                 {"=19X", false},
-                {"<=19X", true},
-                {">=19X", true},
-                {">19X", true},
-                {"<19X", true},
+                {"<=19I", true},
+                {">=19M", true},
+                {">19D", true},
+                {"<19N", true},
         };
+    }
+
+    @Test(dataProvider="createCigarFilterStrings")
+    public void testValidate(String cigarFilterString, boolean isValid) {
+        Assert.assertEquals( CigarReadFilter.validate(cigarFilterString), isValid );
+    }
+
+    @Test(dataProvider="createExhaustiveValidCigarList")
+    public void testValidateExhaustivly(String cigarFilterString) {
+        Assert.assertEquals( CigarReadFilter.validate(cigarFilterString), true );
     }
 
     @Test(dataProvider="createCigarMatchElementStrings")
@@ -126,28 +154,17 @@ public class CigarReadFilterTest {
         CigarReadFilter crf = new CigarReadFilter(cigarFilterString);
     }
 
-//    @Test
-//    public void testReadFilterTestMethod() {
-//        //FIXME
-//        throw new RuntimeException("MUST BE IMPLEMENTED");
-//    }
-//
-//
-//    @Test
-//    public void testGetDescription() {
-//        //FIXME
-//        throw new RuntimeException("MUST BE IMPLEMENTED");
-//    }
-//
-//    @Test
-//    public void testGetMatchElementCollection() {
-//        //FIXME
-//        throw new RuntimeException("MUST BE IMPLEMENTED");
-//    }
-//
+
 //    @Test
 //    public void testCreateMatchElementFromMatchString() {
 //        //FIXME
 //        throw new RuntimeException("MUST BE IMPLEMENTED");
 //    }
+
+//    @Test
+//    public void testReadFilterTestMethod() {
+//        //FIXME
+//        throw new RuntimeException("MUST BE IMPLEMENTED");
+//    }
+
 }

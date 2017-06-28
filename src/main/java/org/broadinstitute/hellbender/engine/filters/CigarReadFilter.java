@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -40,6 +41,11 @@ public class CigarReadFilter extends ReadFilter {
             "(\\^?(?:[<>]\\d+|[<>]=\\d+)?\\d*[SHMIDNPX=*]\\$?)"
     );
 
+    @Argument(fullName = "description",
+            shortName = "d",
+            doc = "Description corresponding to the kind of cigar strings to include in the filter.",
+            optional = true,
+            maxElements = 1)
     // Set the default description to be completely permissive.
     private String description = "*";
 
@@ -63,10 +69,6 @@ public class CigarReadFilter extends ReadFilter {
      */
     public CigarReadFilter(final String description) {
         this.setDescription(description);
-    }
-
-    public Collection<CigarMatchElement> getMatchElementCollection() {
-        return matchElementCollection;
     }
 
     public String getDescription() { return description; }
@@ -96,7 +98,7 @@ public class CigarReadFilter extends ReadFilter {
      * @param description String describing the format of the cigar string on which to filter.
      * @return A list of {@link CigarMatchElement} that corresponds to the given description.
      */
-    private Collection<CigarMatchElement> extractMatchElementsFromString(final String description) {
+    protected Collection<CigarMatchElement> extractMatchElementsFromString(final String description) {
 
         ArrayList<CigarMatchElement> matchElementList = new ArrayList<>();
 
@@ -123,14 +125,12 @@ public class CigarReadFilter extends ReadFilter {
 
     /**
      * Creates a CigarMatchElement from the given string.
-     * Assumes the string is a valid {@link CigarMatchElement}.
+     * Assumes the string is a valid {@link CigarMatchElement} and that it does not code for an unavailable Cigar String.
      * @param match The string representation of a {@link CigarMatchElement}.
      * @return The {@link CigarMatchElement} representation of the given string.
      */
     private CigarMatchElement createMatchElementFromMatchString(String match) {
         CigarMatchElement e = new CigarMatchElement();
-
-//        "(\\^?(:?[<>]|[<>]=)?\\d*[SHMIDNPX=%]\\$?)"
 
         // If we have a ^ character, we set the appropriate flag and cut it off the front:
         if ( match.charAt(0) == '^' ) {
@@ -140,7 +140,7 @@ public class CigarReadFilter extends ReadFilter {
 
         // If we have a $ character, we set the appropriate flag and cut it off the end:
         if ( match.charAt(match.length()-1) == '$' ) {
-            e.setAnchoredStart(true);
+            e.setAnchoredEnd(true);
             match = match.substring(0, match.length()-1);
         }
 
@@ -293,7 +293,7 @@ public class CigarReadFilter extends ReadFilter {
                             // We have too few operators of the right type.
                             // We do not pass:
                             return false;
-                        } else if (matchElement.isGreaterThan() && (cigarOperatorCount < matchElement.getLength())) {
+                        } else if (matchElement.isGreaterThanEqualTo() && (cigarOperatorCount < matchElement.getLength())) {
                             // We have too few operators of the right type.
                             // We do not pass:
                             return false;
@@ -369,9 +369,11 @@ public class CigarReadFilter extends ReadFilter {
     // =======================================================
 
     /**
-     * Class to hold a single Cigar character (with modifiers).
+     * Class to hold a single Cigar character for {@link CigarReadFilter#description} (with modifiers).
+     * This is different from a {@link CigarElement}, which holds a single
+     * operator for a Cigar string.
      */
-    private static class CigarMatchElement {
+    protected static class CigarMatchElement {
 
         private CigarOperator operator          = null;
 
@@ -475,6 +477,31 @@ public class CigarReadFilter extends ReadFilter {
 
         public void setUnavailable(boolean unavailable) {
             isUnavailable = unavailable;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if ( o == this ) {
+                return true;
+            }
+
+            if ( !(o instanceof CigarMatchElement) ) {
+                return false;
+            }
+
+            CigarMatchElement c = (CigarMatchElement)o;
+
+            return  (c.operator           == this.operator)           &&
+                    (c.length             == this.length)             &&
+                    (c.lessThan           == this.lessThan)           &&
+                    (c.lessThanEqualTo    == this.lessThanEqualTo)    &&
+                    (c.greaterThan        == this.greaterThan)        &&
+                    (c.greaterThanEqualTo == this.greaterThanEqualTo) &&
+                    (c.anchoredStart      == this.anchoredStart)      &&
+                    (c.anchoredEnd        == this.anchoredEnd)        &&
+                    (c.isWildCard         == this.isWildCard)         &&
+                    (c.isUnavailable      == this.isUnavailable);
+
         }
     }
 }
