@@ -12,17 +12,22 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class FindBreakpointEvidenceSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        //--------- constants ----------
+
+        public static final int KMER_SIZE = 51;
+        public static final int MAX_DUST_SCORE = KMER_SIZE - 2;
+
         //--------- parameters ----------
 
         // no-arg constructor for Params object establishes default values
         @VisibleForTesting
-        public static final FindBreakpointEvidenceSpark.Params defaultParams = new FindBreakpointEvidenceSpark.Params();
+        public static final Params defaultParams = new Params();
 
         @Argument(doc = "Kmer size.", fullName = "kSize")
         public int kSize = defaultParams.kSize;
 
         @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
-        public int maxDUSTScore = SVConstants.MAX_DUST_SCORE;
+        public int maxDUSTScore = MAX_DUST_SCORE;
 
         @Argument(doc = "The minimum mapping quality for reads used to gather evidence of breakpoints.",
                 fullName = "minEvidenceMapQ", optional = true)
@@ -82,6 +87,72 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Don't look for extra reads mapped outside the interval.", fullName = "intervalOnlyAssembly")
         public boolean intervalOnlyAssembly = false;
 
+        @VisibleForTesting public static class Params {
+            public final int kSize;
+            public final int maxDUSTScore;
+            public final int minEvidenceMapQ;
+            public final int minEvidenceMatchLength;
+            public final int maxIntervalCoverage;
+            public final int minEvidenceWeight;
+            public final int minCoherentEvidenceWeight;
+            public final int minKmersPerInterval;
+            public final int cleanerMaxIntervals;
+            public final int cleanerMinKmerCount;
+            public final int cleanerMaxKmerCount;
+            public final int cleanerKmersPerPartitionGuess;
+            public final int maxQNamesPerKmer;
+            public final int assemblyKmerMapSize;
+            public final int assemblyToMappedSizeRatioGuess;
+            public final int maxFASTQSize;
+            public final int exclusionIntervalPadding;
+
+            public Params() {
+                kSize = KMER_SIZE;          // kmer size
+                maxDUSTScore = MAX_DUST_SCORE;// maximum for DUST-like kmer complexity score
+                minEvidenceMapQ = 20;                   // minimum map quality for evidential reads
+                minEvidenceMatchLength = 45;            // minimum match length
+                maxIntervalCoverage = 1000;             // maximum coverage on breakpoint interval
+                minEvidenceWeight = 15;                  // minimum number of evidentiary reads in called cluster
+                minCoherentEvidenceWeight = 7;           // minimum number of evidentiary reads in a cluster that all point to the same target locus
+                minKmersPerInterval = 20;               // minimum number of good kmers in a valid interval
+                cleanerMaxIntervals = 3;                // KmerCleaner maximum number of intervals a localizing kmer can appear in
+                cleanerMinKmerCount = 3;                // KmerCleaner min kmer count
+                cleanerMaxKmerCount = 125;              // KmerCleaner max kmer count
+                cleanerKmersPerPartitionGuess = 600000; // KmerCleaner guess for number of unique error-free kmers per partition
+                maxQNamesPerKmer = 500;                 // maximum template names for an assembly kmer
+                assemblyKmerMapSize = 250000;           // guess for unique, error-free, scrubbed kmers per assembly partition
+                assemblyToMappedSizeRatioGuess = 7;     // guess for ratio of total reads in assembly to evidentiary reads in interval
+                maxFASTQSize = 3000000;                 // maximum assembly size (total input bases)
+                exclusionIntervalPadding = 0;           // exclusion interval extra padding
+            }
+
+            public Params( final int kSize, final int maxDUSTScore, final int minEvidenceMapQ,
+                           final int minEvidenceMatchLength, final int maxIntervalCoverage,
+                           final int minEvidenceWeight, final int minCoherentEvidenceWeight,
+                           final int minKmersPerInterval, final int cleanerMaxIntervals, final int cleanerMinKmerCount,
+                           final int cleanerMaxKmerCount, final int cleanerKmersPerPartitionGuess,
+                           final int maxQNamesPerKmer, final int assemblyKmerMapSize, final int assemblyToMappedSizeRatioGuess,
+                           final int maxFASTQSize, final int exclusionIntervalPadding ) {
+                this.kSize = kSize;
+                this.maxDUSTScore = maxDUSTScore;
+                this.minEvidenceMapQ = minEvidenceMapQ;
+                this.minEvidenceMatchLength = minEvidenceMatchLength;
+                this.maxIntervalCoverage = maxIntervalCoverage;
+                this.minEvidenceWeight = minEvidenceWeight;
+                this.minCoherentEvidenceWeight = minCoherentEvidenceWeight;
+                this.minKmersPerInterval = minKmersPerInterval;
+                this.cleanerMaxIntervals = cleanerMaxIntervals;
+                this.cleanerMinKmerCount = cleanerMinKmerCount;
+                this.cleanerMaxKmerCount = cleanerMaxKmerCount;
+                this.cleanerKmersPerPartitionGuess = cleanerKmersPerPartitionGuess;
+                this.maxQNamesPerKmer = maxQNamesPerKmer;
+                this.assemblyKmerMapSize = assemblyKmerMapSize;
+                this.assemblyToMappedSizeRatioGuess = assemblyToMappedSizeRatioGuess;
+                this.maxFASTQSize = maxFASTQSize;
+                this.exclusionIntervalPadding = exclusionIntervalPadding;
+            }
+        }
+
         // --------- locations ----------
 
         @Argument(doc = "bwa-mem index image file", fullName = "alignerIndexImage")
@@ -136,12 +207,40 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = "crossContigsToIgnore", optional = true)
         public String crossContigsToIgnoreFile;
 
+        @VisibleForTesting
+        public static class Locations {
+            public final String metadataFile;
+            public final String evidenceDir;
+            public final String intervalFile;
+            public final String qNamesMappedFile;
+            public final String kmerFile;
+            public final String qNamesAssemblyFile;
+            public final String exclusionIntervalsFile;
+            public final String crossContigsToIgnoreFile;
+            public final String alignerIndexImageFile;
+
+            public Locations( final String metadataFile, final String evidenceDir, final String intervalFile,
+                              final String qNamesMappedFile, final String kmerFile, final String qNamesAssemblyFile,
+                              final String exclusionIntervalsFile, final String crossContigsToIgnoreFile ,
+                              final String alignerIndexImageFile ) {
+                this.metadataFile = metadataFile;
+                this.evidenceDir = evidenceDir;
+                this.intervalFile = intervalFile;
+                this.qNamesMappedFile = qNamesMappedFile;
+                this.kmerFile = kmerFile;
+                this.qNamesAssemblyFile = qNamesAssemblyFile;
+                this.exclusionIntervalsFile = exclusionIntervalsFile;
+                this.crossContigsToIgnoreFile = crossContigsToIgnoreFile;
+                this.alignerIndexImageFile = alignerIndexImageFile;
+            }
+        }
     }
 
     public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
         // todo: document this better
+        // TODO: 6/26/17 see Github issue [2037] (https://github.com/broadinstitute/gatk/issues/2037)
         // Currently the discovery stage requires a reference parameter in 2bit format (to broadcast) and
         // a reference in FASTA format (to get a good sequence dictionary for sorting variants).
         @Argument(doc = "FASTA formatted reference", shortName = "fastaReference",
@@ -150,7 +249,24 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
                 fullName = "minAlignLength", optional = true)
-        public Integer minAlignLength = SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
+        public Integer minAlignLength = DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
     }
 
+    public static final class DiscoveryStepConstants {
+
+        public static final String VCF_ALT_ALLELE_STRING_INV = "<INV>";
+        public static final String VCF_ALT_ALLELE_STRING_INS = "<INS>";
+        public static final String VCF_ALT_ALLELE_STRING_DEL = "<DEL>";
+        public static final String VCF_ALT_ALLELE_STRING_DUP = "<DUP>";
+        public static final String TANDUP_CONTRACTION_STRING = "CONTRACTION";
+        public static final String TANDUP_EXPANSION_STRING = "EXPANSION";
+
+        public static final String VARIANT_ID_FIELD_SEPARATOR = "_";
+
+        public static final Integer DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
+        public static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
+        public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = 50; // alignment with gap of size >= 50 will be broken apart.
+        public static final int MISSING_NM = Integer.MIN_VALUE;
+        public static final int ARTIFICIAL_MISMATCH = MISSING_NM;
+    }
 }
