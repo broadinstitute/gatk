@@ -10,10 +10,10 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Locally assembled contig:
- * its name
- * its sequence as produced by the assembler (no reverse complement like in the SAM record if it maps to '-' strand), and
- * its stripped-down alignment information.
+ * This class represents a locally assembled contig with the following attributes:
+ * - name
+ * - sequence as produced by the assembler (no reverse complement like in the SAM record if it maps to '-' strand), and
+ * - stripped-down alignment information.
  */
 @DefaultSerializer(AlignedContig.Serializer.class)
 public final class AlignedContig {
