@@ -180,21 +180,22 @@ public final class ReadFilterLibrary {
             return read.isProperlyPaired();}}
 
     /**
-     * Keep only reads representing primary alignments.
+     * Keep only reads representing primary alignments (those that satisfy both the NotSecondaryAlignment and
+     * NotSupplementaryAlignment filters, or in terms of SAM flag values, must have neither of the 0x100 or
+     * 0x800 flags set).
      *
-     * <p>Warning: currently PrimaryAlignmentReadFilter filters out only secondary alignments (0x100).
+     * Note that this filter represents a stronger criteria for "primary alignment" than the
+     * SAM flag 0x100 (representing ""not primary alignment" in some contexts).
      *
-     * <p>The NotSecondaryAlignmentReadFilter also filters based solely on secondary alignment status.
-     * The PrimaryAlignmentReadFilter will therefore undergo changes in the future to also filter supplementary alignments.
+     * For example, a read that has only the supplementary flag (0x800) set, but not the secondary (0x100)
+     * flag will be filtered out from processing by the PrimaryLineReadFilter, but would NOT be filtered out by
+     * other software that uses the looser notion of "not primary" that only depends on the "secondary" flag being set.
      */
-    //TODO: should this reject supplementary alignments ? If not it should be
-    //removed since its redundant with NotSecondaryAlignmentReadFilter
-    //https://github.com/broadinstitute/gatk/issues/2165
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads representing primary alignments", extraDocs = NotSecondaryAlignmentReadFilter.class)
-    public static class PrimaryAlignmentReadFilter extends ReadFilter {
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+    public static class PrimaryLineReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
-            return ! read.isSecondaryAlignment();}}
+            return ! read.isSecondaryAlignment() && ! read.isSupplementaryAlignment();}}
 
     /**
      * Filter out reads where the read and CIGAR do not match in length.
@@ -275,7 +276,7 @@ public final class ReadFilterLibrary {
     public static final PairedReadFilter PAIRED = new PairedReadFilter();
     public static final ProperlyPairedReadFilter PROPERLY_PAIRED = new ProperlyPairedReadFilter();
     public static final PassesVendorQualityCheckReadFilter PASSES_VENDOR_QUALITY_CHECK = new PassesVendorQualityCheckReadFilter();
-    public static final PrimaryAlignmentReadFilter PRIMARY_ALIGNMENT = new PrimaryAlignmentReadFilter();
+    public static final PrimaryLineReadFilter PRIMARY_ALIGNMENT = new PrimaryLineReadFilter();
     public static final ReadLengthEqualsCigarLengthReadFilter READLENGTH_EQUALS_CIGARLENGTH = new ReadLengthEqualsCigarLengthReadFilter();
     public static final SecondOfPairReadFilter SECOND_OF_PAIR = new SecondOfPairReadFilter();
     public static final SeqIsStoredReadFilter SEQ_IS_STORED = new SeqIsStoredReadFilter();
