@@ -129,7 +129,8 @@ workflow HapmapSensitivityAllPlexes {
       File indel_table_5_plex = FivePlex.indel_table
       File indel_plot_5_plex = FivePlex.indel_plot
       File summary_5_plex = FivePlex.summary
-      File jaccard_5_plex = FivePlex.jaccard_table
+      File indel_jaccard_5_plex = FivePlex.indel_jaccard_table
+      File snp_jaccard_5_plex = FivePlex.snp_jaccard_table
       Array[File] tpfn_5_plex = FivePlex.tpfn
       Array[File] tpfn_idx_5_plex = FivePlex.tpfn_idx
       Array[File] ftnfn_5_plex = FivePlex.ftnfn
@@ -139,7 +140,8 @@ workflow HapmapSensitivityAllPlexes {
       File indel_table_10_plex = TenPlex.indel_table
       File indel_plot_10_plex = TenPlex.indel_plot
       File summary_10_plex = TenPlex.summary
-      File jaccard_10_plex = TenPlex.jaccard_table
+      File indel_jaccard_10_plex = TenPlex.indel_jaccard_table
+      File snp_jaccard_10_plex = TenPlex.snp_jaccard_table
       Array[File] tpfn_10_plex = TenPlex.tpfn
       Array[File] tpfn_idx_10_plex = TenPlex.tpfn_idx
       Array[File] ftnfn_10_plex = TenPlex.ftnfn
@@ -149,7 +151,8 @@ workflow HapmapSensitivityAllPlexes {
       File indel_table_20_plex = TwentyPlex.indel_table
       File indel_plot_20_plex = TwentyPlex.indel_plot
       File summary_20_plex = TwentyPlex.summary
-      File jaccard_20_plex = TwentyPlex.jaccard_table
+      File indel_jaccard_20_plex = TwentyPlex.indel_jaccard_table
+      File snp_jaccard_20_plex = TwentyPlex.snp_jaccard_table
       Array[File] tpfn_20_plex = TwentyPlex.tpfn
       Array[File] tpfn_idx_20_plex = TwentyPlex.tpfn_idx
       Array[File] ftnfn_20_plex = TwentyPlex.ftnfn
