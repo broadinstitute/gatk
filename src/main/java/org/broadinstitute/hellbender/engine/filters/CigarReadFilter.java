@@ -24,7 +24,7 @@ public class CigarReadFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
 
     /** Regular Expression {@link Pattern} to validate the {@link CigarReadFilter} pattern as given to this {@link CigarReadFilter}. */
-    private static final Pattern validFilterPattern = Pattern.compile (
+    static final Pattern validFilterPattern = Pattern.compile (
             "^\\*$" +
             "|" +
             "^\\^?" +
@@ -37,8 +37,8 @@ public class CigarReadFilter extends ReadFilter {
     );
 
     /** Regular Expression {@link Pattern} to match the next {@link CigarMatchElement} in the description string. */
-    protected static final Pattern nextCigarMatchElementPattern = Pattern.compile (
-            "(\\^?(?:[<>]\\d+|[<>]=\\d+)?\\d*[SHMIDNPX=*]\\$?)"
+    static final Pattern nextCigarMatchElementPattern = Pattern.compile (
+            "(\\^?(?:[<>]\\d+|[<>]=\\d+|\\d+)?[SHMIDNPX=*]\\$?)"
     );
 
     @Argument(fullName = "description",
@@ -98,7 +98,7 @@ public class CigarReadFilter extends ReadFilter {
      * @param description String describing the format of the cigar string on which to filter.
      * @return A list of {@link CigarMatchElement} that corresponds to the given description.
      */
-    protected Collection<CigarMatchElement> extractMatchElementsFromString(final String description) {
+    Collection<CigarMatchElement> extractMatchElementsFromString(final String description) {
 
         ArrayList<CigarMatchElement> matchElementList = new ArrayList<>();
 
@@ -116,7 +116,7 @@ public class CigarReadFilter extends ReadFilter {
             while (matcher.find())
             {
                 // Add a new element to our list based on the string match
-                matchElementList.add(createMatchElementFromMatchString(matcher.group()));
+                matchElementList.add(createMatchElementFromSingleMatchString(matcher.group()));
             }
         }
 
@@ -125,11 +125,12 @@ public class CigarReadFilter extends ReadFilter {
 
     /**
      * Creates a CigarMatchElement from the given string.
-     * Assumes the string is a valid {@link CigarMatchElement} and that it does not code for an unavailable Cigar String.
+     * Assumes the string is a valid representation of a {@link CigarMatchElement}
+     * and that it does not code for an unavailable Cigar String.
      * @param match The string representation of a {@link CigarMatchElement}.
      * @return The {@link CigarMatchElement} representation of the given string.
      */
-    private CigarMatchElement createMatchElementFromMatchString(String match) {
+    CigarMatchElement createMatchElementFromSingleMatchString(String match) {
         CigarMatchElement e = new CigarMatchElement();
 
         // If we have a ^ character, we set the appropriate flag and cut it off the front:
@@ -373,7 +374,7 @@ public class CigarReadFilter extends ReadFilter {
      * This is different from a {@link CigarElement}, which holds a single
      * operator for a Cigar string.
      */
-    protected static class CigarMatchElement {
+    static class CigarMatchElement {
 
         private CigarOperator operator          = null;
 
