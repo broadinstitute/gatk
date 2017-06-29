@@ -79,13 +79,13 @@ public class AllelicCNV extends SparkCommandLineProgram {
     private static final double INITIAL_ALLELIC_BIAS_GUESS = 1.;
 
     //filename tags for output
-    protected static final String SNP_MAF_SEG_FILE_TAG = "maf-cbs";
-    protected static final String UNION_SEG_FILE_TAG = "seg-union";
-    protected static final String INITIAL_FIT_FILE_TAG = "sim-begin";
-    protected static final String FINAL_FIT_FILE_TAG = "sim-final";
-    protected static final String SEGMENT_FILE_SUFFIX = ".seg";
-    protected static final String CR_PARAMETER_FILE_SUFFIX = ".cr.param";
-    protected static final String AF_PARAMETER_FILE_SUFFIX = ".af.param";
+    public static final String SNP_MAF_SEG_FILE_TAG = "maf-cbs";
+    public static final String UNION_SEG_FILE_TAG = "seg-union";
+    public static final String INITIAL_FIT_FILE_TAG = "sim-begin";
+    public static final String FINAL_FIT_FILE_TAG = "sim-final";
+    public static final String SEGMENT_FILE_SUFFIX = ".seg";
+    public static final String CR_PARAMETER_FILE_SUFFIX = ".cr.param";
+    public static final String AF_PARAMETER_FILE_SUFFIX = ".af.param";
 
     //CLI arguments
     protected static final String OUTPUT_PREFIX_LONG_NAME = "outputPrefix";
