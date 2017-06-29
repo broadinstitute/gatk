@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -25,7 +22,7 @@ public final class CollectAllelicCountsIntegrationTest extends CommandLineProgra
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/allelic";
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-normal.bam");
     private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-tumor.bam");
-    private static final File NON_STRICT_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-simple-overhang.sam");
+    private static final File NON_STRICT_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-simple-overhang.bam");
     private static final File SITES_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-sites.interval_list");
     private static final File REF_FILE = new File(hg19MiniReference);
 
@@ -70,42 +67,13 @@ public final class CollectAllelicCountsIntegrationTest extends CommandLineProgra
         final File outputFile = createTempFile("collect-allelic-counts-test-output", ".tsv");
         final String[] arguments = {
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, inputBAMFile.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.SITES_FILE_SHORT_NAME, SITES_FILE.getAbsolutePath(),
+                "-L", SITES_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath()
         };
         runCommandLine(arguments);
         final AllelicCountCollection countsResult = new AllelicCountCollection(outputFile);
+        Assert.assertEquals(countsExpected.getCounts().size(), countsResult.getCounts().size());
         Assert.assertEquals(countsExpected, countsResult);
-    }
-
-    //Regression test for https://github.com/broadinstitute/gatk-protected/issues/373
-    @Test(expectedExceptions = UserException.class)
-    public void testNonStrictBAM() {
-        final File outputFile = createTempFile("collect-allelic-counts-test-output", ".tsv");
-        final String[] arguments = {
-                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, NON_STRICT_BAM_FILE.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.SITES_FILE_SHORT_NAME, SITES_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.READ_VALIDATION_STRINGENCY_SHORT_NAME, ValidationStringency.STRICT.toString()
-        };
-        runCommandLine(arguments);
-        //should catch SAMFormatException and throw new UserException with --readValidationStringency STRICT
-    }
-
-    //Regression test for https://github.com/broadinstitute/gatk-protected/issues/373
-    @Test
-    public void testNonStrictBAMWithSilentValidationStringency() {
-        final File outputFile = createTempFile("collect-allelic-counts-test-output", ".tsv");
-        final String[] arguments = {
-                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, NON_STRICT_BAM_FILE.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.SITES_FILE_SHORT_NAME, SITES_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.READ_VALIDATION_STRINGENCY_SHORT_NAME, ValidationStringency.SILENT.toString()
-        };
-        runCommandLine(arguments);
-        //should complete successfully with --readValidationStringency SILENT
     }
 }
