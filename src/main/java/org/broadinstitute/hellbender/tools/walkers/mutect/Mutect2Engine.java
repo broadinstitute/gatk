@@ -320,7 +320,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     private boolean isNonRef(final byte refBase, final PileupElement p) {
-        return p.getBase() != refBase || p.isDeletion() || p.isBeforeDeletionStart() || p.isAfterDeletionEnd() || p.isBeforeInsertion() || p.isAfterInsertion() || p.isNextToSoftClip();
+        return p.getBase() != refBase || p.isDeletion() || p.isBeforeDeletionStart()
+                || p.isAfterDeletionEnd() || p.isBeforeInsertion() || p.isAfterInsertion()
+                || p.isNextToSoftClip();
     }
 
     private int countNonRef(byte refBase, AlignmentContext context) {
