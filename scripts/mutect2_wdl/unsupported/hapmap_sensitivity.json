@@ -1,6 +1,5 @@
 {
   "HapmapSensitivity.gatk_jar": "$__gatk_jar__",
-  "HapmapSensitivity.intervals": "$__intervals__",
   "HapmapSensitivity.ref_fasta": "$__ref_fasta__",
   "HapmapSensitivity.ref_fasta_index": "$__ref_fasta_index__",
   "HapmapSensitivity.ref_dict": "$__ref_dict__",
@@ -14,5 +13,6 @@
   "HapmapSensitivity.python_sensitivity_script": "$__python_sensitivity_script__",
   "HapmapSensitivity.scatter_count": "$__scatter_count__",
   "HapmapSensitivity.is_run_orientation_bias_filter": "$__is_run_orientation_bias_filter__",
-  "HapmapSensitivity.artifact_modes": ["G/T"]
+  "HapmapSensitivity.artifact_modes": ["G/T"],
+  "HapmapSensitivity.prefix": "__prefix__"
 }

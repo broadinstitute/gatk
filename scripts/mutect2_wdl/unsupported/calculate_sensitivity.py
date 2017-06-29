@@ -102,6 +102,7 @@ def draw_sensitivity_graph(df, af_bins, snp_or_indel):
     plt.xlabel('Depth')
     plt.ylabel('Sensitivity')
     plt.savefig( snp_or_indel + "_sensitivity.png")
+    plt.close()
 
 def run():
     parser = argparse.ArgumentParser()

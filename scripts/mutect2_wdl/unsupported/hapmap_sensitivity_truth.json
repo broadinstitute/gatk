@@ -2,10 +2,11 @@
   "HapmapSensitivityTruth.gatk_jar": "$__gatk_jar__",
   "HapmapSensitivityTruth.hapmap": "$__hapmap__",
   "HapmapSensitivityTruth.hapmap_idx": "$__hapmap_idx__",
-  "HapmapSensitivityTruth.pooled_bam": "$__pooled_bam__",
-  "HapmapSensitivityTruth.pooled_bam_idx": "$__pooled_bam_idx__",
+  "HapmapSensitivityTruth.pooled_bams_list": "$__pooled_bams_list__",
   "HapmapSensitivityTruth.sample_file": "$__sample_file__",
   "HapmapSensitivityTruth.intervals": "$__intervals__",
   "HapmapSensitivityTruth.dbsnp_intervals": "$__dbsnp_intervals__",
-  "HapmapSensitivityTruth.min_indel_spacing": "$__min_indel_spacing__"
+  "HapmapSensitivityTruth.min_indel_spacing": "$__min_indel_spacing__",
+  "HapmapSensitivityTruth.hc_vcf": "$__hc_vcf__",
+  "HapmapSensitivityTruth.hc_vcf_idx": "$__hc_vcf_idx__"
 }
