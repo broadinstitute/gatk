@@ -123,6 +123,17 @@ workflow HapmapSensitivityAllPlexes {
           intervals = intervals
   }
 
+  Array[File] all_plex_sensitivity_tables = [FivePlex.raw_table, TenPlex.raw_table, TwentyPlex.raw_table]
+
+  call single_plex.CombineTables as AllPlexTable { input: input_tables = all_plex_sensitivity_tables, prefix = "all_plex" }
+
+  call single_plex.AnalyzeSensitivity as AllPlex {
+               input:
+                input_table = AllPlexTable.table,
+                python_sensitivity_script = python_sensitivity_script,
+                prefix = "all_plex"
+    }
+
   output {
       File snp_table_5_plex = FivePlex.snp_table
       File snp_plot_5_plex = FivePlex.snp_plot
@@ -157,5 +168,10 @@ workflow HapmapSensitivityAllPlexes {
       Array[File] tpfn_idx_20_plex = TwentyPlex.tpfn_idx
       Array[File] ftnfn_20_plex = TwentyPlex.ftnfn
       Array[File] ftnfn_idx_20_plex = TwentyPlex.ftnfn_idx
+
+      File snp_table_all_plex = AllPlex.snp_table
+      File snp_plot_all_plex = AllPlex.snp_plot
+      File indel_table_all_plex = AllPlex.indel_table
+      File indel_plot_all_plex = AllPlex.indel_plot
   }
 }

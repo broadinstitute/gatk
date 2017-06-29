@@ -259,6 +259,7 @@ workflow HapmapSensitivity {
     File indel_table = AnalyzeSensitivity.indel_table
     File indel_plot = AnalyzeSensitivity.indel_plot
     File summary = SummaryTables.table
+    File raw_table = SensitivityTables.table
     File snp_jaccard_table = JaccardSNP.table
     File indel_jaccard_table = JaccardINDEL.table
     Array[File] tpfn = Mutect2_Multi_Concordance.tpfn
