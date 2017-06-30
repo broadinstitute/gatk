@@ -49,7 +49,7 @@ repositories {
     jcenter()
 
     maven {
-        url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
+        url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
 
     mavenLocal()
