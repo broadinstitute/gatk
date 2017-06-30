@@ -15,30 +15,29 @@ public final class AmbiguousBaseReadFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
 
     @Argument(doc = "Threshold fraction of ambiguous bases",
-            fullName = "ambigFilterFrac",
+            fullName = "maxAmbiguousBases",
             optional = true)
-    public double nFrac = 0.05;
+    public int maxAmbiguousBases = 0;
 
     public AmbiguousBaseReadFilter() {
     }
 
-    public AmbiguousBaseReadFilter(final double n_frac) {
-        this.nFrac = n_frac;
+    public AmbiguousBaseReadFilter(final int maxAmbiguousBases) {
+        this.maxAmbiguousBases = maxAmbiguousBases;
     }
 
     //Filters out reads with more than a threshold number of N's
     @Override
     public boolean test(final GATKRead read) {
-        final int N_max = (int) (read.getLength() * nFrac);
         int num_N = 0;
         for (final byte base : read.getBases()) {
             if (!BaseUtils.isRegularBase(base)) {
                 num_N++;
-                if (num_N > N_max) {
+                if (num_N > maxAmbiguousBases) {
                     return false;
                 }
             }
         }
-        return num_N <= N_max;
+        return num_N <= maxAmbiguousBases;
     }
 }

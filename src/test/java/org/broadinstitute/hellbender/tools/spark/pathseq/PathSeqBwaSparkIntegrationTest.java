@@ -29,8 +29,8 @@ public class PathSeqBwaSparkIntegrationTest extends CommandLineProgramTest {
         final String outputBasePath = outputFile.getAbsolutePath();
         args.addArgument("pairedInput", inputFile.getAbsolutePath());
         args.addArgument("output", outputBasePath);
-        args.addArgument("bwamemIndexImage", IMAGE_PATH);
-        args.addArgument("referencePath", REF_PATH);
+        args.addArgument("pathogenBwaImage", IMAGE_PATH);
+        args.addArgument("pathogenFasta", REF_PATH);
 
         this.runCommandLine(args.getArgsArray());
 

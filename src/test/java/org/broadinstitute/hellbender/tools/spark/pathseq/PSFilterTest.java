@@ -10,6 +10,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
@@ -197,6 +198,10 @@ public class PSFilterTest extends CommandLineProgramTest {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final JavaRDD<GATKRead> reads = ctx.parallelize(readList);
 
+        //Close any open images
+        BwaMemIndexSingleton.closeAllDistributedInstances(ctx);
+
+        //Run filter
         final List<GATKRead> result = PSFilter.doBwaFilter(reads, BWA_IMAGE_PATH, 19, 1, 70, 65).collect();
         Assert.assertEquals(result.size(), expectedNum);
     }

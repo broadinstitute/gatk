@@ -56,7 +56,7 @@ public final class PSFilter implements AutoCloseable {
 
     @VisibleForTesting
     static JavaRDD<GATKRead> setPairFlags(final JavaRDD<GATKRead> reads, final int readsPerPartitionGuess) {
-        return repartitionPairedReads(reads).mapPartitions(iter -> setPartitionUnpairedFlags(iter, readsPerPartitionGuess));
+        return repartitionReadsByName(reads).mapPartitions(iter -> setPartitionUnpairedFlags(iter, readsPerPartitionGuess));
     }
 
     private static JavaRDD<GATKRead> clearAllAlignments(final JavaRDD<GATKRead> reads, final SAMFileHeader header) {
@@ -111,10 +111,14 @@ public final class PSFilter implements AutoCloseable {
     /**
      * Repartitions reads so that reads with the same name will be on the same partition
      */
-    static JavaRDD<GATKRead> repartitionPairedReads(final JavaRDD<GATKRead> reads) {
+    static JavaRDD<GATKRead> repartitionReadsByName(final JavaRDD<GATKRead> reads) {
+        return repartitionReadsByName(reads, reads.getNumPartitions());
+    }
+
+    static JavaRDD<GATKRead> repartitionReadsByName(final JavaRDD<GATKRead> reads, final int numPartitions) {
         //Shuffle reads into partitions by read name hash code
         return reads.mapToPair(read -> new Tuple2<>(read.getName(), read))
-                .partitionBy(new HashPartitioner(reads.getNumPartitions()))
+                .partitionBy(new HashPartitioner(numPartitions))
                 .map(Tuple2::_2);
     }
 
@@ -223,7 +227,7 @@ public final class PSFilter implements AutoCloseable {
             reads = reads.map(new ReadTransformerSparkifier(new BaseQualityReadTransformer(filterArgs.qualPhredThresh)));
 
             //Filter reads with too many 'N's
-            reads = reads.filter(new ReadFilterSparkifier(new AmbiguousBaseReadFilter(filterArgs.fracNThreshold)));
+            reads = reads.filter(new ReadFilterSparkifier(new AmbiguousBaseReadFilter(filterArgs.maxAmbiguousBases)));
             recordReadCountMetric(reads, "quality_2");
         }
 
@@ -232,6 +236,9 @@ public final class PSFilter implements AutoCloseable {
             reads = doKmerFiltering(reads, filterArgs.kmerLibPath, filterArgs.hostKmerThresh);
             recordReadCountMetric(reads, "kmer");
         }
+
+        //Redistribute reads
+        reads = repartitionReadsByName(reads);
 
         //Bwa host alignment filtering
         if (filterArgs.indexImageFile != null) {
@@ -252,7 +259,7 @@ public final class PSFilter implements AutoCloseable {
         reads = clearAllAlignments(reads, header);
 
         //Unset paired read flags for reads that are not paired
-        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.readsPerPartition);
+        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.readsPerPartition, false);
         final JavaRDD<GATKRead> pairedReads = splitter.getPairedReads();
         final JavaRDD<GATKRead> unpairedReads = splitter.getUnpairedReads();
         recordReadCountMetric(reads, "split_paired");
@@ -289,8 +296,8 @@ public final class PSFilter implements AutoCloseable {
      * After doFilter(), this should be run after a Spark action (e.g. write bam) has been invoked on both output RDDs
      */
     public void close() {
-        reads.foreachPartition(read -> ContainsKmerReadFilter.closeKmerLib());
         BwaMemIndexSingleton.closeAllDistributedInstances(ctx);
+        ContainsKmerReadFilterSpark.closeAllDistributedInstances(ctx);
         if (metricsState != null) {
             try {
                 metricsState.close();

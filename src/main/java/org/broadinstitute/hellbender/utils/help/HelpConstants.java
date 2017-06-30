@@ -47,6 +47,9 @@ public final class HelpConstants {
     public final static String DOC_CAT_SPARK_SV = "Spark Structural Variation Analysis Tools";
     public final static String DOC_CAT_SPARK_SV_SUMMARY = "Structural variation analysis tools that use Apache Spark for scaling out (experimental)";
 
+    public final static String DOC_CAT_SPARK_PATHSEQ = "PathSeq Tools";
+    public final static String DOC_CAT_SPARK_PATHSEQ_SUMMARY = "Tools for detecting pathogens (experimental)";
+
     public final static String DOC_CAT_VARIANT = "VCF Tools";
     public final static String DOC_CAT_VARIANT_SUMMARY = "Tools for manipulating variants and associated metadata";
 

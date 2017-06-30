@@ -2,16 +2,15 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.storage.StorageLevel;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -23,16 +22,13 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(summary = "Aligns reads to a reference using Bwa-mem. This is a specialized version of " +
-        "BwaSpark designed for the PathSeq pipeline. It takes in paired read and/or unpaired read bams (do not use --input) " +
-        "and a BWA-MEM reference image file. For small input, it is recommended that the user reduce --bamPartitionSize in " +
-        "order to increase parallelism.",
-        oneLineSummary = "Aligns reads to reference using Bwa-mem",
-        programGroup = SparkProgramGroup.class)
+        "BwaSpark designed for the PathSeq pipeline. User must supply unaligned paired read and/or unpaired reads " +
+        "(do not use --input) and a BWA reference image file created using BwaMemIndexImageCreator. For small " +
+        "input, it is recommended that the user reduce --bamPartitionSize in order to increase parallelism.",
+        oneLineSummary = "Step 2: Aligns reads to the pathogen reference",
+        programGroup = PathSeqProgramGroup.class)
 @BetaFeature
 public final class PathSeqBwaSpark extends GATKSparkTool {
 
@@ -68,8 +64,8 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
             if (header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");
             }
-            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize);
             PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction(), options);
+            final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize);
             return new Tuple2<>(header, reads);
         }
         logger.warn("Could not find file " + path + ". Skipping...");
@@ -81,20 +77,13 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
      * Header sequence dictionary is reduced to only those that were aligned to.
      */
     private void writeBam(final JavaRDD<GATKRead> reads, final String inputBamPath, final boolean isPaired,
-                          final JavaSparkContext ctx, final SAMFileHeader header) {
+                          final JavaSparkContext ctx, SAMFileHeader header) {
 
-        //Only retain header sequences that were aligned to
-        reads.cache();
-        final List<String> usedSequences = PSBwaUtils.getAlignedSequenceNames(reads);
-        usedSequences.stream().forEach(seqName -> {
-            if (header.getSequence(seqName) == null)
-                logger.warn("One or more reads are aligned to sequence " + seqName + " but it is not in the header");
-        });
-        final List<SAMSequenceRecord> usedSequenceRecords = usedSequences.stream()
-                .map(seqName -> header.getSequence(seqName))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        header.setSequenceDictionary(new SAMSequenceDictionary(usedSequenceRecords));
+
+        //Only retain header sequences that were aligned to.
+        //This invokes an action and therefore the reads must be cached.
+        reads.persist(StorageLevel.MEMORY_AND_DISK_SER());
+        header = PSBwaUtils.removeUnmappedHeaderSequences(header, reads, logger);
 
         try {
             final String outputSuffix = isPaired ? ".paired.bam" : ".unpaired.bam";
@@ -104,7 +93,6 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(ouputUri, "writing failed", e);
         }
-        reads.unpersist();
     }
 
     /**
@@ -137,12 +125,12 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         }
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         final PipelineOptions options = getAuthenticatedGCSOptions();
-        try (final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs)) {
-            boolean bPairedSuccess = alignBam(inputPaired, aligner, true, ctx, options, readsSource);
-            boolean bUnpairedSuccess = alignBam(inputUnpaired, aligner, false, ctx, options, readsSource);
-            if (!bPairedSuccess && !bUnpairedSuccess) {
-                throw new UserException.BadInput("No reads were loaded. Ensure --pairedInput and/or --unpairedInput are set and valid.");
-            }
+
+        final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);
+        boolean bPairedSuccess = alignBam(inputPaired, aligner, true, ctx, options, readsSource);
+        boolean bUnpairedSuccess = alignBam(inputUnpaired, aligner, false, ctx, options, readsSource);
+        if (!bPairedSuccess && !bUnpairedSuccess) {
+            throw new UserException.BadInput("No reads were loaded. Ensure --pairedInput and/or --unpairedInput are set and valid.");
         }
     }
 

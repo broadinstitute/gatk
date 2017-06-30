@@ -16,26 +16,26 @@ public final class PSScoreArgumentCollection implements Serializable {
     public String taxonomyDatabasePath;
 
     @Argument(doc = "Alignment coverage score threshold, as a fraction of the read length (between 0 and 1)",
-            fullName = "coverageThreshold",
+            fullName = "scoreMinCoverage",
             minValue = 0.0,
             maxValue = 1.0,
             optional = true)
     public double minCoverage = 0.90;
 
     @Argument(doc = "Alignment identity score threshold, as a fraction of the read length (between 0 and 1)",
-            fullName = "identityThreshold",
+            fullName = "scoreMinIdentity",
             minValue = 0.0,
             maxValue = 1.0,
             optional = true)
     public double minIdentity = 0.90;
 
     @Argument(doc = "Write accessions found in the reads header but not the taxonomy database to this file",
-            fullName = "warningsFile",
+            fullName = "scoreWarningsFile",
             optional = true)
     public String headerWarningFile = null;
 
     @Argument(doc = "Estimated reads per Spark partition",
-            fullName = "readsPerPartition",
+            fullName = "scoreReadsPerPartition",
             minValue = 1,
             optional = true)
     public int readsPerPartition = 200000;

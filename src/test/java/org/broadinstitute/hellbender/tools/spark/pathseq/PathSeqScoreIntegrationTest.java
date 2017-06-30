@@ -53,7 +53,7 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
         args.addArgument("unpairedInput", inputFile.getAbsolutePath());
         args.addFileArgument("taxonomicDatabasePath", taxFile);
         args.addFileArgument("scoresOutputPath", output);
-        args.addFileArgument("warningsFile",warnings);
+        args.addFileArgument("scoreWarningsFile",warnings);
         this.runCommandLine(args.getArgsArray());
 
         final byte[] input_expected = FileUtils.readFileToByteArray(expectedFile);
