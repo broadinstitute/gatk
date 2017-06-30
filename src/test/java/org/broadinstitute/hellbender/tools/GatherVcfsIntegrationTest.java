@@ -101,7 +101,7 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
             final List<File> shards = scatterVariants(expected, (VCFHeader) input.getHeader(), numShards,
                                                       createTempDir("vcfshards"));
 
-            final File output = new File("failAgain.vcf.gz");//createTempFile("gathered", ".vcf.gz");
+            final File output = createTempFile("testBlockGather_gathered", ".vcf.gz");
             final ArgumentsBuilder args = new ArgumentsBuilder();
             shards.forEach(args::addInput);
 

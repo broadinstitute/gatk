@@ -80,9 +80,9 @@ public final class GatherVcfs extends CommandLineProgram {
             doc = "If true, create a VCF index when writing a coordinate-sorted VCF file.", optional=true)
     public boolean createIndex = true;
 
-    @Argument(fullName = GATHER_TYPE_LONG_NAME, doc ="Choose which method should be used to gather, block gathering is faster but only" +
-            "works on bgzipped files and ignores safety checks, conventional gather is slower but should work on all vcf files" +
-            "automatic chooses BLOCK if possible and CONVENTIONAL otherwise")
+    @Argument(fullName = GATHER_TYPE_LONG_NAME, doc ="Choose which method should be used to gather: BLOCK gathering is faster but only" +
+            "works when you have both bgzipped inputs and outputs, while CONVENTIONAL gather is much slower but should work on all vcf files. " +
+            "AUTOMATIC chooses BLOCK if possible and CONVENTIONAL otherwise.")
     public GatherType gatherType = GatherType.AUTOMATIC;
 
     @Advanced
@@ -368,10 +368,6 @@ public final class GatherVcfs extends CommandLineProgram {
                                 lastByteNewline = thisByteNewline;
                             }
 
-                            if( firstNonHeaderByteIndex == -1 ){
-                                log.warn("Scanned the entire file " + f.toUri().toString() + " and found no variants");
-                            }
-
                             // If we found the end of the header then write the remainder of this block out as a
                             // new gzip block and then break out of the while loop
                             if (firstNonHeaderByteIndex >= 0) {
@@ -381,6 +377,10 @@ public final class GatherVcfs extends CommandLineProgram {
                                 // Don't close blockOut because closing underlying stream would break everything
                                 break;
                             }
+                        }
+
+                        if( firstNonHeaderByteIndex == -1 ){
+                            log.warn("Scanned the entire file " + f.toUri().toString() + " and found no variants");
                         }
                     }
 
