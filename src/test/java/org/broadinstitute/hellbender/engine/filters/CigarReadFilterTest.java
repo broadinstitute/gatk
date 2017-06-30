@@ -1,17 +1,17 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
+import org.junit.Ignore;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -135,8 +135,9 @@ public class CigarReadFilterTest {
                 new ArrayList<>(Arrays.asList("", "<", ">", "<=",">="));
 
         // Create a place to put the combined elements and decorators:
-        Object[][] decoratedMatchElements = new Object[ basicMatchElements.size() * (4 * (decorators.size()+1)) ][1];
-        int dIndex = 0;
+        Object[][] decoratedMatchElements = new Object[ basicMatchElements.size() * (4 * (decorators.size()+1)) + 1 ][1];
+        decoratedMatchElements[0] = new Object[] { "*" };
+        int dIndex = 1;
 
         // Create and insert the new decorated elements into the output array:
         for (int i = 0 ; i < basicMatchElements.size(); ++i) {
@@ -163,16 +164,155 @@ public class CigarReadFilterTest {
         return decoratedMatchElements;
     }
 
+    @DataProvider
+    public Object[][] createSetsOfSingleMatchStrings() {
+
+        // Create a list of basic match elements for the core of each match element:
+        ArrayList<String> basicMatchElements =
+                new ArrayList<>(Arrays.asList("S","H","M","I","D","N","P","X","=","*"));
+
+        // Create a list of decorators for each match element:
+        ArrayList<String> decorators =
+                new ArrayList<>(Arrays.asList("", "<", ">", "<=",">="));
+
+        // Create an output list:
+        ArrayList<ArrayList<String>> outList = new ArrayList<>();
+
+        // Add in the unavailable string to the outlist:
+        ArrayList<String> unavailableString = new ArrayList<>();
+        unavailableString.add("*");
+        outList.add(unavailableString);
+
+        // NOTE: These two settings are specifically set to balance the need for tests but
+        //       also speed of tests.
+        // The minimum number of elements to put as a single test:
+        final int MIN_NUM_ELEMENT_STRINGS = 1;
+
+        // The maximum number of elements to put as a single test:
+        final int MAX_NUM_ELEMENT_STRINGS = 4;
+
+        for ( int elLength = MIN_NUM_ELEMENT_STRINGS; elLength < MAX_NUM_ELEMENT_STRINGS; ++elLength ) {
+
+            // Create the permutations:
+            Collection<ArrayList<String>> elementPermutations = getAllPermutations(elLength, basicMatchElements);
+
+            // For each one, add decorators as appropriate:
+            for (ArrayList<String> permutation : elementPermutations ) {
+
+                // Add trivial cases first:
+                outList.add(permutation);
+
+                ArrayList<String> permutationStartAnchor = new ArrayList<>(permutation);
+                permutationStartAnchor.set(0, "^" + permutationStartAnchor.get(0));
+                outList.add(permutationStartAnchor);
+
+                ArrayList<String> permutationEndAnchor = new ArrayList<>(permutation);
+                permutationEndAnchor.set(permutationEndAnchor.size()-1, permutationEndAnchor.get(permutationEndAnchor.size()-1) + "$");
+                outList.add(permutationEndAnchor);
+
+                ArrayList<String> permutationStartEndAnchor = new ArrayList<>(permutation);
+                permutationStartEndAnchor.set(0, "^" + permutationStartEndAnchor.get(0));
+                permutationStartEndAnchor.set(permutationStartEndAnchor.size()-1, permutationStartEndAnchor.get(permutationStartEndAnchor.size()-1) + "$");
+                outList.add(permutationStartEndAnchor);
+
+                // Now go through the decorators and add them to each element
+                // We do this to make it a little faster than doing the combined
+                // permutations of the Cigar operators and the decorators:
+                for( String d : decorators ) {
+                    ArrayList<String> decoratedPermut = new ArrayList<>(permutation);
+
+                    // Decorate the elements:
+                    for (int i = 0 ; i < decoratedPermut.size() ; ++i) {
+                        Integer num = ThreadLocalRandom.current().nextInt(1, 1000 + 1);
+                        decoratedPermut.set(i, d + num.toString() + decoratedPermut.get(i));
+                    }
+
+                    // Add in the decorated cases:
+                    outList.add(decoratedPermut);
+
+                    ArrayList<String> decoratedPermutStartAnchor = new ArrayList<>(decoratedPermut);
+                    decoratedPermutStartAnchor.set(0, "^" + decoratedPermutStartAnchor.get(0));
+                    outList.add(decoratedPermutStartAnchor);
+
+                    ArrayList<String> decoratedPermutEndAnchor = new ArrayList<>(decoratedPermut);
+                    decoratedPermutEndAnchor.set(decoratedPermutEndAnchor.size()-1, decoratedPermutEndAnchor.get(decoratedPermutEndAnchor.size()-1) + "$");
+                    outList.add(decoratedPermutEndAnchor);
+
+                    ArrayList<String> decoratedPermutStartEndAnchor = new ArrayList<>(decoratedPermut);
+                    decoratedPermutStartEndAnchor.set(0, "^" + decoratedPermutStartEndAnchor.get(0));
+                    decoratedPermutStartEndAnchor.set(decoratedPermutStartEndAnchor.size()-1, decoratedPermutStartEndAnchor.get(decoratedPermutStartEndAnchor.size()-1) + "$");
+                    outList.add(decoratedPermutStartEndAnchor);
+                }
+            }
+        }
+
+        // Package everything for the output format:
+        Object[][] objectsOut = new Object[outList.size()][1];
+        for (int i = 0; i < outList.size(); ++i) {
+                objectsOut[i] = new Object[] { outList.get(i) };
+        }
+
+        return objectsOut;
+    }
+
+    //==================================================================================================================
+
+    /**
+     * Creates a {@link Collection} of all permutations of the given {@link Collection} of the given length.
+     * @param length Number of elements to include in the permutations.
+     * @param objectList Collection from which to create permutations.
+     * @return A {@link Collection} of permutations of the given length of c.
+     */
+    private <T extends Object>
+    Collection<ArrayList<T>> getAllPermutations(int length, List<T> objectList) {
+        LinkedList<ArrayList<T>> outList = new LinkedList<>();
+
+        // If we want permutations of length zero, there is only one - the empty set:
+        if ( length == 0) {
+            return outList;
+        }
+
+        byte[] elementCombination = new byte[length];
+
+        Arrays.fill(elementCombination, (byte) 0);
+        int currentIndex = 0;
+        while (true) {
+
+            ArrayList<T> permutation = new ArrayList<T>();
+
+            for (byte i : elementCombination) {
+                permutation.add(objectList.get(i));
+            }
+
+            outList.add( permutation );    // create the cigar
+
+            boolean currentIndexChanged = false;
+            while (currentIndex < length && elementCombination[currentIndex] == objectList.size() - 1) {
+                currentIndex++;                                            // find the next index to increment
+                currentIndexChanged = true;                                // keep track of the fact that we have changed indices!
+            }
+
+            if (currentIndex == length)                             // if we hit the end of the array, we're done.
+                break;
+
+            elementCombination[currentIndex]++;                              // otherwise advance the current index
+
+            if (currentIndexChanged) {                                     // if we have changed index, then...
+                for (int i = 0; i < currentIndex; i++) {
+                    elementCombination[i] = 0;
+                }                                                           // reset everything from 0->currentIndex
+                currentIndex = 0;                                          // go back to the first index
+            }
+        }
+
+        return outList;
+    }
+
     //==================================================================================================================
 
     @Test(dataProvider="createCigarFilterStrings")
     public void testValidate(String cigarFilterString, boolean isValid) {
         Assert.assertEquals( CigarReadFilter.validate(cigarFilterString), isValid );
-    }
-
-    @Test(dataProvider="createExhaustiveValidCigarList")
-    public void testValidateExhaustivly(String cigarFilterString) {
-        Assert.assertEquals( CigarReadFilter.validate(cigarFilterString), true );
     }
 
     @Test(dataProvider="createCigarMatchElementStrings")
@@ -216,18 +356,28 @@ public class CigarReadFilterTest {
 
     @Test(dataProvider="createSingleMatchStrings")
     public void testCreateMatchElementFromSingleMatchString(String matchString) {
-        //FIXME
+
         CigarReadFilter cigarReadFilter = new CigarReadFilter();
         CigarReadFilter.CigarMatchElement e = cigarReadFilter.createMatchElementFromSingleMatchString(matchString);
 
         // Check the match element against what we expect output to be:
+
+        // Get the basic operator on which to test:
+        char operator;
+        operator = matchString.charAt(matchString.length()-1);
+
+        // Check anchoring:
         if (matchString.contains("^")) {
             Assert.assertTrue(e.isAnchoredStart());
         }
         if (matchString.contains("$")) {
             Assert.assertTrue(e.isAnchoredEnd());
+
+            // We must get the operator again, because we greedily got the "$" instead:
+            operator = matchString.charAt(matchString.length()-2);
         }
 
+        // Check numerical qualifiers:
         if (matchString.contains("<=")) {
             Assert.assertTrue(e.isLessThanEqualTo());
             Assert.assertFalse(e.isLessThan());
@@ -253,22 +403,12 @@ public class CigarReadFilterTest {
             Assert.assertFalse(e.isGreaterThanEqualTo());
         }
 
-        // Get the basic match element on which to test:
-        char basicMatchElement;
-        if (matchString.contains("$"))
-        {
-            basicMatchElement = matchString.charAt(matchString.length()-2);
-        }
-        else {
-            basicMatchElement = matchString.charAt(matchString.length()-1);
-        }
-
         // Make sure the operators are the same:
         if (matchString.contains("*")) {
             Assert.assertTrue(e.isWildCard());
         }
         else {
-            Assert.assertEquals(e.getOperator(), CigarOperator.characterToEnum(basicMatchElement));
+            Assert.assertEquals(e.getOperator(), CigarOperator.characterToEnum(operator));
         }
 
         // Now check the numbers:
@@ -282,11 +422,21 @@ public class CigarReadFilterTest {
         }
     }
 
-//    @Test
-//    public void testExtractMatchElementsFromString() {
+    //==================================================================================================================
+
+//    @Test(dataProvider="createSetsOfSingleMatchStrings")
+//    public void testExtractMatchElementsFromString( Collection<ArrayList<String>> matchStrings ) {
 //        //FIXME
 //        throw new RuntimeException("MUST BE IMPLEMENTED");
 //    }
+
+//    @Test(dataProvider="createExhaustiveValidCigarList")
+//    public void testValidateExhaustivly(String cigarFilterString) {
+//        Assert.assertEquals( CigarReadFilter.validate(cigarFilterString), true );
+//    }
+
+    //==================================================================================================================
+
 
 //    @Test
 //    public void testReadFilterTestMethod() {

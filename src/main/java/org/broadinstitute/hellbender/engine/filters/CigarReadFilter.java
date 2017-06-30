@@ -502,7 +502,24 @@ public class CigarReadFilter extends ReadFilter {
                     (c.anchoredEnd        == this.anchoredEnd)        &&
                     (c.isWildCard         == this.isWildCard)         &&
                     (c.isUnavailable      == this.isUnavailable);
+        }
 
+        @Override
+        public int hashCode() {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            stringBuilder.append(this.operator);
+            stringBuilder.append(this.length);
+            stringBuilder.append(this.lessThan);
+            stringBuilder.append(this.lessThanEqualTo);
+            stringBuilder.append(this.greaterThan);
+            stringBuilder.append(this.greaterThanEqualTo);
+            stringBuilder.append(this.anchoredStart);
+            stringBuilder.append(this.anchoredEnd);
+            stringBuilder.append(this.isWildCard);
+            stringBuilder.append(this.isUnavailable);
+
+            return stringBuilder.toString().hashCode();
         }
     }
 }
