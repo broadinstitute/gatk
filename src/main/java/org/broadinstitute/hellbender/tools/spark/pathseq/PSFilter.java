@@ -67,6 +67,7 @@ public final class PSFilter implements AutoCloseable {
      * Returns input read with alignment-related info cleared
      */
     private static GATKRead clearReadAlignment(final GATKRead read, final SAMFileHeader header) {
+
         final GATKRead newRead = new SAMRecordToGATKReadAdapter(new SAMRecord(header));
         newRead.setName(read.getName());
         newRead.setBases(read.getBases());
@@ -78,6 +79,7 @@ public final class PSFilter implements AutoCloseable {
         newRead.setIsUnmapped();
         newRead.setIsPaired(read.isPaired());
         if (read.isPaired()) {
+            newRead.setMateIsUnmapped();
             if (read.isFirstOfPair()) {
                 newRead.setIsFirstOfPair();
             } else if (read.isSecondOfPair()) {
@@ -89,6 +91,7 @@ public final class PSFilter implements AutoCloseable {
             newRead.setAttribute(SAMTag.RG.name(), readGroup);
         }
         return newRead;
+        
     }
 
     /**
