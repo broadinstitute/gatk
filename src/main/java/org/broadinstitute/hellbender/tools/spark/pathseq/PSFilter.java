@@ -122,7 +122,7 @@ public final class PSFilter implements AutoCloseable {
      */
     static Tuple2<List<GATKRead>, List<GATKRead>> getPairedAndUnpairedLists(final Iterator<GATKRead> iter, final int readsPerPartitionGuess) {
         //Find the paired and unpaired reads by scanning the partition for repeated names
-        final List<GATKRead> pairedReadsList = new ArrayList<>(readsPerPartitionGuess);
+        final ArrayList<GATKRead> pairedReadsList = new ArrayList<>(readsPerPartitionGuess);
         final Map<String, GATKRead> unpairedReads = new HashMap<>(readsPerPartitionGuess);
         while (iter.hasNext()) {
             final GATKRead read = iter.next();
@@ -139,10 +139,9 @@ public final class PSFilter implements AutoCloseable {
         final List<GATKRead> unpairedReadsList = new ArrayList<>(unpairedReads.values());
 
         //Minimize unpairedReads memory footprint (don't rely on readsPerPartitionGuess)
-        final List<GATKRead> pairedReadsListResized = new ArrayList<>(pairedReadsList.size());
-        pairedReadsListResized.addAll(pairedReadsList);
+        pairedReadsList.trimToSize();
 
-        return new Tuple2<>(pairedReadsListResized, unpairedReadsList);
+        return new Tuple2<>(pairedReadsList, unpairedReadsList);
     }
 
     /**

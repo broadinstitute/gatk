@@ -69,7 +69,7 @@ public final class PSFilterArgumentCollection implements Serializable {
             minValue = 1,
             optional = true)
     public int hostKmerThresh = 1;
-    @Argument(doc = "The bwa mem index image file of the host reference, distributed on each executor.",
+    @Argument(doc = "The bwa mem index image file of the host reference. Must be on the local filesystem of each worker in the cluster.",
             fullName = "bwamemIndexImage",
             optional = true)
     public String indexImageFile = null;
