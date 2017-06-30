@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,7 +22,7 @@ public class ReferenceBasesUnitTest extends BaseTest {
 
     @Test
     public void test() {
-        final File refFasta = new File(b37_reference_20_21);
+        final File refFasta = new File(TestResources.b37_reference_20_21);
 
         final ReferenceDataSource refDataSource = new ReferenceFileSource(refFasta);
         final ReferenceContext ref = new ReferenceContext(refDataSource, new SimpleInterval("20", 10_000_000, 10_000_200));

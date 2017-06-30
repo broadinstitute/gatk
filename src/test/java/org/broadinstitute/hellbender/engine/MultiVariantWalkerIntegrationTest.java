@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -25,7 +26,7 @@ public final class MultiVariantWalkerIntegrationTest extends CommandLineProgramT
     }
 
     public static File getTestDataDir() {
-        return new File(publicTestDir + "org/broadinstitute/hellbender/engine/MultiVariantDataSource/");
+        return new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/MultiVariantDataSource/");
     }
 
     @CommandLineProgramProperties(

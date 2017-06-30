@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRe
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -28,7 +29,7 @@ import java.util.stream.Stream;
  */
 public class ConvertGSVariantsToSegmentsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(TestResources.largeFileTestDir, "cnv");
 
     private static final File TEST_INPUT_FILE =
             new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/eval", "gs-calls.vcf.gz");

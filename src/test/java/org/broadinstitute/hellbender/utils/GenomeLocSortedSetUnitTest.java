@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
@@ -299,7 +300,7 @@ public final class GenomeLocSortedSetUnitTest extends BaseTest {
 
     @DataProvider(name = "GetOverlapping")
     public Object[][] makeGetOverlappingTest() throws Exception {
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(new CachingIndexedFastaSequenceFile(new File(exampleReference)));
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(new CachingIndexedFastaSequenceFile(new File(TestResources.exampleReference)));
 
         List<Object[]> tests = new ArrayList<>();
 

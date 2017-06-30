@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,10 +21,10 @@ public final class GenomeLocUnitTest extends BaseTest {
      */
     @Test
     public void testIsBetween() {
-        GenomeLoc locMiddle = hg19GenomeLocParser.createGenomeLoc("1", 3, 3);
+        GenomeLoc locMiddle = TestResources.getGenomeLocParser().createGenomeLoc("1", 3, 3);
 
-        GenomeLoc locLeft = hg19GenomeLocParser.createGenomeLoc("1", 1, 1);
-        GenomeLoc locRight = hg19GenomeLocParser.createGenomeLoc("1", 5, 5);
+        GenomeLoc locLeft = TestResources.getGenomeLocParser().createGenomeLoc("1", 1, 1);
+        GenomeLoc locRight = TestResources.getGenomeLocParser().createGenomeLoc("1", 5, 5);
 
         Assert.assertTrue(locMiddle.isBetween(locLeft, locRight));
         Assert.assertFalse(locLeft.isBetween(locMiddle, locRight));
@@ -32,15 +33,15 @@ public final class GenomeLocUnitTest extends BaseTest {
     }
     @Test
     public void testContigIndex() {
-        GenomeLoc locOne = hg19GenomeLocParser.createGenomeLoc("1",1,1);
+        GenomeLoc locOne = TestResources.getGenomeLocParser().createGenomeLoc("1",1,1);
         Assert.assertEquals(0, locOne.getContigIndex());
         Assert.assertEquals("1", locOne.getContig());
 
-        GenomeLoc locFour = hg19GenomeLocParser.createGenomeLoc("4",1,1);
+        GenomeLoc locFour = TestResources.getGenomeLocParser().createGenomeLoc("4",1,1);
         Assert.assertEquals(3, locFour.getContigIndex());
         Assert.assertEquals("4", locFour.contigName);
 
-        GenomeLoc locNumber = hg19GenomeLocParser.createGenomeLoc(hg19Header.getSequenceDictionary().getSequence(0).getSequenceName(), 1, 1);
+        GenomeLoc locNumber = TestResources.getGenomeLocParser().createGenomeLoc(TestResources.getHg19Header().getSequenceDictionary().getSequence(0).getSequenceName(), 1, 1);
         Assert.assertEquals(0, locNumber.getContigIndex());
         Assert.assertEquals("1", locNumber.getContig());
         Assert.assertEquals(0, locOne.compareTo(locNumber));
@@ -49,49 +50,49 @@ public final class GenomeLocUnitTest extends BaseTest {
 
     @Test
     public void testCompareTo() {
-        GenomeLoc twoOne = hg19GenomeLocParser.createGenomeLoc("2", 1);
-        GenomeLoc twoFive = hg19GenomeLocParser.createGenomeLoc("2", 5);
-        GenomeLoc twoOtherFive = hg19GenomeLocParser.createGenomeLoc("2", 5);
+        GenomeLoc twoOne = TestResources.getGenomeLocParser().createGenomeLoc("2", 1);
+        GenomeLoc twoFive = TestResources.getGenomeLocParser().createGenomeLoc("2", 5);
+        GenomeLoc twoOtherFive = TestResources.getGenomeLocParser().createGenomeLoc("2", 5);
         Assert.assertEquals(twoFive.compareTo(twoOtherFive), 0);
 
         Assert.assertEquals(twoOne.compareTo(twoFive), -1);
         Assert.assertEquals(twoFive.compareTo(twoOne), 1);
 
-        GenomeLoc oneOne = hg19GenomeLocParser.createGenomeLoc("1", 5);
+        GenomeLoc oneOne = TestResources.getGenomeLocParser().createGenomeLoc("1", 5);
         Assert.assertEquals(oneOne.compareTo(twoOne), -1);
         Assert.assertEquals(twoOne.compareTo(oneOne), 1);
     }
 
     @Test
     public void testEndpointSpan() throws Exception {
-        GenomeLoc twoOne = hg19GenomeLocParser.createGenomeLoc("2", 1);
-        GenomeLoc twoFive = hg19GenomeLocParser.createGenomeLoc("2", 5);
+        GenomeLoc twoOne = TestResources.getGenomeLocParser().createGenomeLoc("2", 1);
+        GenomeLoc twoFive = TestResources.getGenomeLocParser().createGenomeLoc("2", 5);
         final GenomeLoc twoOne_twoFive = twoOne.endpointSpan(twoFive);
         final GenomeLoc twoFive_twoOne = twoFive.endpointSpan(twoOne);
 
-        final GenomeLoc expectedSpan =  hg19GenomeLocParser.createGenomeLoc("2", 1, 5);
+        final GenomeLoc expectedSpan =  TestResources.getGenomeLocParser().createGenomeLoc("2", 1, 5);
         Assert.assertEquals(twoOne_twoFive, expectedSpan);
         Assert.assertEquals(twoFive_twoOne, expectedSpan);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testEndpointSpanUnmapped() throws Exception {
-        GenomeLoc twoOne = hg19GenomeLocParser.createGenomeLoc("2", 1);
+        GenomeLoc twoOne = TestResources.getGenomeLocParser().createGenomeLoc("2", 1);
         GenomeLoc unmapped = GenomeLoc.UNMAPPED;
         twoOne.endpointSpan(unmapped);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testEndpointWrongContig() throws Exception {
-        GenomeLoc twoOne = hg19GenomeLocParser.createGenomeLoc("2", 1);
-        GenomeLoc threeFive = hg19GenomeLocParser.createGenomeLoc("3", 5);
+        GenomeLoc twoOne = TestResources.getGenomeLocParser().createGenomeLoc("2", 1);
+        GenomeLoc threeFive = TestResources.getGenomeLocParser().createGenomeLoc("3", 5);
         twoOne.endpointSpan(threeFive);
     }
 
     @Test
     public void testUnmappedSort() {
-        GenomeLoc chr1 = hg19GenomeLocParser.createGenomeLoc("1",1,10000000);
-        GenomeLoc chr2 = hg19GenomeLocParser.createGenomeLoc("2",1,10000000);
+        GenomeLoc chr1 = TestResources.getGenomeLocParser().createGenomeLoc("1",1,10000000);
+        GenomeLoc chr2 = TestResources.getGenomeLocParser().createGenomeLoc("2",1,10000000);
         GenomeLoc unmapped = GenomeLoc.UNMAPPED;
 
         List<GenomeLoc> unmappedOnly = Arrays.asList(unmapped);
@@ -127,26 +128,26 @@ public final class GenomeLocUnitTest extends BaseTest {
 
     @Test
     public void testUnmappedMerge() {
-        GenomeLoc chr1 = hg19GenomeLocParser.createGenomeLoc("1",1,10000000);
+        GenomeLoc chr1 = TestResources.getGenomeLocParser().createGenomeLoc("1",1,10000000);
         GenomeLoc unmapped = GenomeLoc.UNMAPPED;
 
         List<GenomeLoc> oneUnmappedOnly = Arrays.asList(unmapped);
-        oneUnmappedOnly = IntervalUtils.sortAndMergeIntervals(hg19GenomeLocParser,oneUnmappedOnly, IntervalMergingRule.OVERLAPPING_ONLY).toList();
+        oneUnmappedOnly = IntervalUtils.sortAndMergeIntervals(TestResources.getGenomeLocParser(),oneUnmappedOnly, IntervalMergingRule.OVERLAPPING_ONLY).toList();
         Assert.assertEquals(oneUnmappedOnly.size(),1,"Wrong number of elements in list.");
         Assert.assertEquals(oneUnmappedOnly.get(0),unmapped,"List sorted in wrong order");
 
         List<GenomeLoc> twoUnmapped = Arrays.asList(unmapped,unmapped);
-        twoUnmapped = IntervalUtils.sortAndMergeIntervals(hg19GenomeLocParser,twoUnmapped,IntervalMergingRule.OVERLAPPING_ONLY).toList();
+        twoUnmapped = IntervalUtils.sortAndMergeIntervals(TestResources.getGenomeLocParser(),twoUnmapped,IntervalMergingRule.OVERLAPPING_ONLY).toList();
         Assert.assertEquals(twoUnmapped.size(),1,"Wrong number of elements in list.");
         Assert.assertEquals(twoUnmapped.get(0),unmapped,"List sorted in wrong order");
 
         List<GenomeLoc> twoUnmappedAtEnd = Arrays.asList(chr1,unmapped,unmapped);
-        twoUnmappedAtEnd = IntervalUtils.sortAndMergeIntervals(hg19GenomeLocParser,twoUnmappedAtEnd,IntervalMergingRule.OVERLAPPING_ONLY).toList();
+        twoUnmappedAtEnd = IntervalUtils.sortAndMergeIntervals(TestResources.getGenomeLocParser(),twoUnmappedAtEnd,IntervalMergingRule.OVERLAPPING_ONLY).toList();
         Assert.assertEquals(twoUnmappedAtEnd.size(),2,"Wrong number of elements in list.");
         Assert.assertEquals(twoUnmappedAtEnd,Arrays.asList(chr1,unmapped),"List sorted in wrong order");
 
         List<GenomeLoc> twoUnmappedMixed = Arrays.asList(unmapped,chr1,unmapped);
-        twoUnmappedMixed = IntervalUtils.sortAndMergeIntervals(hg19GenomeLocParser,twoUnmappedMixed,IntervalMergingRule.OVERLAPPING_ONLY).toList();
+        twoUnmappedMixed = IntervalUtils.sortAndMergeIntervals(TestResources.getGenomeLocParser(),twoUnmappedMixed,IntervalMergingRule.OVERLAPPING_ONLY).toList();
         Assert.assertEquals(twoUnmappedMixed.size(),2,"Wrong number of elements in list.");
         Assert.assertEquals(twoUnmappedMixed,Arrays.asList(chr1,unmapped),"List sorted in wrong order");
     }
@@ -164,8 +165,8 @@ public final class GenomeLocUnitTest extends BaseTest {
 
         private ReciprocalOverlapProvider(int start1, int stop1, int start2, int stop2) {
             super(ReciprocalOverlapProvider.class);
-            gl1 = hg19GenomeLocParser.createGenomeLoc("1", start1, stop1);
-            gl2 = hg19GenomeLocParser.createGenomeLoc("1", start2, stop2);
+            gl1 = TestResources.getGenomeLocParser().createGenomeLoc("1", start1, stop1);
+            gl2 = TestResources.getGenomeLocParser().createGenomeLoc("1", start2, stop2);
 
             int shared = 0;
             for ( int i = start1; i <= stop1; i++ ) {
@@ -223,11 +224,11 @@ public final class GenomeLocUnitTest extends BaseTest {
 
         final int start = 10;
         for ( int stop = start; stop < start + 3; stop++ ) {
-            final GenomeLoc g1 = hg19GenomeLocParser.createGenomeLoc("2", start, stop);
+            final GenomeLoc g1 = TestResources.getGenomeLocParser().createGenomeLoc("2", start, stop);
             for ( final String contig : Arrays.asList("1", "2", "3")) {
                 for ( int start2 = start - 1; start2 <= stop + 1; start2++ ) {
                     for ( int stop2 = start2; stop2 < stop + 2; stop2++ ) {
-                        final GenomeLoc g2 = hg19GenomeLocParser.createGenomeLoc(contig, start2, stop2);
+                        final GenomeLoc g2 = TestResources.getGenomeLocParser().createGenomeLoc(contig, start2, stop2);
 
                         ComparisonResult cmp = ComparisonResult.EQUALS;
                         if ( contig.equals("3") ) cmp = ComparisonResult.LESS_THAN;

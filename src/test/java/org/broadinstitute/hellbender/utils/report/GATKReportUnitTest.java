@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -18,7 +19,7 @@ public final class GATKReportUnitTest extends BaseTest {
 
     @Test
     public void testParse() throws Exception {
-        String reportPath = publicTestDir + "exampleGATKReportv2.tbl";
+        String reportPath = TestResources.publicTestDir + "exampleGATKReportv2.tbl";
         GATKReport report = new GATKReport(reportPath);
         Assert.assertEquals(report.getVersion(), GATKReportVersion.V1_1);
         Assert.assertEquals(report.getTables().size(), 5);

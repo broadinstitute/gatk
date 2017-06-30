@@ -4,6 +4,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -19,7 +20,7 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class AllelicPanelOfNormalsCreatorUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final FileFilter PULLDOWN_FILTER = new WildcardFileFilter("allelic-pon-test-pulldown-*tsv");
     private static final List<File> PULLDOWN_FILES = Arrays.asList(new File(TEST_SUB_DIR).listFiles(PULLDOWN_FILTER));

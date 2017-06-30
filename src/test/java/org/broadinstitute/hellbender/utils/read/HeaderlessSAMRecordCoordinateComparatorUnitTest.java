@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -23,7 +24,7 @@ public class HeaderlessSAMRecordCoordinateComparatorUnitTest extends BaseTest {
         // in the test below will fail if our ordering of these reads relative to the mapped reads
         // is not consistent with the definition of coordinate sorting as defined in
         // htsjdk.samtools.SAMRecordCoordinateComparator
-        final String inputBam = publicTestDir + "org/broadinstitute/hellbender/tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
+        final String inputBam = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
         final List<SAMRecord> originalReads = new ArrayList<>();
         final List<SAMRecord> headerlessReads = new ArrayList<>();
         SAMFileHeader header = null;

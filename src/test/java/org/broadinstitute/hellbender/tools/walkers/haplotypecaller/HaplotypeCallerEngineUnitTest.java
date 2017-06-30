@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -24,8 +25,8 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
 
     @Test
     public void testIsActive() throws IOException {
-        final File testBam = new File(NA12878_20_21_WGS_bam);
-        final File reference = new File(b37_reference_20_21);
+        final File testBam = new File(TestResources.NA12878_20_21_WGS_bam);
+        final File reference = new File(TestResources.b37_reference_20_21);
         final SimpleInterval shardInterval = new SimpleInterval("20", 10000000, 10001000);
         final SimpleInterval paddedShardInterval = new SimpleInterval(shardInterval.getContig(), shardInterval.getStart() - 100, shardInterval.getEnd() + 100);
         final HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();

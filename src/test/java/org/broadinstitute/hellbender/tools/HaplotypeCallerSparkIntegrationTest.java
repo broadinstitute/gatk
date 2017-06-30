@@ -14,8 +14,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -27,7 +27,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCall
 
 public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest {
 
-    private  static final String TEST_FILES_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
+    private  static final String TEST_FILES_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
 
     /*
     * Test that in VCF mode we're >= 99% concordant with GATK3.5 results
@@ -46,8 +46,8 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.5.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_2bit_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
@@ -81,8 +81,8 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.5.alleleSpecific.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_2bit_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -114,8 +114,8 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk3.5.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_2bit_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -144,8 +144,8 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk3.5.alleleSpecific.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_2bit_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -164,7 +164,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     @Test
     public void testReferenceAdapterIsSerializable() throws IOException {
         final AuthHolder auth = new AuthHolder("name", "somestring");
-        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(auth, b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(auth, TestResources.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSource.class, SparkContextFactory.getTestSparkContext().getConf());
         final HaplotypeCallerSpark.ReferenceMultiSourceAdapter adapter = new HaplotypeCallerSpark.ReferenceMultiSourceAdapter(referenceMultiSource, auth);
         SparkTestUtils.roundTripInKryo(adapter, HaplotypeCallerSpark.ReferenceMultiSourceAdapter.class, SparkContextFactory.getTestSparkContext().getConf());
@@ -187,7 +187,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceMultiSourceIsSerializable() {
-        final ReferenceMultiSource args = new ReferenceMultiSource((PipelineOptions) null, BaseTest.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource args = new ReferenceMultiSource((PipelineOptions) null, TestResources.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(args, ReferenceMultiSource.class, SparkContextFactory.getTestSparkContext().getConf());
     }
 

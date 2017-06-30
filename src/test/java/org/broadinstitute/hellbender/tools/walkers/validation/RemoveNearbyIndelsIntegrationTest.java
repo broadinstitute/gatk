@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.walkers.validation.RemoveNearbyIndels;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -19,7 +19,7 @@ import java.util.stream.StreamSupport;
  */
 public class RemoveNearbyIndelsIntegrationTest extends CommandLineProgramTest {
 
-    private static final String TOOLS_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
+    private static final String TOOLS_TEST_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
     private static final File INPUT_VCF = new File(TOOLS_TEST_DIRECTORY, "nearby_indels.vcf");
     /**
      * nearby_indels.vcf looks like this:

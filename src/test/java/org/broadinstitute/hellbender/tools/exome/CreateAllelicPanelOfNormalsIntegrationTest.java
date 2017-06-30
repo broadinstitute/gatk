@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPoNTestUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -24,7 +25,7 @@ import static org.broadinstitute.hellbender.tools.exome.CreateAllelicPanelOfNorm
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class CreateAllelicPanelOfNormalsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final FileFilter PULLDOWN_FILTER = new WildcardFileFilter("allelic-pon-test-pulldown-*tsv");
     private static final File[] PULLDOWN_FILES = new File(TEST_SUB_DIR).listFiles(PULLDOWN_FILTER);

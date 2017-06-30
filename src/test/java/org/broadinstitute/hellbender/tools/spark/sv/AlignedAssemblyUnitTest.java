@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -107,7 +108,7 @@ public class AlignedAssemblyUnitTest extends BaseTest{
                                               final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                               final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignedAssembly.AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, TestResources.getHg19Header(), false, false);
         final AlignedAssembly.AlignmentInterval alignmentInterval = new AlignedAssembly.AlignmentInterval(samRecord);
         Assert.assertEquals(alignmentInterval.referenceInterval, expectedReferenceInterval);
         Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);

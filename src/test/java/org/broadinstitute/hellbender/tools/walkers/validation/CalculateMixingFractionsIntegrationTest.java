@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.walkers.validation.MixingFraction;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
  * Created by David Benjamin on 1/31/17.
  */
 public class CalculateMixingFractionsIntegrationTest extends CommandLineProgramTest {
-    private static final String VCF_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
+    private static final String VCF_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
     private static final File INPUT_VCF = new File(VCF_DIRECTORY, "dream_4_mixing.vcf");
-    private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
+    private static final String DREAM_BAMS_DIR = TestResources.largeFileTestDir + "mutect/dream_synthetic_bams/";
     private static final File INPUT_BAM = new File(DREAM_BAMS_DIR, "tumor_4.bam");
 
     /**

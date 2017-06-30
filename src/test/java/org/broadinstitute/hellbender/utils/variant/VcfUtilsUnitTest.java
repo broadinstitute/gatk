@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFContigHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderVersion;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,10 +21,10 @@ public class VcfUtilsUnitTest extends BaseTest {
     @DataProvider(name = "testData")
     public Object[][] getInitialData() {
     return new Object[][] {
-            { createHeaderLines(), createSequenceDictonary(), new File(b37_reference_20_21), true,  "human_g1k_v37.20.21"},
+            { createHeaderLines(), createSequenceDictonary(), new File(TestResources.b37_reference_20_21), true,  "human_g1k_v37.20.21"},
             { createHeaderLines(), createSequenceDictonary(), null, true,  "human_g1k_v37.20.21"},
-            { createHeaderLines(), createSequenceDictonary(), new File(b37_reference_20_21), false,
-                    "file://" + new File(b37_reference_20_21).getAbsolutePath() }
+            { createHeaderLines(), createSequenceDictonary(), new File(TestResources.b37_reference_20_21), false,
+                    "file://" + new File(TestResources.b37_reference_20_21).getAbsolutePath() }
         };
     }
 

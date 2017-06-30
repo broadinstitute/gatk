@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,7 +13,7 @@ import java.io.File;
 
 public final class GatherBQSRReportsIntegrationTest extends CommandLineProgramTest {
 
-    private static final String testDir = BaseTest.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
+    private static final String testDir = TestResources.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
 
     @Test
     public void testCombine5Reports() throws Exception {

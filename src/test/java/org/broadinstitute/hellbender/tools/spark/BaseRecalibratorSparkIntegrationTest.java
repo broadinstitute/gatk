@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -67,15 +68,15 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     public Object[][] createBQSRTestData() {
         final String localResources =  getResourceDir();
 
-        final String GRCh37Ref2bit_chr2021 = b37_2bit_reference_20_21;
-        final String GRCh37Ref_chr2021 = b37_reference_20_21;
-        final String hiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
+        final String GRCh37Ref2bit_chr2021 = TestResources.b37_2bit_reference_20_21;
+        final String GRCh37Ref_chr2021 = TestResources.b37_reference_20_21;
+        final String hiSeqBam_chr20 = localResources + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
         final String hiSeqBam_1read = localResources + "overlappingRead.bam";
-        final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
-        final String dbSNPb37_chr2021 = dbsnp_138_b37_20_21_vcf;
+        final String dbSNPb37_chr20 = localResources + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String dbSNPb37_chr2021 = TestResources.dbsnp_138_b37_20_21_vcf;
 
-        final String hg19Chr171Mb = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
-        final String hg19Chr171Mb_2bit = publicTestDir + "human_g1k_v37.chr17_1Mb.2bit";
+        final String hg19Chr171Mb = TestResources.publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+        final String hg19Chr171Mb_2bit = TestResources.publicTestDir + "human_g1k_v37.chr17_1Mb.2bit";
         final String HiSeqBam_chr17 = localResources + "NA12878.chr17_69k_70k.dictFix.bam";
         final String dbSNPb37_chr17 =  localResources + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
         final String more17Sites = localResources + "bqsr.fakeSitesForTesting.b37.chr17.vcf";
@@ -154,11 +155,11 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String localResources =  getResourceDir();
 
         final String GRCh37RefCloud = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
-        final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
-        final String hiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
+        final String chr2021Reference2bit = TestResources.GCS_b37_CHR20_21_REFERENCE_2BIT;
+        final String hiSeqBam_chr20 = localResources + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
         final String hiSeqBam_1read = localResources + "overlappingRead.bam";
-        final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
-        final String dbSNPb37_chr2021 = dbsnp_138_b37_20_21_vcf;
+        final String dbSNPb37_chr20 = localResources + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String dbSNPb37_chr2021 = TestResources.dbsnp_138_b37_20_21_vcf;
 
         return new Object[][]{
                 //Note: recal tables were created using GATK3.4 with one change from 2.87 to 2.88 in expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt
@@ -198,10 +199,10 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     @Test(groups = "spark")
     public void testBlowUpOnBroadcastIncompatibleReference() throws IOException {
         //this should blow up because broadcast requires a 2bit reference
-        final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
-        final String dbSNPb37_chr20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String hiSeqBam_chr20 = getResourceDir() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
+        final String dbSNPb37_chr20 = getResourceDir() + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
-        BQSRTest params = new BQSRTest(b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
+        BQSRTest params = new BQSRTest(TestResources.b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
 
         ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -215,10 +216,10 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
         final String GRCh37RefCloud = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
-        final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
+        final String chr2021Reference2bit = TestResources.GCS_b37_CHR20_21_REFERENCE_2BIT;
         final String localResources = getResourceDir();
-        final String HiSeqBamCloud_chr20 = getCloudInputs() + WGS_B37_CH20_1M_1M1K_BAM;
-        final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String HiSeqBamCloud_chr20 = getCloudInputs() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
+        final String dbSNPb37_chr20 = localResources + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
         return new Object[][]{
                 // input in cloud, computation local.
@@ -243,9 +244,9 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud", "spark"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
-        final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
-        final String dbSNPb37_chr2021 = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
-        final String HiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
+        final String chr2021Reference2bit = TestResources.GCS_b37_CHR20_21_REFERENCE_2BIT;
+        final String dbSNPb37_chr2021 = resourceDir + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String HiSeqBam_chr20 = getResourceDir() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
 
         final File actualHiSeqBam_recalibrated = createTempFile("actual.recalibrated", ".bam");
 
@@ -275,7 +276,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
+        final String chr2021Reference2bit = TestResources.GCS_b37_CHR20_21_REFERENCE_2BIT;
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String  NO_DBSNP = "";
@@ -295,7 +296,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String hg19Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.HG19_REF_ID;
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
-        final String dbSNPb37_chr2021 = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String dbSNPb37_chr2021 = resourceDir + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final BQSRTest params = new BQSRTest(hg19Ref, HiSeqBam_chr17, dbSNPb37_chr2021, "", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),

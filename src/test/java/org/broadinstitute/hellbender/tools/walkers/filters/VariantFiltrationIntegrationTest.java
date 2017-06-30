@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.filters;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -13,7 +14,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
 
     public String baseTestString(final String vcf, final String options) {
         final String file = getToolTestDataDir() + vcf;
-        return "--variant " + file + " " + options + " -O %s" + " -R" + hg19_chr1_1M_Reference + " --addOutputVCFCommandLine false ";
+        return "--variant " + file + " " + options + " -O %s" + " -R" + TestResources.hg19_chr1_1M_Reference + " --addOutputVCFCommandLine false ";
     }
 
     @Test

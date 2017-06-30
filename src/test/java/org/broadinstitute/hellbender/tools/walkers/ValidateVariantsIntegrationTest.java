@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -16,7 +17,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     public String baseTestString(final boolean sharedFile, final String file, final boolean exclude, final ValidateVariants.ValidationType type) {
         final String defaultRegion = "1:1-1000000";
 
-        return baseTestString(sharedFile, file, exclude, type, defaultRegion, hg19_chr1_1M_Reference);
+        return baseTestString(sharedFile, file, exclude, type, defaultRegion, TestResources.hg19_chr1_1M_Reference);
     }
 
     public String baseTestString(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type, String region, String reference) {
@@ -59,7 +60,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGoodFile2() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(true, hg19_chr1_1M_exampleVCF, false, ALL),
+                baseTestString(true, TestResources.hg19_chr1_1M_exampleVCF, false, ALL),
                 Collections.emptyList()
         );
 
@@ -124,7 +125,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testBadID() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(false, "validationExampleBadRSID.vcf", false, IDS) + " --dbsnp " + hg19_chr1_1M_dbSNP_modified,
+                baseTestString(false, "validationExampleBadRSID.vcf", false, IDS) + " --dbsnp " + TestResources.hg19_chr1_1M_dbSNP_modified,
                 0,
                 UserException.FailsStrictValidation.class
         );
@@ -143,7 +144,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testBadID2_OKif_notInDBSNP() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(false, "validationExampleRSIDonPositionNotInDBSNP.vcf", false, IDS) + " --dbsnp " + hg19_chr1_1M_dbSNP_modified,
+                baseTestString(false, "validationExampleRSIDonPositionNotInDBSNP.vcf", false, IDS) + " --dbsnp " + TestResources.hg19_chr1_1M_dbSNP_modified,
                 Collections.emptyList()
         );
         spec.executeTest("test bad RS ID is OK when not in dbSNP even with dbsnp arg", this);
@@ -216,7 +217,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test(description = "Fixes '''bug''' reported in story https://www.pivotaltracker.com/story/show/68725164")
     public void testUnusedAlleleFix() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(false, "validationUnusedAllelesBugFix.vcf", true, ALLELES,"1:1-739000",hg19_chr1_1M_Reference), Collections.emptyList());
+                baseTestString(false, "validationUnusedAllelesBugFix.vcf", true, ALLELES,"1:1-739000", TestResources.hg19_chr1_1M_Reference), Collections.emptyList());
         spec.executeTest("test unused allele bug fix", this);
     }
 
@@ -225,7 +226,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test(description = "Checks '''bug''' reported in story https://www.pivotaltracker.com/story/show/68725164")
     public void testUnusedAlleleError() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(false, "validationUnusedAllelesBugFix.vcf", false, ALLELES,"1:1-739000",hg19_chr1_1M_Reference),0, UserException.FailsStrictValidation.class);
+                baseTestString(false, "validationUnusedAllelesBugFix.vcf", false, ALLELES,"1:1-739000", TestResources.hg19_chr1_1M_Reference),0, UserException.FailsStrictValidation.class);
         spec.executeTest("test unused allele bug fix", this);
     }
 }

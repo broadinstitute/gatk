@@ -4,6 +4,7 @@ import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
@@ -142,7 +143,7 @@ public final class IOUtilsUnitTest extends BaseTest {
         //It runs at jvm shutdown so there isn't a good way to test it properly.
         //If you see a directory in the hellbender main folder called
 
-        final File dir = new File(BaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
+        final File dir = new File(TestResources.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
         IOUtils.deleteRecursivelyOnExit(dir);
 
         FileUtils.mkdir(dir, true);
@@ -174,8 +175,8 @@ public final class IOUtilsUnitTest extends BaseTest {
     @Test(groups={"bucket"})
     public void testGetPath() throws IOException {
         innerTestGetPath(getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
-        innerTestGetPath("file://" + NA12878_20_21_WGS_bam);
-        innerTestGetPath(NA12878_20_21_WGS_bam);
+        innerTestGetPath("file://" + TestResources.NA12878_20_21_WGS_bam);
+        innerTestGetPath(TestResources.NA12878_20_21_WGS_bam);
     }
 
     private void innerTestGetPath(String s) throws IOException {

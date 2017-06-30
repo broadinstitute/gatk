@@ -10,7 +10,6 @@ import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -20,6 +19,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -34,13 +34,13 @@ import java.util.stream.Collectors;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
 
-    private static final String HG_00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
-    private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
-    private static final String NA_19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
+    private static final String HG_00096 = TestResources.largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
+    private static final String HG_00268 = TestResources.largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
+    private static final String NA_19625 = TestResources.largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
     private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
-    private static final String GENOMICSDB_TEST_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/GenomicsDBImport/";
+    private static final String GENOMICSDB_TEST_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/GenomicsDBImport/";
 
-    private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    private static final String COMBINED = TestResources.largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
     private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
 
     @Override
@@ -79,7 +79,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
      */
     private List<String> resolveLargeFilesAsCloudURIs(final List<String> filenames){
         return filenames.stream()
-                .map( filename -> filename.replace(publicTestDir, getGCPTestInputPath()))
+                .map( filename -> filename.replace(TestResources.publicTestDir, getGCPTestInputPath()))
                 .peek( filename -> Assert.assertTrue(BucketUtils.isCloudStorageUrl(filename)))
                 .collect(Collectors.toList());
     }
@@ -155,7 +155,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                         new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
                         workspace,
                         GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                        b38_reference_20_21, null, new BCF2Codec());
+                        TestResources.b38_reference_20_21, null, new BCF2Codec());
 
         final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
                 AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
@@ -229,15 +229,15 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(Arrays.asList(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting2.g.vcf"),
                 new SimpleInterval("chr20", 17959479, 17959479), workspace, 0, false, 0);
 
-        try ( final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+        try (final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
                 new GenomicsDBFeatureReader<>(
                         new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
                         new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
                         workspace,
                         GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                        b38_reference_20_21, null, new BCF2Codec());
+                        TestResources.b38_reference_20_21, null, new BCF2Codec());
 
-              final AbstractFeatureReader<VariantContext, LineIterator> inputGVCFReader =
+             final AbstractFeatureReader<VariantContext, LineIterator> inputGVCFReader =
                       AbstractFeatureReader.getFeatureReader(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", new VCFCodec(), true);
         ) {
             final SAMSequenceDictionary dictionaryFromGenomicsDB = ((VCFHeader)genomicsDBFeatureReader.getHeader()).getSequenceDictionary();

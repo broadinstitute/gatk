@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoN;
 import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCACoveragePoN;
 import org.broadinstitute.hellbender.tools.pon.coverage.pca.RamPCACoveragePoN;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -28,7 +29,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
 
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
 
-    private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
+    private static final File LARGE_CNV_TEST_FILE_DIR = new File(TestResources.largeFileTestDir, "cnv");
 
     private static final File CONTROL_PCOV_FULL_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");
 

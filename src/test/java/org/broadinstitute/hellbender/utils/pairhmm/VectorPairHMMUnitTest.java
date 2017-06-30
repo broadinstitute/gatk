@@ -8,23 +8,22 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.text.parsers.BasicInputParser;
 import org.testng.Assert;
 import org.testng.SkipException;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.*;
 
 public final class VectorPairHMMUnitTest extends BaseTest {
 
-    private static final String pairHMMTestData = publicTestDir + "pairhmm-testdata.txt";
+    private static final String pairHMMTestData = TestResources.publicTestDir + "pairhmm-testdata.txt";
 
     // Return a list of supported VectorLoglessPairHMM implementations, skip the test if none are supported
     private List<Pair<PairHMM, Boolean> > getHMMs() {

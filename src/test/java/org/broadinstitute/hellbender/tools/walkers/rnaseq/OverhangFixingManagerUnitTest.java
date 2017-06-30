@@ -5,14 +5,16 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import static org.mockito.Mockito.*;
 
 import java.util.*;
 
@@ -20,7 +22,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     private SAMFileHeader getHG19Header() {
         final SAMFileHeader header = new SAMFileHeader();
-        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        header.setSequenceDictionary(TestResources.getGenomeLocParser().getSequenceDictionary());
         return header;
     }
 
@@ -28,7 +30,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
     @Test
     public void testCleanSplices() {
 
-        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, true);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, TestResources.getGenomeLocParser(), TestResources.getHg19ReferenceReader(), 10000, 1, 40, false, true);
         manager.activateWriting();
         final int offset = 10;
         for ( int i = 0; i < OverhangFixingManager.MAX_SPLICES_TO_KEEP + 1; i++ )
@@ -56,8 +58,8 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
                         if ( leftSplice >= rightSplice )
                             continue;
 
-                        final GenomeLoc readLoc = hg19GenomeLocParser.createGenomeLoc("1", leftRead, rightRead);
-                        final GenomeLoc spliceLoc = hg19GenomeLocParser.createGenomeLoc("1", leftSplice, rightSplice);
+                        final GenomeLoc readLoc = TestResources.getGenomeLocParser().createGenomeLoc("1", leftRead, rightRead);
+                        final GenomeLoc spliceLoc = TestResources.getGenomeLocParser().createGenomeLoc("1", leftSplice, rightSplice);
                         tests.add(new Object[]{readLoc, spliceLoc});
                     }
                 }
@@ -93,7 +95,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test(dataProvider = "MismatchEdgeConditionTest")
     public void testMismatchEdgeCondition(final byte[] read, final int readStart, final byte[] ref, final int refStart, final int overhang) {
-        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, true);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, TestResources.getGenomeLocParser(), TestResources.getHg19ReferenceReader(), 10000, 1, 40, false, true);
         manager.activateWriting();
         Assert.assertFalse(manager.overhangingBasesMismatch(read, readStart, ((read==null)?0:read.length), ref, refStart, overhang));
     }
@@ -126,7 +128,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test(dataProvider = "MismatchTest")
     public void testMismatch(final byte[] read, final int readStart, final byte[] ref, final int refStart, final int overhang, final boolean expected) {
-        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, true);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, TestResources.getGenomeLocParser(), TestResources.getHg19ReferenceReader(), 10000, 1, 40, false, true);
         manager.activateWriting();
         Assert.assertEquals(manager.overhangingBasesMismatch(read, readStart, ((read==null)?0:read.length), ref, refStart, overhang), expected, new String(read) + " vs. " + new String(ref) + " @" + overhang);
     }
@@ -166,12 +168,12 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test
     public void testMappingReadMateRepair() {
-        final OverhangFixingManager manager = new OverhangFixingManagerAlwaysSplit10000Reads(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, false);
-        GATKRead read1a = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10000, new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, "6M");
+        final OverhangFixingManager manager = new OverhangFixingManagerAlwaysSplit10000Reads(getHG19Header(), null, TestResources.getGenomeLocParser(), TestResources.getHg19ReferenceReader(), 10000, 1, 40, false, false);
+        GATKRead read1a = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10000, new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, "6M");
         read1a.setMatePosition("1", 10020);
         read1a.setAttribute("MC","6M");
         read1a.setIsFirstOfPair();
-        GATKRead read1b = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10010, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, "6M");
+        GATKRead read1b = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10010, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, "6M");
         read1b.setMatePosition("1",10020);
         read1b.setAttribute("MC","6M");
         read1b.setIsFirstOfPair();
@@ -179,7 +181,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
         readGroup.add(read1a);
         readGroup.add(read1b);
 
-        GATKRead read2 = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10020, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, "6M");
+        GATKRead read2 = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10020, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, new byte[]{(byte)'C', (byte)'C', (byte)'A', (byte)'A', (byte)'A', (byte)'A'}, "6M");
         read2.setMatePosition("1",10000);
         read2.setAttribute("MC","6M");
         read2.setIsSecondOfPair();
@@ -201,27 +203,27 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test
     public void testMappingReadMateRepairNoMCTag() {
-        final OverhangFixingManager manager = new OverhangFixingManagerAlwaysSplit10000Reads(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, false);
-        GATKRead read1a = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10000, "AAAAAA".getBytes(), "AAAAAA".getBytes(), "6M");
+        final OverhangFixingManager manager = new OverhangFixingManagerAlwaysSplit10000Reads(getHG19Header(), null, TestResources.getGenomeLocParser(), TestResources.getHg19ReferenceReader(), 10000, 1, 40, false, false);
+        GATKRead read1a = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10000, "AAAAAA".getBytes(), "AAAAAA".getBytes(), "6M");
         read1a.setMatePosition("1", 10020);
         read1a.setIsFirstOfPair();
-        GATKRead read1b = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10010, "CCAAAA".getBytes(), "CCAAAA".getBytes(), "6M");
+        GATKRead read1b = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10010, "CCAAAA".getBytes(), "CCAAAA".getBytes(), "6M");
         read1b.setMatePosition("1",10020);
         read1b.setIsFirstOfPair();
         List<GATKRead> readGroup1 = new LinkedList<GATKRead>();
         readGroup1.add(read1a);
         readGroup1.add(read1b);
-        GATKRead read2 = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10020,  "CCAAAA".getBytes(),  "CCAAAA".getBytes(), "6M");
+        GATKRead read2 = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10020,  "CCAAAA".getBytes(),  "CCAAAA".getBytes(), "6M");
         read2.setMatePosition("1",10000);
         read2.setIsSecondOfPair();
 
         // Second Alignment set as secondary to see that it wont be clipped
-        GATKRead read3a = ArtificialReadUtils.createArtificialRead(hg19Header, "read2", 1, 10000,"AAAAAA".getBytes(), "AAAAAA".getBytes(), "6M");
+        GATKRead read3a = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read2", 1, 10000,"AAAAAA".getBytes(), "AAAAAA".getBytes(), "6M");
         read3a.setMatePosition("1", 10020);
         read3a.setIsSecondaryAlignment(true);
         read3a.setIsSecondOfPair();
         List<GATKRead> readGroup2 = Collections.singletonList(read3a);
-        GATKRead read4 = ArtificialReadUtils.createArtificialRead(hg19Header, "read2", 1, 10020, "CCAAAA".getBytes(), "CCAAAA".getBytes(), "6M");
+        GATKRead read4 = ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read2", 1, 10020, "CCAAAA".getBytes(), "CCAAAA".getBytes(), "6M");
         read4.setMatePosition("1",10000);
         read4.setIsFirstOfPair();
 
@@ -257,17 +259,17 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test
     public void testUnalignedReadNotClearingReads() {
-        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 100, 1, 30, false, true);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, TestResources.getGenomeLocParser(), TestResources.getHg19ReferenceReader(), 100, 1, 30, false, true);
         manager.addSplicePosition("1",2,3);
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 0);
-        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
+        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 1);
-        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialUnmappedRead(hg19Header,new byte[]{(byte)'A'}, new byte[]{(byte)'A'})));
+        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialUnmappedRead(TestResources.getHg19Header(),new byte[]{(byte)'A'}, new byte[]{(byte)'A'})));
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 2);
-        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
+        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 1, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 3);
         // testing that it does clear properly for a new contig
-        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 2, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
+        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(TestResources.getHg19Header(), "read1", 2, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 1);
     }
 

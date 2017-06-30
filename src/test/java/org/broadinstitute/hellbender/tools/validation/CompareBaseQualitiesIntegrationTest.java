@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -39,7 +40,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         final File secondBam = new File(resourceDir, "another.single.read.bam");
         final File firstCram = new File(resourceDir, "single.read.cram");
         final File secondCram = new File(resourceDir, "another.single.read.cram");
-        final File referenceFile = new File(b37_reference_20_21);
+        final File referenceFile = new File(TestResources.b37_reference_20_21);
 
         final List<Integer> sq = Arrays.asList(10, 20, 30, 40);
         return new Object[][]{

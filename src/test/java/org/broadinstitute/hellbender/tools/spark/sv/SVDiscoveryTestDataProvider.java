@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import scala.Tuple4;
 
 import java.io.ByteArrayOutputStream;
@@ -24,7 +24,7 @@ import java.util.List;
  */
 public final class SVDiscoveryTestDataProvider {
 
-    public static final ReferenceMultiSource reference = new ReferenceMultiSource((PipelineOptions)null, BaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+    public static final ReferenceMultiSource reference = new ReferenceMultiSource((PipelineOptions)null, TestResources.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary seqDict = reference.getReferenceSequenceDictionary(null);
 
     public static byte[] getReverseComplimentCopy(final byte[] sequence) {

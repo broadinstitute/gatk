@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
@@ -87,7 +88,7 @@ public class IntelInflaterDeflaterIntegrationTest extends CommandLineProgramTest
             throw new SkipException("IntelInflater/IntelDeflater not available on this platform");
         }
 
-        final File ORIG_BAM = new File(largeFileTestDir, INPUT_FILE);
+        final File ORIG_BAM = new File(TestResources.largeFileTestDir, INPUT_FILE);
         final File outFile = BaseTest.createTempFile(INPUT_FILE, ".bam");
 
         final ArrayList<String> args = new ArrayList<>();

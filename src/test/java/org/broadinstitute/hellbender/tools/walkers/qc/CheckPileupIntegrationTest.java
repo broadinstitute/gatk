@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -17,8 +17,8 @@ import java.util.Arrays;
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public class CheckPileupIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/qc/pileup/";
+    private static final String TEST_DATA_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/";
+    private static final String TEST_OUTPUT_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/walkers/qc/pileup/";
 
     /**
      * This test runs on a basic pileup obtained with samtools (version 1.3.1) and options -B --min-BQ 0
@@ -29,7 +29,7 @@ public class CheckPileupIntegrationTest extends CommandLineProgramTest {
         emptyTemp.createNewFile();
         // pileup was generated with "samtools -f hg19MiniReference -B --min-BQ 0 reads_data_source_test1.bam"
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
-            " -R " + hg19MiniReference +
+            " -R " + TestResources.hg19MiniReference +
             " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
             " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.pileup" +
             " -O %s", Arrays.asList(emptyTemp.toString()));
@@ -46,7 +46,7 @@ public class CheckPileupIntegrationTest extends CommandLineProgramTest {
         // pileup was generated with "samtools -f hg19MiniReference --min-BQ 0 reads_data_source_test1.bam"
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " --continue_after_error " +
-                " -R " + hg19MiniReference +
+                " -R " + TestResources.hg19MiniReference +
                 " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
                 " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.baq.pileup" +
                 " -O %s", Arrays.asList(TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.baq.pileup.diff"));

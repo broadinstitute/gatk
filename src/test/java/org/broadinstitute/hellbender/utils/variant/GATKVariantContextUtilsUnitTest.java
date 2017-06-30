@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
@@ -1540,7 +1541,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         for (final String chr : chrs )
             for (final int size : eventSizes )
                 for (final int starts : eventStarts ) {
-                    locs[nextIndex] = hg19GenomeLocParser.createGenomeLoc(chr,starts,starts + Math.max(0,size));
+                    locs[nextIndex] = TestResources.getGenomeLocParser().createGenomeLoc(chr,starts,starts + Math.max(0,size));
                     events[nextIndex++] = new VariantContextBuilder().source("test").loc(chr,starts,starts + Math.max(0,size)).alleles(Arrays.asList(
                             Allele.create(randomBases(size <= 0 ? 1 : size + 1, true), true), Allele.create(randomBases(size < 0 ? -size + 1 : 1, false), false))).make();
                 }
@@ -1757,7 +1758,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
     // https://github.com/broadinstitute/gatk/issues/2801.
     @Test
     public void testOnTheFlyTabixCreation() throws IOException {
-        final File inputGZIPFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/8_mutect2_sorted.vcf.gz");
+        final File inputGZIPFile = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/8_mutect2_sorted.vcf.gz");
         final File outputGZIPFile = createTempFile("testOnTheFlyTabixCreation", ".vcf.gz");
 
         long recordCount = 0;

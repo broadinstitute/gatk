@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -27,11 +28,11 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
 
     @Override
     public String getToolTestDataDir(){
-        return publicTestDir + "org/broadinstitute/hellbender/tools/walkers/VQSR/";
+        return TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/walkers/VQSR/";
     }
 
     private String getLargeVQSRTestDataDir(){
-        return largeFileTestDir + "VQSR/";
+        return TestResources.largeFileTestDir + "VQSR/";
     }
 
     @BeforeMethod

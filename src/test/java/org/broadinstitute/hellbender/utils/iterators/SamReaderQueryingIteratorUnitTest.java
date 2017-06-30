@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.iterators;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,22 +13,21 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class SamReaderQueryingIteratorUnitTest extends BaseTest {
 
     @DataProvider(name = "SamReaderQueryingIteratorTestData")
     public Object[][] samReaderQueryingIteratorTestData() {
         // This bam has only mapped reads
-        final File mappedBam = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final File mappedBam = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
 
         // This bam has mapped reads from various contigs, plus a few unmapped reads with no mapped mate
-        final File unmappedBam = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
+        final File unmappedBam = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
 
         // This is a snippet of the CEUTrio.HiSeq.WGS.b37.NA12878 bam from large, with mapped reads
         // from chromosome 20 (with one mapped read having an unmapped mate), plus several unmapped
         // reads with no mapped mate.
-        final File ceuSnippet = new File(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
+        final File ceuSnippet = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
 
         return new Object[][] {
                 // One interval, no unmapped

@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -30,8 +31,8 @@ public final class CollectQualityYieldMetricsIntegrationTest extends CommandLine
         list.add(new Object[]{"collect_quality_yield_metrics.sam", "collect_quality_yield_metrics.quals.txt", null, false});
         list.add(new Object[]{"collect_quality_yield_metrics.bam", "collect_quality_yield_metrics.originalquals.txt", null, true});
         list.add(new Object[]{"collect_quality_yield_metrics.bam", "collect_quality_yield_metrics.quals.txt", null, false});
-        list.add(new Object[]{"collect_quality_yield_metrics.cram", "collect_quality_yield_metrics.originalquals.txt", hg19_chr1_1M_Reference, true});
-        list.add(new Object[]{"collect_quality_yield_metrics.cram", "collect_quality_yield_metrics.quals.txt", hg19_chr1_1M_Reference, false});
+        list.add(new Object[]{"collect_quality_yield_metrics.cram", "collect_quality_yield_metrics.originalquals.txt", TestResources.hg19_chr1_1M_Reference, true});
+        list.add(new Object[]{"collect_quality_yield_metrics.cram", "collect_quality_yield_metrics.quals.txt", TestResources.hg19_chr1_1M_Reference, false});
         return list.iterator();
     }
     @Test(dataProvider = "CollectQualityYieldMetrics")

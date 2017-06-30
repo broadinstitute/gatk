@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,7 +21,7 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
     public Object[][] filenames() {
         return new String[][]{
                 {"first5000a.bam", null},
-                {"first5000a.cram", b37_reference_20_21}
+                {"first5000a.cram", TestResources.b37_reference_20_21}
         };
     }
 

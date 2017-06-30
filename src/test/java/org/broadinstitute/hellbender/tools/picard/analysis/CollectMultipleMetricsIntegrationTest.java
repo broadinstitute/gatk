@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 public final class CollectMultipleMetricsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
@@ -37,7 +37,7 @@ public final class CollectMultipleMetricsIntegrationTest extends CommandLineProg
                 // single level collection
                 {"insert_size_metrics_test.sam", null, "expectedInsertSizeMetricsL1.txt"},
                 {"insert_size_metrics_test.bam", null, "expectedInsertSizeMetricsL1.txt"},
-                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference, "expectedInsertSizeMetricsL1.txt"},
+                {"insert_size_metrics_test.cram", TestResources.hg19_chr1_1M_Reference, "expectedInsertSizeMetricsL1.txt"},
         };
     }
 

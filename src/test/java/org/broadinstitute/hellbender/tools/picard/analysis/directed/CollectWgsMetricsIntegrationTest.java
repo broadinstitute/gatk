@@ -4,6 +4,7 @@ import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -14,8 +15,8 @@ public final class CollectWgsMetricsIntegrationTest extends CommandLineProgramTe
 
     @Test
     public void test() throws IOException {
-        final File input = new File(NA12878_20_21_WGS_bam);
-        final File refFile = new File(b37_reference_20_21);
+        final File input = new File(TestResources.NA12878_20_21_WGS_bam);
+        final File refFile = new File(TestResources.b37_reference_20_21);
         final File expectedFile = new File(TEST_DATA_DIR, "CollectWgsMetrics.txt");
         final File outfile = BaseTest.createTempFile("testCollectWgsMetrics", ".metrics");
         final String[] args = {

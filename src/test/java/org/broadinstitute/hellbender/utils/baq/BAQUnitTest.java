@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -174,7 +175,7 @@ public final class BAQUnitTest extends BaseTest {
 
     @Test
     public void testBAQOverwritesExistingTagWithNull() {
-        final File referenceFile = new File(hg19_chr1_1M_Reference);
+        final File referenceFile = new File(TestResources.hg19_chr1_1M_Reference);
         final ReferenceDataSource rds = new ReferenceFileSource(referenceFile);
 
         // create a read with a single base off the end of the contig, which cannot be BAQed

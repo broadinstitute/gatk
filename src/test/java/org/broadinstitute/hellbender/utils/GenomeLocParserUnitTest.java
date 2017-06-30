@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -435,7 +436,7 @@ public final class GenomeLocParserUnitTest extends BaseTest {
 
     @Test
     public void testcreateGenomeLocOnContig() throws FileNotFoundException {
-        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
+        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(TestResources.exampleReference));
         final SAMSequenceDictionary dict = seq.getSequenceDictionary();
         final GenomeLocParser genomeLocParser = new GenomeLocParser(dict);
 

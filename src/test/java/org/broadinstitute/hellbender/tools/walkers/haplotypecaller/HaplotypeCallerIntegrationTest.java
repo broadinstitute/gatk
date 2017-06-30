@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -18,7 +19,7 @@ import java.util.Set;
 
 public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
-    public static final String TEST_FILES_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
+    public static final String TEST_FILES_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
 
     /*
      * Test that in VCF mode we're consistent with past GATK4 results
@@ -31,8 +32,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File expected = new File(TEST_FILES_DIR, "expected.testVCFMode.gatk4.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
@@ -60,8 +61,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.alleleSpecific.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -94,8 +95,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.5.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
@@ -126,8 +127,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.5.alleleSpecific.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -154,8 +155,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -181,8 +182,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File expected = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk4.alleleSpecific.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -217,8 +218,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk3.5.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -246,8 +247,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk3.5.alleleSpecific.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -281,8 +282,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", TestResources.NA12878_20_21_WGS_bam,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", testInterval,
                 "-O", vcfOutput.getAbsolutePath(),
                 "-bamout", bamOutput.getAbsolutePath(),
@@ -312,7 +313,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                 "-I", testBAM.getAbsolutePath(),
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-L", "20:11363580-11363600",
                 "-O", output.getAbsolutePath(),
                 "-ploidy", "4",
@@ -329,11 +330,11 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     // e.g. read name HAVCYADXX150109:1:2102:20528:2129 with cigar 23S53I
     @Test
     public void testReadsThatConsumeZeroReferenceReads() throws Exception {
-        final String CONSUMES_ZERO_REFERENCE_BASES = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/na12878-chr20-consumes-zero-reference-bases.bam";
+        final String CONSUMES_ZERO_REFERENCE_BASES = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/mutect/na12878-chr20-consumes-zero-reference-bases.bam";
         final File outputVcf = createTempFile("output", ".vcf");
         final String[] args = {
                 "-I", CONSUMES_ZERO_REFERENCE_BASES,
-                "-R", b37_reference_20_21,
+                "-R", TestResources.b37_reference_20_21,
                 "-O", outputVcf.getAbsolutePath()
         };
         runCommandLine(args);

@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -48,7 +49,7 @@ public class SVVCFWriterUnitTest extends BaseTest{
                 .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insOne)
                 .make();
 
-        final File referenceDictionaryFile = new File(ReferenceUtils.getFastaDictionaryFileName(b37_reference_20_21));
+        final File referenceDictionaryFile = new File(ReferenceUtils.getFastaDictionaryFileName(TestResources.b37_reference_20_21));
         final SAMSequenceDictionary dictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryFile);
 
         final List<VariantContext> sortedVariants = SVVCFWriter.sortVariantsByCoordinate(Arrays.asList(downstreamVariant, inversionTwo, inversionOne, upstreamVariant), dictionary);

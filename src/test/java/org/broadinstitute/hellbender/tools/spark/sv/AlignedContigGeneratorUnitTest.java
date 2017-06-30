@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -326,7 +327,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         // concordance test with results obtained via SAM route
         final List<AlignedContig> parsedContigsViaSAMRoute
-                = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigViaSAM(Collections.singletonList(alignedAssembly), hg19Header, SparkContextFactory.getTestSparkContext(), null).collect();
+                = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigViaSAM(Collections.singletonList(alignedAssembly), TestResources.getHg19Header(), SparkContextFactory.getTestSparkContext(), null).collect();
         Assert.assertEquals(parsedContigsViaDirectRoute, parsedContigsViaSAMRoute);
     }
 

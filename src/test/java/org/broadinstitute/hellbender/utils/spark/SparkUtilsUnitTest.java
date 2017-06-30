@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,9 +22,9 @@ public class SparkUtilsUnitTest extends BaseTest {
 
     @Test
     public void testConvertHeaderlessHadoopBamShardToBam() throws Exception {
-        final File bamShard = new File(publicTestDir + "org/broadinstitute/hellbender/utils/spark/reads_data_source_test1.bam.headerless.part-r-00000");
+        final File bamShard = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/utils/spark/reads_data_source_test1.bam.headerless.part-r-00000");
         final File output = createTempFile("testConvertHadoopBamShardToBam", ".bam");
-        final File headerSource = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final File headerSource = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
         final int expectedReadCount = 11;
 
         boolean shardIsNotValidBam = false;

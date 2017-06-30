@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -55,7 +56,7 @@ public final class BucketUtilsTest extends BaseTest {
 
     @Test
     public void testCopyLocal() throws IOException {
-        final String src = publicTestDir+"empty.vcf";
+        final String src = TestResources.publicTestDir+"empty.vcf";
         File dest = createTempFile("copy-empty",".vcf");
 
         BucketUtils.copyFile(src, dest.getPath());
@@ -74,7 +75,7 @@ public final class BucketUtilsTest extends BaseTest {
 
     @Test(groups={"bucket"})
     public void testCopyAndDeleteGCS() throws IOException, GeneralSecurityException {
-        final String src = publicTestDir + "empty.vcf";
+        final String src = TestResources.publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
         final String intermediate = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-copy-empty", ".vcf");
         Assert.assertTrue(BucketUtils.isCloudStorageUrl(intermediate), "!BucketUtils.isCloudStorageUrl(intermediate)");
@@ -95,7 +96,7 @@ public final class BucketUtilsTest extends BaseTest {
 
     @Test
     public void testCopyAndDeleteHDFS() throws Exception {
-        final String src = publicTestDir + "empty.vcf";
+        final String src = TestResources.publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
 
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {

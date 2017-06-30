@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,7 +23,7 @@ public final class FeatureContextUnitTest extends BaseTest {
         FeatureInput<Feature> featureArgument;
 
         public ArtificialFeatureContainingCommandLineProgram() {
-            featureArgument = new FeatureInput<>(publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test.vcf");
+            featureArgument = new FeatureInput<>(TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/feature_data_source_test.vcf");
         }
 
         @Override

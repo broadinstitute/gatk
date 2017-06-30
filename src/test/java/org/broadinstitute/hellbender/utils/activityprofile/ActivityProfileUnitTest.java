@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -26,7 +27,7 @@ public class ActivityProfileUnitTest extends BaseTest {
     @BeforeClass
     public void init() throws FileNotFoundException {
         // sequence
-        ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(b37_reference_20_21));
+        ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(TestResources.b37_reference_20_21));
         genomeLocParser = new GenomeLocParser(seq);
         startLoc = genomeLocParser.createGenomeLoc("20", 0, 1, 100);
         header = new SAMFileHeader();

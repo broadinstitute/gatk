@@ -8,11 +8,10 @@ import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -345,7 +344,7 @@ public final class UtilsUnitTest extends BaseTest {
 
     @Test
     public void testCalcMD5() throws Exception {
-        final File source = new File(publicTestDir + "exampleFASTA.fasta");
+        final File source = new File(TestResources.publicTestDir + "exampleFASTA.fasta");
         final String sourceMD5 = "d0d4cbffece546c231fabd0103f54592";
 
         final byte[] sourceBytes = IOUtils.readFileIntoByteArray(source);

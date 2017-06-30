@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -19,7 +20,7 @@ public class VariantWalkerGCSSupportIntegrationTest extends CommandLineProgramTe
 
     private static final String TEST_VCF_ON_GCS = "org/broadinstitute/hellbender/engine/dbsnp_138.b37.20.10000000-10010000.vcf";
     private static final String TEST_BGZIPPED_VCF_ON_GCS = "org/broadinstitute/hellbender/engine/dbsnp_138.b37.20.10000000-10010000.vcf.block.gz";
-    private static final String EXPECTED_OUTPUT_DIR = publicTestDir + "org/broadinstitute/hellbender/engine/GCSTests/";
+    private static final String EXPECTED_OUTPUT_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/engine/GCSTests/";
 
     @Override
     public String getTestedToolName() {

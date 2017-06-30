@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -16,7 +17,7 @@ import java.io.File;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class AllelicCountCollectionUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
     private static final File BASIC_SNPS_FILE = new File(TEST_SUB_DIR, "snps-basic.tsv");
     private static final File INTERMEDIATE_SNPS_FILE = new File(TEST_SUB_DIR, "snps-intermediate.tsv");

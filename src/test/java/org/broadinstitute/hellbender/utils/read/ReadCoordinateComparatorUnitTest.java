@@ -2,13 +2,12 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,7 +27,7 @@ public final class ReadCoordinateComparatorUnitTest extends BaseTest{
         // unmapped reads with no position -- the ordering check in the test below will fail if
         // our ordering of these reads relative to the mapped reads is not consistent with the
         // definition of coordinate sorting as defined in htsjdk.samtools.SAMRecordCoordinateComparator
-        final String inputBam = publicTestDir + "org/broadinstitute/hellbender/utils/read/comparator_test_with_unmapped.bam";
+        final String inputBam = TestResources.publicTestDir + "org/broadinstitute/hellbender/utils/read/comparator_test_with_unmapped.bam";
         final List<GATKRead> reads = new ArrayList<>();
         SAMFileHeader header = null;
 

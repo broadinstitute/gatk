@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -17,7 +18,7 @@ public class ContigAlignerTest extends BaseTest {
 
     @BeforeClass
     public void setup() throws Exception {
-        contigAligner = new ContigAligner(b37_reference_20_21+".img");
+        contigAligner = new ContigAligner(TestResources.b37_reference_20_21+".img");
     }
 
     @Test(groups = "sv")

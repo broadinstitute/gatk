@@ -5,10 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BQSRTestData;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.*;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -61,10 +58,10 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "BQSRLocalRefTest")
     public Object[][] createBQSRLocalRefTestData() {
-        final String GRCh37Ref_2021 = b37_reference_20_21;
-        final String GRCh37Ref2bit_chr2021 = b37_2bit_reference_20_21;
-        final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
-        final String dbSNPb37_20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String GRCh37Ref_2021 = TestResources.b37_reference_20_21;
+        final String GRCh37Ref2bit_chr2021 = TestResources.b37_2bit_reference_20_21;
+        final String hiSeqBam_chr20 = getResourceDir() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
+        final String dbSNPb37_20 = getResourceDir() + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
         final String hiSeqBam_20_21_100000 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.bam";
         final String hiSeqCram_20_21_100000 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.cram";
@@ -80,10 +77,10 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
 
                 //Output generated with GATK4 (resulting BAM has 4 differences with GATK3)
-                {new BQSRTest(b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
-                {new BQSRTest(b37_reference_20_21 , hiSeqCram_20_21_100000, more20Sites, ".cram", "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.cram")},
-                {new BQSRTest(b37_2bit_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
-                {new BQSRTest(b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
+                {new BQSRTest(TestResources.b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
+                {new BQSRTest(TestResources.b37_reference_20_21 , hiSeqCram_20_21_100000, more20Sites, ".cram", "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.cram")},
+                {new BQSRTest(TestResources.b37_2bit_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
+                {new BQSRTest(TestResources.b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
        };
     }
 
@@ -122,10 +119,10 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
     @Test(groups = "spark")
     public void testBlowUpOnBroadcastIncompatibleReference() throws IOException {
         //this should blow up because broadcast requires a 2bit reference
-        final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
-        final String dbSNPb37_chr20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String hiSeqBam_chr20 = getResourceDir() + TestResources.WGS_B37_CH20_1M_1M1K_BAM;
+        final String dbSNPb37_chr20 = getResourceDir() + TestResources.DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
-        BQSRTest params = new BQSRTest(b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
+        BQSRTest params = new BQSRTest(TestResources.b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
 
         ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
         IntegrationTestSpec spec = new IntegrationTestSpec(

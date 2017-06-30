@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -24,13 +25,13 @@ import java.util.stream.IntStream;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class HetPulldownCalculatorUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "normal.sorted.bam");
     private static final File NORMAL_UNSORTED_BAM_FILE = new File(TEST_SUB_DIR, "normal.unsorted.bam");
     private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "tumor.sorted.bam");
     private static final File SNP_FILE = new File(TEST_SUB_DIR, "common_SNP.interval_list");
-    private static final File REF_FILE = new File(hg19MiniReference);
+    private static final File REF_FILE = new File(TestResources.hg19MiniReference);
 
     private static final int MINIMUM_MAPPING_QUALITY = 30;
     private static final int MINIMUM_BASE_QUALITY = 20;

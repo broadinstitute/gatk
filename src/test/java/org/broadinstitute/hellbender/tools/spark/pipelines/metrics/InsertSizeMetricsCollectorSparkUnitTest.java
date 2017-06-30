@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -41,11 +42,11 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         return new Object[][] {
                 {"insert_size_metrics_test.sam", null, false, "expectedInsertSizeMetricsL1.txt"},
                 {"insert_size_metrics_test.bam", null, false, "expectedInsertSizeMetricsL1.txt"},
-                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference, false, "expectedInsertSizeMetricsL1.txt"},
+                {"insert_size_metrics_test.cram", TestResources.hg19_chr1_1M_Reference, false, "expectedInsertSizeMetricsL1.txt"},
 
                 {"insert_size_metrics_test.sam", null, true, "expectedInsertSizeMetricsL3.txt"},
                 {"insert_size_metrics_test.bam", null, true, "expectedInsertSizeMetricsL3.txt"},
-                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference, true, "expectedInsertSizeMetricsL3.txt"}
+                {"insert_size_metrics_test.cram", TestResources.hg19_chr1_1M_Reference, true, "expectedInsertSizeMetricsL3.txt"}
         };
     }
 

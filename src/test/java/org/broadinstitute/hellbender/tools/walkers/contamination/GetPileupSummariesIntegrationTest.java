@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.List;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 2/16/17.
@@ -16,8 +15,8 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void test() {
-        final File NA12878 = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
-        final File thousandGenomes = new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf");
+        final File NA12878 = new File(TestResources.largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
+        final File thousandGenomes = new File(TestResources.largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf");
 
         final File output = createTempFile("output", ".table");
         final String[] args = {

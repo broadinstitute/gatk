@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -13,7 +14,7 @@ import java.util.List;
  * Created by davidben on 5/23/16.
  */
 public final class PerformAlleleFractionSegmentationIntegrationTest extends CommandLineProgramTest {
-    private static final String TOOLS_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TOOLS_TEST_DIRECTORY = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
     private static final File ALLELIC_COUNTS_FILE = new File(TOOLS_TEST_DIRECTORY, "snps-for-allelic-integration.tsv");
 
     // checks that segmentation output is created -- only the unit test checks correctness of results

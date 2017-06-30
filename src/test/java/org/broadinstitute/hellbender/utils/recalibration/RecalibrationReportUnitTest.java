@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.recalibration.covariates.*;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,7 +24,7 @@ import java.util.*;
 
 public final class RecalibrationReportUnitTest extends BaseTest {
 
-    private static final String testDir = BaseTest.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
+    private static final String testDir = TestResources.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
     private static final File recal1 = new File(testDir + "HiSeq.1mb.1RG.sg1.table");
     private static final File recal2 = new File(testDir + "HiSeq.1mb.1RG.sg2.table");
     private static final File recal3 = new File(testDir + "HiSeq.1mb.1RG.sg3.table");
@@ -144,7 +145,7 @@ public final class RecalibrationReportUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testUnsupportedCovariates(){
-        File file = new File(publicTestDir + "org/broadinstitute/hellbender/tools/" + "unsupported-covariates.table.gz");
+        File file = new File(TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/" + "unsupported-covariates.table.gz");
         new RecalibrationReport(file);
     }
 

@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -26,7 +27,7 @@ import static org.broadinstitute.hellbender.tools.exome.AllelicCNV.*;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class ACNVModellerUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-acnv-modeller.tsv");
     private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-acnv-modeller.tsv");
@@ -60,7 +61,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
     public void testMergeSimilarSegmentsCopyRatio() throws IOException {
         final boolean doRefit = true;
 
-        final String tempDir = publicTestDir + "similar-segment-copy-ratio-test";
+        final String tempDir = TestResources.publicTestDir + "similar-segment-copy-ratio-test";
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages and segments)
@@ -101,7 +102,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
     public void testMergeSimilarSegmentsWithRefitting() {
         final boolean doRefit = true;
 
-        final String tempDir = publicTestDir + "similar-segment-test";
+        final String tempDir = TestResources.publicTestDir + "similar-segment-test";
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)
@@ -139,7 +140,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
     public void testMergeSimilarSegmentsWithoutRefitting() {
         final boolean doRefit = false;
 
-        final String tempDir = publicTestDir + "similar-segment-test-without-refitting";
+        final String tempDir = TestResources.publicTestDir + "similar-segment-test-without-refitting";
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)
@@ -178,7 +179,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
      */
     @Test
     public void testSegmentAndParameterFileOutput() {
-        final String tempDir = publicTestDir + "acnv-modeller-file-output";
+        final String tempDir = TestResources.publicTestDir + "acnv-modeller-file-output";
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)

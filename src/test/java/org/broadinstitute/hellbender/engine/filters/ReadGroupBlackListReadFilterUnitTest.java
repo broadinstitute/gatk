@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -176,7 +177,7 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
         }
 
         List<String> filterList = new ArrayList<>();
-        filterList.add(publicTestDir + "readgroupblacklisttest.txt");
+        filterList.add(TestResources.publicTestDir + "readgroupblacklisttest.txt");
 
         ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         int filtered = 0;
@@ -215,7 +216,7 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
         }
 
         List<String> filterList = new ArrayList<>();
-        filterList.add(publicTestDir + "readgroupblacklisttestlist.txt");
+        filterList.add(TestResources.publicTestDir + "readgroupblacklisttestlist.txt");
 
         ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         int filtered = 0;

@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.datasources.VariantsSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
@@ -26,8 +27,8 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
     @DataProvider(name = "loadVariants")
     public Object[][] loadVariants() {
         return new Object[][]{
-                {hg19_chr1_1M_dbSNP},
-                {hg19_chr1_1M_dbSNP_modified},
+                {TestResources.hg19_chr1_1M_dbSNP},
+                {TestResources.hg19_chr1_1M_dbSNP_modified},
         };
     }
 
@@ -58,7 +59,7 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
     @DataProvider(name = "loadMultipleVCFs")
     public Object[][] loadMultipleVCFs() {
         return new Object[][]{
-                {Arrays.asList(hg19_chr1_1M_dbSNP, hg19_chr1_1M_dbSNP_modified)},
+                {Arrays.asList(TestResources.hg19_chr1_1M_dbSNP, TestResources.hg19_chr1_1M_dbSNP_modified)},
         };
     }
 

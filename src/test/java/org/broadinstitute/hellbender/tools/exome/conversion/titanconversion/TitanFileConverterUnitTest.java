@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.conversion.titanconversion;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -13,7 +14,7 @@ import java.util.List;
 
 
 public class TitanFileConverterUnitTest extends BaseTest {
-    private static final String ACNV_TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
+    private static final String ACNV_TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
     // Typically, this next file would be the output of a tangent normalization run.
     private static final File COVERAGES_FILE = new File(ACNV_TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");

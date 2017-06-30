@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.test.TestResources;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,12 +23,12 @@ import java.io.IOException;
  */
 public final class CollectAllelicCountsIntegrationTest extends CommandLineProgramTest {
 
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/allelic";
+    private static final String TEST_SUB_DIR = TestResources.publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/allelic";
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-normal.bam");
     private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-tumor.bam");
     private static final File NON_STRICT_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-simple-overhang.sam");
     private static final File SITES_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-sites.interval_list");
-    private static final File REF_FILE = new File(hg19MiniReference);
+    private static final File REF_FILE = new File(TestResources.hg19MiniReference);
 
     @DataProvider(name = "testData")
     public Object[][] testData() throws IOException {
