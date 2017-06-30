@@ -5,7 +5,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,14 +13,14 @@ import java.io.ByteArrayOutputStream;
 import java.util.HashSet;
 import java.util.Random;
 
-public final class LongBloomFilterTest extends BaseTest {
+public final class LongBloomFilterTest {
 
     private static final long[] testVals = {0, 1, 2, 8, 16, 42, 97, 100, 2894765};
     private static final long[] notAllTestVals = {0, 1, 2, 3, 7, 22, 61};
     private static final long notInTestVals = 6;
     private static final int RAND_SEED = 0xdeadf00;
     private static final int HHASH_NVALS = 1000000;
-    private static final int FPR_NVALS = 10000;
+    private static final int FPR_NVALS = 100000;
     private static final float FPP = 0.01F;
 
     private static long randomLong(Random rng) {
@@ -85,8 +84,8 @@ public final class LongBloomFilterTest extends BaseTest {
         final LongBloomFilter bloomFilter = new LongBloomFilter(HHASH_NVALS, FPP);
         for (int valNo = 0; valNo != HHASH_NVALS; ++valNo) {
             final long randLong = randomLong(rng);
-            bloomFilter.add(randLong);
             hashSet.add(new Long(randLong));
+            bloomFilter.add(randLong);
         }
         for (final Long val : hashSet) {
             Assert.assertTrue(bloomFilter.contains(val), "testVal=" + val);
@@ -102,7 +101,9 @@ public final class LongBloomFilterTest extends BaseTest {
                 }
             }
         }
-        Assert.assertTrue(num_false_pos < num_total * FPP * 1.5);
+        final double theoreticalFpp = bloomFilter.getTheoreticalFPP(HHASH_NVALS);
+        Assert.assertTrue(num_false_pos >= num_total * theoreticalFpp * 0.9);
+        Assert.assertTrue(num_false_pos <= num_total * theoreticalFpp * 1.1);
     }
 
     @Test
@@ -130,5 +131,23 @@ public final class LongBloomFilterTest extends BaseTest {
         for (Long val : hashSet) {
             Assert.assertTrue(bloomFilter2.contains(val));
         }
+    }
+
+    @Test
+    void countBitsTest() {
+        final byte[][] arr = new byte[10][10];
+        Assert.assertEquals(0, LongBloomFilter.countBits(arr));
+
+        arr[2][5] = 1;
+        Assert.assertEquals(1, LongBloomFilter.countBits(arr));
+
+        arr[3][0] = 3;
+        Assert.assertEquals(3, LongBloomFilter.countBits(arr));
+
+        arr[1][9] = 4;
+        Assert.assertEquals(4, LongBloomFilter.countBits(arr));
+
+        arr[1][8] = 65;
+        Assert.assertEquals(6, LongBloomFilter.countBits(arr));
     }
 }
