@@ -94,7 +94,7 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
         };
     }
     
-    @Test(dataProvider = "getVcfsToShard")
+    @Test(dataProvider = "getVcfsToShard", enabled = false)
     public void testBlockGather(final File vcf, final int numShards) throws IOException {
         try (final FeatureDataSource<VariantContext> input = new FeatureDataSource<>(vcf)) {
             final ArrayList<VariantContext> expected = Lists.newArrayList(input);
