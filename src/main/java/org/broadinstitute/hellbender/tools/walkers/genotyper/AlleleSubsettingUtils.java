@@ -231,12 +231,13 @@ public final class AlleleSubsettingUtils {
     static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
         final double[] likelihoodSums = new double[vc.getNAlleles()];
         for ( final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder() ) {
-            final double[] gls = genotype.getLikelihoods().getAsVector();
+            final GenotypeLikelihoods gls = genotype.getLikelihoods();
             if (gls == null) {
                 continue;
             }
-            final int indexOfMostLikelyGenotype = MathUtils.maxElementIndex(gls);
-            final double GLDiffBetweenRefAndBest = gls[indexOfMostLikelyGenotype] - gls[PL_INDEX_OF_HOM_REF];
+            final double[] glsVector = gls.getAsVector();
+            final int indexOfMostLikelyGenotype = MathUtils.maxElementIndex(glsVector);
+            final double GLDiffBetweenRefAndBest = glsVector[indexOfMostLikelyGenotype] - glsVector[PL_INDEX_OF_HOM_REF];
             final int ploidy = genotype.getPloidy() > 0 ? genotype.getPloidy() : defaultPloidy;
 
             final int[] alleleCounts = new GenotypeLikelihoodCalculators()

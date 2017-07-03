@@ -254,9 +254,11 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         final Genotype g1 = new GenotypeBuilder("sample1", twoAlleles).PL(new double[] {1.1, 0.1, 2.3}).make();
         final Genotype g2 = new GenotypeBuilder("sample2", twoAlleles).PL(new double[] {3.1, 0.1, 2.3}).make();
         final Genotype g3 = new GenotypeBuilder("sample3", twoAlleles).PL(new double[] {1.1, 4.1, 2.3}).make();
+        final Genotype gNull = new GenotypeBuilder("sample4", twoAlleles).make();
+
 
         final VariantContext vc1 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
-                .genotypes(Arrays.asList(g1, g2, g3)).make();
+                .genotypes(Arrays.asList(g1, g2, g3, gNull)).make();
 
         Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc1, 2)[1], 4.2, 1.0e-8);
 
