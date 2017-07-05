@@ -176,11 +176,11 @@ public final class AlignedAssemblyOrExcuse {
         return formatAssemblyID(assemblyId) + ":" + formatContigID(contigIdx);
     }
 
-    static String formatAssemblyID(final int assemblyId) {
+    public static String formatAssemblyID(final int assemblyId) {
         return String.format("asm%06d", assemblyId);
     }
 
-    static String formatContigID(final int contigIdx) {
+    private static String formatContigID(final int contigIdx) {
         return String.format("tig%05d", contigIdx);
     }
 
