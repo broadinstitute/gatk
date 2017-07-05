@@ -8,7 +8,7 @@ WORKING_DIR=/home/travis/build/broadinstitute
 
 set -e
 echo "Building docker image for M2 WDL tests (skipping unit tests)..."
-HASH_TO_USE=`git rev-parse ${TRAVIS_BRANCH}`
+HASH_TO_USE=$TRAVIS_COMMIT
 #cd $WORKING_DIR/gatk/scripts/docker/
 #assume Dockerfile is in root
 echo "Building docker without running unit tests... ========="
