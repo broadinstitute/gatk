@@ -36,7 +36,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(StructuralVariationDiscoveryPipelineSpark.class);
 
-
     @Argument(doc = "sam file for aligned contigs", shortName = "contigSAMFile",
             fullName = "contigSAMFile")
     private String outputSAM;
