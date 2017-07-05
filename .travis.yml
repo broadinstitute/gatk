@@ -113,6 +113,8 @@ script:
     echo "Running CNV germline workflows";
     bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
+    echo "Deleting some unused files before running M2 WDL..."
+    rm -Rf src/test/resources/large/VQSR
     echo "Running M2 WDL";
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
