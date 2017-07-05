@@ -41,6 +41,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     public static final String FASTQ_FILE_DIR_SHORT_NAME = "fastqDir";
     public static final String FASTQ_FILE_DIR_FULL_NAME = "fastqAssemblyDirectory";
+    public static final String ASSEMBLIES_FILE_SHORT_NAME = "assemblies";
+    public static final String ASSEMBLIES_FILE_FULL_NAME = "assembliesFile";
     public static final String FASTQ_FILE_NAME_PATTERN_SHORT_NAME = "fastqName";
     public static final String FASTQ_FILE_NAME_PATTERN_FULL_NAME = "fastqNameFormat";
     public static final String PADDING_SHORT_NAME = "padding";
@@ -56,7 +58,12 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     @Argument(doc = "fastq files location",
             shortName = FASTQ_FILE_DIR_SHORT_NAME,
             fullName  = FASTQ_FILE_DIR_FULL_NAME)
-    private File fastqDir = null;
+    private String fastqDir = null;
+
+    @Argument(doc = "assemblies SAM/BAM file location",
+            shortName = ASSEMBLIES_FILE_FULL_NAME,
+            fullName = ASSEMBLIES_FILE_FULL_NAME)
+    private String assembliesFile = null;
 
     @Argument(doc = "fastq files name pattern",
             shortName = FASTQ_FILE_NAME_PATTERN_SHORT_NAME,
@@ -67,7 +74,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = true)
-    private File outputFile = null;
+    private String outputFile = null;
 
     @Argument(doc = "padding",
             shortName = PADDING_SHORT_NAME,
@@ -97,13 +104,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     }
 
     private void setUp(final JavaSparkContext ctx) {
-        if (!outputFile.getParentFile().isDirectory()) {
-            throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-                    "the output file location is not a directory:");
-        } else if (outputFile.exists() && !outputFile.isFile()) {
-            throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-                    "the output file makes reference to something that is not a file");
-        }
         variantsSource = new VariantsSparkSource(ctx);
     }
 
@@ -115,7 +115,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 .map(StructuralVariantContext::new);
         final JavaRDD<StructuralVariantContext> outputVariants = processVariants(variants, ctx);
         final VCFHeader header = composeOutputHeader();
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile.getParent(), outputFile.getName(),
+        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
                 referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants, header, logger);
         tearDown(ctx);
     }
@@ -135,13 +135,13 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private JavaRDD<StructuralVariantContext> processVariants(final JavaRDD<StructuralVariantContext> variants, final JavaSparkContext ctx) {
         final JavaPairRDD<StructuralVariantContext, List<Integer>> variantAndAssemblyIds = variants.mapToPair(v -> new Tuple2<>(v, v.assemblyIDs()));
-        final File fastqDir = this.fastqDir;
+        final String fastqDir = this.fastqDir;
         final String fastqFilePattern = this.fastqFilePattern;
 
-        final JavaPairRDD<StructuralVariantContext, List<File>> variantAndAssemblyFiles = variantAndAssemblyIds
-                .mapValues(v -> v.stream().map(id -> new File(fastqDir, String.format(fastqFilePattern, id))).collect(Collectors.toList()));
+        final JavaPairRDD<StructuralVariantContext, List<String>> variantAndAssemblyFiles = variantAndAssemblyIds
+                .mapValues(v -> v.stream().map(id -> String.format("%s/%s.fastq", fastqDir, AlignedAssemblyOrExcuse.formatAssemblyID(id))).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, List<SVFastqUtils.FastqRead>> variantReads = variantAndAssemblyFiles
-                .mapValues(v -> v.stream().flatMap(file -> SVFastqUtils.readFastqFile(file.getAbsolutePath(), null).stream()).collect(Collectors.toList()));
+                .mapValues(v -> v.stream().flatMap(file -> SVFastqUtils.readFastqFile(file).stream()).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, Map<String, List<SVFastqUtils.FastqRead>>> variantReadsByName = variantReads
                 .mapValues(v -> v.stream().collect(Collectors.groupingBy(SVFastqUtils.FastqRead::getName)));
         final JavaPairRDD<StructuralVariantContext, List<Template>> variantTemplates = variantReadsByName.mapValues(map ->
