@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.barclay.argparser.Argument;
 
 import java.io.Serializable;
@@ -14,67 +13,72 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         //--------- parameters ----------
 
-        // no-arg constructor for Params object establishes default values
-        @VisibleForTesting
-        public static final FindBreakpointEvidenceSpark.Params defaultParams = new FindBreakpointEvidenceSpark.Params();
-
         @Argument(doc = "Kmer size.", fullName = "kSize")
-        public int kSize = defaultParams.kSize;
+        public int kSize = SVConstants.KMER_SIZE;
 
         @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
         public int maxDUSTScore = SVConstants.MAX_DUST_SCORE;
 
         @Argument(doc = "The minimum mapping quality for reads used to gather evidence of breakpoints.",
                 fullName = "minEvidenceMapQ", optional = true)
-        public int minEvidenceMapQ = defaultParams.minEvidenceMapQ;
+        public int minEvidenceMapQ = 20;
 
         @Argument(doc = "The minimum length of the matched portion of an interesting alignment.  "+
                 "Reads that don't match at least this many reference bases won't be used in gathering evidence.",
                 fullName = "minEvidenceMatchLength", optional = true)
-        public int minEvidenceMatchLength = defaultParams.minEvidenceMatchLength;
+        public int minEvidenceMatchLength = 45;
+
+        @Argument(doc = "Proper pairs have the positive strand read upstream of the negative strand read, but "+
+                "we allow this much slop for short fragments.",
+                fullName = "allowedShortFragmentOverhang", optional = true)
+        public int allowedShortFragmentOverhang = 10;
+
+        @Argument(doc = "Largest fragment size that will be explicitly counted in determining " +
+                "fragment size statistics.", fullName = "maxTrackedFragmentLength", optional = true)
+        public int maxTrackedFragmentLength = 2000;
 
         @Argument(doc = "Intervals with more than this much coverage are filtered out, because the reads mapped to "+
                 "that interval are clearly not exclusively local to the interval.", fullName = "maxIntervalCoverage")
-        public int maxIntervalCoverage = defaultParams.maxIntervalCoverage;
+        public int maxIntervalCoverage = 1000;
 
         @Argument(doc = "Minimum weight of the corroborating read evidence to validate some single piece of evidence.",
                 fullName = "minEvidenceCount")
-        public int minEvidenceWeight = defaultParams.minEvidenceWeight;
+        public int minEvidenceWeight = 15;
 
         @Argument(doc = "Minimum weight of the evidence that shares a distal target locus to validate the evidence.",
                 fullName = "minCoherentEvidenceCount")
-        public int minCoherentEvidenceWeight = defaultParams.minCoherentEvidenceWeight;
+        public int minCoherentEvidenceWeight = 7;
 
         @Argument(doc = "Minimum number of localizing kmers in a valid interval.", fullName="minKmersPerInterval")
-        public int minKmersPerInterval = defaultParams.minKmersPerInterval;
+        public int minKmersPerInterval = 20;
 
         @Argument(doc = "KmerCleaner maximum number of intervals for a localizing kmer.", fullName = "cleanerMaxIntervals")
-        public int cleanerMaxIntervals = defaultParams.cleanerMaxIntervals;
+        public int cleanerMaxIntervals = 3;
 
         @Argument(doc = "KmerCleaner minimum kmer count.", fullName = "cleanerMinKmerCount")
-        public int cleanerMinKmerCount = defaultParams.cleanerMinKmerCount;
+        public int cleanerMinKmerCount = 3;
 
         @Argument(doc = "KmerCleaner maximum kmer count.", fullName = "cleanerMaxKmerCount")
-        public int cleanerMaxKmerCount = defaultParams.cleanerMaxKmerCount;
+        public int cleanerMaxKmerCount = 125;
 
         @Argument(doc = "KmerCleaner unique error-free kmers per partition", fullName = "cleanerKmersPerPartitionGuess")
-        public int cleanerKmersPerPartitionGuess = defaultParams.cleanerKmersPerPartitionGuess;
+        public int cleanerKmersPerPartitionGuess = 600000;
 
         @Argument(doc = "Maximum number of templates containing an assembly kmer.", fullName = "maxQNamesPerKmer")
-        public int maxQNamesPerKmer = defaultParams.maxQNamesPerKmer;
+        public int maxQNamesPerKmer = 500;
 
         @Argument(doc = "Guess at number of clean kmers per assembly partition.", fullName = "assemblyKmerMapSize")
-        public int assemblyKmerMapSize = defaultParams.assemblyKmerMapSize;
+        public int assemblyKmerMapSize = 250000;
 
         @Argument(doc = "Guess at the ratio of reads in the final assembly to the number reads mapped to the interval.",
                 fullName = "assemblyToMappedSizeRatioGuess")
-        public int assemblyToMappedSizeRatioGuess = defaultParams.assemblyToMappedSizeRatioGuess;
+        public int assemblyToMappedSizeRatioGuess = 7;
 
         @Argument(doc = "Maximum FASTQ file size.", fullName = "maxFASTQSize")
-        public int maxFASTQSize = defaultParams.maxFASTQSize;
+        public int maxFASTQSize = 3000000;
 
         @Argument(doc = "Exclusion interval padding.", fullName = "exclusionIntervalPadding")
-        public int exclusionIntervalPadding = defaultParams.exclusionIntervalPadding;
+        public int exclusionIntervalPadding = 0;
 
         @Argument(doc = "Include read mapping location in FASTQ files.", fullName = "includeMappingLocation")
         public boolean includeMappingLocation = true;

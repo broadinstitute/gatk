@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.function.Function;
@@ -18,18 +19,22 @@ public final class QNameKmerizer implements Function<GATKRead, Iterator<Tuple2<K
     private final Set<SVKmer> kmersToIgnore;
     private final int kSize;
     private final int maxDUSTScore;
+    private final SVReadFilter filter;
     private final ArrayList<Tuple2<KmerAndInterval, Integer>> tupleList = new ArrayList<>();
 
     public QNameKmerizer( final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap,
-                          final Set<SVKmer> kmersToIgnore, final int kSize, final int maxDUSTScore ) {
+                          final Set<SVKmer> kmersToIgnore, final int kSize, final int maxDUSTScore,
+                          final SVReadFilter filter ) {
         this.qNameAndIntervalMultiMap = qNameAndIntervalMultiMap;
         this.kmersToIgnore = kmersToIgnore;
         this.kSize = kSize;
         this.maxDUSTScore = maxDUSTScore;
+        this.filter = filter;
     }
 
     @Override
     public Iterator<Tuple2<KmerAndInterval, Integer>> apply( final GATKRead read ) {
+        if ( !filter.notJunk(read) || !filter.isPrimaryLine(read) ) return Collections.emptyIterator();
         final String qName = read.getName();
         final Iterator<QNameAndInterval> names = qNameAndIntervalMultiMap.findEach(qName);
         tupleList.clear();

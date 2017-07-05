@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import java.io.*;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -153,6 +154,45 @@ public final class SVUtils {
         int result = 0;
         while ( itr.hasNext() ) { result += 1; itr.next(); }
         return result;
+    }
+
+    public static <T> Iterator<T> singletonIterator( final T t ) {
+        return Collections.singletonList(t).iterator();
+    }
+
+    public static class IteratorFilter<T> implements Iterator<T> {
+        private final Iterator<T> itr;
+        private final Predicate<T> predicate;
+        private T obj;
+
+        public IteratorFilter( final Iterator<T> itr, final Predicate<T> predicate ) {
+            this.itr = itr;
+            this.predicate = predicate;
+            advance();
+        }
+
+        @Override public boolean hasNext() { return obj != null; }
+
+        @Override
+        public T next() {
+            if ( !hasNext() ) {
+                throw new NoSuchElementException("IteratorFilter is exhausted.");
+            }
+            final T result = obj;
+            advance();
+            return result;
+        }
+
+        private void advance() {
+            obj = null;
+            while ( itr.hasNext() ) {
+                final T next = itr.next();
+                if ( predicate.test(next) ) {
+                    obj = next;
+                    break;
+                }
+            }
+        }
     }
 
     /**

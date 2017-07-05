@@ -10,6 +10,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -29,29 +30,29 @@ import java.util.*;
 public class ReadMetadata {
     private final Set<Integer> crossContigIgnoreSet;
     private final Map<String, Integer> contigNameToID;
+    private final Map<String, String> readGroupToLibrary;
     private final long nReads;
     private final long maxReadsInPartition;
     private final int coverage;
     private final PartitionBounds[] partitionBounds;
-    private final Map<String, LibraryFragmentStatistics> readGroupToFragmentStatistics;
+    private final Map<String, FragmentLengthStatistics> libraryToFragmentStatistics;
     private final static String NO_GROUP = "NoGroup";
 
     public ReadMetadata( final Set<Integer> crossContigIgnoreSet,
                          final SAMFileHeader header,
-                         final JavaRDD<GATKRead> mappedReads ) {
+                         final int maxTrackedFragmentLength,
+                         final JavaRDD<GATKRead> unfilteredReads,
+                         final SVReadFilter filter ) {
         this.crossContigIgnoreSet = crossContigIgnoreSet;
         contigNameToID = buildContigNameToIDMap(header);
-
-        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-        final int mapCapacity = SVUtils.hashMapCapacity(header.getReadGroups().size());
-        final Map<String, String> readGroupToLibraryMap = new HashMap<>(mapCapacity);
-        for ( final SAMReadGroupRecord groupRecord : readGroups ) {
-            readGroupToLibraryMap.put(groupRecord.getId(), groupRecord.getLibrary());
-        }
+        readGroupToLibrary = buildGroupToLibMap(header);
+        final Map<String, String> grpToLib = readGroupToLibrary;
         final List<PartitionStatistics> perPartitionStatistics =
-                mappedReads.mapPartitions(readItr ->
-                        Collections.singletonList(new PartitionStatistics(readItr, readGroupToLibraryMap)).iterator())
-                     .collect();
+                unfilteredReads
+                    .mapPartitions(readItr ->
+                        SVUtils.singletonIterator(
+                                new PartitionStatistics(readItr, filter, maxTrackedFragmentLength, grpToLib)))
+                    .collect();
         nReads = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNReads).sum();
         maxReadsInPartition = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNReads).max().orElse(0L);
         final long nReadBases = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNBases).sum();
@@ -70,34 +71,32 @@ public class ReadMetadata {
                     lastContigID==null ? PartitionBounds.UNMAPPED : lastContigID,
                     stats.getLastLocation());
         }
-        final Map<String, long[]> combinedMaps =
+        final Map<String, IntHistogram> combinedMaps =
                 perPartitionStatistics.stream()
-                        .map(PartitionStatistics::getLibraryToFragmentSizeCountMap)
-                        .reduce(new HashMap<>(mapCapacity), ReadMetadata::combineMaps);
-        final Map<String, LibraryFragmentStatistics> statsMap = new HashMap<>(mapCapacity);
-        for ( final Map.Entry<String, long[]> entry : combinedMaps.entrySet() ) {
-            statsMap.put(entry.getKey(), new LibraryFragmentStatistics(entry.getValue()));
-        }
-        readGroupToFragmentStatistics = new HashMap<>(mapCapacity);
-        for ( final SAMReadGroupRecord groupRecord : readGroups ) {
-            readGroupToFragmentStatistics.put(groupRecord.getId(), statsMap.get(groupRecord.getLibrary()));
+                    .map(PartitionStatistics::getLibraryToFragmentSizeHistogram)
+                    .reduce(new HashMap<>(), ReadMetadata::combineMaps);
+        libraryToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(combinedMaps.size()));
+        for ( final Map.Entry<String, IntHistogram> entry : combinedMaps.entrySet() ) {
+            libraryToFragmentStatistics.put(entry.getKey(), new FragmentLengthStatistics(entry.getValue()));
         }
     }
 
+    /** This constructor is for testing only.  It applies a single FragmentLengthStatistics object to all libraries. */
     @VisibleForTesting
     ReadMetadata( final Set<Integer> crossContigIgnoreSet, final SAMFileHeader header,
-                  final LibraryFragmentStatistics stats, final PartitionBounds[] partitionBounds,
+                  final FragmentLengthStatistics stats, final PartitionBounds[] partitionBounds,
                   final long nReads, final long maxReadsInPartition, final int coverage ) {
         this.crossContigIgnoreSet = crossContigIgnoreSet;
         contigNameToID = buildContigNameToIDMap(header);
+        readGroupToLibrary = buildGroupToLibMap(header);
         this.nReads = nReads;
         this.maxReadsInPartition = maxReadsInPartition;
         this.coverage = coverage;
         this.partitionBounds = partitionBounds;
-        readGroupToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(header.getReadGroups().size() + 1));
-        readGroupToFragmentStatistics.put(null, stats);
+        libraryToFragmentStatistics = new HashMap<>(6);
+        libraryToFragmentStatistics.put(null, stats);
         for ( final SAMReadGroupRecord readGroupRecord : header.getReadGroups() ) {
-            readGroupToFragmentStatistics.put(readGroupRecord.getReadGroupId(), stats);
+            libraryToFragmentStatistics.put(readGroupRecord.getLibrary(), stats);
         }
     }
 
@@ -106,6 +105,14 @@ public class ReadMetadata {
         this.crossContigIgnoreSet = new HashSet<>(SVUtils.hashMapCapacity(crossContigIgnoreSetSize));
         for ( int idx = 0; idx != crossContigIgnoreSetSize; ++idx ) {
             crossContigIgnoreSet.add(input.readInt());
+        }
+
+        final int groupMapSize = input.readInt();
+        readGroupToLibrary = new HashMap<>(SVUtils.hashMapCapacity(groupMapSize));
+        for ( int idx = 0; idx != groupMapSize; ++idx ) {
+            final String groupName = input.readString();
+            final String libName = input.readString();
+            readGroupToLibrary.put(groupName, libName);
         }
 
         final int contigMapSize = input.readInt();
@@ -127,15 +134,13 @@ public class ReadMetadata {
             partitionBounds[idx] = boundsSerializer.read(kryo, input, PartitionBounds.class);
         }
 
-        final int readGroupMapSize = input.readInt();
-        readGroupToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(readGroupMapSize));
-        final LibraryFragmentStatistics.Serializer statsSerializer =
-                new LibraryFragmentStatistics.Serializer();
-        for ( int idx = 0; idx != readGroupMapSize; ++idx ) {
-            final String readGroupName = input.readString();
-            final LibraryFragmentStatistics groupStats =
-                    statsSerializer.read(kryo, input, LibraryFragmentStatistics.class);
-            readGroupToFragmentStatistics.put(readGroupName, groupStats);
+        final int libMapSize = input.readInt();
+        final FragmentLengthStatistics.Serializer statsSerializer = new FragmentLengthStatistics.Serializer();
+        libraryToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(libMapSize));
+        for ( int idx = 0; idx != libMapSize; ++idx ) {
+            final String libraryName = input.readString();
+            final FragmentLengthStatistics stats = statsSerializer.read(kryo, input, FragmentLengthStatistics.class);
+            libraryToFragmentStatistics.put(libraryName, stats);
         }
     }
 
@@ -143,6 +148,12 @@ public class ReadMetadata {
         output.writeInt(crossContigIgnoreSet.size());
         for ( final Integer tigId : crossContigIgnoreSet ) {
             output.writeInt(tigId);
+        }
+
+        output.writeInt(readGroupToLibrary.size());
+        for ( final Map.Entry<String, String> entry : readGroupToLibrary.entrySet() ) {
+            output.writeString(entry.getKey());
+            output.writeString(entry.getValue());
         }
 
         output.writeInt(contigNameToID.size());
@@ -161,16 +172,16 @@ public class ReadMetadata {
             boundsSerializer.write(kryo, output, bounds);
         }
 
-        output.writeInt(readGroupToFragmentStatistics.size());
-        final LibraryFragmentStatistics.Serializer statsSerializer =
-                                    new LibraryFragmentStatistics.Serializer();
-        for ( final Map.Entry<String, LibraryFragmentStatistics> entry : readGroupToFragmentStatistics.entrySet() ) {
+        output.writeInt(libraryToFragmentStatistics.size());
+        final FragmentLengthStatistics.Serializer statsSerializer = new FragmentLengthStatistics.Serializer();
+        for ( final Map.Entry<String, FragmentLengthStatistics> entry : libraryToFragmentStatistics.entrySet() ) {
             output.writeString(entry.getKey());
             statsSerializer.write(kryo, output, entry.getValue());
         }
     }
 
     public boolean ignoreCrossContigID( final int contigID ) { return crossContigIgnoreSet.contains(contigID); }
+    @VisibleForTesting Set<Integer> getCrossContigIgnoreSet() { return crossContigIgnoreSet; }
 
     public Map<String, Integer> getContigNameMap() {
         return Collections.unmodifiableMap(contigNameToID);
@@ -184,75 +195,72 @@ public class ReadMetadata {
         return result;
     }
 
-    public long getNReads() {
-        return nReads;
+    public String getLibraryName( final String readGroupName ) {
+        if ( readGroupName == null ) return null;
+        if ( !readGroupToLibrary.containsKey(readGroupName) ) {
+            throw new GATKException("No such read group in header: "+readGroupName);
+        }
+        return readGroupToLibrary.get(readGroupName);
     }
 
+    @VisibleForTesting Map<String, String> getReadGroupToLibraryMap() { return readGroupToLibrary; }
+
+    public float getZishScore( final String readGroup, final int fragmentSize ) {
+        return getFragmentLengthStatistics(readGroup).getZishScore(fragmentSize);
+    }
+
+    public int getGroupMedianFragmentSize( final String readGroup ) {
+        return getFragmentLengthStatistics(readGroup).getMedian();
+    }
+
+    @VisibleForTesting
+    FragmentLengthStatistics getFragmentLengthStatistics( final String readGroup ) {
+        return libraryToFragmentStatistics.get(getLibraryName(readGroup));
+    }
+
+    public long getNReads() { return nReads; }
     public int getNPartitions() { return partitionBounds.length; }
     public PartitionBounds getPartitionBounds( final int partitionIdx ) { return partitionBounds[partitionIdx]; }
+    @VisibleForTesting PartitionBounds[] getAllPartitionBounds() { return partitionBounds; }
 
-    public long getMaxReadsInPartition() {
-        return maxReadsInPartition;
-    }
+    public long getMaxReadsInPartition() { return maxReadsInPartition; }
 
     public int getCoverage() {
         return coverage;
     }
 
-    public Map<String, LibraryFragmentStatistics> getAllGroupStatistics() {
-        return readGroupToFragmentStatistics;
-    }
+    public Map<String, FragmentLengthStatistics> getAllLibraryStatistics() { return libraryToFragmentStatistics; }
 
-    public LibraryFragmentStatistics getStatistics( final String readGroupName ) {
-        final LibraryFragmentStatistics stats = readGroupToFragmentStatistics.get(readGroupName);
+    public FragmentLengthStatistics getLibraryStatistics( final String libraryName ) {
+        final FragmentLengthStatistics stats = libraryToFragmentStatistics.get(libraryName);
         if ( stats == null ) {
-            throw new GATKException("No such read group name: " + readGroupName);
+            throw new GATKException("No such library: " + libraryName);
         }
         return stats;
     }
 
     public int getMaxMedianFragmentSize() {
-        return readGroupToFragmentStatistics.entrySet().stream()
-                .mapToInt(entry -> entry.getValue().getMedianFragmentSize())
+        return libraryToFragmentStatistics.entrySet().stream()
+                .mapToInt(entry -> entry.getValue().getMedian())
                 .max()
                 .orElse(0);
     }
 
-    @Override
-    public boolean equals( final Object obj ) {
-        if ( !(obj instanceof ReadMetadata) ) return false;
-        final ReadMetadata that = (ReadMetadata) obj;
-        return this.crossContigIgnoreSet.equals(that.crossContigIgnoreSet) &&
-                this.contigNameToID.equals(that.contigNameToID) &&
-                this.readGroupToFragmentStatistics.equals(that.readGroupToFragmentStatistics);
-    }
-
-    @Override
-    public int hashCode() {
-        int val = crossContigIgnoreSet.hashCode();
-        val = 47 * val + contigNameToID.hashCode();
-        val = 47 * val + readGroupToFragmentStatistics.hashCode();
-        return 47 * val;
-    }
-
-    private static Map<String, long[]> combineMaps( final Map<String, long[]> accumulator,
-                                                    final Map<String, long[]> element ) {
-        for ( final Map.Entry<String, long[]> entry : element.entrySet() ) {
-            final String readGroup = entry.getKey();
-            final long[] accumCounts = accumulator.get(readGroup);
+    private static Map<String, IntHistogram> combineMaps( final Map<String, IntHistogram> accumulator,
+                                                    final Map<String, IntHistogram> element ) {
+        for ( final Map.Entry<String, IntHistogram> entry : element.entrySet() ) {
+            final String libraryName = entry.getKey();
+            final IntHistogram accumCounts = accumulator.get(libraryName);
             if ( accumCounts == null ) {
-                accumulator.put(readGroup, entry.getValue());
+                accumulator.put(libraryName, entry.getValue());
             } else {
-                final long[] counts = entry.getValue();
-                for ( int idx = 0; idx != accumCounts.length; ++idx ) {
-                    accumCounts[idx] += counts[idx];
-                }
+                accumCounts.addObservations(entry.getValue());
             }
         }
         return accumulator;
     }
 
-    private static Map<String, Integer> buildContigNameToIDMap( final SAMFileHeader header ) {
+    public static Map<String, Integer> buildContigNameToIDMap( final SAMFileHeader header ) {
         final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
         final Map<String, Integer> contigNameToID = new HashMap<>(SVUtils.hashMapCapacity(contigs.size()));
         final int nContigs = contigs.size();
@@ -260,6 +268,16 @@ public class ReadMetadata {
             contigNameToID.put(contigs.get(contigID).getSequenceName(), contigID);
         }
         return contigNameToID;
+    }
+
+    public static Map<String, String> buildGroupToLibMap( final SAMFileHeader header ) {
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        final int mapCapacity = SVUtils.hashMapCapacity(header.getReadGroups().size());
+        final Map<String, String> readGroupToLibraryMap = new HashMap<>(mapCapacity);
+        for ( final SAMReadGroupRecord groupRecord : readGroups ) {
+            readGroupToLibraryMap.put(groupRecord.getId(), groupRecord.getLibrary());
+        }
+        return readGroupToLibraryMap;
     }
 
     public static void writeMetadata( final ReadMetadata readMetadata,
@@ -270,15 +288,16 @@ public class ReadMetadata {
             writer.write("#partitions:\t" + readMetadata.getNPartitions() + "\n");
             writer.write("max reads/partition:\t" + readMetadata.getMaxReadsInPartition() + "\n");
             writer.write("coverage:\t" + readMetadata.getCoverage() + "\n");
-            for ( final Map.Entry<String, LibraryFragmentStatistics> entry :
-                    readMetadata.getAllGroupStatistics().entrySet() ) {
-                final LibraryFragmentStatistics stats = entry.getValue();
+            for ( final Map.Entry<String, FragmentLengthStatistics> entry :
+                    readMetadata.getAllLibraryStatistics().entrySet() ) {
+                final FragmentLengthStatistics stats = entry.getValue();
                 String name = entry.getKey();
                 if ( name == null ) {
                     name = NO_GROUP;
                 }
-                writer.write("group " + name + ":\t" + stats.getMedianFragmentSize() +
-                        "-" + stats.getMedianNegativeDeviation() + "+" + stats.getMedianPositiveDeviation() + "\n");
+                final int median = stats.getMedian();
+                writer.write("library " + name + ":\t" + median + "-" + stats.getNegativeMAD() +
+                                "+" + stats.getPositiveMAD() + "\n");
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write metadata file.", ioe);
@@ -299,8 +318,7 @@ public class ReadMetadata {
 
     @DefaultSerializer(PartitionStatistics.Serializer.class)
     public static final class PartitionStatistics {
-        private final static int MAX_TRACKED_FRAGMENT_LENGTH = 10000;
-        private final Map<String, long[]> libraryToFragmentSizeCountMap;
+        private final Map<String, IntHistogram> libraryToFragmentSizeHistogram;
         private final long nReads;
         private final long nBases;
         private final String firstContig;
@@ -308,58 +326,51 @@ public class ReadMetadata {
         private final String lastContig;
         private final int lastLocation;
 
-        public PartitionStatistics( final Iterator<GATKRead> mappedReadItr,
+        public PartitionStatistics( final Iterator<GATKRead> unfilteredReadItr,
+                                    final SVReadFilter filter,
+                                    final int maxTrackedFragmentLength,
                                     final Map<String, String> readGroupToLibraryMap ) {
-            if ( !mappedReadItr.hasNext() ) {
-                libraryToFragmentSizeCountMap = Collections.emptyMap();
-                nReads = 0L;
-                nBases = 0L;
-                firstContig = null;
-                firstLocation = 0;
-                lastContig = null;
-                lastLocation = 0;
-            } else {
-                long reads = 0L;
-                long bases = 0L;
-                GATKRead read = mappedReadItr.next();
-                firstContig = read.getContig();
-                firstLocation = read.getUnclippedStart();
-                libraryToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(readGroupToLibraryMap.size()));
-                while ( true ) {
-                    reads += 1L;
-                    bases += read.getLength();
-                    if ( read.isFirstOfPair() && !read.isSecondaryAlignment() && !read.isSupplementaryAlignment() &&
-                            !read.isUnmapped() && !read.mateIsUnmapped() &&
-                            Objects.equals(read.getContig(), read.getMateContig()) ) {
-                        int tLen = Math.abs(read.getFragmentLength());
-                        if ( tLen > MAX_TRACKED_FRAGMENT_LENGTH ) {
-                            tLen = MAX_TRACKED_FRAGMENT_LENGTH;
-                        }
-                        final String library = readGroupToLibraryMap.get(read.getReadGroup());
-                        final long[] counts = libraryToFragmentSizeCountMap.computeIfAbsent(library,
-                                k -> new long[MAX_TRACKED_FRAGMENT_LENGTH + 1]);
-                        counts[tLen] += 1;
-                    }
-                    if ( !mappedReadItr.hasNext() ) break;
-                    read = mappedReadItr.next();
-                }
-                lastContig = read.getContig();
-                lastLocation = read.getUnclippedEnd() + 1;
-                nReads = reads;
-                nBases = bases;
+            Iterator<GATKRead> readItr = filter.applyFilter(unfilteredReadItr, SVReadFilter::isMapped);
+            libraryToFragmentSizeHistogram = new HashMap<>();
+            if ( !readItr.hasNext() ) {
+                nReads = nBases = 0;
+                firstContig = lastContig = null;
+                firstLocation = lastLocation = -1;
+                return;
             }
+            GATKRead mappedRead = readItr.next();
+            firstContig = mappedRead.getContig();
+            firstLocation = mappedRead.getUnclippedStart();
+            long reads = 0L;
+            long bases = 0L;
+            while ( true ) {
+                reads += 1L;
+                bases += mappedRead.getLength();
+                if ( filter.isNonDiscordantEvidence(mappedRead) ) {
+                    // getReadGroup can return null -- that's OK.  library will be null -- that's OK, too.
+                    final String library = readGroupToLibraryMap.get(mappedRead.getReadGroup());
+                    libraryToFragmentSizeHistogram
+                            .computeIfAbsent(library, key -> new IntHistogram(maxTrackedFragmentLength))
+                            .addObservation(Math.abs(mappedRead.getFragmentLength()));
+                }
+                if ( !readItr.hasNext() ) break;
+                mappedRead = readItr.next();
+            }
+
+            lastContig = mappedRead.getContig();
+            lastLocation = mappedRead.getUnclippedEnd() + 1;
+            nReads = reads;
+            nBases = bases;
         }
 
         private PartitionStatistics( final Kryo kryo, final Input input ) {
             int nEntries = input.readInt();
-            libraryToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(nEntries));
+            libraryToFragmentSizeHistogram = new HashMap<>(SVUtils.hashMapCapacity(nEntries));
+            final IntHistogram.Serializer histogramSerializer = new IntHistogram.Serializer();
             while ( nEntries-- > 0 ) {
-                final String libName = kryo.readObjectOrNull(input, String.class);
-                final long[] counts = new long[MAX_TRACKED_FRAGMENT_LENGTH + 1];
-                for ( int idx = 0; idx <= MAX_TRACKED_FRAGMENT_LENGTH; ++idx ) {
-                    counts[idx] = input.readLong();
-                }
-                libraryToFragmentSizeCountMap.put(libName, counts);
+                final String libName = input.readString();
+                final IntHistogram fragmentSizeHistogram = histogramSerializer.read(kryo, input, IntHistogram.class);
+                libraryToFragmentSizeHistogram.put(libName, fragmentSizeHistogram);
             }
             nReads = input.readLong();
             nBases = input.readLong();
@@ -377,8 +388,8 @@ public class ReadMetadata {
             return nBases;
         }
 
-        public Map<String, long[]> getLibraryToFragmentSizeCountMap() {
-            return libraryToFragmentSizeCountMap;
+        public Map<String, IntHistogram> getLibraryToFragmentSizeHistogram() {
+            return libraryToFragmentSizeHistogram;
         }
 
         public String getFirstContig() { return firstContig; }
@@ -387,12 +398,11 @@ public class ReadMetadata {
         public int getLastLocation() { return lastLocation; }
 
         private void serialize( final Kryo kryo, final Output output ) {
-            output.writeInt(libraryToFragmentSizeCountMap.size());
-            for ( final Map.Entry<String, long[]> entry : libraryToFragmentSizeCountMap.entrySet() ) {
-                kryo.writeObjectOrNull(output, entry.getKey(), String.class);
-                for ( final long value : entry.getValue() ) {
-                    output.writeLong(value);
-                }
+            final IntHistogram.Serializer histogramSerializer = new IntHistogram.Serializer();
+            output.writeInt(libraryToFragmentSizeHistogram.size());
+            for ( final Map.Entry<String, IntHistogram> entry : libraryToFragmentSizeHistogram.entrySet() ) {
+                output.writeString(entry.getKey());
+                histogramSerializer.write(kryo, output, entry.getValue());
             }
             output.writeLong(nReads);
             output.writeLong(nBases);
@@ -463,130 +473,6 @@ public class ReadMetadata {
             @Override
             public PartitionBounds read( final Kryo kryo, final Input input, final Class<PartitionBounds> klass ) {
                 return new PartitionBounds(kryo, input);
-            }
-        }
-    }
-
-    /**
-     * class to track distribution of fragment lengths
-     */
-    @DefaultSerializer(LibraryFragmentStatistics.Serializer.class)
-    public static final class LibraryFragmentStatistics {
-        // the distribution of fragment lengths is often quite asymmetric around the median, so we'll calculate
-        // the median deviation separately for negative and positive deviations.
-        private final int medianFragmentSize;
-        private final int medianNegativeDeviation;
-        private final int medianPositiveDeviation;
-
-        /**
-         * Given an array that counts the number of reads having a fragment length (TLEN) equal to the array index,
-         * figure out the statistics.
-         */
-        public LibraryFragmentStatistics( final long[] counts ) {
-            // total number of reads
-            final long total = Arrays.stream(counts).sum();
-
-            // calculate the median fragment length
-            long sum = 0L;
-            int medianFragmentSize = 0; // increment this, summing counts as we go, until we've encountered 1/2 the reads
-            while ( medianFragmentSize != counts.length ) {
-                sum += counts[medianFragmentSize];
-                if ( 2 * sum >= total ) break; // break if we've seen 1/2 of the reads -- we've discovered the median
-                medianFragmentSize += 1;
-            }
-            this.medianFragmentSize = medianFragmentSize;
-
-            // calculate the median negative deviation
-            sum = counts[medianFragmentSize] / 2; // half the counts in the median bin go with the negative deviation
-            int medianNegativeDeviation = 0; // increment this, summing counts as we walk down and away from the median bin
-            // until we've seen 1/4 of the reads
-            while ( 4 * sum < total && medianNegativeDeviation < medianFragmentSize ) {
-                medianNegativeDeviation += 1;
-                sum += counts[medianFragmentSize - medianNegativeDeviation];
-            }
-            this.medianNegativeDeviation = medianNegativeDeviation;
-
-            // calculate the median positive deviation
-            final int maxMedianPositiveDeviation = counts.length - medianFragmentSize - 1; // array boundary
-            sum = counts[medianFragmentSize] / 2; // half the counts in the median bin go with the positive deviation
-            int medianPositiveDeviation = 0; // increment this, summing counts as we walk up and away from the median bin
-            // until we've seen 1/4 of the reads
-            while ( 4 * sum < total && medianPositiveDeviation < maxMedianPositiveDeviation ) {
-                medianPositiveDeviation += 1;
-                sum += counts[medianFragmentSize + medianPositiveDeviation];
-            }
-            this.medianPositiveDeviation = medianPositiveDeviation;
-        }
-
-        @VisibleForTesting
-        LibraryFragmentStatistics( final int medianFragmentSize,
-                                   final int medianNegativeDeviation,
-                                   final int medianPositiveDeviation ) {
-            this.medianFragmentSize = medianFragmentSize;
-            this.medianNegativeDeviation = medianNegativeDeviation;
-            this.medianPositiveDeviation = medianPositiveDeviation;
-        }
-
-        private LibraryFragmentStatistics( final Kryo kryo, final Input input ) {
-            medianFragmentSize = input.readInt();
-            medianNegativeDeviation = input.readInt();
-            medianPositiveDeviation = input.readInt();
-        }
-
-        private void serialize( final Kryo kryo, final Output output ) {
-            output.writeInt(medianFragmentSize);
-            output.writeInt(medianNegativeDeviation);
-            output.writeInt(medianPositiveDeviation);
-        }
-
-        public int getMedianFragmentSize() {
-            return medianFragmentSize;
-        }
-
-        public int getMedianNegativeDeviation() {
-            return medianNegativeDeviation;
-        }
-
-        public int getMedianPositiveDeviation() {
-            return medianPositiveDeviation;
-        }
-
-        public float getZIshScore( final int fragmentSize ) {
-            if ( fragmentSize < 0 ) {
-                throw new GATKException("negative fragment size");
-            }
-            final int diff = fragmentSize - medianFragmentSize;
-            if ( diff == 0 ) return 0.0f;
-            if ( diff > 0 ) return 1.0f * diff / medianPositiveDeviation;
-            return 1.0f * diff / medianNegativeDeviation;
-        }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            if ( !(obj instanceof LibraryFragmentStatistics) ) return false;
-            final LibraryFragmentStatistics that = (LibraryFragmentStatistics) obj;
-            return this.medianFragmentSize == that.medianFragmentSize &&
-                    this.medianNegativeDeviation == that.medianNegativeDeviation &&
-                    this.medianPositiveDeviation == that.medianPositiveDeviation;
-        }
-
-        @Override
-        public int hashCode() {
-            return 47 * (47 * (47 * medianFragmentSize + medianNegativeDeviation) + medianPositiveDeviation);
-        }
-
-        public static final class Serializer
-                extends com.esotericsoftware.kryo.Serializer<LibraryFragmentStatistics> {
-            @Override
-            public void write( final Kryo kryo, final Output output,
-                               final LibraryFragmentStatistics libraryFragmentStatistics ) {
-                libraryFragmentStatistics.serialize(kryo, output);
-            }
-
-            @Override
-            public LibraryFragmentStatistics read( final Kryo kryo, final Input input,
-                                                   final Class<LibraryFragmentStatistics> klass ) {
-                return new LibraryFragmentStatistics(kryo, input);
             }
         }
     }

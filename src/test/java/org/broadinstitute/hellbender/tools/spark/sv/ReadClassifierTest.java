@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -9,24 +10,31 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
+
 public class ReadClassifierTest extends BaseTest {
-    @Test(groups = "spark")
+    private final static FragmentLengthStatistics stats =
+            new FragmentLengthStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000));
+
+    @Test(groups = "sv")
     void restOfFragmentSizeTest() {
+        final FindBreakpointEvidenceSparkArgumentCollection params = new FindBreakpointEvidenceSparkArgumentCollection();
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(3, 1, 10000000, 1);
         final String groupName = header.getReadGroups().get(0).getReadGroupId();
         final int readSize = 151;
         final int fragmentLen = 400;
-        final ReadMetadata.LibraryFragmentStatistics groupStats = new ReadMetadata.LibraryFragmentStatistics(fragmentLen, 175, 20);
         final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
         crossContigIgnoreSet.add(2);
-        final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, groupStats, null, 2L, 2L, 1);
+        final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, stats, null, 2L, 2L, 1);
         final String templateName = "xyzzy";
         final int leftStart = 1010101;
         final int rightStart = leftStart + fragmentLen - readSize;
         final List<GATKRead> readPair = ArtificialReadUtils.createPair(header, templateName, readSize, leftStart, rightStart, true, false);
         final GATKRead read = readPair.get(0);
         read.setReadGroup(groupName);
-        final ReadClassifier classifier = new ReadClassifier(readMetadata);
+        read.setMappingQuality(60);
+        final SVReadFilter filter = new SVReadFilter(params);
+        final ReadClassifier classifier = new ReadClassifier(readMetadata, null, params.allowedShortFragmentOverhang, filter);
         checkClassification(classifier, read, Collections.emptyList());
         read.setCigar(ReadClassifier.MIN_SOFT_CLIP_LEN+"S"+(readSize-ReadClassifier.MIN_SOFT_CLIP_LEN)+"M");
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.SplitRead(read, readMetadata, true)));
@@ -48,7 +56,7 @@ public class ReadClassifierTest extends BaseTest {
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.OutiesPair(read, readMetadata)));
         read.setMatePosition(read.getContig(), read.getStart() + 2);
         checkClassification(classifier, read, Collections.emptyList());
-        read.setMatePosition(read.getContig(), read.getStart() + 2 + ReadClassifier.ALLOWED_SHORT_FRAGMENT_OVERHANG);
+        read.setMatePosition(read.getContig(), read.getStart() + 2 + params.allowedShortFragmentOverhang);
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.OutiesPair(read, readMetadata)));
 
         read.setIsReverseStrand(false);

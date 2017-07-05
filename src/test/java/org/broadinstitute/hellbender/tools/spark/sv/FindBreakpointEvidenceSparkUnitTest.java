@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.jpmml.schema.Added;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
@@ -19,9 +18,11 @@ import scala.Tuple2;
 import java.io.*;
 import java.util.*;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
+
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final SVInterval[] testIntervals =
-            { new SVInterval(1, 33140934, 33141485), new SVInterval(1, 33143116, 33143539) };
+            { new SVInterval(1, 33140775, 33141455), new SVInterval(1, 33143112, 33143485) };
 
     private final String toolDir = getToolTestDataDir();
     private final String readsFile = toolDir+"SVBreakpointsTest.bam";
@@ -30,17 +31,16 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final String asmQNamesFile = toolDir+"SVBreakpointsTest.assembly.qnames";
     private final String fastqFile = toolDir+"SVBreakpointsTest.assembly.";
 
-    private final FindBreakpointEvidenceSpark.Params params =
-            StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.defaultParams;
+    private final FindBreakpointEvidenceSparkArgumentCollection params =
+            new FindBreakpointEvidenceSparkArgumentCollection();
     private final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
     private final ReadsSparkSource readsSource = new ReadsSparkSource(ctx);
     private final SAMFileHeader header = readsSource.getHeader(readsFile, null);
     private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(readsFile, null, null, 0L);
-    private final JavaRDD<GATKRead> mappedReads = reads.filter(read -> !read.isUnmapped());
-    private final ReadMetadata readMetadataExpected = new ReadMetadata(Collections.emptySet(), header, reads);
+    private final SVReadFilter filter = new SVReadFilter(params);
+    private final ReadMetadata readMetadataExpected =
+            new ReadMetadata(Collections.emptySet(), header, params.maxTrackedFragmentLength, reads, filter);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
-    private final FindBreakpointEvidenceSpark.Locations locations =
-        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null, null, null);
     private final Set<String> expectedQNames = loadExpectedQNames(qNamesFile);
     private final Set<String> expectedAssemblyQNames = loadExpectedQNames(asmQNamesFile);
     private final List<SVInterval> expectedIntervalList = Arrays.asList(testIntervals);
@@ -48,14 +48,14 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     @Test(groups = "spark")
     public void getIntervalsTest() {
         final List<SVInterval> actualIntervals =
-                FindBreakpointEvidenceSpark.getIntervals(params,broadcastMetadata,header,mappedReads,locations);
+                FindBreakpointEvidenceSpark.getIntervals(params,broadcastMetadata,header,reads,filter);
         Assert.assertEquals(actualIntervals, expectedIntervalList);
     }
 
     @Test(groups = "spark")
     public void getQNamesTest() {
         final Set<String> actualQNames = new HashSet<>();
-        FindBreakpointEvidenceSpark.getQNames(params, ctx, broadcastMetadata, expectedIntervalList, mappedReads)
+        FindBreakpointEvidenceSpark.getQNames(params, ctx, broadcastMetadata, expectedIntervalList, reads, filter)
                 .stream()
                 .map(QNameAndInterval::getKey)
                 .forEach(actualQNames::add);
@@ -77,7 +77,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
 
         // an empty qname map should produce a "too few kmers" disposition for the interval
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList =
-                FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, 1, Collections.emptySet(), reads, locations)._1();
+                FindBreakpointEvidenceSpark.getKmerIntervals(
+                        params, ctx, qNameMultiMap, 1, Collections.emptySet(), reads, filter)._1();
         Assert.assertEquals(alignedAssemblyOrExcuseList.size(), 1);
         Assert.assertTrue(alignedAssemblyOrExcuseList.get(0).getErrorMessage().contains("too few"));
 
@@ -87,7 +88,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
         final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> actualKmerAndIntervalSet =
                 new HopscotchUniqueMultiMap<>(
                         FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, 1, new HopscotchSet<>(0),
-                                reads, locations)._2());
+                                reads, filter)._2());
         final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, kmer);
         Assert.assertEquals(actualKmerAndIntervalSet.size(), expectedKmers.size());
         for ( final KmerAndInterval kmerAndInterval : actualKmerAndIntervalSet ) {
@@ -104,7 +105,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 map(kmer -> new KmerAndInterval(kmer, 0))
                 .forEach(kmerAndIntervalSet::add);
         final Set<String> actualAssemblyQNames = new HashSet<>();
-        FindBreakpointEvidenceSpark.getAssemblyQNames(params, ctx, kmerAndIntervalSet, reads)
+        FindBreakpointEvidenceSpark.getAssemblyQNames(params, ctx, kmerAndIntervalSet, reads, filter)
                 .stream()
                 .map(QNameAndInterval::getKey)
                 .forEach(actualAssemblyQNames::add);
@@ -118,7 +119,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
         expectedAssemblyQNames.stream()
                 .map(qName -> new QNameAndInterval(qName, 0))
                 .forEach(qNameMultiMap::add);
-        FindBreakpointEvidenceSpark.handleAssemblies(ctx,qNameMultiMap,reads,2,true,true,new LocalAssemblyComparator(fastqFile));
+        FindBreakpointEvidenceSpark.handleAssemblies(ctx,qNameMultiMap,reads,filter,2,true,true,new LocalAssemblyComparator(fastqFile));
     }
 
     /** This LocalAssemblyHandler compares an assembly with expected results. */

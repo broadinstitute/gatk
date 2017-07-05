@@ -2,13 +2,12 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
+import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.testng.Assert;
@@ -27,8 +26,8 @@ public class BreakpointDensityFilterTest extends BaseTest {
         partitionBounds[0] = new ReadMetadata.PartitionBounds(0, 1, 0, 10000);
         partitionBounds[1] = new ReadMetadata.PartitionBounds(0, 10001, 0, 20000);
         partitionBounds[2] = new ReadMetadata.PartitionBounds(0, 20001, 0, 30000);
-        return new ReadMetadata(new HashSet<>(), artificialSamHeader,
-                                new ReadMetadata.LibraryFragmentStatistics(350, 40, 40),
+        return new ReadMetadata(Collections.emptySet(), artificialSamHeader,
+                                new FragmentLengthStatistics(IntHistogramTest.genLogNormalSample(350, 40, 10000)),
                                 partitionBounds, 100, 10, 30);
     }
 

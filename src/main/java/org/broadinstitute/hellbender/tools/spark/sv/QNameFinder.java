@@ -14,17 +14,22 @@ import java.util.function.Function;
 public final class QNameFinder implements Function<GATKRead, Iterator<QNameAndInterval>> {
     private final ReadMetadata metadata;
     private final List<SVInterval> intervals;
+    private final SVReadFilter filter;
     private static final Iterator<QNameAndInterval> noName = Collections.emptyIterator();
     private int intervalsIndex = 0;
 
     public QNameFinder( final ReadMetadata metadata,
-                        final List<SVInterval> intervals ) {
+                        final List<SVInterval> intervals,
+                        final SVReadFilter filter ) {
         this.metadata = metadata;
         this.intervals = intervals;
+        this.filter = filter;
     }
 
     @Override
     public Iterator<QNameAndInterval> apply( final GATKRead read ) {
+        if ( !filter.isMapped(read) ) return Collections.emptyIterator();
+
         final int readContigId = metadata.getContigID(read.getContig());
         final int readStart = read.getUnclippedStart();
         final int intervalsSize = intervals.size();
