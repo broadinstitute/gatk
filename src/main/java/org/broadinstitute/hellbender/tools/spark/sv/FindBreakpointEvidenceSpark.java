@@ -371,14 +371,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         "no assembly -- too big (" + fastqSize + " bytes).");
             }
             if ( fastqDir != null ) {
-                final String fastqName = new File(fastqDir, String.format("%s.fastq",AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()))).getPath();
+                final String fastqName = String.format("%s/%s.fastq",fastqDir, AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()));
                 final ArrayList<SVFastqUtils.FastqRead> sortedReads = new ArrayList<>(intervalAndReads._2());
                 sortedReads.sort(Comparator.comparing(SVFastqUtils.FastqRead::getName));
                 SVFastqUtils.writeFastqFile(fastqName, sortedReads.iterator());
             }
             final FermiLiteAssembly assembly = new FermiLiteAssembler().createAssembly(readsList);
             if ( gfaDir != null ) {
-                final String gfaName = new File(fastqDir, String.format("%s.gfa",AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()))).getPath();
+                final String gfaName =  String.format("%s/%s.gfa",gfaDir, AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()));
                 try ( final OutputStream os = BucketUtils.createFile(gfaName) ) {
                     assembly.writeGFA(os);
                 }
