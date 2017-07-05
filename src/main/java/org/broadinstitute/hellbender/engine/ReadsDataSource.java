@@ -443,12 +443,32 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      */
     private SamFileHeaderMerger createHeaderMerger() {
         List<SAMFileHeader> headers = new ArrayList<>(readers.size());
+        final Set<SAMFileHeader.SortOrder> sortOrders = new HashSet<>(SAMFileHeader.SortOrder.values().length);
         for ( Map.Entry<SamReader, CloseableIterator<SAMRecord>> readerEntry : readers.entrySet() ) {
-            headers.add(readerEntry.getKey().getFileHeader());
+            final SAMFileHeader h = readerEntry.getKey().getFileHeader();
+            headers.add(h);
+            sortOrders.add(h.getSortOrder());
         }
 
-        // TODO: don't require coordinate ordering
-        SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(SAMFileHeader.SortOrder.coordinate, headers, true);
+        // unknown order is removed and assumes that it is the same as the others
+        final boolean containUnknown = sortOrders.remove(SAMFileHeader.SortOrder.unknown);
+        final boolean detectedOrder;
+        final SAMFileHeader.SortOrder order;
+        if (sortOrders.size() == 1) {
+            order = sortOrders.iterator().next();
+            detectedOrder = true;
+        } else {
+            // TODO: default value should be unknown/unsorted but kept as coordinate to maintain previous behaviour
+            order = SAMFileHeader.SortOrder.coordinate;
+            detectedOrder = false;
+        }
+        if (detectedOrder && containUnknown) {
+            logger.warn("Some inputs have unknown sort orders. Assuming {} sorted reads for them according to other inputs", order);
+        } else if (!detectedOrder) {
+            logger.warn("Inputs have different sort orders. Assuming {} sorted reads for all of them.", order);
+        }
+
+        SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(order, headers, true);
         return headerMerger;
     }
 
