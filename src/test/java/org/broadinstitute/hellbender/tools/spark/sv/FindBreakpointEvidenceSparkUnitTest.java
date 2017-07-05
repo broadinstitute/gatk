@@ -22,6 +22,21 @@ import java.util.*;
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final SVInterval[] testIntervals =
             { new SVInterval(1, 33140934, 33141485), new SVInterval(1, 33143116, 33143539) };
+    private static final SVInterval[] testBigIntervals = {
+            new SVInterval( 1, 10000001, 10001485 ),
+            new SVInterval( 1, 20000001, 20001502 ),
+            new SVInterval( 1, 30000001, 30003951)
+    };
+    // note, these are hard-coded for params.maxIntervalLength = 1500 and params.splitIntervalMinOverlap = 500:
+    private static final SVInterval[] expectedSplitIntervals = {
+            new SVInterval( 1, 10000001, 10001485 ),
+            new SVInterval( 1, 20000001, 20001001 ),
+            new SVInterval( 1, 20000502, 20001502 ),
+            new SVInterval( 1, 30000001, 30001501),
+            new SVInterval( 1, 30000818, 30002318),
+            new SVInterval( 1, 30001634, 30003134),
+            new SVInterval( 1, 30002451, 30003951)
+    };
 
     private final String toolDir = getToolTestDataDir();
     private final String readsFile = toolDir+"SVBreakpointsTest.bam";
@@ -50,6 +65,16 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
         final List<SVInterval> actualIntervals =
                 FindBreakpointEvidenceSpark.getIntervals(params,broadcastMetadata,header,mappedReads,locations);
         Assert.assertEquals(actualIntervals, expectedIntervalList);
+    }
+
+    @Test(groups = "spark")
+    public void splitIntervalTest() {
+        final List<SVInterval> splitIntervals = Arrays.asList( testBigIntervals )
+                .stream()
+                .flatMap( interval -> FindBreakpointEvidenceSpark.splitInterval( interval, params ).stream() )
+                .collect( java.util.stream.Collectors.toList() );
+
+        Assert.assertEquals( splitIntervals, Arrays.asList( expectedSplitIntervals ) );
     }
 
     @Test(groups = "spark")

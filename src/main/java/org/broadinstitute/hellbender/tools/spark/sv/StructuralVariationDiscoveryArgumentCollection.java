@@ -37,6 +37,14 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 "that interval are clearly not exclusively local to the interval.", fullName = "maxIntervalCoverage")
         public int maxIntervalCoverage = defaultParams.maxIntervalCoverage;
 
+        @Argument(doc = "Intervals longer than this length are split into partially-overlapping sub-intervals to limit" +
+                "length of de-novo assembly.", fullName = "maxIntervalLength")
+        public int maxIntervalLength = defaultParams.maxIntervalLength;
+
+        @Argument(doc = "When splitting over-long intervals, ensure at least this much overlap.",
+                  fullName = "splitIntervalMinOverlap")
+        public int splitIntervalMinOverlap = defaultParams.splitIntervalMinOverlap;
+
         @Argument(doc = "Minimum weight of the corroborating read evidence to validate some single piece of evidence.",
                 fullName = "minEvidenceCount")
         public int minEvidenceWeight = defaultParams.minEvidenceWeight;
