@@ -121,9 +121,9 @@ script:
     echo "Building docker image and running appropriate tests..." ;
     echo ${TRAVIS_COMMIT};
     if [ ${TRAVIS_PULL_REQUEST} ]; then
-      echo " pr "
+      echo " pr ";
     else
-      secho " non pr"
+      echo " non pr";
     fi
     sudo docker images;
     echo ${TEST_TYPE};
