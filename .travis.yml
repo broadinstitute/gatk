@@ -113,18 +113,18 @@ script:
     echo "Running CNV germline workflows";
     bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
-    echo "Deleting some unused files before running M2 WDL..."
-    rm -Rf src/test/resources/large/VQSR
+    echo "Deleting some unused files before running M2 WDL...";
+    rm -Rf src/test/resources/large/VQSR;
     echo "Running M2 WDL";
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     echo ${TRAVIS_COMMIT};
     if [ ${TRAVIS_PULL_REQUEST} ]; then
-      echo " pr ";
+      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
     else
-      echo " non pr";
-    fi
+      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/;
+    fi;
     sudo docker images;
     echo ${TEST_TYPE};
     sudo docker run -v $(pwd)/src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${TRAVIS_COMMIT} bash /root/run_unit_tests.sh;
