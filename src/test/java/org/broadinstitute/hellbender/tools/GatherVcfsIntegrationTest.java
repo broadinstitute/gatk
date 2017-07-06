@@ -18,6 +18,8 @@ import org.testng.annotations.Test;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +33,7 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
         return new Object[][] {
             { GatherVcfs.GatherType.BLOCK },
             { GatherVcfs.GatherType.AUTOMATIC},
-            {GatherVcfs.GatherType.CONVENTIONAL}
+            { GatherVcfs.GatherType.CONVENTIONAL}
         };
     }
 
@@ -50,10 +52,14 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
     }
 
     private void assertGatherProducesCorrectVariants(GatherVcfs.GatherType gatherType, File expected, File inputs) {
+        assertGatherProducesCorrectVariants(gatherType, expected, Collections.singletonList(inputs));
+    }
+
+    private void assertGatherProducesCorrectVariants(GatherVcfs.GatherType gatherType, File expected, List<File> inputs) {
         final File output = createTempFile("gathered", ".vcf.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput(inputs)
-                .addOutput(output)
+        inputs.forEach(args::addInput);
+        args.addOutput(output)
                 .addArgument(GatherVcfs.GATHER_TYPE_LONG_NAME, gatherType.toString());
         runCommandLine(args);
 
@@ -69,6 +75,26 @@ public class GatherVcfsIntegrationTest extends CommandLineProgramTest{
         }
     }
 
+    @DataProvider
+    public Object[][] getHeaderOnlyCases(){
+        final File onlyHeader = getTestFile("onlyHeader.vcf.gz");
+        final File shard0 = getTestFile("shard_0.vcfs.gz");
+        return new Object[][]{
+                {Collections.singletonList(onlyHeader), GatherVcfs.GatherType.BLOCK, onlyHeader},
+                {Collections.singletonList(onlyHeader), GatherVcfs.GatherType.CONVENTIONAL, onlyHeader},
+                {Arrays.asList(onlyHeader, onlyHeader), GatherVcfs.GatherType.BLOCK, onlyHeader},
+                {Arrays.asList(onlyHeader, onlyHeader), GatherVcfs.GatherType.CONVENTIONAL, onlyHeader},
+                {Arrays.asList(onlyHeader, shard0), GatherVcfs.GatherType.BLOCK, shard0},
+                {Arrays.asList(onlyHeader, shard0), GatherVcfs.GatherType.CONVENTIONAL, shard0},
+                {Arrays.asList(shard0, onlyHeader), GatherVcfs.GatherType.BLOCK, shard0},
+                {Arrays.asList(shard0, onlyHeader), GatherVcfs.GatherType.CONVENTIONAL, shard0},
+        };
+    }
+
+    @Test(dataProvider = "getHeaderOnlyCases")
+    public void testVcfsWithOnlyAHeader(List<File> inputs, final GatherVcfs.GatherType gatherType, File expected){
+        assertGatherProducesCorrectVariants(gatherType, expected, inputs);
+    }
 
     @DataProvider
     public Object[][] getVcfsToShard(){
