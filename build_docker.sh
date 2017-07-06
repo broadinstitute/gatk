@@ -88,7 +88,7 @@ if [ -n "$STAGING_DIR" ]; then
     rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
     set -e
     GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/${REPO}/${PROJECT}.git ${STAGING_DIR}/${STAGING_CLONE_DIR}
-    if [ -n ${PULL_REQUEST_NUMBER} ]; then
+    if [ ${PULL_REQUEST_NUMBER} ]; then
         GIT_FETCH_COMMAND="git fetch origin +refs/pull/${PULL_REQUEST_NUMBER}/merge"
         echo "${GIT_FETCH_COMMAND}"
         ${GIT_FETCH_COMMAND}
