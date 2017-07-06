@@ -127,26 +127,7 @@ public class BreakpointEvidence {
     public static class ReadEvidence extends BreakpointEvidence {
         private static final int SINGLE_READ_WEIGHT = 1;
         private final String templateName; // QNAME of the read that was funky (i.e., the name of the fragment)
-        private final TemplateEnd templateEnd; // which read we're talking about (first or last, for paired-end reads)
-
-        // Typically UNPAIRED (single read from the template), PAIRED_FIRST (first read from the template), or
-        // PAIRED_LAST (second read from the template).  The SAM format, however, describes other weird possibilities,
-        // and to avoid lying, we also allow the pairedness to be unknown, or for a read to be paired, but neither
-        // first nor last (interior).
-        public enum TemplateEnd {
-            UNPAIRED(""), PAIRED_UNKNOWN("/?"), PAIRED_FIRST("/1"), PAIRED_SECOND("/2"), PAIRED_INTERIOR("/0");
-
-            TemplateEnd( final String value ) {
-                this.value = value;
-            }
-
-            @Override
-            public String toString() {
-                return value;
-            }
-
-            private final String value;
-        }
+        private final TemplateFragmentOrdinal fragmentOrdinal; // which read we're talking about (first or last, for paired-end reads)
 
         /**
          * evidence offset and width is set to "the rest of the fragment" not covered by this read
@@ -155,7 +136,7 @@ public class BreakpointEvidence {
             super(restOfFragmentInterval(read,metadata), SINGLE_READ_WEIGHT, false);
             this.templateName = read.getName();
             if ( templateName == null ) throw new GATKException("Read has no name.");
-            this.templateEnd = findTemplateEnd(read);
+            this.fragmentOrdinal = TemplateFragmentOrdinal.forRead(read);
         }
 
         /**
@@ -167,15 +148,15 @@ public class BreakpointEvidence {
                     SINGLE_READ_WEIGHT, false);
             this.templateName = read.getName();
             if ( templateName == null ) throw new GATKException("Read has no name.");
-            this.templateEnd = findTemplateEnd(read);
+            this.fragmentOrdinal = TemplateFragmentOrdinal.forRead(read);
         }
 
         @VisibleForTesting ReadEvidence( final SVInterval interval, final int weight,
-                                         final String templateName, final TemplateEnd templateEnd,
+                                         final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
                                          final boolean validated ) {
             super(interval, weight, validated);
             this.templateName = templateName;
-            this.templateEnd = templateEnd;
+            this.fragmentOrdinal = fragmentOrdinal;
         }
 
         /**
@@ -186,35 +167,27 @@ public class BreakpointEvidence {
         protected ReadEvidence( final Kryo kryo, final Input input ) {
             super(kryo, input);
             this.templateName = input.readString();
-            this.templateEnd = TemplateEnd.values()[input.readByte()];
+            this.fragmentOrdinal = TemplateFragmentOrdinal.values()[input.readByte()];
         }
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
             output.writeString(templateName);
-            output.writeByte(templateEnd.ordinal());
+            output.writeByte(fragmentOrdinal.ordinal());
         }
 
         public String getTemplateName() {
             return templateName;
         }
 
-        public TemplateEnd getTemplateEnd() {
-            return templateEnd;
+        public TemplateFragmentOrdinal getFragmentOrdinal() {
+            return fragmentOrdinal;
         }
 
         @Override
         public String toString() {
-            return super.toString() + "\t" + templateName + templateEnd;
-        }
-
-        private static TemplateEnd findTemplateEnd( final GATKRead read ) {
-            return !read.isPaired() ? TemplateEnd.UNPAIRED :
-                    !read.isFirstOfPair() && !read.isSecondOfPair() ? TemplateEnd.PAIRED_UNKNOWN :
-                            read.isFirstOfPair() && !read.isSecondOfPair() ? TemplateEnd.PAIRED_FIRST :
-                                    !read.isFirstOfPair() && read.isSecondOfPair() ? TemplateEnd.PAIRED_SECOND :
-                                            TemplateEnd.PAIRED_INTERIOR;
+            return super.toString() + "\t" + templateName + fragmentOrdinal;
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ReadEvidence> {

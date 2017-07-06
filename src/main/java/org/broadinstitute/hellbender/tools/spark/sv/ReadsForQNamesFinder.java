@@ -15,7 +15,7 @@ public final class ReadsForQNamesFinder implements Iterable<Tuple2<Integer, List
     private final List<Tuple2<Integer, List<SVFastqUtils.FastqRead>>> fastQRecords;
 
     public ReadsForQNamesFinder( final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
-                                 final int nIntervals, final boolean includeMappingLocation, final boolean dumpFASTQs,
+                                 final int nIntervals, final boolean includeMappingLocation,
                                  final Iterator<GATKRead> unfilteredReadItr, final SVReadFilter filter ) {
         final int nReadsPerInterval = 2 * qNamesMultiMap.size() / nIntervals;
         @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -25,19 +25,16 @@ public final class ReadsForQNamesFinder implements Iterable<Tuple2<Integer, List
         while ( readItr.hasNext() ) {
             final GATKRead read = readItr.next();
             final Iterator<QNameAndInterval> namesItr = qNamesMultiMap.findEach(read.getName());
-            SVFastqUtils.FastqRead FastqRead = null;
-            while ( namesItr.hasNext() ) {
-                final int intervalId = namesItr.next().getIntervalId();
-                if ( intervalReads[intervalId] == null ) {
-                    intervalReads[intervalId] = new ArrayList<>(nReadsPerInterval);
-                    nPopulatedIntervals += 1;
-                }
-                if ( FastqRead == null ) {
-                    final String readName =
-                            dumpFASTQs ? SVFastqUtils.readToFastqSeqId(read, includeMappingLocation) : null;
-                    FastqRead = new SVFastqUtils.FastqRead(readName, read.getBases(), read.getBaseQualities());
-                }
-                intervalReads[intervalId].add(FastqRead);
+            if (namesItr.hasNext()) {
+                final SVFastqUtils.FastqRead fastqRead = new SVFastqUtils.FastqRead(read, includeMappingLocation);
+                do {
+                    final int intervalId = namesItr.next().getIntervalId();
+                    if ( intervalReads[intervalId] == null ) {
+                        intervalReads[intervalId] = new ArrayList<>(nReadsPerInterval);
+                        nPopulatedIntervals += 1;
+                    }
+                    intervalReads[intervalId].add(fastqRead);
+                } while (namesItr.hasNext());
             }
         }
         fastQRecords = new ArrayList<>(nPopulatedIntervals);

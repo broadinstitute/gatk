@@ -48,7 +48,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     @Test
     public void testGetName() {
         try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "CustomName")) {
-            Assert.assertEquals(featureSource.getName(), "CustomName", "Wrong name returned from getName()");
+            Assert.assertEquals(featureSource.getName(), "CustomName", "Wrong name returned from getHeader()");
         }
     }
 
