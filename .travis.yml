@@ -8,14 +8,14 @@ jdk:
 - openjdk8
 env:
   matrix:
-  - TEST_TYPE=cloud
-  - TEST_TYPE=integration TEST_VERBOSITY=minimal UPLOAD=true
-  - TEST_TYPE=unit TEST_VERBOSITY=minimal
+#  - TEST_TYPE=cloud
+#  - TEST_TYPE=integration TEST_VERBOSITY=minimal UPLOAD=true
+#  - TEST_TYPE=unit TEST_VERBOSITY=minimal
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - RUN_CNV_SOMATIC_WDL=true
+#  - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
+#  - RUN_CNV_SOMATIC_WDL=true
   - RUN_M2_WDL=true
-  - RUN_CNV_GERMLINE_WDL=true
+#  - RUN_CNV_GERMLINE_WDL=true
   global:
   #gradle needs this
   - TERM=dumb
