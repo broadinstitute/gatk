@@ -345,7 +345,7 @@ public final class GatherVcfs extends CommandLineProgram {
                         boolean lastByteNewline = true;
 
                         int firstNonHeaderByteIndex = -1;
-                        while (!in.eof()) {
+                        while (blockIn.available() > 0) {
                             // Read a block - blockIn.available() is guaranteed to return the bytes remaining in the block that has been
                             // read, and since we haven't consumed any yet, that is the block size.
                             final int blockLength = blockIn.available();
