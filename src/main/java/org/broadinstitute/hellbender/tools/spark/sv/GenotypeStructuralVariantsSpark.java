@@ -43,8 +43,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     public static final String FASTQ_FILE_DIR_FULL_NAME = "fastqAssemblyDirectory";
     public static final String ASSEMBLIES_FILE_SHORT_NAME = "assemblies";
     public static final String ASSEMBLIES_FILE_FULL_NAME = "assembliesFile";
-    public static final String FASTQ_FILE_NAME_PATTERN_SHORT_NAME = "fastqName";
-    public static final String FASTQ_FILE_NAME_PATTERN_FULL_NAME = "fastqNameFormat";
     public static final String PADDING_SHORT_NAME = "padding";
     public static final String PADDING_FULL_NAME = "padding";
     public static final String INSERT_SIZE_DISTR_SHORT_NAME = "insSize";
@@ -61,14 +59,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     private String fastqDir = null;
 
     @Argument(doc = "assemblies SAM/BAM file location",
-            shortName = ASSEMBLIES_FILE_FULL_NAME,
+            shortName = ASSEMBLIES_FILE_SHORT_NAME,
             fullName = ASSEMBLIES_FILE_FULL_NAME)
     private String assembliesFile = null;
-
-    @Argument(doc = "fastq files name pattern",
-            shortName = FASTQ_FILE_NAME_PATTERN_SHORT_NAME,
-            fullName  = FASTQ_FILE_NAME_PATTERN_FULL_NAME)
-    private String fastqFilePattern = "assembly%2d.fastq";
 
     @Argument(doc = "output VCF file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -136,7 +129,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     private JavaRDD<StructuralVariantContext> processVariants(final JavaRDD<StructuralVariantContext> variants, final JavaSparkContext ctx) {
         final JavaPairRDD<StructuralVariantContext, List<Integer>> variantAndAssemblyIds = variants.mapToPair(v -> new Tuple2<>(v, v.assemblyIDs()));
         final String fastqDir = this.fastqDir;
-        final String fastqFilePattern = this.fastqFilePattern;
 
         final JavaPairRDD<StructuralVariantContext, List<String>> variantAndAssemblyFiles = variantAndAssemblyIds
                 .mapValues(v -> v.stream().map(id -> String.format("%s/%s.fastq", fastqDir, AlignedAssemblyOrExcuse.formatAssemblyID(id))).collect(Collectors.toList()));
@@ -151,7 +143,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator(ctx, dist);
         final int padding = this.padding;
         final ReferenceMultiSource reference = getReference();
-        variantTemplates.collect().stream().forEach(vt -> {
+        variantTemplates.collect().forEach(vt -> {
             logger.debug("Doing  " + vt._1().getContig() + ":" + vt._1().getStart());
             if (structuralVariantAlleleIsSupported(vt._1().getStructuralVariantAllele())) {
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates ");

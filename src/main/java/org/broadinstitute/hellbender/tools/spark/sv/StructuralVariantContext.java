@@ -19,6 +19,7 @@ import org.seqdoop.hadoop_bam.VariantContextWritable;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Created by valentin on 4/26/17.
@@ -27,7 +28,7 @@ public class StructuralVariantContext extends VariantContext {
 
     private static final long serialVersionUID = 1L;
 
-    private transient List<Integer> assemblyIDs;
+    private transient List<String> assemblyIDs;
 
     protected StructuralVariantContext(final VariantContext other) {
         super(other);
@@ -43,24 +44,25 @@ public class StructuralVariantContext extends VariantContext {
      * <p>
      *     The list returned is an immutable list.
      * </p>
-     * @throws IllegalStateException if the {@link GATKSVVCFHeaderLines#ASSEMBLY_IDS} annotation contains invalid
+     * @throws IllegalStateException if the {@link GATKSVVCFHeaderLines#CONTIG_NAMES} annotation contains invalid
+     *  contig names that do not conform to the pattern {@link AlignedAssemblyOrExcuse#CONTIG_NAME_PATTERN}.
      *
      * @return never {@code null}, an empty list if no structural variant is specified.
      */
-    public List<Integer> assemblyIDs() {
+    public List<String> assemblyIDs() {
         if (assemblyIDs == null) {
-            if (!hasAttribute(GATKSVVCFHeaderLines.ASSEMBLY_IDS)) {
+            if (!hasAttribute(GATKSVVCFHeaderLines.CONTIG_NAMES)) {
                 assemblyIDs = Collections.emptyList();
             } else {
                 try {
-                    final List<Integer> result = getAttributeAsIntList(GATKSVVCFHeaderLines.ASSEMBLY_IDS, -1);
-                    if (result.stream().anyMatch(i -> i < 0)) {
+                    final List<String> result = getAttributeAsStringList(GATKSVVCFHeaderLines.CONTIG_NAMES, null);
+                    if (result.stream().anyMatch(Objects::isNull)) {
                         throw new IllegalStateException("this variant context contains unspecified or negative assembly ids");
                     }
-                    assemblyIDs = Collections.unmodifiableList(result);
+                    assemblyIDs = Collections.unmodifiableList(result.stream().map(contigName -> AlignedAssemblyOrExcuse.extractAssemblyId(contigName)).collect(Collectors.toList()));
                 } catch (final NumberFormatException ex) {
-                    throw new IllegalArgumentException(String.format("the variant context '%s' annotation contains non-integer entries: %s", GATKSVVCFHeaderLines.ASSEMBLY_IDS,
-                            String.valueOf(getAttribute(GATKSVVCFHeaderLines.ASSEMBLY_IDS))));
+                    throw new IllegalArgumentException(String.format("the variant context '%s' annotation contains non-valid contig names entries: %s", GATKSVVCFHeaderLines.CONTIG_NAMES,
+                            String.valueOf(getAttribute(GATKSVVCFHeaderLines.CONTIG_NAMES))));
                 }
 
             }
