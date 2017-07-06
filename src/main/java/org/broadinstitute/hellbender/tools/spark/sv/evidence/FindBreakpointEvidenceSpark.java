@@ -40,7 +40,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * (Internal) Produces local assemblies of genomic regions that may harbor structural variants

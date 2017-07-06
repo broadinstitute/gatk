@@ -5,12 +5,15 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * Created by valentin on 5/18/17.
  */
-public class TemplateHaplotypeScoreTable {
+public class TemplateHaplotypeScoreTable implements Serializable {
+
+    private static long serialVersionUID = 1L;
 
     private final double[][] values;
 
@@ -20,7 +23,9 @@ public class TemplateHaplotypeScoreTable {
 
     private final List<Haplotype> haplotypes;
 
-    public TemplateHaplotypeScoreTable(final Iterable<Template> templates, final Iterable<Haplotype> haplotypes) {
+    public TemplateHaplotypeScoreTable(final Iterable<Template> templates, final Iterable<Haplotype> haplotypes)
+
+    {
         this.templates = Collections.unmodifiableList(CollectionUtils.collect(templates, t -> t, new ArrayList<>(1000)));
         this.haplotypes = Collections.unmodifiableList(CollectionUtils.collect(haplotypes, t -> t, new ArrayList<>()));
         values = new double[this.haplotypes.size()][this.templates.size()];
@@ -82,6 +87,18 @@ public class TemplateHaplotypeScoreTable {
 
     public List<Haplotype> haplotypes() {
         return haplotypes;
+    }
+
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < numberOfHaplotypes(); i++) {
+            sb.append(Arrays.toString(values[i]));
+            sb.append(", ");
+        }
+        if (sb.length() > 0) {
+            sb.setLength(sb.length() - 1);
+        }
+        return sb.toString();
     }
 
 }

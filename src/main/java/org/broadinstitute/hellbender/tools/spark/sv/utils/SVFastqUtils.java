@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Memory-economical utilities for producing a FASTQ file.
@@ -242,8 +245,8 @@ public class SVFastqUtils {
         }
 
         private FastqRead( final Kryo kryo, final Input input ) {
-            header = input.readString();
-            final int nBases = input.readInt();
+           header = input.readString();
+           final int nBases = input.readInt();
             bases = new byte[nBases];
             input.readBytes(bases);
             quals = new byte[nBases];

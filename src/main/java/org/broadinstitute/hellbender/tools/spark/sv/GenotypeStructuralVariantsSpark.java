@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.avro.mapred.Pair;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -19,22 +16,20 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
-import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -150,14 +145,23 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<StructuralVariantContext, List<SVFastqUtils.FastqRead>> variantReads = variantAndAssemblyFiles
                 .mapValues(v -> v.stream().flatMap(file -> SVFastqUtils.readFastqFile(file.getAbsolutePath(), null).stream()).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, Map<String, List<SVFastqUtils.FastqRead>>> variantReadsByName = variantReads
-                .mapValues(v -> v.stream().collect(Collectors.groupingBy(r -> templateName(r)._1())));
+                .mapValues(v -> v.stream().collect(Collectors.groupingBy(SVFastqUtils.FastqRead::getName)));
         final JavaPairRDD<StructuralVariantContext, List<Template>> variantTemplates = variantReadsByName.mapValues(map ->
             map.entrySet().stream().map(entry ->
-                Template.create(entry.getKey(), entry.getValue(), read -> new Template.Fragment(read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
+                Template.create(entry.getKey(), entry.getValue().stream().collect(Collectors.groupingBy(r -> (Integer) r.getFragmentNumber())).values().stream().map(v -> v.iterator().next()).collect(Collectors.toList()), read -> new Template.Fragment(read.getName(), read.getFragmentNumber(), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
             ).collect(Collectors.toList()));
-        variantTemplates.foreach(vt -> {
+        final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator(ctx, dist);
+        final int padding = this.padding;
+        final ReferenceMultiSource reference = getReference();
+        variantTemplates.collect().stream().forEach(vt -> {
             if (structuralVariantAlleleIsSupported(vt._1().getStructuralVariantAllele())) {
+
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates ");
+                final List<Haplotype> haplotypes = new ArrayList<>(2);
+                haplotypes.add(vt._1().composeHaplotype(0, padding, reference));
+                haplotypes.add(vt._1().composeHaplotype(1, padding, reference));
+                final TemplateHaplotypeScoreTable table = new TemplateHaplotypeScoreTable(vt._2(), haplotypes);
+                calculator.calculate(table);
             } else {
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " not supported ");
             }
@@ -175,22 +179,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         }
     }
 
-    private static Pattern FASTQ_READ_NAME_FORMAT = Pattern.compile("^(.*)\\/(\\d+)$");
 
-    private static Tuple2<String, Integer> templateName(final SVFastqUtils.FastqRead read) {
-        final String readName = read.getName();
-        final Matcher matcher = FASTQ_READ_NAME_FORMAT.matcher(readName);
-        final String templateName;
-        final int fragmentNumber;
-        if (matcher.find()) {
-            templateName = matcher.group(1);
-            fragmentNumber = Integer.parseInt(matcher.group(2));
-        } else {
-            templateName = readName;
-            fragmentNumber = -1;
-        }
-        return new Tuple2<>(templateName, fragmentNumber);
-    }
 
     private void tearDown(final JavaSparkContext ctx) {
         variantsSource = null;
