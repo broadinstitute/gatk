@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
@@ -16,12 +15,10 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by tsato on 6/30/17.
  */
-public class GCcontentUnitTest extends BaseTest {
+public class GCContentUnitTest extends BaseTest {
     @Test
     public void testBasic() throws Exception {
         ReferenceDataSource refSource = new ReferenceFileSource(new File(hg19_chr1_1M_Reference));
@@ -35,7 +32,7 @@ public class GCcontentUnitTest extends BaseTest {
                 Arrays.asList(Allele.create("A", true), Allele.create("C")));
         VariantContext variantContext = variantContextBuilder.make();
 
-        final GCcontent gccontentAnnotation = new GCcontent();
+        final GCContent gccontentAnnotation = new GCContent();
         Map<String, Object> annotation = gccontentAnnotation.annotate(refContext, variantContext, null);
 
         final double observed = Double.valueOf(String.valueOf(annotation.get(gccontentAnnotation.getKeyNames().get(0))));

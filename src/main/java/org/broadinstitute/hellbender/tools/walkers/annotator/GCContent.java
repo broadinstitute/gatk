@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 /**
  * Created by tsato on 6/30/17.
  */
-public class GCcontent extends InfoFieldAnnotation {
+public class GCContent extends InfoFieldAnnotation {
     private static final String KEY = "GC";
     private static final int k = 100;
 
