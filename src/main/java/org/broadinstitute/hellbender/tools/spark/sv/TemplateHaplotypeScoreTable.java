@@ -25,6 +25,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final TemplateMappingInformation[][] mappingInfo;
+
     private final double[][] values;
 
     private final List<Template> templates;
@@ -32,7 +33,6 @@ public class TemplateHaplotypeScoreTable implements Serializable {
     private final Map<String, Integer> templateIndex;
 
     private final List<Haplotype> haplotypes;
-
 
 
     public int maximumInsertSize() {
@@ -63,7 +63,6 @@ public class TemplateHaplotypeScoreTable implements Serializable {
     }
 
     public TemplateHaplotypeScoreTable(final Iterable<Template> templates, final Iterable<Haplotype> haplotypes)
-
     {
         this.templates = CollectionUtils.collect(templates, t -> t, new ArrayList<>(1000));
         this.haplotypes = CollectionUtils.collect(haplotypes, t -> t, new ArrayList<>());
