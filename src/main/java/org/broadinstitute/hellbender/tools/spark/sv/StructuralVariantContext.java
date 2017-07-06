@@ -28,8 +28,6 @@ public class StructuralVariantContext extends VariantContext {
 
     private static final long serialVersionUID = 1L;
 
-    private transient List<String> assemblyIDs;
-
     protected StructuralVariantContext(final VariantContext other) {
         super(other);
     }
@@ -49,25 +47,21 @@ public class StructuralVariantContext extends VariantContext {
      *
      * @return never {@code null}, an empty list if no structural variant is specified.
      */
-    public List<String> assemblyIDs() {
-        if (assemblyIDs == null) {
-            if (!hasAttribute(GATKSVVCFHeaderLines.CONTIG_NAMES)) {
-                assemblyIDs = Collections.emptyList();
-            } else {
-                try {
-                    final List<String> result = getAttributeAsStringList(GATKSVVCFHeaderLines.CONTIG_NAMES, null);
-                    if (result.stream().anyMatch(Objects::isNull)) {
-                        throw new IllegalStateException("this variant context contains unspecified or negative assembly ids");
-                    }
-                    assemblyIDs = Collections.unmodifiableList(result.stream().map(contigName -> AlignedAssemblyOrExcuse.extractAssemblyId(contigName)).collect(Collectors.toList()));
-                } catch (final NumberFormatException ex) {
-                    throw new IllegalArgumentException(String.format("the variant context '%s' annotation contains non-valid contig names entries: %s", GATKSVVCFHeaderLines.CONTIG_NAMES,
-                            String.valueOf(getAttribute(GATKSVVCFHeaderLines.CONTIG_NAMES))));
-                }
-
+    public List<String> contigNames() {
+        if (!hasAttribute(GATKSVVCFHeaderLines.CONTIG_NAMES)) {
+            return Collections.emptyList();
+        } else {
+            final List<String> contigNames = getAttributeAsStringList(GATKSVVCFHeaderLines.CONTIG_NAMES, null);
+            if (contigNames.contains(null)) {
+                throw new IllegalStateException("the contig names annotation contains undefined values");
             }
+            return contigNames;
         }
-        return assemblyIDs;
+    }
+
+    public List<String> assemblyIDs() {
+        final List<String> contigNames = contigNames();
+        return contigNames.stream().map(AlignedAssemblyOrExcuse::extractAssemblyId).collect(Collectors.toList());
     }
 
     public Haplotype composeHaplotype(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
