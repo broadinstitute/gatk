@@ -120,7 +120,11 @@ script:
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     echo ${TRAVIS_COMMIT};
-    sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/;
+    if [ ${TRAVIS_PULL_REQUEST} ]; then
+      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
+    else
+      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/;
+    fi
     sudo docker images;
     echo ${TEST_TYPE};
     sudo docker run -v $(pwd)/src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${TRAVIS_COMMIT} bash /root/run_unit_tests.sh;
