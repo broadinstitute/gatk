@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Spliterator;
@@ -21,25 +22,33 @@ import java.util.stream.StreamSupport;
  * Represent a template sequence as reconstructed from the corresponding
  * fragments such as reads pairs.
  */
-public class Template {
+public class Template implements Serializable {
+
+    private static long serialVersionUID = 1L;
 
     private List<Fragment> fragments;
 
     private String name;
 
-    public static class Fragment {
+    public static class Fragment implements Serializable {
+
+        private static long serialVersionUID = 1L;
 
         private final byte[] bases;
         private final int[] qualities;
         private final int length;
+        private final String name;
+        private final int number;
 
-        public Fragment(final byte[] bases, final int[] qualities) {
+        public Fragment(final String name, final int number, final byte[] bases, final int[] qualities) {
+            this.name = name;
             this.bases = Utils.nonNull(bases);
             this.qualities = Utils.nonNull(qualities);
             this.length = bases.length;
             if (this.length != qualities.length) {
                 throw new IllegalArgumentException("the input bases and qualities must have the same length");
             }
+            this.number = number;
         }
 
         public byte[] bases() {
@@ -56,12 +65,15 @@ public class Template {
 
         public GATKRead toUnmappedRead(final SAMFileHeader header, final boolean paired) {
             final SAMRecord record = new SAMRecord(header);
+            record.setReadName(name);
             record.setBaseQualities(encodeQuals());
             record.setReadBases(bases);
             record.setReadUnmappedFlag(true);
             if (paired) {
                 record.setReadPairedFlag(true);
                 record.setMateUnmappedFlag(true);
+                record.setFirstOfPairFlag(number == 1);
+                record.setSecondOfPairFlag(number == 2);
             }
             return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
         }

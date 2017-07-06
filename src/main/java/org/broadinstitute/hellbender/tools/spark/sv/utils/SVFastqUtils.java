@@ -27,6 +27,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Memory-economical utilities for producing a FASTQ file.
@@ -215,8 +218,8 @@ public class SVFastqUtils {
         }
 
         private FastqRead( final Kryo kryo, final Input input ) {
-            header = input.readString();
-            final int nBases = input.readInt();
+           header = input.readString();
+           final int nBases = input.readInt();
             bases = new byte[nBases];
             input.readBytes(bases);
             quals = new byte[nBases];
@@ -311,7 +314,7 @@ public class SVFastqUtils {
         return reads;
     }
 
-    /** Convert a read's name into a FASTQ record sequence ID */
+    /** Convert a read's descriptor into a FASTQ record sequence ID */
     public static String readToFastqSeqId( final GATKRead read, final boolean includeMappingLocation ) {
         final String nameSuffix = TemplateFragmentOrdinal.forRead(read).nameSuffix();
         final String description;

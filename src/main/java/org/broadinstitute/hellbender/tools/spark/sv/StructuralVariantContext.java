@@ -68,14 +68,18 @@ public class StructuralVariantContext extends VariantContext {
         return assemblyIDs;
     }
 
-    public Haplotype composeHaplotype(final int index, final int paddingSize, final ReferenceMultiSource reference)
-        throws IOException {
+    public Haplotype composeHaplotype(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
         if (index < 0 || index > 1)
             throw new IllegalArgumentException("wrong index must be 0 (ref) or 1 (alt)");
         Utils.nonNull(reference);
 
-        final SimpleInterval referenceInterval = new SimpleInterval(getContig(), getStart() - paddingSize - 1, getStart() + paddingSize);
-        final ReferenceBases bases = reference.getReferenceBases(null, referenceInterval);
+        final SimpleInterval referenceInterval = new SimpleInterval(getContig(), getStart() - paddingSize - 1, getStart() + paddingSize + Math.abs(Math.min(0,getStructuralVariantLength())));
+        final ReferenceBases bases;
+        try {
+            bases = reference.getReferenceBases(null, referenceInterval);
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotReadInputFile("could not read reference file");
+        }
         if (index == 0) {
             final Haplotype result = new Haplotype(bases.getBases(), true);
             result.setCigar(new Cigar(Collections.singletonList(new CigarElement(referenceInterval.size(), CigarOperator.M))));

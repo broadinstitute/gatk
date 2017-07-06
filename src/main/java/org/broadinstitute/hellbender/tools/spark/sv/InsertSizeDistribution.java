@@ -21,13 +21,27 @@ public class InsertSizeDistribution implements Serializable {
     private static Pattern NORMAL_DISTR_PATTERN = Pattern.compile(
             String.format("^N(?:orm(?:al)?)?\\(\\s*(?<%s>\\S+)\\s*,\\s*(?<%s>\\S+)\\s*\\)",MEAN_DISTR_PARAM_NAME, SD_DISTR_PARAM_NAME));
 
-    private final RealDistribution dist;
+    private final String description;
+
+    private transient RealDistribution dist;
+
+    private RealDistribution dist() {
+        return dist;
+    }
+
 
     public InsertSizeDistribution(final String distrString) {
-        if (distrString.matches(NORMAL_DISTR_PATTERN.pattern())) {
-            dist = parseNormalDistribution(distrString);
-        } else {
-            throw new IllegalArgumentException("unsupported insert size distribution description: " + distrString);
+        this.description = distrString;
+        initializeDistribution();
+    }
+
+    private void initializeDistribution() {
+        if (dist == null) {
+            if (description.matches(NORMAL_DISTR_PATTERN.pattern())) {
+                dist = parseNormalDistribution(description);
+            } else {
+                throw new IllegalArgumentException("unsupported insert size distribution description: " + description);
+            }
         }
     }
 
@@ -48,15 +62,15 @@ public class InsertSizeDistribution implements Serializable {
     }
 
     public int minimum() {
-        return (int) Math.max(0, dist.getSupportLowerBound());
+        return (int) Math.max(0, dist().getSupportLowerBound());
     }
 
     public int maximum() {
-        return (int) Math.min(Integer.MAX_VALUE, dist.getSupportUpperBound());
+        return (int) Math.min(Integer.MAX_VALUE, dist().getSupportUpperBound());
     }
 
     public double probability(final int size) {
-        return dist.cumulativeProbability(size + .5) - dist.cumulativeProbability(size - .5);
+        return dist().cumulativeProbability(size + .5) - dist().cumulativeProbability(size - .5);
     }
 
     public double logProbability(final int size) {
