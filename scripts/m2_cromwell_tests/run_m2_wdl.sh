@@ -15,7 +15,7 @@ echo "Building docker without running unit tests... ========="
 cd $WORKING_DIR/gatk
 
 if [ ${TRAVIS_PULL_REQUEST} ]; then
-  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
+  sudo bash build_docker.sh  -e FETCH_HEAD -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
 else
   sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/;
 fi

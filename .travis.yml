@@ -121,7 +121,7 @@ script:
     echo "Building docker image and running appropriate tests..." ;
     echo ${TRAVIS_COMMIT};
     if [ ${TRAVIS_PULL_REQUEST} ]; then
-      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
+      sudo bash build_docker.sh  -e FETCH_HEAD -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
     else
       sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/;
     fi;
