@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +23,8 @@ import java.util.Objects;
  */
 public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     private static final long serialVersionUID = 1L;
+
+    private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
     private final SAMRecord samRecord;
 
@@ -523,7 +526,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
             return Arrays.copyOf(ret, ret.length);
         }
         else if ( attributeValue instanceof String ) {
-            return ((String)attributeValue).getBytes();
+            return ((String)attributeValue).getBytes(DEFAULT_CHARSET);
         }
         else {
             throw new GATKException.ReadAttributeTypeMismatch(attributeName, "byte array");

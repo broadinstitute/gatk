@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.util.*;
 
 /**
@@ -23,6 +24,8 @@ import java.util.*;
  */
 public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Serializable {
     private static final long serialVersionUID = 1L;
+
+    private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
     private final Read genomicsRead;
 
@@ -544,7 +547,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         // Assume that byte array attributes are encoded as a single String in the first position of the List of values for an attribute,
         // and that the bytes of this String are directly convertible to byte array.
         final String rawValue = getRawAttributeValue(attributeName, "byte array");
-        return rawValue != null ? rawValue.getBytes() : null;
+        return rawValue != null ? rawValue.getBytes(DEFAULT_CHARSET) : null;
     }
 
     private void makeInfoMapIfNecessary() {
