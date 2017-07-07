@@ -15,9 +15,16 @@ import static org.broadinstitute.hellbender.tools.walkers.validation.FalsePositi
  * Created by tsato on 12/28/16.
  */
 public class CountFalsePositivesIntegrationTest extends CommandLineProgramTest {
+    private final File dreamDir =  new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/dream");
+
+    // expected numbers are computed as follows:
+    // SNP: grep PASS dream3-chr20.vcf | awk 'length($4) == length($5) { print $0 }' | wc -l
+    // INDEL: grep PASS dream3-chr20.vcf | awk 'length($4) != length($5) { print $0 }' | wc -l
+    private final int expectedSnpFPs = 173;
+    private final int expectedIndelFPs = 276;
+
     @Test
     public void testSimple() throws Exception {
-        final File dreamDir =  new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/dream");
         final File output = createTempFile("output", ".txt");
         final String[] args = {
                 "-V", dreamDir + "/vcfs/dream3-chr20.vcf",
@@ -30,12 +37,32 @@ public class CountFalsePositivesIntegrationTest extends CommandLineProgramTest {
         FalsePositiveRecordReader reader = new FalsePositiveRecordReader(output);
         FalsePositiveRecord record = reader.readRecord();
 
-        // check that the tool agrees with the false positive counts using AWK
-        // SNP: grep PASS dream3-chr20.vcf | awk 'length($4) == length($5) { print $0 }' | wc -l
-        // INDEL: grep PASS dream3-chr20.vcf | awk 'length($4) != length($5) { print $0 }' | wc -l
-        Assert.assertEquals(record.getSnpFalsePositives(), 173);
-        Assert.assertEquals(record.getIndelFalsePositives(), 276);
+        Assert.assertEquals(record.getSnpFalsePositives(), expectedSnpFPs);
+        Assert.assertEquals(record.getIndelFalsePositives(), expectedIndelFPs);
     }
+
+    @Test
+    public void testWGS() throws Exception {
+        final File output = createTempFile("output", ".txt");
+        final String[] args = {
+                "-V", dreamDir + "/vcfs/dream3-chr20.vcf",
+                "-R", b37_reference_20_21,
+                "-L", wgsIntervalFile,
+                "-O", output.toString()
+        };
+        runCommandLine(args);
+
+        FalsePositiveRecordReader reader = new FalsePositiveRecordReader(output);
+        FalsePositiveRecord record = reader.readRecord();
+
+        final long wgsIntervalSize = 2832598739L;
+        Assert.assertEquals(record.getTargetTerritory(), wgsIntervalSize);
+        Assert.assertEquals(record.getSnpFalsePositiveRate(), (double) expectedSnpFPs/wgsIntervalSize * 1e6);
+        Assert.assertEquals(record.getIndelFalsePositiveRate(), (double) expectedIndelFPs/wgsIntervalSize * 1e6);
+    }
+
+
+
 
     private class FalsePositiveRecordReader extends TableReader<FalsePositiveRecord> {
         private FalsePositiveRecordReader(final File falsePositiveTable) throws IOException {
