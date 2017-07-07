@@ -51,7 +51,7 @@ public class AnnotateVcfWithGCContent extends VariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    private String GC_CONTENT_ANNOTATION_NAME = "GC";
+    public static String GC_CONTENT_ANNOTATION_NAME = "GC";
 
     @Override
     public void onTraversalStart() {
