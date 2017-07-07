@@ -33,7 +33,7 @@ Optional arguments:  \n \
 -s \t The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  git hashes cannot be pushed as latest, so -l is implied.  \n \
 -l \t Do not also push the image to the 'latest' tag. \n \
 -u \t Do not run the unit tests. \n \
--d <STAGING_DIR> \t staging directory to grab code from repo and build the docker iamge.  If unspecified, then use whatever is in current dir (do not go to the repo).  NEVER SPECIFY YOUR WORKING DIR \n \
+-d <STAGING_DIR> \t staging directory to grab code from repo and build the docker image.  If unspecified, then use whatever is in current dir (do not go to the repo).  NEVER SPECIFY YOUR WORKING DIR \n \
 -p \t (GATK4 developers only) push image to docker hub once complete.  This will use the GITHUB_TAG in dockerhub as well. \n \
 \t\t Unless -l is specified, this will also push this image to the 'latest' tag. \n \
 -r \t (GATK4 developers only) Do not remove the unit test docker container.  This is useful for debugging failing unit tests. \n \
