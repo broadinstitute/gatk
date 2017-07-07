@@ -45,6 +45,8 @@ public class GenotypeStructuralVariantsSparkIntegrationTest extends CommandLineP
              add( INPUT_FASTQ_DIR.getAbsolutePath());
              add("-L");
              add( INPUT_INTERVALS.getAbsolutePath());
+             add("-" + GenotypeStructuralVariantsSpark.ASSEMBLIES_FILE_SHORT_NAME);
+             add( "test.sam");
             }
         };
         runCommandLine(args);
