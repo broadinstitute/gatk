@@ -107,7 +107,7 @@ public final class FindSmallIndelRegions extends GATKSparkTool {
         }
 
         public void test( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
-            if ( !filter.isNonDiscordantEvidence(read) ) return;
+            if ( !filter.isTemplateLenTestable(read) ) return;
 
             final boolean sameContig;
             if ( !(sameContig = read.getContig().equals(curContig)) || read.getStart() >= curEnd ) {

@@ -35,15 +35,13 @@ public class SVReadFilter implements java.io.Serializable {
                 SVUtils.matchLen(read.getCigar()) >= minEvidenceMatchLength;
     }
 
-    public boolean isNonDiscordantEvidence( final GATKRead read ) {
+    public boolean isTemplateLenTestable( final GATKRead read ) {
         return isEvidence(read) && isPrimaryLine(read) &&
-                read.isFirstOfPair() &&
                 !read.mateIsUnmapped() &&
-                read.isReverseStrand() != read.mateIsReverseStrand() &&
+                !read.isReverseStrand() &&
+                read.mateIsReverseStrand() &&
                 read.getContig().equals(read.getMateContig()) &&
-                (read.isReverseStrand() ?
-                        read.getStart() + allowedShortFragmentOverhang >= read.getMateStart() :
-                        read.getStart() - allowedShortFragmentOverhang <= read.getMateStart());
+                read.getStart() - allowedShortFragmentOverhang <= read.getMateStart();
     }
 
     public Iterator<GATKRead> applyFilter( final Iterator<GATKRead> readItr, final BiPredicate<SVReadFilter, GATKRead> predicate ) {

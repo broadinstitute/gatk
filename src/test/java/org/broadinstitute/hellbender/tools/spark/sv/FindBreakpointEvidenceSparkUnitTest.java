@@ -23,7 +23,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final SVInterval[] testIntervals =
-            { new SVInterval(1, 33140775, 33141455), new SVInterval(1, 33143112, 33143485) };
+            { new SVInterval(1, 33140717, 33141485), new SVInterval(1, 33143109, 33143539) };
 
     private final String toolDir = getToolTestDataDir();
     private final String readsFile = toolDir+"SVBreakpointsTest.bam";
@@ -90,11 +90,12 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 new HopscotchUniqueMultiMap<>(
                         FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, 1, new HopscotchSet<>(0),
                                 reads, filter)._2());
-        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, kmer);
-        Assert.assertEquals(actualKmerAndIntervalSet.size(), expectedKmers.size());
+        final Set<SVKmer> actualKmers = new HashSet<SVKmer>(SVUtils.hashMapCapacity(actualKmerAndIntervalSet.size()));
         for ( final KmerAndInterval kmerAndInterval : actualKmerAndIntervalSet ) {
-            Assert.assertTrue(expectedKmers.contains(kmerAndInterval.getKey()));
+            actualKmers.add(kmerAndInterval.getKey());
         }
+        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, kmer);
+        Assert.assertEquals(actualKmers, expectedKmers);
     }
 
     @Test(groups = "spark")
