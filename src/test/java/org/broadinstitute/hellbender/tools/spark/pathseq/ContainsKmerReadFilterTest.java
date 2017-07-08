@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerShort;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerizer;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongHopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;

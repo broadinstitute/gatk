@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerShort;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LongBloomFilter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
