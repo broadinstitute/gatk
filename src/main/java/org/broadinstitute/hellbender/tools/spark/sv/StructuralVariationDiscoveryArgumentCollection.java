@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 
 import java.io.Serializable;
@@ -140,6 +141,14 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = "crossContigsToIgnore", optional = true)
         public String crossContigsToIgnoreFile;
 
+        private static final String OUTPUT_ORDER_SHORT_NAME = "sort";
+        private static final String OUTPUT_ORDER_FULL_NAME = "assembliesSortOrder";
+
+        @Argument(doc = "sorting order to be used for the output assembly alignments SAM/BAM file",
+                shortName = OUTPUT_ORDER_SHORT_NAME,
+                fullName = OUTPUT_ORDER_FULL_NAME,
+                optional = true)
+        public SAMFileHeader.SortOrder assembliesSortOrder = SAMFileHeader.SortOrder.coordinate;
     }
 
     public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {

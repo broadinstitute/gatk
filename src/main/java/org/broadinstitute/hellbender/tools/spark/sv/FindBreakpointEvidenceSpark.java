@@ -55,13 +55,15 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
+
     @ArgumentCollection
     private final FindBreakpointEvidenceSparkArgumentCollection params =
             new FindBreakpointEvidenceSparkArgumentCollection();
 
+
     @Argument(doc = "sam file for aligned contigs", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    private String outputSAM;
+    private String outputAssemblyAlignments;
 
     @Override
     public boolean requiresReads()
@@ -73,7 +75,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     protected void runTool( final JavaSparkContext ctx ) {
 
         gatherEvidenceAndWriteContigSamFile(ctx, params, getHeaderForReads(),
-                getUnfilteredReads(), outputSAM, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
+                getUnfilteredReads(), outputAssemblyAlignments, params.assembliesSortOrder, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
 
     }
 
@@ -88,7 +90,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
-            final String outputSAM,
+            final String outputAssembliesFile,
+            final SAMFileHeader.SortOrder outputSortOrder,
             final Logger toolLogger) {
 
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
@@ -130,7 +133,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // write the output file
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-        AlignedAssemblyOrExcuse.writeSAMFile(outputSAM, cleanHeader, alignedAssemblyOrExcuseList);
+        cleanHeader.setSortOrder(outputSortOrder);
+
+        AlignedAssemblyOrExcuse.writeSAMFile(outputAssembliesFile, cleanHeader, alignedAssemblyOrExcuseList, outputSortOrder == SAMFileHeader.SortOrder.queryname);
         log("Wrote SAM file of aligned contigs.", toolLogger);
 
         return alignedAssemblyOrExcuseList;
@@ -525,7 +530,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final List<SVInterval> intervals,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter,
-            final Logger logger ) {
+            final Logger logger) {
         final List<SVInterval> result =
                 removeHighCoverageIntervals(params, ctx, broadcastMetadata, intervals, unfilteredReads, filter);
         final int nKilledIntervals = intervals.size() - result.size();

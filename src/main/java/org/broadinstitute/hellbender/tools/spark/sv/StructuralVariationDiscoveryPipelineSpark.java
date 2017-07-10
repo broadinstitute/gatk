@@ -52,7 +52,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     private StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs
             = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
-
     @Override
     public boolean requiresReads()
     {
@@ -72,7 +71,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList =
                 FindBreakpointEvidenceSpark
                         .gatherEvidenceAndWriteContigSamFile(ctx, evidenceAndAssemblyArgs, header, getUnfilteredReads(),
-                                outputSAM, localLogger);
+                                outputSAM, this.evidenceAndAssemblyArgs.assembliesSortOrder, localLogger);
         if (alignedAssemblyOrExcuseList.isEmpty()) return;
 
         // parse the contig alignments and extract necessary information
