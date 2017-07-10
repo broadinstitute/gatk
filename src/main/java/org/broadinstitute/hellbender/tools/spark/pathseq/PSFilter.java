@@ -11,7 +11,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.filters.AmbiguousBaseReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadFilterSparkifier;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadTransformerSparkifier;
 import org.broadinstitute.hellbender.transformers.BaseQualityClipReadTransformer;
