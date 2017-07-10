@@ -154,9 +154,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             addGenotypes(subsettedLog10TumorMatrix, subsettedLog10NormalMatrix, callVcb);
             final VariantContext call = callVcb.make();
-            final ReadLikelihoods<Allele> log10LikelihoodsForAnotations = prepareReadAlleleLikelihoodsForAnnotation(log10ReadLikelihoods, Collections.emptyMap(),
-                    false, alleleMapper, log10Likelihoods, call);
-            final VariantContext annotatedCall =  annotationEngine.annotateContext(call, featureContext, referenceContext, log10LikelihoodsForAnotations, a -> true);
+            final VariantContext annotatedCall =  annotationEngine.annotateContext(call, featureContext, referenceContext, log10Likelihoods, a -> true);
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             returnCalls.add( annotatedCall );
