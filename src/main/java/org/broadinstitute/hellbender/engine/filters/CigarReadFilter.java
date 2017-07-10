@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -30,7 +30,7 @@ public class CigarReadFilter extends ReadFilter {
             "^\\^?" +
             "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*H)*" +
             "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*S)*" +
-            "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*[MIDNPX=*])*" +
+            "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*[MIDNPX=" + CigarMatchElement.WILDCARD + "])*" +
             "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*S)*" +
             "(?:(?:[<>]\\d+|[<>]=\\d+)?\\d*H)*" +
             "\\$?$"
@@ -38,7 +38,7 @@ public class CigarReadFilter extends ReadFilter {
 
     /** Regular Expression {@link Pattern} to match the next {@link CigarMatchElement} in the description string. */
     static final Pattern nextCigarMatchElementPattern = Pattern.compile (
-            "(\\^?(?:[<>]\\d+|[<>]=\\d+|\\d+)?[SHMIDNPX=*]\\$?)"
+            "(\\^?(?:[<>]\\d+|[<>]=\\d+|\\d+)?[SHMIDNPX=" + CigarMatchElement.WILDCARD + "]\\$?)"
     );
 
     @Argument(fullName = "description",
@@ -47,12 +47,12 @@ public class CigarReadFilter extends ReadFilter {
             optional = true,
             maxElements = 1)
     // Set the default description to be completely permissive.
-    private String description = "*";
+    private String description = Character.toString( CigarMatchElement.WILDCARD );
 
     /**
      * The list of CigarMatchElements comprising this {@link CigarReadFilter}.
      */
-    private Collection<CigarMatchElement> matchElementCollection;
+    private List<CigarMatchElement> matchElementList;
 
     // =======================================================
 
@@ -89,7 +89,7 @@ public class CigarReadFilter extends ReadFilter {
         this.description = description;
 
         // Parse the string and extract the elements to our list:
-        this.matchElementCollection = extractMatchElementsFromString(description);
+        this.matchElementList = extractMatchElementsFromString(description);
     }
 
     /**
@@ -98,12 +98,12 @@ public class CigarReadFilter extends ReadFilter {
      * @param description String describing the format of the cigar string on which to filter.
      * @return A list of {@link CigarMatchElement} that corresponds to the given description.
      */
-    Collection<CigarMatchElement> extractMatchElementsFromString(final String description) {
+    List<CigarMatchElement> extractMatchElementsFromString(final String description) {
 
         ArrayList<CigarMatchElement> matchElementList = new ArrayList<>();
 
         // Check for trivial cases here:
-        if ( description.compareTo("*") == 0 )
+        if ( description.compareTo(CigarMatchElement.UNAVAILABLE) == 0 )
         {
             final CigarMatchElement e = new CigarMatchElement();
             e.setUnavailable(true);
@@ -173,7 +173,7 @@ public class CigarReadFilter extends ReadFilter {
         // and a character representing the cigar type.
 
         // Get the cigar type now:
-        if ( match.charAt(match.length()-1) == '*' ) {
+        if ( match.charAt(match.length()-1) == CigarMatchElement.WILDCARD ) {
             e.setWildCard(true);
         }
         else {
@@ -229,7 +229,7 @@ public class CigarReadFilter extends ReadFilter {
 
         if (description.length() == 1) {
             // Since we're allowing for the user to input ^ and $, we need to make sure
-            // that the pattern we match against
+            // that the pattern we match against doesn't consist of only those anchors
             isValid = isValid && (description.compareTo("^") != 0);
             isValid = isValid && (description.compareTo("$") != 0);
         }
@@ -263,7 +263,7 @@ public class CigarReadFilter extends ReadFilter {
         boolean mustAnchorToEnd = false;
 
         // We go through our match elements to make sure that the cigar string matches each one:
-        for ( CigarMatchElement matchElement : matchElementCollection ) {
+        for ( CigarMatchElement matchElement : matchElementList) {
 
             // Make sure we can keep track of the number of operators we've seen:
             int cigarOperatorCount = 0;
@@ -375,6 +375,9 @@ public class CigarReadFilter extends ReadFilter {
      * operator for a Cigar string.
      */
     static class CigarMatchElement {
+
+        public static final String UNAVAILABLE  = "*";
+        public static final char WILDCARD       = '%';
 
         private CigarOperator operator          = null;
 

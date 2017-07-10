@@ -1,16 +1,12 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
-import org.junit.Ignore;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
@@ -25,49 +21,51 @@ public class CigarReadFilterTest {
         };
     }
 
+
+
     @DataProvider
     public Object[][] createInvalidCigarFilterStrings() {
         return new Object[][]{
-                {"^", false},
-                {"$", false},
-                {"SHS", false},
-                {"SHSH", false},
-                {"329", false},
-                {"M%", false},
-                {"<=P", false},
-                {"10P<>34X", false},
-                {"10P<>=34X", false},
-                {"12H<3SH10P>=34X3S2H", false},
+                {"^", false},                           // Start anchor with no content
+                {"$", false},                           // End anchor with no content
+                {"SHS", false},                         // Soft clips before hard clips
+                {"SHSH", false},                        // Soft clips before hard clips
+                {"329", false},                         // Number specified without content
+                {"M*", false},                          // * is not a wildcard - it is reserved for "unavailable"
+                {"*M", false},                          // * is not a wildcard - it is reserved for "unavailable"
+                {"<=P", false},                         // Floating less than
+                {"10P<>34X", false},                    // Floating less than
+                {"10P>>=34X", false},                   // Floating greater than
+                {"12H<3SH10P>=34X3S2H", false},         // Numerically specified hard clips inside cigar
         };
     }
 
     @DataProvider
     public Object[][] createValidCigarFilterStrings() {
         return new Object[][]{
-                {"*", true},
-                {"H", true},
-                {"HS", true},
-                {"HHHHSSSSDSSSSHHH", true},
-                {"SS==3I<=24DMMMDMDMDDSHHHH", true},
-                {"SH", true},
-                {"=H", true},
-                {"105H", true},
-                {"329H3S", true},
-                {"^M$", true},
-                {"M", true},
-                {"M*", true},
-                {"*M", true},
-                {"10P", true},
-                {"=10P", true},
-                {"<=9=", true},
-                {"10P=34X", true},
-                {"10P<34X", true},
-                {"10P<=34X", true},
-                {"10P>34X", true},
-                {"10P>=34X", true},
-                {"10P>=34X3S2H", true},
-                {"12H<3S10P>=34X3S2H", true},
-                {"^12H<3S10P>=34X3S2H$", true},
+                {"*", true},                            // Unavailable cigar string
+                {"H", true},                            // Single hard clip
+                {"HS", true},                           // Hard clip, then a soft clip
+                {"M%", true},                           // An Alignment Match then a wildcard
+                {"HHHHSSSSDSSSSHHH", true},             // Valid clipping bookends and a Deletion
+                {"SS==3I<=24DMMMDMDMDDSHHHH", true},    // Valid clipping bookends with Sequence Matches, Insertions, Numerically specified Deletions and Alignment Matches / Deletions
+                {"SH", true},                           // Soft clipping then hard clipping
+                {"=H", true},                           // Sequence match then hard clipping
+                {"105H", true},                         // Numerically specified hard clipping
+                {"329H3S", true},                       // Numerically specified Hard clipping then Numerically specified soft clipping
+                {"^M$", true},                          // Anchors and a valid CigarElement
+                {"M", true},                            // A valid CigarElement
+                {"10P", true},                          // A numerically qualified valid CigarElement
+                {"=10P", true},                         // A sequence match, then a numerically qualified valid CigarElement
+                {"<=9=", true},                         // A numerical-comparator qualified Sequence Match
+                {"10P=34X", true},                      // Numerical qualifiers, sequence match
+                {"10P<34X", true},                      // Numerical comparator/qualifiers with valid CigarElements
+                {"10P<=34X", true},                     // Numerical comparator/qualifiers with valid CigarElements
+                {"10P>34X", true},                      // Numerical comparator/qualifiers with valid CigarElements
+                {"10P>=34X", true},                     // Numerical comparator/qualifiers with valid CigarElements
+                {"10P>=34X3S2H", true},                 // Numerical comparator/qualifiers with valid CigarElements and clipping
+                {"12H<3S10P>=34X3S2H", true},           // Numerical comparator/qualifiers with valid CigarElements and clipping
+                {"^12H<3S10P>=34X3S2H$", true},         // Numerical comparator/qualifiers with valid CigarElements, clipping, and anchors
         };
     }
 
@@ -106,12 +104,13 @@ public class CigarReadFilterTest {
     @DataProvider
     public Object[][] createCigarMatchElementStrings() {
 
-//        "(\\^?(?:[<>]|[<>]=)?\\d*[SHMIDNPX=*]\\$?)"
+//        "(\\^?(?:[<>]|[<>]=)?\\d*[SHMIDNPX=%]\\$?)"
         return new Object[][] {
                 {"^", false},
                 {"$", false},
                 {"M$", true},
-                {"^*$", true},
+                {"^*$", false},
+                {"^%$", true},
                 {"107X$", true},
                 {"=19X", false},
                 {"<=19I", true},
@@ -128,16 +127,16 @@ public class CigarReadFilterTest {
 
         // Create a list of basic match elements for the core of each match element:
         ArrayList<String> basicMatchElements =
-                new ArrayList<>(Arrays.asList("S","H","M","I","D","N","P","X","=","*"));
+                new ArrayList<>(Arrays.asList("S","H","M","I","D","N","P","X","=",
+                        Character.toString( CigarReadFilter.CigarMatchElement.WILDCARD )));
 
         // Create a list of decorators for each match element:
         ArrayList<String> decorators =
                 new ArrayList<>(Arrays.asList("", "<", ">", "<=",">="));
 
         // Create a place to put the combined elements and decorators:
-        Object[][] decoratedMatchElements = new Object[ basicMatchElements.size() * (4 * (decorators.size()+1)) + 1 ][1];
-        decoratedMatchElements[0] = new Object[] { "*" };
-        int dIndex = 1;
+        Object[][] decoratedMatchElements = new Object[ basicMatchElements.size() * (4 * (decorators.size()+1)) ][1];
+        int dIndex = 0;
 
         // Create and insert the new decorated elements into the output array:
         for (int i = 0 ; i < basicMatchElements.size(); ++i) {
@@ -169,7 +168,8 @@ public class CigarReadFilterTest {
 
         // Create a list of basic match elements for the core of each match element:
         ArrayList<String> basicMatchElements =
-                new ArrayList<>(Arrays.asList("S","H","M","I","D","N","P","X","=","*"));
+                new ArrayList<>(Arrays.asList("S","H","M","I","D","N","P","X","=",
+                        Character.toString( CigarReadFilter.CigarMatchElement.WILDCARD )));
 
         // Create a list of decorators for each match element:
         ArrayList<String> decorators =
@@ -256,6 +256,91 @@ public class CigarReadFilterTest {
     }
 
     //==================================================================================================================
+
+    public boolean cigarMatchElementEqualsString(final CigarReadFilter.CigarMatchElement e, final String matchString) {
+
+        boolean result = true;
+
+        // Check the match element against what we expect output to be:
+
+        // Ensure that we have at least some content in the string:
+        if ( matchString.length() == 0 ) {
+            return false;
+        }
+        // Check against the unavailable special case:
+        else if ( matchString.compareTo("*") == 0) {
+            result = result && e.isUnavailable();
+
+            result = result && !e.isAnchoredStart();
+            result = result && !e.isAnchoredEnd();
+            result = result && !e.isLessThan();
+            result = result && !e.isLessThanEqualTo();
+            result = result && !e.isGreaterThan();
+            result = result && !e.isGreaterThanEqualTo();
+            result = result && !e.isWildCard();
+            result = result && (e.getLength() == -1);
+            result = result && (e.getOperator() == null);
+        }
+        else {
+
+            // Get the basic operator on which to test:
+            char operator;
+            operator = matchString.charAt(matchString.length() - 1);
+
+            // Check anchoring:
+            if (matchString.contains("^")) {
+                result = result && e.isAnchoredStart();
+            }
+            if (matchString.contains("$")) {
+                result = result && e.isAnchoredEnd();
+
+                // We must get the operator again, because we greedily got the "$" instead:
+                operator = matchString.charAt(matchString.length() - 2);
+            }
+
+            // Check numerical qualifiers:
+            if (matchString.contains("<=")) {
+                result = result && e.isLessThanEqualTo();
+                result = result && !e.isLessThan();
+                result = result && !e.isGreaterThan();
+                result = result && !e.isGreaterThanEqualTo();
+            } else if (matchString.contains("<")) {
+                result = result && e.isLessThan();
+                result = result && !e.isLessThanEqualTo();
+                result = result && !e.isGreaterThan();
+                result = result && !e.isGreaterThanEqualTo();
+            } else if (matchString.contains(">=")) {
+                result = result && e.isGreaterThanEqualTo();
+                result = result && !e.isLessThan();
+                result = result && !e.isLessThanEqualTo();
+                result = result && !e.isGreaterThan();
+            } else if (matchString.contains(">")) {
+                result = result && e.isGreaterThan();
+                result = result && !e.isLessThan();
+                result = result && !e.isLessThanEqualTo();
+                result = result && !e.isGreaterThanEqualTo();
+            }
+
+            // Make sure the operators are the same:
+            if (matchString.contains(Character.toString( CigarReadFilter.CigarMatchElement.WILDCARD ))) {
+                result = result && e.isWildCard();
+            } else {
+                result = result && (e.getOperator() == CigarOperator.characterToEnum(operator));
+            }
+
+            // Now check the numbers:
+            Pattern numberPattern = Pattern.compile("(\\d+)");
+            if (numberPattern.matcher(matchString).matches()) {
+
+                // The match string contains numbers, we must check the numbers:
+                int numberInMatchPattern = Integer.valueOf(numberPattern.matcher(matchString).group(0));
+
+                result = result && (numberInMatchPattern == e.getLength());
+            }
+        }
+
+        return result;
+    }
 
     /**
      * Creates a {@link Collection} of all permutations of the given {@link Collection} of the given length.
@@ -362,73 +447,29 @@ public class CigarReadFilterTest {
 
         // Check the match element against what we expect output to be:
 
-        // Get the basic operator on which to test:
-        char operator;
-        operator = matchString.charAt(matchString.length()-1);
-
-        // Check anchoring:
-        if (matchString.contains("^")) {
-            Assert.assertTrue(e.isAnchoredStart());
-        }
-        if (matchString.contains("$")) {
-            Assert.assertTrue(e.isAnchoredEnd());
-
-            // We must get the operator again, because we greedily got the "$" instead:
-            operator = matchString.charAt(matchString.length()-2);
-        }
-
-        // Check numerical qualifiers:
-        if (matchString.contains("<=")) {
-            Assert.assertTrue(e.isLessThanEqualTo());
-            Assert.assertFalse(e.isLessThan());
-            Assert.assertFalse(e.isGreaterThan());
-            Assert.assertFalse(e.isGreaterThanEqualTo());
-        }
-        else if (matchString.contains("<")) {
-            Assert.assertTrue(e.isLessThan());
-            Assert.assertFalse(e.isLessThanEqualTo());
-            Assert.assertFalse(e.isGreaterThan());
-            Assert.assertFalse(e.isGreaterThanEqualTo());
-        }
-        else if (matchString.contains(">=")) {
-            Assert.assertTrue(e.isGreaterThanEqualTo());
-            Assert.assertFalse(e.isLessThan());
-            Assert.assertFalse(e.isLessThanEqualTo());
-            Assert.assertFalse(e.isGreaterThan());
-        }
-        else if (matchString.contains(">")) {
-            Assert.assertTrue(e.isGreaterThan());
-            Assert.assertFalse(e.isLessThan());
-            Assert.assertFalse(e.isLessThanEqualTo());
-            Assert.assertFalse(e.isGreaterThanEqualTo());
-        }
-
-        // Make sure the operators are the same:
-        if (matchString.contains("*")) {
-            Assert.assertTrue(e.isWildCard());
-        }
-        else {
-            Assert.assertEquals(e.getOperator(), CigarOperator.characterToEnum(operator));
-        }
-
-        // Now check the numbers:
-        Pattern numberPattern = Pattern.compile("(\\d+)");
-        if ( numberPattern.matcher(matchString).matches() ) {
-
-            // The match string contains numbers, we must check the numbers:
-            int numberInMatchPattern = Integer.valueOf( numberPattern.matcher(matchString).group(0) );
-
-            Assert.assertEquals(numberInMatchPattern, e.getLength());
-        }
+        Assert.assertTrue(cigarMatchElementEqualsString(e, matchString));
     }
 
     //==================================================================================================================
 
-//    @Test(dataProvider="createSetsOfSingleMatchStrings")
-//    public void testExtractMatchElementsFromString( Collection<ArrayList<String>> matchStrings ) {
-//        //FIXME
-//        throw new RuntimeException("MUST BE IMPLEMENTED");
-//    }
+    @Test(dataProvider="createSetsOfSingleMatchStrings")
+    public void testExtractMatchElementsFromString( ArrayList<String> matchStrings ) {
+        //FIXME
+
+        // First concatenate the strings in the array list:
+        StringBuilder matchStringBuilder = new StringBuilder();
+        for ( String s : matchStrings ) {
+            matchStringBuilder.append(s);
+        }
+
+        CigarReadFilter cigarReadFilter = new CigarReadFilter();
+        List<CigarReadFilter.CigarMatchElement> c =
+                cigarReadFilter.extractMatchElementsFromString(matchStringBuilder.toString());
+
+        for ( int i = 0 ; i < matchStrings.size(); ++i ) {
+            Assert.assertTrue(cigarMatchElementEqualsString(c.get(i), matchStrings.get(i)));
+        }
+    }
 
 //    @Test(dataProvider="createExhaustiveValidCigarList")
 //    public void testValidateExhaustivly(String cigarFilterString) {
