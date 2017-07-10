@@ -191,10 +191,13 @@ public class TemplateHaplotypeScoreTable implements Serializable {
             templates.addAll(newTemplates);
             for (int j = 0; j < haplotypes.size(); j++) {
                 final double[] newValues = new double[informativeIndexes.length];
+                final TemplateMappingInformation[] newMappingInfo = new TemplateMappingInformation[informativeIndexes.length];
                 for (int i = 0; i < informativeIndexes.length; i++) {
                     newValues[i] = values[j][informativeIndexes[i]];
+                    newMappingInfo[i] = mappingInfo[j][informativeIndexes[i]];
                 }
                 values[j] = newValues;
+                mappingInfo[j] = newMappingInfo;
             }
         } // else {...} no changes.
     }
