@@ -148,7 +148,6 @@ public class Main {
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     protected final void mainEntry(final String[] args) {
-        BucketUtils.setGlobalNIODefaultOptions();
         final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
         try {
             final Object result = runCommandLineProgram(program, args);

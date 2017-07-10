@@ -371,7 +371,7 @@ public final class BucketUtils {
     }
 
     /** The config we want to use. **/
-    private static CloudStorageConfiguration getCloudStorageConfiguration() {
+    public static CloudStorageConfiguration getCloudStorageConfiguration() {
         return CloudStorageConfiguration.builder()
             // if the channel errors out, re-open up to this many times
             .maxChannelReopens(NIO_MAX_REOPENS)
