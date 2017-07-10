@@ -207,10 +207,11 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
                 case S:
                 case N:
                 case H:
-                    result += penalties.translocationPenalty;
+                    for (int i = 0; i < ce.getLength(); i++) {
+                        result += Math.min(penalties.maximumMismatchPenalty, QualityUtils.qualToErrorProbLog10(quals[nextReadBase + i]) * -10.0);
+                    }
                     break;
                 case P:
-
             }
             if (ce.getOperator().consumesReferenceBases()) {
                 nextHaplotypeBase += ce.getLength();
@@ -336,10 +337,27 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
                 try {
                     final String bwaIndexCommand = String.format("bwa index %s ", fasta.getAbsoluteFile());
                     // need to add build index to the bwa-jni.
-                    final int exitCode = Runtime.getRuntime().exec(bwaIndexCommand).waitFor();
+                    final Process process = Runtime.getRuntime().exec(bwaIndexCommand);
+                    final BufferedReader processInputStream = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                    final StringBuffer stdOutput = new StringBuffer(20000);
+                    stdOutput.append("OUTPUT:  \n");
+                    final Runnable processOutputProcessor = () -> processInputStream.lines().forEach(l -> stdOutput.append(l).append('\n'));
+                    final Thread processOutputThread = new Thread(processOutputProcessor);
+                    processOutputThread.setDaemon(true);
+                    processOutputThread.start();
+                    while (true) {
+                        try {
+                            processOutputThread.join();
+                            break;
+                        } catch (final InterruptedException ex) {
+
+                        }
+                    }
+                    final int exitCode = process.waitFor();
+
                     if (exitCode != 0) {
                         throw new GATKException(
-                                String.format("could not create the haplotype index at '%s' with exit-code '%d' and command '%s'", dir.getAbsolutePath(), exitCode, ""));
+                                String.format("could not create the haplotype index at '%s' with exit-code '%d' and command '%s' and output/error: %s", dir.getAbsolutePath(), exitCode, "cmd", stdOutput.toString()));
                     } else {
                         //FileUtils.deleteDirectory(dir);
                         break;

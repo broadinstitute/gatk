@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created by valentin on 4/20/17.
@@ -140,7 +141,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 .mapValues(v -> v.stream().collect(Collectors.groupingBy(SVFastqUtils.FastqRead::getName)));
         final JavaPairRDD<StructuralVariantContext, List<Template>> variantTemplates = variantReadsByName.mapValues(map ->
             map.entrySet().stream().map(entry ->
-                Template.create(entry.getKey(), entry.getValue(), read -> new Template.Fragment(read.getName(), read.getFragmentNumber().orElse(0), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
+                Template.create(entry.getKey(), removeRepeatedReads(entry.getValue()), read -> new Template.Fragment(read.getName(), read.getFragmentNumber().orElse(0), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
             ).collect(Collectors.toList()));
         final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator(ctx, dist);
         final int padding = this.padding;
@@ -165,6 +166,30 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             }
         });
         return variants;
+    }
+
+    private static final List<SVFastqUtils.FastqRead> removeRepeatedReads(final List<SVFastqUtils.FastqRead> in) {
+        if (in.size() <= 2) {
+            return in;
+        } else {
+            boolean[] repeats = new boolean[in.size()];
+            for (int i = 0; i < repeats.length; i++) {
+                if (repeats[i]) continue;
+                final SVFastqUtils.FastqRead iread = in.get(i);
+                for (int j = i + 1; j < repeats.length; j++) {
+                    if (repeats[j]) continue;
+                    final SVFastqUtils.FastqRead jread = in.get(j);
+                    if (Arrays.equals(iread.getBases(), jread.getBases()) &&
+                            Arrays.equals(iread.getQuals(), jread.getQuals())) {
+                        repeats[j] = true;
+                    }
+                }
+            }
+            return IntStream.range(0, repeats.length)
+                    .filter(i -> !repeats[i])
+                    .mapToObj(in::get)
+                    .collect(Collectors.toList());
+        }
     }
 
     private static boolean structuralVariantAlleleIsSupported(final StructuralVariantAllele structuralVariantAllele) {
