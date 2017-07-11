@@ -201,7 +201,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         }
 
         // Skim the filtered map based on the location so that we do not add filtered read that are going to be removed
-        // right after a few lines of code bellow.
+        // right after a few lines of code below.
         final Map<String, List<GATKRead>> overlappingFilteredReads = overlappingFilteredReads(perSampleFilteredReadList, loc);
 
         readAlleleLikelihoodsForAnnotations.addReads(overlappingFilteredReads,0);
