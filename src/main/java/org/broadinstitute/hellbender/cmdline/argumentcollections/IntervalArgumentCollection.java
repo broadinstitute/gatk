@@ -22,7 +22,6 @@ import java.util.List;
  */
 public abstract class IntervalArgumentCollection implements Serializable {
     private static final Logger logger = LogManager.getLogger(IntervalArgumentCollection.class);
-    protected final IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
     private static final long serialVersionUID = 1L;
 
     /**
@@ -84,6 +83,13 @@ public abstract class IntervalArgumentCollection implements Serializable {
      * should be returned. Lazily initialized.
      */
     protected TraversalParameters traversalParameters = null;
+    /**
+     * By default, the program merges abutting intervals (i.e. intervals that are directly side-by-side but do not
+     * actually overlap) into a single continuous interval. However you can change this behavior if you want them to be
+     * treated as separate intervals instead.
+     */
+    @Argument(fullName = "interval_merging", shortName = "im", doc = "Interval merging rule for abutting intervals", optional = true) //TODO
+    protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
 
     /**
      * Get the intervals specified on the command line.
