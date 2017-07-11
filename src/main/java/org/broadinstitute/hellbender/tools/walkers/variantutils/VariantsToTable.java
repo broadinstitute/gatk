@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
@@ -74,7 +75,7 @@ import java.util.function.Function;
  *
  * <h3>Caveats</h3>
  * <ul>
- *     <li>Some annotations cannot be applied to all variant sites, so VCFs typically contain records where some annotation values are missing. By default this tool throws an error if you request export of an annotation for which not all records have values. You can override this behavior by setting `--allowMissingData` in the command line. As a result, the tool will emit the special value NA for the missing annotations in those records.</li>
+ *     <li>Some annotations cannot be applied to all variant sites, so VCFs typically contain records where some annotation values are missing. By default this tool the tool will throw an error if a record is missing a value. You can override this behavior by setting `--errorIfMissingData` in the command line. As a result, the tool will emit the special value NA for the missing annotations in those records.</li>
  *     <li>When you request export of FORMAT/sample-level annotations (such as GT), the annotations will be identified per-sample. If multiple samples are present in the VCF, the columns will be ordered alphabetically by sample name (SM tag).</li>
  * </ul>
  */
@@ -143,9 +144,18 @@ public final class VariantsToTable extends VariantWalker {
      * will cause VariantsToTable to write out NA values for missing fields instead of throwing an error.
      * Note that this flag only applies to standard columns (CHROM, ID, QUAL) and the INFO field and it does not apply to the genotype field.
      */
-    @Advanced
-    @Argument(fullName="allowMissingData", shortName="AMD", doc="If provided, we will not require every record to contain every field", optional=true)
+    @Hidden
+    @Deprecated
+    @Argument(fullName="allowMissingData", shortName="AMD", doc="This argument is no longer used. Please see online documenttion for --errorIfMissingData", optional=true)
     private boolean allowMissingData = false;
+
+    /**
+     * By default, this tool will write out NA values indicating missing data when it encounters a field without a value in a record.
+     * If this flag is added to the command, the tool will instead exit with an error if missing data is encountered..
+     */
+    @Advanced
+    @Argument(fullName="errorIfMissingData", shortName="EMD", doc="If provided, we will require every record to contain every field", optional=true)
+    public boolean errorIfMissingData = false;
     private static final String MISSING_DATA = "NA";
 
 
@@ -282,10 +292,8 @@ public final class VariantsToTable extends VariantWalker {
                 final String val = wildVals.isEmpty() ? MISSING_DATA : Utils.join(",", wildVals);
 
                 addFieldValue(val, records);
-            } else if ( ! allowMissingData ) {
-                throw new UserException(String.format("Missing field %s in vc %s at %s", field, vc.getSource(), vc));
             } else {
-                addFieldValue(MISSING_DATA, records);
+                handleMissingData(errorIfMissingData, field, records, vc);
             }
         }
 
@@ -303,12 +311,28 @@ public final class VariantsToTable extends VariantWalker {
                     if (VCFConstants.GENOTYPE_KEY.equals(gf)) {
                         addFieldValue(vc.getGenotype(sample).getGenotypeString(true), records);
                     } else {
-                        addFieldValue(vc.getGenotype(sample).getAnyAttribute(gf), records);
-                    }
+                        /**
+                         * TODO - If gf == "FT" and the GT record is not filtered, Genotype.getAnyAttribute == null. Genotype.hasAnyAttribute should be changed so it
+                         * returns false for this condition. Presently, it always returns true. Once this is fixed, then only the "addFieldValue" statement will
+                         * remain in the following logic block.
+                         */
+                        if (vc.getGenotype(sample).getAnyAttribute(gf) != null) {
+                            addFieldValue(vc.getGenotype(sample).getAnyAttribute(gf), records);
+                        } else {
+                            handleMissingData(errorIfMissingData, gf, records, vc);
+                        }                    }
                 } else {
-                    addFieldValue(MISSING_DATA, records);
+                    handleMissingData(errorIfMissingData, gf, records, vc);
                 }
             }
+        }
+    }
+
+    private static void handleMissingData(final boolean errorIfMissingData, final String field, final List<List<String>> records, final VariantContext vc) {
+        if (errorIfMissingData) {
+            throw new UserException(String.format("Missing field %s in vc %s at %s", field, vc.getSource(), vc));
+        } else {
+            addFieldValue(MISSING_DATA, records);
         }
     }
 
@@ -336,6 +360,11 @@ public final class VariantsToTable extends VariantWalker {
     }
 
     private static String prettyPrintObject(final Object val) {
+        // should never occur
+        if (val == null) {
+            return "";
+        }
+
         if ( val instanceof List ) {
             return prettyPrintObject(((List) val).toArray());
         }

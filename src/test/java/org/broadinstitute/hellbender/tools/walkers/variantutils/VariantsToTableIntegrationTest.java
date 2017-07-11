@@ -12,10 +12,10 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
     private String variantsToTableCmd(String moreArgs) {
         return  " --variant " + getToolTestDataDir() + "soap_gatk_annotated.noChr_lines.vcf" +
                 " -F CHROM -F POS -F ID -F REF -F ALT -F QUAL -F FILTER -F TRANSITION -F DP -F SB -F set -F RankSumP -F refseq.functionalClass*" +
-                " -O %s" + moreArgs;
+                " -O %s " + moreArgs;
     }
 
-    private String variantsToTableMultiAllelicCmd(String moreArgs) {
+    private String variantsToTableMultiAllelicCmd(final String moreArgs) {
         return  " --variant " + getToolTestDataDir() + "multiallelic.vcf" +
                 " -F CHROM -F POS -F ID -F REF -F ALT -F QUAL -F MULTI-ALLELIC -F AC -F AF" +
                 " -O %s" + moreArgs;
@@ -31,7 +31,25 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 " --variant does_not_exist.vcf -O %s",
                 1, UserException.CouldNotReadInputFile.class);
-        spec.executeTest("testComplexVariantsToTable-FAIL", this);
+        spec.executeTest("testInputFileFail-FAIL", this);
+    }
+
+    @Test
+    public void testUnfilteredGenotypeField() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " --variant " + getToolTestDataDir() + "vcfexample2.vcf" +
+                " -GF RD -GF FT -O %s",
+                Arrays.asList(getToolTestDataDir() + "expected.vcfexample.unfiltered.gt.table"));
+        spec.executeTest("testUnfilteredGenotypeField", this);
+    }
+
+    @Test
+    public void testUnfilteredGenotypeFieldFail() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " --variant " + getToolTestDataDir() + "vcfexample2.vcf" +
+                " -GF RD -GF FT --errorIfMissingData -O %s",
+                1, UserException.class);
+        spec.executeTest("testUnfilteredGenotypeField-FAIL", this);
     }
 
     @Test
@@ -40,13 +58,13 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                 " --variant " + getToolTestDataDir() + "soap_gatk_annotated.noChr_lines.vcf" +
                 " -O /does_not_exists/txt.table",
                 1, UserException.CouldNotCreateOutputFile.class);
-        spec.executeTest("testComplexVariantsToTable-FAIL", this);
+        spec.executeTest("testOutputFile-FAIL", this);
     }
 
     @Test
     public void testComplexVariantsToTableFail() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                variantsToTableCmd(""),
+                variantsToTableCmd(" --errorIfMissingData"),
                 1, UserException.class);
         spec.executeTest("testComplexVariantsToTable-FAIL", this);
     }
@@ -71,7 +89,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
     @Test
     public void testComplexVariantsToTable() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                variantsToTableCmd(" -AMD"),
+                variantsToTableCmd(""),
                 Arrays.asList(getToolTestDataDir() + "expected.soap_gatk_annotated.noChr_lines.AMD.table"));
         spec.executeTest("testComplexVariantsToTable", this);
     }
