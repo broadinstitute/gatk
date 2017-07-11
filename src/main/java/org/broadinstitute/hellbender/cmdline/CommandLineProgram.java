@@ -301,6 +301,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
 
         logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration().maxChannelReopens());
+        logger.info("Using google-cloud-java patch 92d6ed9eb9e8bc52eb094222ad4849d329956d8c");
     }
 
     /**
