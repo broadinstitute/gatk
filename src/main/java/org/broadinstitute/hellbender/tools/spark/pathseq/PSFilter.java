@@ -78,6 +78,7 @@ public final class PSFilter implements AutoCloseable {
         newRead.setIsUnmapped();
         newRead.setIsPaired(read.isPaired());
         if (read.isPaired()) {
+            newRead.setMateIsUnmapped();
             if (read.isFirstOfPair()) {
                 newRead.setIsFirstOfPair();
             } else if (read.isSecondOfPair()) {
