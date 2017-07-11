@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -54,6 +55,11 @@ public class CigarReadFilter extends ReadFilter {
      */
     private List<CigarMatchElement> matchElementList;
 
+    /**
+     * Whether ${@link CigarReadFilter#matchElementList} has an element containing an end anchor
+     */
+    private boolean hasEndAnchor = false;
+
     // =======================================================
 
     /**
@@ -87,6 +93,9 @@ public class CigarReadFilter extends ReadFilter {
 
         // Set the description string:
         this.description = description;
+
+        // Set our end anchor information:
+        this.hasEndAnchor = description.contains("$");
 
         // Parse the string and extract the elements to our list:
         this.matchElementList = extractMatchElementsFromString(description);
@@ -251,61 +260,64 @@ public class CigarReadFilter extends ReadFilter {
         //We'll need to check each cigar element and can't assume a normalized cigar.
         //This is OK.  It'll be faster to do this than to normalize and then check it.
 
+//        Cigar cigar = CigarUtils.combineAdjacentCigarElements( read.getCigar() );
         Cigar cigar = read.getCigar();
+
+        // Quick check of the cigar to see if it's unavailable and if we're looking for the unavailable case:
+        if (cigar.toString() == "*") {
+            if ((matchElementList.size() == 1) && (matchElementList.get(0).isUnavailable())) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+
+        // =========================================
+        // Now we can do real work:
+        // =========================================
 
         // Keep track of our position in the cigar string out here, so we can have control over where we are
         int cigarIndex = 0;
 
+        // If we have an anchored match element, then we need to start from
+        // the point in the cigar string at which the match can begin:
+        if ( hasEndAnchor ) {
+            // The match element of the end anchor must be the last element.
+            // Therefore we do some simple math to get to the start of where the match
+            // should begin:
+            cigarIndex = cigar.numCigarElements() - matchElementList.size();
+        }
+
         // Keep track of if we've seen more than one operator (for anchor checking):
         boolean haveSeenMoreThanOneOperator = false;
 
-        // Keep track of if we need to anchor to the end of the cigar:
-        boolean mustAnchorToEnd = false;
+        // Keep track of whether our match has begun:
+        boolean hasBegunMatch = false;
 
         // We go through our match elements to make sure that the cigar string matches each one:
-        for ( CigarMatchElement matchElement : matchElementList) {
+        for ( CigarMatchElement matchElement : matchElementList ) {
 
             // Make sure we can keep track of the number of operators we've seen:
             int cigarOperatorCount = 0;
-            CigarElement lastElement = null;
+            CigarElement lastElementProcessed = null;
+
+            // Check if we have more cigar string to check.
+            // If we do not, then we don't match:
+            if ( cigarIndex == cigar.numCigarElements() ) {
+                // We have no more cigar elements to check, but we still
+                // have a match element to check against.
+                // This indicates failure.
+                return false;
+            }
 
             for ( ; cigarIndex < cigar.numCigarElements() ; ++cigarIndex ) {
 
                 // Get the next cigar element:
                 CigarElement cigarElement = cigar.getCigarElement(cigarIndex);
 
-                // Now we check to see if it matches.
-
                 // We have a new element.  Do some checks involving when the operator changes:
-                if (lastElement.getOperator().ordinal() != cigarElement.getOperator().ordinal()) {
-
-                    // Check to see if we're expecting to anchor to the end of the cigar:
-                    if ( mustAnchorToEnd )
-                    {
-                        // We have a new element but must anchor to end.
-                        // This means we aren't actually anchored and we do not pass.
-                        return false;
-                    }
-
-                    // Now check the "greater-than" and "equals" length cases if this is a new (different) element than the last one
-                    // and only if we care about length:
-                    if ((matchElement.requiresLength()) && (lastElement != null)) {
-                        if (matchElement.isGreaterThan() && (cigarOperatorCount <= matchElement.getLength())) {
-                            // We have too few operators of the right type.
-                            // We do not pass:
-                            return false;
-                        } else if (matchElement.isGreaterThanEqualTo() && (cigarOperatorCount < matchElement.getLength())) {
-                            // We have too few operators of the right type.
-                            // We do not pass:
-                            return false;
-                            //The strictly equals case:
-                        } else if (!(matchElement.isLessThanEqualTo() && matchElement.isLessThan())
-                                && (cigarOperatorCount != matchElement.getLength())) {
-                            // We do not have the exact number of operators required.
-                            // We do not pass:
-                            return false;
-                        }
-                    }
+                if ((lastElementProcessed != null) && (lastElementProcessed.getOperator().ordinal() != cigarElement.getOperator().ordinal())) {
 
                     // Update our flag for more than one operator:
                     haveSeenMoreThanOneOperator = true;
@@ -314,33 +326,6 @@ public class CigarReadFilter extends ReadFilter {
                     // but we need to get the next matchElement, so we break
                     // to cause the outer loop to iterate:
                     break;
-                }
-
-                // Check the cigar operator first:
-                if ( !matchElement.isWildCard() &&
-                     (cigarElement.getOperator().ordinal() != matchElement.getOperator().ordinal())
-                   ) {
-                        // We don't match what we should match.
-                        // This filter doesn't pass.
-                        return false;
-                }
-
-                // If we need to worry about length:
-                if ( matchElement.requiresLength() ) {
-
-                    // Increment the length of the operators so far:
-                    cigarOperatorCount += cigarElement.getLength();
-
-                    // Check the "less than" cases here at the end of the loop:
-                    if (matchElement.isLessThan() && (cigarOperatorCount >= cigarOperatorCount)) {
-                        // We have too many elements of this type.
-                        // We don't match.
-                        return false;
-                    } else if (matchElement.isLessThanEqualTo() && (cigarOperatorCount > cigarOperatorCount)) {
-                        // We have too many elements of this type.
-                        // We don't match.
-                        return false;
-                    }
                 }
 
                 // Check to see if the operator must be anchored:
@@ -352,19 +337,78 @@ public class CigarReadFilter extends ReadFilter {
                     }
                 }
 
-                if ( matchElement.isAnchoredEnd() ) {
-                    // Set the anchored end flag here.  We'll check up top.
-                    mustAnchorToEnd = true;
+                // Check the cigar operator first:
+                if ( (!matchElement.isWildCard()) &&
+                     (cigarElement.getOperator().ordinal() != matchElement.getOperator().ordinal()) ) {
+
+                        // Our cigar element and our match element aren't the same.
+
+                        // If we have not started matching yet, we advance to the next cigar element:
+                        if (!hasBegunMatch) {
+                            continue;
+                        }
+                        else {
+                            // We have already begun matching and our element doesn't match.
+                            // This is a failure case.
+                            return false;
+                        }
+                }
+
+                // Increment the length of the operators so far:
+                cigarOperatorCount += cigarElement.getLength();
+
+                // If we need to worry about length:
+                if ( matchElement.requiresLength() ) {
+
+                    // Check the "less than" cases here at the end of the loop:
+                    if (matchElement.isLessThan() && (cigarOperatorCount >= matchElement.getLength())) {
+                        // We have too many elements of this type.
+                        // We don't match.
+                        return false;
+                    } else if (matchElement.isLessThanEqualTo() && (cigarOperatorCount > matchElement.getLength())) {
+                        // We have too many elements of this type.
+                        // We don't match.
+                        return false;
+                    }
                 }
 
                 // Store the last element that we looked at so we can do some comparison work later:
-                lastElement = cigarElement;
+                lastElementProcessed = cigarElement;
+
+                // We have started matching:
+                hasBegunMatch = true;
+            }
+
+            // Now check the "greater-than" and "equals" length cases if this is a new (different) element than the last one
+            // and only if we care about length:
+            if (matchElement.requiresLength()) {
+                if (matchElement.isGreaterThan()) {
+                    if (cigarOperatorCount <= matchElement.getLength()) {
+                        // We have too few operators of the right type.
+                        // We do not pass:
+                        return false;
+                    }
+                } else if (matchElement.isGreaterThanEqualTo() ) {
+                    if (cigarOperatorCount < matchElement.getLength()) {
+                        // We have too few operators of the right type.
+                        // We do not pass:
+                        return false;
+                    }
+                    //The strictly equals case:
+                } else if ( !(matchElement.isLessThanEqualTo() || matchElement.isLessThan()) ) {
+                    if (cigarOperatorCount != matchElement.getLength()) {
+                        // We do not have the exact number of operators required.
+                        // We do not pass:
+                        return false;
+                    }
+                }
             }
         }
 
         // If we get out of all the checks and have gotten to the end
-        // of our cigar string and our match string, then we're good to go:
-        return true;
+        // of our cigar string and our match string, then if we have matched
+        // at all, the whole string is a match:
+        return hasBegunMatch;
     }
 
     // =======================================================
