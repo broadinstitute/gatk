@@ -44,8 +44,8 @@ workflow HapmapSensitivityAllPlexes {
     File ten_plex_truth_list
     File twenty_plex_truth_list
 
-    String? m2_args
-    String? m2_filtering_args
+    String? m2_extra_args
+    String? m2_filtering_extra_args
 
     File? intervals
 
@@ -68,8 +68,8 @@ workflow HapmapSensitivityAllPlexes {
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
           truth_list = five_plex_truth_list,
-          m2_args = m2_args,
-          m2_filtering_args = m2_filtering_args,
+          m2_extra_args = m2_extra_args,
+          m2_filtering_extra_args = m2_filtering_extra_args,
           prefix = "5plex",
           python_sensitivity_script = python_sensitivity_script,
           intervals = intervals
@@ -92,8 +92,8 @@ workflow HapmapSensitivityAllPlexes {
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
           truth_list = ten_plex_truth_list,
-          m2_args = m2_args,
-          m2_filtering_args = m2_filtering_args,
+          m2_extra_args = m2_extra_args,
+          m2_filtering_extra_args = m2_filtering_extra_args,
           prefix = "10plex",
           python_sensitivity_script = python_sensitivity_script,
           intervals = intervals
@@ -116,8 +116,8 @@ workflow HapmapSensitivityAllPlexes {
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
           truth_list = twenty_plex_truth_list,
-          m2_args = m2_args,
-          m2_filtering_args = m2_filtering_args,
+          m2_extra_args = m2_extra_args,
+          m2_filtering_extra_args = m2_filtering_extra_args,
           prefix = "20plex",
           python_sensitivity_script = python_sensitivity_script,
           intervals = intervals
