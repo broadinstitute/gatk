@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import java.io.Serializable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Iterator;
@@ -7,7 +8,7 @@ import java.util.Iterator;
 /**
  * A {@link Shard} backed by a {@link ShardBoundary} and a collection of records.
  */
-public final class ShardBoundaryShard<T> implements Shard<T> {
+public final class ShardBoundaryShard<T> implements Shard<T>, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final ShardBoundary shardBoundary;
