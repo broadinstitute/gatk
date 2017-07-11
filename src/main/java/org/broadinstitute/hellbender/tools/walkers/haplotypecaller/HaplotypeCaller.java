@@ -179,6 +179,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     protected int defaultMaxReadsPerAlignmentStart() { return DEFAULT_MAX_READS_PER_ALIGNMENT; }
 
     @Override
+    protected boolean defaultDownsampleByMappingQuality() { return false; }
+
+    @Override
     protected double defaultActiveProbThreshold() { return DEFAULT_ACTIVE_PROB_THRESHOLD; }
 
     @Override

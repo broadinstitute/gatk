@@ -214,6 +214,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected int defaultMaxReadsPerAlignmentStart() { return 50; }
 
     @Override
+    protected boolean defaultDownsampleByMappingQuality() { return true; }
+
+    @Override
     protected double defaultActiveProbThreshold() { return 0.002; }
 
     @Override

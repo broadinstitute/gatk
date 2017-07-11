@@ -11,7 +11,10 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
@@ -122,6 +125,26 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
         rd.submit(r1);
         rd.signalNoMoreReadsBefore(r2);//no op
         rd.submit(r2);
+    }
+
+    @Test
+    public void testDownsampleByMappingQuality() {
+        Utils.resetRandomGenerator();
+        final ReservoirDownsampler rd = new ReservoirDownsampler(10, false, true);
+        final List<GATKRead> reads = IntStream.range(0, 100)
+                .mapToObj(n -> {
+                    final GATKRead read = ArtificialReadUtils.createArtificialRead("100M");
+                    read.setMappingQuality(n);
+                    return read;
+                }).collect(Collectors.toList());
+        Collections.shuffle(reads, Utils.getRandomGenerator());
+        rd.submit(reads);
+        rd.signalEndOfInput();
+        final List<GATKRead> downsampledReads = rd.consumeFinalizedItems();
+        Assert.assertEquals(downsampledReads.size(), 10);
+        final double averageMappingQuality = downsampledReads.stream()
+                .mapToInt(GATKRead::getMappingQuality).average().getAsDouble();
+        Assert.assertTrue(averageMappingQuality > 70);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

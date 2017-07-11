@@ -55,6 +55,9 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     protected int defaultMaxReadsPerAlignmentStart() { return 50; }
 
     @Override
+    protected boolean defaultDownsampleByMappingQuality() { return false; }
+
+    @Override
     protected double defaultActiveProbThreshold() { return 0.002; }
 
     @Override

@@ -51,6 +51,35 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     private int totalReadsSeen;
 
+    /**
+     * If true, bias downsampling toward reads with higher mapping quality.
+     */
+    private final boolean downsampleByMappingQuality;
+
+
+    /**
+     * Construct a ReservoirDownsampler
+     *
+     * @param targetSampleSize Size of the reservoir used by this downsampler.
+     *
+     * @param expectFewOverflows if true, this downsampler will be optimized for the case
+     *                           where most of the time we won't fill up anything like the
+     *                           targetSampleSize elements.  If this is false, we will allocate
+     *                           internal buffers to targetSampleSize initially, which minimizes
+     *                           the cost of allocation if we often use targetSampleSize or more
+     *                           elements.
+     */
+    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows, final boolean downsampleByMappingQuality ) {
+        if ( targetSampleSize <= 0 ) {
+            throw new IllegalArgumentException("Cannot do reservoir downsampling with a sample size <= 0");
+        }
+
+        this.downsampleByMappingQuality = downsampleByMappingQuality;
+        this.targetSampleSize = targetSampleSize;
+        this.expectFewOverflows = expectFewOverflows;
+        clearItems();
+        resetStats();
+    }
 
     /**
      * Construct a ReservoirDownsampler
@@ -65,14 +94,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      *                           elements.
      */
     public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows ) {
-        if ( targetSampleSize <= 0 ) {
-            throw new IllegalArgumentException("Cannot do reservoir downsampling with a sample size <= 0");
-        }
-
-        this.targetSampleSize = targetSampleSize;
-        this.expectFewOverflows = expectFewOverflows;
-        clearItems();
-        resetStats();
+        this(targetSampleSize, expectFewOverflows, false);
     }
 
     /**
@@ -102,7 +124,9 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
             final int randomSlot = Utils.getRandomGenerator().nextInt(totalReadsSeen);
             if ( randomSlot < targetSampleSize ) {
-                reservoir.set(randomSlot, newRead);
+                if (!downsampleByMappingQuality || newRead.getMappingQuality() >= reservoir.get(randomSlot).getMappingQuality()) {
+                    reservoir.set(randomSlot, newRead);
+                }
             }
             incrementNumberOfDiscardedItems(1);
         }

@@ -33,16 +33,27 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      *
      * @param targetCoverage Maximum number of reads that may share any given alignment start position. Must be > 0
      * @param header SAMFileHeader to use to determine contig ordering. Non-null.
+     * @param downsampleByMappingQuality    If true, bias downsampling toward reads with higher mapping quality.
      */
-    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header ) {
+    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header, final boolean downsampleByMappingQuality) {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
         Utils.nonNull(header);
 
-        this.reservoir = new ReservoirDownsampler(targetCoverage);
+        this.reservoir = new ReservoirDownsampler(targetCoverage, false, downsampleByMappingQuality);
         this.finalizedReads = new ArrayList<>();
         this.header = header;
         clearItems();
         resetStats();
+    }
+
+    /**
+     * Construct a PositionalDownsampler
+     *
+     * @param targetCoverage Maximum number of reads that may share any given alignment start position. Must be > 0
+     * @param header SAMFileHeader to use to determine contig ordering. Non-null.
+     */
+    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header ) {
+        this(targetCoverage, header, false);
     }
 
     @Override
