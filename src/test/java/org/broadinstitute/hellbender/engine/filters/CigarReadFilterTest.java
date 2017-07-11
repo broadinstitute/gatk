@@ -339,8 +339,8 @@ public class CigarReadFilterTest {
                 {"1H1S1M1I", "<5%", true},              // Any cigar string of length <5 OK
                 {"3H", "<5%", true},                    // Any cigar string of length <5 OK
                 {"6S", "<5%", false},                   // Any cigar string of length <5 Fail
-//                {"1H1S1M1I2S", "<5%", false},           // Any cigar string of length <5 Fail
-//                {"1H1S1M1I1S", "<5%", false},           // Any cigar string of length <5 Fail
+                {"1H1S1M1I2S", "<5%", false},           // Any cigar string of length <5 Fail
+                {"1H1S1M1I1S", "<5%", false},           // Any cigar string of length <5 Fail
 
                 {"*", "%", false},                      // Wildcard should not match unavailable
                 {"1H", "%", true},                      // Wildcard should match any valid cigar string
@@ -349,23 +349,27 @@ public class CigarReadFilterTest {
                 {"12H3S10P34X3S2H", "%", true},         // Wildcard should match any valid cigar string
                 {"5H", "5%", true},                     // Any cigar string of length 5 OK
                 {"5=", "5%", true},                     // Any cigar string of length 5 OK
-//                {"2S3M", "5%", true},                   // Any cigar string of length 5 OK
-//                {"1H1S1M1I1S", "5%", true},             // Any cigar string of length 5 OK
+                {"2S3M", "5%", true},                   // Any cigar string of length 5 OK
+                {"1H1S1M1I1S", "5%", true},             // Any cigar string of length 5 OK
                 {"4H", "5%", false},                    // Any cigar string of length 5 Fail
                 {"4=", "5%", false},                    // Any cigar string of length 5 Fail
                 {"2S1M1I", "5%", false},                // Any cigar string of length 5 Fail
                 {"1S2M", "5%", false},                  // Any cigar string of length 5 Fail
-                {"1H1S1M1I", "5%", false},            // Any cigar string of length 5 Fail
+                {"1H1S1M1I", "5%", false},              // Any cigar string of length 5 Fail
                 {"1M", "M%", false},                    // Alignment match followed by anything
                 {"1M1I", "M%", true},                   // Alignment match followed by anything
-//                {"2M", "M%", true},                     // Alignment match followed by anything
+                {"2M", "M%", true},                     // Alignment match followed by anything
                 {"1M1S", "M%", true},                   // Alignment match followed by anything
                 {"1S1M", "M%", false},                  // Alignment match followed by anything
                 {"1M", "%M", false},                    // Anything followed by alignment match
                 {"1I1M", "%M", true},                   // Anything followed by alignment match
-//                {"2M", "%M", true},                     // Anything followed by alignment match
+                {"2M", "%M", true},                     // Anything followed by alignment match
                 {"1S1M", "%M", true},                   // Anything followed by alignment match
                 {"1S1M", "%M", true},                   // Anything followed by alignment match
+                {"1S1M", "%%", true},                   // Any two cigar elements
+                {"1S", "%%", false},                    // Any two cigar elements
+                {"1S1M1H", "%%", true},                 // Any two cigar elements
+
 
 //                {"HS", true},
 //                {"M%", true},

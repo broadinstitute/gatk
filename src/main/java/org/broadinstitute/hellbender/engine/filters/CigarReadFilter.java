@@ -287,6 +287,11 @@ public class CigarReadFilter extends ReadFilter {
             // Therefore we do some simple math to get to the start of where the match
             // should begin:
             cigarIndex = cigar.numCigarElements() - matchElementList.size();
+
+            // check for degenerate case:
+            if (cigarIndex < 0) {
+                return false;
+            }
         }
 
         // Keep track of if we've seen more than one operator (for anchor checking):
