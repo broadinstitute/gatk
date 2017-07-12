@@ -260,4 +260,46 @@ In the likelihood ratio the reference factors $\prod_{i \in \mathcal{R}} (1 - \e
  \approx& -\sum_{j \in \mathcal{A}} \log \epsilon_j + \log \frac{|\mathcal{R}|! |\mathcal{A}|!}{(|\mathcal{R}|+|\mathcal{A}|+1)!},
 \end{align}
 the first term of which is proportional to the sum of effective base qualities.
+
+\section{Calculating Contamination}
+Below, we present the GATK's fast, simple, and accurate method for calculating the contamination of a sample.  This methods does not require a matched normal, makes no assumptions about the number of contaminating samples, and remains accurate even when the sample has a lot of copy number variation.
+
+The inputs to our tool are a bam file and a vcf of common variants -- for example ExAC, gnomAD, or 1000 Genomes -- with their allele frequencies.  The basic idea is simply to count ref reads at hom alt sites and subtract the number of ref reads expected from sequencing error to obtain the number of ref reads contaminating these hom alt sites.  Finally, we use the allele frequencies to account for the fact that some contaminating reads have the alt allele.  The only subtlety is in distinguishing hom alt sites from loss of heterozygosity events, which we describe below.
+
+Suppose we have a set $\mathbb{H}$ of SNPs at which our sample is homozygous for the alternate allele.  Let $N_{\rm ref}$ be the total number of ref reads at these sites.  We can decompose $N_{\rm ref}$ as follows:
+\begin{align}
+N_{\rm ref} = N_{\rm ref}^{\rm error} + N_{\rm ref}^{\rm contamination}, \label{decomposition}
+\end{align}
+where $N_{\rm ref}^{\rm error}$  and $N_{\rm ref}^{\rm contamination}$ are as the number of ref reads due to error and contamination, respectively.  We can obtain $N_{\rm ref}$ by counting reads, and we estimate $N_{\rm ref}^{\rm error}$ as follows.  Suppose, WLOG, that the ref allele is A and the alt is C.  Then, assuming that all substitution errors are equally likely, $N_{\rm ref}^{\rm error}$ is approximately half the number of Gs and Ts.  This is, of course, not a perfect assumption for any one site, but on average over all the sites in $\mathbb{H}$ it is very good.
+
+Next we take the expectation of both sides of Equation \ref{decomposition} to obtain
+\begin{align}
+\ave{N_{\rm ref} - N_{\rm ref}^{\rm error}} =& \ave{\sum_{s \in \mathbb{H}} {\rm number~of~contaminant~ref~reads~at~}s} \\
+=& \sum_{s \in \mathbb{H}} \ave{{\rm number~of~contaminant~ref~reads~at~}s} \\
+=& \sum_{s \in \mathbb{H}} \ave{{\rm number~of~contaminant~reads~at~}s \times {\rm ref~fraction~of~contaminant~reads~at~}s} \\
+=& \sum_{s \in \mathbb{H}} \ave{{\rm number~of~contaminant~reads~at~}s} \times \ave{{\rm ref~fraction~of~contaminant~reads~at~}s}
+\end{align}
+where we have used the linearity of the expectation and the independence of the total number of contaminant reads with the fraction of contaminant reads that are ref.  The expectation of the total number of contaminant reads is the depth $d_s$ at site $s$ times the contamination, which we denote by $\chi$.  The expected fraction of contaminant reads that are ref is one minus the alt allele frequency $f_s$.  Crucially, this fact is independent of how many contaminating samples there are.  Thus we have
+\begin{align}
+\ave{N_{\rm ref} - N_{\rm ref}^{\rm error}} = \chi \sum_{s \in \mathbb{H}} d_s (1 - f_s)
+\end{align}
+and obtain the estimate
+\begin{align}
+\hat{\chi} \approx \frac{N_{\rm ref} - N_{\rm ref}^{\rm error}}{\sum_{s \in \mathbb{H}} d_s (1 - f_s)} \label{contamination_estimate}
+\end{align}
+Let us now roughly estimate the error bars on this result.  Under normal conditions sequencing error is rare, so we will estimate the variance due to the sampling error of the number of contaminating ref reads.  As discussed above, the probability of a read at site $s$ being a contaminating ref is $\chi (1 - f_s)$, so the quantity in the numerator of Eq. \ref{contamination_estimate} is distributed as $\sum_s {\rm Binom}(d_s, \chi (1 - f_s)$ and therefore has variance
+\begin{equation}
+\rm(var)(N_{\rm ref} - N_{\rm ref}^{\rm error}) = \sum_s d_s \chi (1 - f_s) \left( 1 - \chi (1 - f_s) \right) < \chi \sum_s d_s  (1 - f_s)
+\end{equation}
+And thus the variance of Eq. \ref{contamination_estimate} is bounded as
+\begin{equation}
+{\rm var}(\hat{\chi}) < \frac{ \chi \sum_s d_s  (1 - f_s) }{ \left( \sum_{s \in \mathbb{H}} d_s (1 - f_s) \right)^2} = \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s (1 - f_s) },
+\end{equation}
+which gives the following bound for the standard deviation:
+\begin{equation}
+{\rm std}(\hat{\chi}) < \left[ \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s (1 - f_s) } \right]^{1/2} < \left[ \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s} \right]^{1/2}
+\end{equation}
+This standard deviation is quite small.  For example, in an exome with 1000 hom alt sites (as is typical) and an average depth of 30 reads, a true contamination of 0.05 is estimated with an error of 0.0013.
+
+It remains to describe how we determine which sites are hom alt.  Our simple heuristic is to consider only sites with sufficient depth and fraction of alt reads, say 80 percent.  (If this measure fails to find enough hom alt sites, we can conclude that contamination is greater than 20 percent, which is so large as to make the sample worthless for somatic variant calling).  We must additionally reject apparent hom alt sites that are actually het sites with deletion of the ref allele.  We do this by looking for copy number variation and loss of heterozygosity in the vicinity of this site.  To find sites with anomalous copy number, we compute the average depth smoothed over a scale of one megabase and compare it to the average depth of the sample as a whole and reject sites that show evidence of a deletion.  To find loss of heterozygosity, we obtain ref and alt read counts of common SNPs within a megabase and compare the number of hets found to that expected based on the known allele frequencies.  If too few hets are found, we reject the site.  These two heuristics suffice to screen out false hom alts.
 \end{document}
