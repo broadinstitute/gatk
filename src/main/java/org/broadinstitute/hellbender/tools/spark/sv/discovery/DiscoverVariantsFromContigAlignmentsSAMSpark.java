@@ -33,6 +33,7 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
@@ -82,7 +83,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     protected void runTool(final JavaSparkContext ctx) {
 
         final JavaRDD<AlignedContig> parsedContigAlignments
-                = new SAMFormattedContigAlignmentParser(getReads(), getHeaderForReads(), localLogger).getAlignedContigs();
+                = new SAMFormattedContigAlignmentParser(getReads(), getHeaderForReads(), true, localLogger).getAlignedContigs();
 
         discoverVariantsAndWriteVCF(parsedContigAlignments, discoverStageArgs.fastaReference,
                 ctx.broadcast(getReference()), getAuthenticatedGCSOptions(), vcfOutputFileName, localLogger);
@@ -94,13 +95,16 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         private final JavaRDD<GATKRead> unfilteredContigAlignments;
         private final SAMFileHeader header;
         private final Logger toolLogger;
+        private final boolean splitGapped;
 
         public SAMFormattedContigAlignmentParser(final JavaRDD<GATKRead> unfilteredContigAlignments,
                                                  final SAMFileHeader header,
+                                                 final boolean splitGapped,
                                                  final Logger toolLogger) {
             this.unfilteredContigAlignments = unfilteredContigAlignments;
             this.header = header;
             this.toolLogger = toolLogger;
+            this.splitGapped = splitGapped;
         }
 
         @Override
@@ -111,7 +115,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                     .map(Tuple2::_2)
                     .map(gatkReads ->
                             parseReadsAndBreakGaps(Utils.stream(gatkReads).map(r->r.convertToSAMRecord(header)).collect(Collectors.toList()),
-                                    GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger));
+                                    GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, splitGapped, toolLogger));
         }
 
         /**
@@ -122,7 +126,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
          */
         @VisibleForTesting
         public static AlignedContig parseReadsAndBreakGaps(final Iterable<SAMRecord> noSecondaryAlignments,
-                                                           final int sensitivity,
+                                                           final int sensitivity, final boolean splitGapped,
                                                            final Logger toolLogger) {
 
             Utils.validateArg(noSecondaryAlignments.iterator().hasNext(), "input collection of GATK reads is empty");
@@ -139,14 +143,17 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             if (primaryAlignment.getReadNegativeStrandFlag()) {
                 SequenceUtil.reverseComplement(contigSequence);
             }
-            final int unClippedContigLength = primaryAlignment.getReadLength();
 
-            final List<AlignmentInterval> parsedAlignments =
-                    Utils.stream(noSecondaryAlignments)
-                            .map(AlignmentInterval::new)
-                            .map(ar -> GappedAlignmentSplitter.split(ar, sensitivity, unClippedContigLength))
-                            .flatMap(Utils::stream).collect(Collectors.toList());
-            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments);
+            final Stream<AlignmentInterval> unSplitAIList = Utils.stream(noSecondaryAlignments).map(AlignmentInterval::new);
+            final List<AlignmentInterval> parsedAlignments;
+            if (splitGapped) {
+                final int unClippedContigLength = primaryAlignment.getReadLength();
+                parsedAlignments = unSplitAIList.map(ar -> GappedAlignmentSplitter.split(ar, sensitivity, unClippedContigLength))
+                        .flatMap(Utils::stream).collect(Collectors.toList());
+            } else {
+                parsedAlignments = unSplitAIList.collect(Collectors.toList());
+            }
+            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments, false);
         }
     }
 

@@ -186,7 +186,7 @@ public final class SVDiscoveryTestDataProvider {
 
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 108569149, 108569294), 1, 146, TextCigarCodec.decode("146M51S"), true, 60, 0, 100, false);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 108569315, 108569364), 148, 197, TextCigarCodec.decode("147S50M"), false, 60, 0, 100, false);
-        final AlignedContig alignedContig = new AlignedContig("asm000001:tig00001", contigSeq, Arrays.asList(region1, region2));
+        final AlignedContig alignedContig = new AlignedContig("asm000001:tig00001", contigSeq, Arrays.asList(region1, region2), false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), alignedContig.contigName), alignedContig.contigSequence);
         return new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001");
     }
@@ -198,7 +198,7 @@ public final class SVDiscoveryTestDataProvider {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, false);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, false);
 
-        final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2));
+        final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2), false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(ChimericAlignment.parseOneContig(alignedContig, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH).get(0), contigSequence);
         return new Tuple4<>(region1, region2, breakpoints, "asm702700:tig00001");
     }

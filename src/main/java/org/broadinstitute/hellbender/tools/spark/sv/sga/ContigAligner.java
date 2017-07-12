@@ -68,7 +68,7 @@ public class ContigAligner {
                                         .replace("-", "")
                                         .replace(">", "")));
 
-                alignedContigs.add( new AlignedContig(contigName, seqs.get(contigIdx), alignmentIntervals) );
+                alignedContigs.add( new AlignedContig(contigName, seqs.get(contigIdx), alignmentIntervals, false) );
             }
         }
 
