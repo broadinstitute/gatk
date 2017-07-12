@@ -99,12 +99,7 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
                 expectedCountsByStride.getOrDefault(DUMMY_INTERVAL_FOR_READS_WITH_NO_POSITION, 0) > 0
                 || expectedCountsByStride.keySet().size() > 1;
         Assert.assertEquals(downsampler.hasFinalizedItems(), expectFinalizedItemsAfterSubmission);
-        if ( expectFinalizedItemsAfterSubmission ) {
-            Assert.assertNotNull(downsampler.peekFinalized());
-        }
-        else {
-            Assert.assertNull(downsampler.peekFinalized());
-        }
+        Assert.assertEquals(downsampler.peekFinalized() != null, expectFinalizedItemsAfterSubmission);
 
         // we expect pending items if there are any reads with assigned position in the reservoir.  The only way
         // to flush reads from the reservoir without invoking signalEndOfInput() or consumeFinalizedItems() is to encounter
@@ -113,25 +108,14 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
         // assigned position
         final boolean expectPendingItemsAfterSubmission = !allReads.stream().allMatch(ReadUtils::readHasNoAssignedPosition);
         Assert.assertEquals(downsampler.hasPendingItems(), expectPendingItemsAfterSubmission);
-        if ( expectPendingItemsAfterSubmission ) {
-            Assert.assertNotNull(downsampler.peekPending());
-        }
-        else {
-            Assert.assertNull(downsampler.peekPending());
-        }
+        Assert.assertEquals(downsampler.peekPending() != null, expectPendingItemsAfterSubmission);
 
         downsampler.signalEndOfInput();
-
         Assert.assertEquals(downsampler.size(), expectedDownsampledReads);
 
         final boolean expectFinalizedItemsAfterEndOfInput = expectedDownsampledReads > 0;
         Assert.assertEquals(downsampler.hasFinalizedItems(), expectFinalizedItemsAfterEndOfInput);
-        if ( expectFinalizedItemsAfterEndOfInput ) {
-            Assert.assertNotNull(downsampler.peekFinalized());
-        }
-        else {
-            Assert.assertNull(downsampler.peekFinalized());
-        }
+        Assert.assertEquals(downsampler.peekFinalized() != null, expectFinalizedItemsAfterEndOfInput);
 
         Assert.assertFalse(downsampler.hasPendingItems());
         Assert.assertNull(downsampler.peekPending());
