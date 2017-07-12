@@ -54,7 +54,7 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
         }
         final int expectedStackSizesSum = expectedStackSizes.stream().mapToInt(i -> i).sum();
 
-        final ReadsDownsampler downsampler = new PositionalDownsampler(targetCoverage, header);
+        final ReadsDownsampler downsampler = new PositionalDownsampler(targetCoverage);
         Assert.assertTrue(downsampler.requiresCoordinateSortOrder());
         Assert.assertEquals(downsampler.size(), 0);
 
@@ -124,7 +124,7 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
         // It's crucial to reset the random number generator again in order to match the selections made by the
         // first downsampling pass.
         Utils.resetRandomGenerator();
-        final ReadsDownsamplingIterator downsamplingIter = new ReadsDownsamplingIterator(allReads.iterator(), new PositionalDownsampler(targetCoverage, header));
+        final ReadsDownsamplingIterator downsamplingIter = new ReadsDownsamplingIterator(allReads.iterator(), new PositionalDownsampler(targetCoverage));
         final List<GATKRead> downsampledReadsFromIter = new ArrayList<>();
         for ( final GATKRead downsampledRead : downsamplingIter ) {
             downsampledReadsFromIter.add(downsampledRead);
@@ -136,7 +136,7 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
     @Test
     public void testSignalNoMoreReadsBefore() {
         final List<GATKRead> reads = createStackOfMappedReads(10, "1", 1);
-        final ReadsDownsampler downsampler = new PositionalDownsampler(5, header);
+        final ReadsDownsampler downsampler = new PositionalDownsampler(5);
         downsampler.submit(reads);
 
         Assert.assertTrue(downsampler.hasPendingItems());
@@ -152,17 +152,12 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testPositionalDownsamplerZeroTargetCoverage() {
-        final PositionalDownsampler downsampler = new PositionalDownsampler(0, header);
+        final PositionalDownsampler downsampler = new PositionalDownsampler(0);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testPositionalDownsamplerNegativeTargetCoverage() {
-        final PositionalDownsampler downsampler = new PositionalDownsampler(-1, header);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testPositionalDownsamplerInvalidheader() {
-        final PositionalDownsampler downsampler = new PositionalDownsampler(1, null);
+        final PositionalDownsampler downsampler = new PositionalDownsampler(-1);
     }
 
     private List<GATKRead> createStackOfMappedReads( final int numReads, final String contig, final int startPosition ) {

@@ -311,7 +311,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             // Since reads in each shard are lazily fetched, we need to pass the filter to the window
             // instead of filtering the reads directly here
             readShard.setReadFilter(countedFilter);
-            readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, alignmentStartStride, getHeaderForReads(), downsampleByMappingQuality, depthToIgnoreLocus) : null);
+            readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, alignmentStartStride, downsampleByMappingQuality, depthToIgnoreLocus) : null);
             currentReadShard = readShard;
 
             processReadShard(readShard, reference, features);

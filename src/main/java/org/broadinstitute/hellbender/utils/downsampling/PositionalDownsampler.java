@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.utils.downsampling;
 
-import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.ArrayList;
@@ -24,8 +22,6 @@ public final class PositionalDownsampler extends ReadsDownsampler {
 
     private final ReservoirDownsampler reservoir;
 
-    private final SAMFileHeader header;
-
     private List<GATKRead> finalizedReads;
 
     private GATKRead firstReadInStride;
@@ -36,16 +32,13 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      * Construct a PositionalDownsampler
      *
      * @param targetCoverage Maximum number of reads that may share any given alignment start position. Must be > 0
-     * @param header SAMFileHeader to use to determine contig ordering. Non-null.
      * @param downsampleByMappingQuality    If true, bias downsampling toward reads with higher mapping quality.
      */
-    public PositionalDownsampler( final int targetCoverage, final int alignmentStartStride, final SAMFileHeader header, final boolean downsampleByMappingQuality, final int depthToIgnoreLocus) {
+    public PositionalDownsampler( final int targetCoverage, final int alignmentStartStride, final boolean downsampleByMappingQuality, final int depthToIgnoreLocus) {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
-        Utils.nonNull(header);
 
         this.reservoir = new ReservoirDownsampler(targetCoverage, false, downsampleByMappingQuality, depthToIgnoreLocus);
         this.finalizedReads = new ArrayList<>();
-        this.header = header;
         this.alignmentStartStride = alignmentStartStride;
         clearItems();
         resetStats();
@@ -55,10 +48,9 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      * Construct a PositionalDownsampler
      *
      * @param targetCoverage Maximum number of reads that may share any given alignment start position. Must be > 0
-     * @param header SAMFileHeader to use to determine contig ordering. Non-null.
      */
-    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header ) {
-        this(targetCoverage, 1, header, false, Integer.MAX_VALUE);
+    public PositionalDownsampler(final int targetCoverage) {
+        this(targetCoverage, 1, false, Integer.MAX_VALUE);
     }
 
     @Override
