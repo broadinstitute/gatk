@@ -7,7 +7,9 @@ import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 /**
@@ -24,9 +26,11 @@ public final class PositionalDownsampler extends ReadsDownsampler {
 
     private final SAMFileHeader header;
 
-    private GATKRead previousRead;
-
     private List<GATKRead> finalizedReads;
+
+    private GATKRead firstReadInStride;
+
+    private final int alignmentStartStride;
 
     /**
      * Construct a PositionalDownsampler
@@ -35,13 +39,14 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      * @param header SAMFileHeader to use to determine contig ordering. Non-null.
      * @param downsampleByMappingQuality    If true, bias downsampling toward reads with higher mapping quality.
      */
-    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header, final boolean downsampleByMappingQuality, final int depthToIgnoreLocus) {
+    public PositionalDownsampler( final int targetCoverage, final int alignmentStartStride, final SAMFileHeader header, final boolean downsampleByMappingQuality, final int depthToIgnoreLocus) {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
         Utils.nonNull(header);
 
         this.reservoir = new ReservoirDownsampler(targetCoverage, false, downsampleByMappingQuality, depthToIgnoreLocus);
         this.finalizedReads = new ArrayList<>();
         this.header = header;
+        this.alignmentStartStride = alignmentStartStride;
         clearItems();
         resetStats();
     }
@@ -53,39 +58,36 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      * @param header SAMFileHeader to use to determine contig ordering. Non-null.
      */
     public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header ) {
-        this(targetCoverage, header, false, Integer.MAX_VALUE);
+        this(targetCoverage, 1, header, false, Integer.MAX_VALUE);
     }
 
     @Override
     public void submit( final GATKRead newRead ) {
         Utils.nonNull(newRead, "newRead");
 
-        // If we've moved to a new position, finalize the reads currently in our reservoir.
-        handlePositionalChange(newRead);
-
         // Pass-through reads that have no assigned position, to avoid downsampling all unmapped reads
         // to the targetCoverage. Unmapped reads that do have an assigned position *will* be subject to
         // downsampling, however.
         if ( ReadUtils.readHasNoAssignedPosition(newRead) ) {
             finalizedReads.add(newRead);
-        }
-        else {
+        } else {
+            // If we've moved to a new position, finalize the reads currently in our reservoir.
+            handlePositionalChange(newRead);
             final int reservoirPreviouslyDiscardedItems = reservoir.getNumberOfDiscardedItems();
             reservoir.submit(newRead);
             incrementNumberOfDiscardedItems(reservoir.getNumberOfDiscardedItems() - reservoirPreviouslyDiscardedItems);
         }
-
-        previousRead = newRead;
     }
 
     private void handlePositionalChange( final GATKRead newRead ) {
-        // Use ReadCoordinateComparator to determine whether we've moved to a new start position.
-        // ReadCoordinateComparator will correctly distinguish between purely unmapped reads and unmapped reads that
-        // are assigned a nominal position.
-        if ( previousRead != null && ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) != 0 ) {
-            if ( reservoir.hasFinalizedItems() ) {
-                finalizeReservoir();
-            }
+        if (ReadUtils.readHasNoAssignedPosition(newRead)) {
+            return;
+        } else if (firstReadInStride == null) {
+            firstReadInStride = newRead;
+        } else if (!newRead.getAssignedContig().equals(firstReadInStride.getAssignedContig())
+                || newRead.getAssignedStart() >= firstReadInStride.getAssignedStart() + alignmentStartStride) {
+            finalizeReservoir();
+            firstReadInStride = newRead;
         }
     }
 
@@ -103,7 +105,11 @@ public final class PositionalDownsampler extends ReadsDownsampler {
     public List<GATKRead> consumeFinalizedItems() {
         final List<GATKRead> toReturn = finalizedReads;
         finalizedReads = new ArrayList<>();
-        return toReturn;
+
+        // if the stride length is > 1, different alignment start positions may be mixed in the reservoir
+        return alignmentStartStride == 1 ? toReturn : toReturn.stream()
+                .sorted(Comparator.comparingInt(GATKRead::getAssignedStart))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -140,7 +146,7 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         reservoir.clearItems();
         reservoir.resetStats();
         finalizedReads.clear();
-        previousRead = null;
+        firstReadInStride = null;
     }
 
     @Override

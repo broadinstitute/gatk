@@ -80,6 +80,9 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Argument(fullName = "maxReadsPerAlignmentStart", shortName = "maxReadsPerAlignmentStart", doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
     protected int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
 
+    @Argument(fullName = "alignmentStartStride", shortName = "alignmentStartStride", doc = "Length in bases to include in a single unit of positional downsampling.", optional = true)
+    protected int alignmentStartStride = defaultAlignmentStartStride();
+
     @Argument(fullName = "downsampleByMappingQuality", shortName = "downsampleByMappingQuality", doc = "If true, bias downsampling toward reads with higher mapping quality.", optional = true)
     protected boolean downsampleByMappingQuality = defaultDownsampleByMappingQuality();
 
@@ -149,6 +152,11 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * @return Default value for the {@link #maxReadsPerAlignmentStart} parameter, if none is provided on the command line
      */
     protected abstract int defaultMaxReadsPerAlignmentStart();
+
+    /**
+     * @return Default value for the {@link #alignmentStartStride} parameter, if none is provided on the command line
+     */
+    protected abstract int defaultAlignmentStartStride();
 
     /**
      * @return Default value for the {@link #downsampleByMappingQuality} parameter, if none is provided on the command line
@@ -303,7 +311,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             // Since reads in each shard are lazily fetched, we need to pass the filter to the window
             // instead of filtering the reads directly here
             readShard.setReadFilter(countedFilter);
-            readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads(), downsampleByMappingQuality, depthToIgnoreLocus) : null);
+            readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, alignmentStartStride, getHeaderForReads(), downsampleByMappingQuality, depthToIgnoreLocus) : null);
             currentReadShard = readShard;
 
             processReadShard(readShard, reference, features);
