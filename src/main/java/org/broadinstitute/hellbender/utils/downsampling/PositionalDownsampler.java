@@ -35,11 +35,11 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      * @param header SAMFileHeader to use to determine contig ordering. Non-null.
      * @param downsampleByMappingQuality    If true, bias downsampling toward reads with higher mapping quality.
      */
-    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header, final boolean downsampleByMappingQuality) {
+    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header, final boolean downsampleByMappingQuality, final int depthToIgnoreLocus) {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
         Utils.nonNull(header);
 
-        this.reservoir = new ReservoirDownsampler(targetCoverage, false, downsampleByMappingQuality);
+        this.reservoir = new ReservoirDownsampler(targetCoverage, false, downsampleByMappingQuality, depthToIgnoreLocus);
         this.finalizedReads = new ArrayList<>();
         this.header = header;
         clearItems();
@@ -53,7 +53,7 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      * @param header SAMFileHeader to use to determine contig ordering. Non-null.
      */
     public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header ) {
-        this(targetCoverage, header, false);
+        this(targetCoverage, header, false, Integer.MAX_VALUE);
     }
 
     @Override

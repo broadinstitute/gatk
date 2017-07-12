@@ -130,7 +130,7 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
     @Test
     public void testDownsampleByMappingQuality() {
         Utils.resetRandomGenerator();
-        final ReservoirDownsampler rd = new ReservoirDownsampler(10, false, true);
+        final ReservoirDownsampler rd = new ReservoirDownsampler(10, false, true, Integer.MAX_VALUE);
         final List<GATKRead> reads = IntStream.range(0, 100)
                 .mapToObj(n -> {
                     final GATKRead read = ArtificialReadUtils.createArtificialRead("100M");
@@ -145,6 +145,21 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
         final double averageMappingQuality = downsampledReads.stream()
                 .mapToInt(GATKRead::getMappingQuality).average().getAsDouble();
         Assert.assertTrue(averageMappingQuality > 70);
+    }
+
+    @Test
+    public void testDepthToIgnoreLocus() {
+        Utils.resetRandomGenerator();
+        final ReservoirDownsampler rd100 = new ReservoirDownsampler(10, false, false, 100);
+        final ReservoirDownsampler rd101 = new ReservoirDownsampler(10, false, false, 101);
+        final List<GATKRead> reads = IntStream.range(0, 100)
+                .mapToObj(n -> ArtificialReadUtils.createArtificialRead("100M")).collect(Collectors.toList());
+        rd100.submit(reads);
+        rd101.submit(reads);
+        rd100.signalEndOfInput();
+        rd101.signalEndOfInput();
+        Assert.assertEquals(rd100.consumeFinalizedItems().size(), 0);
+        Assert.assertEquals(rd101.consumeFinalizedItems().size(), 10);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

@@ -56,6 +56,11 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     private final boolean downsampleByMappingQuality;
 
+    /**
+     * Depth beyond which, rather than downsampling, we skip calling entirely.
+     */
+    private final int depthToIgnoreLocus;
+
 
     /**
      * Construct a ReservoirDownsampler
@@ -68,8 +73,11 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      *                           internal buffers to targetSampleSize initially, which minimizes
      *                           the cost of allocation if we often use targetSampleSize or more
      *                           elements.
+     * @param downsampleByMappingQuality    If true, bias downsampling toward reads with higher mapping quality.
+     * @param depthToIgnoreLocus    Depth beyond which, rather than downsampling, we skip calling entirely.
+     *
      */
-    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows, final boolean downsampleByMappingQuality ) {
+    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows, final boolean downsampleByMappingQuality, final int depthToIgnoreLocus ) {
         if ( targetSampleSize <= 0 ) {
             throw new IllegalArgumentException("Cannot do reservoir downsampling with a sample size <= 0");
         }
@@ -77,6 +85,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
         this.downsampleByMappingQuality = downsampleByMappingQuality;
         this.targetSampleSize = targetSampleSize;
         this.expectFewOverflows = expectFewOverflows;
+        this.depthToIgnoreLocus = depthToIgnoreLocus;
         clearItems();
         resetStats();
     }
@@ -94,7 +103,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      *                           elements.
      */
     public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows ) {
-        this(targetSampleSize, expectFewOverflows, false);
+        this(targetSampleSize, expectFewOverflows, false, Integer.MAX_VALUE);
     }
 
     /**
@@ -142,8 +151,9 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
         if (hasFinalizedItems()) {
             // pass reservoir by reference rather than make a copy, for speed
             final List<GATKRead> downsampledItems = reservoir;
+            final int depth = totalReadsSeen;
             clearItems();
-            return downsampledItems;
+            return depth < depthToIgnoreLocus ? downsampledItems : Collections.emptyList();
         } else {
             // if there's nothing here, don't bother allocating a new list
             return Collections.emptyList();

@@ -58,6 +58,9 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     protected boolean defaultDownsampleByMappingQuality() { return false; }
 
     @Override
+    protected int defaultDepthToIgnoreLocus() { return Integer.MAX_VALUE; }
+
+    @Override
     protected double defaultActiveProbThreshold() { return 0.002; }
 
     @Override
