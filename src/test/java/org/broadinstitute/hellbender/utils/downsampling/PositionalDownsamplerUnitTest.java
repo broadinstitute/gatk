@@ -5,12 +5,14 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.test.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PositionalDownsamplerUnitTest extends GATKBaseTest {
 
@@ -103,11 +105,13 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
         Assert.assertNull(downsampler.peekFinalized());
         Assert.assertNull(downsampler.peekPending());
 
+        verifySortedness(downsampledReads);
+        
         if ( expectedStackSizes.size() == 0 ) {
             Assert.assertTrue(downsampledReads.isEmpty());
         }
         else {
-            List<Integer> downsampledStackSizes = getDownsampledStackSizesAndVerifySortedness(downsampledReads);
+            List<Integer> downsampledStackSizes = getDownsampledStackSizes(downsampledReads);
 
             Assert.assertEquals(downsampledStackSizes.size(), expectedStackSizes.size());
             Assert.assertEquals(downsampledStackSizes, expectedStackSizes);
@@ -190,7 +194,7 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
         return reads;
     }
 
-    private List<Integer> getDownsampledStackSizesAndVerifySortedness( final List<GATKRead> downsampledReads ) {
+    private List<Integer> getDownsampledStackSizes(final List<GATKRead> downsampledReads ) {
         List<Integer> stackSizes = new ArrayList<>();
 
         if ( downsampledReads.isEmpty() ) {
@@ -211,11 +215,7 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
             if ( positionComparison < 0  ) {
                 stackSizes.add(currentStackSize);
                 currentStackSize = 1;
-            }
-            else if ( positionComparison > 0 ) {
-                Assert.fail(String.format("Reads are out of order: %s %s", previousRead, currentRead));
-            }
-            else {
+            } else {
                 ++currentStackSize;
             }
 
@@ -224,5 +224,16 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
 
         stackSizes.add(currentStackSize);
         return stackSizes;
+    }
+
+    private void verifySortedness(List<GATKRead> downsampledReads) {
+        final List<GATKRead> readsWithAssignedPosition = downsampledReads.stream()
+                .filter(read -> !ReadUtils.readHasNoAssignedPosition(read))
+                .collect(Collectors.toList());
+        for (int n = 0; n < readsWithAssignedPosition.size() - 1; n++) {
+            final GATKRead read1 = readsWithAssignedPosition.get(n);
+            final GATKRead read2 = readsWithAssignedPosition.get(n + 1);
+            Assert.assertTrue(ReadCoordinateComparator.compareCoordinates(read1, read2, header) <= 0);
+        }
     }
 }
