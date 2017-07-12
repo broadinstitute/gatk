@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.cachemanager;
 
-import avro.shaded.com.google.common.collect.ImmutableMap;
-import avro.shaded.com.google.common.collect.Sets;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import org.apache.commons.lang.RandomStringUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;

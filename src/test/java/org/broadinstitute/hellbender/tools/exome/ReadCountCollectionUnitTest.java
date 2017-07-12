@@ -219,6 +219,28 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
         ArrayAsserts.assertArrayEquals(expected, result, 1e-12);
     }
 
+    @Test(dataProvider = "getRowByIndexTestData")
+    public void testGetRowByIndex(final ReadCountCollection rcc, final int rowIndex, final double[] expected) {
+        final double[] result = rcc.getRow(rowIndex);
+        ArrayAsserts.assertArrayEquals(expected, result, 1e-12);
+    }
+
+    @Test(dataProvider = "getRowByTargetTestData")
+    public void testGetRowByTarget(final ReadCountCollection rcc, final Target target, final double[] expected) {
+        final double[] result = rcc.getRow(target);
+        ArrayAsserts.assertArrayEquals(expected, result, 1e-12);
+    }
+
+    @Test(dataProvider = "getRowIndexOutOfRangeTestData", expectedExceptions = IllegalArgumentException.class)
+    public void testGetRowIndexOutOfRange(final ReadCountCollection rcc, final int rowIndex) {
+        rcc.getRow(rowIndex);
+    }
+
+    @Test(dataProvider = "getRowNonexistentTargetTestData", expectedExceptions = IllegalArgumentException.class)
+    public void testGetRowNonexistentTarget(final ReadCountCollection rcc, final Target nonexistentTarget) {
+        rcc.getRow(nonexistentTarget);
+    }
+
     private static class ReadCountCollectionInfo {
         private final int columnCount;
         private int targetCount;
@@ -351,6 +373,42 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
                 {rcc, 2, newTargets_2, new double[] {col2[3], col2[1], col2[5]}},
                 {rcc, 2, newTargets_3, new double[] {col2[2], col2[2], col2[8]}}
         };
+    }
+
+    @DataProvider(name = "getRowByIndexTestData")
+    public Object[][] getRowByIndexTestData() {
+        final ReadCountCollectionInfo info = newInstanceInfo(3, 10, true);
+        final ReadCountCollection rcc = info.newInstance();
+        return new Object[][] {
+                {rcc, 0, rcc.counts().getRow(0)},
+                {rcc, 1, rcc.counts().getRow(1)},
+                {rcc, 2, rcc.counts().getRow(2)}
+        };
+    }
+
+    @DataProvider(name = "getRowByTargetTestData")
+    public Object[][] getRowByTargetTestData() {
+        final ReadCountCollectionInfo info = newInstanceInfo(3, 10, true);
+        final ReadCountCollection rcc = info.newInstance();
+        return new Object[][] {
+                {rcc, rcc.targets().get(0), rcc.counts().getRow(0)},
+                {rcc, rcc.targets().get(1), rcc.counts().getRow(1)},
+                {rcc, rcc.targets().get(2), rcc.counts().getRow(2)}
+        };
+    }
+
+    @DataProvider(name = "getRowIndexOutOfRangeTestData")
+    public Object[][] getRowIndexOutOfRangeTestData() {
+        final ReadCountCollectionInfo info = newInstanceInfo(3, 10, true);
+        final ReadCountCollection rcc = info.newInstance();
+        return new Object[][] {{rcc, -5}, {rcc, -1}, {rcc, 10}, {rcc, 15}};
+    }
+
+    @DataProvider(name = "getRowNonexistentTargetTestData")
+    public Object[][] getRowNonexistentTargetTestData() {
+        final ReadCountCollectionInfo info = newInstanceInfo(3, 10, true);
+        final ReadCountCollection rcc = info.newInstance();
+        return new Object[][] {{rcc, new Target("MY_FABULOUS_NONEXISTENT_TARGET")}};
     }
 
     @DataProvider(name="wrongInstantiationData")

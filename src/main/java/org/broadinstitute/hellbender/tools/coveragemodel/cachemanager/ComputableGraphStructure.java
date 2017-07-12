@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.cachemanager;
 
-import avro.shaded.com.google.common.collect.Sets;
+import com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
