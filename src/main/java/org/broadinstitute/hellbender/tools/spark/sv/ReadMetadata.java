@@ -346,7 +346,7 @@ public class ReadMetadata {
             while ( true ) {
                 reads += 1L;
                 bases += mappedRead.getLength();
-                if ( filter.isNonDiscordantEvidence(mappedRead) ) {
+                if ( filter.isTemplateLenTestable(mappedRead) ) {
                     // getReadGroup can return null -- that's OK.  library will be null -- that's OK, too.
                     final String library = readGroupToLibraryMap.get(mappedRead.getReadGroup());
                     libraryToFragmentSizeHistogram
