@@ -125,27 +125,29 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     private void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
         if ( read.mateIsUnmapped() ) {
             evidenceList.add(new BreakpointEvidence.MateUnmapped(read, readMetadata));
-        } else if ( isInterContig(read.getContig(),read.getMateContig()) ) {
-            evidenceList.add(new BreakpointEvidence.InterContigPair(read, readMetadata));
-        } else if ( read.isReverseStrand() == read.mateIsReverseStrand() ) {
-            evidenceList.add(new BreakpointEvidence.SameStrandPair(read, readMetadata));
-        } else if ( read.isReverseStrand() ?
-                read.getStart() + allowedShortFragmentOverhang < read.getMateStart() :
-                read.getStart() - allowedShortFragmentOverhang > read.getMateStart() ) {
-            evidenceList.add(new BreakpointEvidence.OutiesPair(read, readMetadata));
         } else {
-            final float zIshScore = readMetadata.getZishScore(read.getReadGroup(), Math.abs(read.getFragmentLength()));
-            if ( zIshScore > MAX_ZISH_SCORE && zIshScore < MIN_CRAZY_ZISH_SCORE ) {
-                evidenceList.add(new BreakpointEvidence.WeirdTemplateSize(read, readMetadata));
+
+            final int contigID1 = readMetadata.getContigID(read.getContig());
+            final int contigID2 = readMetadata.getContigID(read.getMateContig());
+
+            if (contigID1 != contigID2) {
+                if ( !readMetadata.ignoreCrossContigID(contigID1) && !readMetadata.ignoreCrossContigID(contigID2) ) {
+                    evidenceList.add(new BreakpointEvidence.InterContigPair(read, readMetadata));
+                }
+            } else {
+                if ( read.isReverseStrand() == read.mateIsReverseStrand() ) {
+                    evidenceList.add(new BreakpointEvidence.SameStrandPair(read, readMetadata));
+                } else if (read.isReverseStrand() ?
+                        read.getStart() + allowedShortFragmentOverhang < read.getMateStart() :
+                        read.getStart() - allowedShortFragmentOverhang > read.getMateStart()) {
+                    evidenceList.add(new BreakpointEvidence.OutiesPair(read, readMetadata));
+                } else {
+                    final float zIshScore = readMetadata.getZishScore(read.getReadGroup(), Math.abs(read.getFragmentLength()));
+                    if ( zIshScore > MAX_ZISH_SCORE && zIshScore < MIN_CRAZY_ZISH_SCORE ) {
+                        evidenceList.add(new BreakpointEvidence.WeirdTemplateSize(read, readMetadata));
+                    }
+                }
             }
         }
-    }
-
-    private boolean isInterContig( final String contigName1, final String contigName2 ) {
-        final int contigID1 = readMetadata.getContigID(contigName1);
-        final int contigID2 = readMetadata.getContigID(contigName2);
-        return !(contigID1 == contigID2 ||
-                    readMetadata.ignoreCrossContigID(contigID1) ||
-                    readMetadata.ignoreCrossContigID(contigID2));
     }
 }

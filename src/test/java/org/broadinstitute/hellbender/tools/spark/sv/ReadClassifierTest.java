@@ -70,6 +70,14 @@ public class ReadClassifierTest extends BaseTest {
 
         read.setMatePosition(header.getSequenceDictionary().getSequence(2).getSequenceName(), rightStart);
         checkClassification(classifier, read, Collections.emptyList());
+
+        read.setMateIsReverseStrand(false);
+        checkClassification(classifier, read, Collections.emptyList());
+
+        read.setMateIsReverseStrand(true);
+        read.setMatePosition(header.getSequenceDictionary().getSequence(2).getSequenceName(), read.getStart() - fragmentLen);
+        checkClassification(classifier, read, Collections.emptyList());
+
     }
 
     private void checkClassification( final ReadClassifier classifier, final GATKRead read, final List<BreakpointEvidence> expectedEvidence ) {
