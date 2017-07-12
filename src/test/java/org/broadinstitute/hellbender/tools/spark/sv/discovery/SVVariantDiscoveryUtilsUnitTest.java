@@ -5,10 +5,13 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class SVVariantDiscoveryUtilsUnitTest {
@@ -16,12 +19,12 @@ public class SVVariantDiscoveryUtilsUnitTest {
     @Test(groups = "sv")
     public void testAlignmentIntervalOverlap() throws Exception {
 
-        final AlignedAssembly.AlignmentInterval ar1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0);
-        final AlignedAssembly.AlignmentInterval ar2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",10,16), 5,10, TextCigarCodec.decode("4S6M"),true, 60, 0);
+        final AlignmentInterval ar1 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0, 100, false);
+        final AlignmentInterval ar2 = new AlignmentInterval(new SimpleInterval("1",10,16), 5,10, TextCigarCodec.decode("4S6M"),true, 60, 0, 100, false);
         Assert.assertEquals(SVVariantDiscoveryUtils.overlapOnContig(ar1, ar2), 1);
 
-        final AlignedAssembly.AlignmentInterval ar3 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0);
-        final AlignedAssembly.AlignmentInterval ar4 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1",11,16), 6,10, TextCigarCodec.decode("5S5M"),true, 60, 0);
+        final AlignmentInterval ar3 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0, 100, false);
+        final AlignmentInterval ar4 = new AlignmentInterval(new SimpleInterval("1",11,16), 6,10, TextCigarCodec.decode("5S5M"),true, 60, 0, 100, false);
         Assert.assertEquals(SVVariantDiscoveryUtils.overlapOnContig(ar3, ar4), 0);
     }
 
@@ -95,5 +98,21 @@ public class SVVariantDiscoveryUtilsUnitTest {
         Assert.assertEquals(SVVariantDiscoveryUtils.findIndexOfFirstNonClippingOperation(TextCigarCodec.decode("10H10S10D10M").getCigarElements(), true), 2);
         Assert.assertEquals(SVVariantDiscoveryUtils.findIndexOfFirstNonClippingOperation(TextCigarCodec.decode("10M10D10S").getCigarElements(), false), 1);
         Assert.assertEquals(SVVariantDiscoveryUtils.findIndexOfFirstNonClippingOperation(TextCigarCodec.decode("10M10D10S10H").getCigarElements(), false), 1);
+    }
+
+    @DataProvider(name = "CigarTestData")
+    private Object[][] createCigarTestData() {
+        final Cigar[] cigars = Stream.of("5M5H", "5H5M", "14S6M", "14M6S",  "12H12S20M51I30M13S13H", "10H20S30M40D50M60S70H").map(TextCigarCodec::decode).toArray(Cigar[]::new);
+        final int[] lengths = {10, 10, 20, 20, 151, 240};
+        final Object[][] data = new Object[cigars.length][];
+        for (int i = 0; i < cigars.length; ++i) {
+            data[i] = new Object[]{cigars[i], lengths[i]};
+        }
+        return data;
+    }
+
+    @Test(dataProvider = "CigarTestData", groups = "sv")
+    public void testGetUnclippedReadLengthFromCigar(final Cigar cigar, final int expectedReadLength) {
+        Assert.assertEquals(SVVariantDiscoveryUtils.getUnclippedReadLength(cigar), expectedReadLength);
     }
 }

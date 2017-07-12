@@ -321,16 +321,16 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
                 sequencesAreCloseEnough = (minDist <= editDistanceTolerance);
                 if(0!=minDist){
                     System.err.println("Contig that has nonzero edit distance is of length " + Integer.toString(actualString.length()) +
-                                        "\nEdit distance:" + String.valueOf(minDist) +
-                                        "\nactual sequence: " + actualString +
-                                        "\nreverse complement of actual sequence: " + rcOfActualString +
-                                        "\nexpected sequence: " + expectedString);
+                            "\nEdit distance:" + String.valueOf(minDist) +
+                            "\nactual sequence: " + actualString +
+                            "\nreverse complement of actual sequence: " + rcOfActualString +
+                            "\nexpected sequence: " + expectedString);
                 }
             }
 
             Assert.assertTrue(sequencesAreTheSame || sequencesAreCloseEnough,
-                              "Culprit contigs (expected, actual) of length: " + String.valueOf(expectedString.length()) + ", " + String.valueOf(actualString.length()) +
-                              "With edit distance " + String.valueOf(minDist));
+                    "Culprit contigs (expected, actual) of length: " + String.valueOf(expectedString.length()) + ", " + String.valueOf(actualString.length()) +
+                            "With edit distance " + String.valueOf(minDist));
         }
     }
 

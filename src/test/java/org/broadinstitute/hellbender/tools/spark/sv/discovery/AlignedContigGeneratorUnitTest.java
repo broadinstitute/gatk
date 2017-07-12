@@ -10,7 +10,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.sga.AlignAssembledContigsSpark;
@@ -110,16 +110,16 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         for(int pair=0; pair<cigars.length/2; ++pair) {
 
-            final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForSimpleInversion = new ArrayList<>(8);
+            final List<AlignmentInterval> alignmentIntervalsForSimpleInversion = new ArrayList<>(8);
             final SimpleInterval referenceIntervalLeft = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair]+1, alignmentStartsOnRef_0Based[2*pair]+cigars[2*pair].getReferenceLength()+1);
-            final AlignedAssembly.AlignmentInterval alignmentIntervalLeft = new AlignedAssembly.AlignmentInterval(referenceIntervalLeft, alignmentStartsOnTig_0BasedInclusive[2*pair]+1, alignmentEndsOnTig_0BasedExclusive[2*pair],
+            final AlignmentInterval alignmentIntervalLeft = new AlignmentInterval(referenceIntervalLeft, alignmentStartsOnTig_0BasedInclusive[2*pair]+1, alignmentEndsOnTig_0BasedExclusive[2*pair],
                     strandedness[2*pair] ? cigars[2*pair] : CigarUtils.invertCigar(cigars[2*pair]),
-                    strandedness[2*pair], mapQual[2*pair], mismatches[2*pair]);
+                    strandedness[2*pair], mapQual[2*pair], mismatches[2*pair], 100, false);
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalLeft);
             final SimpleInterval referenceIntervalRight = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair+1]+1, alignmentStartsOnRef_0Based[2*pair+1]+cigars[2*pair+1].getReferenceLength()+1);
-            final AlignedAssembly.AlignmentInterval alignmentIntervalRight = new AlignedAssembly.AlignmentInterval(referenceIntervalRight, alignmentStartsOnTig_0BasedInclusive[2*pair+1]+1, alignmentEndsOnTig_0BasedExclusive[2*pair+1],
+            final AlignmentInterval alignmentIntervalRight = new AlignmentInterval(referenceIntervalRight, alignmentStartsOnTig_0BasedInclusive[2*pair+1]+1, alignmentEndsOnTig_0BasedExclusive[2*pair+1],
                     strandedness[2*pair+1] ? cigars[2*pair+1] : CigarUtils.invertCigar(cigars[2*pair+1]),
-                    strandedness[2*pair+1], mapQual[2*pair+1], mismatches[2*pair+1]);
+                    strandedness[2*pair+1], mapQual[2*pair+1], mismatches[2*pair+1], 100, false);
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
 
             if (pair == 0) {
@@ -148,17 +148,17 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
         final Iterator<String> alignedContigStringIt = AlignAssembledContigsSpark.formatAlignedAssemblyAsText(expectedAssembly);
         if (assemblyId==1) {
             Assert.assertTrue(alignedContigStringIt.hasNext());
-            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_0 =
+            final Tuple2<String, List<AlignmentInterval>> contigNameAndAlignments_0 =
                     DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
             Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments_0._1());
             Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments_0._2());
-            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_1 =
+            final Tuple2<String, List<AlignmentInterval>> contigNameAndAlignments_1 =
                     DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
             Assert.assertEquals(contigs.get(1).contigName, contigNameAndAlignments_1._1());
             Assert.assertEquals(contigs.get(1).alignmentIntervals, contigNameAndAlignments_1._2());
         } else {
             Assert.assertTrue(alignedContigStringIt.hasNext());
-            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments =
+            final Tuple2<String, List<AlignmentInterval>> contigNameAndAlignments =
                     DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
             Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments._1());
             Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments._2());
@@ -176,8 +176,8 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
             final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
             final FSDataOutputStream fsOutStream = fs.create(tempPath);
 
-            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3";
-            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5";
+            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3%100%o";
+            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5%100%o";
             fsOutStream.writeBytes(gappedAlignmentContig_1);
             fsOutStream.writeBytes("\n");
             fsOutStream.writeBytes(gappedAlignmentContig_2);
@@ -187,7 +187,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
             Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
 
-            final Map<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments
+            final Map<String, List<AlignmentInterval>> contigNameAndAlignments
                     = DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseAndBreakAlignmentTextRecords(ctx, tempPath.toString(), null).collectAsMap();
 
             Assert.assertEquals(contigNameAndAlignments.keySet().size(), 2);
@@ -230,7 +230,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         final List<SAMRecord> reads = Stream.of(read1, read2, read3).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
-        final AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
+        final AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
         assertEquals(alignedContig.contigSequence, read2.getBases());
 
         assertEquals(alignedContig.alignmentIntervals.size(), 3);
@@ -258,18 +258,18 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         List<SAMRecord> reads2 = Stream.of(read4, read5).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
-        final AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads2, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
+        final AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads2, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
         // these should be the reverse complements of each other
         assertEquals(alignedContig2.contigSequence.length, read4.getBases().length);
 
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervals2 = alignedContig2.alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervals2 = alignedContig2.alignmentIntervals;
         assertEquals(alignmentIntervals2.size(), 2);
 
-        final AlignedAssembly.AlignmentInterval alignmentInterval4 = alignmentIntervals2.get(0);
+        final AlignmentInterval alignmentInterval4 = alignmentIntervals2.get(0);
         assertEquals(alignmentInterval4.startInAssembledContig, 1);
         assertEquals(alignmentInterval4.endInAssembledContig, read4Seq.length() - 1986);
 
-        final AlignedAssembly.AlignmentInterval alignmentInterval5 = alignmentIntervals2.get(1);
+        final AlignmentInterval alignmentInterval5 = alignmentIntervals2.get(1);
         assertEquals(alignmentInterval5.startInAssembledContig, 3604);
         assertEquals(alignmentInterval5.endInAssembledContig, read4Seq.length());
     }
@@ -316,11 +316,11 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
         Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
         Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
 
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForCleanContig = it.next().alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForCleanContig = it.next().alignmentIntervals;
         Assert.assertEquals(alignmentIntervalsForCleanContig.size(), 1);
-        Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignedAssembly.AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0));
+        Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0, 100, false));
 
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
         Assert.assertEquals(alignmentIntervalsForContigWithGappedAlignment.size(), 3);
 
         // test direct conversion (essentially the filtering step)

@@ -13,8 +13,9 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedAssembly;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
 
@@ -56,10 +57,12 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final JavaPairRDD<String, ContigsCollection> breakpointIdsToContigsCollection = ContigsCollection.loadContigsCollectionKeyedByAssemblyId(ctx, input).cache();
+        final JavaPairRDD<String, ContigsCollection> breakpointIdsToContigsCollection =
+                ContigsCollection.loadContigsCollectionKeyedByAssemblyId(ctx, input).cache();
 
         final long numInputAssemblies = breakpointIdsToContigsCollection.count();
-        final int numPartitions = Math.max(ctx.defaultParallelism(), (int) Math.ceil((double) numInputAssemblies / (double) NUM_ASSEMBLIES_PER_PARTITION));
+        final int numPartitions = Math.max(ctx.defaultParallelism(),
+                                    (int) Math.ceil((double) numInputAssemblies / (double) NUM_ASSEMBLIES_PER_PARTITION));
         final String indexImageFile = this.indexImageFile;
 
         final JavaRDD<AlignedAssembly> allContigAlignments =
@@ -67,8 +70,10 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
                         .coalesce(numPartitions)
                         .mapPartitions(iter -> {
                             final ContigAligner contigAligner = new ContigAligner(indexImageFile);
-                            final List<AlignedAssembly> alignedAssembliesInThisPartition = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION);
-                            iter.forEachRemaining(pair -> alignedAssembliesInThisPartition.add(contigAligner.alignContigs(Integer.valueOf(pair._1), pair._2)));
+                            final List<AlignedAssembly> alignedAssembliesInThisPartition
+                                    = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION);
+                            iter.forEachRemaining(pair ->
+                                    alignedAssembliesInThisPartition.add(contigAligner.alignContigs(Integer.valueOf(pair._1), pair._2)));
                             return alignedAssembliesInThisPartition.iterator();
                         });
 
@@ -83,14 +88,17 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
      * <pre>
      * contigName ({@link AlignedAssemblyOrExcuse#formatContigName(int, int)}) + TAB + {ALIGNMENT_INTERVAL}
      * </pre>
-     * where {ALIGNMENT_INTERVAL} is a list of formatted {@link AlignedAssembly.AlignmentInterval}'s separated by TAB's,
-     * and each {@link AlignedAssembly.AlignmentInterval} is formatted as:
+     * where {ALIGNMENT_INTERVAL} is a list of formatted {@link AlignmentInterval}'s separated by TAB's,
+     * and each {@link AlignmentInterval} is formatted as:
      * <pre>
      * startInAssembledContig + "-" + endInAssembledContig + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
-     * referenceInterval({@link org.broadinstitute.hellbender.utils.SimpleInterval#toString()} + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
+     * referenceSpan({@link org.broadinstitute.hellbender.utils.SimpleInterval#toString()} + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
      * cigarAlong5to3DirectionOfContig + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
      * "+/-" (depending on strandedness) + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
-     * mapQual + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} + mismatch
+     * mapQual + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
+     * mismatch + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
+     * alnScore + {@link #MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR} +
+     * isFromSplitGapAlignment
      * </pre>
      */
     @VisibleForTesting
@@ -105,7 +113,16 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
                         final List<String> intervals =
                                 alignedContig.alignmentIntervals.stream()
                                         .map(alignmentInterval ->
-                                                StringUtils.join(Arrays.asList(String.valueOf(alignmentInterval.startInAssembledContig) + "-" + String.valueOf(alignmentInterval.endInAssembledContig), encodeSimpleIntervalAsString(alignmentInterval.referenceInterval),TextCigarCodec.encode(alignmentInterval.cigarAlong5to3DirectionOfContig), (alignmentInterval.forwardStrand ? "+" : "-"), alignmentInterval.mapQual, alignmentInterval.mismatches), MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR))
+                                                StringUtils.join(
+                                                        Arrays.asList(
+                                                                String.valueOf(alignmentInterval.startInAssembledContig) + "-" + String.valueOf(alignmentInterval.endInAssembledContig),
+                                                                encodeSimpleIntervalAsString(alignmentInterval.referenceSpan),
+                                                                TextCigarCodec.encode(alignmentInterval.cigarAlong5to3DirectionOfContig),
+                                                                (alignmentInterval.forwardStrand ? "+" : "-"),
+                                                                alignmentInterval.mapQual, alignmentInterval.mismatches,
+                                                                alignmentInterval.alnScore,
+                                                                (alignmentInterval.isFromSplitGapAlignment ? "s" : "o")),
+                                                        MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR))
                                         .collect(Collectors.toList());
                         mappingInfo = StringUtils.join(intervals,"\t");
                     }
@@ -122,7 +139,9 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
      * forbids such move.
      */
     public static String encodeSimpleIntervalAsString(final SimpleInterval simpleInterval) {
-        return "CTG=" + simpleInterval.getContig() + "START=" + String.valueOf(simpleInterval.getStart()) + "END=" + String.valueOf(simpleInterval.getEnd());
+        return "CTG=" + simpleInterval.getContig() +
+                "START=" + String.valueOf(simpleInterval.getStart()) +
+                "END=" + String.valueOf(simpleInterval.getEnd());
     }
 
     @VisibleForTesting

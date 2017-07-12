@@ -40,7 +40,8 @@ public class SVVCFWriter {
                                 final String fastaReference, final JavaRDD<VariantContext> variantContexts,
                                 final Logger logger) {
 
-        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference,
+                ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
 
         final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(variantContexts.collect(), referenceSequenceDictionary);
 
@@ -58,10 +59,12 @@ public class SVVCFWriter {
                 .forEach((key, value) -> logger.info(key + ": " + value));
     }
 
-    // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample such that they have the same start, end and inversion evidence type
-    //     but differ only in their inserted sequence, sorting these variants must take into account of such complications. the solution below is hackish
+    // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample
+    //       such that they have the same start, end and inversion evidence type but differ only in their inserted sequence,
+    //       sorting these variants must take into account of such complications. the solution below is hackish
     @VisibleForTesting
-    static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants, final SAMSequenceDictionary referenceSequenceDictionary) {
+    static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants,
+                                                         final SAMSequenceDictionary referenceSequenceDictionary) {
         return variants.stream().sorted((VariantContext v1, VariantContext v2) -> {
             final int x = IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary);
             if (x == 0) {
@@ -74,8 +77,8 @@ public class SVVCFWriter {
         }).collect(SVUtils.arrayListCollector(variants.size()));
     }
 
-    private static void writeVariants(final String fileName,
-                                      final List<VariantContext> variantsArrayList, final SAMSequenceDictionary referenceSequenceDictionary) {
+    private static void writeVariants(final String fileName, final List<VariantContext> variantsArrayList,
+                                      final SAMSequenceDictionary referenceSequenceDictionary) {
         try (final OutputStream outputStream
                      = new BufferedOutputStream(BucketUtils.createFile(fileName))) {
 
@@ -97,7 +100,8 @@ public class SVVCFWriter {
         return header;
     }
 
-    private static VariantContextWriter getVariantContextWriter(final OutputStream outputStream, final SAMSequenceDictionary referenceSequenceDictionary) {
+    private static VariantContextWriter getVariantContextWriter(final OutputStream outputStream,
+                                                                final SAMSequenceDictionary referenceSequenceDictionary) {
         VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
                 .clearOptions()
                 .setOutputStream(outputStream);

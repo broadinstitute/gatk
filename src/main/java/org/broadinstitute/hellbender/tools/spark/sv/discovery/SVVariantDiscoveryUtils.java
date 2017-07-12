@@ -18,8 +18,11 @@ public final class SVVariantDiscoveryUtils {
      *          Mostly useful for computing micro-homologyForwardStrandRep.
      */
     @VisibleForTesting
-    public static int overlapOnContig(final AlignedAssembly.AlignmentInterval one, final AlignedAssembly.AlignmentInterval two) {
-        return Math.max(0, Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1) - Math.max(one.startInAssembledContig, two.startInAssembledContig));
+    static int overlapOnContig(final AlignmentInterval one, final AlignmentInterval two) {
+        return Math.max(0,
+                Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1)
+                        - Math.max(one.startInAssembledContig, two.startInAssembledContig)
+        );
     }
 
     /**
@@ -43,7 +46,7 @@ public final class SVVariantDiscoveryUtils {
      * @param cigar     the {@link Cigar} to be inspected
      */
     @VisibleForTesting
-    public static int getNumClippedBases(final boolean fromStart, final Cigar cigar) {
+    static int getNumClippedBases(final boolean fromStart, final Cigar cigar) {
         return getNumClippedBases(fromStart, cigar.getCigarElements());
     }
 
@@ -54,7 +57,7 @@ public final class SVVariantDiscoveryUtils {
      * @param cigarElements the ordered {@link CigarElement}'s of a cigar
      */
     @VisibleForTesting
-    public static int getNumClippedBases(final boolean fromStart, final List<CigarElement> cigarElements) {
+    static int getNumClippedBases(final boolean fromStart, final List<CigarElement> cigarElements) {
 
         final int sz = cigarElements.size();
         if(sz==1) return 0; // cannot be a giant clip
@@ -79,7 +82,7 @@ public final class SVVariantDiscoveryUtils {
      * @throws IllegalArgumentException if fails check by {@link #validateCigar(List)}
      */
     @VisibleForTesting
-    public static int getNumHardClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
+    static int getNumHardClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
 
         validateCigar(cigarElements);
 
@@ -96,7 +99,7 @@ public final class SVVariantDiscoveryUtils {
      * @throws IllegalArgumentException if fails check by {@link #validateCigar(List)}
      */
     @VisibleForTesting
-    public static int getNumSoftClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
+    static int getNumSoftClippingBases(final boolean fromStart, final List<CigarElement> cigarElements) {
 
         validateCigar(cigarElements);
 
@@ -129,7 +132,7 @@ public final class SVVariantDiscoveryUtils {
      * @param cigarElements
      */
     @VisibleForTesting
-    public static void validateCigar(final List<CigarElement> cigarElements) {
+    static void validateCigar(final List<CigarElement> cigarElements) {
         Utils.validateArg(!cigarElements.isEmpty(), "Cannot parse empty list cigarElements");
         Utils.validateArg(cigarElements.stream().anyMatch(ele -> ele.getOperator().isAlignment()),
                 "No alignment found in the input list of cigar operations: " + cigarElements.toString());
@@ -148,7 +151,7 @@ public final class SVVariantDiscoveryUtils {
      * @param fromStartInsteadOfEnd  either from the start of the list or from the end of the list
      */
     @VisibleForTesting
-    public static int findIndexOfFirstNonClippingOperation(final List<CigarElement> cigarElements, final boolean fromStartInsteadOfEnd) {
+    static int findIndexOfFirstNonClippingOperation(final List<CigarElement> cigarElements, final boolean fromStartInsteadOfEnd) {
         int idx = 0;
         final int step;
         if (fromStartInsteadOfEnd) {
@@ -161,5 +164,15 @@ public final class SVVariantDiscoveryUtils {
             idx += step;
         }
         return idx;
+    }
+
+    @VisibleForTesting
+    public static int getUnclippedReadLength(final Cigar cigar) {
+        validateCigar(cigar.getCigarElements());
+        return cigar.getCigarElements().stream()
+                .mapToInt(element ->
+                        element.getOperator().isClipping() || element.getOperator().consumesReadBases() ? element.getLength() : 0
+                )
+                .sum();
     }
 }
