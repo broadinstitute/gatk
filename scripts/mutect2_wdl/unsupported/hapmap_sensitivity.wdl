@@ -103,6 +103,9 @@ task Jaccard {
     Array[File] tpfp_vcfs_idx
     String prefix
 
+    #type is SNP or INDEL
+    String type
+
     command {
 
         # Use GATK Jar override if specified
@@ -111,12 +114,18 @@ task Jaccard {
           GATK_JAR=${gatk4_jar_override}
         fi
 
-        result="${prefix}_jaccard.txt"
+        result="${prefix}_${type}_jaccard.txt"
         touch $result
 
-        for file1 in ${sep = ' ' tpfp_vcfs}; do
+        count=0
+        for vcf in ${sep = ' ' tpfp_vcfs}; do
+            ((count++))
+            java -jar $GATK_JAR SelectVariants -V $vcf -selectType ${type} -O ${type}_only_$count.vcf
+        done
+
+        for file1 in ${type}_only*.vcf; do
             column=0
-            for file2 in ${sep = ' ' tpfp_vcfs}; do
+            for file2 in ${type}_only*.vcf; do
             ((column++))
             if [ $column != 1 ]; then
                 printf "\t" >> $result
@@ -149,7 +158,7 @@ task Jaccard {
     }
 
     output {
-        File table = "${prefix}_jaccard.txt"
+        File table = "${prefix}_${type}_jaccard.txt"
     }
 }
 
@@ -224,14 +233,25 @@ workflow HapmapSensitivity {
 
   call CombineTables as SummaryTables { input: input_tables = Mutect2_Multi_Concordance.summary, prefix = prefix }
 
-  call Jaccard {
+  call Jaccard as JaccardSNP {
     input:
         gatk4_jar = gatk4_jar,
         gatk4_jar_override = gatk4_jar_override,
         tpfp_vcfs = Mutect2_Multi_Concordance.tpfp,
         tpfp_vcfs_idx = Mutect2_Multi_Concordance.tpfp_idx,
-        prefix = prefix
+        prefix = prefix,
+        type = "SNP"
   }
+
+  call Jaccard as JaccardINDEL {
+      input:
+          gatk4_jar = gatk4_jar,
+          gatk4_jar_override = gatk4_jar_override,
+          tpfp_vcfs = Mutect2_Multi_Concordance.tpfp,
+          tpfp_vcfs_idx = Mutect2_Multi_Concordance.tpfp_idx,
+          prefix = prefix,
+          type = "INDEL"
+    }
 
   output {
     File snp_table = AnalyzeSensitivity.snp_table
@@ -239,7 +259,9 @@ workflow HapmapSensitivity {
     File indel_table = AnalyzeSensitivity.indel_table
     File indel_plot = AnalyzeSensitivity.indel_plot
     File summary = SummaryTables.table
-    File jaccard_table = Jaccard.table
+    File raw_table = SensitivityTables.table
+    File snp_jaccard_table = JaccardSNP.table
+    File indel_jaccard_table = JaccardINDEL.table
     Array[File] tpfn = Mutect2_Multi_Concordance.tpfn
     Array[File] tpfn_idx = Mutect2_Multi_Concordance.tpfn_idx
     Array[File] ftnfn = Mutect2_Multi_Concordance.ftnfn

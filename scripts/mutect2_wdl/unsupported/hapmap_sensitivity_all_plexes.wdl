@@ -44,8 +44,8 @@ workflow HapmapSensitivityAllPlexes {
     File ten_plex_truth_list
     File twenty_plex_truth_list
 
-    String? m2_args
-    String? m2_filtering_args
+    String? m2_extra_args
+    String? m2_filtering_extra_args
 
     File? intervals
 
@@ -68,8 +68,8 @@ workflow HapmapSensitivityAllPlexes {
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
           truth_list = five_plex_truth_list,
-          m2_args = m2_args,
-          m2_filtering_args = m2_filtering_args,
+          m2_extra_args = m2_extra_args,
+          m2_filtering_extra_args = m2_filtering_extra_args,
           prefix = "5plex",
           python_sensitivity_script = python_sensitivity_script,
           intervals = intervals
@@ -92,8 +92,8 @@ workflow HapmapSensitivityAllPlexes {
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
           truth_list = ten_plex_truth_list,
-          m2_args = m2_args,
-          m2_filtering_args = m2_filtering_args,
+          m2_extra_args = m2_extra_args,
+          m2_filtering_extra_args = m2_filtering_extra_args,
           prefix = "10plex",
           python_sensitivity_script = python_sensitivity_script,
           intervals = intervals
@@ -116,12 +116,23 @@ workflow HapmapSensitivityAllPlexes {
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
           truth_list = twenty_plex_truth_list,
-          m2_args = m2_args,
-          m2_filtering_args = m2_filtering_args,
+          m2_extra_args = m2_extra_args,
+          m2_filtering_extra_args = m2_filtering_extra_args,
           prefix = "20plex",
           python_sensitivity_script = python_sensitivity_script,
           intervals = intervals
   }
+
+  Array[File] all_plex_sensitivity_tables = [FivePlex.raw_table, TenPlex.raw_table, TwentyPlex.raw_table]
+
+  call single_plex.CombineTables as AllPlexTable { input: input_tables = all_plex_sensitivity_tables, prefix = "all_plex" }
+
+  call single_plex.AnalyzeSensitivity as AllPlex {
+               input:
+                input_table = AllPlexTable.table,
+                python_sensitivity_script = python_sensitivity_script,
+                prefix = "all_plex"
+    }
 
   output {
       File snp_table_5_plex = FivePlex.snp_table
@@ -129,7 +140,8 @@ workflow HapmapSensitivityAllPlexes {
       File indel_table_5_plex = FivePlex.indel_table
       File indel_plot_5_plex = FivePlex.indel_plot
       File summary_5_plex = FivePlex.summary
-      File jaccard_5_plex = FivePlex.jaccard_table
+      File indel_jaccard_5_plex = FivePlex.indel_jaccard_table
+      File snp_jaccard_5_plex = FivePlex.snp_jaccard_table
       Array[File] tpfn_5_plex = FivePlex.tpfn
       Array[File] tpfn_idx_5_plex = FivePlex.tpfn_idx
       Array[File] ftnfn_5_plex = FivePlex.ftnfn
@@ -139,7 +151,8 @@ workflow HapmapSensitivityAllPlexes {
       File indel_table_10_plex = TenPlex.indel_table
       File indel_plot_10_plex = TenPlex.indel_plot
       File summary_10_plex = TenPlex.summary
-      File jaccard_10_plex = TenPlex.jaccard_table
+      File indel_jaccard_10_plex = TenPlex.indel_jaccard_table
+      File snp_jaccard_10_plex = TenPlex.snp_jaccard_table
       Array[File] tpfn_10_plex = TenPlex.tpfn
       Array[File] tpfn_idx_10_plex = TenPlex.tpfn_idx
       Array[File] ftnfn_10_plex = TenPlex.ftnfn
@@ -149,10 +162,16 @@ workflow HapmapSensitivityAllPlexes {
       File indel_table_20_plex = TwentyPlex.indel_table
       File indel_plot_20_plex = TwentyPlex.indel_plot
       File summary_20_plex = TwentyPlex.summary
-      File jaccard_20_plex = TwentyPlex.jaccard_table
+      File indel_jaccard_20_plex = TwentyPlex.indel_jaccard_table
+      File snp_jaccard_20_plex = TwentyPlex.snp_jaccard_table
       Array[File] tpfn_20_plex = TwentyPlex.tpfn
       Array[File] tpfn_idx_20_plex = TwentyPlex.tpfn_idx
       Array[File] ftnfn_20_plex = TwentyPlex.ftnfn
       Array[File] ftnfn_idx_20_plex = TwentyPlex.ftnfn_idx
+
+      File snp_table_all_plex = AllPlex.snp_table
+      File snp_plot_all_plex = AllPlex.snp_plot
+      File indel_table_all_plex = AllPlex.indel_table
+      File indel_plot_all_plex = AllPlex.indel_plot
   }
 }
