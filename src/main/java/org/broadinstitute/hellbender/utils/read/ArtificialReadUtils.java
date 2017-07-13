@@ -483,8 +483,12 @@ public final class ArtificialReadUtils {
     }
 
     public static List<GATKRead> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
-        GATKRead left = createArtificialRead(header, name, 0, leftStart, readLen);
-        GATKRead right = createArtificialRead(header, name, 0, rightStart, readLen);
+        return createPair(header, name, readLen, 0, leftStart, rightStart, leftIsFirst, leftIsNegative);
+    }
+
+    public static List<GATKRead> createPair(SAMFileHeader header, String name, int readLen, int refIndex, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
+        GATKRead left = createArtificialRead(header, name, refIndex, leftStart, readLen);
+        GATKRead right = createArtificialRead(header, name, refIndex, rightStart, readLen);
 
         left.setIsPaired(true);
         right.setIsPaired(true);
@@ -506,8 +510,8 @@ public final class ArtificialReadUtils {
         right.setIsReverseStrand(!leftIsNegative);
         right.setMateIsReverseStrand(leftIsNegative);
 
-        left.setMatePosition(header.getSequence(0).getSequenceName(), right.getStart());
-        right.setMatePosition(header.getSequence(0).getSequenceName(), left.getStart());
+        left.setMatePosition(header.getSequence(refIndex).getSequenceName(), right.getStart());
+        right.setMatePosition(header.getSequence(refIndex).getSequenceName(), left.getStart());
 
         int isize = rightStart + readLen - leftStart;
         left.setFragmentLength(isize);
