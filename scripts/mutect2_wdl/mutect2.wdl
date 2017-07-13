@@ -175,6 +175,7 @@ workflow Mutect2 {
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
+        File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
   }
 }
 
@@ -200,9 +201,10 @@ task M2 {
   Int preemptible_attempts
   String? m2_extra_args
 
-  command {
+  command <<<
   if [[ "_${normal_bam}" == *.bam ]]; then
-      normal_command_line="-I ${normal_bam} -normal ${normal_sample_name}"
+      samtools view -H ${normal_bam} | sed -n "/SM:/{s/.*SM:\\(\\)/\\1/; s/\\t.*//p ;q};" > normal_name.txt
+      normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
   fi
 
   # Use GATK Jar override if specified
@@ -211,17 +213,19 @@ task M2 {
       GATK_JAR=${gatk4_jar_override}
   fi
 
-    java -Xmx4g -jar $GATK_JAR Mutect2 \
+  samtools view -H ${tumor_bam} | sed -n "/SM:/{s/.*SM:\\(\\)/\\1/; s/\\t.*//p ;q};" > tumor_name.txt
+
+  java -Xmx4g -jar $GATK_JAR Mutect2 \
     -R ${ref_fasta} \
     -I ${tumor_bam} \
-    -tumor ${tumor_sample_name} \
+    -tumor `cat tumor_name.txt` \
     $normal_command_line \
     ${"--germline_resource " + gnomad} \
     ${"--normal_panel " + pon} \
     ${"-L " + intervals} \
     -O "${output_vcf_name}.vcf" \
     ${m2_extra_args}
-  }
+  >>>
 
   runtime {
       docker: "${m2_docker}"
@@ -436,7 +440,7 @@ task oncotate_m2 {
     String? sequencing_center
     String? sequence_source
     File? default_config_file
-    command {
+    command <<<
 
           # fail if *any* command below (not just the last) doesn't return 0, in particular if wget fails
           set -e
@@ -465,7 +469,7 @@ task oncotate_m2 {
             -a Center:${default="Unknown" sequencing_center} \
             -a source:${default="Unknown" sequence_source} \
             ${"--default_config " + default_config_file}
-    }
+    >>>
 
     runtime {
         docker: "${oncotator_docker}"
