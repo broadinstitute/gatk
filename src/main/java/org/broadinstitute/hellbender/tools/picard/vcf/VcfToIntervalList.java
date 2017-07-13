@@ -23,6 +23,8 @@ import java.io.File;
         programGroup = VariantProgramGroup.class
 )
 public final class VcfToIntervalList extends PicardCommandLineProgram {
+    public static final String INCLUDE_FILTERED_LONG_NAME = "includeFiltered";
+    public static final String INCLUDE_FILTERED_SHORT_NAME = "if";
     // The following attributes define the command-line arguments
 
     @Argument(doc = "The VCF input file. The file format is determined by file extension.",
@@ -35,12 +37,18 @@ public final class VcfToIntervalList extends PicardCommandLineProgram {
             doc = "The output Picard Interval List")
     public File OUTPUT;
 
+    @Argument(fullName = INCLUDE_FILTERED_LONG_NAME,
+            shortName = INCLUDE_FILTERED_SHORT_NAME,
+            doc = "Include variants that were filtered in the output interval list.",
+            optional = true)
+    public boolean includeFiltered = false;
+
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
 
-        final IntervalList intervalList = VCFFileReader.fromVcf(INPUT);
+        final IntervalList intervalList = VCFFileReader.fromVcf(INPUT, includeFiltered);
         // Sort and write the output
         intervalList.uniqued().write(OUTPUT);
         return null;
