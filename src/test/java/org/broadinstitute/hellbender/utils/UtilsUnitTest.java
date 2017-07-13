@@ -17,6 +17,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -518,6 +519,15 @@ public final class UtilsUnitTest extends BaseTest {
         // Restore the logging level back to the original level in place at the beginning of the test
         LoggingUtils.setLoggingLevel(LoggingUtils.levelFromLog4jLevel(initialLevel));
         Assert.assertTrue(logger.getLevel() == initialLevel);
+    }
+
+    @Test
+    public void testSendLogTofFile() throws IOException{
+        final String fileContents = "Hello world";
+        final File logFile = BaseTest.createTempFile("logFile", "txt");
+        LoggingUtils.sendLogToFile(logFile.getAbsolutePath());
+        logger.warn(fileContents);
+        Assert.assertTrue(FileUtils.readFileToString(logFile).contains(fileContents));
     }
 
     @Test(dataProvider = "skimArrayData")
