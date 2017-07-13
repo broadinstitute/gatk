@@ -156,18 +156,21 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         }
 
         if (!QUIET) {
-            System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
-                                "] " + commandLine);
+            final String zoneDateTimeMsg = "[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
+                    "] " + commandLine;
+            System.err.println(zoneDateTimeMsg);
+            logger.trace(zoneDateTimeMsg);
 
             // Output a one liner about who/where and what software/os we're running on
             try {
-                System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
+                final String softwareOsMsg = "[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
                         "] Executing as " +
                         System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
                         " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
                         " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
-                        " " + System.getProperty("java.runtime.version") +
-                        "; Version: " + getCommandLineParser().getVersion());
+                        " " + System.getProperty("java.runtime.version");
+                System.err.println(softwareOsMsg);
+                logger.trace(zoneDateTimeMsg);
 
                 // Print important settings to the logger:
                 printSettings();
@@ -183,9 +186,13 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 final ZonedDateTime endDateTime = ZonedDateTime.now();
                 final double elapsedMinutes = (Duration.between(startDateTime, endDateTime).toMillis()) / (1000d * 60d);
                 final String elapsedString  = new DecimalFormat("#,##0.00").format(elapsedMinutes);
-                System.err.println("[" + endDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
-                                    "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.");
-                System.err.println("Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory());
+                final String elapsedTimeMsg = "[" + endDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
+                        "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.";
+                System.err.println(elapsedTimeMsg);
+                logger.trace(elapsedTimeMsg);
+                final String totalMemoryMsg = "Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory();
+                System.err.println(totalMemoryMsg);
+                logger.trace(totalMemoryMsg);
             }
         }
     }

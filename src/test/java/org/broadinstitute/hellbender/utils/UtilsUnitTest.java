@@ -507,12 +507,21 @@ public final class UtilsUnitTest extends BaseTest {
     }
 
     @Test
-    public void testSendLogTofFile() throws IOException{
+    public void testSendLogTofFile() throws IOException {
         final String fileContents = "Hello world";
+        final String moreFileContents = "More Hello world";
         final File logFile = BaseTest.createTempFile("logFile", "txt");
+        final File logFile1 = BaseTest.createTempFile("logFile1", "txt");
         LoggingUtils.sendLogToFile(logFile.getAbsolutePath());
+        LoggingUtils.sendLogToFile(logFile1.getAbsolutePath());
         logger.warn(fileContents);
         Assert.assertTrue(FileUtils.readFileToString(logFile).contains(fileContents));
+        Assert.assertTrue(FileUtils.readFileToString(logFile1).contains(fileContents));
+        logger.warn(moreFileContents);
+        Assert.assertTrue(FileUtils.readFileToString(logFile).contains(fileContents));
+        Assert.assertTrue(FileUtils.readFileToString(logFile).contains(moreFileContents));
+        Assert.assertTrue(FileUtils.readFileToString(logFile1).contains(fileContents));
+        Assert.assertTrue(FileUtils.readFileToString(logFile1).contains(moreFileContents));
     }
 
     @Test(dataProvider = "skimArrayData")

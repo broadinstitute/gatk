@@ -104,8 +104,9 @@ public class LoggingUtils {
             final Configuration loggerContextConfig = loggerContext.getConfiguration();
             final Layout<?> layout = PatternLayout.createLayout(PATTERN_STRING, null, loggerContextConfig,
                     null, null, false, false, null, null);
-            final FileAppender appender = FileAppender.createAppender(fileName, "", "", fileName, "",
+            final FileAppender appender = FileAppender.createAppender(fileName, "false", "", fileName, "",
                     "", "", "", layout, null, "", fileName, null);
+            appender.start();
             loggerContextConfig.addLoggerAppender((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger(), appender);
         }
     }
@@ -128,7 +129,7 @@ public class LoggingUtils {
         setMinLogLoggingLevel(verbosity);
     }
 
-    private static void setLog4JLoggingLevel(Log.LogLevel verbosity) {
+    private static void setLog4JLoggingLevel(final Log.LogLevel verbosity) {
         // Now establish the logging level used by log4j by propagating the requested
         // logging level to all loggers associated with our logging configuration.
         final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
