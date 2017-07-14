@@ -152,6 +152,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
                 throw new UserException.CouldNotCreateOutputFile(outputPath, "writing failed", e);
             }
         }
+        aligner.close();
     }
 
 }

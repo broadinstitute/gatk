@@ -198,11 +198,8 @@ public class PSFilterTest extends CommandLineProgramTest {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final JavaRDD<GATKRead> reads = ctx.parallelize(readList);
 
-        //Close any open images
-        BwaMemIndexSingleton.closeAllDistributedInstances(ctx);
-
-        //Run filter
         final List<GATKRead> result = PSFilter.doBwaFilter(reads, BWA_IMAGE_PATH, 19, 1, 70, 65).collect();
+        BwaMemIndexSingleton.closeAllDistributedInstances(ctx);
         Assert.assertEquals(result.size(), expectedNum);
     }
 

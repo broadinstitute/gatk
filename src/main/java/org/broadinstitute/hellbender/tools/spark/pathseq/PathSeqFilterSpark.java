@@ -103,6 +103,7 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         } else {
             logger.info("No unpaired reads to write - BAM will not be written.");
         }
+        filter.close();
     }
 
     private void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads,

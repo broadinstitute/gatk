@@ -132,6 +132,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         if (!bPairedSuccess && !bUnpairedSuccess) {
             throw new UserException.BadInput("No reads were loaded. Ensure --pairedInput and/or --unpairedInput are set and valid.");
         }
+        aligner.close();
     }
 
 }
