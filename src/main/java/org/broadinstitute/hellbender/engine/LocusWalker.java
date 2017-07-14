@@ -9,18 +9,14 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.iterators.IntervalAlignmentContextIterator;
-import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
-import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * A LocusWalker is a tool that processes reads that overlap a single position in a reference at a time from
@@ -159,40 +155,26 @@ public abstract class LocusWalker extends GATKTool {
         final CountingReadFilter countedFilter = makeReadFilter();
         // get the filter and transformed iterator
         final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
-        // get the LIBS
-        final LocusIteratorByState libs = new LocusIteratorByState(readIterator, getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
-        final Iterator<AlignmentContext> iterator = createAlignmentContextIterator(header, libs);
+
+        final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
+        alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
+        alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
+        alignmentContextIteratorBuilder.setIncludeDeletions(includeDeletions());
+        alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
+        alignmentContextIteratorBuilder.setIncludeNs(includeNs());
+
+        final Iterator<AlignmentContext> iterator = alignmentContextIteratorBuilder.build(
+                readIterator, header, intervalsForTraversal, getBestAvailableSequenceDictionary(),
+                hasReference());
 
         // iterate over each alignment, and apply the function
-        final Spliterator<AlignmentContext> spliterator = Spliterators.spliteratorUnknownSize(iterator, 0);
-        StreamSupport.stream(spliterator, false)
-            .forEach(alignmentContext -> {
+        iterator.forEachRemaining(alignmentContext -> {
                         final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
                         apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
                         progressMeter.update(alignmentInterval);
                 }
             );
         logger.info(countedFilter.getSummaryLine());
-    }
-
-    private Iterator<AlignmentContext> createAlignmentContextIterator(SAMFileHeader header, LocusIteratorByState libs) {
-        Iterator<AlignmentContext> iterator;
-
-        validateEmitEmptyLociParameters();
-        if (emitEmptyLoci()) {
-
-            // If no intervals were specified, then use the entire reference (or best available sequence dictionary).
-            if (intervalsForTraversal == null) {
-                intervalsForTraversal = IntervalUtils.getAllIntervalsForReference(getBestAvailableSequenceDictionary());
-            }
-            final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(intervalsForTraversal.iterator());
-            iterator =  new IntervalAlignmentContextIterator(libs, intervalLocusIterator, header.getSequenceDictionary());
-
-        } else {
-            // prepare the iterator
-            iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()) : libs;
-        }
-        return iterator;
     }
 
     /**
