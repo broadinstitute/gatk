@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
 import java.time.Duration;
@@ -134,7 +135,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         this.defaultHeaders.add(new StringHeader("Started on: " +
                                 startDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG))));
 
-        LoggingUtils.sendLogToFile(logToFile);
+        LoggingUtils.setLoggingFile(logToFile);
 
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
@@ -159,7 +160,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             final String zoneDateTimeMsg = "[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
                     "] " + commandLine;
             System.err.println(zoneDateTimeMsg);
-            logger.trace(zoneDateTimeMsg);
+            logger.info(zoneDateTimeMsg);
 
             // Output a one liner about who/where and what software/os we're running on
             try {
@@ -170,7 +171,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                         " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
                         " " + System.getProperty("java.runtime.version");
                 System.err.println(softwareOsMsg);
-                logger.trace(zoneDateTimeMsg);
+                logger.info(zoneDateTimeMsg);
 
                 // Print important settings to the logger:
                 printSettings();
@@ -189,10 +190,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 final String elapsedTimeMsg = "[" + endDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
                         "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.";
                 System.err.println(elapsedTimeMsg);
-                logger.trace(elapsedTimeMsg);
+                logger.info(elapsedTimeMsg);
                 final String totalMemoryMsg = "Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory();
                 System.err.println(totalMemoryMsg);
-                logger.trace(totalMemoryMsg);
+                logger.info(totalMemoryMsg);
             }
         }
     }

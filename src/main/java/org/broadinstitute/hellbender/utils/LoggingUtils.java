@@ -5,7 +5,6 @@ import com.google.common.collect.EnumHashBiMap;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.FileAppender;
@@ -14,9 +13,8 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
-import java.util.logging.Logger;
+import java.io.IOException;
+import java.util.logging.*;
 
 /**
  * Logging utilities.
@@ -44,6 +42,8 @@ public class LoggingUtils {
         loggingLevelNamespaceMap.put(Log.LogLevel.DEBUG, Level.DEBUG);
     }
 
+    // Map between the logging level used throughout Hellbender code (which is the Picard Log.LogLevel enum),
+    // and the Java core log Level values.
     private static BiMap<Log.LogLevel, java.util.logging.Level> javaUtilLevelNamespaceMap;
     static {
         javaUtilLevelNamespaceMap = EnumHashBiMap.create(Log.LogLevel.class);
@@ -86,7 +86,10 @@ public class LoggingUtils {
             consoleHandler = new ConsoleHandler();
             topLogger.addHandler(consoleHandler);
         }
-        consoleHandler.setLevel(levelToJavaUtilLevel(verbosity));
+
+        for (Handler handler : topLogger.getHandlers()) {
+            handler.setLevel(levelToJavaUtilLevel(verbosity));
+        }
     }
 
     private static java.util.logging.Level levelToJavaUtilLevel(Log.LogLevel picardLevel) {
@@ -94,20 +97,53 @@ public class LoggingUtils {
     }
 
     /**
-     * Send log output to file if file name is not null.
+     * Set file to send logging output if file name is not null.
      *
      * @param fileName  File path for log output
      */
-    public static void sendLogToFile(final String fileName) {
+    public static void setLoggingFile(final String fileName) {
         if (fileName != null) {
-            final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
-            final Configuration loggerContextConfig = loggerContext.getConfiguration();
-            final Layout<?> layout = PatternLayout.createLayout(PATTERN_STRING, null, loggerContextConfig,
-                    null, null, false, false, null, null);
-            final FileAppender appender = FileAppender.createAppender(fileName, "false", "", fileName, "",
-                    "", "", "", layout, null, "", fileName, null);
-            appender.start();
-            loggerContextConfig.addLoggerAppender((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger(), appender);
+            // send the log4j log output to file
+            setLog4JLoggingFile(fileName);
+
+            // send the java.util.logging output to file
+            setJavaUtilLoggingFile(fileName);
+        }
+    }
+
+    /**
+     * Set log4j logging file
+     *
+     * @param fileName File path for log output
+     */
+    public static void setLog4JLoggingFile(final String fileName) {
+        final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+        final Configuration loggerContextConfig = loggerContext.getConfiguration();
+        final Layout<?> layout = PatternLayout.createLayout(PATTERN_STRING, null, loggerContextConfig,
+                null, null, false, false, null, null);
+        final FileAppender appender = FileAppender.createAppender(fileName, "true", "", fileName, "",
+                "", "", "", layout, null, "", fileName, null);
+        appender.start();
+        loggerContextConfig.addLoggerAppender((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger(), appender);
+    }
+
+    /**
+     * Set java.util.logging logging file
+     * Taken from
+     * https://stackoverflow.com/questions/15758685/how-to-write-logs-in-text-file-when-using-java-util-logging-logger
+     *
+     * @param fileName File path for log output
+     */
+    public static void setJavaUtilLoggingFile(final String fileName) {
+        final Logger topLogger = java.util.logging.Logger.getLogger("");
+
+        try {
+            final FileHandler fh = new FileHandler(fileName);
+            topLogger.addHandler(fh);
+            final SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+        } catch (final IOException ex) {
+            System.err.print("Could not send log to " + fileName +  " for java.util.logging.Logger : " + ex.getMessage());
         }
     }
 
