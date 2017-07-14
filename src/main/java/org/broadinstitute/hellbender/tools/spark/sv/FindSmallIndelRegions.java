@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.netflix.servo.util.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -58,8 +60,12 @@ public final class FindSmallIndelRegions extends GATKSparkTool {
                 })
                 .collect();
 
+        System.out.println();
+        final List<SAMSequenceRecord> seqs = header.getSequenceDictionary().getSequences();
         for ( final BreakpointEvidence evidence : evidenceList ) {
-            System.out.println(evidence);
+            final SVInterval interval = evidence.getLocation();
+            final String contigName = seqs.get(interval.getContig()).getSequenceName();
+            System.out.println(contigName + "\t" + (interval.getStart() + 1) + "\t" + interval.getEnd());
         }
     }
 
@@ -117,6 +123,9 @@ public final class FindSmallIndelRegions extends GATKSparkTool {
                 } else {
                     curContig = read.getContig();
                     curEnd = read.getStart() + BLOCK_SIZE;
+                    // clear 1st-half window when we switch contigs
+                    final int oldIdx = fillIdx ^ 1;
+                    libraryToHistoPairMap.values().forEach(histPair -> histPair[oldIdx].clear());
                 }
             }
             final IntHistogram[] histoPair =
@@ -147,5 +156,8 @@ public final class FindSmallIndelRegions extends GATKSparkTool {
             }
             fillIdx = oldIdx;
         }
+
+        @VisibleForTesting
+        Map<String, IntHistogram[]> getLibraryToHistoPairMap() { return libraryToHistoPairMap; }
     }
 }
