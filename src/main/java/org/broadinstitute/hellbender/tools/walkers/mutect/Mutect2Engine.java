@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
@@ -27,14 +28,13 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.StreamSupport;
 
 /**
  * Created by davidben on 9/15/16.
@@ -48,12 +48,18 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private static final Logger logger = LogManager.getLogger(Mutect2Engine.class);
     private final static List<VariantContext> NO_CALLS = Collections.emptyList();
+    public static final int INDEL_START_QUAL = 30;
+    public static final int INDEL_CONTINUATION_QUAL = 10;
+    public static final double MAX_ALT_FRACTION_IN_NORMAL = 0.3;
+    public static final int MAX_NORMAL_QUAL_SUM = 100;
+
 
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
 
     private static final int MIN_READ_LENGTH = 30;
     private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
+    public static final int MINIMUM_BASE_QUALITY = 6;   // for active region determination
 
     private SampleList samplesList;
 
@@ -275,55 +281,79 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
         final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
+
         if( context == null || context.getBasePileup().isEmpty() ) {
             return new ActivityProfileState(refInterval, 0.0);
         }
 
-        // because new pileups must be allocated when getting the tumor and normal pileups, we first
-        // opportunistically check whether the combined pileup has no evidence of variation, which we will define as
-        // having at most one variant read
-        final int totalNonRef = countNonRef(refBase, context);
-        if (totalNonRef < MTAC.minVariantsInPileup) {
+        final ReadPileup pileup = context.getBasePileup();
+        final ReadPileup tumorPileup = pileup.getPileupForSample(MTAC.tumorSampleName, header);
+        final Pair<Integer, Double> tumorAltCountAndQualSum = altCountAndQualSum(tumorPileup, refBase);
+        final int tumorAltCount = tumorAltCountAndQualSum.getFirst();
+        final int tumorRefCount = tumorPileup.size() - tumorAltCount;
+
+        final double tumorLog10Odds = -QualityUtils.qualToErrorProbLog10(tumorAltCountAndQualSum.getSecond()) +
+                MathUtils.log10Factorial(tumorAltCount) + MathUtils.log10Factorial(tumorRefCount) - MathUtils.log10Factorial(tumorPileup.size() + 1);
+
+        if (tumorLog10Odds < MTAC.initialTumorLodThreshold) {
             return new ActivityProfileState(refInterval, 0.0);
+        } else if (hasNormal()) {
+            final ReadPileup normalPileup = pileup.getPileupForSample(MTAC.normalSampleName, header);
+            final Pair<Integer, Double> normalAltCountAndQualSum = altCountAndQualSum(normalPileup, refBase);
+            final int normalAltCount = normalAltCountAndQualSum.getFirst();
+            final double normalQualSum = normalAltCountAndQualSum.getSecond();
+            if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
+                return new ActivityProfileState(refInterval, 0.0);
+            }
+        } else {
+            final List<VariantContext> germline = featureContext.getValues(MTAC.germlineResource, refInterval);
+            if (!germline.isEmpty() && germline.get(0).getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, 0.0).get(0) > MTAC.maxPopulationAlleleFrequency) {
+                return new ActivityProfileState(refInterval, 0.0);
+            }
         }
 
-        final Map<String, AlignmentContext> splitContexts = context.splitContextBySampleName(header);
-        final AlignmentContext tumorContext = splitContexts.get(MTAC.tumorSampleName);
-        final AlignmentContext normalContext = splitContexts.get(MTAC.normalSampleName);
-
-        // if there are no tumor reads... there is no activity!
-        if (tumorContext == null) {
-            return new ActivityProfileState(refInterval, 0);
-        }
-
-        final int tumorNonRef = countNonRef(refBase, tumorContext);
-        if (tumorNonRef < MTAC.minVariantsInPileup) {
-            return new ActivityProfileState(refInterval, 0.0);
-        }
-
-        // since errors are rare, the number of errors (if reads are independent) is approximately a Poisson random variable,
-        // with mean equal to its variance
-        final double expectedTumorNonRefDueToError = StreamSupport.stream(tumorContext.getBasePileup().spliterator(), false)
-                .mapToDouble(pe -> QualityUtils.qualToErrorProb(pe.getQual()))
-                .sum();
-        final double tumorNonRefStdev = Math.sqrt(expectedTumorNonRefDueToError);
-
-        if (tumorNonRef < expectedTumorNonRefDueToError + MTAC.tumorStandardDeviationsThreshold * tumorNonRefStdev) {
-            return new ActivityProfileState(refInterval, 0.0);
-        }
-
-        if (hasNormal() && normalContext != null && countNonRef(refBase, normalContext) > normalContext.getBasePileup().size() * MTAC.minNormalVariantFraction) {
+        if (!MTAC.genotypePonSites && !featureContext.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
             return new ActivityProfileState(refInterval, 0.0);
         }
 
         return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
     }
 
-    private boolean isNonRef(final byte refBase, final PileupElement p) {
-        return p.getBase() != refBase || p.isDeletion() || p.isBeforeDeletionStart() || p.isAfterDeletionEnd() || p.isBeforeInsertion() || p.isAfterInsertion() || p.isNextToSoftClip();
+    private static int getCurrentOrFollowingIndelLength(final PileupElement pe) {
+        return pe.isDeletion() ? pe.getCurrentCigarElement().getLength() : pe.getLengthOfImmediatelyFollowingIndel();
     }
 
-    private int countNonRef(byte refBase, AlignmentContext context) {
-        return context.getBasePileup().getNumberOfElements(p -> isNonRef(refBase, p));
+    private static double indelQual(final int indelLength) {
+        return INDEL_START_QUAL + (indelLength - 1) * INDEL_CONTINUATION_QUAL;
+    }
+
+    private static Pair<Integer, Double> altCountAndQualSum(final ReadPileup pileup, final byte refBase) {
+        int altCount = 0;
+        double qualSum = 0;
+
+        for (final PileupElement pe : pileup) {
+            final int indelLength = getCurrentOrFollowingIndelLength(pe);
+            if (indelLength > 0) {
+                altCount++;
+                qualSum += indelQual(indelLength);
+            } else if (isNextToUsefulSoftClip(pe)) {
+                altCount++;
+                qualSum += indelQual(1);
+            } else if (pe.getBase() != refBase && pe.getQual() > MINIMUM_BASE_QUALITY) {
+                altCount++;
+                qualSum += pe.getQual();
+            }
+        }
+
+        return new Pair<>(altCount, qualSum);
+    }
+
+    // check that we're next to a soft clip that is not due to a read that got out of sync and ended in a bunch of BQ2's
+    // we only need to check the next base's quality
+    private static boolean isNextToUsefulSoftClip(final PileupElement pe) {
+        final int offset = pe.getOffset();
+        return pe.getQual() > MINIMUM_BASE_QUALITY &&
+                ((pe.isBeforeSoftClip() && pe.getRead().getBaseQuality(offset + 1) > MINIMUM_BASE_QUALITY)
+                        || (pe.isAfterSoftClip() && pe.getRead().getBaseQuality(offset - 1) > MINIMUM_BASE_QUALITY));
     }
 }
