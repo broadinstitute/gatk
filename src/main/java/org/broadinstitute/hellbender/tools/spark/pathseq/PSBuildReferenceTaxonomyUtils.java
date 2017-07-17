@@ -19,6 +19,7 @@ public final class PSBuildReferenceTaxonomyUtils {
 
     protected final static Logger logger = LogManager.getLogger(PSBuildReferenceTaxonomyUtils.class);
     private final static String ROOT_ID = "1"; //NCBI root node taxonomic id
+    final static String VIRUS_ID = "10239";
 
     /**
      * Build set of accessions contained in the reference.
@@ -212,20 +213,34 @@ public final class PSBuildReferenceTaxonomyUtils {
         } else {
             taxonProperties = new PSPathogenReferenceTaxonProperties();
         }
-        taxonProperties.accessions.add(name);
-        taxonProperties.length += length;
+        taxonProperties.addAccession(name, length);
         taxIdToProperties.put(accession, taxonProperties);
+    }
+
+    /**
+     * Removes nodes not in the tree from the tax_id-to-properties map
+     */
+    static void removeUnusedTaxIds(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties,
+                                   final PSTree tree) {
+        final Set<String> unusedNodes = new HashSet<>(taxIdToProperties.keySet());
+        unusedNodes.removeAll(tree.getNodeIDs());
+        taxIdToProperties.keySet().removeAll(unusedNodes);
     }
 
     /**
      * Create reference_name-to-taxid map (just an inversion on taxIdToProperties)
      */
-    protected static Map<String, String> buildAccessionToTaxIdMap(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+    protected static Map<String, String> buildAccessionToTaxIdMap(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties,
+                                                                  final PSTree tree,
+                                                                  final int minNonVirusContigLength) {
         final Map<String, String> accessionToTaxId = new HashMap<>();
         for (final String taxId : taxIdToProperties.keySet()) {
+            final boolean isVirus = tree.getPathOf(taxId).contains(VIRUS_ID);
             final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
-            for (String name : taxonProperties.accessions) {
-                accessionToTaxId.put(name, taxId);
+            for (String name : taxonProperties.getAccessions()) {
+                if (isVirus || taxonProperties.getAccessionLength(name) >= minNonVirusContigLength) {
+                    accessionToTaxId.put(name, taxId);
+                }
             }
         }
         return accessionToTaxId;
@@ -243,7 +258,7 @@ public final class PSBuildReferenceTaxonomyUtils {
             if (!taxId.equals(ROOT_ID)) {
                 final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
                 if (taxonProperties.name != null && taxonProperties.parentTaxId != null && taxonProperties.rank != null) {
-                    tree.addNode(taxId, taxonProperties.name, taxonProperties.parentTaxId, taxonProperties.length, taxonProperties.rank);
+                    tree.addNode(taxId, taxonProperties.name, taxonProperties.parentTaxId, taxonProperties.getTotalLength(), taxonProperties.rank);
                 } else {
                     invalidIds.add(taxId);
                 }
@@ -261,7 +276,7 @@ public final class PSBuildReferenceTaxonomyUtils {
         //Trim tree down to nodes corresponding only to reference taxa (and their ancestors)
         final Set<String> relevantNodes = new HashSet<>();
         for (final String tax : taxIdToProperties.keySet()) {
-            if (!taxIdToProperties.get(tax).accessions.isEmpty()) {
+            if (!taxIdToProperties.get(tax).getAccessions().isEmpty()) {
                 if (tree.hasNode(tax)) {
                     relevantNodes.addAll(tree.getPathOf(tax));
                 }

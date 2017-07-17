@@ -55,6 +55,9 @@ public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
     @Argument(doc = "Local path to taxonomy dump tarball (taxdump.tar.gz available at ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/)",
             fullName = "taxdumpPath")
     public String taxdumpPath;
+    @Argument(doc = "Minimum reference contig length for non-viruses",
+            fullName = "minNonVirusContigLength")
+    public int minNonVirusContigLength = 0;
 
     @Override
     public Object doWork() {
@@ -114,7 +117,8 @@ public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
         //Build the taxonomic tree and a map from accession ID's to taxonomic ID's
         logger.info("Building taxonomic database...");
         final PSTree tree = PSBuildReferenceTaxonomyUtils.buildTaxonomicTree(taxIdToProperties);
-        final Map<String, String> accessionToTaxId = PSBuildReferenceTaxonomyUtils.buildAccessionToTaxIdMap(taxIdToProperties);
+        PSBuildReferenceTaxonomyUtils.removeUnusedTaxIds(taxIdToProperties, tree);
+        final Map<String, String> accessionToTaxId = PSBuildReferenceTaxonomyUtils.buildAccessionToTaxIdMap(taxIdToProperties, tree, minNonVirusContigLength);
 
         //Write output
         PSBuildReferenceTaxonomyUtils.writeTaxonomyDatabase(outputPath, new PSTaxonomyDatabase(tree, accessionToTaxId));
