@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.EnumHashBiMap;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -13,7 +14,7 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.logging.*;
 
 /**
@@ -30,6 +31,39 @@ import java.util.logging.*;
 public class LoggingUtils {
 
     private static final String PATTERN_STRING = "%-5p %d{HH:mm:ss,SSS} %C{1} - %m %n";
+
+    /**
+     * Class that adds the ability for MinLog to write to file
+     */
+    static class FileMinLogger extends com.esotericsoftware.minlog.Log.Logger {
+        static private BufferedWriter writer;
+
+        public FileMinLogger(final String path) {
+            try {
+                writer = new BufferedWriter(new FileWriter(path));
+            } catch (final IOException ex) {
+                System.err.println("Could not construct FileMinLogger : " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        }
+
+        @Override
+        protected void print(final String message) {
+            try {
+                writer.write(message);
+            } catch (final IOException ex) {
+                System.err.println("Could not write " + message + " : " + ex.getMessage());
+            }
+        }
+
+        protected void close() {
+            try {
+                writer.close();
+            } catch (final IOException ex) {
+                System.err.println("Could not close writer : " + ex.getMessage());
+            }
+        }
+    }
 
     // Map between the logging level used throughout Hellbender code (which is the Picard Log.LogLevel enum),
     // and the log4j log Level values.
@@ -53,7 +87,6 @@ public class LoggingUtils {
         javaUtilLevelNamespaceMap.put(Log.LogLevel.DEBUG, java.util.logging.Level.FINEST);
     }
 
-
     // Package-private for unit test access
     static Log.LogLevel levelFromLog4jLevel(Level log4jLevel) {
         return loggingLevelNamespaceMap.inverse().get(log4jLevel);
@@ -63,9 +96,8 @@ public class LoggingUtils {
         return loggingLevelNamespaceMap.get(picardLevel);
     }
 
-
     /**
-     * Set the java.util.logging level since some of our dependencies write messages using it.
+     * Set the {@link java.util.logging} level since some of our dependencies write messages using it.
      *
      * Taken with modifications from a post by michel.iamit
      * http://stackoverflow.com/users/369060/michel-iamit
@@ -97,74 +129,8 @@ public class LoggingUtils {
     }
 
     /**
-     * Set file to send logging output if file name is not null.
-     *
-     * @param fileName  File path for log output
+     * set the logging level for {@link org.apache.logging.log4j.core.Logger}
      */
-    public static void setLoggingFile(final String fileName) {
-        if (fileName != null) {
-            // send the log4j log output to file
-            setLog4JLoggingFile(fileName);
-
-            // send the java.util.logging output to file
-            setJavaUtilLoggingFile(fileName);
-        }
-    }
-
-    /**
-     * Set log4j logging file
-     *
-     * @param fileName File path for log output
-     */
-    public static void setLog4JLoggingFile(final String fileName) {
-        final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
-        final Configuration loggerContextConfig = loggerContext.getConfiguration();
-        final Layout<?> layout = PatternLayout.createLayout(PATTERN_STRING, null, loggerContextConfig,
-                null, null, false, false, null, null);
-        final FileAppender appender = FileAppender.createAppender(fileName, "true", "", fileName, "",
-                "", "", "", layout, null, "", fileName, null);
-        appender.start();
-        loggerContextConfig.addLoggerAppender((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger(), appender);
-    }
-
-    /**
-     * Set java.util.logging logging file
-     * Taken from
-     * https://stackoverflow.com/questions/15758685/how-to-write-logs-in-text-file-when-using-java-util-logging-logger
-     *
-     * @param fileName File path for log output
-     */
-    public static void setJavaUtilLoggingFile(final String fileName) {
-        final Logger topLogger = java.util.logging.Logger.getLogger("");
-
-        try {
-            final FileHandler fh = new FileHandler(fileName);
-            topLogger.addHandler(fh);
-            final SimpleFormatter formatter = new SimpleFormatter();
-            fh.setFormatter(formatter);
-        } catch (final IOException ex) {
-            System.err.print("Could not send log to " + fileName +  " for java.util.logging.Logger : " + ex.getMessage());
-        }
-    }
-
-    /**
-     * Propagate the verbosity level to Picard, log4j, the java built in logger, and Kryo's MinLog
-     */
-    public static void setLoggingLevel(final Log.LogLevel verbosity) {
-
-        // Call the Picard API to establish the logging level used by Picard
-        Log.setGlobalLogLevel(verbosity);
-
-        // set the Log4JLoggingLevel
-        setLog4JLoggingLevel(verbosity);
-
-        // set the java.util.logging Level
-        setJavaUtilLoggingLevel(verbosity);
-
-        // set the esotericsoft MinLog level, this is used by kryo
-        setMinLogLoggingLevel(verbosity);
-    }
-
     private static void setLog4JLoggingLevel(final Log.LogLevel verbosity) {
         // Now establish the logging level used by log4j by propagating the requested
         // logging level to all loggers associated with our logging configuration.
@@ -188,6 +154,84 @@ public class LoggingUtils {
             case ERROR: com.esotericsoftware.minlog.Log.ERROR(); break;
             default:
                 throw new GATKException("This log level is not implemented properly: " + verbosity);
+        }
+    }
+
+    /**
+     * Propagate the verbosity level to Picard, log4j, the java built in logger, and Kryo's MinLog
+     */
+    public static void setLoggingLevel(final Log.LogLevel verbosity) {
+
+        // Call the Picard API to establish the logging level used by Picard
+        Log.setGlobalLogLevel(verbosity);
+
+        // set the Log4JLoggingLevel
+        setLog4JLoggingLevel(verbosity);
+
+        // set the java.util.logging Level
+        setJavaUtilLoggingLevel(verbosity);
+
+        // set the Esotericsoft MinLog level, this is used by kryo
+        setMinLogLoggingLevel(verbosity);
+    }
+
+    /**
+     * Set the {@link org.apache.logging.log4j.core.Logger} to log to file
+     *
+     */
+    private static void setLog4JLoggingFile(final String path) {
+        final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+        final Configuration loggerContextConfig = loggerContext.getConfiguration();
+        final Layout<?> layout = PatternLayout.createLayout(PATTERN_STRING, null, loggerContextConfig,
+                null, null, false, false, null, null);
+        final FileAppender appender = FileAppender.createAppender(path, "true", "", path, "",
+                "", "", "", layout, null, "", path, null);
+        appender.start();
+        loggerContextConfig.addLoggerAppender((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger(), appender);
+    }
+
+    /**
+     * Set the {@link java.util.logging} to log to file
+     * Taken from
+     * https://stackoverflow.com/questions/15758685/how-to-write-logs-in-text-file-when-using-java-util-logging-logger
+     *
+     */
+    private static void setJavaUtilLoggingFile(final String path) {
+        final Logger topLogger = java.util.logging.Logger.getLogger("");
+
+        try {
+            final FileHandler fh = new FileHandler(path);
+            topLogger.addHandler(fh);
+            final SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+        } catch (final IOException ex) {
+            System.err.println("Could not send log to " + path +  " for java.util.logging.Logger : " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Set the {@link com.esotericsoftware.minlog.Log} to log to file
+     *
+     */
+    private static void setMinLogLoggingFile(final String path) {
+        com.esotericsoftware.minlog.Log.setLogger(new FileMinLogger(path));
+    }
+
+    /**
+     * Send logging output to file if file name is not null.
+     *
+     * @param path  File path for log output
+     */
+    public static void setLoggingFile(final String path) {
+        if (path != null) {
+            // set log4j log output to file
+            setLog4JLoggingFile(path);
+
+            // set the java.util.logging output to file
+            setJavaUtilLoggingFile(path);
+
+            // set the Esotericsoft MinLog output to file, this is used by kryo
+            setMinLogLoggingFile(path);
         }
     }
 }
