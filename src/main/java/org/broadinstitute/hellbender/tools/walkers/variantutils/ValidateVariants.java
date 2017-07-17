@@ -17,6 +17,8 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 
@@ -140,28 +142,39 @@ public final class ValidateVariants extends VariantWalker {
     /**
      * By default, even filtered records are validated.
      */
-    @Argument(fullName = "doNotValidateFilteredRecords", shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true)
+    @Argument(fullName = "doNotValidateFilteredRecords", shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true, mutex = "validateGVCF")
     Boolean DO_NOT_VALIDATE_FILTERED = false;
 
     @Argument(fullName = "warnOnErrors", shortName = "warnOnErrors", doc = "just emit warnings on errors instead of terminating the run at the first instance", optional = true)
     Boolean WARN_ON_ERROR = false;
 
     /**
+     *  Validate this file as a gvcf. In particular, every variant must include a <NON_REF> allele, and that
+     *  every base in the territory under consideration is covered by a variant (or a reference block).
+     *  If you specifed intervals (using -L or -XL) to restrict analysis to a subset of genomic regions,
+     *  those intervals will need to be covered in a valid gvcf.
+     */
+    @Argument(fullName = "validateGVCF", shortName = "gvcf", doc = "Validate this file as a GVCF", optional = true, mutex = "doNotValidateFilteredRecords")
+    Boolean VALIDATE_GVCF = false;
+
+    /**
      * Contains final set of validation to apply.
      */
     private Collection<ValidationType> validationTypes;
 
-    @Override
+    private GenomeLocSortedSet genomeLocSortedSet;
+
     public void onTraversalStart() {
+        if (VALIDATE_GVCF)
+            genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(getBestAvailableSequenceDictionary()));
         validationTypes = calculateValidationTypesToApply(excludeTypes);
     }
 
     @Override
     public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
-        if ( DO_NOT_VALIDATE_FILTERED && vc.isFiltered() ) {
+        if (DO_NOT_VALIDATE_FILTERED && vc.isFiltered()) {
             return;
         }
-
         // get the true reference allele
         final Allele reportedRefAllele = vc.getReference();
         final int refLength = reportedRefAllele.length();
@@ -169,6 +182,11 @@ public final class ValidateVariants extends VariantWalker {
         final Allele observedRefAllele = hasReference() ? Allele.create(Arrays.copyOf(ref.getBases(), refLength)) : null;
 
         final Set<String> rsIDs = getRSIDs(featureContext);
+
+        if (VALIDATE_GVCF) {
+            genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), ref.getInterval().getStart(), vc.getEnd()), true);
+            ValidateGVCFVariant(vc);
+        }
 
         for (final ValidationType t : validationTypes) {
             try{
@@ -181,6 +199,26 @@ public final class ValidateVariants extends VariantWalker {
                 }
             }
         }
+    }
+
+    @Override
+    public Object onTraversalSuccess() {
+        if (VALIDATE_GVCF) {
+            GenomeLocSortedSet intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary())));
+
+            final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(genomeLocSortedSet);
+            if (uncoveredIntervals.coveredSize() > 0) {
+                final UserException e = new UserException("A GVCF must cover the entire region. Found " + uncoveredIntervals.coveredSize() +
+                        " loci with no VariantContext covering it. The first uncovered segment is:" +
+                        uncoveredIntervals.iterator().next());
+                if (WARN_ON_ERROR) {
+                    logger.warn("***** " + e.getMessage() + " *****");
+                } else {
+                    throw e;
+                }
+            }
+        }
+        return null;
     }
 
     /*
@@ -203,6 +241,12 @@ public final class ValidateVariants extends VariantWalker {
      * @return the final set of type to validate. May be empty.
      */
     private Collection<ValidationType> calculateValidationTypesToApply(final List<ValidationType> excludeTypes) {
+        if (VALIDATE_GVCF && !excludeTypes.contains(ValidationType.ALLELES)) {
+            // Note: in a future version allele validation might be OK for GVCFs, if that happens
+            // this will be more complicated.
+            logger.warn("GVCF format is currently incompatible with allele validation. Not validating Alleles.");
+            excludeTypes.add(ValidationType.ALLELES);
+        }
         if (excludeTypes.isEmpty()) {
             return Collections.singleton(ValidationType.ALL);
         }
@@ -222,6 +266,13 @@ public final class ValidateVariants extends VariantWalker {
                 throw new UserException.MissingReference("Validation type " + ValidationType.REF.name() + " was selected but no reference was provided.");
             }
            return result;
+        }
+    }
+
+    private void ValidateGVCFVariant(final VariantContext vc) {
+        if (!vc.hasAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
+            throw new TribbleException.InternalCodecException(String.format("In a GVCF all records must contain a %s allele. Offending record: %s",
+                    GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, vc.toStringWithoutGenotypes()));
         }
     }
 

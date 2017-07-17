@@ -145,7 +145,7 @@ public final class GenotypeGVCFs extends VariantWalker {
     //overridden instance methods
     private static final RMSMappingQuality RMS_MAPPING_QUALITY = new RMSMappingQuality();
 
-    //these are used when {@link #onlyOutputCallsStartingInIntervals) is true
+    /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
 
     @Override
