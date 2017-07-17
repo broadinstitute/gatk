@@ -364,16 +364,20 @@ task Filter {
         contamination_cmd="-contaminationTable contamination.table"
     fi
 
-    penultimate_variants=${unfiltered_vcf}
+    java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V ${unfiltered_vcf} \
+      	    -O filtered.vcf $contamination_cmd \
+      	    ${m2_extra_filtering_args}
+
+    # FilterByOrientationBias must come after all of the other filtering.
     if [[ ! -z "${pre_adapter_metrics}" ]]; then
         java -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
-            -V ${unfiltered_vcf} -P ${pre_adapter_metrics} --output ob_filtered.vcf
-        penultimate_variants=ob_filtered.vcf
+            -V filtered.vcf -P ${pre_adapter_metrics} --output "${output_vcf_name}-filtered.vcf"
+    else
+        mv filtered.vcf "${output_vcf_name}-filtered.vcf"
+        mv filtered.vcf.idx "${output_vcf_name}-filtered.vcf.idx"
     fi
 
-  	java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V $penultimate_variants \
-  	    -O "${output_vcf_name}-filtered.vcf" $contamination_cmd \
-  	    ${m2_extra_filtering_args}
+
   }
 
   runtime {
