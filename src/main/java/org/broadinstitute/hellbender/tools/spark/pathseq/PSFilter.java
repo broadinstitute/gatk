@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaRDD;
@@ -14,12 +15,11 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadFilterSparkifier;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadTransformerSparkifier;
-import org.broadinstitute.hellbender.transformers.BaseQualityClipReadTransformer;
-import org.broadinstitute.hellbender.transformers.BaseQualityReadTransformer;
-import org.broadinstitute.hellbender.transformers.DUSTReadTransformer;
+import org.broadinstitute.hellbender.transformers.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.illumina.IlluminaAdapterPair;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import scala.Tuple2;
@@ -41,6 +41,16 @@ public final class PSFilter implements AutoCloseable {
     private final MetricsState metricsState;
     private JavaRDD<GATKRead> reads;
     private final SAMFileHeader header;
+
+    private static final List<String> ADAPTER_SEQUENCES = CollectionUtil.makeList(
+            IlluminaAdapterPair.SINGLE_END.get5PrimeAdapter(),
+            IlluminaAdapterPair.SINGLE_END.get3PrimeAdapter(),
+            IlluminaAdapterPair.PAIRED_END.get5PrimeAdapter(),
+            IlluminaAdapterPair.PAIRED_END.get3PrimeAdapter(),
+            IlluminaAdapterPair.INDEXED.get5PrimeAdapter(),
+            IlluminaAdapterPair.INDEXED.get3PrimeAdapter()
+    );
+
 
     public PSFilter(final JavaSparkContext ctx, final PSFilterArgumentCollection filterArgs, final JavaRDD<GATKRead> inputReads,
                     final SAMFileHeader header) {
@@ -212,6 +222,14 @@ public final class PSFilter implements AutoCloseable {
         reads = clearAllAlignments(reads, header);
 
         if (!filterArgs.skipFilters) {
+
+            //Adapter trimming
+            reads = reads.map(new ReadTransformerSparkifier(new IlluminaAdapterTrimTransformer(filterArgs.maxAdapterMismatches, filterArgs.minAdapterLength, ADAPTER_SEQUENCES)));
+
+            //Apply simple repeat masking
+            //See "Low-complexity DNA and simple repeats" at http://www.repeatmasker.org/webrepeatmaskerhelp.html
+            reads = reads.map(new ReadTransformerSparkifier(new SimpleRepeatMaskTransformer(29, 29, 30)));
+            reads = reads.map(new ReadTransformerSparkifier(new SimpleRepeatMaskTransformer(87, 89, 100)));
 
             //Apply DUST masking
             reads = reads.map(new ReadTransformerSparkifier(new DUSTReadTransformer(filterArgs.dustMask, filterArgs.dustW, filterArgs.dustT)));
