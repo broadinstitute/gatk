@@ -6,7 +6,9 @@ import com.intel.genomicsdb.GenomicsDBCallsetsMapProto;
 import com.intel.genomicsdb.GenomicsDBImportConfiguration;
 import com.intel.genomicsdb.GenomicsDBImporter;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -27,14 +29,16 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
+import shaded.cloud_nio.com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 
@@ -153,6 +157,19 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true)
     private Boolean validateSampleToReaderMap = false;
 
+    @Advanced
+    @Argument(fullName = "threads",
+            shortName =  "threads",
+            doc = "how many threads to use when making web requests",
+            optional = true)
+    private int threads = 1;
+
+    private ExecutorService exec;
+    private static final ThreadFactory THREAD_FACTORY = new ThreadFactoryBuilder()
+            .setNameFormat("readerInitializer-thread-%d")
+            .setDaemon(true)
+            .build();
+
     @Override
     public boolean requiresIntervals() { return true; }
 
@@ -218,6 +235,7 @@ public final class GenomicsDBImport extends GATKTool {
         initializeHeaderAndSampleMappings();
         initializeIntervals();
         super.onStartup();
+        this.exec = Executors.newFixedThreadPool(threads, THREAD_FACTORY);
     }
 
     private void assertVariantPathsOrSampleNameFileWasSpecified(){
@@ -433,16 +451,73 @@ public final class GenomicsDBImport extends GATKTool {
                                                                          final int batchSize, final int sampleCount, final int lowerSampleIndex) {
         final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
 
+        final List<Future<FeatureReader<VariantContext>>> futures = new ArrayList<>();
         for(int i = lowerSampleIndex; i < sampleCount && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
             assert sampleNameToFileName.containsKey(sampleName);
-
-            final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromVCFUri(sampleNameToFileName.get(sampleName));
-
-            assert sampleName.equals(((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0));
-            sampleToReaderMap.put(sampleName, reader);
+            futures.add(exec.submit( () -> {
+                try {
+                    return new InitializedQueryWrapper(getReaderFromVCFUri(sampleNameToFileName.get(sampleName)), intervals.get(0));
+                } catch (final IOException e) {
+                    throw new RuntimeException("horrible failure", e);
+                }
+            }));
         }
+
+        futures.forEach(f -> {
+            try {
+                final FeatureReader<VariantContext> reader = f.get();
+                sampleToReaderMap.put(((VCFHeader)reader.getHeader()).getGenotypeSamples().get(0),reader);
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException("horrible failure", e);
+            }
+        });
         return sampleToReaderMap;
+    }
+
+    private static class InitializedQueryWrapper implements FeatureReader<VariantContext> {
+        private final FeatureReader<VariantContext> reader;
+        private final SimpleInterval interval;
+        private CloseableTribbleIterator<VariantContext> query;
+
+        private InitializedQueryWrapper(FeatureReader<VariantContext> reader, Locatable interval) throws IOException {
+            this.reader = reader;
+            this.interval = new SimpleInterval(interval);
+            this.query = reader.query(interval.getContig(), interval.getStart(), interval.getEnd());
+        }
+
+        @Override
+        public CloseableTribbleIterator<VariantContext> query(String chr, int start, int end) throws IOException {
+            final SimpleInterval queryInterval = new SimpleInterval(chr, start, end);
+            if( !interval.equals(queryInterval)){
+                throw new GATKException("Cannot call query with different interval, expected:" + this.interval + " queried with: " + queryInterval );
+            }
+            if( query != null){
+                return query;
+            } else {
+                throw new IllegalStateException("Cannot call query twice on this");
+            }
+        }
+
+        @Override
+        public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
+            throw new UnsupportedOperationException("get SequenceNames not supported");
+        }
+
+        @Override
+        public void close() throws IOException {
+            reader.close();
+        }
+
+        @Override
+        public List<String> getSequenceNames() {
+            throw new UnsupportedOperationException("get SequenceNames not supported");
+        }
+
+        @Override
+        public Object getHeader() {
+            return reader.getHeader();
+        }
     }
 
     /**
@@ -594,6 +669,11 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
+    @Override
+    public void onShutdown(){
+        exec.shutdownNow();
+    }
+
     /**
      * Overriding getBestAvailableSequenceDictionary() to prefer the mergedVCFHeader's
      * sequence directory, if present, over any other dictionaries
@@ -610,5 +690,6 @@ public final class GenomicsDBImport extends GATKTool {
             return sequenceDictionary;
         }
     }
+
 }
 
