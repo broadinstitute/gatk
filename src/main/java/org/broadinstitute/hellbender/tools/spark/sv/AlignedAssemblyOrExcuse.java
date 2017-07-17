@@ -4,11 +4,12 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SAMTextWriter;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.BamFileIoUtils;
+import htsjdk.samtools.SAMFileWriterFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -20,9 +21,12 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.util.*;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -91,61 +95,39 @@ public final class AlignedAssemblyOrExcuse {
         }
     }
 
-    public int getAssemblyId() {
-        return assemblyId;
-    }
-
-    /**
-     * Either this is null, or the assembly and list of alignments is null.
-     */
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public boolean isNotFailure() {
-        return errorMessage==null;
-    }
-
-    public FermiLiteAssembly getAssembly() {
-        return assembly;
-    }
-
-    /**
-     * List is equal in length to the number of contigs in the assembly.
-     */
-    public List<List<BwaMemAlignment>> getContigAlignments() {
-        return contigAlignments;
-    }
-
     /**
      * write a SAM file containing records for each aligned contig
      */
     static void writeSAMFile( final String samFile,
-                                     final SAMFileHeader header,
-                                     final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList ) {
-        try ( final OutputStream os = BucketUtils.createFile(samFile) ) {
-            final SAMTextWriter writer = new SAMTextWriter(os);
-            writer.setSortOrder(SAMFileHeader.SortOrder.queryname, true);
-            writer.setHeader(header);
-
+                              final SAMFileHeader header,
+                              final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
+                              final boolean preOrdered ) {
+        try ( final SAMFileWriter writer = createSAMFileWriter(samFile, header, preOrdered) ) {
             final List<String> refNames = getRefNames(header);
             alignedAssemblyOrExcuseList.stream()
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
                     .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(header,refNames))
                     .forEach(writer::addAlignment);
-
-            writer.finish();
-        } catch ( final IOException ioe ) {
-            throw new GATKException("Can't write SAM file of aligned contigs.", ioe);
+        } catch ( final UncheckedIOException ie) {
+            throw new GATKException("Can't write SAM file of aligned contigs.", ie);
         }
     }
 
-    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames) {
-        Utils.validate(isNotFailure(), "Can't stream SAM records from a failed assembly.");
-        return IntStream.range(0, contigAlignments.size()).boxed()
-                .flatMap(contigIdx ->
-                        toSAMStreamForOneContig(header,refNames, assemblyId,contigIdx,
-                                assembly.getContig(contigIdx).getSequence(),contigAlignments.get(contigIdx)));
+    private static SAMFileWriter createSAMFileWriter(final String samFile, final SAMFileHeader header, final boolean preOrdered) {
+        final SAMFileWriterFactory factory = new SAMFileWriterFactory();
+        final int lastDotIndex = samFile.lastIndexOf('.');
+        if (lastDotIndex >= 0) {
+            final String extension = samFile.substring(lastDotIndex).toLowerCase();
+            if (extension.equals(BamFileIoUtils.BAM_FILE_EXTENSION)) {
+                return factory.makeBAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
+            } else if (extension.equals(".sam")) {
+                return factory.makeSAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
+            } else {
+                throw new GATKException("unsupported read alignment file name extension (." + extension + ") in requested name: " + samFile);
+            }
+        } else {
+            throw new GATKException("cannot determine the alignment file format from its name: " + samFile);
+        }
     }
 
     public static List<String> getRefNames(final SAMFileHeader header) {
@@ -217,34 +199,6 @@ public final class AlignedAssemblyOrExcuse {
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write intervals file " + intervalFile, ioe);
-        }
-    }
-
-    private void serialize( final Kryo kryo, final Output output ) {
-        output.writeInt(assemblyId);
-        output.writeString(errorMessage);
-        if ( errorMessage == null ) {
-            final int nContigs = assembly.getNContigs();
-            final Map<Contig, Integer> contigMap = new HashMap<>();
-            output.writeInt(nContigs);
-            for ( int idx = 0; idx != nContigs; ++idx ) {
-                final Contig contig = assembly.getContig(idx);
-                writeContig(contig, output);
-                contigMap.put(contig, idx);
-            }
-            for ( final Contig contig : assembly.getContigs() ) {
-                final List<Connection> connections = contig.getConnections();
-                output.writeInt(connections.size());
-                for ( final Connection connection : connections ) {
-                    writeConnection(connection, contigMap, output);
-                }
-            }
-            for ( final List<BwaMemAlignment> alignments : contigAlignments ) {
-                output.writeInt(alignments.size());
-                for ( final BwaMemAlignment alignment : alignments ) {
-                    writeAlignment(alignment, output);
-                }
-            }
         }
     }
 
@@ -322,6 +276,68 @@ public final class AlignedAssemblyOrExcuse {
                 mapQual, nMismatches, alignerScore, suboptimalScore,
                 cigar, mdTag, xaTag,
                 mateRefId, mateRefStart, templateLen);
+    }
+
+    public int getAssemblyId() {
+        return assemblyId;
+    }
+
+    /**
+     * Either this is null, or the assembly and list of alignments is null.
+     */
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public boolean isNotFailure() {
+        return errorMessage==null;
+    }
+
+    public FermiLiteAssembly getAssembly() {
+        return assembly;
+    }
+
+    /**
+     * List is equal in length to the number of contigs in the assembly.
+     */
+    public List<List<BwaMemAlignment>> getContigAlignments() {
+        return contigAlignments;
+    }
+
+    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames) {
+        Utils.validate(isNotFailure(), "Can't stream SAM records from a failed assembly.");
+        return IntStream.range(0, contigAlignments.size()).boxed()
+                .flatMap(contigIdx ->
+                        toSAMStreamForOneContig(header, refNames, assemblyId, contigIdx,
+                                assembly.getContig(contigIdx).getSequence(), contigAlignments.get(contigIdx)));
+    }
+
+    private void serialize( final Kryo kryo, final Output output ) {
+        output.writeInt(assemblyId);
+        output.writeString(errorMessage);
+        if ( errorMessage == null ) {
+            final int nContigs = assembly.getNContigs();
+            final Map<Contig, Integer> contigMap = new HashMap<>();
+            output.writeInt(nContigs);
+            for ( int idx = 0; idx != nContigs; ++idx ) {
+                final Contig contig = assembly.getContig(idx);
+                writeContig(contig, output);
+                contigMap.put(contig, idx);
+            }
+            for ( final Contig contig : assembly.getContigs() ) {
+                final List<Connection> connections = contig.getConnections();
+                output.writeInt(connections.size());
+                for ( final Connection connection : connections ) {
+                    writeConnection(connection, contigMap, output);
+                }
+            }
+            for ( final List<BwaMemAlignment> alignments : contigAlignments ) {
+                output.writeInt(alignments.size());
+                for ( final BwaMemAlignment alignment : alignments ) {
+                    writeAlignment(alignment, output);
+                }
+            }
+        }
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignedAssemblyOrExcuse> {
