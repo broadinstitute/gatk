@@ -1,8 +1,16 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.spark.storage.StorageLevel;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
+import org.broadinstitute.hellbender.tools.HaplotypeCallerSpark;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -37,6 +45,8 @@ import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -82,17 +92,17 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
     private final RecalibrationArgumentCollection bqsrArgs = new RecalibrationArgumentCollection();
 
-    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
-    public int readShardSize = 10000;
-
-    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
-    public int readShardPadding = 1000;
+    @ArgumentCollection
+    public final HaplotypeCallerSpark.ShardingArgumentCollection shardingArgs = new HaplotypeCallerSpark.ShardingArgumentCollection();
 
     /**
      * command-line arguments to fine tune the apply BQSR step.
      */
     @ArgumentCollection
     public ApplyBQSRUniqueArgumentCollection applyBqsrArgs = new ApplyBQSRUniqueArgumentCollection();
+
+    @ArgumentCollection
+    public HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 
     @Override
     public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
@@ -129,12 +139,35 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, baseRecalibrationKnownVariants, joinStrategy, getHeaderForReads().getSequenceDictionary(), readShardSize, readShardPadding);
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, baseRecalibrationKnownVariants, joinStrategy, getHeaderForReads().getSequenceDictionary(), shardingArgs.readShardSize, shardingArgs.readShardPadding);
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);
 
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
         final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, getHeaderForReads(), applyBqsrArgs.toApplyBQSRArgumentCollection(bqsrArgs.PRESERVE_QSCORES_LESS_THAN));
 
-        writeReads(ctx, output, finalReads);
+        final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(), getHeaderForReads());
+        final JavaRDD<GATKRead> filteredReadsForHC = finalReads.filter(read -> hcReadFilter.test(read));
+
+        // Reads must be coordinate sorted to use the overlaps partitioner
+        filteredReadsForHC.persist(StorageLevel.DISK_ONLY()); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
+        final SAMFileHeader readsHeader = getHeaderForReads().clone();
+        readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.coordinateSortReads(filteredReadsForHC, readsHeader, numReducers);
+
+        final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
+        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new HaplotypeCallerSpark.ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
+        final JavaRDD<VariantContext> variants = HaplotypeCallerSpark.callVariantsWithHaplotypeCaller(getAuthHolder(), ctx, coordinateSortedReads, readsHeader, getReference(), intervals, hcArgs, shardingArgs);
+
+        if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF) {
+            // VariantsSparkSink/Hadoop-BAM VCFOutputFormat do not support writing GVCF, see https://github.com/broadinstitute/gatk/issues/2738
+            HaplotypeCallerSpark.writeVariants(output, variants, hcEngine, getReferenceSequenceDictionary(), readsHeader.getSequenceDictionary());
+        } else {
+            variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
+            try {
+                VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(readsHeader.getSequenceDictionary(), new HashSet<>()));
+            } catch (IOException e) {
+                throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
+            }
+        }
     }
 }

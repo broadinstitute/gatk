@@ -17,8 +17,10 @@ set -x
 hadoop fs -mkdir -p $TARGET_DIR
 
 # Download WGS BAM
-gsutil cp gs://hellbender/q4_spark_eval/WGS-G94982-NA12878.bam - | hadoop fs -put - $TARGET_DIR/WGS-G94982-NA12878.bam
-gsutil cp gs://hellbender/q4_spark_eval/WGS-G94982-NA12878.bai - | hadoop fs -put - $TARGET_DIR/WGS-G94982-NA12878.bai
+#gsutil cp gs://hellbender/q4_spark_eval/WGS-G94982-NA12878.bam - | hadoop fs -put - $TARGET_DIR/WGS-G94982-NA12878.bam
+#gsutil cp gs://hellbender/q4_spark_eval/WGS-G94982-NA12878.bai - | hadoop fs -put - $TARGET_DIR/WGS-G94982-NA12878.bai
+# BAM with NC_007605 reads removed since this contig is not in the reference
+gsutil cp gs://gatk-tom-testdata/WGS-G94982-NA12878-no-NC_007605.bam - | hadoop fs -put - /user/tom/q4_spark_eval/WGS-G94982-NA12878-no-NC_007605.bam
 
 # Download reference (b37)
 gsutil cp gs://gatk-tom-testdata/human_g1k_v37.2bit - | hadoop fs -put - $TARGET_DIR/human_g1k_v37.2bit
