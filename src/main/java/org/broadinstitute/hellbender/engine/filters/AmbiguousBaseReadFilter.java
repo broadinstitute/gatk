@@ -7,21 +7,25 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Filters out reads with more than a threshold number of N's
+ * Filters out reads with more than a threshold number of N's. By default will determine the threshold by the given
+ * maximum fraction of bases in the read. This can be overridden by setting the maximum number of ambiguous bases instead.
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class AmbiguousBaseReadFilter extends ReadFilter {
 
     private static final long serialVersionUID = 1L;
+    private final Integer maxAmbiguousBases;
 
     @Argument(doc = "Threshold fraction of ambiguous bases",
-            fullName = "maxAmbiguousBases",
+            fullName = "ambigFilterFrac",
             optional = true)
-    public int maxAmbiguousBases = 0;
+    public double maxAmbiguousBaseFraction = 0.05;
 
-    public AmbiguousBaseReadFilter() {
-    }
+    public AmbiguousBaseReadFilter() { maxAmbiguousBases = null; }
 
+    /**
+     * Sets max number of ambiguous bases, which overrides maxAmbiguousBaseFraction
+     */
     public AmbiguousBaseReadFilter(final int maxAmbiguousBases) {
         this.maxAmbiguousBases = maxAmbiguousBases;
     }
@@ -29,15 +33,16 @@ public final class AmbiguousBaseReadFilter extends ReadFilter {
     //Filters out reads with more than a threshold number of N's
     @Override
     public boolean test(final GATKRead read) {
-        int num_N = 0;
+        final int maxN = maxAmbiguousBases != null ? maxAmbiguousBases : (int) (read.getLength() * maxAmbiguousBaseFraction);
+        int numN = 0;
         for (final byte base : read.getBases()) {
             if (!BaseUtils.isRegularBase(base)) {
-                num_N++;
-                if (num_N > maxAmbiguousBases) {
+                numN++;
+                if (numN > maxN) {
                     return false;
                 }
             }
         }
-        return num_N <= maxAmbiguousBases;
+        return true;
     }
 }
