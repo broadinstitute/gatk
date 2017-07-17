@@ -512,8 +512,8 @@ public final class UtilsUnitTest extends BaseTest {
         final String moreFileContents = "More Hello world";
         final File logFile = BaseTest.createTempFile("logFile", "txt");
         final File logFile1 = BaseTest.createTempFile("logFile1", "txt");
-        LoggingUtils.sendLogToFile(logFile.getAbsolutePath());
-        LoggingUtils.sendLogToFile(logFile1.getAbsolutePath());
+        LoggingUtils.setLoggingFile(logFile.getAbsolutePath());
+        LoggingUtils.setLoggingFile(logFile1.getAbsolutePath());
         logger.warn(fileContents);
         Assert.assertTrue(FileUtils.readFileToString(logFile).contains(fileContents));
         Assert.assertTrue(FileUtils.readFileToString(logFile1).contains(fileContents));
