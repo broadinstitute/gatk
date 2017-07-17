@@ -265,133 +265,130 @@ public class CigarReadFilterTest {
 //                "1S1I1S7"
 //
         return new Object[][]{
-                {"*", "*", true},                       // Match the unavailable cigar string
-                {"*", "M", false},                      // Match the unavailable cigar string
-                {"*", "HSMSH", false},                  // Match the unavailable cigar string
-                {"*", "10M", false},                    // Match the unavailable cigar string
-                {"*", "<=5M", false},                   // Match the unavailable cigar string
+                {"*", "*", false, true},                       // Match the unavailable cigar string
+                {"*", "M", false, false},                      // Match the unavailable cigar string
+                {"*", "HSMSH", false, false},                  // Match the unavailable cigar string
+                {"*", "10M", false, false},                    // Match the unavailable cigar string
+                {"*", "<=5M", false, false},                   // Match the unavailable cigar string
 
-                {"1H", "S", false},                     // Pattern doesn't specify the correct CigarElement
-                {"1H", "M", false},                     // Pattern doesn't specify the correct CigarElement
-                {"1H", "=", false},                     // Pattern doesn't specify the correct CigarElement
-                {"1H", "^107I", false},                 // Pattern doesn't specify the correct CigarElement
-                {"1H", "H", true},                      // Pattern matches CigarElement exactly
-                {"1H", ">=1H", true},                   // Match equals case for inequalities CigarElements
-                {"1H", "<=2H", true},                   // Match equals case for inequalities CigarElements
-                {"1H", "<2H", true},                    // Pattern matches CigarElement numerically
-                {"2H", ">1H", true},                    // Pattern matches CigarElement numerically
-                {"2H2H1H", ">4H", true},                // Pattern matches CigarElement numerically
-                {"2H", ">2H", false},                   // Too few CigarElements
-                {"1H1H", ">2H", false},                 // Too few CigarElements
-                {"2H", ">=3H", false},                  // Too few CigarElements
-                {"1H1H", ">=3H", false},                // Too few CigarElements
-                {"3H", "<3H", false},                   // Too many CigarElements
-                {"2H1H", "<3H", false},                 // Too many CigarElements
-                {"4H", "<=3H", false},                  // Too many CigarElements
-                {"2H2H", "<=3H", false},                // Too many CigarElements
+                {"1H", "S", false, false},                     // Pattern doesn't specify the correct CigarElement
+                {"1H", "M", false, false},                     // Pattern doesn't specify the correct CigarElement
+                {"1H", "=", false, false},                     // Pattern doesn't specify the correct CigarElement
+                {"1H", "^107I", false, false},                 // Pattern doesn't specify the correct CigarElement
+                {"1H", "H", false, true},                      // Pattern matches CigarElement exactly
+                {"1H", ">=1H", false, true},                   // Match equals case for inequalities CigarElements
+                {"1H", "<=2H", false, true},                   // Match equals case for inequalities CigarElements
+                {"1H", "<2H", false, true},                    // Pattern matches CigarElement numerically
+                {"2H", ">1H", false, true},                    // Pattern matches CigarElement numerically
+                {"2H2H1H", ">4H", false, true},                // Pattern matches CigarElement numerically
+                {"2H", ">2H", false, false},                   // Too few CigarElements
+                {"1H1H", ">2H", false, false},                 // Too few CigarElements
+                {"2H", ">=3H", false, false},                  // Too few CigarElements
+                {"1H1H", ">=3H", false, false},                // Too few CigarElements
+                {"3H", "<3H", false, false},                   // Too many CigarElements
+                {"2H1H", "<3H", false, false},                 // Too many CigarElements
+                {"4H", "<=3H", false, false},                  // Too many CigarElements
+                {"2H2H", "<=3H", false, false},                // Too many CigarElements
 
-                {"1P1=", "P=M", false},                 // Match longer than cigar
+                {"1P1=", "P=M", false, false},                 // Match longer than cigar
 
-                {"12H3S10P34X3S2H", "P", true},         // Match inside a larger string
-                {"12H3S10P34X3S2H", "10P", true},       // Match inside a larger string
-                {"12H3S10P34X3S2H", ">9P", true},       // Match inside a larger string
-                {"12H3S10P34X3S2H", "<8P", false},      // Match inside a larger string
-                {"12H3S10P34X3S2H", "PX", true},        // Match inside a larger string
-                {"12H3S10P34X3S2H", ">5PX", true},      // Match inside a larger string
-                {"12H3S10P34X3S2H", "P>2X", true},      // Match inside a larger string
-                {"12H3S10P34X3S2H", "10P34X", true},    // Match inside a larger string
-                {"12H3S10P34X3S2H", ">9P>33X", true},   // Match inside a larger string
-                {"12H3S10P34X3S2H", "<8P>2X", false},   // Match inside a larger string
-                {"12H3S10P34X3S2H", ">9PX>2S", true},   // Match inside a larger string
-                {"12H3S10P34X3S2H", "PS", false},       // Near-Match inside a larger string
-                {"12H3S10P34X3S2H", "10P34XH", false},  // Near-Match inside a larger string
-                {"12H3S10P34X3S2H", "<8P>2X>5S", false},// Near-Match inside a larger string
+                {"12H3S10P34X3S2H", "P", false, true},         // Match inside a larger string
+                {"12H3S10P34X3S2H", "10P", false, true},       // Match inside a larger string
+                {"12H3S10P34X3S2H", ">9P", false, true},       // Match inside a larger string
+                {"12H3S10P34X3S2H", "<8P", false, false},      // Match inside a larger string
+                {"12H3S10P34X3S2H", "PX", false, true},        // Match inside a larger string
+                {"12H3S10P34X3S2H", ">5PX", false, true},      // Match inside a larger string
+                {"12H3S10P34X3S2H", "P>2X", false, true},      // Match inside a larger string
+                {"12H3S10P34X3S2H", "10P34X", false, true},    // Match inside a larger string
+                {"12H3S10P34X3S2H", ">9P>33X", false, true},   // Match inside a larger string
+                {"12H3S10P34X3S2H", "<8P>2X", false, false},   // Match inside a larger string
+                {"12H3S10P34X3S2H", ">9PX>2S", false, true},   // Match inside a larger string
+                {"12H3S10P34X3S2H", "PS", false, false},       // Near-Match inside a larger string
+                {"12H3S10P34X3S2H", "10P34XH", false, false},  // Near-Match inside a larger string
+                {"12H3S10P34X3S2H", "<8P>2X>5S", false, false},// Near-Match inside a larger string
 
-                {"1H1S10M10S30H", "^H", true},          // Match starting anchors
-                {"1H1S10M10S30H", "^1H", true},         // Match starting anchors
-                {"1H1S10M10S30H", "^2H", false},        // Match starting anchors
-                {"1H1S10M10S30H", "^HS", true},         // Match starting anchors
-                {"1H1S10M10S30H", "^HSM", true},        // Match starting anchors
-                {"1H1S10M10S30H", "^HSM", true},        // Match starting anchors
-                {"1H1S10M10S30H", "^H2SM", false},      // Match starting anchors
-                {"1H1S10M10S30H", "^HS<10M", false},    // Match starting anchors
-                {"1H1S10M10S30H", "^HSMSH", true},      // Match starting anchors
+                {"1H1S10M10S30H", "^H", false, true},          // Match starting anchors
+                {"1H1S10M10S30H", "^1H", false, true},         // Match starting anchors
+                {"1H1S10M10S30H", "^2H", false, false},        // Match starting anchors
+                {"1H1S10M10S30H", "^HS", false, true},         // Match starting anchors
+                {"1H1S10M10S30H", "^HSM", false, true},        // Match starting anchors
+                {"1H1S10M10S30H", "^HSM", false, true},        // Match starting anchors
+                {"1H1S10M10S30H", "^H2SM", false, false},      // Match starting anchors
+                {"1H1S10M10S30H", "^HS<10M", false, false},    // Match starting anchors
+                {"1H1S10M10S30H", "^HSMSH", false, true},      // Match starting anchors
 
-                {"1H1S10M10S30H", "H$", true},          // Match ending anchors
-                {"1H1S10M10S30H", "1H$", false},        // Match ending anchors - mismatch number
-                {"1H1S10M10S30H", "2H$", false},        // Match ending anchors - mismatch number
-                {"1H1S10M10S30H", "30H$", true},        // Match ending anchors
-                {"1H1S10M10S30H", ">=2H$", true},       // Match ending anchors
-                {"1H1S10M10S30H", ">35H$", false},      // Match ending anchors
-                {"1H1S10M10S30H", "SH$", true},         // Match ending anchors
-                {"1H1S10M10S30H", "HSM$", false},       // Match ending anchors
-                {"1H1S10M10S30H", "MSH$", true},        // Match ending anchors
-                {"1H1S10M10S30H", "M13SH", false},      // Match ending anchors
-                {"1H1S10M10S30H", "M<10MSH", false},    // Match ending anchors
-                {"1H1S10M10S30H", "HSMSH$", true},      // Match ending anchors
+                {"1H1S10M10S30H", "H$", false, true},          // Match ending anchors
+                {"1H1S10M10S30H", "1H$", false, false},        // Match ending anchors - mismatch number
+                {"1H1S10M10S30H", "2H$", false, false},        // Match ending anchors - mismatch number
+                {"1H1S10M10S30H", "30H$", false, true},        // Match ending anchors
+                {"1H1S10M10S30H", ">=2H$", false, true},       // Match ending anchors
+                {"1H1S10M10S30H", ">35H$", false, false},      // Match ending anchors
+                {"1H1S10M10S30H", "SH$", false, true},         // Match ending anchors
+                {"1H1S10M10S30H", "HSM$", false, false},       // Match ending anchors
+                {"1H1S10M10S30H", "MSH$", false, true},        // Match ending anchors
+                {"1H1S10M10S30H", "M13SH", false, false},      // Match ending anchors
+                {"1H1S10M10S30H", "M<10MSH", false, false},    // Match ending anchors
+                {"1H1S10M10S30H", "HSMSH$", false, true},      // Match ending anchors
 
-                {"1H1S10M10S30H", "^HSMSH$", true},     // Match starting and ending anchors
-                {"1H1S10M10S30H", "^HSPSH$", false},    // Match starting and ending anchors
-                {"1H1S10M10S30H", "^HS10MSH$", true},   // Match starting and ending anchors
-                {"1H1S10M10S30H", "^HS10M10S30H$", true},// Match starting and ending anchors
-                {"1H1S10M10S30H", "^HSMS<25H$", false}, // Match starting and ending anchors
+                {"1H1S10M10S30H", "^HSMSH$", false, true},     // Match starting and ending anchors
+                {"1H1S10M10S30H", "^HSPSH$", false, false},    // Match starting and ending anchors
+                {"1H1S10M10S30H", "^HS10MSH$", false, true},   // Match starting and ending anchors
+                {"1H1S10M10S30H", "^HS10M10S30H$", false, true},// Match starting and ending anchors
+                {"1H1S10M10S30H", "^HSMS<25H$", false, false}, // Match starting and ending anchors
 
-                {"1H1S1M1I", "<5%", true},              // Any cigar string of length <5 OK
-                {"3H", "<5%", true},                    // Any cigar string of length <5 OK
-                {"6S", "<5%", false},                   // Any cigar string of length <5 Fail
-                {"1H1S1M1I2S", "<5%", false},           // Any cigar string of length <5 Fail
-                {"1H1S1M1I1S", "<5%", false},           // Any cigar string of length <5 Fail
+                // Wildcard tests:
+                {"1H1S1M1I", "<5%", false, true},              // Any cigar string of length <5 OK
+                {"3H", "<5%", false, true},                    // Any cigar string of length <5 OK
+                {"6S", "<5%", false, false},                   // Any cigar string of length <5 Fail
+                {"7H5S6M5I", "<5%", false, false},             // Any cigar string of length <5 Fail
 
-                {"*", "%", false},                      // Wildcard should not match unavailable
-                {"1H", "%", true},                      // Wildcard should match any valid cigar string
-                {"1H1S", "%", true},                    // Wildcard should match any valid cigar string
-                {"1H1S1H", "%", true},                  // Wildcard should match any valid cigar string
-                {"12H3S10P34X3S2H", "%", true},         // Wildcard should match any valid cigar string
-                {"5H", "5%", true},                     // Any cigar string of length 5 OK
-                {"5=", "5%", true},                     // Any cigar string of length 5 OK
-                {"2S3M", "5%", true},                   // Any cigar string of length 5 OK
-                {"1H1S1M1I1S", "5%", true},             // Any cigar string of length 5 OK
-                {"4H", "5%", false},                    // Any cigar string of length 5 Fail
-                {"4=", "5%", false},                    // Any cigar string of length 5 Fail
-                {"2S1M1I", "5%", false},                // Any cigar string of length 5 Fail
-                {"1S2M", "5%", false},                  // Any cigar string of length 5 Fail
-                {"1H1S1M1I", "5%", false},              // Any cigar string of length 5 Fail
-                {"1M", "M%", false},                    // Alignment match followed by anything
-                {"1M1I", "M%", true},                   // Alignment match followed by anything
-                {"2M", "M%", true},                     // Alignment match followed by anything
-                {"1M1S", "M%", true},                   // Alignment match followed by anything
-                {"1S1M", "M%", false},                  // Alignment match followed by anything
-                {"1M", "%M", false},                    // Anything followed by alignment match
-                {"1I1M", "%M", true},                   // Anything followed by alignment match
-                {"2M", "%M", true},                     // Anything followed by alignment match
-                {"1S1M", "%M", true},                   // Anything followed by alignment match
-                {"1S1M", "%M", true},                   // Anything followed by alignment match
-                {"1S1M", "%%", true},                   // Any two cigar elements
-                {"1S", "%%", false},                    // Any two cigar elements
-                {"1S1M1H", "%%", true},                 // Any two cigar elements
+                {"*", "%", false, false},                      // Wildcard should not match unavailable
+                {"1H", "%", false, true},                      // Wildcard should match any valid cigar string
+                {"1H1S", "%", false, true},                    // Wildcard should match any valid cigar string
+                {"1H1S1H", "%", false, true},                  // Wildcard should match any valid cigar string
+                {"12H3S10P34X3S2H", "%", false, true},         // Wildcard should match any valid cigar string
+                {"1H1H1H1H1H", "5%", false, true},             // Match string of the same element the right number of times
+                {"5H", "5%", false, true},                     // Any cigar string of length 5 OK
+                {"5=", "5%", false, true},                     // Any cigar string of length 5 OK
+                {"4H", "5%", false, false},                    // Any cigar string of length 5 Fail
+                {"4=", "5%", false, false},                    // Any cigar string of length 5 Fail
+                {"2S1M1I", "5%", false, false},                // Any cigar string of length 5 Fail
+                {"1S2M", "5%", false, false},                  // Any cigar string of length 5 Fail
+                {"1H1S1M1I", "5%", false, false},              // Any cigar string of length 5 Fail
+                {"1M", "M%", false, false},                    // Alignment match followed by anything
+                {"1M1I", "M%", false, true},                   // Alignment match followed by anything
+                {"1M1S", "M%", false, true},                   // Alignment match followed by anything
+                {"1S1M", "M%", false, false},                  // Alignment match followed by anything
+                {"1M", "%M", false, false},                    // Anything followed by alignment match
+                {"1I1M", "%M", false, true},                   // Anything followed by alignment match
 
+                {"1S1M", "%M", false, true},                   // Anything followed by alignment match
+                {"1S1M", "1%M", false, true},                  // Anything followed by alignment match
+                {"1S1M", "%%", false, true},                   // Any two cigar elements
+                {"1S", "%%", false, false},                    // Any two cigar elements
+                {"1S1M1H", "%%", false, true},                 // Any two cigar elements
 
-//                {"HS", true},
-//                {"M%", true},
-//                {"HHHHSSSSDSSSSHHH", true},
-//                {"SS==3I<=24DMMMDMDMDDSHHHH", true},
-//                {"SH", true},
-//                {"=H", true},
-//                {"105H", true},
-//                {"329H3S", true},
-//                {"^M$", true},
-//                {"M", true},
-//                {"10P", true},
-//                {"=10P", true},
-//                {"<=9=", true},
-//                {"10P=34X", true},
-//                {"10P<34X", true},
-//                {"10P<=34X", true},
-//                {"10P>34X", true},
-//                {"10P>=34X", true},
-//                {"10P>=34X3S2H", true},
-//                {"12H<3S10P>=34X3S2H", true},
-//                {"^12H<3S10P>=34X3S2H$", true},
+                // Specifically Non-greedy wildcard tests:
+                {"1H1S1M1I2S", "<5%", false, true},            // Any cigar string of length <5 OK (matches first element)
+                {"1H1S1M1I1S", "<5%", false, true},            // Any cigar string of length <5 OK (matches first element)
+                {"2S3M", "5%", false, false},                  // Any cigar string of length 5 Fail (no single element of length 5)
+                {"1H1S1M1I1S", "5%", false, false},            // Any cigar string of length 5 Fail (no single element of length 5)
+                {"2M", "M%", false, false},                    // Alignment match followed by anything Fail (no additional elements after the M)
+                {"2M", "%M", false, false},                    // Anything followed by alignment match Fail (no additional M elements after the initial 2M)
+
+                // Specifically Greedy Wildcard tests:
+                // TODO: UNCOMMENT THESE AND FIX THE GREEDY CASE.
+//                {"1H1S1M1I2S", "<5%", true, false},           // Any cigar string of length <5 Fail
+//                {"1H1S1M1I1S", "<5%", true, false},           // Any cigar string of length <5 Fail
+//                {"2S3M", "5%", true, true},                   // Any cigar string of length 5 OK
+//                {"1H1S1M1I1S", "5%", true, true},             // Any cigar string of length 5 OK
+//                {"2M", "%M", true, true},                     // Anything followed by alignment match
+//                {"2M", "%M", true, true},                     // Anything followed by alignment match
+//                {"3I5=2M", "2I%", true, true},                // Greedy wildcard across middle element
+//                {"3I5=2M", "%1M", true, true},                // Greedy wildcard across middle element
+//                {"3I5=2M", "3I4=%1M", true, true},            // Greedy wildcard across middle element
+//                {"3I5=2M", "2I%1M", true, true},              // Greedy wildcard across middle element
+//                {"3I5=5M4S5H", "2I%1M2S%", true, true},       // Greedy wildcard across middle element
         };
     }
 
@@ -619,11 +616,13 @@ public class CigarReadFilterTest {
 
 
     @Test(dataProvider="createCigarStringsAndMatchesForReadFilterTest")
-    public void testReadFilterTestMethod(String cigarString, String cigarMatchString, boolean shouldMatch) {
+    public void testReadFilterTestMethod(String cigarString, String cigarMatchString, boolean greedyWildcards, boolean shouldMatch) {
         //FIXME
 
         GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarString);
+
         CigarReadFilter cigarReadFilter = new CigarReadFilter(cigarMatchString);
+        cigarReadFilter.setGreedyWildcard(greedyWildcards);
 
         Assert.assertEquals(cigarReadFilter.test(read), shouldMatch);
     }
