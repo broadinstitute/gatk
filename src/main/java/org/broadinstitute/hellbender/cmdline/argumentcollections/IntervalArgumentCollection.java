@@ -78,18 +78,20 @@ public abstract class IntervalArgumentCollection implements Serializable {
      */
     @Argument(fullName = "interval_exclusion_padding", shortName= "ixp", doc = "Amount of padding (in bp) to add to each interval you are excluding.", common = true)
     protected int intervalExclusionPadding = 0;
-    /**
-     * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records
-     * should be returned. Lazily initialized.
-     */
-    protected TraversalParameters traversalParameters = null;
+
     /**
      * By default, the program merges abutting intervals (i.e. intervals that are directly side-by-side but do not
      * actually overlap) into a single continuous interval. However you can change this behavior if you want them to be
      * treated as separate intervals instead.
      */
-    @Argument(fullName = "interval_merging", shortName = "im", doc = "Interval merging rule for abutting intervals", optional = true) //TODO
+    @Argument(fullName = "interval_merging_rule", shortName = "imr", doc = "Interval merging rule for abutting intervals", optional = true)
     protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
+
+    /**
+     * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records
+     * should be returned. Lazily initialized.
+     */
+    protected TraversalParameters traversalParameters = null;
 
     /**
      * Get the intervals specified on the command line.
