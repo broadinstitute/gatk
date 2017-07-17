@@ -507,7 +507,7 @@ public final class UtilsUnitTest extends BaseTest {
     }
 
     @Test
-    public void testSendLogTofFile() throws IOException {
+    public void testSetLoggingFile() throws IOException {
         final String fileContents = "Hello world";
         final String moreFileContents = "More Hello world";
         final File logFile = BaseTest.createTempFile("logFile", "txt");
