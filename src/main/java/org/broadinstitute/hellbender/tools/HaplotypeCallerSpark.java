@@ -132,7 +132,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(getAuthHolder(), ctx, coordinateSortedReads, readsHeader, getReference(), intervals, hcArgs, shardingArgs);
         if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF) {
             // VariantsSparkSink/Hadoop-BAM VCFOutputFormat do not support writing GVCF, see https://github.com/broadinstitute/gatk/issues/2738
-            writeVariants(variants, hcEngine);
+            writeVariants(output, variants, hcEngine, getReferenceSequenceDictionary(), readsHeader.getSequenceDictionary());
         } else {
             variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
             try {
@@ -237,16 +237,15 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      *
      * This will be replaced by a parallel writer similar to what's done with {@link org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink}
      */
-    private void writeVariants(JavaRDD<VariantContext> variants, HaplotypeCallerEngine hcEngine) {
+    public static void writeVariants(String outputFile, JavaRDD<VariantContext> variants, HaplotypeCallerEngine hcEngine, SAMSequenceDictionary referenceDictionary, SAMSequenceDictionary readsDictionary) {
         final List<VariantContext> collectedVariants = variants.collect();
-        final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
 
         final List<VariantContext> sortedVariants = collectedVariants.stream()
             .sorted((o1, o2) -> IntervalUtils.compareLocatables(o1, o2, referenceDictionary))
             .collect(Collectors.toList());
 
-        try(final VariantContextWriter writer = hcEngine.makeVCFWriter(output, getBestAvailableSequenceDictionary())) {
-            hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary(), new HashSet<>());
+        try(final VariantContextWriter writer = hcEngine.makeVCFWriter(outputFile, referenceDictionary)) {
+            hcEngine.writeHeader(writer, readsDictionary, new HashSet<>());
             sortedVariants.forEach(writer::add);
         }
     }
