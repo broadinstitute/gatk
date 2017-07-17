@@ -19,7 +19,7 @@ public final class AlignmentContext implements Locatable, HasGenomeLocation {
     // Definitions:
     //   COMPLETE = full alignment context
     //   FORWARD  = reads on forward strand
-    //   REVERSE  = reads on forward strand
+    //   REVERSE  = reads on reverse strand
     //
     public enum ReadOrientation { COMPLETE, FORWARD, REVERSE }
 
