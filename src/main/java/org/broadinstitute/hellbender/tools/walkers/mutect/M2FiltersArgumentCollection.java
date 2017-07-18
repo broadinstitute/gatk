@@ -33,16 +33,13 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(fullName = "maxAltAllelesThreshold", optional = true, doc = "filter variants with too many alt alleles")
     public int numAltAllelesThreshold = 1;
 
-    @Argument(fullName = "maxMedianMappingQualityDifference", optional = true, doc = "filter variants for which alt reads' median mapping quality is much lower than ref reads' median mapping quality.")
-    public int maxMedianMappingQualityDifference = 30;
+    @Argument(fullName = "minMedianMappingQuality", optional = true, doc="filter variants for which alt reads' median mapping quality is too low.")
+    public int minMedianMappingQuality = 30;
 
-    @Argument(fullName = "maxMedianBaseQualityDifference", optional = true, doc = "filter variants for which alt reads' median base quality is much lower than ref reads' median base quality.")
-    public int maxMedianBaseQualityDifference = 10;
+    @Argument(fullName = "minMedianBaseQuality", optional = true, doc="filter variants for which alt reads' median base quality is too low.")
+    public int minMedianBaseQuality = 20;
 
-    @Argument(fullName = "maxMedianClippingDifference", optional = true, doc = "filter variants for which alt reads' median number of clipped bases is too high compared to the median for ref reads.")
-    public int maxMedianClippingDifference = 1;
-
-    @Argument(fullName = "maxMedianFragmentLengthDifference", optional = true, doc = "filter variants for which alt reads' median fragment length is very different from the median for ref reads.")
+    @Argument(fullName = "maxMedianFragmentLengthDifference", optional = true, doc="filter variants for which alt reads' median fragment length is very different from the median for ref reads.")
     public int maxMedianFragmentLengthDifference = 10000;
 
     @Argument(fullName = "minMedianReadPosition", optional = true, doc = "filter variants for which the median position of alt alleles within reads is too near the end of reads.")

@@ -55,9 +55,8 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(MULTIALLELIC_FILTER_NAME, "Site filtered because too many alt alleles pass tumor LOD"));
         addFilterLine(new VCFFilterHeaderLine(STRAND_ARTIFACT_FILTER_NAME, "Evidence for alt allele comes from one read direction only"));
         addFilterLine(new VCFFilterHeaderLine(ARTIFACT_IN_NORMAL_FILTER_NAME, "artifact_in_normal"));
-        addFilterLine(new VCFFilterHeaderLine(MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median base quality"));
-        addFilterLine(new VCFFilterHeaderLine(MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median mapping quality"));
-        addFilterLine(new VCFFilterHeaderLine(MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME, "ref - alt median clipping"));
+        addFilterLine(new VCFFilterHeaderLine(MEDIAN_BASE_QUALITY_FILTER_NAME, "alt median base quality"));
+        addFilterLine(new VCFFilterHeaderLine(MEDIAN_MAPPING_QUALITY_FILTER_NAME, "ref - alt median mapping quality"));
         addFilterLine(new VCFFilterHeaderLine(MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME, "abs(ref - alt) median fragment length"));
         addFilterLine(new VCFFilterHeaderLine(READ_POSITION_FILTER_NAME, "median distance of alt variants from end of reads"));
         addFilterLine(new VCFFilterHeaderLine(CONTAMINATION_FILTER_NAME, "contamination"));
@@ -87,11 +86,8 @@ public class GATKVCFHeaderLines {
 
         // M2-related format lines
         addFormatLine(new VCFFormatHeaderLine(ALLELE_FRACTION_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele fractions of alternate alleles in the tumor"));
-        addFormatLine(new VCFFormatHeaderLine(OXOG_ALT_F1R2_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting the alternate allele"));
-        addFormatLine(new VCFFormatHeaderLine(OXOG_ALT_F2R1_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting the alternate allele"));
-        addFormatLine(new VCFFormatHeaderLine(OXOG_REF_F1R2_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting the reference allele"));
-        addFormatLine(new VCFFormatHeaderLine(OXOG_REF_F2R1_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting the reference allele"));
-        addFormatLine(new VCFFormatHeaderLine(OXOG_FRACTION_KEY, 1, VCFHeaderLineType.Float, "Fraction of alt reads indicating OxoG error"));
+        addFormatLine(new VCFFormatHeaderLine(F1R2_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting each allele"));
+        addFormatLine(new VCFFormatHeaderLine(F2R1_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting each allele"));
 
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed"));
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed"));

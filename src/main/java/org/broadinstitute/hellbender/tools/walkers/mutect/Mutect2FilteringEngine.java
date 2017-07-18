@@ -73,22 +73,15 @@ public class Mutect2FilteringEngine {
 
     private void applyMedianBaseQualityDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final int[] baseQualityByAllele = getIntArrayTumorField(vc, BaseQuality.KEY);
-        if (baseQualityByAllele != null && baseQualityByAllele[0] - baseQualityByAllele[1] > MTFAC.maxMedianBaseQualityDifference) {
-            filters.add(GATKVCFConstants.MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME);
+        if (baseQualityByAllele != null && baseQualityByAllele[0] < MTFAC.minMedianBaseQuality) {
+            filters.add(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME);
         }
     }
 
     private void applyMedianMappingQualityDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final int[] mappingQualityByAllele = getIntArrayTumorField(vc, MappingQuality.KEY);
-        if (mappingQualityByAllele != null && mappingQualityByAllele[0] - mappingQualityByAllele[1] > MTFAC.maxMedianMappingQualityDifference) {
-            filters.add(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME);
-        }
-    }
-
-    private void applyMedianClippingDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        final int[] clippingCountsByAllele = getIntArrayTumorField(vc, ClippedBases.KEY);
-        if (clippingCountsByAllele != null && clippingCountsByAllele[1] - clippingCountsByAllele[0] > MTFAC.maxMedianClippingDifference) {
-            filters.add(GATKVCFConstants.MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME);
+        if (mappingQualityByAllele != null && mappingQualityByAllele[0] < MTFAC.minMedianMappingQuality) {
+            filters.add(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME);
         }
     }
 
@@ -103,16 +96,9 @@ public class Mutect2FilteringEngine {
         final int[] readPositionByAllele = getIntArrayTumorField(vc, ReadPosition.KEY);
         if (readPositionByAllele != null) {
             final int insertionSize =  Math.max(vc.getAltAlleleWithHighestAlleleCount().getBases().length - vc.getReference().getBases().length, 0);
-            if (insertionSize + readPositionByAllele[1] < MTFAC.minMedianReadPosition) {
+            if (insertionSize + readPositionByAllele[0] < MTFAC.minMedianReadPosition) {
                 filters.add(GATKVCFConstants.READ_POSITION_FILTER_NAME);
             }
-        }
-
-        // since read position is measured relative to the reference, this can unfairly penalize long indels
-        // thus we add the insertion length
-        final int insertionSize =  Math.max(vc.getAltAlleleWithHighestAlleleCount().getBases().length - vc.getReference().getBases().length, 0);
-        if (insertionSize + vc.getAttributeAsInt(ReadPosition.KEY, 100) < MTFAC.minMedianReadPosition) {
-            filters.add(GATKVCFConstants.READ_POSITION_FILTER_NAME);
         }
     }
 
@@ -222,7 +208,6 @@ public class Mutect2FilteringEngine {
         applyContaminationFilter(MTFAC, vc, filters);
         applyMedianBaseQualityDifferenceFilter(MTFAC, vc, filters);
         applyMedianMappingQualityDifferenceFilter(MTFAC, vc, filters);
-        applyMedianClippingDifferenceFilter(MTFAC, vc, filters);
         applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, filters);
         applyReadPositionFilter(MTFAC, vc, filters);
 

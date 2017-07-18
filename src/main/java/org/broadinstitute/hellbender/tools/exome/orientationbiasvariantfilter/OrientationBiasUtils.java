@@ -10,9 +10,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.*;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,22 +44,6 @@ public class OrientationBiasUtils {
         Utils.nonNull(g);
         final String genotypeFieldAsString = getGenotypeString(g, fieldName);
         return isVcfGenotypeFieldEmpty(genotypeFieldAsString) ? defaultValue : Double.parseDouble(genotypeFieldAsString);
-    }
-
-    /**
-     * See {@link OrientationBiasUtils#getGenotypeString}.
-     *  This converts String to a Integer.  If an empty field value ({@link VCFConstants#MISSING_VALUE_v4}) would be
-     *  returned, return the specified defaultValue instead.
-     *
-     * @param g genotype Never {@code null}
-     * @param fieldName Name of the field (format field).
-     * @param defaultValue return value if field is not found.
-     * @return Value of field as a Integer or specified defaultValue.
-     */
-    public static Integer getGenotypeInteger(final Genotype g, final String fieldName, final int defaultValue) {
-        Utils.nonNull(g);
-        final String genotypeFieldAsString = getGenotypeString(g, fieldName);
-        return isVcfGenotypeFieldEmpty(genotypeFieldAsString) ? defaultValue : Integer.parseInt(genotypeFieldAsString);
     }
 
     private static boolean isVcfGenotypeFieldEmpty(final String genotypeFieldAsString) {
@@ -307,5 +293,13 @@ public class OrientationBiasUtils {
             logger.warn("Existing genotype filter could be incorrect: " + existingFilterValue + " ... Proceeding with " + appendedFilterString + " ...");
             return appendedFilterString;
         }
+    }
+
+    public static int[] getF1R2(final Genotype g) {
+        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F1R2_KEY, () -> null, 0);
+    }
+
+    public static int[] getF2R1(final Genotype g) {
+        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F2R1_KEY, () -> null, 0);
     }
 }

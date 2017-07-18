@@ -66,9 +66,8 @@ public class BaseQualityUnitTest {
         bq.annotate(null, vc, DUMMY_GENOTYPE, gb, likelihoods);
         final Genotype g = gb.make();
 
-        final int[] medianRefAndAltQuals = (int[]) g.getExtendedAttribute(BaseQuality.KEY);
+        final int[] medianAltQuals = (int[]) g.getExtendedAttribute(BaseQuality.KEY);
 
-        Assert.assertEquals( medianRefAndAltQuals[0], 30);
-        Assert.assertEquals(medianRefAndAltQuals[1], 25);
+        Assert.assertEquals(medianAltQuals[0], 25);
     }
 }

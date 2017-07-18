@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,8 +14,11 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.utils.BaseUtils.Base.A;
 import static org.broadinstitute.hellbender.utils.BaseUtils.Base.C;
@@ -34,26 +38,16 @@ import static org.broadinstitute.hellbender.utils.BaseUtils.Base.C;
  */
 public final class OxoGReadCounts extends GenotypeAnnotation {
 
-    public static final Allele REF_C = Allele.create(C.base, true);
-    public static final Allele REF_A = Allele.create(A.base, true);
-
     @Override
     public List<String> getKeyNames() {
-        return Arrays.asList(GATKVCFConstants.OXOG_ALT_F1R2_KEY,
-                             GATKVCFConstants.OXOG_ALT_F2R1_KEY,
-                             GATKVCFConstants.OXOG_REF_F1R2_KEY,
-                             GATKVCFConstants.OXOG_REF_F2R1_KEY,
-                             GATKVCFConstants.OXOG_FRACTION_KEY);
+        return Arrays.asList(GATKVCFConstants.F1R2_KEY, GATKVCFConstants.F2R1_KEY);
     }
 
     @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
         return Arrays.asList(
-                GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_ALT_F1R2_KEY),
-                GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_ALT_F2R1_KEY),
-                GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_REF_F1R2_KEY),
-                GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_REF_F2R1_KEY),
-                GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_FRACTION_KEY));
+                GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.F1R2_KEY),
+                GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.F2R1_KEY));
     }
 
     @Override
@@ -65,55 +59,33 @@ public final class OxoGReadCounts extends GenotypeAnnotation {
         Utils.nonNull(gb, "gb is null");
         Utils.nonNull(vc, "vc is null");
 
-        if (g == null || !g.isCalled() || likelihoods == null || !vc.isSNP()) {
+        if (g == null || likelihoods == null) {
             return;
         }
 
-        final Allele ref = vc.getReference();
-        final Allele alt = vc.getAlternateAllele(0);
+        final Map<Allele, MutableInt> f1r2Counts = likelihoods.alleles().stream()
+                .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
 
-        int alt_F1R2 = 0;
-        int alt_F2R1 = 0;
-        int ref_F1R2 = 0;
-        int ref_F2R1 = 0;
+        final Map<Allele, MutableInt> f2r1Counts = likelihoods.alleles().stream()
+                .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
 
-        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles(g.getSampleName())) {
-            final GATKRead read = bestAllele.read;
-            if (bestAllele.isInformative() && isUsableRead(read) && read.isPaired()) {
-                final Allele allele = bestAllele.allele;
-                if (allele.equals(ref, true)) {
-                    if (read.isReverseStrand() == read.isFirstOfPair()) {
-                        ref_F2R1++;
-                    } else {
-                        ref_F1R2++;
-                    }
-                } else if (allele.equals(alt, true)) {
-                    if (read.isReverseStrand() == read.isFirstOfPair()) {
-                        alt_F2R1++;
-                    } else {
-                        alt_F1R2++;
-                    }
-                }
-            }
-        }
+        Utils.stream(likelihoods.bestAlleles(g.getSampleName()))
+                .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
+                .forEach(ba -> (isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
 
-        final double numerator;
-        if (ref.equals(REF_C) || ref.equals(REF_A)) {
-            numerator = alt_F2R1;
-        } else {
-            numerator = alt_F1R2;
-        }
-        final double denominator =  alt_F1R2 + alt_F2R1;
-        final double fraction = numerator/denominator;
+        final int[] f1r2 = likelihoods.alleles().stream().mapToInt(a -> f1r2Counts.get(a).intValue()).toArray();
 
-        gb.attribute(GATKVCFConstants.OXOG_ALT_F1R2_KEY, alt_F1R2);
-        gb.attribute(GATKVCFConstants.OXOG_ALT_F2R1_KEY, alt_F2R1);
-        gb.attribute(GATKVCFConstants.OXOG_REF_F1R2_KEY, ref_F1R2);
-        gb.attribute(GATKVCFConstants.OXOG_REF_F2R1_KEY, ref_F2R1);
-        gb.attribute(GATKVCFConstants.OXOG_FRACTION_KEY, fraction);
+        final int[] f2r1 = likelihoods.alleles().stream().mapToInt(a -> f2r1Counts.get(a).intValue()).toArray();
+
+        gb.attribute(GATKVCFConstants.F1R2_KEY, f1r2);
+        gb.attribute(GATKVCFConstants.F2R1_KEY, f2r1);
     }
 
     protected static boolean isUsableRead(final GATKRead read) {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
+    }
+
+    protected static boolean isF2R1(final GATKRead read) {
+        return read.isReverseStrand() == read.isFirstOfPair();
     }
 }
