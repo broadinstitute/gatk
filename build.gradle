@@ -141,6 +141,10 @@ dependencies {
     compileOnly(javadocJDKFiles)
     testCompile(javadocJDKFiles)
 
+    // Library for configuration:
+    compile 'org.aeonbits.owner:owner:1.0.9'
+//    compile 'org.aeonbits.owner:owner:1.0.10-SNAPSHOT'
+
     compile 'org.broadinstitute:barclay:1.2.1'
     compile 'com.github.broadinstitute:picard:' + picardVersion
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'

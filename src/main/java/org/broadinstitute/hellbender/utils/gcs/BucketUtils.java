@@ -41,7 +41,6 @@ public final class BucketUtils {
     // if the channel errors out, re-open up to this many times
     public static final int DEFAULT_GCS_MAX_REOPENS = 20;
 
-
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
     private BucketUtils(){} //private so that no one will instantiate this class

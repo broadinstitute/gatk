@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
+import org.broadinstitute.hellbender.utils.config.ConfigUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -33,6 +34,9 @@ import java.util.function.Consumer;
 public abstract class BaseTest {
 
     static {
+        // Set config factory to know about the configuration options that we have.
+        ConfigUtils.setConfigFactoryVariableDefaults();
+
         // set properties for the local Spark runner
         System.setProperty("dataflow.spark.test.reuseSparkContext", "true");
         SparkContextFactory.enableTestSparkContext();
