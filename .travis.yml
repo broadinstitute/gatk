@@ -152,8 +152,8 @@ after_script:
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
     $GCLOUD/gcloud components -q update gsutil;
     REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
-    ls -l
-    for i in $(ls -1)
+    ls -l build/reports/tests
+    for i in $(ls -1 build/reports/tests)
     do
       cat $i
     done
