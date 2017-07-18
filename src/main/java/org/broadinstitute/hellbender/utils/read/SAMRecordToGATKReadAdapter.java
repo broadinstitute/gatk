@@ -507,7 +507,13 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     public String getAttributeAsString( final String attributeName ) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
         final Object attributeValue = samRecord.getAttribute(attributeName);
-
+        if ( attributeValue instanceof byte[]) {
+            // in case that the attribute is a byte[] array, the toString method will format it as name@hashCode
+            // for a good representation of the byte[] as String, it encodes the bytes with the default charset (UTF-8)
+            final byte[] val = (byte[]) attributeValue;
+            return (val.length == 0) ? "" : new String(val, DEFAULT_CHARSET);
+        }
+        // otherwise, just use the toString() method unless it is null
         return attributeValue != null ? attributeValue.toString() : null;
     }
 
