@@ -153,7 +153,7 @@ after_script:
     $GCLOUD/gcloud components -q update gsutil;
     REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
     ls -l
-    for i in $ (ls -1)
+    for i in $(ls -1)
     do
       cat $i
     done
