@@ -663,4 +663,36 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
         final ReadsDataSource readsSource = new ReadsDataSource(bams, wrongIndices);
     }
+
+
+    @DataProvider(name = "readHeaders")
+    public Object[][] getHeadersForDetectOrder() {
+        final SAMFileHeader unknown = new SAMFileHeader();
+        unknown.setSortOrder(SAMFileHeader.SortOrder.unknown);
+        final SAMFileHeader coordinate = new SAMFileHeader();
+        coordinate.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        final SAMFileHeader queryname = new SAMFileHeader();
+        queryname.setSortOrder(SAMFileHeader.SortOrder.queryname);
+
+        return new Object[][] {
+                // empty list
+                {Collections.emptyList(), SAMFileHeader.SortOrder.unsorted},
+                // single header
+                {Collections.singletonList(unknown), SAMFileHeader.SortOrder.unknown},
+                {Collections.singletonList(coordinate), SAMFileHeader.SortOrder.coordinate},
+                {Collections.singletonList(queryname), SAMFileHeader.SortOrder.queryname},
+                // equal header list
+                {Arrays.asList(unknown, unknown), SAMFileHeader.SortOrder.unknown},
+                {Arrays.asList(coordinate, coordinate), SAMFileHeader.SortOrder.coordinate},
+                {Arrays.asList(queryname, queryname), SAMFileHeader.SortOrder.queryname},
+                // different header list
+                {Arrays.asList(unknown, coordinate, queryname), SAMFileHeader.SortOrder.unsorted},
+                {Arrays.asList(coordinate, coordinate, queryname), SAMFileHeader.SortOrder.unsorted}
+        };
+    }
+
+    @Test(dataProvider = "readHeaders")
+    public void testIdentifySortOrder(final List<SAMFileHeader> headers, final SAMFileHeader.SortOrder expected) {
+        Assert.assertEquals(ReadsDataSource.identifySortOrder(headers), expected);
+    }
 }
