@@ -1,8 +1,14 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.engine.filters.AmbiguousBaseReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 
 import java.io.Serializable;
+import java.util.List;
 
 public final class PSFilterArgumentCollection implements Serializable {
 
@@ -26,8 +32,8 @@ public final class PSFilterArgumentCollection implements Serializable {
             minRecommendedValue = 31,
             optional = true)
     public int minReadLength = 31;
-    @Argument(doc = "Max allowable number of ambiguous bases",
-            fullName = "filterMaxAmbiguousBases",
+    @Argument(doc = "Max allowable number of masked bases per read",
+            fullName = "maxMaskedBases",
             minValue = 0,
             optional = true)
     public int maxAmbiguousBases = 2;
@@ -92,4 +98,17 @@ public final class PSFilterArgumentCollection implements Serializable {
             fullName = "metricsFile",
             optional = true)
     public String metricsFileUri = null;
+
+    public void doReadFilterArgumentWarnings(final GATKReadFilterPluginDescriptor pluginDescriptor, final Logger logger) {
+        final List<ReadFilter> readFilters = pluginDescriptor.getAllInstances();
+        for (final ReadFilter filter : readFilters) {
+            if (filter.getClass().isAssignableFrom(AmbiguousBaseReadFilter.class)) {
+                logger.warn("Detected the use of AmbiguousBaseReadFilter, which is applied before the PathSeq " +
+                        "base masking steps. Did you mean to use --maxMaskedBases, which is applied after masking?");
+            } else if (filter.getClass().isAssignableFrom(ReadLengthReadFilter.class)) {
+                logger.warn("Detected the use of ReadLengthReadFilter, which is applied before the PathSeq " +
+                        "clipping steps. Did you mean to use --minClippedReadLength, which is applied after clipping?");
+            }
+        }
+    }
 }

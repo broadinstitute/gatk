@@ -7,30 +7,34 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Filters out reads with more than a threshold number of N's. By default will determine the threshold by the given
- * maximum fraction of bases in the read. This can be overridden by setting the maximum number of ambiguous bases instead.
+ * Filters out reads with more than a threshold number of N's.
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class AmbiguousBaseReadFilter extends ReadFilter {
 
     private static final long serialVersionUID = 1L;
-    private final Integer maxAmbiguousBases;
 
     @Argument(doc = "Threshold fraction of ambiguous bases",
             fullName = "ambigFilterFrac",
-            optional = true)
+            optional = true,
+            mutex = {"ambigFilterBases"})
     public double maxAmbiguousBaseFraction = 0.05;
 
-    public AmbiguousBaseReadFilter() { maxAmbiguousBases = null; }
+    @Argument(doc = "Threshold number of ambiguous bases. If null, uses threshold fraction; otherwise, overrides threshold fraction.",
+            fullName = "ambigFilterBases",
+            optional = true,
+            mutex = {"ambigFilterFrac"})
+    public Integer maxAmbiguousBases = null;
 
-    /**
-     * Sets max number of ambiguous bases, which overrides maxAmbiguousBaseFraction
-     */
+    public AmbiguousBaseReadFilter() {}
+
     public AmbiguousBaseReadFilter(final int maxAmbiguousBases) {
         this.maxAmbiguousBases = maxAmbiguousBases;
     }
 
-    //Filters out reads with more than a threshold number of N's
+    /**
+     * Test read for a given maximum threshold of allowable ambiguous bases
+     */
     @Override
     public boolean test(final GATKRead read) {
         final int maxN = maxAmbiguousBases != null ? maxAmbiguousBases : (int) (read.getLength() * maxAmbiguousBaseFraction);
