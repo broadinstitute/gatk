@@ -8,7 +8,7 @@ jdk:
 - openjdk8
 env:
   matrix:
-#  - TEST_TYPE=cloud
+  - TEST_TYPE=cloud
   - TEST_TYPE=integration TEST_VERBOSITY=minimal UPLOAD=true
   - TEST_TYPE=unit TEST_VERBOSITY=minimal
 #  - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
