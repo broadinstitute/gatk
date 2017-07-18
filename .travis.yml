@@ -8,14 +8,14 @@ jdk:
 - openjdk8
 env:
   matrix:
-  - TEST_TYPE=cloud
+#  - TEST_TYPE=cloud
   - TEST_TYPE=integration TEST_VERBOSITY=minimal UPLOAD=true
-  - TEST_TYPE=unit TEST_VERBOSITY=minimal
-  - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - RUN_CNV_SOMATIC_WDL=true
-  - RUN_M2_WDL=true
-  - RUN_CNV_GERMLINE_WDL=true
+#  - TEST_TYPE=unit TEST_VERBOSITY=minimal
+#  - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
+#  - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
+#  - RUN_CNV_SOMATIC_WDL=true
+#  - RUN_M2_WDL=true
+#  - RUN_CNV_GERMLINE_WDL=true
   global:
   #gradle needs this
   - TERM=dumb
@@ -109,33 +109,33 @@ script:
 # run tests
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
-  elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
-    echo "Running CNV somatic workflows";
-    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
-  elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
-    echo "Running CNV germline workflows";
-    bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
-  elif [[ $RUN_M2_WDL == true ]]; then
-    echo "Deleting some unused files before running M2 WDL...";
-    rm -Rf src/test/resources/large/VQSR;
-    echo "Running M2 WDL";
-    sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
-  elif [[ $TEST_DOCKER == true ]]; then
-    echo "Building docker image and running appropriate tests..." ;
-    if [ ${TRAVIS_PULL_REQUEST} != false ]; then
-      sudo bash build_docker.sh  -e FETCH_HEAD -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
-      DOCKER_TAG=FETCH_HEAD;
-    else
-      echo ${TRAVIS_COMMIT};
-      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/;
-      DOCKER_TAG=$TRAVIS_COMMIT;
-    fi;
-    sudo docker images;
-    echo ${TEST_TYPE};
-    sudo docker run -v $(pwd)/src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash /root/run_unit_tests.sh;
+#  elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
+#    echo "Running CNV somatic workflows";
+#    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+#  elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
+#    echo "Running CNV germline workflows";
+#    bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
+#  elif [[ $RUN_M2_WDL == true ]]; then
+#    echo "Deleting some unused files before running M2 WDL...";
+#    rm -Rf src/test/resources/large/VQSR;
+#    echo "Running M2 WDL";
+#    sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
+#  elif [[ $TEST_DOCKER == true ]]; then
+#    echo "Building docker image and running appropriate tests..." ;
+#    if [ ${TRAVIS_PULL_REQUEST} != false ]; then
+#      sudo bash build_docker.sh  -e FETCH_HEAD -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
+#      DOCKER_TAG=FETCH_HEAD;
+#    else
+#      echo ${TRAVIS_COMMIT};
+#      sudo bash build_docker.sh  -e ${TRAVIS_COMMIT} -s -u -d $PWD/temp_staging/;
+#      DOCKER_TAG=$TRAVIS_COMMIT;
+#    fi;
+#    sudo docker images;
+#    echo ${TEST_TYPE};
+#    sudo docker run -v $(pwd)/src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash /root/run_unit_tests.sh;
   else
     ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
-    travis_wait 50 ./gradlew jacocoTestReport;
+    travis_wait 50 ./gradlew test --tests '*BwaMemIntegrationTest*'
   fi
 
 after_success:
@@ -152,6 +152,11 @@ after_script:
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
     $GCLOUD/gcloud components -q update gsutil;
     REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
+    ls -l
+    for i in $ (ls -1)
+    do
+      cat $i
+    done
     $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/;
     echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/test/index.html";
   fi
