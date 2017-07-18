@@ -454,6 +454,11 @@ public final class IOUtils {
      */
     public static File createTempFile(String name, String extension) {
         try {
+
+            if ( !extension.startsWith(".") ) {
+                extension = "." + extension;
+            }
+
             final File file = File.createTempFile(name, extension);
             file.deleteOnExit();
 
