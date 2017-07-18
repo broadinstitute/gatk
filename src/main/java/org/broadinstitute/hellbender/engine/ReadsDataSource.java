@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
@@ -443,34 +444,27 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      */
     private SamFileHeaderMerger createHeaderMerger() {
         List<SAMFileHeader> headers = new ArrayList<>(readers.size());
-        final Set<SAMFileHeader.SortOrder> sortOrders = new HashSet<>(SAMFileHeader.SortOrder.values().length);
         for ( Map.Entry<SamReader, CloseableIterator<SAMRecord>> readerEntry : readers.entrySet() ) {
-            final SAMFileHeader h = readerEntry.getKey().getFileHeader();
-            headers.add(h);
-            sortOrders.add(h.getSortOrder());
+            headers.add(readerEntry.getKey().getFileHeader());
         }
 
-        // unknown order is removed and assumes that it is the same as the others
-        final boolean containUnknown = sortOrders.remove(SAMFileHeader.SortOrder.unknown);
-        final boolean detectedOrder;
+        SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(identifySortOrder(headers), headers, true);
+        return headerMerger;
+    }
+
+    @VisibleForTesting
+    static SAMFileHeader.SortOrder identifySortOrder(final List<SAMFileHeader> headers){
+        final Set<SAMFileHeader.SortOrder> sortOrders = headers.stream().map(SAMFileHeader::getSortOrder).collect(Collectors.toSet());
         final SAMFileHeader.SortOrder order;
         if (sortOrders.size() == 1) {
             order = sortOrders.iterator().next();
-            detectedOrder = true;
         } else {
-            // TODO: default value should be unknown/unsorted but kept as coordinate to maintain previous behaviour
-            order = SAMFileHeader.SortOrder.coordinate;
-            detectedOrder = false;
-        }
-        if (detectedOrder && containUnknown) {
-            logger.warn("Some inputs have unknown sort orders. Assuming {} sorted reads for them according to other inputs", order);
-        } else if (!detectedOrder) {
+            order = SAMFileHeader.SortOrder.unsorted;
             logger.warn("Inputs have different sort orders. Assuming {} sorted reads for all of them.", order);
         }
-
-        SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(order, headers, true);
-        return headerMerger;
+        return order;
     }
+
 
     /**
      * Shut down this data source permanently, closing all iterations and readers.
