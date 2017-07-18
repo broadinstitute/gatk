@@ -1069,6 +1069,9 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
         read.setAttribute("DR", "bar");
         Assert.assertEquals(read.getAttributeAsString("DR"), "bar", "Wrong value for attribute DR");
 
+        read.setAttribute("DR", new byte[] {'A', 'C', 'T', 'G'});
+        Assert.assertEquals(read.getAttributeAsString("DR"), "ACTG", "Wrong value for attribute DR");
+
         read.clearAttribute("DR");
         Assert.assertNull(read.getAttributeAsString("DR"), "Attribute DR should be null");
     }
