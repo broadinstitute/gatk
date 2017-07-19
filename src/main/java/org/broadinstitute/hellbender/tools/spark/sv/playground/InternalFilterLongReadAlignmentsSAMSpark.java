@@ -232,12 +232,26 @@ public class InternalFilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
             return forOneContig._2._2.stream()
                     .map(configuration -> new AlignedContig(forOneContig._1, forOneContig._2._1,
                             splitGaps(configuration), true))
+                    .sorted(sortConfigurations())
                     .collect(Collectors.toList()).iterator();
         } else {
             return Collections.singletonList(new AlignedContig(forOneContig._1, forOneContig._2._1,
                     splitGaps(forOneContig._2._2.get(0)), false))
                     .iterator();
         }
+    }
+
+    /**
+     * when two configurations are the same, prefer the one with less alignments,
+     * or less summed mismatches if still tie.
+     */
+    private static Comparator<AlignedContig> sortConfigurations() {
+        Comparator<AlignedContig> numFirst
+                = (AlignedContig x, AlignedContig y) -> Integer.compare(x.alignmentIntervals.size(), y.alignmentIntervals.size());
+        Comparator<AlignedContig> mismatchSecond
+                = (AlignedContig x, AlignedContig y) -> Integer.compare(x.alignmentIntervals.stream().mapToInt(ai -> ai.mismatches).sum(),
+                                                                        y.alignmentIntervals.stream().mapToInt(ai -> ai.mismatches).sum());
+        return numFirst.thenComparing(mismatchSecond);
     }
 
     private static List<AlignmentInterval> splitGaps(final List<AlignmentInterval> configuration) {
