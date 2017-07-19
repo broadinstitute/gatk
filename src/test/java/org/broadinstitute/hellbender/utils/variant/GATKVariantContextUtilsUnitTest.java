@@ -1918,8 +1918,9 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         final VariantContextBuilder vcBuilder = new VariantContextBuilder("","chr1", 1, 1, alleles);
         final VariantContext vc = vcBuilder.make();
 
-        final List<String> filterResult = GATKVariantContextUtils.createFilterListWithAppend(vc, "TEST_FILTER");
+        final String testFilterString = "TEST_FILTER";
+        final List<String> filterResult = GATKVariantContextUtils.createFilterListWithAppend(vc, testFilterString);
         Assert.assertEquals(filterResult.size(), 1);
-        Assert.assertTrue(filterResult.contains("TEST_FILTER"));
+        Assert.assertTrue(filterResult.contains(testFilterString));
     }
 }
