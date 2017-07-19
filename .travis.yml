@@ -153,7 +153,7 @@ after_script:
   for i in $(ls -1 build/reports/tests)
   do
     cat $i
-  done
+  done;
 
 #- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
 #    $GCLOUD/gcloud components -q update gsutil;
