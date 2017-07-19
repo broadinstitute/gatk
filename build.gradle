@@ -123,7 +123,7 @@ dependencies {
     // Using the shaded version to avoid conflicts between its protobuf dependency
     // and that of Hadoop/Spark (either the one we reference explicitly, or the one
     // provided by dataproc).
-    compile 'com.google.cloud:google-cloud-nio:0.19.0-alpha:shaded'
+    compile 'com.google.cloud:google-cloud-nio:0.20.2-alpha-20170717.214602-1:shaded'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
