@@ -195,9 +195,10 @@ public class Main {
         if(printStackTraceOnUserExceptions()) {
             e.printStackTrace();
         } else {
-            System.err.println("Use the system property "
-                            + STACK_TRACE_ON_USER_EXCEPTION_PROPERTY
-                            + " (--javaOptions '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true') to print the stack trace.");
+            System.err.println(String.format(
+                    "Set the system property %s (--javaOptions '-D%s=true') to print the stack trace.",
+                    STACK_TRACE_ON_USER_EXCEPTION_PROPERTY,
+                    STACK_TRACE_ON_USER_EXCEPTION_PROPERTY));
         }
     }
 
