@@ -6,15 +6,16 @@ import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.UniqueIDWrapper;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -58,7 +59,8 @@ public class OrientationBiasFilterer {
 
             final List<Allele> alleles = genotype.getAlleles();
             if (genotype.getPloidy() != 2) {
-                logger.warn("No action required:  This tool will skip non-diploid sites.  Saw GT: " + genotype.getGenotypeString() + " at " + vc.toStringWithoutGenotypes());
+                logger.debug("No action required:  This tool will skip non-diploid sites.  Saw GT: {} at {}",
+                        genotype::getGenotypeString, vc::toStringWithoutGenotypes);
             }
 
             // Get the reference allele as a String and make sure that there is only one ref allele and that it is length
@@ -131,7 +133,7 @@ public class OrientationBiasFilterer {
         }
 
         final List<String> sampleNames = preAdapterQAnnotatedVariants.get(0).getSampleNamesOrderedByName();
-        final Map<String, SortedMap<Genotype, VariantContext>> sampleNameToVariants = createSampleToGenotypeVariantContextSortedMap(sampleNames, preAdapterQAnnotatedVariants);
+        final Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> sampleNameToVariants = createSampleToGenotypeVariantContextSortedMap(sampleNames, preAdapterQAnnotatedVariants);
 
         // This map will hold all updated genotypes (across samples)
         final Map<VariantContext, List<Genotype>> newGenotypes = new HashMap<>();
@@ -143,7 +145,7 @@ public class OrientationBiasFilterer {
             //  I.e. only remove filtered or ref/ref genotypes and count the rest.
             final long unfilteredGenotypeCount = OrientationBiasUtils.calculateUnfilteredNonRefGenotypeCount(preAdapterQAnnotatedVariants, sampleName);
 
-            final SortedMap<Genotype, VariantContext> genotypesToConsiderForFiltering = sampleNameToVariants.get(sampleName);
+            final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering = sampleNameToVariants.get(sampleName);
 
             // Save some time, especially for the normal sample
             if (genotypesToConsiderForFiltering.keySet().size() == 0) {
@@ -171,7 +173,8 @@ public class OrientationBiasFilterer {
 
             final Map<Transition, Long> transitionCutSoFar = new HashMap<>();
             relevantTransitions.stream().forEach(transition -> transitionCutSoFar.put(transition, 0L));
-            for (final Genotype genotype : genotypesToConsiderForFiltering.keySet()) {
+            for (final UniqueIDWrapper<Genotype> genotypeWrapped : genotypesToConsiderForFiltering.keySet()) {
+                final Genotype genotype = genotypeWrapped.getWrapped();
                 final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
                 // Since we only have the ALT_F2R1 and ALT_F1R2 counts for the first alt allele, we will not consider a site where transition is not artifact mode in the first alt allele.
                 final Transition transition = Transition.transitionOf(genotype.getAllele(0).getBaseString().charAt(0), genotype.getAllele(1).getBaseString().charAt(0));
@@ -195,7 +198,7 @@ public class OrientationBiasFilterer {
                     }
                 }
 
-                newGenotypes.computeIfAbsent(genotypesToConsiderForFiltering.get(genotype), v -> new ArrayList<>()).add(genotypeBuilder.make());
+                newGenotypes.computeIfAbsent(genotypesToConsiderForFiltering.get(genotypeWrapped), v -> new ArrayList<>()).add(genotypeBuilder.make());
             }
         }
 
@@ -210,8 +213,11 @@ public class OrientationBiasFilterer {
                 final List<Genotype> newGenotypesForThisVariantContext = newGenotypes.get(vc);
                 newGenotypesForThisVariantContext.forEach(gcc::replace);
                 final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(vc).genotypes(gcc);
+
+                // Add the orientation bias filter to the variant context.
                 if (newGenotypesForThisVariantContext.stream().anyMatch(g -> (g != null) && (g.getFilters() != null) && (g.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)))) {
-                    variantContextBuilder.filter(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT);
+                    final List<String> result = GATKVariantContextUtils.createFilterListWithAppend(vc, OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT);
+                    variantContextBuilder.filters(result.toArray(new String[result.size()]));
                 }
                 final VariantContext updatedVariantContext = variantContextBuilder.make();
                 finalVariants.add(updatedVariantContext);
@@ -225,7 +231,7 @@ public class OrientationBiasFilterer {
     }
 
 
-    private static Map<Transition, Long> createTransitionToNumCutPrePreAdapterQ(double fdrThresh, String sampleName, long unfilteredGenotypeCount, final SortedMap<Genotype, VariantContext> genotypesToConsiderForFiltering, final Map<Transition, Long> transitionCount) {
+    private static Map<Transition, Long> createTransitionToNumCutPrePreAdapterQ(double fdrThresh, String sampleName, long unfilteredGenotypeCount, final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering, final Map<Transition, Long> transitionCount) {
         final long allTransitionCount = transitionCount.values().stream().mapToLong(Long::longValue).sum();
         final int totalNumToCut = calculateTotalNumToCut(fdrThresh, unfilteredGenotypeCount, genotypesToConsiderForFiltering);
 
@@ -241,9 +247,9 @@ public class OrientationBiasFilterer {
         return transitionNumToCut;
     }
 
-    private static int calculateTotalNumToCut(final double fdrThresh, final long unfilteredGenotypeCount, final SortedMap<Genotype, VariantContext> genotypesToConsiderForFiltering) {
+    private static int calculateTotalNumToCut(final double fdrThresh, final long unfilteredGenotypeCount, final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering) {
         final List<Double> pArtifactScores = genotypesToConsiderForFiltering.keySet().stream()
-                .map(g -> OrientationBiasUtils.getGenotypeDouble(g, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0))
+                .map(g -> OrientationBiasUtils.getGenotypeDouble(g.getWrapped(), OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0))
                 .collect(Collectors.toList());
 
         // When doing the Benjamini-Hochberg procedure, we need to include the non-artifact mode SNVs to guarantee the
@@ -274,12 +280,12 @@ public class OrientationBiasFilterer {
                 .findFirst().orElse(pArtifactScoresIncludingNonArtifact.size() - 1);
     }
 
-    private static Map<Transition, Long> createTransitionCountMap(SortedSet<Transition> relevantTransitions, SortedMap<Genotype, VariantContext> genotypesToConsiderForFiltering) {
+    private static Map<Transition, Long> createTransitionCountMap(SortedSet<Transition> relevantTransitions, SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering) {
         final Map<Transition, Long> transitionCount = new HashMap<>();
         relevantTransitions.stream().forEach(transition -> transitionCount.put(transition, 0L));
-        for (final Genotype g : genotypesToConsiderForFiltering.keySet()) {
+        for (final UniqueIDWrapper<Genotype> g : genotypesToConsiderForFiltering.keySet()) {
             relevantTransitions.stream()
-                    .filter(transition -> OrientationBiasUtils.isGenotypeInTransition(g, transition))
+                    .filter(transition -> OrientationBiasUtils.isGenotypeInTransition(g.getWrapped(), transition))
                     .forEach(transition -> transitionCount.put(transition, transitionCount.get(transition) + 1));
         }
         return transitionCount;
@@ -291,16 +297,17 @@ public class OrientationBiasFilterer {
      * @param variants The associated VariantContexts.  The given sample names should be included.
      * @return a mapping from the sampleNames to the a sorted (by p_artifact score) map that associates genotypes to their enclosing variant context.
      */
-    public static Map<String, SortedMap<Genotype, VariantContext>> createSampleToGenotypeVariantContextSortedMap(final List<String> sampleNames, final Collection<VariantContext> variants) {
+    public static  Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> createSampleToGenotypeVariantContextSortedMap(final List<String> sampleNames, final Collection<VariantContext> variants) {
 
         // Sorts in reverse order (highest p_artifact goes first and will not allow anything to be equal
-        //  unless they share the same reference)
+        //  unless they share the same reference).  Unfortunately, we cannot check the actual reference, so we rely on
+        //  hashCode and the genotype rendered as a string to be universally unique.
         // Note the negative sign is to sort in reverse error.
-        final Comparator<Genotype> genotypePArtifactComparator = Comparator
-                .comparingDouble((Genotype g) -> -OrientationBiasUtils.getGenotypeDouble(g, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0))
-                .thenComparingInt(g -> g.hashCode());
+        final Comparator<UniqueIDWrapper<Genotype>> genotypePArtifactComparator = Comparator
+                .comparingDouble((UniqueIDWrapper<Genotype> g) -> -OrientationBiasUtils.getGenotypeDouble(g.getWrapped(), OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0))
+                .thenComparingLong(UniqueIDWrapper::getId);
 
-        final Map<String, SortedMap<Genotype, VariantContext>> sampleNameToVariants = new HashMap<>();
+        final Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> sampleNameToVariants = new HashMap<>();
 
         final ProgressMeter customProgressMeter = new ProgressMeter(0.1);
         customProgressMeter.start();
@@ -308,17 +315,32 @@ public class OrientationBiasFilterer {
         // Populate a mapping of genotypes that we might want to filter to their variant context.
         //  Make sure that the keys are sorted by cumulative probability of being an artifact.
         for (final String sampleName : sampleNames) {
-            final SortedMap<Genotype, VariantContext> genotypesToConsiderForFiltering = new TreeMap<>(genotypePArtifactComparator);
+            final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering = new TreeMap<>(genotypePArtifactComparator);
             for (final VariantContext vc : variants) {
                 vc.getGenotypes(sampleName).stream()
                         .filter(g -> isFilteringCandidate(g, vc))
-                        .forEach(genotype -> genotypesToConsiderForFiltering.put(genotype, vc));
+                        .forEach(genotype -> putDisallowingKeyOverwrite(genotypesToConsiderForFiltering, genotype, vc));
                 customProgressMeter.update(new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd()));
             }
             sampleNameToVariants.put(sampleName, genotypesToConsiderForFiltering);
         }
         customProgressMeter.stop();
         return sampleNameToVariants;
+    }
+
+    /**
+     *  Add the genotype:vc entry into the given map, but fail if a key already exists.
+     *
+     * @param genotypesToConsiderForFiltering SortedMap, changed in place
+     * @param genotype key to insert into the sorted map
+     * @param vc value to insert into the sorted map
+     */
+    private static void putDisallowingKeyOverwrite(SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering, Genotype genotype, VariantContext vc) {
+
+        final VariantContext vcTemp = genotypesToConsiderForFiltering.putIfAbsent(new UniqueIDWrapper<>(genotype), vc);
+        if (vcTemp != null) {
+            throw new GATKException.ShouldNeverReachHereException("This error may disappear on a subsequent run of this tool, so please try running this tool again.  Otherwise, this can only be fixed by a GATK developer.  Attempting to overwrite a key in the genotypes for filtering map.  This means that genotypePArtifactComparator is (still) not generating unique keys.  See https://github.com/broadinstitute/gatk/issues/3291");
+        }
     }
 
     /**
@@ -362,4 +384,5 @@ public class OrientationBiasFilterer {
         final Set<String> sampleNameSet = samples.asSetOfSamples();
         return new VCFHeader(headerLines, sampleNameSet);
     }
+
 }
