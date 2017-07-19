@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.UniqueIDWrapper;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -16,7 +17,6 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -385,22 +385,4 @@ public class OrientationBiasFilterer {
         return new VCFHeader(headerLines, sampleNameSet);
     }
 
-    static class UniqueIDWrapper<A>{
-        private static final AtomicLong counter = new AtomicLong();
-
-        private final long id;
-        private final A wrapped;
-        public UniqueIDWrapper(A toWrap){
-            id = counter.getAndIncrement();
-            wrapped = toWrap;
-        }
-
-        public long getId() {
-            return id;
-        }
-
-        public A getWrapped(){
-            return wrapped;
-        }
-    }
 }
