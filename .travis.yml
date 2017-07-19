@@ -55,7 +55,7 @@ cache:
 before_install:
 #setup google cloud and github authentication
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
-    sudo rm -f /etc/boto.cfg
+    export BOTO_CONFIG=/dev/null
     openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
     scripts/install_gcloud.sh;
     printf 'y\n' | $GCLOUD/gcloud components update app;
