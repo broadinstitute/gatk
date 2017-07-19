@@ -149,10 +149,11 @@ after_success:
 after_failure:
 - dmesg | tail -100
 after_script:
-- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
-    $GCLOUD/gcloud components -q update gsutil;
-    REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
-    ls -l build/reports/tests;
-    $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/;
-    echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/test/index.html";
-  fi
+- ls -l build/reports/tests;
+#- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
+#    $GCLOUD/gcloud components -q update gsutil;
+#    REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
+#    ls -l build/reports/tests;
+#    $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/;
+#    echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/test/index.html";
+#  fi
