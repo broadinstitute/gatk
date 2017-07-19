@@ -152,7 +152,7 @@ after_script:
 - ls -1 build/reports/tests;
   for i in $(ls -1 build/reports/tests)
   do
-    cat $i;
+    cat build/reports/tests/$i;
   done
 
 #- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
