@@ -663,18 +663,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
         GroupBy(final Function<CalculateTargetCoverage, ? extends CountColumns> countColumnsFactory) {
             this.countColumnsFactory = countColumnsFactory;
         }
-
-        /**
-         * Returns a lowercase user friendly name for this group-by option.
-         * <p>This is to be used for some user targeted messages (error, log, etc)</p>
-         *
-         * @return never {@code null}.
-         */
-        @Override
-        public String toString() {
-            return name().toLowerCase().replace("_", " ");
-        }
-
+        
         /**
          * Creates a column count manager for a given read-counts tool.
          *
