@@ -9,9 +9,9 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.io.FilenameUtils;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -1469,4 +1469,21 @@ public final class GATKVariantContextUtils {
         }
         return second - first;
     }
+
+    /**
+     *  Create a string with existing filters plus the one to append
+     * @param vc VariantContext to base initial filter values.  Not {@code null}
+     * @param filterToAppend the filter value to append to the strings Not {@code null}
+     * @return String of filter values.  Sorted alphabetically.
+     */
+    public static List<String> createFilterListWithAppend(VariantContext vc, String filterToAppend) {
+        Utils.nonNull(vc);
+        Utils.nonNull(filterToAppend);
+
+        final List<String> filtersAsList = new ArrayList<>(vc.getFilters());
+        filtersAsList.add(filterToAppend);
+        filtersAsList.sort(String::compareToIgnoreCase);
+        return filtersAsList;
+    }
 }
+

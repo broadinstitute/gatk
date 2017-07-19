@@ -70,7 +70,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
     }
 
     private VariantContext makeVC(String source, List<Allele> alleles, String filter) {
-        return makeVC(source, alleles, filter.equals(".") ? null : new LinkedHashSet<>(Collections.singletonList(filter)));
+        return makeVC(source, alleles, filter.equals(".") ? null : new LinkedHashSet<String>(Collections.singletonList(filter)));
     }
 
     private VariantContext makeVC(String source, List<Allele> alleles, Set<String> filters) {
@@ -1889,5 +1889,37 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
     public void testCalculateGQFromShortPLArray() {
         final int[] plValues = new int[]{0};
         GATKVariantContextUtils.calculateGQFromPLs(plValues);
+    }
+
+    @Test
+    public void testCreateFilterListWithAppend() {
+        final List<Allele> alleles = new ArrayList<>();
+        alleles.add(Cref);
+        alleles.add(Allele.create("A", false));
+        final VariantContextBuilder vcBuilder = new VariantContextBuilder("","chr1", 1, 1, alleles);
+        vcBuilder.filters("F1", "F2", "Y");
+        final VariantContext vc = vcBuilder.make();
+
+        final String testFilterString = "TEST_FILTER";
+        final List<String> filterResult = GATKVariantContextUtils.createFilterListWithAppend(vc, testFilterString);
+        Assert.assertEquals(filterResult.size(), 4);
+        Assert.assertTrue(vc.getFilters().stream().allMatch(f -> filterResult.contains(f)));
+        Assert.assertTrue(filterResult.contains(testFilterString));
+
+        // Check that it is in the proper position
+        Assert.assertEquals(filterResult.get(2), testFilterString);
+    }
+
+    @Test
+    public void testCreateFilterListWithAppendToEmpty() {
+        final List<Allele> alleles = new ArrayList<>();
+        alleles.add(Cref);
+        alleles.add(Allele.create("A", false));
+        final VariantContextBuilder vcBuilder = new VariantContextBuilder("","chr1", 1, 1, alleles);
+        final VariantContext vc = vcBuilder.make();
+
+        final List<String> filterResult = GATKVariantContextUtils.createFilterListWithAppend(vc, "TEST_FILTER");
+        Assert.assertEquals(filterResult.size(), 1);
+        Assert.assertTrue(filterResult.contains("TEST_FILTER"));
     }
 }
