@@ -149,7 +149,7 @@ after_success:
 after_failure:
 - dmesg | tail -100
 after_script:
-- ls -l build/reports/tests;
+- ls -1 build/reports/tests;
 #- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
 #    $GCLOUD/gcloud components -q update gsutil;
 #    REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
