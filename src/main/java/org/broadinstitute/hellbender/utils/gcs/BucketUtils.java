@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.io.ByteStreams;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -346,6 +347,15 @@ public final class BucketUtils {
     }
 
     /**
+     * Sets NIO_MAX_REOPENS and generous timeouts as the global default.
+     * These will apply even to library code that creates its own paths to access with NIO.
+     */
+    public static void setGlobalNIODefaultOptions() {
+        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration());
+        CloudStorageFileSystemProvider.setStorageOptions(setGenerousTimeouts(StorageOptions.newBuilder()).build());
+    }
+
+    /**
      * String -> Path. This *should* not be necessary (use Paths.get(URI.create(...)) instead) , but it currently is
      * on Spark because using the fat, shaded jar breaks the registration of the GCS FilesystemProvider.
      * To transform other types of string URLs into Paths, use IOUtils.getPath instead.
@@ -355,12 +365,17 @@ public final class BucketUtils {
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
-        CloudStorageConfiguration cloudConfig = CloudStorageConfiguration.builder()
+        CloudStorageConfiguration cloudConfig = getCloudStorageConfiguration();
+        StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
+        return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
+    }
+
+    /** The config we want to use. **/
+    public static CloudStorageConfiguration getCloudStorageConfiguration() {
+        return CloudStorageConfiguration.builder()
             // if the channel errors out, re-open up to this many times
             .maxChannelReopens(NIO_MAX_REOPENS)
             .build();
-        StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
-        return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
     }
 
     private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {

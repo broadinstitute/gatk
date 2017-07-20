@@ -23,6 +23,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginProvider;
 import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -147,6 +148,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         if (! useJdkInflater) {
             BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
         }
+
+        BucketUtils.setGlobalNIODefaultOptions();
 
         if (!QUIET) {
             System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] " + commandLine);
@@ -296,6 +299,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
         final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
+
+        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration().maxChannelReopens());
+        logger.info("Using google-cloud-java patch 317951be3c2e898e3916a4b1abf5a9c220d84df8");
     }
 
     /**
