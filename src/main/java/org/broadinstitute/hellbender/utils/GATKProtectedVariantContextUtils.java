@@ -121,7 +121,7 @@ public class GATKProtectedVariantContextUtils {
             if (o == null) {
                 return missingValue;
             } else {
-                final String s = String.valueOf(o);
+                final String s = String.valueOf(o).trim();
                 if (s.equals(VCFConstants.MISSING_VALUE_v4)) {
                     return missingValue;
                 } else {
