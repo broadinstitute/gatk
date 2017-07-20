@@ -11,8 +11,8 @@ env:
 #  - TEST_TYPE=cloud
   - TEST_TYPE=integration TEST_VERBOSITY=minimal UPLOAD=true
   - TEST_TYPE=unit TEST_VERBOSITY=minimal
-#  - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
-#  - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
 #  - RUN_CNV_SOMATIC_WDL=true
 #  - RUN_M2_WDL=true
 #  - RUN_CNV_GERMLINE_WDL=true
@@ -133,7 +133,7 @@ script:
     fi;
     sudo docker images;
     echo ${TEST_TYPE};
-    sudo docker run -v $(pwd)/src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash /root/run_unit_tests.sh;
+    sudo docker run -v $(pwd)/src/test/resources:/testdata -v $(pwd)/build/reports:/build/reports --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash /root/run_unit_tests.sh;
   else
     ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew test --tests '*BwaMemIntegrationTest*';
