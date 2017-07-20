@@ -60,13 +60,30 @@ else
     fi
 fi
 
+ZONE=${CLOUDSDK_COMPUTE_ZONE:-"us-central1-a"}
+if [ "${CLOUDSDK_COMPUTE_ZONE:-""}" == "" ]; then
+    echo "Using zone=${ZONE} because CLOUDSDK_COMPUTE_ZONE is not set"
+else
+    # note: not a typo, letting user know that CLOUDSDK_COMPUTE_ZONE
+    # is the environmental variable being used
+    echo "Using zone=CLOUDSDK_COMPUTE_ZONE=${ZONE}"
+fi
+
+# experimental feature: allow setting number of workers
+# make 10 worker by default, but allow overload by setting env variable
+NUM_SV_WORKERS=${NUM_SV_WORKERS:-10}
+# make *no* preemptible workers by default, but allow overload by
+# setting env variable
+NUM_SV_PREEMPTIBLE_WORKERS=${NUM_SV_PREEMPTIBLE_WORKERS:-0}
+
 gcloud dataproc clusters create ${CLUSTER_NAME} \
-    --zone us-central1-a \
+    --zone ${ZONE} \
     --master-machine-type n1-highmem-8 \
     --worker-machine-type n1-highmem-16 \
     --master-boot-disk-size 500 \
     --worker-boot-disk-size 500 \
-    --num-workers 10 \
+    --num-workers ${NUM_SV_WORKERS} \
+    --num-preemptible-workers ${NUM_SV_PREEMPTIBLE_WORKERS} \
     --num-worker-local-ssds 1 \
     --metadata "reference=$REF_DIR" \
     --metadata "sample=$SAMP_DIR" \
