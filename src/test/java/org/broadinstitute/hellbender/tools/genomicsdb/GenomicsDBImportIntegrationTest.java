@@ -93,6 +93,32 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporterWithBatchSize(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, batchSize);
     }
 
+    @DataProvider
+    public Object[][] getThreads(){
+        return new Object[][] {
+                {1}, {2}, {5}
+        };
+    }
+
+    @Test(groups = {"bucket"}, dataProvider = "getThreads")
+    public void testDifferentThreadValuesFromABucket(final int threads) throws IOException {
+        final List<String> vcfInputs = resolveLargeFilesAsCloudURIs(LOCAL_GVCFS);
+        final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
+
+        writeToGenomicsDB(vcfInputs, INTERVAL, workspace, 0, false, 0, threads);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED);
+    }
+
+    @Test(dataProvider = "getThreads")
+    public void testDifferentThreadValuesLocally(final int threads) throws IOException {
+        final List<String> vcfInputs = LOCAL_GVCFS;
+        final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
+
+        writeToGenomicsDB(vcfInputs, INTERVAL, workspace, 0, false, 0, threads);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED);
+    }
     /**
      *
      * @throws CommandLineException.OutOfRangeArgumentValue  Value must be >= 1024 bytes
@@ -106,7 +132,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private void testGenomicsDBImporter(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
 
-        writeToGenomicsDB(vcfInputs, interval, workspace, 0, false, 0);
+        writeToGenomicsDB(vcfInputs, interval, workspace, 0, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, interval, expectedCombinedVCF);
     }
@@ -114,7 +140,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private void testGenomicsDBImporterWithBatchSize(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF, final int batchSize) throws IOException {
         final String workspace = createTempDir("genomicsdb-batchsize-tests-").getAbsolutePath() + "/workspace-" + batchSize;
 
-        writeToGenomicsDB(vcfInputs, interval, workspace, batchSize, false, 0);
+        writeToGenomicsDB(vcfInputs, interval, workspace, batchSize, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, interval, expectedCombinedVCF);
     }
@@ -122,20 +148,20 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private void testGenomicsDBImportWithZeroBufferSize(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
         final String workspace = createTempDir("genomicsdb-buffersize-tests-").getAbsolutePath() + "/workspace";
 
-        writeToGenomicsDB(vcfInputs, interval, workspace, 0, true, 0);
+        writeToGenomicsDB(vcfInputs, interval, workspace, 0, true, 0, 1);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, interval, expectedCombinedVCF);
 
     }
 
     private void writeToGenomicsDB(final List<String> vcfInputs, final SimpleInterval interval, final String workspace,
-                                   final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample) {
+                                   final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument("genomicsDBWorkspace", workspace);
         args.addArgument("L", IntervalUtils.locatableToString(interval));
         vcfInputs.forEach(vcf -> args.addArgument("V", vcf));
         args.addArgument("batchSize", String.valueOf(batchSize));
-
+        args.addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
         if (useBufferSize)
             args.addArgument("genomicsDBVCFBufferSize", String.valueOf(bufferSizePerSample));
 
@@ -226,7 +252,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final String workspace = createTempDir("testPreserveContigOrderingInHeader-").getAbsolutePath() + "/workspace";
 
         writeToGenomicsDB(Arrays.asList(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting2.g.vcf"),
-                new SimpleInterval("chr20", 17959479, 17959479), workspace, 0, false, 0);
+                          new SimpleInterval("chr20", 17959479, 17959479), workspace, 0, false, 0, 1);
 
         try ( final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
                 new GenomicsDBFeatureReader<>(

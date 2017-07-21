@@ -73,6 +73,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String CONSOLIDATE_ARG_NAME = "consolidate";
     public static final String SAMPLE_NAME_MAP_LONG_NAME = "sampleNameMap";
     public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validateSampleNameMap";
+    public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "vcfInitializerThreads";
 
     @Argument(fullName = WORKSPACE_ARG_NAME,
               shortName = WORKSPACE_ARG_NAME,
@@ -158,18 +159,16 @@ public final class GenomicsDBImport extends GATKTool {
     private Boolean validateSampleToReaderMap = false;
 
     @Advanced
-    @Argument(fullName = "threads",
-            shortName =  "threads",
-            doc = "how many simultaneous threads to use when making web requests",
-            optional = true)
-    private int threads = 1;
+    @Argument(fullName = VCF_INITIALIZER_THREADS_LONG_NAME,
+            shortName = VCF_INITIALIZER_THREADS_LONG_NAME,
+            doc = "how many simultaneous threads to use when opening VCFs in batches, higher values may improve performance " +
+                    "if accessing files over a network latency",
+            optional = true,
+            minValue = 1)
+    private int vcfInitializerThreads = 1;
 
-    //
+    //executor service used when vcfInitializerThreads != 1
     private ExecutorService headerLoadingExecutorService;
-    private static final ThreadFactory THREAD_FACTORY = new ThreadFactoryBuilder()
-            .setNameFormat("readerInitializer-thread-%d")
-            .setDaemon(true)
-            .build();
 
     @Override
     public boolean requiresIntervals() { return true; }
@@ -199,7 +198,7 @@ public final class GenomicsDBImport extends GATKTool {
     private List<ChromosomeInterval> intervals;
 
     // Linked hash map between sample names and corresponding GVCF file name
-    private LinkedHashMap<String, String> sampleNameToVcfUri = new LinkedHashMap<>();
+    private LinkedHashMap<String, Path> sampleNameToVcfPath = new LinkedHashMap<>();
 
     // Needed as smartMergeHeaders() returns a set of VCF header lines
     private Set<VCFHeaderLine> mergedHeaderLines = null;
@@ -228,7 +227,6 @@ public final class GenomicsDBImport extends GATKTool {
         initializeHeaderAndSampleMappings();
         initializeIntervals();
         super.onStartup();
-        this.headerLoadingExecutorService = Executors.newFixedThreadPool(threads, THREAD_FACTORY);
     }
 
     private void assertVariantPathsOrSampleNameFileWasSpecified(){
@@ -239,33 +237,34 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     /**
-     * sets the values of mergedHeaderLines, mergedHeaderSequenceDictionary, and sampleNameToVcfUri
+     * sets the values of mergedHeaderLines, mergedHeaderSequenceDictionary, and sampleNameToVcfPath
      */
     private void initializeHeaderAndSampleMappings() {
         // Only one of -V and --sampleNameMapFile may be specified
         if (sampleNameMapFile == null) {
             // -V was specified
             final List<VCFHeader> headers = new ArrayList<>(variantPaths.size());
-            for (final String variantPath : variantPaths) {
-                final  VCFHeader header = loadHeaderFromVCFUri(variantPath);
+            for (final String variantPathString : variantPaths) {
+                final Path variantPath = IOUtils.getPath(variantPathString);
+                final  VCFHeader header = getHeaderFromPath(variantPath);
                 Utils.validate(header != null, "Null header was found in " + variantPath + ".");
-                assertGVCFHasOnlyOneSample(variantPath, header);
+                assertGVCFHasOnlyOneSample(header, variantPathString);
                 headers.add(header);
 
                 final String sampleName = header.getGenotypeSamples().get(0);
-                final String previousPath = sampleNameToVcfUri.put(sampleName, variantPath);
+                final Path previousPath = sampleNameToVcfPath.put(sampleName, variantPath);
                 if (previousPath != null) {
                     throw new UserException("Duplicate sample: " + sampleName + ". Sample was found in both "
-                                                    + variantPath + " and " + previousPath + ".");
+                                                    + variantPath + " and " + previousPath.toUri() + ".");
                 }
             }
             mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
             mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
         } else {
             // --sampleNameMap was specified
-            sampleNameToVcfUri = loadSampleNameMapFile(IOUtils.getPath(sampleNameMapFile));
-            final String firstHeaderPath = sampleNameToVcfUri.entrySet().iterator().next().getValue();
-            final VCFHeader header = loadHeaderFromVCFUri(firstHeaderPath);
+            sampleNameToVcfPath = loadSampleNameMapFile(IOUtils.getPath(sampleNameMapFile));
+            final Path firstHeaderPath = sampleNameToVcfPath.entrySet().iterator().next().getValue();
+            final VCFHeader header = getHeaderFromPath(firstHeaderPath);
             mergedHeaderLines = header.getMetaDataInInputOrder();
             mergedHeaderSequenceDictionary = header.getSequenceDictionary();
         }
@@ -275,16 +274,15 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
-    private VCFHeader loadHeaderFromVCFUri(final String variantPath) {
-        try(final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromVCFUri(
-                IOUtils.getPath(variantPath))) {
+    private VCFHeader getHeaderFromPath(final Path variantPath) {
+        try(final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(variantPath)) {
             return (VCFHeader) reader.getHeader();
         } catch (final IOException e) {
-            throw new UserException("Error while reading vcf header from " + variantPath, e);
+            throw new UserException("Error while reading vcf header from " + variantPath.toUri(), e);
         }
     }
 
-    private static void assertGVCFHasOnlyOneSample(final String variantPath, final VCFHeader header) {
+    private static void assertGVCFHasOnlyOneSample(final VCFHeader header, final String variantPath) {
         // A GVCF file must contain only one sample, throw an exception otherwise
         final int numberOfSamples = header.getNGenotypeSamples();
         if (numberOfSamples != 1) {
@@ -293,28 +291,27 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     @VisibleForTesting
-    static LinkedHashMap<String, String> loadSampleNameMapFile(final Path sampleToFileMapPath) {
+    static LinkedHashMap<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
         try {
             final List<String> lines = Files.readAllLines(sampleToFileMapPath);
             if (lines.isEmpty()) {
                 throw new UserException.BadInput( "At least 1 sample is required but none were found in the sample mapping file");
             }
 
-            final LinkedHashMap<String, String> sampleToFilename = new LinkedHashMap<>(lines.size());
+            final LinkedHashMap<String, Path> sampleToFilename = new LinkedHashMap<>(lines.size());
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
                 if (split.length != 2
                         || split[0].isEmpty() || containsWhitespace(split[0])
                         || split[1].isEmpty() || containsWhitespace(split[1])) {
-                    throw new UserException.BadInput(
-                            "Expected a file of format\nSample\tFile\n but found line: " + line);
+                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
                 }
 
                 final String sample = split[0];
                 final String path = split[1];
-                final String oldPath = sampleToFilename.put(sample, path);
+                final Path oldPath = sampleToFilename.put(sample, IOUtils.getPath(path));
                 if (oldPath != null){
-                    throw new UserException.BadInput("Found two mappings for the same sample: " + sample + "\n" + path + "\n" + oldPath );
+                    throw new UserException.BadInput("Found two mappings for the same sample: " + sample + "\n" + path + "\n" + oldPath.toUri() );
                 }
             }
             return sampleToFilename;
@@ -350,7 +347,17 @@ public final class GenomicsDBImport extends GATKTool {
 
         // Passing in false here so that sample names will be sorted.
         // This is needed for consistent ordering across partitions/machines
-        callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfUri.keySet()), false);
+        callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfPath.keySet()), false);
+
+        if( vcfInitializerThreads > 1) {
+            final ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                    .setNameFormat("readerInitializer-thread-%d")
+                    .setDaemon(true)
+                    .build();
+            this.headerLoadingExecutorService = Executors.newFixedThreadPool(vcfInitializerThreads, threadFactory);
+        } else {
+            headerLoadingExecutorService = null;
+        }
     }
 
     /**
@@ -362,7 +369,7 @@ public final class GenomicsDBImport extends GATKTool {
         // Force the progress meter to update after every batch
         progressMeter.setRecordsBetweenTimeChecks(1L);
 
-        final int sampleCount = sampleNameToVcfUri.size();
+        final int sampleCount = sampleNameToVcfPath.size();
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
         final int totalBatchCount = (sampleCount/updatedBatchSize) + (sampleCount%updatedBatchSize==0 ? 0 : 1);
 
@@ -371,11 +378,13 @@ public final class GenomicsDBImport extends GATKTool {
         for (int i = 0, batchCount = 1; i < sampleCount; i += updatedBatchSize, ++batchCount) {
 
             final Map<String, FeatureReader<VariantContext>> sampleToReaderMap =
-                getFeatureReaders(new ArrayList<>(sampleNameToVcfUri.keySet()), sampleNameToVcfUri, updatedBatchSize, sampleCount, i);
+                    headerLoadingExecutorService != null
+                            ? getFeatureReaders( sampleNameToVcfPath, updatedBatchSize, i)
+                            : getFeatureReadersWithoutMultithreading( sampleNameToVcfPath, updatedBatchSize, i);
 
             logger.info("Importing batch " + batchCount + " with " + sampleToReaderMap.size() + " samples");
             final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
-            logger.info("Starting batch import: " + System.currentTimeMillis());
+            logger.debug("Starting batch import: " + System.currentTimeMillis());
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                             variantContextBufferSize, segmentSize,
@@ -393,7 +402,7 @@ public final class GenomicsDBImport extends GATKTool {
             } catch (final IOException e) {
                 throw new UserException("GenomicsDB import failed in batch " + batchCount, e);
             }
-            logger.info("Finished batch import: " + System.currentTimeMillis());
+            logger.debug("Finished batch import: " + System.currentTimeMillis());
             closeReaders(sampleToReaderMap);
             progressMeter.update(intervals.get(0));
             logger.info("Done importing batch " + batchCount + "/" + totalBatchCount);
@@ -433,26 +442,25 @@ public final class GenomicsDBImport extends GATKTool {
      * Method to create feature readers for input files or GCS URLs
      * in the current batch
      *
-     * @param sampleNames  List of all sample names
      * @param sampleNameToFileName  Sample name to file name mapping
      * @param batchSize  Current batch size
-     * @param sampleCount  total samples in this import
      * @param lowerSampleIndex  0-based Lower bound of sample index -- inclusive
      * @return  Feature readers to be imported in the current batch
      */
-    private Map<String, FeatureReader<VariantContext>> getFeatureReaders(final List<String> sampleNames, final Map<String, String> sampleNameToFileName,
-                                                                         final int batchSize, final int sampleCount, final int lowerSampleIndex) {
+    private Map<String, FeatureReader<VariantContext>> getFeatureReaders(final LinkedHashMap<String, Path> sampleNameToFileName,
+                                                                         final int batchSize, final int lowerSampleIndex) {
         final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
-        logger.info("Starting batch header preload: "+ System.currentTimeMillis());
+        logger.debug("Starting batch header preload: "+ System.currentTimeMillis());
         final List<Future<FeatureReader<VariantContext>>> futures = new ArrayList<>();
-        for(int i = lowerSampleIndex; i < sampleCount && i < lowerSampleIndex+batchSize; ++i) {
+        final List<String> sampleNames = new ArrayList<>(sampleNameToFileName.keySet());
+        for(int i = lowerSampleIndex; i < sampleNameToFileName.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
-            assert sampleNameToFileName.containsKey(sampleName);
             futures.add(headerLoadingExecutorService.submit(() -> {
+                final Path variantPath = sampleNameToFileName.get(sampleName);
                 try {
-                    return new InitializedQueryWrapper(getReaderFromVCFUri(IOUtils.getPath(sampleNameToFileName.get(sampleName))), intervals.get(0));
+                    return new InitializedQueryWrapper(getReaderFromPath(variantPath), intervals.get(0));
                 } catch (final IOException e) {
-                    throw new UserException.CouldNotReadInputFile("Couldn't read from file: ", e);
+                    throw new UserException.CouldNotReadInputFile("Couldn't read file: " + variantPath.toUri(), e);
                 }
             }));
         }
@@ -462,10 +470,26 @@ public final class GenomicsDBImport extends GATKTool {
                 final FeatureReader<VariantContext> reader = f.get();
                 sampleToReaderMap.put(((VCFHeader)reader.getHeader()).getGenotypeSamples().get(0),reader);
             } catch (InterruptedException | ExecutionException e) {
-                throw new UserException("horrible failure", e);
+                throw new UserException.CouldNotReadInputFile("Failure while waiting for FeatureReader to initialize ", e);
             }
         });
-        logger.info("Done batch header preload: "+ System.currentTimeMillis());
+        logger.debug("Done batch header preload: "+ System.currentTimeMillis());
+        return sampleToReaderMap;
+    }
+
+    private Map<String, FeatureReader<VariantContext>> getFeatureReadersWithoutMultithreading(final Map<String, Path> sampleNameToFileName,
+                                                          final int batchSize, final int lowerSampleIndex){
+        final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
+        List<String> sampleNames = new ArrayList<>(sampleNameToFileName.keySet());
+        for(int i = lowerSampleIndex; i < sampleNameToFileName.size() && i < lowerSampleIndex+batchSize; ++i) {
+            final String sampleName = sampleNames.get(i);
+            assert sampleNameToFileName.containsKey(sampleName);
+
+            final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(sampleNameToFileName.get(sampleName));
+
+            assert sampleName.equals(((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0));
+            sampleToReaderMap.put(sampleName, reader);
+        }
         return sampleToReaderMap;
     }
 
@@ -475,7 +499,7 @@ public final class GenomicsDBImport extends GATKTool {
      * @return  Feature reader
      * @param variantPath
      */
-    private AbstractFeatureReader<VariantContext, LineIterator> getReaderFromVCFUri(Path variantPath) {
+    private AbstractFeatureReader<VariantContext, LineIterator> getReaderFromPath(final Path variantPath) {
         final String variantURI = variantPath.toAbsolutePath().toUri().toString();
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
