@@ -45,6 +45,7 @@ workflow Mutect2 {
   Boolean is_run_orientation_bias_filter
   Boolean is_run_oncotator
   String m2_docker
+  String basic_bash_docker = "ubuntu:16.04"
   String oncotator_docker
   File? gatk4_jar_override
   Int preemptible_attempts
@@ -64,7 +65,7 @@ workflow Mutect2 {
       normal_bam = normal_bam,
       normal_sample_name = normal_sample_name,
       preemptible_attempts = preemptible_attempts,
-      m2_docker=m2_docker
+      docker = basic_bash_docker
   }
 
 
@@ -247,7 +248,7 @@ task ProcessOptionalArguments {
   String? normal_bam
   String? normal_sample_name
   Int preemptible_attempts
-  String m2_docker
+  String docker
 
   command {
       if [[ "_${normal_bam}" == *.bam ]]; then
@@ -258,8 +259,8 @@ task ProcessOptionalArguments {
   }
 
   runtime {
-    docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
-    memory: "2 GB"
+    docker: "${docker}"
+    memory: "1 GB"
     disks: "local-disk " + 10 + " HDD"
     preemptible: "${preemptible_attempts}"
   }
