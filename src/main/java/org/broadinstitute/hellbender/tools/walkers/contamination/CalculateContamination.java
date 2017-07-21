@@ -38,12 +38,13 @@ import java.util.stream.IntStream;
  * gatk-launch --javaOptions "-Xmx4g" CalculateContamination \
  *   -I pileups.table \
  *   -O contamination.table
+ * </pre>
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Calculate contamination",
-        oneLineSummary = "Calculate contamination",
+        summary = "Calculate the fraction of reads coming from cross-sample contamination",
+        oneLineSummary = "Calculate the fraction of reads coming from cross-sample contamination",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature

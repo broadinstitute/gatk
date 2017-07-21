@@ -37,27 +37,27 @@ import java.util.List;
  * <h3>How HaplotypeCaller works</h3>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4147'>1. Define active regions </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4147'>1. Define active regions </a></h4>
  *
  * <p>The program determines which regions of the genome it needs to operate on (active regions), based on the presence of
  * evidence for variation.
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4146'>2. Determine haplotypes by assembly of the active region </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4146'>2. Determine haplotypes by assembly of the active region </a></h4>
  *
  * <p>For each active region, the program builds a De Bruijn-like graph to reassemble the active region and identifies
  * what are the possible haplotypes present in the data. The program then realigns each haplotype against the reference
  * haplotype using the Smith-Waterman algorithm in order to identify potentially variant sites. </p>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4441'>3. Determine likelihoods of the haplotypes given the read data </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4441'>3. Determine likelihoods of the haplotypes given the read data </a></h4>
  *
  * <p>For each active region, the program performs a pairwise alignment of each read against each haplotype using the
  * PairHMM algorithm. This produces a matrix of likelihoods of haplotypes given the read data. These likelihoods are
  * then marginalized to obtain the likelihoods of alleles for each potentially variant site given the read data.   </p>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4442'>4. Assign sample genotypes </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4442'>4. Assign sample genotypes </a></h4>
  *
  * <p>For each potentially variant site, the program applies Bayes' rule, using the likelihoods of alleles given the
  * read data to calculate the likelihoods of each genotype per sample given the read data observed for that

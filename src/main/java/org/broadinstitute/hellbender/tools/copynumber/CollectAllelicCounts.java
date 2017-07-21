@@ -39,9 +39,9 @@ import java.util.List;
  * </p>
  *
  * <pre>
- *     @HD	VN:1.4	SO:unsorted
- *     @SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
- *     @SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
+ *     .@HD	VN:1.4	SO:unsorted
+ *     .@SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
+ *     .@SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
  *      1	10736	10736	+	normal
  *      1	11522	11522	+	normal
  *      1	12098	12098	+	normal
@@ -54,6 +54,8 @@ import java.util.List;
  *      2	15110	15110	+	normal
  *      2	15629	15629	+	normal
  * </pre>
+ *
+ * <p><em>Note that the periods (.) at the start of the header lines above were added as a workaround for a problem with our documentation system.</em></p>
  *
  * <p>
  *     The resulting table counts the reference versus alternate allele and indicates the alleles. For example:
