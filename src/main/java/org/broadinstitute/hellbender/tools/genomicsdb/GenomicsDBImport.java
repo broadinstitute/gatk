@@ -162,12 +162,12 @@ public final class GenomicsDBImport extends GATKTool {
     @Argument(fullName = VCF_INITIALIZER_THREADS_LONG_NAME,
             shortName = VCF_INITIALIZER_THREADS_LONG_NAME,
             doc = "how many simultaneous threads to use when opening VCFs in batches, higher values may improve performance " +
-                    "if accessing files over a network latency",
+                    "when network latency is an issue",
             optional = true,
             minValue = 1)
     private int vcfInitializerThreads = 1;
 
-    //executor service used when vcfInitializerThreads != 1
+    //executor service used when vcfInitializerThreads > 1
     private ExecutorService headerLoadingExecutorService;
 
     @Override
@@ -669,7 +669,7 @@ public final class GenomicsDBImport extends GATKTool {
     /**
      * This class is a hack to force parallel loading of the headers and indexes of remote gvcf files.
      * It initializes a feature reader and starts a query.  This causes the header and index to be read, and also causes any
-     * pre-fetching to begin if enabled.  It is very narrowly crafted and likely brittle.
+     * pre-fetching to begin if enabled.  It is very narrowly crafted and should not be used for other purposes.
      */
     private static class InitializedQueryWrapper implements FeatureReader<VariantContext> {
         private final FeatureReader<VariantContext> reader;
@@ -691,13 +691,13 @@ public final class GenomicsDBImport extends GATKTool {
             if( query != null){
                 return query;
             } else {
-                throw new IllegalStateException("Cannot call query twice on this");
+                throw new GATKException("Cannot call query twice on this wrapper.");
             }
         }
 
         @Override
         public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
-            throw new UnsupportedOperationException("get SequenceNames not supported");
+            throw new UnsupportedOperationException("iterator() not supported, this should not have been called and indicates an issue with GenomicsDB integration");
         }
 
         @Override
@@ -707,7 +707,7 @@ public final class GenomicsDBImport extends GATKTool {
 
         @Override
         public List<String> getSequenceNames() {
-            throw new UnsupportedOperationException("get SequenceNames not supported");
+            throw new UnsupportedOperationException("getSequenceNames() not supported, this should not have been called and indicates an issue with GenomicsDB integration");
         }
 
         @Override
