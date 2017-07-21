@@ -10,7 +10,6 @@ import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -77,7 +76,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
      *
      * The cloud bucket must be organized the same way as the local test files in order to resolve correctly.
      */
-    private List<String> resolveLargeFilesAsCloudURIs(final List<String> filenames){
+    private static List<String> resolveLargeFilesAsCloudURIs(final List<String> filenames){
         return filenames.stream()
                 .map( filename -> filename.replace(publicTestDir, getGCPTestInputPath()))
                 .peek( filename -> Assert.assertTrue(BucketUtils.isCloudStorageUrl(filename)))

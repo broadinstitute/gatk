@@ -160,11 +160,12 @@ public final class GenomicsDBImport extends GATKTool {
     @Advanced
     @Argument(fullName = "threads",
             shortName =  "threads",
-            doc = "how many threads to use when making web requests",
+            doc = "how many simultaneous threads to use when making web requests",
             optional = true)
     private int threads = 1;
 
-    private ExecutorService exec;
+    //
+    private ExecutorService headerLoadingExecutorService;
     private static final ThreadFactory THREAD_FACTORY = new ThreadFactoryBuilder()
             .setNameFormat("readerInitializer-thread-%d")
             .setDaemon(true)
@@ -172,14 +173,6 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Override
     public boolean requiresIntervals() { return true; }
-
-    @Override
-    public boolean requiresReads() { return false; }
-
-    @Override
-    public boolean requiresReference() {
-      return false;
-    }
 
     @Override
     public int getDefaultCloudPrefetchBufferSize() {
@@ -235,7 +228,7 @@ public final class GenomicsDBImport extends GATKTool {
         initializeHeaderAndSampleMappings();
         initializeIntervals();
         super.onStartup();
-        this.exec = Executors.newFixedThreadPool(threads, THREAD_FACTORY);
+        this.headerLoadingExecutorService = Executors.newFixedThreadPool(threads, THREAD_FACTORY);
     }
 
     private void assertVariantPathsOrSampleNameFileWasSpecified(){
@@ -283,7 +276,8 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private VCFHeader loadHeaderFromVCFUri(final String variantPath) {
-        try(final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromVCFUri(variantPath)) {
+        try(final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromVCFUri(
+                IOUtils.getPath(variantPath))) {
             return (VCFHeader) reader.getHeader();
         } catch (final IOException e) {
             throw new UserException("Error while reading vcf header from " + variantPath, e);
@@ -330,7 +324,7 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private static boolean containsWhitespace(final String s){
-        for ( char c : s.toCharArray()){
+        for ( final char c : s.toCharArray()){
             if (Character.isWhitespace(c)){
                 return true;
             }
@@ -381,7 +375,7 @@ public final class GenomicsDBImport extends GATKTool {
 
             logger.info("Importing batch " + batchCount + " with " + sampleToReaderMap.size() + " samples");
             final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
-
+            logger.info("Starting batch import: " + System.currentTimeMillis());
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                             variantContextBufferSize, segmentSize,
@@ -394,13 +388,12 @@ public final class GenomicsDBImport extends GATKTool {
             } catch (final IllegalArgumentException iae) {
                 throw new GATKException("Null feature reader found in sampleNameMap file: " + sampleNameMapFile, iae);
             }
-
             try {
                 importer.importBatch();
             } catch (final IOException e) {
                 throw new UserException("GenomicsDB import failed in batch " + batchCount, e);
             }
-
+            logger.info("Finished batch import: " + System.currentTimeMillis());
             closeReaders(sampleToReaderMap);
             progressMeter.update(intervals.get(0));
             logger.info("Done importing batch " + batchCount + "/" + totalBatchCount);
@@ -450,16 +443,16 @@ public final class GenomicsDBImport extends GATKTool {
     private Map<String, FeatureReader<VariantContext>> getFeatureReaders(final List<String> sampleNames, final Map<String, String> sampleNameToFileName,
                                                                          final int batchSize, final int sampleCount, final int lowerSampleIndex) {
         final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
-
+        logger.info("Starting batch header preload: "+ System.currentTimeMillis());
         final List<Future<FeatureReader<VariantContext>>> futures = new ArrayList<>();
         for(int i = lowerSampleIndex; i < sampleCount && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
             assert sampleNameToFileName.containsKey(sampleName);
-            futures.add(exec.submit( () -> {
+            futures.add(headerLoadingExecutorService.submit(() -> {
                 try {
-                    return new InitializedQueryWrapper(getReaderFromVCFUri(sampleNameToFileName.get(sampleName)), intervals.get(0));
+                    return new InitializedQueryWrapper(getReaderFromVCFUri(IOUtils.getPath(sampleNameToFileName.get(sampleName))), intervals.get(0));
                 } catch (final IOException e) {
-                    throw new RuntimeException("horrible failure", e);
+                    throw new UserException.CouldNotReadInputFile("Couldn't read from file: ", e);
                 }
             }));
         }
@@ -469,65 +462,21 @@ public final class GenomicsDBImport extends GATKTool {
                 final FeatureReader<VariantContext> reader = f.get();
                 sampleToReaderMap.put(((VCFHeader)reader.getHeader()).getGenotypeSamples().get(0),reader);
             } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException("horrible failure", e);
+                throw new UserException("horrible failure", e);
             }
         });
+        logger.info("Done batch header preload: "+ System.currentTimeMillis());
         return sampleToReaderMap;
-    }
-
-    private static class InitializedQueryWrapper implements FeatureReader<VariantContext> {
-        private final FeatureReader<VariantContext> reader;
-        private final SimpleInterval interval;
-        private CloseableTribbleIterator<VariantContext> query;
-
-        private InitializedQueryWrapper(FeatureReader<VariantContext> reader, Locatable interval) throws IOException {
-            this.reader = reader;
-            this.interval = new SimpleInterval(interval);
-            this.query = reader.query(interval.getContig(), interval.getStart(), interval.getEnd());
-        }
-
-        @Override
-        public CloseableTribbleIterator<VariantContext> query(String chr, int start, int end) throws IOException {
-            final SimpleInterval queryInterval = new SimpleInterval(chr, start, end);
-            if( !interval.equals(queryInterval)){
-                throw new GATKException("Cannot call query with different interval, expected:" + this.interval + " queried with: " + queryInterval );
-            }
-            if( query != null){
-                return query;
-            } else {
-                throw new IllegalStateException("Cannot call query twice on this");
-            }
-        }
-
-        @Override
-        public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
-            throw new UnsupportedOperationException("get SequenceNames not supported");
-        }
-
-        @Override
-        public void close() throws IOException {
-            reader.close();
-        }
-
-        @Override
-        public List<String> getSequenceNames() {
-            throw new UnsupportedOperationException("get SequenceNames not supported");
-        }
-
-        @Override
-        public Object getHeader() {
-            return reader.getHeader();
-        }
     }
 
     /**
      * Creates a feature reader object from a given VCF URI (can also be
      * a local file path) and returns it
-     * @param variantPath  URI or file path
      * @return  Feature reader
+     * @param variantPath
      */
-    private AbstractFeatureReader<VariantContext, LineIterator> getReaderFromVCFUri(final String variantPath) {
-        final String variantURI = IOUtils.getPath(variantPath).toAbsolutePath().toUri().toString();
+    private AbstractFeatureReader<VariantContext, LineIterator> getReaderFromVCFUri(Path variantPath) {
+        final String variantURI = variantPath.toAbsolutePath().toUri().toString();
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
         return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
@@ -671,7 +620,9 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Override
     public void onShutdown(){
-        exec.shutdownNow();
+        if( headerLoadingExecutorService != null) {
+            headerLoadingExecutorService.shutdownNow();
+        }
     }
 
     /**
@@ -691,5 +642,54 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
+    /**
+     * This class is a hack to force parallel loading of the headers and indexes of remote gvcf files.
+     * It initializes a feature reader and starts a query.  This causes the header and index to be read, and also causes any
+     * pre-fetching to begin if enabled.  It is very narrowly crafted and likely brittle.
+     */
+    private static class InitializedQueryWrapper implements FeatureReader<VariantContext> {
+        private final FeatureReader<VariantContext> reader;
+        private final SimpleInterval interval;
+        private final CloseableTribbleIterator<VariantContext> query;
+
+        private InitializedQueryWrapper(final FeatureReader<VariantContext> reader, final Locatable interval) throws IOException {
+            this.reader = reader;
+            this.interval = new SimpleInterval(interval);
+            this.query = reader.query(interval.getContig(), interval.getStart(), interval.getEnd());
+        }
+
+        @Override
+        public CloseableTribbleIterator<VariantContext> query(final String chr, final int start, final int end) throws IOException {
+            final SimpleInterval queryInterval = new SimpleInterval(chr, start, end);
+            if( !interval.equals(queryInterval)){
+                throw new GATKException("Cannot call query with different interval, expected:" + this.interval + " queried with: " + queryInterval );
+            }
+            if( query != null){
+                return query;
+            } else {
+                throw new IllegalStateException("Cannot call query twice on this");
+            }
+        }
+
+        @Override
+        public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
+            throw new UnsupportedOperationException("get SequenceNames not supported");
+        }
+
+        @Override
+        public void close() throws IOException {
+            reader.close();
+        }
+
+        @Override
+        public List<String> getSequenceNames() {
+            throw new UnsupportedOperationException("get SequenceNames not supported");
+        }
+
+        @Override
+        public Object getHeader() {
+            return reader.getHeader();
+        }
+    }
 }
 
