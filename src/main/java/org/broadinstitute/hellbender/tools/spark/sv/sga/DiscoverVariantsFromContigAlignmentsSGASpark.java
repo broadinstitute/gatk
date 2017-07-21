@@ -95,7 +95,7 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
 
             final JavaPairRDD<String, List<AlignmentInterval>> contigNameAndAlignments = parseAndBreakAlignmentTextRecords(ctx, pathToInputAlignments, toolLogger);
 
-            return contigNameAndAlignments.join(contigNameAndSequence).map(pair -> new AlignedContig(pair._1, pair._2._2, pair._2._1));
+            return contigNameAndAlignments.join(contigNameAndSequence).map(pair -> new AlignedContig(pair._1, pair._2._2, pair._2._1, false));
         }
 
         /**
