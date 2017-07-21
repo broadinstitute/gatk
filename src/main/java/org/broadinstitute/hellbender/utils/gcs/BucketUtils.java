@@ -14,6 +14,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -39,7 +40,7 @@ public final class BucketUtils {
     public static final String FILE_PREFIX = "file:";
 
     // if the channel errors out, re-open up to this many times
-    public static final int NIO_MAX_REOPENS = 20;
+    public static final int DEFAULT_NIO_MAX_REOPENS = 20;
 
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
@@ -351,7 +352,10 @@ public final class BucketUtils {
      * These will apply even to library code that creates its own paths to access with NIO.
      */
     public static void setGlobalNIODefaultOptions() {
-        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration());
+        setGlobalNIODefaultOptions(DEFAULT_NIO_MAX_REOPENS);
+    }
+    public static void setGlobalNIODefaultOptions(int maxReopens) {
+        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens));
         CloudStorageFileSystemProvider.setStorageOptions(setGenerousTimeouts(StorageOptions.newBuilder()).build());
     }
 
@@ -365,16 +369,16 @@ public final class BucketUtils {
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
-        CloudStorageConfiguration cloudConfig = getCloudStorageConfiguration();
+        CloudStorageConfiguration cloudConfig = getCloudStorageConfiguration(DEFAULT_NIO_MAX_REOPENS);
         StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
         return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
     }
 
     /** The config we want to use. **/
-    public static CloudStorageConfiguration getCloudStorageConfiguration() {
+    public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens) {
         return CloudStorageConfiguration.builder()
             // if the channel errors out, re-open up to this many times
-            .maxChannelReopens(NIO_MAX_REOPENS)
+            .maxChannelReopens(maxReopens)
             .build();
     }
 
