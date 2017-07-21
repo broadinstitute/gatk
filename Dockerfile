@@ -11,6 +11,7 @@ WORKDIR /root
 # Make sure we can see a help message
 RUN ln -sFv /gatk/build/libs/gatk.jar
 RUN java -jar gatk.jar -h
+RUN ln -s /gatk /root
 
 #Setup test data
 WORKDIR /gatk
@@ -22,5 +23,7 @@ RUN ln -s /testdata src/test/resources
 # Create a simple unit test runner
 ENV CI true
 RUN echo "cd /gatk/ && ./gradlew test" >/root/run_unit_tests.sh
+RUN cp -r . /gatk
+RUN echo "./gradlew test" >/gatk/run_unit_tests.sh
 
-WORKDIR /root
+WORKDIR /gatk

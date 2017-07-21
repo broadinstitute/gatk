@@ -77,6 +77,8 @@ You can download and run pre-built versions of GATK4 from the following places:
 
 * Starting with the beta release, you can download a GATK4 docker image from [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/)
 
+* A docker image for the current release can be found in the broadinstitute/gatk repository on dockerhub. Within the image simply run ./gatk-launch from the default directory.
+
 ## <a name="building">Building GATK4</a>
 
 * **To do a full build of GATK4, run:**
