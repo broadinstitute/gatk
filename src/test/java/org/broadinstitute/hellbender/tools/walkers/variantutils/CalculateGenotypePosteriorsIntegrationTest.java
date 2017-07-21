@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
@@ -10,13 +11,14 @@ import java.util.Collections;
 public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLineProgramTest {
 
     private final String largeDir = largeFileTestDir;
-    private final String dir= getToolTestDataDir();
+    private final String dir = getToolTestDataDir();
 
     private String CEUtrioFamilyFile = dir + "CEUtrio.ped";
     private String threeMemberNonTrioFamilyFile = dir + "threeMemberNonTrio.ped";
 
     private String CEUtrioTest = dir + "CEUtrioTest_chr1.vcf";
     private String CEUtrioPopPriorsTest = dir + "CEUtrioPopPriorsTest_chr1.vcf";
+    private String CEUtrioMixedPloidyTest = dir + "CEUtrioMixedPloidy.vcf";
     private String getThreeMemberNonTrioTest = dir + "threeMemberNonTrioTest_chr1.vcf";
 
     @Test
@@ -89,5 +91,16 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                 Collections.singletonList(dir + "expectedCGP_testSingleParentFamily_chr1.vcf")
         );
         spec.executeTest("testFamilyPriors", this);
+    }
+
+    @Test
+    public void testFamilyPriorsMixedPloidy() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                        " -O %s" +
+                        " -ped " + CEUtrioFamilyFile +
+                        " -V " + CEUtrioMixedPloidyTest,
+                1,
+                UserException.class);
+        spec.executeTest("testFamilyPriorsMixedPloidy", this);
     }
 }

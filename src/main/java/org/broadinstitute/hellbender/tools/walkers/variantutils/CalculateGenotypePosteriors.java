@@ -126,7 +126,8 @@ import java.util.*;
  *   --numRefSamplesIfNoCall 100
  * </pre>
  *
- *
+ * <h3>Caveat</h3>
+ * <p>If applying family priors, only diploid family genotypes are supported</p>
  */
 @CommandLineProgramProperties(
         summary = "This tool calculates the posterior genotype probability for each sample genotype in a VCF of input variant calls,\n" +

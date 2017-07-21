@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.utils.GeneralUtils;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -402,7 +403,7 @@ public final class FamilyLikelihoods {
 
         //In case of null, unavailable or no call, all likelihoods are log10(1/3)
         else if(genotype == null || !hasCalledGT(genotype.getType()) || genotype.getLikelihoods() == null){
-            likelihoods = new double[3];
+            likelihoods = new double[NUM_CALLED_GENOTYPETYPES];
             likelihoods[0] = LOG10_OF_ONE_THIRD;
             likelihoods[1] = LOG10_OF_ONE_THIRD;
             likelihoods[2] = LOG10_OF_ONE_THIRD;
@@ -411,6 +412,13 @@ public final class FamilyLikelihoods {
         //No posteriors in VC, use PLs
         else {
             likelihoods = GeneralUtils.normalizeFromLog10(genotype.getLikelihoods().getAsVector(), true, true);
+        }
+
+        if (likelihoods.length != NUM_CALLED_GENOTYPETYPES) {
+            final String key = genotype.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY) ?
+                    GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY : VCFConstants.GENOTYPE_PL_KEY;
+            throw new UserException(genotype + " has " + likelihoods.length + " " + key + " values, should be " + NUM_CALLED_GENOTYPETYPES +
+                    " since only the diploid case is supported when applying family priors.");
         }
 
         likelihoodsMap.put(GenotypeType.HOM_REF,likelihoods[genotypeTypeToValue(GenotypeType.HOM_REF)]);
