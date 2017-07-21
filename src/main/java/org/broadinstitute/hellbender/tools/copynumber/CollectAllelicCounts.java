@@ -55,8 +55,6 @@ import java.util.List;
  *      2	15629	15629	+	normal
  * </pre>
  *
- * <p><em>Note that the periods (.) at the start of the header lines above were added as a workaround for a problem with our documentation system.</em></p>
- *
  * <p>
  *     The resulting table counts the reference versus alternate allele and indicates the alleles. For example:
  * </p>
