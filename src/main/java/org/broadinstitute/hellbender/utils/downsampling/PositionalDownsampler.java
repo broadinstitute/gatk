@@ -32,7 +32,9 @@ public final class PositionalDownsampler extends ReadsDownsampler {
      * Construct a PositionalDownsampler
      *
      * @param targetCoverage Maximum number of reads that may share any given alignment start position. Must be > 0
+     * @param alignmentStartStride Length in bases constituting a single pool of reads to downsample
      * @param downsampleByMappingQuality    If true, bias downsampling toward reads with higher mapping quality.
+     * @param depthToIgnoreLocus    Number of reads within one alignment start stride length to trigger downsampling of all reads.
      */
     public PositionalDownsampler( final int targetCoverage, final int alignmentStartStride, final boolean downsampleByMappingQuality, final int depthToIgnoreLocus) {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
