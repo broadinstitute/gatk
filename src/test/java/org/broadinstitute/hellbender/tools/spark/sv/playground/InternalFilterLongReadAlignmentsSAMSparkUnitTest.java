@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.playground;
 
 import htsjdk.samtools.TextCigarCodec;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
@@ -10,7 +8,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -20,8 +17,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.playground.InternalFilterLongReadAlignmentsSAMSpark.getPrimaryRefContigs;
-import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 public class InternalFilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
 

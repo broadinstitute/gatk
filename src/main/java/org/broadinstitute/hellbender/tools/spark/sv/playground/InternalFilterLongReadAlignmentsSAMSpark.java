@@ -121,9 +121,21 @@ public class InternalFilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
         final JavaRDD<AlignedContig> parsedContigAlignments
                 = new SAMFormattedContigAlignmentParser(longReads, header, false, toolLogger)
                 .getAlignedContigs()
-                .filter(contig -> !contig.alignmentIntervals.isEmpty());
+                .filter(InternalFilterLongReadAlignmentsSAMSpark::contigFilter);
 
         return filterAndSplitGappedAI(parsedContigAlignments, getPrimaryRefContigs());
+    }
+
+    /**
+     * Idea is to have mapped contig that has at least two alignments over MQ 20,
+     * or in the case of a single alignment, it must be MQ>20.
+     */
+    private static boolean contigFilter(final AlignedContig contig) {
+        if (contig.alignmentIntervals.size() < 2 ) {
+            return (!contig.alignmentIntervals.isEmpty()) && contig.alignmentIntervals.get(0).mapQual > 20;
+        } else {
+            return contig.alignmentIntervals.stream().mapToInt(ai -> ai.mapQual).filter(mq -> mq > 20).count() > 1;
+        }
     }
 
     /**
