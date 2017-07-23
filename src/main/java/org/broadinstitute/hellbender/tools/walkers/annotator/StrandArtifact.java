@@ -32,6 +32,10 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardSomati
     private static final int BETA = 6;
     private static final BetaDistribution betaPrior = new BetaDistribution(null, ALPHA, BETA);
 
+    // Apache Commons uses naive recursion for Gauss-Legendre and is prone to stack overflows
+    // capping the number of subdivisions is a stop-gap for a more principled integration scheme
+    private static final int MAX_GAUSS_LEGENDRE_POINTS = 100;
+
     // the latent variable z in the strand artifact filter model
     public enum StrandArtifactZ {
         ART_FWD, ART_REV, NO_ARTIFACT
@@ -83,8 +87,8 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardSomati
 
         // the integrand is a polynomial of degree n, where n is the number of reads at the locus
         // thus to integrate exactly with Gauss-Legendre we need (n/2)+1 points
-        final int numIntegPointsForAlleleFraction = numReads / 2 + 1;
-        final int numIntegPointsForEpsilon = (numReads + ALPHA + BETA - 2) / 2 + 1;
+        final int numIntegPointsForAlleleFraction = Math.min(numReads / 2 + 1, MAX_GAUSS_LEGENDRE_POINTS);
+        final int numIntegPointsForEpsilon = Math.min((numReads + ALPHA + BETA - 2) / 2 + 1, MAX_GAUSS_LEGENDRE_POINTS);
 
         final double likelihoodForArtifactFwd = IntegrationUtils.integrate2d(
                 (f,epsilon) -> getIntegrandGivenArtifact(f, epsilon, numFwdReads, numRevReads, numFwdAltReads, numRevAltReads),
