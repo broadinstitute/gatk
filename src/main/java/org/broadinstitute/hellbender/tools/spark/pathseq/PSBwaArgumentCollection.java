@@ -7,7 +7,7 @@ import java.io.Serializable;
 public final class PSBwaArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "URI of the BWA image file for pathogen alignment. This must be distributed to local disk on each node.",
+    @Argument(doc = "URI of the pathogen BWA image file for alignment. This must be distributed to local disk on each node.",
             fullName = "pathogenBwaImage")
     public String bwaImage;
 

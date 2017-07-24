@@ -51,13 +51,13 @@ public final class PSBwaUtils {
                                                        final JavaRDD<GATKRead> reads,
                                                        final Logger logger) {
         final List<String> usedSequences = PSBwaUtils.getAlignedSequenceNames(reads);
-        usedSequences.forEach(seqName -> {
-            if (header.getSequence(seqName) == null)
-                logger.warn("One or more reads are aligned to sequence " + seqName + " but it is not in the header");
-        });
         final List<SAMSequenceRecord> usedSequenceRecords = usedSequences.stream()
                 .map(seqName -> header.getSequence(seqName))
-                .filter(Objects::nonNull)
+                .filter(seq -> {
+                    if (seq != null) return true;
+                    logger.warn("One or more reads are aligned to sequence " + seq + " but it is not in the header");
+                    return false;
+                })
                 .collect(Collectors.toList());
         header.setSequenceDictionary(new SAMSequenceDictionary(usedSequenceRecords));
         return header;
