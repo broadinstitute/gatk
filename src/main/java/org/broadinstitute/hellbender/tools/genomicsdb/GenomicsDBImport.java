@@ -29,7 +29,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
-import shaded.cloud_nio.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -73,7 +73,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String CONSOLIDATE_ARG_NAME = "consolidate";
     public static final String SAMPLE_NAME_MAP_LONG_NAME = "sampleNameMap";
     public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validateSampleNameMap";
-    public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "vcfInitializerThreads";
+    public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "readerThreads";
 
     @Argument(fullName = WORKSPACE_ARG_NAME,
               shortName = WORKSPACE_ARG_NAME,
@@ -168,7 +168,7 @@ public final class GenomicsDBImport extends GATKTool {
     private int vcfInitializerThreads = 1;
 
     //executor service used when vcfInitializerThreads > 1
-    private ExecutorService headerLoadingExecutorService;
+    private ExecutorService inputPreloadExecutorService;
 
     @Override
     public boolean requiresIntervals() { return true; }
@@ -248,14 +248,14 @@ public final class GenomicsDBImport extends GATKTool {
                 final Path variantPath = IOUtils.getPath(variantPathString);
                 final  VCFHeader header = getHeaderFromPath(variantPath);
                 Utils.validate(header != null, "Null header was found in " + variantPath + ".");
-                assertGVCFHasOnlyOneSample(header, variantPathString);
+                assertGVCFHasOnlyOneSample(variantPathString, header);
                 headers.add(header);
 
                 final String sampleName = header.getGenotypeSamples().get(0);
                 final Path previousPath = sampleNameToVcfPath.put(sampleName, variantPath);
                 if (previousPath != null) {
                     throw new UserException("Duplicate sample: " + sampleName + ". Sample was found in both "
-                                                    + variantPath + " and " + previousPath.toUri() + ".");
+                                                    + variantPath.toUri() + " and " + previousPath.toUri() + ".");
                 }
             }
             mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
@@ -282,7 +282,7 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
-    private static void assertGVCFHasOnlyOneSample(final VCFHeader header, final String variantPath) {
+    private static void assertGVCFHasOnlyOneSample(final String variantPath, final VCFHeader header) {
         // A GVCF file must contain only one sample, throw an exception otherwise
         final int numberOfSamples = header.getNGenotypeSamples();
         if (numberOfSamples != 1) {
@@ -349,14 +349,18 @@ public final class GenomicsDBImport extends GATKTool {
         // This is needed for consistent ordering across partitions/machines
         callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfPath.keySet()), false);
 
+        initializeInputPreloadExecutorService();
+    }
+
+    private void initializeInputPreloadExecutorService() {
         if( vcfInitializerThreads > 1) {
             final ThreadFactory threadFactory = new ThreadFactoryBuilder()
                     .setNameFormat("readerInitializer-thread-%d")
                     .setDaemon(true)
                     .build();
-            this.headerLoadingExecutorService = Executors.newFixedThreadPool(vcfInitializerThreads, threadFactory);
+            this.inputPreloadExecutorService = Executors.newFixedThreadPool(vcfInitializerThreads, threadFactory);
         } else {
-            headerLoadingExecutorService = null;
+            inputPreloadExecutorService = null;
         }
     }
 
@@ -378,13 +382,12 @@ public final class GenomicsDBImport extends GATKTool {
         for (int i = 0, batchCount = 1; i < sampleCount; i += updatedBatchSize, ++batchCount) {
 
             final Map<String, FeatureReader<VariantContext>> sampleToReaderMap =
-                    headerLoadingExecutorService != null
-                            ? getFeatureReaders( sampleNameToVcfPath, updatedBatchSize, i)
-                            : getFeatureReadersWithoutMultithreading( sampleNameToVcfPath, updatedBatchSize, i);
+                    inputPreloadExecutorService != null
+                            ? getFeatureReadersInParallel(sampleNameToVcfPath, updatedBatchSize, i)
+                            : getFeatureReadersSerially(sampleNameToVcfPath, updatedBatchSize, i);
 
             logger.info("Importing batch " + batchCount + " with " + sampleToReaderMap.size() + " samples");
             final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
-            logger.debug("Starting batch import: " + System.currentTimeMillis());
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                             variantContextBufferSize, segmentSize,
@@ -402,7 +405,6 @@ public final class GenomicsDBImport extends GATKTool {
             } catch (final IOException e) {
                 throw new UserException("GenomicsDB import failed in batch " + batchCount, e);
             }
-            logger.debug("Finished batch import: " + System.currentTimeMillis());
             closeReaders(sampleToReaderMap);
             progressMeter.update(intervals.get(0));
             logger.info("Done importing batch " + batchCount + "/" + totalBatchCount);
@@ -442,21 +444,21 @@ public final class GenomicsDBImport extends GATKTool {
      * Method to create feature readers for input files or GCS URLs
      * in the current batch
      *
-     * @param sampleNameToFileName  Sample name to file name mapping
+     * @param sampleNametoPath  Sample name to file name mapping
      * @param batchSize  Current batch size
      * @param lowerSampleIndex  0-based Lower bound of sample index -- inclusive
      * @return  Feature readers to be imported in the current batch
      */
-    private Map<String, FeatureReader<VariantContext>> getFeatureReaders(final LinkedHashMap<String, Path> sampleNameToFileName,
-                                                                         final int batchSize, final int lowerSampleIndex) {
+    private Map<String, FeatureReader<VariantContext>> getFeatureReadersInParallel(final LinkedHashMap<String, Path> sampleNametoPath,
+                                                                                   final int batchSize, final int lowerSampleIndex) {
         final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
-        logger.debug("Starting batch header preload: "+ System.currentTimeMillis());
+        logger.info("Starting batch input file preload");
         final List<Future<FeatureReader<VariantContext>>> futures = new ArrayList<>();
-        final List<String> sampleNames = new ArrayList<>(sampleNameToFileName.keySet());
-        for(int i = lowerSampleIndex; i < sampleNameToFileName.size() && i < lowerSampleIndex+batchSize; ++i) {
+        final List<String> sampleNames = new ArrayList<>(sampleNametoPath.keySet());
+        for(int i = lowerSampleIndex; i < sampleNametoPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
-            futures.add(headerLoadingExecutorService.submit(() -> {
-                final Path variantPath = sampleNameToFileName.get(sampleName);
+            futures.add(inputPreloadExecutorService.submit(() -> {
+                final Path variantPath = sampleNametoPath.get(sampleName);
                 try {
                     return new InitializedQueryWrapper(getReaderFromPath(variantPath), intervals.get(0));
                 } catch (final IOException e) {
@@ -465,28 +467,30 @@ public final class GenomicsDBImport extends GATKTool {
             }));
         }
 
-        futures.forEach(f -> {
+        for (final Future<FeatureReader<VariantContext>> f : futures) {
             try {
                 final FeatureReader<VariantContext> reader = f.get();
-                sampleToReaderMap.put(((VCFHeader)reader.getHeader()).getGenotypeSamples().get(0),reader);
+                final List<String> genotypeSamples = ((VCFHeader) reader.getHeader()).getGenotypeSamples();
+                assert genotypeSamples.size() == 1;
+                final String sampleName = genotypeSamples.get(0);
+                assert sampleNametoPath.containsKey(sampleName);
+                sampleToReaderMap.put(sampleName, reader);
             } catch (InterruptedException | ExecutionException e) {
-                throw new UserException.CouldNotReadInputFile("Failure while waiting for FeatureReader to initialize ", e);
+                throw new UserException.CouldNotReadInputFile("Failure while waiting for FeatureReader to initialize ",
+                                                              e);
             }
-        });
-        logger.debug("Done batch header preload: "+ System.currentTimeMillis());
+        }
+        logger.info("Finished batch preload");
         return sampleToReaderMap;
     }
 
-    private Map<String, FeatureReader<VariantContext>> getFeatureReadersWithoutMultithreading(final Map<String, Path> sampleNameToFileName,
-                                                          final int batchSize, final int lowerSampleIndex){
+    private Map<String, FeatureReader<VariantContext>> getFeatureReadersSerially(final Map<String, Path> sampleNameToPath,
+                                                                                 final int batchSize, final int lowerSampleIndex){
         final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
-        List<String> sampleNames = new ArrayList<>(sampleNameToFileName.keySet());
-        for(int i = lowerSampleIndex; i < sampleNameToFileName.size() && i < lowerSampleIndex+batchSize; ++i) {
+        final List<String> sampleNames = new ArrayList<>(sampleNameToPath.keySet());
+        for(int i = lowerSampleIndex; i < sampleNameToPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
-            assert sampleNameToFileName.containsKey(sampleName);
-
-            final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(sampleNameToFileName.get(sampleName));
-
+            final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(sampleNameToPath.get(sampleName));
             assert sampleName.equals(((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0));
             sampleToReaderMap.put(sampleName, reader);
         }
@@ -644,8 +648,8 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Override
     public void onShutdown(){
-        if( headerLoadingExecutorService != null) {
-            headerLoadingExecutorService.shutdownNow();
+        if( inputPreloadExecutorService != null) {
+            inputPreloadExecutorService.shutdownNow();
         }
     }
 
@@ -671,10 +675,10 @@ public final class GenomicsDBImport extends GATKTool {
      * It initializes a feature reader and starts a query.  This causes the header and index to be read, and also causes any
      * pre-fetching to begin if enabled.  It is very narrowly crafted and should not be used for other purposes.
      */
-    private static class InitializedQueryWrapper implements FeatureReader<VariantContext> {
+    private static final class InitializedQueryWrapper implements FeatureReader<VariantContext> {
         private final FeatureReader<VariantContext> reader;
         private final SimpleInterval interval;
-        private final CloseableTribbleIterator<VariantContext> query;
+        private CloseableTribbleIterator<VariantContext> query;
 
         private InitializedQueryWrapper(final FeatureReader<VariantContext> reader, final Locatable interval) throws IOException {
             this.reader = reader;
@@ -686,10 +690,12 @@ public final class GenomicsDBImport extends GATKTool {
         public CloseableTribbleIterator<VariantContext> query(final String chr, final int start, final int end) throws IOException {
             final SimpleInterval queryInterval = new SimpleInterval(chr, start, end);
             if( !interval.equals(queryInterval)){
-                throw new GATKException("Cannot call query with different interval, expected:" + this.interval + " queried with: " + queryInterval );
+                throw new GATKException("Cannot call query with different interval, expected:" + this.interval + " queried with: " + queryInterval);
             }
-            if( query != null){
-                return query;
+            if( query != null ){
+                final CloseableTribbleIterator<VariantContext> tmp = query;
+                query = null;
+                return tmp;
             } else {
                 throw new GATKException("Cannot call query twice on this wrapper.");
             }
