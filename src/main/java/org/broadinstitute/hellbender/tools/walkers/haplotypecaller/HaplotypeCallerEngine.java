@@ -350,7 +350,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         headerInfo.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
         // all annotation fields from VariantAnnotatorEngine
-        headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions());
+        headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(emitReferenceConfidence()));
         // all callers need to add these standard annotation header lines
         headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.DOWNSAMPLED_KEY));
         headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MLE_ALLELE_COUNT_KEY));

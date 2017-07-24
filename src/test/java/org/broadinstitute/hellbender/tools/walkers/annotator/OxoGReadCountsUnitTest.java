@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -112,7 +113,7 @@ public final class OxoGReadCountsUnitTest {
         badRead.setMappingQuality(20);
 
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(sample1, refReads, altReads, Arrays.asList(badRead), -100.0, -10.0, -1.1, refAllele, altAllele);
+                ArtificialAnnotationUtils.makeLikelihoods(sample1, refReads, altReads, Arrays.asList(badRead), -100.0, -10.0, -1.1, refAllele, altAllele);
 
         return ImmutablePair.of(new VariantContextBuilder("test", "20", 10, 10, alleles).genotypes(Arrays.asList(g)).make(),
                 likelihoods);

@@ -50,21 +50,26 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     private final List<SimpleInterval> upstreamDeletionsLoc = new LinkedList<>();
 
+    private final boolean doAlleleSpecificCalcs;
+
     /**
      * Construct a new genotyper engine, on a specific subset of samples.
      *
      * @param configuration engine configuration object.
      * @param samples subset of sample to work on identified by their names. If {@code null}, the full toolkit
      *                    sample set will be used instead.
+     * @param doAlleleSpecificCalcs Whether the AS_QUAL key should be calculated and added to newly genotyped variants.
      *
      * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null}.
      */
     protected GenotypingEngine(final Config configuration,
                                final SampleList samples,
-                               final AFCalculatorProvider afCalculatorProvider) {
+                               final AFCalculatorProvider afCalculatorProvider,
+                               final boolean doAlleleSpecificCalcs) {
         this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
         this.samples = Utils.nonNull(samples, "the sample list cannot be null");
         this.afCalculatorProvider = Utils.nonNull(afCalculatorProvider, "the AF calculator provider cannot be null");
+        this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
         log10AlleleFrequencyPriorsSNPs = composeAlleleFrequencyPriorProvider(numberOfGenomes,
@@ -626,6 +631,23 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             attributes.put(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, alleleCountsofMLE);
             final List<Double> MLEfrequencies = calculateMLEAlleleFrequencies(alleleCountsofMLE, genotypes);
             attributes.put(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, MLEfrequencies);
+        }
+
+        if (doAlleleSpecificCalcs){
+            List<Double> perAlleleQuals = new ArrayList<>();
+            //Per-allele quals are not calculated for biallelic sites
+            if (AFresult.getAllelesUsedInGenotyping().size() > 2) {
+                for (final Allele a : allAllelesToUse) {
+                    if (a.isNonReference()) {
+                        perAlleleQuals.add(AFresult.getLog10PosteriorOfAFEq0ForAllele(a));
+                    }
+                }
+            }
+            else {
+                perAlleleQuals.add(AFresult.getLog10PosteriorOfAFEq0());
+            }
+
+            attributes.put(GATKVCFConstants.AS_QUAL_KEY, perAlleleQuals);
         }
 
         if ( configuration.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED ) {

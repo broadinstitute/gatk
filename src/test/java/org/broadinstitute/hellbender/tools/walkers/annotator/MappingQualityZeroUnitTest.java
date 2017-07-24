@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -54,7 +55,7 @@ public final class MappingQualityZeroUnitTest {
     }
 
     private GATKRead makeRead(final int mappingQual) {
-        return AnnotationArtificialData.makeRead(25, mappingQual);
+        return ArtificialAnnotationUtils.makeRead(25, mappingQual);
     }
 
     @Test
@@ -70,7 +71,7 @@ public final class MappingQualityZeroUnitTest {
         final List<GATKRead> refReads = IntStream.range(0, refDepth).mapToObj(i -> makeRead(refMQ)).collect(Collectors.toList());
         final List<GATKRead> altReads = IntStream.range(0, altDepth).mapToObj(i -> makeRead(altMQ)).collect(Collectors.toList());
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods("sample1", refReads, altReads, -1.0, -1.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -1.0, -1.0, REF, ALT);
 
         final VariantContext vc = makeVC();
         final ReferenceContext referenceContext= null;

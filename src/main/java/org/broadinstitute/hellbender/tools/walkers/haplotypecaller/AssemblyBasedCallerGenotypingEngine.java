@@ -36,7 +36,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      */
     public AssemblyBasedCallerGenotypingEngine(final AssemblyBasedCallerArgumentCollection configuration, final SampleList samples,
                                            final AFCalculatorProvider afCalculatorProvider, final boolean doPhysicalPhasing) {
-        super(configuration, samples, afCalculatorProvider);
+        super(configuration, samples, afCalculatorProvider, false);
         this.doPhysicalPhasing= doPhysicalPhasing;
     }
 

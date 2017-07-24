@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.*;
@@ -360,6 +364,28 @@ public final class VariantContextTestUtils {
         return attributes.entrySet().stream()
                 .filter(p -> !attributesToIgnore.contains(p.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    // Method that determines whether two variant contexts have equivalent allele specific annotations regardless of allele ordering
+    public static Boolean alleleSpecificAnnotationEquals(VariantContext actual, VariantContext expected, String annotation) {
+        List<Allele> Aalleles = actual.getAlleles();
+        String[] actualAnnotation = String.join(",",actual.getAttributeAsStringList(annotation, "")).split("\\|",-1);
+        String[] expectedAnnotation = String.join(",",expected.getAttributeAsStringList(annotation, "")).split("\\|",-1);
+        if (Arrays.equals(actualAnnotation, expectedAnnotation)) {
+            return true;
+        }if (actualAnnotation.length!=expectedAnnotation.length) {
+            return false;
+        }
+        for (int i = 0; i < Aalleles.size(); i++) {
+            Allele al = Aalleles.get(i);
+
+            int k = expected.getAlleleIndex(al);
+
+            if (!actualAnnotation[i].equals(expectedAnnotation[k])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static void assertVariantContextsHaveSameGenotypes(final VariantContext actual, final VariantContext expected) {
