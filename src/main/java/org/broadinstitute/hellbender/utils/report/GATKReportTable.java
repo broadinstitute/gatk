@@ -566,6 +566,10 @@ public final class GATKReportTable {
         return columnInfo.size();
     }
 
+    public List<GATKReportColumn> getColumnInfo() {
+        return columnInfo;
+    }
+
     public String getTableName() {
         return tableName;
     }

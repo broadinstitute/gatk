@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.utils.collections.ExpandingArrayList;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumn;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -165,7 +166,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private static final String PLOT_TRANCHES_RSCRIPT = "plot_Tranches.R";
 
     @ArgumentCollection
-    private VariantRecalibratorArgumentCollection VRAC = new VariantRecalibratorArgumentCollection();
+    final private VariantRecalibratorArgumentCollection VRAC = new VariantRecalibratorArgumentCollection();
 
     /////////////////////////////
     // Inputs
@@ -268,15 +269,74 @@ public class VariantRecalibrator extends MultiVariantWalker {
      */
     @Argument(fullName="output_model",
             shortName = "outputModel",
-            doc="If specified, the variant recalibrator will output the VQSR model fit to the file specified by -modelFile or to stdout",
+            doc="If specified, the variant recalibrator will output the VQSR model to this file path.",
             optional=true)
-    private boolean outputModel = false;
+    private String outputModel = null;
 
-    @Argument(fullName="model_file",
-            shortName = "modelFile",
-            doc="A GATKReport containing the positive and negative model fits",
+    /**
+     *  The filename for a VQSR model fit to use to recalibrate the input variants. This model should be generated using
+     *  a previous VariantRecalibration run with the --output_model argument.
+     */
+    @Argument(fullName="input_model",
+            shortName = "inputModel",
+            doc="If specified, the variant recalibrator will read the VQSR model from this file path.",
             optional=true)
-    private String modelReport = null;
+    private String inputModel = null;
+
+    /**
+     * This argument is intended to be used in a more complicated VQSR scheme meant for very large WGS callsets that
+     * require a prohibitive amount of memory for classic VQSR. Given that training data is downsampled once it exceeds
+     * --maxNumTrainingData, reading in additional data to build the model only serves to consume resources. However,
+     * with this argument the output recal file will also be downsampled. The recommended VQSR procedure when using this
+     * argument is to run VariantRecalibrator once with sampling and designate an --output_model file. Then
+     * VariantRecalibrator can be run a second time scattered using the -scatterTranches argument and that file as an
+     * --input_model.  The scattered recal files can be gathered with the GatherVcfs tool and the scattered tranches can
+     * be gathered with the GatherTranches tool.
+     *
+     */
+    @Argument(fullName="sample_every_Nth_variant",
+            shortName = "sampleEvery",
+            doc="If specified, the variant recalibrator will use (and output) only a subset of variants consisting of every Nth variant where N is specified by this argument; for use with -outputModel -- see argument details",
+            optional=true)
+    private int sampleMod = 1;
+
+    /**
+     *  This argument must be specified if VariantRecalibrator is run scattered because the tranch output format changes.
+     *  The scattered recal files can be gathered with the GatherVcfs tool and the scattered tranches can be gathered
+     *  with the GatherTranches tool. See the description of the -sampleEvery argument for more information on running
+     *  scattered VariantRecalibrator.
+     */
+
+    @Argument(fullName="output_tranches_for_scatter",
+            shortName = "scatterTranches",
+            doc="Output tranches in a format appropriate to running VariantRecalibrator in scatter-gather",
+            optional = true)
+    private boolean scatterTranches = false;
+
+    /**
+     * Add VQSLOD slices through the call set at the given values, to be used with the -scatterTranches argument. The
+     * default values span from -10 to +10 at varying resolution. The resolution output here will affect the accuracy
+     * with which the gathered tranches are able to match the requested truth sensitivity levels.
+     *
+     * Alternative lists of tranche values should only be used for testing.
+     */
+    @Hidden
+    @Argument(fullName="VQSLODtranche",
+            shortName="VQSLODtranche",
+            doc="The levels of VQSLOD at which to slice the data.",
+            optional=true)
+    private List<Double> VQSLOD_TRANCHES = new ArrayList<>(1000);
+    {
+        for (double i=10.0; i>5; i-=0.1) {
+            VQSLOD_TRANCHES.add(i);
+        }
+        for (double i=5.0; i>-5; i-=0.01) {
+            VQSLOD_TRANCHES.add(i);
+        }
+        for (double i=-5.0; i>-10; i-=0.1) {
+            VQSLOD_TRANCHES.add(i);
+        }
+    };
 
     @Hidden
     @Argument(fullName="replicate",
@@ -320,11 +380,19 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private VariantDataManager dataManager;
     private VariantContextWriter recalWriter;
     private PrintStream tranchesStream;
-    private ArrayList<Double> replicate = new ArrayList<>(REPLICATE * 2);
+    final private ArrayList<Double> replicate = new ArrayList<>(REPLICATE * 2);
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     private final VariantRecalibratorEngine engine = new VariantRecalibratorEngine( VRAC );
-    private ExpandingArrayList<VariantDatum> reduceSum = new ExpandingArrayList<>(2000);
-    private List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>();
+    final private ExpandingArrayList<VariantDatum> reduceSum = new ExpandingArrayList<>(2000);
+    final private List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>();
+    private long counter = 0;
+    private GATKReportTable nmcTable;
+    private GATKReportTable nmmTable;
+    private GATKReportTable nPMixTable;
+    private GATKReportTable pmcTable;
+    private GATKReportTable pmmTable;
+    private GATKReportTable pPMixTable;
+    private int numAnnotations;
 
     //---------------------------------------------------------------------------------------------------------------
     //
@@ -342,7 +410,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     "Rscript not found in environment path. %s will be generated but PDF plots will not.",
                     RSCRIPT_FILE));
 
-        if( IGNORE_INPUT_FILTERS != null ) {
+        if ( IGNORE_INPUT_FILTERS != null ) {
             ignoreInputFilterSet.addAll( IGNORE_INPUT_FILTERS );
         }
 
@@ -352,17 +420,42 @@ public class VariantRecalibrator extends MultiVariantWalker {
             throw new UserException.CouldNotCreateOutputFile(TRANCHES_FILE, e);
         }
 
-        for( FeatureInput<VariantContext> variantFeature : resource ) {
+        for (final FeatureInput<VariantContext> variantFeature : resource ) {
             dataManager.addTrainingSet( new TrainingSet( variantFeature ) );
         }
 
-        if( !dataManager.checkHasTrainingSet() ) {
+        if ( !dataManager.checkHasTrainingSet() ) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. For example, -resource hapmap,VCF,known=false,training=true,truth=true,prior=12.0 hapmapFile.vcf" );
         }
-        if( !dataManager.checkHasTruthSet() ) {
+        if ( !dataManager.checkHasTruthSet() ) {
             throw new CommandLineException(
                     "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. For example, -resource hapmap,VCF,known=false,training=true,truth=true,prior=12.0 hapmapFile.vcf" );
+        }
+
+        if (inputModel != null) { // Load GMM from a file
+            final File inputFile = new File(inputModel);
+            logger.info("Loading model from:" + inputModel);
+            final GATKReport reportIn = new GATKReport(inputFile);
+
+            // Read all the tables
+            nmcTable = reportIn.getTable("NegativeModelCovariances");
+            nmmTable = reportIn.getTable("NegativeModelMeans");
+            nPMixTable = reportIn.getTable("BadGaussianPMix");
+            pmcTable = reportIn.getTable("PositiveModelCovariances");
+            pmmTable = reportIn.getTable("PositiveModelMeans");
+            pPMixTable = reportIn.getTable("GoodGaussianPMix");
+            final GATKReportTable anMeansTable = reportIn.getTable("AnnotationMeans");
+            final GATKReportTable anStDevsTable = reportIn.getTable("AnnotationStdevs");
+            numAnnotations = dataManager.annotationKeys.size();
+
+            if ( numAnnotations != pmmTable.getNumColumns()-1 || numAnnotations != nmmTable.getNumColumns()-1 ) { // -1 because the first column is the gaussian number.
+                throw new CommandLineException( "Annotations specified on the command line do not match annotations in the model report." );
+            }
+
+            final Map<String, Double> anMeans = getMapFromVectorTable(anMeansTable);
+            final Map<String, Double> anStdDevs = getMapFromVectorTable(anStDevsTable);
+            dataManager.setNormalization(anMeans, anStdDevs);
         }
 
         //TODO: this should be refactored/consolidated as part of
@@ -372,7 +465,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         // Initialize VCF header lines
         Set<VCFHeaderLine> hInfo = getDefaultToolVCFHeaderLines();
         VariantRecalibrationUtils.addVQSRStandardHeaderLines(hInfo);
-        SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         if (hasReference()) {
             hInfo = VcfUtils.updateHeaderContigLines(
                     hInfo, referenceArguments.getReferenceFile(), sequenceDictionary, true);
@@ -384,7 +477,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         recalWriter = createVCFWriter(new File(output));
         recalWriter.writeHeader( new VCFHeader(hInfo) );
 
-        for( int iii = 0; iii < REPLICATE * 2; iii++ ) {
+        for ( int iii = 0; iii < REPLICATE * 2; iii++ ) {
             replicate.add(Utils.getRandomGenerator().nextDouble());
         }
     }
@@ -396,14 +489,17 @@ public class VariantRecalibrator extends MultiVariantWalker {
     //---------------------------------------------------------------------------------------------------------------
 
     @Override
-    public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
+    public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
         // Queue up all variant/featureContext pairs that share a start locus, and defer
         // processing until the start-position or contig changes. In practice this will
         // rarely queue up more than a single variant at a time.
         if (variantLocusChanged(vc)) {
             consumeQueuedVariants();
         }
-        variantsAtLocus.add(new ImmutablePair<>(vc, featureContext));
+        if (counter % sampleMod == 0)
+            variantsAtLocus.add(new ImmutablePair<>(vc, featureContext));
+        counter++;
+
     }
 
     // Check to see if the start locus for this variant is different from the
@@ -413,7 +509,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             return false;
         }
         else {
-            ImmutablePair<VariantContext, FeatureContext> previous = variantsAtLocus.get(0);
+            final ImmutablePair<VariantContext, FeatureContext> previous = variantsAtLocus.get(0);
             return (nextVC.getStart() != previous.left.getStart() || !nextVC.getContig().equals(previous.left.getContig()));
         }
     }
@@ -432,7 +528,6 @@ public class VariantRecalibrator extends MultiVariantWalker {
      * @param aggregateInputs the input sources to search within
      * @param isInput   is this the driving variant input (true) or an aggregate input ?
      * @param context   the FeatureContext from the apply call
-     * @return  a list of VariantDatums, can be empty
      */
     private void addOverlappingAggregateVariants(
             final List<FeatureInput<VariantContext>> aggregateInputs,
@@ -446,7 +541,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         }
     }
 
-    private void addVariantDatum( VariantContext vc, final boolean isInput, final FeatureContext context ) {
+    private void addVariantDatum(final VariantContext vc, final boolean isInput, final FeatureContext context ) {
         if( vc != null && ( IGNORE_ALL_FILTERS || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()) ) ) {
             if( VariantDataManager.checkVariationClass( vc, VRAC.MODE ) && !VRAC.useASannotations) {
                 addDatum(reduceSum, isInput, context, vc, null, null);
@@ -512,42 +607,63 @@ public class VariantRecalibrator extends MultiVariantWalker {
         for (int i = 1; i <= max_attempts; i++) {
             try {
                 dataManager.setData(reduceSum);
-                dataManager.normalizeData(); // Each data point is now (x - mean) / standard deviation
+                dataManager.normalizeData(inputModel == null); // Each data point is now (x - mean) / standard deviation
 
-                // Generate the positive model using the training data and evaluate each variant
+                final GaussianMixtureModel goodModel;
+                final GaussianMixtureModel badModel;
+
                 final List<VariantDatum> positiveTrainingData = dataManager.getTrainingData();
+                final List<VariantDatum> negativeTrainingData;
 
-                final GaussianMixtureModel goodModel = engine.generateModel(positiveTrainingData, VRAC.MAX_GAUSSIANS);
-                engine.evaluateData(dataManager.getData(), goodModel, false);
+                if (inputModel != null) {  // GMMs were loaded from a file
+                    logger.info("Using serialized GMMs from file...");
+                    goodModel = GMMFromTables(pmmTable, pmcTable, pPMixTable, numAnnotations, positiveTrainingData.size());
+                    engine.evaluateData(dataManager.getData(), goodModel, false);
+                    negativeTrainingData = dataManager.selectWorstVariants();
+                    badModel = GMMFromTables(nmmTable, nmcTable, nPMixTable, numAnnotations, negativeTrainingData.size());
+                } else { // Generate the GMMs from scratch
+                    // Generate the positive model using the training data and evaluate each variant
+                    goodModel = engine.generateModel(positiveTrainingData, VRAC.MAX_GAUSSIANS);
+                    engine.evaluateData(dataManager.getData(), goodModel, false);
+                    // Generate the negative model using the worst performing data and evaluate each variant contrastively
+                    negativeTrainingData = dataManager.selectWorstVariants();
+                    badModel = engine.generateModel(negativeTrainingData,
+                            Math.min(VRAC.MAX_GAUSSIANS_FOR_NEGATIVE_MODEL, VRAC.MAX_GAUSSIANS));
 
-                // Generate the negative model using the worst performing data and evaluate each variant contrastively
-                final List<VariantDatum> negativeTrainingData = dataManager.selectWorstVariants();
-                final GaussianMixtureModel badModel = engine.generateModel(negativeTrainingData,
-                        Math.min(VRAC.MAX_GAUSSIANS_FOR_NEGATIVE_MODEL, VRAC.MAX_GAUSSIANS));
+                    if (badModel.failedToConverge || goodModel.failedToConverge) {
+                        throw new UserException(
+                                "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minNumBadVariants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --maxGaussians 4, for example)."));
+                    }
+                }
+
                 dataManager.dropAggregateData(); // Don't need the aggregate data anymore so let's free up the memory
                 engine.evaluateData(dataManager.getData(), badModel, true);
 
-                if (badModel.failedToConverge || goodModel.failedToConverge) {
-                    throw new UserException(
-                            "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minNumBadVariants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --maxGaussians 4, for example)."));
-                }
-
-                if (outputModel) {
-                    GATKReport report = writeModelReport(goodModel, badModel, USE_ANNOTATIONS);
-                    try(final PrintStream modelReportStream = new PrintStream(modelReport)) {
+                if (outputModel != null) {
+                    final GATKReport report = writeModelReport(goodModel, badModel, USE_ANNOTATIONS);
+                    try (final PrintStream modelReportStream = new PrintStream(outputModel)) {
                         report.print(modelReportStream);
                     } catch (FileNotFoundException e) {
-                        throw new UserException.CouldNotCreateOutputFile("File: (" + modelReport + ")", e);
+                        throw new UserException.CouldNotCreateOutputFile("File: (" + outputModel + ")", e);
                     }
                 }
 
                 engine.calculateWorstPerformingAnnotation(dataManager.getData(), goodModel, badModel);
 
+
                 // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
                 final int nCallsAtTruth = TrancheManager.countCallsAtTruth(dataManager.getData(), Double.NEGATIVE_INFINITY);
                 final TrancheManager.SelectionMetric metric = new TrancheManager.TruthSensitivityMetric(nCallsAtTruth);
-                final List<Tranche> tranches = TrancheManager.findTranches(dataManager.getData(), TS_TRANCHES, metric, VRAC.MODE);
-                tranchesStream.print(Tranche.tranchesString(tranches));
+                if ( !scatterTranches ) {
+                    final List<? extends Tranche> tranches = TrancheManager.findTranches(dataManager.getData(), TS_TRANCHES, metric, VRAC.MODE);
+                    tranchesStream.print(TruthSensitivityTranche.printHeader());
+                    tranchesStream.print(Tranche.tranchesString(tranches));
+                }
+                else {
+                    final List<? extends Tranche> tranches = TrancheManager.findVQSLODTranches(dataManager.getData(), VQSLOD_TRANCHES, metric, VRAC.MODE);
+                    tranchesStream.print(VQSLODTranche.printHeader());
+                    tranchesStream.print(Tranche.tranchesString(tranches));
+                }
 
                 logger.info("Writing out recalibration table...");
                 dataManager.writeOutRecalibrationTable(recalWriter, getBestAvailableSequenceDictionary());
@@ -567,9 +683,12 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 if (VRAC.MODE == VariantRecalibratorArgumentCollection.Mode.INDEL) {
                     // Print out an info message to make it clear why the tranches plot is not generated
                     logger.info("Tranches plot will not be generated since we are running in INDEL mode");
+                } else if (scatterTranches) {
+                    //skip R plots for scattered tranches because the format is different and the R code parses them
+                    logger.info("Tranches plot will not be generated since we are running in scattered mode");
                 } else {
                     // Execute the RScript command to plot the table of truth values
-                    RScriptExecutor executor = new RScriptExecutor();
+                    final RScriptExecutor executor = new RScriptExecutor();
                     executor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
                     executor.addArgs(new File(TRANCHES_FILE).getAbsoluteFile(), TARGET_TITV);
                     // Print out the command line to make it clear to the user what is being executed and how one might modify it
@@ -578,7 +697,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 }
                 return true;
             }
-            catch (Exception e) {
+            catch (final Exception e) {
                 //TODO: see https://github.com/broadgsa/gatk-protected/pull/19
                 // If we retain this loop, it needs to be restructured. Currently, any existing state (including data
                 // already written to output streams) is retained for the next attempt. The output streams should
@@ -610,16 +729,83 @@ public class VariantRecalibrator extends MultiVariantWalker {
         }
     }
 
+    /**
+     * Rebuild a Gaussian Mixture Model from gaussian means and co-variates stored in a GATKReportTables
+     * @param muTable           Table of Gaussian means
+     * @param sigmaTable        Table of Gaussian co-variates
+     * @param pmixTable         Table of PMixLog10 values
+     * @param numAnnotations    Number of annotations, i.e. Dimension of the annotation space in which the Gaussians live
+     * @return  a GaussianMixtureModel whose state reflects the state recorded in the tables.
+     */
+    protected GaussianMixtureModel GMMFromTables(final GATKReportTable muTable,
+         final GATKReportTable sigmaTable,
+         final GATKReportTable pmixTable,
+         final int numAnnotations,
+         final int numVariants){
+         final List<MultivariateGaussian> gaussianList = new ArrayList<>();
+
+        int curAnnotation = 0;
+        for (final GATKReportColumn reportColumn : muTable.getColumnInfo() ) {
+            if (!reportColumn.getColumnName().equals("Gaussian")) {
+                for (int row = 0; row < muTable.getNumRows(); row++) {
+                    if (gaussianList.size() <= row) {
+                        final MultivariateGaussian mg = new MultivariateGaussian(numVariants, numAnnotations);
+                        gaussianList.add(mg);
+                    }
+                    gaussianList.get(row).mu[curAnnotation] = (Double) muTable.get(row, reportColumn.getColumnName());
+                }
+                curAnnotation++;
+            }
+        }
+
+        for (final GATKReportColumn reportColumn : pmixTable.getColumnInfo() ) {
+            if (reportColumn.getColumnName().equals("pMixLog10")) {
+                for (int row = 0; row < pmixTable.getNumRows(); row++) {
+                    gaussianList.get(row).pMixtureLog10 = (Double) pmixTable.get(row, reportColumn.getColumnName());
+                }
+            }
+        }
+
+        int curJ = 0;
+        for (final GATKReportColumn reportColumn : sigmaTable.getColumnInfo() ) {
+            if (reportColumn.getColumnName().equals("Gaussian")) continue;
+            if (reportColumn.getColumnName().equals("Annotation")) continue;
+
+            for (int row = 0; row < sigmaTable.getNumRows(); row++) {
+                final int curGaussian = row / numAnnotations;
+                final int curI = row % numAnnotations;
+                final double curVal = (Double) sigmaTable.get(row, reportColumn.getColumnName());
+                gaussianList.get(curGaussian).sigma.set(curI, curJ, curVal);
+
+            }
+            curJ++;
+
+        }
+
+        return new GaussianMixtureModel(gaussianList, VRAC.SHRINKAGE, VRAC.DIRICHLET_PARAMETER, VRAC.PRIOR_COUNTS);
+
+    }
+
+    private Map<String, Double> getMapFromVectorTable(final GATKReportTable vectorTable) {
+        final Map<String, Double> dataMap = new HashMap<>();
+
+        //do a row-major traversal
+        for (int i = 0; i < vectorTable.getNumRows(); i++) {
+            dataMap.put((String) vectorTable.get(i, 0), (Double) vectorTable.get(i, 1));
+        }
+        return dataMap;
+    }
+
     protected GATKReport writeModelReport(
             final GaussianMixtureModel goodModel,
             final GaussianMixtureModel badModel,
-            List<String> annotationList) {
-        final String formatString = "%.3f";
+            final List<String> annotationList) {
+        final String formatString = "%.16E";
         final GATKReport report = new GATKReport();
 
         if (dataManager != null) {  //for unit test
             final double[] meanVector = dataManager.getMeanVector();
-            GATKReportTable annotationMeans = makeVectorTable(
+            final GATKReportTable annotationMeans = makeVectorTable(
                     "AnnotationMeans",
                     "Mean for each annotation, used to normalize data",
                     dataManager.annotationKeys,
@@ -629,26 +815,49 @@ public class VariantRecalibrator extends MultiVariantWalker {
             report.addTable(annotationMeans);
 
             final double[] varianceVector = dataManager.getVarianceVector();  //"varianceVector" is actually stdev
-            GATKReportTable annotationVariances = makeVectorTable(
+            final GATKReportTable annotationVariances = makeVectorTable(
                     "AnnotationStdevs",
                     "Standard deviation for each annotation, used to normalize data",
                     dataManager.annotationKeys,
                     varianceVector,
-                    "Standard deviation",
+                    "StandardDeviation",  //column header must be one word
                     formatString);
             report.addTable(annotationVariances);
         }
 
+        final List<String> gaussianStrings = new ArrayList<>();
+        final double[] pMixtureLog10s = new double[goodModel.getModelGaussians().size()];
+        int idx = 0;
+
+        for( final MultivariateGaussian gaussian : goodModel.getModelGaussians() ) {
+            pMixtureLog10s[idx] = gaussian.pMixtureLog10;
+            gaussianStrings.add(Integer.toString(idx++) );
+        }
+
+        final GATKReportTable goodPMix = makeVectorTable("GoodGaussianPMix", "Pmixture log 10 used to evaluate model", gaussianStrings, pMixtureLog10s, "pMixLog10", formatString, "Gaussian");
+        report.addTable(goodPMix);
+
+        gaussianStrings.clear();
+        final double[] pMixtureLog10sBad = new double[badModel.getModelGaussians().size()];
+        idx = 0;
+
+        for( final MultivariateGaussian gaussian : badModel.getModelGaussians() ) {
+            pMixtureLog10sBad[idx] = gaussian.pMixtureLog10;
+            gaussianStrings.add(Integer.toString(idx++));
+        }
+        final GATKReportTable badPMix = makeVectorTable("BadGaussianPMix", "Pmixture log 10 used to evaluate model", gaussianStrings, pMixtureLog10sBad, "pMixLog10", formatString, "Gaussian");
+        report.addTable(badPMix);
+
         //The model and Gaussians don't know what the annotations are, so get them from this class
         //VariantDataManager keeps the annotation in the same order as the argument list
-        GATKReportTable positiveMeans = makeMeansTable(
+        final GATKReportTable positiveMeans = makeMeansTable(
                 "PositiveModelMeans", "Vector of annotation values to describe the (normalized) mean for each Gaussian in the positive model",
                 annotationList,
                 goodModel,
                 formatString);
         report.addTable(positiveMeans);
 
-        GATKReportTable positiveCovariance = makeCovariancesTable(
+        final GATKReportTable positiveCovariance = makeCovariancesTable(
                 "PositiveModelCovariances", "Matrix to describe the (normalized) covariance for each Gaussian in the positive model; covariance matrices are joined by row",
                 annotationList,
                 goodModel,
@@ -656,12 +865,12 @@ public class VariantRecalibrator extends MultiVariantWalker {
         report.addTable(positiveCovariance);
 
         //do the same for the negative model means
-        GATKReportTable negativeMeans = makeMeansTable(
+        final GATKReportTable negativeMeans = makeMeansTable(
                 "NegativeModelMeans", "Vector of annotation values to describe the (normalized) mean for each Gaussian in the negative model",
                 annotationList, badModel, formatString);
         report.addTable(negativeMeans);
 
-        GATKReportTable negativeCovariance = makeCovariancesTable(
+        final GATKReportTable negativeCovariance = makeCovariancesTable(
                 "NegativeModelCovariances",
                 "Matrix to describe the (normalized) covariance for each Gaussian in the negative model; covariance matrices are joined by row",
                 annotationList,
@@ -672,16 +881,33 @@ public class VariantRecalibrator extends MultiVariantWalker {
         return report;
     }
 
-    protected GATKReportTable makeVectorTable(
-            final String tableName,
+    protected GATKReportTable makeVectorTable(final String tableName,
+              final String tableDescription,
+              final List<String> annotationList,
+              final double[] perAnnotationValues,
+              final String columnName,
+              final String formatString) {
+        return makeVectorTable(tableName,
+                tableDescription,
+                annotationList,
+                perAnnotationValues,
+                columnName,
+                formatString,
+                "Annotation");
+    }
+
+private GATKReportTable makeVectorTable(final String tableName,
             final String tableDescription,
             final List<String> annotationList,
             final double[] perAnnotationValues,
             final String columnName,
-            final String formatString) {
-        GATKReportTable vectorTable = new GATKReportTable(
-                tableName, tableDescription, annotationList.size(), GATKReportTable.Sorting.DO_NOT_SORT);
-        vectorTable.addColumn("Annotation", "%s");
+            final String formatString,
+            final String firstColumn) {
+        final GATKReportTable vectorTable = new GATKReportTable(tableName,
+                tableDescription,
+                annotationList.size(),
+                GATKReportTable.Sorting.DO_NOT_SORT);
+        vectorTable.addColumn(firstColumn, "");
         vectorTable.addColumn(columnName, formatString);
         for (int i = 0; i < perAnnotationValues.length; i++) {
             vectorTable.addRowIDMapping(annotationList.get(i), i, true);
@@ -696,7 +922,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             final List<String> annotationList,
             final GaussianMixtureModel model,
             final String formatString) {
-        GATKReportTable meansTable = new GATKReportTable(
+        final GATKReportTable meansTable = new GATKReportTable(
                 tableName, tableDescription, annotationList.size(), GATKReportTable.Sorting.DO_NOT_SORT);
         meansTable.addColumn("Gaussian", "");
         for (final String annotationName : annotationList) {
@@ -721,7 +947,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             final List<String> annotationList,
             final GaussianMixtureModel model,
             final String formatString) {
-        GATKReportTable modelCovariances = new GATKReportTable(
+        final GATKReportTable modelCovariances = new GATKReportTable(
                 tableName, tableDescription, annotationList.size()+2, GATKReportTable.Sorting.DO_NOT_SORT); //+2 is for Gaussian and Annotation columns
         modelCovariances.addColumn("Gaussian", "");
         modelCovariances.addColumn("Annotation", "");
@@ -753,10 +979,10 @@ public class VariantRecalibrator extends MultiVariantWalker {
             final GaussianMixtureModel badModel,
             final double lodCutoff,
             final String[] annotationKeys ) {
-        PrintStream stream;
+        final PrintStream stream;
         try {
             stream = new PrintStream(RSCRIPT_FILE);
-        } catch( FileNotFoundException e ) {
+        } catch (final FileNotFoundException e ) {
             throw new UserException.CouldNotCreateOutputFile(RSCRIPT_FILE, e);
         }
 
@@ -860,7 +1086,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         stream.close();
 
         // Execute Rscript command to generate the clustering plots
-        RScriptExecutor executor = new RScriptExecutor();
+        final RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(new File(RSCRIPT_FILE));
         logger.info("Executing: " + executor.getApproximateCommandLine());
         executor.exec();

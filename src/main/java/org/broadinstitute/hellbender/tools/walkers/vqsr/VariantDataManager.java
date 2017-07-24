@@ -45,23 +45,37 @@ public class VariantDataManager {
         this.data = data;
     }
 
+    public void setNormalization(final Map<String, Double> anMeans, final Map<String, Double> anStdDevs) {
+        for (int i = 0; i < this.annotationKeys.size(); i++) {
+            meanVector[i] = anMeans.get(annotationKeys.get(i));
+            varianceVector[i] = anStdDevs.get(annotationKeys.get(i));
+        }
+    }
+
     public List<VariantDatum> getData() {
         return data;
     }
 
-    public void normalizeData() {
+    public void normalizeData(final boolean calculateMeans) {
         boolean foundZeroVarianceAnnotation = false;
         for( int iii = 0; iii < meanVector.length; iii++ ) {
-            final double theMean = mean(iii, true);
-            final double theSTD = standardDeviation(theMean, iii, true);
-            logger.info( annotationKeys.get(iii) + String.format(": \t mean = %.2f\t standard deviation = %.2f", theMean, theSTD) );
-            if( Double.isNaN(theMean) ) {
-                throw new UserException.BadInput("Values for " + annotationKeys.get(iii) + " annotation not detected for ANY training variant in the input callset. VariantAnnotator may be used to add these annotations.");
-            }
+            final double theMean, theSTD;
+            if (calculateMeans) {
+                theMean = mean(iii, true);
+                theSTD = standardDeviation(theMean, iii, true);
+                if (Double.isNaN(theMean)) {
+                    throw new UserException.BadInput("Values for " + annotationKeys.get(iii) + " annotation not detected for ANY training variant in the input callset. VariantAnnotator may be used to add these annotations.");
+                }
 
-            foundZeroVarianceAnnotation = foundZeroVarianceAnnotation || (theSTD < 1E-5);
-            meanVector[iii] = theMean;
-            varianceVector[iii] = theSTD;
+                foundZeroVarianceAnnotation = foundZeroVarianceAnnotation || (theSTD < 1E-5);
+                meanVector[iii] = theMean;
+                varianceVector[iii] = theSTD;
+            }
+            else {
+                theMean = meanVector[iii];
+                theSTD = varianceVector[iii];
+            }
+            logger.info(annotationKeys.get(iii) + String.format(": \t mean = %.2f\t standard deviation = %.2f", theMean, theSTD));
             for( final VariantDatum datum : data ) {
                 // Transform each data point via: (x - mean) / standard deviation
                 datum.annotations[iii] = ( datum.isNull[iii] ? 0.1 * Utils.getRandomGenerator().nextGaussian() : ( datum.annotations[iii] - theMean ) / theSTD );
@@ -223,7 +237,7 @@ public class VariantDataManager {
             }
         }
 
-        logger.info( "Training with worst " + trainingData.size() + " scoring variants --> variants with LOD <= " + String.format("%.4f", VRAC.BAD_LOD_CUTOFF) + "." );
+        logger.info( "Selected worst " + trainingData.size() + " scoring variants --> variants with LOD <= " + String.format("%.4f", VRAC.BAD_LOD_CUTOFF) + "." );
 
         return trainingData;
     }

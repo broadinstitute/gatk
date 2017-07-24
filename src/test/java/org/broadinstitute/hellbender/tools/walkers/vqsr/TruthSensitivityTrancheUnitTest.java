@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class TrancheUnitTest extends BaseTest {
+public final class TruthSensitivityTrancheUnitTest extends BaseTest {
     private final String testDir = CommandLineProgramTest.getTestDataDir() + "/walkers/VQSR/TrancheManagerUnitTest/";
     private final File QUAL_DATA = new File(testDir + "tranches.raw.dat");
     private final double[] TRUTH_SENSITIVITY_CUTS = new double[]{99.9, 99.0, 97.0, 95.0};
@@ -42,7 +42,7 @@ public final class TrancheUnitTest extends BaseTest {
 
     @Test(expectedExceptions = {UserException.MalformedFile.class})
     public final void readBadFormat() throws IOException{
-        Tranche.readTranches(QUAL_DATA);
+        TruthSensitivityTranche.readTranches(QUAL_DATA);
     }
 
     @Test
@@ -55,15 +55,15 @@ public final class TrancheUnitTest extends BaseTest {
         read(EXPECTED_TRANCHES_OLD);
     }
 
-    public final List<Tranche> read(File f) throws IOException{
-        return Tranche.readTranches(f);
+    public final List<TruthSensitivityTranche> read(File f) throws IOException{
+        return TruthSensitivityTranche.readTranches(f);
     }
 
-    private static void assertTranchesAreTheSame(List<Tranche> newFormat, List<Tranche> oldFormat) {
+    private static void assertTranchesAreTheSame(List<TruthSensitivityTranche> newFormat, List<TruthSensitivityTranche> oldFormat) {
         Assert.assertEquals(oldFormat.size(), newFormat.size());
         for ( int i = 0; i < newFormat.size(); i++ ) {
-            Tranche n = newFormat.get(i);
-            Tranche o = oldFormat.get(i);
+            TruthSensitivityTranche n = newFormat.get(i);
+            TruthSensitivityTranche o = oldFormat.get(i);
             Assert.assertEquals(n.targetTruthSensitivity, o.targetTruthSensitivity, 1e-3);
             Assert.assertEquals(n.numNovel, o.numNovel);
             Assert.assertEquals(n.novelTiTv, o.novelTiTv, 1e-3);
@@ -72,17 +72,17 @@ public final class TrancheUnitTest extends BaseTest {
         }
     }
 
-    private static List<Tranche> findMyTranches(ArrayList<VariantDatum> vd, double[] tranches) {
+    private static List<TruthSensitivityTranche> findMyTranches(ArrayList<VariantDatum> vd, double[] tranches) {
         final int nCallsAtTruth = VariantDatum.countCallsAtTruth( vd, Double.NEGATIVE_INFINITY );
-        final Tranche.TruthSensitivityMetric metric = new Tranche.TruthSensitivityMetric( nCallsAtTruth );
-        return Tranche.findTranches(vd, tranches, metric, VariantRecalibratorArgumentCollection.Mode.SNP);
+        final TruthSensitivityTranche.TruthSensitivityMetric metric = new TruthSensitivityTranche.TruthSensitivityMetric( nCallsAtTruth );
+        return TruthSensitivityTranche.findTranches(vd, tranches, metric, VariantRecalibratorArgumentCollection.Mode.SNP);
     }
 
     @Test
     public final void testFindTranches1() throws IOException {
         ArrayList<VariantDatum> vd = readData();
-        List<Tranche> tranches = findMyTranches(vd, TRUTH_SENSITIVITY_CUTS);
-        tranches.sort(Tranche.TRUTH_SENSITIVITY_ORDER);
+        List<TruthSensitivityTranche> tranches = findMyTranches(vd, TRUTH_SENSITIVITY_CUTS);
+        tranches.sort(TruthSensitivityTranche.TRUTH_SENSITIVITY_ORDER);
         assertTranchesAreTheSame(read(EXPECTED_TRANCHES_NEW), tranches);
     }
 

@@ -78,14 +78,14 @@ public class TrancheManager {
         }
     }
 
-    public static List<Tranche> findTranches( final List<VariantDatum> data,
-                                              final List<Double> tranches,
-                                              final SelectionMetric metric,
-                                              final VariantRecalibratorArgumentCollection.Mode model ) {
+    public static List<TruthSensitivityTranche> findTranches(final List<VariantDatum> data,
+                                                             final List<Double> tranches,
+                                                             final SelectionMetric metric,
+                                                             final VariantRecalibratorArgumentCollection.Mode model ) {
         return findTranches( data, tranches, metric, model, null );
     }
 
-    public static List<Tranche> findTranches(
+    public static List<TruthSensitivityTranche> findTranches(
             final List<VariantDatum> data,
             final List<Double> trancheThresholds,
             final SelectionMetric metric,
@@ -100,9 +100,9 @@ public class TrancheManager {
             writeTranchesDebuggingInfo(debugFile, data, metric);
         }
 
-        List<Tranche> tranches = new ArrayList<>();
+        List<TruthSensitivityTranche> tranches = new ArrayList<>();
         for ( double trancheThreshold : trancheThresholds ) {
-            Tranche t = findTranche(data, metric, trancheThreshold, model);
+            TruthSensitivityTranche t = findTranche(data, metric, trancheThreshold, model);
 
             if ( t == null ) {
                 if ( tranches.size() == 0 ) {
@@ -118,6 +118,37 @@ public class TrancheManager {
         }
 
         return tranches;
+    }
+
+    public static List<VQSLODTranche> findVQSLODTranches(
+            final List<VariantDatum> data,
+            final List<Double> trancheThresholds,
+            final SelectionMetric metric,
+            final VariantRecalibratorArgumentCollection.Mode model) {
+        logger.info(String.format("Finding %d tranches for %d variants", trancheThresholds.size(), data.size()));
+
+        Collections.sort( data, VariantDatum.VariantDatumLODComparator );
+        metric.calculateRunningMetric(data);
+
+        final List<VQSLODTranche> tranches = new ArrayList<>();
+        for ( double trancheThreshold : trancheThresholds ) {
+            VQSLODTranche t = findVQSLODTranche(data, metric, trancheThreshold, model);
+
+            if ( t == null ) {
+                if ( tranches.size() == 0 ) {
+                    throw new UserException(String.format(
+                            "Couldn't find any tranche containing variants with a %s > %.2f. Are you sure the truth files contain unfiltered variants which overlap the input data?",
+                            metric.getName(),
+                            metric.getThreshold(trancheThreshold)));
+                }
+                break;
+            }
+
+            tranches.add(t);
+        }
+
+        return tranches;
+
     }
 
     private static void writeTranchesDebuggingInfo(final File f, final List<VariantDatum> tranchesData, final SelectionMetric metric ) {
@@ -136,22 +167,22 @@ public class TrancheManager {
         }
     }
 
-    public static Tranche findTranche(
+    public static TruthSensitivityTranche findTranche(
             final List<VariantDatum> data,
             final SelectionMetric metric,
             final double trancheThreshold,
             final VariantRecalibratorArgumentCollection.Mode model ) {
-        logger.info(String.format("  Tranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, metric.getThreshold(trancheThreshold)));
+        logger.info(String.format("  TruthSensitivityTranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, metric.getThreshold(trancheThreshold)));
 
-        double metricThreshold = metric.getThreshold(trancheThreshold);
-        int n = data.size();
+        final double metricThreshold = metric.getThreshold(trancheThreshold);
+        final int n = data.size();
         for ( int i = 0; i < n; i++ ) {
             if ( metric.getRunningMetric(i) >= metricThreshold ) {
                 // we've found the largest group of variants with sensitivity >= our target truth sensitivity
-                Tranche t = trancheOfVariants(data, i, trancheThreshold, model);
+                final TruthSensitivityTranche t = TruthSensitivityTranche.trancheOfVariants(data, i, trancheThreshold, model);
                 logger.info(String.format("  Found tranche for %.3f: %.3f threshold starting with variant %d; running score is %.3f ",
                         trancheThreshold, metricThreshold, i, metric.getRunningMetric(i)));
-                logger.info(String.format("  Tranche is %s", t));
+                logger.info(String.format("  TruthSensitivityTranche is %s", t));
                 return t;
             }
         }
@@ -159,38 +190,27 @@ public class TrancheManager {
         return null;
     }
 
-    public static Tranche trancheOfVariants(
+    public static VQSLODTranche findVQSLODTranche(
             final List<VariantDatum> data,
-            final int minI,
-            final double ts,
+            final SelectionMetric metric,
+            final double trancheThreshold,
             final VariantRecalibratorArgumentCollection.Mode model ) {
-        int numKnown = 0, numNovel = 0, knownTi = 0, knownTv = 0, novelTi = 0, novelTv = 0;
+        logger.info(String.format("  VQSLODTranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, metric.getThreshold(trancheThreshold)));
 
-        double minLod = data.get(minI).lod;
-        for ( final VariantDatum datum : data ) {
-            if ( datum.lod >= minLod ) {
-                //if( ! datum.isKnown ) System.out.println(datum.pos);
-                if ( datum.isKnown ) {
-                    numKnown++;
-                    if( datum.isSNP ) {
-                        if ( datum.isTransition ) { knownTi++; } else { knownTv++; }
-                    }
-                } else {
-                    numNovel++;
-                    if( datum.isSNP ) {
-                        if ( datum.isTransition ) { novelTi++; } else { novelTv++; }
-                    }
-                }
+        final double metricThreshold = metric.getThreshold(trancheThreshold);
+        final int n = data.size();
+        for ( int i = 0; i < n; i++ ) {
+            if ( data.get(i).lod >= trancheThreshold ) {
+                // we've found the largest group of variants with LOD >= our target LOD
+                final VQSLODTranche t = VQSLODTranche.trancheOfVariants(data, i, trancheThreshold, model);
+                logger.info(String.format("  Found tranche for %.3f: %.3f threshold starting with variant %d; running score is %.3f ",
+                        trancheThreshold, metricThreshold, i, metric.getRunningMetric(i)));
+                logger.info(String.format("  VQSLODTranche is %s", t));
+                return t;
             }
         }
 
-        double knownTiTv = knownTi / Math.max(1.0 * knownTv, 1.0);
-        double novelTiTv = novelTi / Math.max(1.0 * novelTv, 1.0);
-
-        int accessibleTruthSites = countCallsAtTruth(data, Double.NEGATIVE_INFINITY);
-        int nCallsAtTruth = countCallsAtTruth(data, minLod);
-
-        return new Tranche(ts, minLod, numKnown, knownTiTv, numNovel, novelTiTv, accessibleTruthSites, nCallsAtTruth, model);
+        return null;
     }
 
     public static double fdrToTiTv(final double desiredFDR, final double targetTiTv) {
