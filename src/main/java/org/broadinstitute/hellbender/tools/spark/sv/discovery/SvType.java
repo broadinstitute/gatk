@@ -1,20 +1,18 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 
 import java.util.Collections;
 import java.util.Map;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.NovelAdjacencyReferenceLocations.EndConnectionType;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.NovelAdjacencyReferenceLocations.EndConnectionType.*;
+
 /**
  * Various types of structural variations
  */
-abstract class SvType {
-
-    static final String TANDEMUPLICATION_CONTRACTION_ID_START_STRING = "DEL-DUPLICATION-TANDEM-CONTRACTION";
-    static final String TANDEMUPLICATION_EXPANSION_ID_START_STRING = "INS-DUPLICATION-TANDEM-EXPANSION";
-
+public abstract class SvType {
 
     protected final String variantId;
     protected final Allele altAllele;
@@ -32,7 +30,7 @@ abstract class SvType {
         extraAttributes = typeSpecificExtraAttributes;
     }
 
-    final String getVariantId() {
+    final String getInternalVariantId() {
         return variantId;
     }
     final Allele getAltAllele() {
@@ -54,19 +52,19 @@ abstract class SvType {
 
         Inversion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER)),
                     novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart() - novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd(),
-                    Collections.singletonMap((novelAdjacencyReferenceLocations.endConnectionType == NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_FIVE) ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33, ""));
+                    Collections.singletonMap((novelAdjacencyReferenceLocations.endConnectionType == FIVE_TO_FIVE) ? GATKSVVCFConstants.INV55 : GATKSVVCFConstants.INV33, ""));
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             final String contig = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig();
             final int start = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd();
             final int end = novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
-            final NovelAdjacencyReferenceLocations.EndConnectionType endConnectionType = novelAdjacencyReferenceLocations.endConnectionType;
+            final EndConnectionType endConnectionType = novelAdjacencyReferenceLocations.endConnectionType;
 
-            return (endConnectionType == NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_FIVE ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33) + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR +
-                    contig + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR + start + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR + end;
+            return (endConnectionType == FIVE_TO_FIVE ? GATKSVVCFConstants.INV55 : GATKSVVCFConstants.INV33) + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
+                    contig + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR + start + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR + end;
         }
     }
 
@@ -80,17 +78,17 @@ abstract class SvType {
         @SuppressWarnings("unchecked")
         Deletion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_DEL),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER)),
                     -(novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart() - novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd()),
-                    novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation() ? Collections.singletonMap(SVConstants.DiscoveryStepConstants.TANDUP_CONTRACTION_STRING, "") : Collections.EMPTY_MAP);
+                    novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation() ? Collections.singletonMap(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING, "") : Collections.EMPTY_MAP);
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
 
-            return  ((novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation()) ? TANDEMUPLICATION_CONTRACTION_ID_START_STRING :  TYPES.DEL.name())
-                    + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+            return  ((novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation()) ? GATKSVVCFConstants.TANDUP_CONTRACTION_INTERNAL_ID_START_STRING : TYPES.DEL.name())
+                    + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
                     + novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
         }
     }
@@ -105,16 +103,16 @@ abstract class SvType {
         @SuppressWarnings("unchecked")
         Insertion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INS),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER)),
                     novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().length(),
                     Collections.EMPTY_MAP);
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
 
-            return TYPES.INS.name() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+            return TYPES.INS.name() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
                     + novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
         }
     }
@@ -128,18 +126,22 @@ abstract class SvType {
 
         DuplicationTandem(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_DUP),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER)),
                     novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().length()
                             + (novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnCtg() - novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnRef())*novelAdjacencyReferenceLocations.complication.getDupSeqRepeatUnitRefSpan().size(),
-                    Collections.singletonMap(SVConstants.DiscoveryStepConstants.TANDUP_EXPANSION_STRING, ""));
+                    Collections.singletonMap(GATKSVVCFConstants.TANDUP_EXPANSION_STRING, ""));
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
 
-            return TANDEMUPLICATION_EXPANSION_ID_START_STRING + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+            return GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
                     + novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
         }
+    }
+
+    public static String createBracketedSymbAlleleString(final String vcfHeaderDefinedSymbAltAllele) {
+        return "<" + vcfHeaderDefinedSymbAltAllele + ">";
     }
 }

@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -16,6 +13,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType.createBracketedSymbAlleleString;
 
 public class SVVCFWriterUnitTest extends BaseTest{
 
@@ -31,25 +29,25 @@ public class SVVCFWriterUnitTest extends BaseTest{
 
         final VariantContext inversionOne = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV)
-                .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insOne)
+                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER))
+                .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
         final VariantContext inversionTwo = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV)
-                .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insTwo)
+                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER))
+                .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insTwo)
                 .make();
 
         final VariantContext upstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos-50).stop(end)
-                .alleles("T", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_DUP)
-                .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insOne)
+                .alleles("T", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER))
+                .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
 
         final VariantContext downstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos+20).stop(end+20)
-                .alleles("C", SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INS)
-                .attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, insOne)
+                .alleles("C", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER))
+                .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
 
         final File referenceDictionaryFile = new File(ReferenceUtils.getFastaDictionaryFileName(b37_reference_20_21));

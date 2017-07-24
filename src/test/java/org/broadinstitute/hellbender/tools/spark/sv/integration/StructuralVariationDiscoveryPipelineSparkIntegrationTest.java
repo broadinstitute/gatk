@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.integration.DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest.annotationsToIgnoreWhenComparingVariants;
+
 public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
     private static final class StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs {
@@ -77,7 +79,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
         runCommandLine(args);
 
-        svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), false);
+        svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, false);
     }
 
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
@@ -139,12 +141,12 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             argsToBeModified.set(idx+1, path.toUri().toString());
 
             runCommandLine(argsToBeModified);
-            svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), true);
+            svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, true);
         });
     }
 
-    public static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath,
-                                                     final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
+    static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath,
+                                              final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
 
         VCFFileReader fileReader;
         CloseableIterator<VariantContext> iterator;

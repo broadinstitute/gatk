@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
@@ -23,7 +23,7 @@ import java.util.*;
 
 public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
 
-    private static final int KMER_SIZE = SVConstants.KMER_SIZE;
+    private static final int KMER_SIZE = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
     private static final String REFERENCE_FILE_NAME = hg19MiniReference;
 
     @Test(groups = "spark")

@@ -4,7 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -20,11 +20,11 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     @Test(groups = "sv")
     public void testFilterByRegionTooSmall() {
         final byte[] contigSequence = SVDiscoveryTestDataProvider.LONG_CONTIG1.getBytes();
-        final AlignedAssembly.AlignmentInterval region1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36);
-        final AlignedAssembly.AlignmentInterval region2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36);
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, false);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, false);
 
-        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
-        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
+        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH) );
+        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH) );
 
         Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, 3000) );
         Assert.assertTrue( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, 3000) );
@@ -32,8 +32,8 @@ public class ChimericAlignmentUnitTest extends BaseTest {
 
     @Test(groups = "sv")
     public void testFilterByNextAlignmentMayBeNovelInsertion() throws Exception {
-        final AlignedAssembly.AlignmentInterval overlappingRegion1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("19", 48699881, 48700035), 1, 154, TextCigarCodec.decode("47S154M"), false, 60, 0);
-        final AlignedAssembly.AlignmentInterval overlappingRegion2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("19", 48700584, 48700669), 117, 201, TextCigarCodec.decode("116H85M"), true, 60, 0);
+        final AlignmentInterval overlappingRegion1 = new AlignmentInterval(new SimpleInterval("19", 48699881, 48700035), 1, 154, TextCigarCodec.decode("47S154M"), false, 60, 0, 100, false);
+        final AlignmentInterval overlappingRegion2 = new AlignmentInterval(new SimpleInterval("19", 48700584, 48700669), 117, 201, TextCigarCodec.decode("116H85M"), true, 60, 0, 100, false);
 
         Assert.assertTrue(ChimericAlignment.nextAlignmentMayBeNovelInsertion(overlappingRegion1, overlappingRegion2, 50));
     }
@@ -41,7 +41,7 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     @Test(groups = "sv")
     public void testBooleanStatesAndSerialization_inversion() {
 
-        Tuple4<AlignedAssembly.AlignmentInterval, AlignedAssembly.AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
+        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
         testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.REVERSE_TO_FORWARD, false, true, true);
         testSerialization(testData._1(), testData._2());
 
@@ -66,7 +66,7 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     public void testBooleanStatesAndSerialization_simpleInsertionAndDeletion() {
 
         // simple deletion
-        Tuple4<AlignedAssembly.AlignmentInterval, AlignedAssembly.AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleDeletion_plus;
+        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleDeletion_plus;
         testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forSimpleDeletion_minus;
@@ -102,7 +102,7 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     public void testBooleanStatesAndSerialization_tandemDuplication_simple() {
 
         // tandem duplication simple contraction
-        Tuple4<AlignedAssembly.AlignmentInterval, AlignedAssembly.AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus;
+        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus;
         testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
@@ -130,7 +130,7 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     public void testBooleanStatesAndSerialization_tandemDuplication_complex() {
 
         // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
-        Tuple4<AlignedAssembly.AlignmentInterval, AlignedAssembly.AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
+        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
         testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus;
@@ -162,7 +162,7 @@ public class ChimericAlignmentUnitTest extends BaseTest {
         testSerialization(testData._1(), testData._2());
     }
 
-    private static void testBooleanSeries(final AlignedAssembly.AlignmentInterval region1, final AlignedAssembly.AlignmentInterval region2,
+    private static void testBooleanSeries(final AlignmentInterval region1, final AlignmentInterval region2,
                                           final ChimericAlignment.StrandSwitch expectedStrandSwitch,
                                           final boolean expectedRefPositionSwitch,
                                           final boolean expectedIsNotSimpleTranslocation,
@@ -174,7 +174,7 @@ public class ChimericAlignmentUnitTest extends BaseTest {
         Assert.assertEquals(ChimericAlignment.isNotSimpleTranslocation(region1, region2, expectedStrandSwitch, expectedRefPositionSwitch), expectedIsNotSimpleTranslocation);
     }
 
-    private static void testSerialization(final AlignedAssembly.AlignmentInterval region1, final AlignedAssembly.AlignmentInterval region2) {
+    private static void testSerialization(final AlignmentInterval region1, final AlignmentInterval region2) {
 
         final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "dummyName");
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();

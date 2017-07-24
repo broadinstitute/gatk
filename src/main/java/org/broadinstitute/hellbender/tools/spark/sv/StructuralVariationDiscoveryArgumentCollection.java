@@ -12,13 +12,16 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class FindBreakpointEvidenceSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        public static final int KMER_SIZE = 51;
+        public static final int MAX_DUST_SCORE = KMER_SIZE - 2;
+
         //--------- parameters ----------
 
         @Argument(doc = "Kmer size.", fullName = "kSize")
-        public int kSize = SVConstants.KMER_SIZE;
+        public int kSize = KMER_SIZE;
 
         @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
-        public int maxDUSTScore = SVConstants.MAX_DUST_SCORE;
+        public int maxDUSTScore = MAX_DUST_SCORE;
 
         @Argument(doc = "The minimum mapping quality for reads used to gather evidence of breakpoints.",
                 fullName = "minEvidenceMapQ", optional = true)
@@ -154,6 +157,12 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = 50; // alignment with gap of size >= 50 will be broken apart.
+        public static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
+        public static final int MISSING_NM = Integer.MIN_VALUE;
+        public static final int ARTIFICIAL_MISMATCH = MISSING_NM;
+        public static final int DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
+
         // todo: document this better
         // Currently the discovery stage requires a reference parameter in 2bit format (to broadcast) and
         // a reference in FASTA format (to get a good sequence dictionary for sorting variants).
@@ -163,7 +172,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
                 fullName = "minAlignLength", optional = true)
-        public Integer minAlignLength = SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
+        public Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
     }
 
 }

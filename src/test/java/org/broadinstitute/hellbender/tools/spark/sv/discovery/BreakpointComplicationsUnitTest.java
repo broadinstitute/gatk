@@ -14,13 +14,13 @@ public class BreakpointComplicationsUnitTest {
     public void testGetHomology() {
         final byte[] contigSequence = "ATCGATCGAAAAGCTAGCTA".getBytes();
 
-        final AlignedAssembly.AlignmentInterval region1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 1, 12), 1, 12, TextCigarCodec.decode("12M8S"), true, 60, 1);            // dummy test data, almost guaranteed to be non-factual
-        final AlignedAssembly.AlignmentInterval region2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 101, 112), 9, 20, TextCigarCodec.decode("8H12M"), false, 60, 1);    // dummy test data, almost guaranteed to be non-factual
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("1", 1, 12), 1, 12, TextCigarCodec.decode("12M8S"), true, 60, 1, 100, false);            // dummy test data, almost guaranteed to be non-factual
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("1", 101, 112), 9, 20, TextCigarCodec.decode("8H12M"), false, 60, 1, 100, false);    // dummy test data, almost guaranteed to be non-factual
 
         Assert.assertEquals(BreakpointComplications.getHomology(region1, region2, contigSequence), "AAAA");
 
-        final AlignedAssembly.AlignmentInterval region3 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 1, 12), 1, 8, TextCigarCodec.decode("8M"), true, 60, 1);            // dummy test data, almost guaranteed to be non-factual
-        final AlignedAssembly.AlignmentInterval region4 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 101, 112), 13, 20, TextCigarCodec.decode("8M"), false, 60, 1);    // dummy test data, almost guaranteed to be non-factual
+        final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("1", 1, 12), 1, 8, TextCigarCodec.decode("8M"), true, 60, 1, 100, false);            // dummy test data, almost guaranteed to be non-factual
+        final AlignmentInterval region4 = new AlignmentInterval(new SimpleInterval("1", 101, 112), 13, 20, TextCigarCodec.decode("8M"), false, 60, 1, 100, false);    // dummy test data, almost guaranteed to be non-factual
 
         Assert.assertTrue(BreakpointComplications.getHomology(region3, region4, contigSequence).isEmpty());
     }
@@ -28,9 +28,9 @@ public class BreakpointComplicationsUnitTest {
     @Test(groups = "sv")
     public void testGetInsertedSequence() {
         final byte[] contigSequence = "GACGAACGATTTGACTTTAATATGAAATGTTTTATGTGGGCTATAAAATTATCCAAACTCGACACAGGACATTTTGAGCTTATTTCCAAATCATCTGGCCTTCATCTACCCACTGGAACTATTACTCTGCTGGGTCCTCATGGAAACATATCTTTCAGCCCTAACAATGAGACTACAGACATCTACGTCCCCAACACAACAGCTAAAAAGCAGTAGAATGTCAGAAAGGCTATCCACTTAGCCCTTGGCTGACAGGCCCCACTGAGCATCCTTTGCGAAGTCCATTTACTAGCTAATTCATAATTTACACAAGGCATTCAGACATAGCAGCTAAGATATAAAACATTTATCAACACAGGGACTAGTTTGTCATTTTAAAATAATTATGTTTAAGTAAGCCAATAAAGTCTATCTTCTCCAATTTACTTATTGAGCTTTATGAGGCAATTTAAGTCCCGATTTTGGGGGGTATGTATGAAAGGAGAGCATGGAAATGCCATTTGCTCCCTGAAGTTTTTATCTTTTTTTTTTTGAGATAGAGTCTTGTGTTTTCTGTGGAGTACATGAGTATGCATCAAAGCTAACAACGCCCACTGCCCTGTTAGTCAAATACCTTTGA".getBytes();
-        final AlignedAssembly.AlignmentInterval region1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("8", 118873207, 118873739), 1, 532, TextCigarCodec.decode("532M87S"), true, 60, 0);
-        final AlignedAssembly.AlignmentInterval region2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 175705642, 175705671), 519, 547, TextCigarCodec.decode("518S29M72S"), false, 3, 0);
-        final AlignedAssembly.AlignmentInterval region3 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 118875262, 118875338), 544, 619, TextCigarCodec.decode("543S76M"), false, 60, 0);
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("8", 118873207, 118873739), 1, 532, TextCigarCodec.decode("532M87S"), true, 60, 0, 100, false);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("1", 175705642, 175705671), 519, 547, TextCigarCodec.decode("518S29M72S"), false, 3, 0, 100, false);
+        final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("1", 118875262, 118875338), 544, 619, TextCigarCodec.decode("543S76M"), false, 60, 0, 100, false);
 
         Assert.assertTrue(BreakpointComplications.getInsertedSequence(region3, region1, contigSequence).isEmpty());
         Assert.assertEquals(BreakpointComplications.getInsertedSequence(region1, region3, contigSequence), "GAGATAGAGTC");
@@ -47,12 +47,12 @@ public class BreakpointComplicationsUnitTest {
         final int contigTotalLength = 355;
 
         // forward strand
-        final AlignedAssembly.AlignmentInterval region1 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 1000001, 1000125), 16, 75,
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("1", 1000001, 1000125), 16, 75,
                 TextCigarCodec.decode("5H10S15M20D25M30D35M260S5H"),
-                true, 60, 0);
-        final AlignedAssembly.AlignmentInterval region2 = new AlignedAssembly.AlignmentInterval(new SimpleInterval("1", 1000041, 1000145), 191, 340,
+                true, 60, 0, 100, false);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("1", 1000041, 1000145), 191, 340,
                 TextCigarCodec.decode("5H185S45M30I55M20I5M10S5H"),
-                true, 60, 0);
+                true, 60, 0, 100, false);
 
 
         final Cigar cigar1 = BreakpointComplications.extractCigarForTandup(region1, 1000125, 1000041);
@@ -61,12 +61,12 @@ public class BreakpointComplicationsUnitTest {
         Assert.assertEquals(cigar2, TextCigarCodec.decode("45M30I40M"));
 
         // reverse strand
-        final AlignedAssembly.AlignmentInterval region3 = new AlignedAssembly.AlignmentInterval(region2.referenceInterval, contigTotalLength-region2.endInAssembledContig+1, contigTotalLength-region2.startInAssembledContig+1,
+        final AlignmentInterval region3 = new AlignmentInterval(region2.referenceSpan, contigTotalLength-region2.endInAssembledContig+1, contigTotalLength-region2.startInAssembledContig+1,
                 CigarUtils.invertCigar(region2.cigarAlong5to3DirectionOfContig),
-                false, 60, 0);
-        final AlignedAssembly.AlignmentInterval region4 = new AlignedAssembly.AlignmentInterval(region1.referenceInterval, contigTotalLength-region1.endInAssembledContig+1, contigTotalLength-region1.startInAssembledContig+1,
+                false, 60, 0, 100, false);
+        final AlignmentInterval region4 = new AlignmentInterval(region1.referenceSpan, contigTotalLength-region1.endInAssembledContig+1, contigTotalLength-region1.startInAssembledContig+1,
                 CigarUtils.invertCigar(region1.cigarAlong5to3DirectionOfContig),
-                false, 60, 0);
+                false, 60, 0, 100, false);
 
         final Cigar cigar3 = BreakpointComplications.extractCigarForTandup(region3, 1000125, 1000041);
         Assert.assertEquals(CigarUtils.invertCigar(cigar3), cigar2);

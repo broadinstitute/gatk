@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.sv.discovery;
+package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
@@ -11,16 +11,7 @@ import java.util.List;
 /**
  * Various utility functions helping calling structural variants.
  */
-public final class SVVariantDiscoveryUtils {
-
-    /**
-     * @return the number of bases of two alignment regions overlap on the locally-assembled contig they originate from.
-     *          Mostly useful for computing micro-homologyForwardStrandRep.
-     */
-    @VisibleForTesting
-    public static int overlapOnContig(final AlignedAssembly.AlignmentInterval one, final AlignedAssembly.AlignmentInterval two) {
-        return Math.max(0, Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1) - Math.max(one.startInAssembledContig, two.startInAssembledContig));
-    }
+public final class SvCigarUtils {
 
     /**
      * @return the total number of hard clipped bases represented in the CIGAR.
@@ -161,5 +152,15 @@ public final class SVVariantDiscoveryUtils {
             idx += step;
         }
         return idx;
+    }
+
+    @VisibleForTesting
+    public static int getUnclippedReadLength(final Cigar cigar) {
+        validateCigar(cigar.getCigarElements());
+        return cigar.getCigarElements().stream()
+                .mapToInt(element ->
+                        element.getOperator().isClipping() || element.getOperator().consumesReadBases() ? element.getLength() : 0
+                )
+                .sum();
     }
 }

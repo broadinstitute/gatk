@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.collect.Iterables;
-import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -10,7 +9,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -18,7 +16,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -26,148 +23,18 @@ import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple2;
 
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
 import static org.testng.Assert.assertEquals;
 
 public class AlignedContigGeneratorUnitTest extends BaseTest {
     private static final String dummyRefName = "1";
     private static final int dummyRefId = Integer.valueOf(dummyRefName) - 1;
     private static final List<String> refNames = Collections.singletonList(dummyRefName);
-
-    @Test(groups = "sv")
-    @SuppressWarnings("deprecation")
-    public void testExtractContigNameAndSequenceFromTextFile() throws Exception {
-        MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
-            //use the HDFS on the mini cluster
-            final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
-            final Path tempPath = new Path(workingDirectory, "testLocalAssemblyFormatRead");
-            final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-
-            final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
-            final FSDataOutputStream fsOutStream = fs.create(tempPath);
-
-            final String packedFasta = ">contig-4 521 0|ATTTGTGAGCGCTTTGAGGCCTTTGGAGAAAAAGGAAATGTATTCACAGAAAAACTTGAAAAAAAGCTTCTGGTAAACTGT" +
-                    "TTTGTAATGTGTACAATCATTTCACAGAGATCAGTGTTTCTTTTCATTGAGCAGCTTGGAAACTCTATTGTTGTAGAATCTGCAAACGGATATTTTTCAGTG" +
-                    "CTTTGATGCCTGTGTTAAAAAAGGAAATATCCTCACATAAAAAATGACAGAAAATTTATGAGAAACTTCTTTGTGATGTGTGCATTTATGCCACAGAATTGA" +
-                    "ACCATTTTATGATTGAGCAGTTTGGAAACAGTCTTTTTGTGGAATCTAAAAAGAGATATTTATGAGCGCATTGAGGCCTACAGTAAAAAAGGAAATATCTTC" +
-                    "ACATAAAAACTAGCAAGGAGCTTTCTAAGAAACTGCTTTGTGATGCGTGAATTCATCTCACAGAGGTAAATGTTTCTTTGCATTGAACAGTGGAAACTCTGT" +
-                    "TCTTGTAGAATCTGCAAAGTGATATTTGTGAG|>contig-11 164 0|TCACAGAATTGAACGACCTCTTTGTTTGAGCAGTTTGGGAACAGCCTTTTTG" +
-                    "TAGATTCTGCAAAGGGATATTTGTAAGCCCTTTGAGGACTATGGTGAAAACGTAAATATCTTCACATAACTAGACAGAAGGTTGCTGAAAAGCTGCTTTGTG" +
-                    "ATGTGTGATT|>contig-0 207 0|GCATTGAACAGTGAAAACTCTGTTCTTGTAGAATCTGCAAAGTGATATTTGTGAGTGTTTTGAGGCCTATGGTGA" +
-                    "AAAAGGAAATATCTTCAGAAAAACTAGACAGAAGCTTTCTGAGAATATTCTTTGTGATATATGCATTCATCTCACAGAATTGAACGACCTCTTTGTTTGAGC" +
-                    "AGTTTGGGAACAGCCTTTTTGTAGATTCTG";
-            final String oneAssembly = "1\t" + packedFasta;
-
-            fsOutStream.writeBytes(oneAssembly);
-            fsOutStream.writeBytes("\n");
-            fsOutStream.close();
-            fs.deleteOnExit(tempPath);
-
-            Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
-            final Map<String, byte[]> contigNameAndSequence = org.broadinstitute.hellbender.tools.spark.sv.sga.DiscoverVariantsFromContigAlignmentsSGASpark
-                    .SGATextFormatAlignmentParser.extractContigNameAndSequenceFromTextFile(ctx, tempPath.toString()).collectAsMap();
-            Assert.assertEquals(contigNameAndSequence.size(), 3);
-            Assert.assertEquals(contigNameAndSequence.get("asm000001:tig00000"), "GCATTGAACAGTGAAAACTCTGTTCTTGTAGAATCTGCAAAGTGATATTTGTGAGTGTTTTGAGGCCTATGGTGAAAAAGGAAATATCTTCAGAAAAACTAGACAGAAGCTTTCTGAGAATATTCTTTGTGATATATGCATTCATCTCACAGAATTGAACGACCTCTTTGTTTGAGCAGTTTGGGAACAGCCTTTTTGTAGATTCTG".getBytes());
-            Assert.assertEquals(contigNameAndSequence.get("asm000001:tig00004"), "ATTTGTGAGCGCTTTGAGGCCTTTGGAGAAAAAGGAAATGTATTCACAGAAAAACTTGAAAAAAAGCTTCTGGTAAACTGTTTTGTAATGTGTACAATCATTTCACAGAGATCAGTGTTTCTTTTCATTGAGCAGCTTGGAAACTCTATTGTTGTAGAATCTGCAAACGGATATTTTTCAGTGCTTTGATGCCTGTGTTAAAAAAGGAAATATCCTCACATAAAAAATGACAGAAAATTTATGAGAAACTTCTTTGTGATGTGTGCATTTATGCCACAGAATTGAACCATTTTATGATTGAGCAGTTTGGAAACAGTCTTTTTGTGGAATCTAAAAAGAGATATTTATGAGCGCATTGAGGCCTACAGTAAAAAAGGAAATATCTTCACATAAAAACTAGCAAGGAGCTTTCTAAGAAACTGCTTTGTGATGCGTGAATTCATCTCACAGAGGTAAATGTTTCTTTGCATTGAACAGTGGAAACTCTGTTCTTGTAGAATCTGCAAAGTGATATTTGTGAG".getBytes());
-            Assert.assertEquals(contigNameAndSequence.get("asm000001:tig00011"), "TCACAGAATTGAACGACCTCTTTGTTTGAGCAGTTTGGGAACAGCCTTTTTGTAGATTCTGCAAAGGGATATTTGTAAGCCCTTTGAGGACTATGGTGAAAACGTAAATATCTTCACATAACTAGACAGAAGGTTGCTGAAAAGCTGCTTTGTGATGTGTGATT".getBytes());
-        });
-    }
-
-    /**
-     * 4 contigs of 3 assemblies pointing to the same inversion event.
-     *  contig 1 belongs to assembly 1
-     *  contig 2 and 3 belong to assembly 2
-     *  contig 4 belongs to assembly 3.
-     */
-    @DataProvider(name = "AlignedAssemblyTextParserText")
-    private Object[][] createInputsAndExpectedResults() {
-
-        final int[] alignmentStartsOnRef_0Based = {96, 196, 195, 95, 101, 201, 101, 201};
-        final int[] alignmentStartsOnTig_0BasedInclusive = {0, 4, 0, 5, 0, 6, 0, 7};
-        final int[] alignmentEndsOnTig_0BasedExclusive = {4, 8, 5, 10, 6, 12, 7, 14};
-        final int[] seqLen = {8, 8, 10, 10, 12, 12, 14, 14};
-        final int[] mapQual = {0, 1, 10, 20, 30, 40, 50, 60};
-        final int[] mismatches = {0, 1, 1, 0, 2, 3, 3, 2};
-        final boolean[] strandedness = {true, false, true, false, false, true, false, true};
-        final String[] cigarStrings = {"4M4S", "4M4H", "5M5S", "5M5H", "6S6M", "6H6M", "7S7M", "7H7M"}; // each different number represent a different contig's pair of chimeric alignments
-        final Cigar[] cigars = Arrays.stream(cigarStrings).map(TextCigarCodec::decode).toArray(Cigar[]::new);
-
-        // these sequence are technically wrong the for the inversion event, but the test purpose is for serialization so it is irrelevant
-        final byte[] dummySequenceForContigOne = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'A');
-
-        final byte[] dummySequenceForContigTwo = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'T');
-        final byte[] dummySequenceForContigThree = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'C');
-
-        final byte[] dummySequenceForContigFour = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'G');
-
-
-        final List<AlignedContig> allContigs = new ArrayList<>();
-
-        for(int pair=0; pair<cigars.length/2; ++pair) {
-
-            final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForSimpleInversion = new ArrayList<>(8);
-            final SimpleInterval referenceIntervalLeft = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair]+1, alignmentStartsOnRef_0Based[2*pair]+cigars[2*pair].getReferenceLength()+1);
-            final AlignedAssembly.AlignmentInterval alignmentIntervalLeft = new AlignedAssembly.AlignmentInterval(referenceIntervalLeft, alignmentStartsOnTig_0BasedInclusive[2*pair]+1, alignmentEndsOnTig_0BasedExclusive[2*pair],
-                    strandedness[2*pair] ? cigars[2*pair] : CigarUtils.invertCigar(cigars[2*pair]),
-                    strandedness[2*pair], mapQual[2*pair], mismatches[2*pair]);
-            alignmentIntervalsForSimpleInversion.add(alignmentIntervalLeft);
-            final SimpleInterval referenceIntervalRight = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair+1]+1, alignmentStartsOnRef_0Based[2*pair+1]+cigars[2*pair+1].getReferenceLength()+1);
-            final AlignedAssembly.AlignmentInterval alignmentIntervalRight = new AlignedAssembly.AlignmentInterval(referenceIntervalRight, alignmentStartsOnTig_0BasedInclusive[2*pair+1]+1, alignmentEndsOnTig_0BasedExclusive[2*pair+1],
-                    strandedness[2*pair+1] ? cigars[2*pair+1] : CigarUtils.invertCigar(cigars[2*pair+1]),
-                    strandedness[2*pair+1], mapQual[2*pair+1], mismatches[2*pair+1]);
-            alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
-
-            if (pair == 0) {
-                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion) );
-            } else if (pair <3) {
-                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion) );
-            } else {
-                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion) );
-            }
-        }
-
-        final Object[][] data = new Object[4][];
-        data[0] = new Object[]{0, new AlignedAssembly(0, allContigs.subList(0, 1)), allContigs.subList(0, 1)};
-        data[1] = new Object[]{1, new AlignedAssembly(1, allContigs.subList(1, 3)), allContigs.subList(1, 3)};
-        data[2] = new Object[]{2, new AlignedAssembly(2, allContigs.subList(3, 4)), allContigs.subList(3, 4)};
-
-        final List<AlignedContig> unmappedContig = Arrays.asList(new AlignedContig("asm000004:tig00001", SVDiscoveryTestDataProvider.makeDummySequence(20, (byte)'N'), Collections.emptyList()));
-        data[3] = new Object[]{3, new AlignedAssembly(3, unmappedContig), unmappedContig};
-
-        return data;
-    }
-
-    @Test(dataProvider = "AlignedAssemblyTextParserText", groups = "sv")
-    @SuppressWarnings("deprecation")
-    public void testEncodeAndDecodeAlignedAssemblyAsHadoopTextFileStringList(final Integer assemblyId, final AlignedAssembly expectedAssembly,
-                                                                             final List<AlignedContig> contigs) {
-        final Iterator<String> alignedContigStringIt = org.broadinstitute.hellbender.tools.spark.sv.sga.AlignAssembledContigsSpark.formatAlignedAssemblyAsText(expectedAssembly);
-        if (assemblyId==1) {
-            Assert.assertTrue(alignedContigStringIt.hasNext());
-            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_0 =
-                    org.broadinstitute.hellbender.tools.spark.sv.sga.DiscoverVariantsFromContigAlignmentsSGASpark
-                            .SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
-            Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments_0._1());
-            Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments_0._2());
-            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_1 =
-                    org.broadinstitute.hellbender.tools.spark.sv.sga.DiscoverVariantsFromContigAlignmentsSGASpark
-                            .SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
-            Assert.assertEquals(contigs.get(1).contigName, contigNameAndAlignments_1._1());
-            Assert.assertEquals(contigs.get(1).alignmentIntervals, contigNameAndAlignments_1._2());
-        } else {
-            Assert.assertTrue(alignedContigStringIt.hasNext());
-            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments =
-                    org.broadinstitute.hellbender.tools.spark.sv.sga.DiscoverVariantsFromContigAlignmentsSGASpark
-                            .SGATextFormatAlignmentParser.parseTextFileAlignmentIntervalLines(alignedContigStringIt.next());
-            Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments._1());
-            Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments._2());
-        }
-    }
 
     @Test(groups = "sv")
     @SuppressWarnings("deprecation")
@@ -181,8 +48,8 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
             final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
             final FSDataOutputStream fsOutStream = fs.create(tempPath);
 
-            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3";
-            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5";
+            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3%100%o";
+            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5%100%o";
             fsOutStream.writeBytes(gappedAlignmentContig_1);
             fsOutStream.writeBytes("\n");
             fsOutStream.writeBytes(gappedAlignmentContig_2);
@@ -192,7 +59,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
             Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
 
-            final Map<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments
+            final Map<String, List<AlignmentInterval>> contigNameAndAlignments
                     = org.broadinstitute.hellbender.tools.spark.sv.sga.DiscoverVariantsFromContigAlignmentsSGASpark
                     .SGATextFormatAlignmentParser.parseAndBreakAlignmentTextRecords(ctx, tempPath.toString(), null).collectAsMap();
 
@@ -236,7 +103,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         final List<SAMRecord> reads = Stream.of(read1, read2, read3).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
-        final AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
+        final AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndOptionallySplitGappedAlignments(reads, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true, null);
         assertEquals(alignedContig.contigSequence, read2.getBases());
 
         assertEquals(alignedContig.alignmentIntervals.size(), 3);
@@ -264,18 +131,18 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         List<SAMRecord> reads2 = Stream.of(read4, read5).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
-        final AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads2, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
+        final AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndOptionallySplitGappedAlignments(reads2, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true, null);
         // these should be the reverse complements of each other
         assertEquals(alignedContig2.contigSequence.length, read4.getBases().length);
 
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervals2 = alignedContig2.alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervals2 = alignedContig2.alignmentIntervals;
         assertEquals(alignmentIntervals2.size(), 2);
 
-        final AlignedAssembly.AlignmentInterval alignmentInterval4 = alignmentIntervals2.get(0);
+        final AlignmentInterval alignmentInterval4 = alignmentIntervals2.get(0);
         assertEquals(alignmentInterval4.startInAssembledContig, 1);
         assertEquals(alignmentInterval4.endInAssembledContig, read4Seq.length() - 1986);
 
-        final AlignedAssembly.AlignmentInterval alignmentInterval5 = alignmentIntervals2.get(1);
+        final AlignmentInterval alignmentInterval5 = alignmentIntervals2.get(1);
         assertEquals(alignmentInterval5.startInAssembledContig, 3604);
         assertEquals(alignmentInterval5.endInAssembledContig, read4Seq.length());
     }
@@ -322,11 +189,11 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
         Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
         Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
 
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForCleanContig = it.next().alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForCleanContig = it.next().alignmentIntervals;
         Assert.assertEquals(alignmentIntervalsForCleanContig.size(), 1);
-        Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignedAssembly.AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0));
+        Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0, 100, false));
 
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
         Assert.assertEquals(alignmentIntervalsForContigWithGappedAlignment.size(), 3);
 
         // test direct conversion (essentially the filtering step)
@@ -342,6 +209,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
     }
 
     @DataProvider(name = "InvalidSimpleIntervalStrings")
+    @SuppressWarnings("deprecation")
     private Object[][] createInvalidSimpleIntervalStrings() {
         return new Object[][]{
                 {"fjdskjfklsdjf"},
@@ -356,28 +224,5 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
     @SuppressWarnings("deprecation")
     public void testEnCodeAndDecodeSimpleIntervalAsString_expectException(final String text) {
         org.broadinstitute.hellbender.tools.spark.sv.sga.AlignAssembledContigsSpark.decodeStringAsSimpleInterval(text);
-    }
-
-    @DataProvider(name = "ValidSimpleIntervalStrings")
-    private Object[][] createSimpleIntervalStrings() {
-        final SimpleInterval first = new SimpleInterval("1", 20000, 20010);
-        final SimpleInterval second = new SimpleInterval("chr1", 20000, 20010);
-        final SimpleInterval third = new SimpleInterval("HLA-DRB1*15:03:01:02", 20000, 20010);
-        final SimpleInterval fourth = new SimpleInterval("chrUn_JTFH01001998v1_decoy", 20000, 20010);
-        final SimpleInterval fifth = new SimpleInterval("chr19_KI270938v1_alt", 20000, 20010);
-        final SimpleInterval sixth = new SimpleInterval("chrEBV", 20000, 20010);
-        final SimpleInterval seventh = new SimpleInterval("chrUn_KI270529v1", 20000, 20010);
-        final SimpleInterval eighth = new SimpleInterval("chr1_KI270713v1_random", 20000, 20010);
-        final SimpleInterval ninth = new SimpleInterval("chrM", 20000, 20010);
-        final SimpleInterval tenth = new SimpleInterval("chrX", 20000, 20010);
-
-        return new Object[][]{{first}, {second} , {third}, {fourth}, {fifth}, {sixth}, {seventh}, {eighth}, {ninth}, {tenth}};
-    }
-
-    @Test(dataProvider = "ValidSimpleIntervalStrings")
-    @SuppressWarnings("deprecation")
-    public void testEnCodeAndDecodeSimpleIntervalAsString_valid(final SimpleInterval interval) {
-        Assert.assertEquals(org.broadinstitute.hellbender.tools.spark.sv.sga.AlignAssembledContigsSpark.decodeStringAsSimpleInterval(
-                org.broadinstitute.hellbender.tools.spark.sv.sga.AlignAssembledContigsSpark.encodeSimpleIntervalAsString(interval)), interval);
     }
 }

@@ -13,9 +13,10 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
@@ -92,7 +93,7 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
 
             final JavaPairRDD<String, byte[]> contigNameAndSequence = extractContigNameAndSequenceFromTextFile(ctx, pathToInputAssemblies);
 
-            final JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments = parseAndBreakAlignmentTextRecords(ctx, pathToInputAlignments, toolLogger);
+            final JavaPairRDD<String, List<AlignmentInterval>> contigNameAndAlignments = parseAndBreakAlignmentTextRecords(ctx, pathToInputAlignments, toolLogger);
 
             return contigNameAndAlignments.join(contigNameAndSequence).map(pair -> new AlignedContig(pair._1, pair._2._2, pair._2._1));
         }
@@ -117,11 +118,11 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
         }
 
         @VisibleForTesting
-        public static JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> parseAndBreakAlignmentTextRecords(final JavaSparkContext ctx, final String pathToInputAlignments, final Logger toolLogger) {
-            final JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments
+        public static JavaPairRDD<String, List<AlignmentInterval>> parseAndBreakAlignmentTextRecords(final JavaSparkContext ctx, final String pathToInputAlignments, final Logger toolLogger) {
+            final JavaPairRDD<String, List<AlignmentInterval>> contigNameAndAlignments
                     = ctx.textFile(pathToInputAlignments)
                     .mapToPair(SGATextFormatAlignmentParser::parseTextFileAlignmentIntervalLines)
-                    .mapValues(rawAlignments -> rawAlignments.stream().flatMap(oneInterval -> Utils.stream(GappedAlignmentSplitter.split(oneInterval, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, oneInterval.cigarAlong5to3DirectionOfContig.getReadLength() + SVVariantDiscoveryUtils.getTotalHardClipping(oneInterval.cigarAlong5to3DirectionOfContig)))).collect(Collectors.toList()));
+                    .mapValues(rawAlignments -> rawAlignments.stream().flatMap(oneInterval -> Utils.stream(GappedAlignmentSplitter.split(oneInterval, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, oneInterval.cigarAlong5to3DirectionOfContig.getReadLength() + SvCigarUtils.getTotalHardClipping(oneInterval.cigarAlong5to3DirectionOfContig)))).collect(Collectors.toList()));
             if (toolLogger!=null) {
                 debugStats(contigNameAndAlignments, pathToInputAlignments, toolLogger);
             }
@@ -132,7 +133,7 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
          * Parses fields in the same format as they were output in {@link AlignAssembledContigsSpark#formatAlignedAssemblyAsText(AlignedAssembly)}
          */
         @VisibleForTesting
-        public static Tuple2<String, List<AlignedAssembly.AlignmentInterval>> parseTextFileAlignmentIntervalLines(final String textLine) {
+        public static Tuple2<String, List<AlignmentInterval>> parseTextFileAlignmentIntervalLines(final String textLine) {
 
             try {
 
@@ -142,14 +143,18 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
                     return new Tuple2<>(contigName, Collections.emptyList());
                 }
 
-                final List<AlignedAssembly.AlignmentInterval> intervals = new ArrayList<>(fields.length - 1);
+                final List<AlignmentInterval> intervals = new ArrayList<>(fields.length - 1);
                 for (int i = 1; i < fields.length; ++i) {
                     final String[] intervalFields = fields[i].split(AlignAssembledContigsSpark.MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR);
 
                     final int contigStart = Integer.valueOf(intervalFields[0].split("-")[0]);
                     final int contigEnd = Integer.valueOf(intervalFields[0].split("-")[1]);
 
-                    intervals.add(new AlignedAssembly.AlignmentInterval(AlignAssembledContigsSpark.decodeStringAsSimpleInterval(intervalFields[1]), contigStart, contigEnd, TextCigarCodec.decode(intervalFields[2]), intervalFields[3].equals("+"), Integer.valueOf(intervalFields[4]), Integer.valueOf(intervalFields[5])));
+                    intervals.add(new AlignmentInterval(AlignAssembledContigsSpark.decodeStringAsSimpleInterval(intervalFields[1]),
+                                                        contigStart, contigEnd, TextCigarCodec.decode(intervalFields[2]),
+                                                        intervalFields[3].equals("+"),
+                                                        Integer.valueOf(intervalFields[4]), Integer.valueOf(intervalFields[5]),
+                                                        Integer.valueOf(intervalFields[6]), intervalFields[7].equals("s")));
                 }
                 return new Tuple2<>(contigName, intervals);
             } catch (final Exception ex) {
@@ -158,7 +163,7 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
         }
     }
 
-    private static void debugStats(final JavaPairRDD<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments,
+    private static void debugStats(final JavaPairRDD<String, List<AlignmentInterval>> contigNameAndAlignments,
                                    final String outPrefix,
                                    final Logger toolLogger) {
         toolLogger.info(contigNameAndAlignments.count() + " contigs");
@@ -168,16 +173,16 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
         toolLogger.info(oneARs + " contigs have only one alignments");
 
         final JavaPairRDD<String, List<Tuple2<Integer, Integer>>> x = contigNameAndAlignments.filter(tuple2 -> tuple2._2.size()==2).mapToPair(tuple2 -> {
-            final Iterator<AlignedAssembly.AlignmentInterval> it = tuple2._2().iterator();
-            final AlignedAssembly.AlignmentInterval region1 = it.next(), region2 = it.next();
-            return new Tuple2<>(tuple2._1(), Arrays.asList(new Tuple2<>(region1.mapQual, region1.referenceInterval.size()), new Tuple2<>(region2.mapQual, region2.referenceInterval.size())));
+            final Iterator<AlignmentInterval> it = tuple2._2().iterator();
+            final AlignmentInterval region1 = it.next(), region2 = it.next();
+            return new Tuple2<>(tuple2._1(), Arrays.asList(new Tuple2<>(region1.mapQual, region1.referenceSpan.size()), new Tuple2<>(region2.mapQual, region2.referenceSpan.size())));
         });
         x.coalesce(1).saveAsTextFile(outPrefix+"_withTwoAlignments");
         toolLogger.info(x.count() + " contigs have two alignments");
 
         final JavaPairRDD<String, List<Tuple2<Integer, Integer>>> y = contigNameAndAlignments.filter(tuple2 -> tuple2._2.size()>2).mapToPair(tuple2 -> {
-            final AlignedAssembly.AlignmentInterval region1 = tuple2._2().iterator().next();
-            return new Tuple2<>(tuple2._1(), StreamSupport.stream(tuple2._2().spliterator(), false).map(ar -> new Tuple2<>(ar.mapQual, ar.referenceInterval.size())).collect(Collectors.toList()));
+            final AlignmentInterval region1 = tuple2._2().iterator().next();
+            return new Tuple2<>(tuple2._1(), StreamSupport.stream(tuple2._2().spliterator(), false).map(ar -> new Tuple2<>(ar.mapQual, ar.referenceSpan.size())).collect(Collectors.toList()));
         });
         y.coalesce(1).saveAsTextFile(outPrefix+"_withMoreThanTwoAlignments");
         toolLogger.info(y.count() + " contigs have more than two alignments");
