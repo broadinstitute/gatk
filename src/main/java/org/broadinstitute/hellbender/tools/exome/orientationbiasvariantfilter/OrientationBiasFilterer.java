@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -204,6 +205,17 @@ public class OrientationBiasFilterer {
 
         // Create the final variants with the modified genotypes
         logger.info("Updating genotypes and creating final list of variants...");
+        return createFilteredVariantContextsIfAnyGenotypesAreFiltered(preAdapterQAnnotatedVariants, newGenotypes);
+    }
+
+    /**
+     *  Simply put, if any genotype within a variant context is filtered, then mark the variant context as filtered.
+     *
+     * @param preAdapterQAnnotatedVariants
+     * @param newGenotypes
+     * @return Updated list of variant contexts
+     */
+    private static List<VariantContext> createFilteredVariantContextsIfAnyGenotypesAreFiltered(List<VariantContext> preAdapterQAnnotatedVariants, Map<VariantContext, List<Genotype>> newGenotypes) {
         final List<VariantContext> finalVariants = new ArrayList<>();
         final ProgressMeter resultProgressMeter = new ProgressMeter();
         resultProgressMeter.start();
@@ -231,42 +243,47 @@ public class OrientationBiasFilterer {
     }
 
 
-    private static Map<Transition, Long> createTransitionToNumCutPrePreAdapterQ(double fdrThresh, String sampleName, long unfilteredGenotypeCount, final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering, final Map<Transition, Long> transitionCount) {
-        final long allTransitionCount = transitionCount.values().stream().mapToLong(Long::longValue).sum();
-        final int totalNumToCut = calculateTotalNumToCut(fdrThresh, unfilteredGenotypeCount, genotypesToConsiderForFiltering);
-
-        logger.info(sampleName + ": Cutting (total) pre-preAdapterQ: " + String.valueOf(totalNumToCut));
-
+    private static Map<Transition, Long> createTransitionToNumCutPrePreAdapterQ(double fdrThresh, String sampleName, long unfilteredGenotypeCount,
+                                                                                final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering,
+                                                                                final Map<Transition, Long> transitionCount) {
         // Adjust the number to cut based on artifact mode
         final Map<Transition, Long> transitionNumToCut = new HashMap<>();
         transitionCount.keySet().stream().forEach(transition -> transitionNumToCut.put(transition, 0L));
         for (final Transition transition : transitionNumToCut.keySet()) {
-            transitionNumToCut.put(transition, Long.valueOf(Math.round(totalNumToCut * transitionCount.get(transition) / allTransitionCount)));
-            logger.info(sampleName + ": Cutting (" + transition + ") pre-preAdapterQ: " + transitionNumToCut.get(transition));
+            transitionNumToCut.put(transition, (long) calculateTotalNumToCut(fdrThresh, transitionCount.get(transition),
+                    transition, genotypesToConsiderForFiltering) );
+            logger.info(sampleName + ": Cutting (" + transition + ") pre-preAdapterQ: " + transitionNumToCut.get(transition) + " of " + transitionCount.get(transition));
         }
+
+        logger.info(sampleName + ": Cutting (total) pre-preAdapterQ: " + String.valueOf(transitionNumToCut.values().stream().mapToLong(Long::longValue).sum()));
+
         return transitionNumToCut;
     }
 
-    private static int calculateTotalNumToCut(final double fdrThresh, final long unfilteredGenotypeCount, final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering) {
+    private static int calculateTotalNumToCut(final double fdrThresh, final long unfilteredGenotypeCount, final Transition transition,
+                                              final SortedMap<UniqueIDWrapper<Genotype>, VariantContext> genotypesToConsiderForFiltering) {
         final List<Double> pArtifactScores = genotypesToConsiderForFiltering.keySet().stream()
+                .filter(g -> OrientationBiasUtils.isGenotypeInTransition(g.getWrapped(), transition))
                 .map(g -> OrientationBiasUtils.getGenotypeDouble(g.getWrapped(), OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0))
                 .collect(Collectors.toList());
 
-        // When doing the Benjamini-Hochberg procedure, we need to include the non-artifact mode SNVs to guarantee the
-        //  FDR is kept to the specified threshold.
-        //   Pad the list of pArtifact scores so that the the non-artifacts (w/ a p-value of zero) are included.
-        final int numToPadZeroes = (int) unfilteredGenotypeCount - pArtifactScores.size();
-        List<Double> finalPArtifactScores = new ArrayList<>();
-        finalPArtifactScores.addAll(pArtifactScores);
-        finalPArtifactScores.addAll(Collections.nCopies(numToPadZeroes, 0.0));
-
-        return calculateTotalNumToCut(fdrThresh, unfilteredGenotypeCount, finalPArtifactScores);
+        return calculateTotalNumToCut(fdrThresh, pArtifactScores);
     }
 
     /**
+     * Used when the the pArtifactScores list includes everything
+     * @param fdrThreshold desired maximum FDR threshold.  Must be greater than 0
+     * @param pArtifactScoresIncludingNonArtifact sorted list (descending) of the pArtifact scores.  Should include zeros for nonArtifact variants.
+     * @return total number of artifact mode variants to cut in order to be below the specified FDR threshold.
+     */
+    @VisibleForTesting
+    static int calculateTotalNumToCut(final double fdrThreshold, final List<Double> pArtifactScoresIncludingNonArtifact) {
+        return calculateTotalNumToCut(fdrThreshold, pArtifactScoresIncludingNonArtifact.size(), pArtifactScoresIncludingNonArtifact);
+    }
+    /**
      *
      * @param fdrThreshold desired maximum FDR threshold.  Must be greater than 0
-     * @param unfilteredGenotypeCount total number of unfiltered variants
+     * @param unfilteredGenotypeCount total number of unfiltered variants, so that we can (effectively) zero pad.
      * @param pArtifactScoresIncludingNonArtifact sorted list (descending) of the pArtifact scores.  Should include zeros for nonArtifact variants.
      * @return total number of artifact mode variants to cut in order to be below the specified FDR threshold.
      */
