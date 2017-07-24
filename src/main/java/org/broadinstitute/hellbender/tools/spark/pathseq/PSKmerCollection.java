@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerShort;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 
 /**
  * Classes that provide a way to test kmers for set membership and keep track of the kmer size and mask
