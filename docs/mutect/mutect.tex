@@ -236,4 +236,28 @@ P({\rm germline}) = \frac{(1)}{(1) + (2) + (3)} = \frac{\left(2f(1-f) + f^2 \rig
 
 To filter, we set a threshold on this posterior probability.
 
+\section{Finding Active Regions}
+Mutect triages sites based on their pileup at a single base locus.  If there is sufficient evidence of variation Mutect proceeds with local reassembly and realignment.  As in the downstream parts of Mutect we seek a likelihood ratio between the existence and non-existence of an alt allele.  Instead of obtaining read likelihoods via Pair-HMM, we assign each base a likelihood.  For substitutions we can simply use the base quality.  For indels we assign a heuristic effective quality that increases with length.  Supposing we have an effective quality for each element in the read pileup we can now estimate the likelihoods of no variation and of a true alt allele with allele fraction $f$.  Let $\mathcal{R}$ and $\mathcal{A}$ denote the sets of ref and alt reads.  The likelihood of no variation is the likelihood that every alt read was in error.  Letting $\epsilon_i$ be the error probability of pileup element $i$ we have:
+
+\begin{equation}
+L({\rm no~variation}) = \prod_{i \in \mathcal{R}} (1 - \epsilon_i) \prod_{j \in \mathcal{A}} \epsilon_j 
+\end{equation}
+\begin{equation}
+L(f) = \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i) + f \epsilon_i \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right]
+\end{equation}
+The terms that signify observed ref reads that are actually alt reads with an error and vice versa are negligible\footnote{We can set an upper bound on the error in the log likelihood by Taylor-expanding to first order.  The error turns out to be quite small.}  Then we get
+\begin{align}
+L(f) &\approx \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i)  \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) \right] \\
+&=(1-f)^{|\mathcal{R}|}f^{|\mathcal{A}|}  \prod_{i \in \mathcal{R}} (1 - \epsilon_i)  \prod_{j \in \mathcal{A}} (1 - \epsilon_j) 
+\end{align}
+We can integrate over the latent variable $f$ from $0$ to $1$ with a flat prior analytically because the integral is the normalization constant of the beta distribution:
+\begin{equation}
+\int_0^1 (1-f)^{|\mathcal{R}|}f^{|\mathcal{A}|} \, df = \frac{ \Gamma(|\mathcal{R}| + 1) \Gamma(|\mathcal{A}| + 1)}{\Gamma(|\mathcal{R}| + |\mathcal{A}| + 2)} = \frac{|\mathcal{R}|! |\mathcal{A}|!}{(|\mathcal{R}|+|\mathcal{A}|+1)!}
+\end{equation}
+In the likelihood ratio the reference factors $\prod_{i \in \mathcal{R}} (1 - \epsilon_i)$ cancel, leaving a log-odds of
+\begin{align}
+{\rm LOD} \approx& \sum_{j \in \mathcal{A}} \left[ \log (1 - \epsilon_j) - \log \epsilon_j \right] + \log \frac{|\mathcal{R}|! |\mathcal{A}|!}{(|\mathcal{R}|+|\mathcal{A}|+1)!} \\
+ \approx& -\sum_{j \in \mathcal{A}} \log \epsilon_j + \log \frac{|\mathcal{R}|! |\mathcal{A}|!}{(|\mathcal{R}|+|\mathcal{A}|+1)!},
+\end{align}
+the first term of which is proportional to the sum of effective base qualities.
 \end{document}

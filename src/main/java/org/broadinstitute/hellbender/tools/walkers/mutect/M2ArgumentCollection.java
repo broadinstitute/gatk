@@ -38,6 +38,13 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public FeatureInput<VariantContext> pon;
 
     /**
+     * Usually we exclude sites in the panel of normals from active region determination, which saves time.  Setting this to true
+     * causes Mutect to produce a variant call at these sites.  This call will still be filtered, but it shows up in the vcf.
+     */
+    @Argument(fullName="genotypePonSites", doc="Whether to call sites in the PoN even though they will ultimately be filtered.", optional = true)
+    public boolean genotypePonSites = false;
+
+    /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
      */
     @Argument(fullName="germline_resource", doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
@@ -63,34 +70,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
             doc="Prior probability that a given site has a somatic allele.", optional = true)
     public double log10PriorProbOfSomaticEvent = -6.0;
 
-
-    /**
-     * Minimum number of variant reads in pileup to be considered an active region.
-     * In the hypothetical case of extreme high quality alignments, consider adjusting parameter down to 1.
-     * In the rare case of extreme deep coverage and where low fraction alleles are not of interest, adjust up to 3.
-     * Providing genomic intervals of interest with -L, setting the tumor standard deviation to zero and
-     * setting minimum variants in pileup to zero forces the tool to consider all provided regions as active.
-     */
-    @Argument(fullName = "min_variants_in_pileup", optional = true, doc = "Minimum number of variant reads in pileup to be considered active region.")
-    public int minVariantsInPileup = 2;
-
-    /**
-     * How many standard deviations above the expected number of variant reads due to error we require for tool to consider a tumor pileup active.
-     * Argument sets the z-score. Here, base qualities inform expected error rate.
-     * Providing genomic intervals of interest with -L, setting the tumor standard deviation to zero and
-     * setting minimum variants in pileup to zero forces the tool to consider all provided regions as active.
-     */
-    @Argument(fullName = "tumorStandardDeviationsThreshold", optional = true, doc = "How many standard deviations above the expected number of variant reads due to error we require for a tumor pileup to be considered active.")
-    public int tumorStandardDeviationsThreshold = 2;
-
-    /**
-     * Minimum fraction of variant reads in normal for a pileup to be considered inactive. Applies to normal data in a tumor with matched normal analysis.
-     * For value of 0.1, at least one tenth of pileup must be variant for tool to consider it a germline variant site and therefore not a locus of interest 
-     * in the somatic analysis.
-     */
-    @Argument(fullName = "minNormalVariantFraction", optional = true, doc = "Minimum fraction of variant reads in normal pileup to be considered a germline variant site and thus not of further interest.")
-    public double minNormalVariantFraction = 0.1;
-
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
      * Set to less than or equal to tumor_lod. Increase argument value to reduce false positives in the callset.
@@ -101,6 +80,18 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public double emissionLodThreshold = 3.0;
 
     /**
+     * Only variants with estimated tumor LODs exceeding this threshold will be considered active.
+     */
+    @Argument(fullName = "initial_tumor_lod", optional = true, doc = "LOD threshold to consider pileup active.")
+    public double initialTumorLodThreshold = 2.0;
+
+    /**
+     * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
+     */
+    @Argument(fullName = "max_population_af", optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
+    public double maxPopulationAlleleFrequency = 0.01;
+
+    /**
      * This is a measure of the minimum evidence to support that a variant observed in the tumor is not also present in the normal.
      * Applies to normal data in a tumor with matched normal analysis. The default has been tuned for diploid somatic analyses.
      * It is unlikely such analyses will require changing the default value. Increasing the parameter may increase the sensitivity of somatic calling,
@@ -108,13 +99,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = "normal_lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double NORMAL_LOD_THRESHOLD = 2.2;
-
-    /**
-     * @deprecated This argument is obsolete as of June 2017. It was previously used for the M1-style strand bias filter.
-     */
-    @Deprecated
-    @Argument(fullName="power_constant_qscore", doc="Phred scale quality score constant to use in power calculations.", optional = true)
-    public int POWER_CONSTANT_QSCORE = 30;
 
     /**
      * Which annotations to add to the output VCF file. By default the tool adds all of the following annotations.
