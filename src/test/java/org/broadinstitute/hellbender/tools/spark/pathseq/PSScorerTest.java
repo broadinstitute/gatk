@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
-public class PSScoreUtilsTest extends CommandLineProgramTest {
+public class PSScorerTest extends CommandLineProgramTest {
 
     final static double MIN_COV = 0.90;
     final static double MIN_IDENT = 0.90;
@@ -131,7 +131,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         header.addSequence(new SAMSequenceRecord("seq1", 1000));
         header.addSequence(new SAMSequenceRecord("seq2", 1000));
         header.addSequence(new SAMSequenceRecord("seq3", 1000));
-        PSScoreUtils.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
+        PSScorer.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
         try {
             final BufferedReader inputStream = new BufferedInputStreamReader(new FileInputStream(file));
             Assert.assertNull(inputStream.readLine());
@@ -141,7 +141,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
 
         //Add sequence not in taxDB -> expect warning to be written
         header.addSequence(new SAMSequenceRecord("seq4", 1000));
-        PSScoreUtils.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
+        PSScorer.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
         try {
             final BufferedReader inputStream = new BufferedInputStreamReader(new FileInputStream(file));
             Assert.assertNotNull(inputStream.readLine());
@@ -231,7 +231,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListXA = new ArrayList<>();
         readListXA.add(generateReadPair(readLength, NM1, NM2, clip1, clip2, insert1, insert2, delete1, delete2, contig1, contig2, "XA"));
         final JavaRDD<Iterable<GATKRead>> pairsXA = ctx.parallelize(readListXA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScoreUtils.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
         final PSPathogenAlignmentHit infoXA = resultXA.first()._2;
 
         Assert.assertNotNull(infoXA);
@@ -243,7 +243,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListSA = new ArrayList<>();
         readListSA.add(generateReadPair(readLength, NM1, NM2, clip1, clip2, insert1, insert2, delete1, delete2, contig1, contig2, "SA"));
         final JavaRDD<Iterable<GATKRead>> pairsSA = ctx.parallelize(readListSA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScoreUtils.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
         final PSPathogenAlignmentHit infoSA = resultSA.first()._2;
 
         Assert.assertNotNull(infoSA);
@@ -342,7 +342,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListXA = new ArrayList<>();
         readListXA.add(generateUnpairedRead(readLength, NM, clip, insert, delete, contig, "XA"));
         final JavaRDD<Iterable<GATKRead>> pairsXA = ctx.parallelize(readListXA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScoreUtils.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
         final PSPathogenAlignmentHit infoXA = resultXA.first()._2;
 
         Assert.assertNotNull(infoXA);
@@ -354,7 +354,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListSA = new ArrayList<>();
         readListSA.add(generateUnpairedRead(readLength, NM, clip, insert, delete, contig, "SA"));
         final JavaRDD<Iterable<GATKRead>> pairsSA = ctx.parallelize(readListSA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScoreUtils.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
         final PSPathogenAlignmentHit infoSA = resultSA.first()._2;
 
         Assert.assertNotNull(infoSA);
@@ -370,7 +370,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         List<PSPathogenAlignmentHit> readTaxHits = new ArrayList<>(1);
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("4"), 2));
         try {
-            final Map<String, PSPathogenTaxonScore> result = PSScoreUtils.computeTaxScores(readTaxHits, tree);
+            final Map<String, PSPathogenTaxonScore> result = PSScorer.computeTaxScores(readTaxHits, tree);
             Assert.assertTrue(result.isEmpty(), "Result should be empty since the hit does not exist in the tree");
         } catch (Exception e) {
             Assert.fail("Threw and exception when a HitInfo references a tax ID not in the tree, or vice versa", e);
@@ -380,11 +380,11 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         tree.addNode("3", "n3", "2", 100, "species");
         readTaxHits.clear();
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("3"), 2));
-        Map<String, PSPathogenTaxonScore> result = PSScoreUtils.computeTaxScores(readTaxHits, tree);
+        Map<String, PSPathogenTaxonScore> result = PSScorer.computeTaxScores(readTaxHits, tree);
         Assert.assertEquals(result.size(), 3);
         Assert.assertEquals(result.get("1").score, result.get("2").score);
         Assert.assertEquals(result.get("2").score, result.get("3").score);
-        Assert.assertEquals(result.get("1").score, PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100);
+        Assert.assertEquals(result.get("1").score, PSScorer.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100);
         Assert.assertEquals(result.get("1").scoreNormalized, 100.0);
         Assert.assertEquals(result.get("2").scoreNormalized, 100.0);
         Assert.assertEquals(result.get("3").scoreNormalized, 100.0);
@@ -403,11 +403,11 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("5"), 2));
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("6"), 1));
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("8"), 2)); //Invalid hit, not in tree
-        result = PSScoreUtils.computeTaxScores(readTaxHits, tree);
+        result = PSScorer.computeTaxScores(readTaxHits, tree);
 
-        final double score3 = PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 2.0) / 100;
-        final double score5 = PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100;
-        final double score6 = PSScoreUtils.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 1.0) / 100;
+        final double score3 = PSScorer.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 2.0) / 100;
+        final double score5 = PSScorer.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100;
+        final double score6 = PSScorer.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 1.0) / 100;
         final double score2 = score3 + score5;
         final double score4 = score6;
         final double score1 = score2 + score4;
@@ -484,7 +484,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final JavaRDD<Tuple2<Object, Integer>> dataRDD = ctx.parallelize(data);
 
         //Test
-        final Iterable<Integer> result = PSScoreUtils.collectValues(dataRDD);
+        final Iterable<Integer> result = PSScorer.collectValues(dataRDD);
 
         //Check that the result is equal to the original integer list, allowing for different order
         final List<Integer> resultList = StreamSupport.stream(result.spliterator(), false)
@@ -521,7 +521,7 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         final JavaRDD<Tuple2<Iterable<Integer>, Object>> dataRDD = ctx.parallelize(data);
 
         //Check that the result is equal to the original integer list, allowing for different order
-        final List<Integer> resultList = new ArrayList<>(PSScoreUtils.flattenIterableKeys(dataRDD).collect());
+        final List<Integer> resultList = new ArrayList<>(PSScorer.flattenIterableKeys(dataRDD).collect());
         final List<Integer> truthList = iterableList.stream()
                 .flatMap(list -> list.stream())
                 .collect(Collectors.toList());
@@ -547,12 +547,12 @@ public class PSScoreUtilsTest extends CommandLineProgramTest {
         kryo.writeObject(output, expectedDatabase);
         output.close();
 
-        final PSTaxonomyDatabase taxonomyDatabase = PSScoreUtils.readTaxonomyDatabase(tempFile.getPath());
+        final PSTaxonomyDatabase taxonomyDatabase = PSScorer.readTaxonomyDatabase(tempFile.getPath());
         Assert.assertEquals(expectedDatabase.tree, taxonomyDatabase.tree);
         Assert.assertEquals(expectedDatabase.accessionToTaxId, taxonomyDatabase.accessionToTaxId);
 
         try {
-            PSScoreUtils.readTaxonomyDatabase("/bad_dir");
+            PSScorer.readTaxonomyDatabase("/bad_dir");
             Assert.fail("Did not throw UserException for bad path to readTaxonomyDatabase()");
         } catch (UserException e) {
         }

@@ -1,8 +1,14 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.engine.filters.AmbiguousBaseReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 
 import java.io.Serializable;
+import java.util.List;
 
 public final class PSFilterArgumentCollection implements Serializable {
 
@@ -12,7 +18,7 @@ public final class PSFilterArgumentCollection implements Serializable {
             fullName = "isHostAligned",
             optional = true)
     public boolean alignedInput = false;
-    @Argument(doc = "Path to kmer library generated with PathSeqBuildKmers. Skipped if not specified.",
+    @Argument(doc = "Path to host kmer library generated with PathSeqBuildKmers. Skipped if not specified.",
             fullName = "kmerLibraryPath",
             optional = true)
     public String kmerLibPath = null;
@@ -26,12 +32,11 @@ public final class PSFilterArgumentCollection implements Serializable {
             minRecommendedValue = 31,
             optional = true)
     public int minReadLength = 31;
-    @Argument(doc = "Max allowable fraction of ambiguous bases",
-            fullName = "maxAmbiguousBaseFraction",
-            minValue = 0.0,
-            maxValue = 1.0,
+    @Argument(doc = "Max allowable number of masked bases per read",
+            fullName = "maxMaskedBases",
+            minValue = 0,
             optional = true)
-    public double fracNThreshold = 0.03;
+    public int maxAmbiguousBases = 2;
     @Argument(doc = "Bases below this read quality will be transformed into 'N'",
             fullName = "minBaseQuality",
             minValue = 1,
@@ -55,12 +60,12 @@ public final class PSFilterArgumentCollection implements Serializable {
             optional = true)
     public double dustT = 20.0;
     @Argument(doc = "Host alignment coverage score threshold, in bp",
-            fullName = "minCoverage",
+            fullName = "filterMinCoverage",
             minValue = 1,
             optional = true)
     public int minCoverage = 31;
     @Argument(doc = "Host alignment identity score threshold, in bp",
-            fullName = "minIdentity",
+            fullName = "filterMinIdentity",
             minValue = 1,
             optional = true)
     public int minIdentity = 30;
@@ -69,23 +74,19 @@ public final class PSFilterArgumentCollection implements Serializable {
             minValue = 1,
             optional = true)
     public int hostKmerThresh = 1;
-    @Argument(doc = "The bwa mem index image file of the host reference. Must be on the local filesystem of each worker in the cluster.",
-            fullName = "bwamemIndexImage",
+    @Argument(doc = "The BWA image file of the host reference. This must be distributed to local disk on each node.",
+            fullName = "filterBwaImage",
             optional = true)
     public String indexImageFile = null;
-    @Argument(doc = "Number of bwa threads",
-            fullName = "bwaThreads",
-            minValue = 1,
-            optional = true)
     public int bwaThreads = 1;
     @Argument(doc = "Minimum seed length for the host BWA alignment.",
-            fullName = "minSeedLength",
+            fullName = "filterMinSeedLength",
             minValue = 1,
             minRecommendedValue = 11,
             optional = true)
     public int minSeedLength = 19;
     @Argument(doc = "Estimated reads per partition after quality, kmer, and BWA filtering",
-            fullName = "readsPerPartition",
+            fullName = "filterReadsPerPartition",
             minValue = 1,
             optional = true)
     public int readsPerPartition = 200000;
@@ -97,4 +98,17 @@ public final class PSFilterArgumentCollection implements Serializable {
             fullName = "metricsFile",
             optional = true)
     public String metricsFileUri = null;
+
+    public void doReadFilterArgumentWarnings(final GATKReadFilterPluginDescriptor pluginDescriptor, final Logger logger) {
+        final List<ReadFilter> readFilters = pluginDescriptor.getAllInstances();
+        for (final ReadFilter filter : readFilters) {
+            if (filter.getClass().isAssignableFrom(AmbiguousBaseReadFilter.class)) {
+                logger.warn("Detected the use of AmbiguousBaseReadFilter, which is applied before the PathSeq " +
+                        "base masking steps. Did you mean to use --maxMaskedBases, which is applied after masking?");
+            } else if (filter.getClass().isAssignableFrom(ReadLengthReadFilter.class)) {
+                logger.warn("Detected the use of ReadLengthReadFilter, which is applied before the PathSeq " +
+                        "clipping steps. Did you mean to use --minClippedReadLength, which is applied after clipping?");
+            }
+        }
+    }
 }

@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
@@ -15,9 +16,14 @@ import java.util.Collection;
 /**
  * SparkTool to build kmer hash set or Bloom filter from a given host reference. The output file is required by PathSeqFilterSpark.
  */
-@CommandLineProgramProperties(summary = "Builds host kmer set used in the PathSeq subtraction phase.",
-        oneLineSummary = "Builds PathSeq kmer library",
-        programGroup = SparkProgramGroup.class)
+@CommandLineProgramProperties(summary = "Builds a database of host reference k-mers for filtering host reads in the " +
+        "PathSeqFilterSpark tool. By default, it builds a hash set of k-mers. If --bloomFalsePositiveProbability is " +
+        "specified and greater than zero, it will build a Bloom filter of the k-mers. Bloom filters are smaller and " +
+        "faster than hash sets, but cause some non-host reads to be incorrectly filtered. For --bloomFalsePositiveProbability " +
+        "<= 0.001, the fraction of lost non-host reads is typically < 1% using the default filter tool settings.",
+        oneLineSummary = "Builds a hash set or Bloom filter of host reference k-mers",
+        programGroup = PathSeqProgramGroup.class)
+@BetaFeature
 public final class PathSeqBuildKmers extends CommandLineProgram {
 
     @Argument(doc = "File for kmer library output. Extension will be automatically added if not present ("
@@ -35,6 +41,7 @@ public final class PathSeqBuildKmers extends CommandLineProgram {
             fullName = "bloomFalsePositiveProbability",
             minValue = 0.0,
             maxValue = 1.0,
+            maxRecommendedValue = 0.001,
             optional = true)
     public double bloomFpp = 0;
 

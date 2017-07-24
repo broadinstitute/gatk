@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Filters out reads with more than a threshold number of N's
+ * Filters out reads with more than a threshold number of N's.
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class AmbiguousBaseReadFilter extends ReadFilter {
@@ -16,29 +16,37 @@ public final class AmbiguousBaseReadFilter extends ReadFilter {
 
     @Argument(doc = "Threshold fraction of ambiguous bases",
             fullName = "ambigFilterFrac",
-            optional = true)
-    public double nFrac = 0.05;
+            optional = true,
+            mutex = {"ambigFilterBases"})
+    public double maxAmbiguousBaseFraction = 0.05;
 
-    public AmbiguousBaseReadFilter() {
+    @Argument(doc = "Threshold number of ambiguous bases. If null, uses threshold fraction; otherwise, overrides threshold fraction.",
+            fullName = "ambigFilterBases",
+            optional = true,
+            mutex = {"ambigFilterFrac"})
+    public Integer maxAmbiguousBases = null;
+
+    public AmbiguousBaseReadFilter() {}
+
+    public AmbiguousBaseReadFilter(final int maxAmbiguousBases) {
+        this.maxAmbiguousBases = maxAmbiguousBases;
     }
 
-    public AmbiguousBaseReadFilter(final double n_frac) {
-        this.nFrac = n_frac;
-    }
-
-    //Filters out reads with more than a threshold number of N's
+    /**
+     * Test read for a given maximum threshold of allowable ambiguous bases
+     */
     @Override
     public boolean test(final GATKRead read) {
-        final int N_max = (int) (read.getLength() * nFrac);
-        int num_N = 0;
+        final int maxN = maxAmbiguousBases != null ? maxAmbiguousBases : (int) (read.getLength() * maxAmbiguousBaseFraction);
+        int numN = 0;
         for (final byte base : read.getBases()) {
             if (!BaseUtils.isRegularBase(base)) {
-                num_N++;
-                if (num_N > N_max) {
+                numN++;
+                if (numN > maxN) {
                     return false;
                 }
             }
         }
-        return num_N <= N_max;
+        return true;
     }
 }

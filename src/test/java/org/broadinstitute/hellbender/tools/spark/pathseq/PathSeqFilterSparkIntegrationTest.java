@@ -75,7 +75,7 @@ public class PathSeqFilterSparkIntegrationTest extends CommandLineProgramTest {
     public void testFilterBwa() throws Exception {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final String imagePath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.bwa_image";
-        args.addArgument("bwamemIndexImage", imagePath);
+        args.addArgument("filterBwaImage", imagePath);
         args.addBooleanArgument("skipFilters", true);
         args.addBooleanArgument("filterDuplicates", false);
         testFilterTool(args, "basic_input.bam", "bwa_output.paired.bam", "bwa_output.unpaired.bam");

@@ -11,8 +11,10 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Utility functions for PathSeq Bwa tool
@@ -40,6 +42,25 @@ public final class PSBwaUtils {
             throw new UserException.MissingReferenceDictFile(referencePath);
         }
         return referenceDictionary.getSequences();
+    }
+
+    /**
+     * Returns header with sequences that were aligned to at least once in reads
+     */
+    static SAMFileHeader removeUnmappedHeaderSequences(final SAMFileHeader header,
+                                                       final JavaRDD<GATKRead> reads,
+                                                       final Logger logger) {
+        final List<String> usedSequences = PSBwaUtils.getAlignedSequenceNames(reads);
+        final List<SAMSequenceRecord> usedSequenceRecords = usedSequences.stream()
+                .map(seqName -> header.getSequence(seqName))
+                .filter(seq -> {
+                    if (seq != null) return true;
+                    logger.warn("One or more reads are aligned to sequence " + seq + " but it is not in the header");
+                    return false;
+                })
+                .collect(Collectors.toList());
+        header.setSequenceDictionary(new SAMSequenceDictionary(usedSequenceRecords));
+        return header;
     }
 
     /**

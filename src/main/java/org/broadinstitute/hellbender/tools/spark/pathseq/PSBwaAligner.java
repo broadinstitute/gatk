@@ -31,6 +31,7 @@ public final class PSBwaAligner {
 
     private static GATKRead applyAlignments(GATKRead read, final List<BwaMemAlignment> alignmentList,
                                             final List<String> refNames, final SAMFileHeader header) {
+        final List<String> saTags = new ArrayList<>(alignmentList.size());
         for (final BwaMemAlignment alignment : alignmentList) {
             //Only get primary alignments
             if (SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(alignment.getSamFlag())
@@ -43,11 +44,13 @@ public final class PSBwaAligner {
                 } else if (alignment.getRefId() != -1) {
                     //Record is currently mapped, but if the alignment is not empty then add as an alternate alignment
                     //This can happen if the input read is already mapped
-                    final String alignmentTag = BwaMemAlignmentUtils.asTag(alignment, refNames);
-                    final String currentTag = read.getAttributeAsString("SA") != null ? read.getAttributeAsString("SA") : "";
-                    read.setAttribute("SA", currentTag + alignmentTag);
+                    saTags.add(BwaMemAlignmentUtils.asTag(alignment, refNames));
                 }
             }
+        }
+        if (!saTags.isEmpty()) {
+            final String currentTag = read.getAttributeAsString("SA") != null ? read.getAttributeAsString("SA") : "";
+            read.setAttribute("SA", currentTag + String.join(";", saTags));
         }
         return read;
     }

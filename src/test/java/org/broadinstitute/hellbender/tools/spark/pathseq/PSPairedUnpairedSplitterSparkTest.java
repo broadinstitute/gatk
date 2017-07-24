@@ -64,7 +64,7 @@ public class PSPairedUnpairedSplitterSparkTest {
         final int numPartitions = 3;
         final JavaRDD<GATKRead> readRDD = ctx.parallelize(readList, numPartitions);
         final int readsPerPartitionGuess = (numReadPairs + numUnpairedReads + numFormerlyPairedReads) / numPartitions;
-        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(readRDD, readsPerPartitionGuess);
+        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(readRDD, readsPerPartitionGuess, true);
 
         final List<GATKRead> resultPaired = splitter.getPairedReads().collect();
         final List<GATKRead> resultUnpaired = splitter.getUnpairedReads().collect();

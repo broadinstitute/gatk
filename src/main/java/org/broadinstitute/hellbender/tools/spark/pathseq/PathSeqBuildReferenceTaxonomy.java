@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -28,9 +28,11 @@ import java.util.*;
  * <p>
  * The database is written to an output file, which is required by the ClassifyReads tool.
  */
-@CommandLineProgramProperties(summary = "Builds PathSeq taxonomy database for a given pathogen reference",
-        oneLineSummary = "PathSeq taxonomy database builder",
-        programGroup = ReadProgramGroup.class)
+@CommandLineProgramProperties(summary = "Builds a taxonomic database of the pathogen reference that " +
+        "is required to run the scoring tool. User must supply a pathogen reference, NCBI catalog, and NCBI taxonomy " +
+        "'taxdump' archive.",
+        oneLineSummary = "Builds a taxonomy database of the pathogen reference",
+        programGroup = PathSeqProgramGroup.class)
 @BetaFeature
 public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
 

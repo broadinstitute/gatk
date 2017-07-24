@@ -6,6 +6,7 @@ import htsjdk.samtools.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,12 +20,56 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public final class PSScoreUtils {
+public final class PSScorer {
 
     public static final String HITS_TAG = "YP";
     //Convert scores to per million reference base pairs
     public static final double SCORE_GENOME_LENGTH_UNITS = 1e6;
-    private static final Logger logger = LogManager.getLogger(PSScoreUtils.class);
+    private static final Logger logger = LogManager.getLogger(PSScorer.class);
+
+    private final PSScoreArgumentCollection scoreArgs;
+
+    public PSScorer(final PSScoreArgumentCollection scoreArgs) {
+        this.scoreArgs = scoreArgs;
+    }
+
+    public JavaRDD<GATKRead> scoreReads(final JavaSparkContext ctx,
+                                        final JavaRDD<GATKRead> pairedReads,
+                                        final JavaRDD<GATKRead> unpairedReads,
+                                        final SAMFileHeader header) {
+
+        //Group reads into pairs
+        final JavaRDD<Iterable<GATKRead>> groupedReads = groupReadsIntoPairs(pairedReads,
+                unpairedReads, scoreArgs.readsPerPartition);
+
+        //Load taxonomy database, created by running PathSeqBuildReferenceTaxonomy with this reference
+        final PSTaxonomyDatabase taxDB = readTaxonomyDatabase(scoreArgs.taxonomyDatabasePath);
+        final Broadcast<Map<String, String>> accessionToTaxIdBroadcast = ctx.broadcast(taxDB.accessionToTaxId);
+
+        //Check header against database
+        if (scoreArgs.headerWarningFile != null) {
+            writeMissingReferenceAccessions(scoreArgs.headerWarningFile, header, taxDB, logger);
+        }
+
+        //Determine which alignments are valid hits and return their tax IDs in PSPathogenAlignmentHit
+        //Also adds pathseq tags containing the hit IDs to the reads
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> readHits = mapGroupedReadsToTax(groupedReads,
+                scoreArgs.minCoverage, scoreArgs.minIdentity, accessionToTaxIdBroadcast);
+
+        //Collect PSPathogenAlignmentHit objects
+        final Iterable<PSPathogenAlignmentHit> hitInfo = collectValues(readHits);
+
+        //Get the original reads, now with their pathseq hit tags set
+        final JavaRDD<GATKRead> readsFinal = flattenIterableKeys(readHits);
+
+        //Compute taxonomic scores
+        final Map<String, PSPathogenTaxonScore> taxScores = computeTaxScores(hitInfo, taxDB.tree);
+
+        //Write scores to file
+        writeScoresFile(taxScores, taxDB.tree, scoreArgs.scoresPath);
+
+        return readsFinal;
+    }
 
     /**
      * Collects the second elements of all tuples in an RDD
@@ -90,36 +135,6 @@ public final class PSScoreUtils {
     }
 
     /**
-     * Combines SAM file header sequences and read groups. If both headers are not null, additional header entries
-     * from the unpaired header will not be copied over.
-     */
-    static SAMFileHeader joinBamHeaders(final SAMFileHeader pairedHeader, final SAMFileHeader unpairedHeader) {
-        SAMFileHeader header;
-        if (pairedHeader != null) {
-            header = pairedHeader;
-            if (unpairedHeader != null && !header.equals(unpairedHeader)) {
-                //Add sequences
-                for (final SAMSequenceRecord rec : unpairedHeader.getSequenceDictionary().getSequences()) {
-                    if (header.getSequenceDictionary().getSequence(rec.getSequenceName()) == null) {
-                        header.addSequence(rec);
-                    }
-                }
-                //Add read groups
-                for (final SAMReadGroupRecord rec : unpairedHeader.getReadGroups()) {
-                    if (header.getReadGroup(rec.getReadGroupId()) == null) {
-                        header.addReadGroup(rec);
-                    }
-                }
-            }
-        } else if (unpairedHeader != null) {
-            header = unpairedHeader;
-        } else {
-            throw new UserException.BadInput("No headers were loaded");
-        }
-        return header;
-    }
-
-    /**
      * Writes accessions contained in a SAM header that do not exist in the taxonomy database
      */
     public static void writeMissingReferenceAccessions(final String path, final SAMFileHeader header, final PSTaxonomyDatabase taxDB,
@@ -179,8 +194,6 @@ public final class PSScoreUtils {
             if (hitTaxIds.size() > 0) {
                 final String hitString = String.join(",", hitTaxIds);
                 Utils.stream(readIter).forEach(read -> read.setAttribute(HITS_TAG, hitString));
-            } else {
-                Utils.stream(readIter).forEach(GATKRead::setIsUnmapped);
             }
             return new Tuple2<>(readIter, info);
         });
