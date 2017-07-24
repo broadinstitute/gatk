@@ -12,6 +12,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,18 +52,18 @@ public class GenomicsDBImportUnitTest extends BaseTest{
                 "Sample2\tfile2\n" +
                 "Sample3\tfile3";
         final File sampleFile = IOUtils.writeTempFile(content, "sampleMapping", ".txt");
-        final Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("Sample1", "file1");
-        expected.put("Sample2", "file2");
-        expected.put("Sample3", "file3");
-        final LinkedHashMap<String, String> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        final Map<String, Path> expected = new LinkedHashMap<>();
+        expected.put("Sample1", Paths.get("file1"));
+        expected.put("Sample2", Paths.get("file2"));
+        expected.put("Sample3", Paths.get("file3"));
+        final LinkedHashMap<String, Path> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullFeatureReadersToFail() {
-        Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
+        final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
         sampleToReaderMap.put("Sample1", null);
         GenomicsDBImporter.generateSortedCallSetMap(sampleToReaderMap, true, true, 0L);
     }
