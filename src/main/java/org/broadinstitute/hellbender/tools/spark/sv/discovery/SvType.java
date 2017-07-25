@@ -19,7 +19,7 @@ public abstract class SvType {
     protected final int svLen;
     protected final Map<String, String> extraAttributes;
 
-    enum TYPES {
+    public enum TYPES {
         INV, DEL, INS, DUP;
     }
 
