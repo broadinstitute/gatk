@@ -14,12 +14,12 @@ import java.util.concurrent.ConcurrentMap;
  * Manage a BwaMemIndex singleton.
  */
 public class BwaMemIndexCache {
-    private final static Map<String, BwaMemIndex> instances = new HashMap<>();
-    private static String globalIndexImageFile;
-    private static BwaMemIndex globalInstance;
+
+    private final static ConcurrentMap<String, BwaMemIndex> instances = new HashMap<>();
 
     public static synchronized BwaMemIndex getInstance( final String indexImageFile ) {
 
+        instances.putIfAbsent()
         if (!instances.containsKey(indexImageFile)) {
             instances.put(indexImageFile, new BwaMemIndex(indexImageFile));
         }

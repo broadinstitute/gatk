@@ -208,6 +208,7 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
                 case N:
                 case H:
                     result += penalties.translocationPenalty;
+                    break;
                 case P:
 
             }

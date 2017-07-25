@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import breeze.util.Opt;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -19,10 +20,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -237,6 +235,25 @@ public class SVFastqUtils {
         public String getId() {
             final String[] headerParts = header.split(HEADER_FIELD_SEPARATOR_STR);
             return headerParts[0].substring(1); // skip the '@'.
+        }
+
+        public OptionalInt getFragmentNumber() {
+            final String id = getId();
+            final int fragmentPartStart = id.lastIndexOf(FRAGMENT_NUMBER_SEPARATOR_CHR);
+            if (fragmentPartStart < 0) {
+                return OptionalInt.empty();
+            } else {
+                try {
+                    final int number = Integer.parseInt(id.substring(fragmentPartStart + 1));
+                    if (number < 0) {
+                        return OptionalInt.empty();
+                    } else {
+                        return OptionalInt.of(number);
+                    }
+                } catch (final NumberFormatException ex) {
+                    return OptionalInt.empty();
+                }
+            }
         }
         public String getName() { final String id = getId();
             final int fragmentNumberSeparatorIndex = id.lastIndexOf(FRAGMENT_NUMBER_SEPARATOR_CHR);

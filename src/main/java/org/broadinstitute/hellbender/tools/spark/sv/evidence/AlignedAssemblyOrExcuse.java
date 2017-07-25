@@ -19,17 +19,13 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-<<<<<<< HEAD:src/main/java/org/broadinstitute/hellbender/tools/spark/sv/evidence/AlignedAssemblyOrExcuse.java
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-=======
-import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
->>>>>>> 9894b52... asm:src/main/java/org/broadinstitute/hellbender/tools/spark/sv/AlignedAssemblyOrExcuse.java
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
