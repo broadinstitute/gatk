@@ -168,6 +168,6 @@ public class ContigAlignerTest extends BaseTest {
 
     @AfterClass
     public void tearDown() throws Exception {
-        BwaMemIndexCache.closeInstance();
+        BwaMemIndexCache.closeInstances();
     }
 }

@@ -4,10 +4,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Manage a global collection of {@link BwaMemIndex} instances.
@@ -30,11 +27,49 @@ public class BwaMemIndexCache {
     }
 
     /**
+     * Closes an index instance in the cache given its index file name.
+     * <p>
+     *     Notice that you need to pass in exactly the same file name that was used when invoking {@link #getInstance}.
+     * </p>
+     * <p>
+     *     An attempt to close a missing instance, won't have any effect.
+     * </p>
+     *
+     * @param indexImageFile the index file name of the instance to close.
+     */
+    public static synchronized void closeInstance(final String indexImageFile) {
+        Utils.nonNull(indexImageFile, "the input image file cannot be null");
+        if (instances.containsKey(indexImageFile)) {
+            instances.get(indexImageFile).close();
+            instances.remove(indexImageFile);
+        }
+    }
+
+    /**
+     * Closes an index instance.
+     *<p>
+     *     An attempt to close a instance that is not present in the cache, won't have any effect.
+     *     Thus if the input instance is not part of the cache an is not closed, will remind unclosed.
+     * </p>
+     * @param instance the instance ot close.
+     */
+    public static synchronized void closeInstance(final BwaMemIndex instance) {
+        Utils.nonNull(instance, "the input index cannot be null");
+        if (instances.values().contains(instance)) {
+            instance.close();
+            instances.values().remove(instance);
+        }
+    }
+
+    /**
      * Closes all instances in the VM.
      */
     public static synchronized void closeInstances() {
-        instances.values().forEach(BwaMemIndex::close);
-        instances.clear();
+        final Iterator<BwaMemIndex> it = instances.values().iterator();
+        while (it.hasNext()) {
+            it.next().close();
+            it.remove();
+        }
     }
 
     /**
