@@ -19,11 +19,11 @@ WORKDIR /gatk
 RUN rm -rf src/test/resources
 # Create link to where test data is expeced
 RUN ln -s /testdata src/test/resources
+RUN cp -r . /gatk
 
 # Create a simple unit test runner
 ENV CI true
 RUN echo "cd /gatk/ && ./gradlew test" >/root/run_unit_tests.sh
-RUN cp -r . /gatk
 RUN echo "./gradlew test" >/gatk/run_unit_tests.sh
 
 WORKDIR /gatk
