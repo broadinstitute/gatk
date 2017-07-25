@@ -26,15 +26,17 @@ import java.io.IOException;
  * Output: set of high quality non-host reads.
  *
  * Filtering steps:
- * 1) Remove secondary and supplementary reads
- * 2) Mask repetitive sequences with 'N' and base quality --dustPhred using symmetric DUST
- * 3) Hard clip read ends using base qualities
- * 4) Remove reads shorter than --minClippedReadLength
- * 5) Mask bases whose Phred score is less than --minBaseQuality with 'N'
- * 6) Remove reads whose fraction of bases that are 'N' is greater than --maxAmbiguousBases
- * 7) If specified, Remove reads containing one or more kmers --kmerLibraryPath
- * 8) If specified, remove reads that align to the host BWA image --bwamemIndexImage with at least --minCoverage and --minIdentity
- * 9) If --filterDuplicates is set, remove exact duplicate reads (not using Mark Duplicates because it requires aligned reads)
+ * 1)  Remove secondary and supplementary reads
+ * 2)  Trim adapter sequences
+ * 3)  Mask sequences with excessive A/T or G/C content
+ * 4)  Mask repetitive sequences with 'N' and base quality --dustPhred using symmetric DUST
+ * 5)  Hard clip read ends using base qualities
+ * 6)  Remove reads shorter than --minClippedReadLength
+ * 7)  Mask bases whose Phred score is less than --minBaseQuality with 'N'
+ * 8)  Remove reads whose fraction of bases that are 'N' is greater than --maxAmbiguousBases
+ * 9)  If specified, remove reads containing one or more kmers --kmerLibraryPath
+ * 10) If specified, remove reads that align to the host BWA image --filterBwaImage with at least --minCoverage and --minIdentity
+ * 11) If --filterDuplicates is set, remove exact duplicate reads (not using Mark Duplicates because it requires aligned reads)
  *
  * Notes:
  *
@@ -47,8 +49,9 @@ import java.io.IOException;
  *
  */
 @CommandLineProgramProperties(summary = "First, low-quality and repetitive sequences reads are filtered: \n\t(1) Remove secondary and " +
-        "supplementary reads; \n\t(2) mask repetitive sequences using the sDUST algorithm; \n\t(3) hard clip according to masked " +
-        "and low-quality bases; \n\t(4) remove reads below minimum length; \n\t(5) mask low-quality bases; \n\t(6) filter reads with" +
+        "supplementary reads; \n\t(2) trim adapter sequences; \n\t(3) mask sequences with excessive A/T or G/C content; " +
+        "\n\t(4) mask repetitive sequences using the sDUST algorithm; \n\t(5) hard clip according to masked " +
+        "and low-quality bases; \n\t(6) remove reads below minimum length; \n\t(7) mask low-quality bases; \n\t(8) filter reads with" +
         " too many masked bases. \nHost reads are then filtered using optionally-supplied host k-mer database (created " +
         "with PathSeqBuildKmers) and host BWA index image (created with BwaMemIndexImageCreator). Lastly, exact " +
         "duplicate sequences are removed.",
