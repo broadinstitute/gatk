@@ -87,6 +87,13 @@ public class LoggingUtils {
         javaUtilLevelNamespaceMap.put(Log.LogLevel.DEBUG, java.util.logging.Level.FINEST);
     }
 
+    /**
+     * Set {@link htsjdk.samtools.util.Log} level
+     */
+    private static void setHtsjdkLoggingLevel(final Log.LogLevel verbosity){
+        Log.setGlobalLogLevel(verbosity);
+    }
+
     // Package-private for unit test access
     static Log.LogLevel levelFromLog4jLevel(Level log4jLevel) {
         return loggingLevelNamespaceMap.inverse().get(log4jLevel);
@@ -158,12 +165,12 @@ public class LoggingUtils {
     }
 
     /**
-     * Propagate the verbosity level to Picard, log4j, the java built in logger, and Kryo's MinLog
+     * Propagate the verbosity level to HTSJDK, log4j, the java built in logger, and Kryo's MinLog
      */
     public static void setLoggingLevel(final Log.LogLevel verbosity) {
 
-        // Call the Picard API to establish the logging level used by Picard
-        Log.setGlobalLogLevel(verbosity);
+        // set the HTSJDK logging level, used by Picard
+        setHtsjdkLoggingLevel(verbosity);
 
         // set the Log4JLoggingLevel
         setLog4JLoggingLevel(verbosity);
@@ -176,8 +183,18 @@ public class LoggingUtils {
     }
 
     /**
-     * Set the {@link org.apache.logging.log4j.core.Logger} to log to file
-     *
+     * Set the {@link htsjdk.samtools.util.Log} to log to file.
+     */
+    private static void setHtsjdkLoggingFile(final String path) {
+        try {
+            Log.setGlobalPrintStream(new PrintStream(new FileOutputStream(path, true)));
+        } catch (final FileNotFoundException ex) {
+            System.err.println("Could not send log to " + path +  " for htsjdk.samtools.util.Log : " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Set the {@link org.apache.logging.log4j.core.Logger} to log to file.
      */
     private static void setLog4JLoggingFile(final String path) {
         final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
@@ -191,10 +208,9 @@ public class LoggingUtils {
     }
 
     /**
-     * Set the {@link java.util.logging} to log to file
+     * Set the {@link java.util.logging} to log to file.
      * Taken from
      * https://stackoverflow.com/questions/15758685/how-to-write-logs-in-text-file-when-using-java-util-logging-logger
-     *
      */
     private static void setJavaUtilLoggingFile(final String path) {
         final Logger topLogger = java.util.logging.Logger.getLogger("");
@@ -224,7 +240,10 @@ public class LoggingUtils {
      */
     public static void setLoggingFile(final String path) {
         if (path != null) {
-            // set log4j log output to file
+            // set HTSJDK log to output to file
+            setHtsjdkLoggingFile(path);
+
+            // set log4j log to output to file
             setLog4JLoggingFile(path);
 
             // set the java.util.logging output to file

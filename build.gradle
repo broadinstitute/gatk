@@ -54,7 +54,7 @@ repositories {
     mavenLocal()
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','2.9.1')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.10.1-18-gd0f0ba1-SNAPSHOT')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.6.2-proto-3.0.0-beta-1')
