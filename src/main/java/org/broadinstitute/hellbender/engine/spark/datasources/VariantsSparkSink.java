@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -19,16 +22,20 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.seqdoop.hadoop_bam.KeyIgnoringVCFOutputFormat;
-import org.seqdoop.hadoop_bam.VCFFormat;
-import org.seqdoop.hadoop_bam.VariantContextWritable;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
+import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
+import org.seqdoop.hadoop_bam.*;
 import org.seqdoop.hadoop_bam.util.BGZFCodec;
 import org.seqdoop.hadoop_bam.util.VCFFileMerger;
 import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * VariantsSparkSink writes variants to a VCF file in parallel using Hadoop-BAM. BCF is not supported.
@@ -67,10 +74,64 @@ public final class VariantsSparkSink {
     }
 
     public static class SparkHeaderlessVCFOutputFormat extends SparkVCFOutputFormat {
+        static final String GVCF = "hadoopbam.vcf.gvcf";
+        static final String GQ_PARTITIONS = "hadoopbam.vcf.gvcf.gq-partitions";
+        static final String DEFAULT_PLOIDY = "hadoopbam.vcf.gvcf.default-ploidy";
+
+        public static void writeGvcf(Configuration conf, List<Integer> gqPartitions, int defaultPloidy) {
+            conf.setBoolean(GVCF, true);
+            conf.set(GQ_PARTITIONS, Joiner.on(",").join(gqPartitions));
+            conf.setInt(DEFAULT_PLOIDY, defaultPloidy);
+        }
+
+        public static void unsetGvcf(Configuration conf) {
+            conf.unset(GVCF);
+            conf.unset(GQ_PARTITIONS);
+            conf.unset(DEFAULT_PLOIDY);
+        }
+
+        @Override
+        public RecordWriter<NullWritable, VariantContextWritable> getRecordWriter(TaskAttemptContext ctx, Path out) throws IOException {
+            if (this.header == null)
+                throw new IOException(
+                        "Can't create a RecordWriter without the VCF header");
+
+            final boolean wh = ctx.getConfiguration().getBoolean(
+                    WRITE_HEADER_PROPERTY, true);
+
+            switch (format) {
+                case BCF: return new KeyIgnoringBCFRecordWriter<NullWritable>(out,header,wh,ctx);
+                case VCF: return new GvcfKeyIgnoringVCFRecordWriter<NullWritable>(out,header,wh,ctx);
+                default: throw new IllegalStateException("Unrecognized variant format: " + format);
+            }
+        }
+
         @Override
         public RecordWriter<NullWritable, VariantContextWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
             ctx.getConfiguration().setBoolean(WRITE_HEADER_PROPERTY, false);
             return super.getRecordWriter(ctx);
+        }
+    }
+
+    public static class GvcfKeyIgnoringVCFRecordWriter<K> extends KeyIgnoringVCFRecordWriter<K> {
+
+        public GvcfKeyIgnoringVCFRecordWriter(Path output, VCFHeader header, boolean writeHeader, TaskAttemptContext ctx) throws IOException {
+            super(output, header, writeHeader, ctx);
+        }
+
+        @Override
+        protected VariantContextWriter createVariantContextWriter(Configuration conf,
+                                                                  OutputStream out) {
+            VariantContextWriter writer = super.createVariantContextWriter(conf, out);
+            if (conf.getBoolean(SparkHeaderlessVCFOutputFormat.GVCF, false)) {
+                List<Integer> gqPartitions = StreamSupport.stream(
+                            Splitter.on(",").split(conf.get(SparkHeaderlessVCFOutputFormat.GQ_PARTITIONS)).spliterator(), false)
+                            .map(Integer::parseInt)
+                            .collect(Collectors.toList());
+                int defaultPloidy = conf.getInt(SparkHeaderlessVCFOutputFormat.DEFAULT_PLOIDY, HomoSapiensConstants.DEFAULT_PLOIDY);
+                writer = new GVCFWriter(writer, gqPartitions, defaultPloidy);
+            }
+            return writer;
         }
     }
 
@@ -85,7 +146,13 @@ public final class VariantsSparkSink {
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header) throws IOException {
-        writeVariants(ctx, outputFile, variants, header, 0);
+        writeVariants(ctx, outputFile, variants, header, false, null, 0, 0);
+    }
+
+    public static void writeVariants(
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
+            final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy) throws IOException {
+        writeVariants(ctx, outputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, 0);
     }
 
     /**
@@ -100,14 +167,15 @@ public final class VariantsSparkSink {
      */
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
-            final VCFHeader header, final int numReducers) throws IOException {
+            final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy,
+            final int numReducers) throws IOException {
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
-        writeVariantsSingle(ctx, absoluteOutputFile, variants, header, numReducers);
+        writeVariantsSingle(ctx, absoluteOutputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, numReducers);
     }
 
     private static void writeVariantsSingle(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
-            final VCFHeader header, final int numReducers) throws IOException {
+            final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy, final int numReducers) throws IOException {
 
         final Configuration conf = ctx.hadoopConfiguration();
         if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION)) {
@@ -115,6 +183,11 @@ public final class VariantsSparkSink {
             conf.setClass(FileOutputFormat.COMPRESS_CODEC, BGZFCodec.class, CompressionCodec.class);
         } else {
             conf.setBoolean(FileOutputFormat.COMPRESS, false);
+        }
+        if (writeGvcf) {
+            SparkHeaderlessVCFOutputFormat.writeGvcf(conf, gqPartitions, defaultPloidy);
+        } else {
+            SparkHeaderlessVCFOutputFormat.unsetGvcf(conf);
         }
 
         final JavaRDD<VariantContext> sortedVariants = sortVariants(variants, header, numReducers);
