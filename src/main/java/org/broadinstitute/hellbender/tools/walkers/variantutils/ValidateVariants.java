@@ -88,8 +88,8 @@ import java.util.*;
 public final class ValidateVariants extends VariantWalker {
     static final Logger logger = LogManager.getLogger(ValidateVariants.class);
 
-    public static final String validateGVCF = "validateGVCF";
-    public static final String doNotValidateFilteredRecords = "doNotValidateFilteredRecords";
+    public static final String GVCF_VALIDATE = "validateGVCF";
+    public static final String DO_NOT_VALIDATE_FILTERED_RECORDS = "doNotValidateFilteredRecords";
 
     public enum ValidationType {
 
@@ -146,7 +146,7 @@ public final class ValidateVariants extends VariantWalker {
     /**
      * By default, even filtered records are validated.
      */
-    @Argument(fullName = doNotValidateFilteredRecords, shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true, mutex = validateGVCF)
+    @Argument(fullName = DO_NOT_VALIDATE_FILTERED_RECORDS, shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true, mutex = GVCF_VALIDATE)
     Boolean DO_NOT_VALIDATE_FILTERED = false;
 
     @Argument(fullName = "warnOnErrors", shortName = "warnOnErrors", doc = "just emit warnings on errors instead of terminating the run at the first instance", optional = true)
@@ -158,7 +158,7 @@ public final class ValidateVariants extends VariantWalker {
      *  If you specifed intervals (using -L or -XL) to restrict analysis to a subset of genomic regions,
      *  those intervals will need to be covered in a valid gvcf.
      */
-    @Argument(fullName = validateGVCF, shortName = "gvcf", doc = "Validate this file as a GVCF", optional = true, mutex = doNotValidateFilteredRecords)
+    @Argument(fullName = GVCF_VALIDATE, shortName = "gvcf", doc = "Validate this file as a GVCF", optional = true, mutex = DO_NOT_VALIDATE_FILTERED_RECORDS)
     Boolean VALIDATE_GVCF = false;
 
     /**
@@ -174,7 +174,7 @@ public final class ValidateVariants extends VariantWalker {
             SAMSequenceDictionary dict = getBestAvailableSequenceDictionary();
 
             if (dict == null)
-                throw new UserException("Could not find valid sequence dictionary for this command.");
+                throw new UserException("Validating a GVCF requires a sequence dictionary but no dictionary was able to be constructed from your input.");
 
             genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(dict));
         }
@@ -203,11 +203,7 @@ public final class ValidateVariants extends VariantWalker {
             try{
                 applyValidationType(vc, reportedRefAllele, observedRefAllele, rsIDs, t);
             } catch (TribbleException e) {
-                if (WARN_ON_ERROR) {
-                    logger.warn("***** " + e.getMessage() + " *****");
-                } else {
-                    throw new UserException.FailsStrictValidation(drivingVariantFile, t, e.getMessage());
-                }
+                throwOrWarn(new UserException.FailsStrictValidation(drivingVariantFile, t, e.getMessage()));
             }
         }
     }
