@@ -20,6 +20,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSp
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import scala.Tuple2;
@@ -127,18 +129,18 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     }
 
     private JavaRDD<StructuralVariantContext> processVariants(final JavaRDD<StructuralVariantContext> variants, final JavaSparkContext ctx) {
-        final JavaPairRDD<StructuralVariantContext, List<Integer>> variantAndAssemblyIds = variants.mapToPair(v -> new Tuple2<>(v, v.assemblyIDs()));
+        final JavaPairRDD<StructuralVariantContext, List<String>> variantAndAssemblyIds = variants.mapToPair(v -> new Tuple2<>(v, v.assemblyIDs()));
         final String fastqDir = this.fastqDir;
 
         final JavaPairRDD<StructuralVariantContext, List<String>> variantAndAssemblyFiles = variantAndAssemblyIds
-                .mapValues(v -> v.stream().map(id -> String.format("%s/%s.fastq", fastqDir, AlignedAssemblyOrExcuse.formatAssemblyID(id))).collect(Collectors.toList()));
+                .mapValues(v -> v.stream().map(id -> String.format("%s/%s.fastq", fastqDir, id)).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, List<SVFastqUtils.FastqRead>> variantReads = variantAndAssemblyFiles
                 .mapValues(v -> v.stream().flatMap(file -> SVFastqUtils.readFastqFile(file).stream()).collect(Collectors.toList()));
         final JavaPairRDD<StructuralVariantContext, Map<String, List<SVFastqUtils.FastqRead>>> variantReadsByName = variantReads
                 .mapValues(v -> v.stream().collect(Collectors.groupingBy(SVFastqUtils.FastqRead::getName)));
         final JavaPairRDD<StructuralVariantContext, List<Template>> variantTemplates = variantReadsByName.mapValues(map ->
             map.entrySet().stream().map(entry ->
-                Template.create(entry.getKey(), entry.getValue().stream().collect(Collectors.groupingBy(r -> (Integer) r.getFragmentNumber())).values().stream().map(v -> v.iterator().next()).collect(Collectors.toList()), read -> new Template.Fragment(read.getName(), read.getFragmentNumber(), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
+                Template.create(entry.getKey(), entry.getValue(), read -> new Template.Fragment(read.getName(), read.getFragmentNumber().orElse(0), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
             ).collect(Collectors.toList()));
         final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator(ctx, dist);
         final int padding = this.padding;
