@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,7 +17,9 @@ import org.broadinstitute.hellbender.utils.tsv.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -245,9 +246,15 @@ public class OrientationBiasUtils {
 
     private static Stream<Genotype> getNumArtifactGenotypeStream(String sampleName, List<VariantContext> variantContexts, Transition transition, Transition complement) {
         return getGenotypeStream(sampleName, variantContexts)
-                .filter(g -> OrientationBiasUtils.isGenotypeInTransition(g, complement) || OrientationBiasUtils.isGenotypeInTransition(g, transition));
+                .filter(g -> OrientationBiasUtils.isGenotypeInTransitionWithComplement(g, transition));
     }
 
+    private static Stream<Genotype> getNumArtifactGenotypeStreamKeepingOBFilteredVCs(String sampleName, List<VariantContext> variantContexts, Transition transition, Transition complement) {
+        return variantContexts.stream()
+                .filter(vc -> (!vc.isFiltered()) || ((vc.getFilters().size() == 1) && (vc.getFilters().stream().allMatch(f -> f.equals(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)))) )
+                .map(vc -> vc.getGenotype(sampleName))
+                .filter(g -> OrientationBiasUtils.isGenotypeInTransition(g, complement) || OrientationBiasUtils.isGenotypeInTransition(g, transition));
+    }
     private static Stream<Genotype> getGenotypeStream(String sampleName, List<VariantContext> variantContexts) {
         return variantContexts.stream()
                 .filter(vc -> !vc.isFiltered())
@@ -258,7 +265,7 @@ public class OrientationBiasUtils {
     @VisibleForTesting
     static long calculateNumTransitionGenotypeFilteredByOrientationBias(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
         final Transition complement = transition.complement();
-        return getNumArtifactGenotypeStream(sampleName, variantContexts, transition, complement)
+        return getNumArtifactGenotypeStreamKeepingOBFilteredVCs(sampleName, variantContexts, transition, complement)
                 .filter(g -> (g != null) && (g.getFilters() != null)
                         && g.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT))
                 .count();

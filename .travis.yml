@@ -8,9 +8,7 @@ jdk:
 - openjdk8
 env:
   matrix:
-  - TEST_TYPE=cloud
-  - TEST_TYPE=integration TEST_VERBOSITY=minimal UPLOAD=true
-  - TEST_TYPE=unit TEST_VERBOSITY=minimal
+  - TEST_TYPE=cloud UPLOAD=true
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - RUN_CNV_SOMATIC_WDL=true
@@ -55,6 +53,7 @@ cache:
 before_install:
 #setup google cloud and github authentication
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
+    export BOTO_CONFIG=/dev/null;
     openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
     scripts/install_gcloud.sh;
     printf 'y\n' | $GCLOUD/gcloud components update app;
@@ -132,7 +131,9 @@ script:
     fi;
     sudo docker images;
     echo ${TEST_TYPE};
-    sudo docker run -v $(pwd)/src/test/resources:/testdata --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash /root/run_unit_tests.sh;
+    sudo mkdir -p build/reports/;
+    sudo chmod -R a+w build/reports/;
+    sudo docker run -v $(pwd)/src/test/resources:/testdata -v $(pwd)/build/reports/:/gatk/build/reports/ --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash /root/run_unit_tests.sh;
   else
     ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;

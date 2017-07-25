@@ -45,6 +45,7 @@ workflow Mutect2 {
   Boolean is_run_orientation_bias_filter
   Boolean is_run_oncotator
   String m2_docker
+  String basic_bash_docker = "ubuntu:16.04"
   String oncotator_docker
   File? gatk4_jar_override
   Int preemptible_attempts
@@ -64,7 +65,7 @@ workflow Mutect2 {
       normal_bam = normal_bam,
       normal_sample_name = normal_sample_name,
       preemptible_attempts = preemptible_attempts,
-      m2_docker=m2_docker
+      docker = basic_bash_docker
   }
 
 
@@ -156,7 +157,8 @@ workflow Mutect2 {
         call oncotate_m2 {
             input:
                 m2_vcf = Filter.filtered_vcf,
-                entity_id = tumor_sample_name,
+                case_id = tumor_sample_name,
+                control_id = normal_sample_name,
                 preemptible_attempts = preemptible_attempts,
                 oncotator_docker = oncotator_docker,
                 onco_ds_tar_gz = onco_ds_tar_gz,
@@ -247,7 +249,7 @@ task ProcessOptionalArguments {
   String? normal_bam
   String? normal_sample_name
   Int preemptible_attempts
-  String m2_docker
+  String docker
 
   command {
       if [[ "_${normal_bam}" == *.bam ]]; then
@@ -258,8 +260,8 @@ task ProcessOptionalArguments {
   }
 
   runtime {
-    docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
-    memory: "2 GB"
+    docker: "${docker}"
+    memory: "1 GB"
     disks: "local-disk " + 10 + " HDD"
     preemptible: "${preemptible_attempts}"
   }
@@ -435,7 +437,8 @@ task SplitIntervals {
 
 task oncotate_m2 {
     File m2_vcf
-    String entity_id
+    String case_id
+    String? control_id
     Int preemptible_attempts
     String oncotator_docker
     File? onco_ds_tar_gz
@@ -469,9 +472,11 @@ task oncotate_m2 {
           fi
 
         ${default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
-            -v ${m2_vcf} ${entity_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
+            -v ${m2_vcf} ${case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
             -a Center:${default="Unknown" sequencing_center} \
             -a source:${default="Unknown" sequence_source} \
+            -a normal_barcode:${default=" " control_id} \
+            -a tumor_barcode:${case_id} \
             ${"--default_config " + default_config_file}
     >>>
 
@@ -484,6 +489,6 @@ task oncotate_m2 {
     }
 
     output {
-        File oncotated_m2_maf="${entity_id}.maf.annotated"
+        File oncotated_m2_maf="${case_id}.maf.annotated"
     }
 }

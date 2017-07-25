@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.Or
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
-import org.glassfish.jersey.Beta;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -32,7 +31,7 @@ import java.util.stream.Collectors;
  * Additionally filter Mutect2 somatic variant calls for sequence-context dependent artifacts.
  *
  * <p>
- *     This tool is complementary to {@link FilterMutectCalls}.
+ *     This tool is complementary to {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
  *     The tool requires the pre-adapter detailed metrics calculated by Picard CollectSequencingArtifactMetrics.
  *     Specify the base substitution to consider for orientation bias. For a given base substitution specified with
  *     the --artifactModes argument, the tool considers both the forward and reverse complement for filtering.
@@ -69,17 +68,18 @@ import java.util.stream.Collectors;
         summary = "Filter Mutect2 somatic variant calls using the Orientation Bias Filter.\n" +
                 "Used for the OxoG (G/T) and Deamination (FFPE) (C/T) artifacts that get introduced into our SNV calling.\n" +
                 "\n" +
-                "Notes:  All variants are held in RAM.\n This tool will only catch artifacts in diploid organisms.  Others will cause an error.\n" +
-                " Triallelic sites may not be considered for filtering -- the behavior of this tool is undefined for triallelic sites.\n" +
-                " If you do not wish to filter, you must skip the filter entirely.  You cannot do a dummy/non-filter operation with this tool.\n" +
-                " Sites-only VCF files are NOT supported.  At least one sample must be present in the VCF file for any filtering to be done.  If no samples are present in the VCF file, no filtering annotation is actually performed.\n" +
-                " This tool was tested only with output for GATK4 Mutect and makes assumptions about the existence of fields produced by GATK4 Mutect.\n" +
-                " ALT_F1R2 and ALT_F2R1 tags must be present in all SNP variants.\n" +
-                " Do NOT specify artifact modes that are reverse complements of each other.  Behavior of this tool is undefined when that happens.  For example, do not specify C/A and G/T in the same run.\n" +
-                " Any variants that are filtered in the input file are not considered for filtering here, nor are these variants used in deciding cutoff.\n" +
-                " The Orientation Bias puts a filter tag in both the genotype (FORMAT) and variant (FILTER) fields.\n" +
-                " In multiallelic sites, only the first alternate allele is used for filtering.\n" +
-                " Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
+                "Notes:  All variants are held in RAM.\n This tool will only catch artifacts in diploid organisms.\n" +
+                " - Triallelic sites may not be considered for filtering -- the behavior of this tool is undefined for triallelic sites.\n" +
+                " - If you do not wish to filter, you must skip the filter entirely.  You cannot do a dummy/non-filter operation with this tool.\n" +
+                " - Sites-only VCF files are NOT supported.  At least one sample must be present in the VCF file for any filtering to be done.  If no samples are present in the VCF file, no filtering annotation is actually performed.\n" +
+                " - This tool was tested only with output for GATK4 Mutect and makes assumptions about the existence of fields produced by GATK4 Mutect.\n" +
+                " - ALT_F1R2 and ALT_F2R1 tags must be present in all SNP variants.\n" +
+                " - Do NOT specify artifact modes that are reverse complements of each other.  Behavior of this tool is undefined when that happens.  For example, do not specify C/A and G/T in the same run.\n" +
+                " - Any variants that are filtered in the input file are not considered for filtering here, nor are these variants used in deciding cutoff.\n" +
+                " - The Orientation Bias puts a filter tag in both the genotype (FORMAT) and variant (FILTER) fields.\n" +
+                " - In multiallelic sites, only the first alternate allele is used for filtering.\n" +
+                " - This filter should be applied last in any M2 toolchain.\n" +
+                " - Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
         oneLineSummary = "(Experimental) Filter Mutect2 somatic variant calls using orientation bias",
         programGroup = VariantProgramGroup.class
 )
