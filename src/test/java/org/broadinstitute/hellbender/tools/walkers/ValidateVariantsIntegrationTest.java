@@ -249,7 +249,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     public void testBadGvcfMissingNON_REF() throws IOException  {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(false, "NA12891.AS.chr20snippet.BAD_MISSING_NON_REF.g.vcf", true, ALLELES, "20:10433000-10437000", b37_reference_20_21) + " -gvcf ",
-                0, TribbleException.InternalCodecException.class);
+                0, UserException.class);
         spec.executeTest("tests capture of missing NON_REF allele", this);
     }
 
@@ -273,7 +273,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testNonOverlappingRegionsBP_RESOLUTION() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(false, "gvcf.basepairResolution.vcf", true, ALLELES, "20:10000000-10010000", b37_reference_20_21) + " -gvcf ",
+                baseTestString(false, "gvcf.basepairResolution.vcf", true, ALLELES, "20:10000000-10002158", b37_reference_20_21) + " -gvcf ",
                 Collections.emptyList());
         spec.executeTest("tests capture of non-complete region, on BP_RESOLUTION gvcf", this);
     }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -87,6 +88,9 @@ import java.util.*;
 public final class ValidateVariants extends VariantWalker {
     static final Logger logger = LogManager.getLogger(ValidateVariants.class);
 
+    public static final String validateGVCF = "validateGVCF";
+    public static final String doNotValidateFilteredRecords = "doNotValidateFilteredRecords";
+
     public enum ValidationType {
 
         /**
@@ -142,7 +146,7 @@ public final class ValidateVariants extends VariantWalker {
     /**
      * By default, even filtered records are validated.
      */
-    @Argument(fullName = "doNotValidateFilteredRecords", shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true, mutex = "validateGVCF")
+    @Argument(fullName = doNotValidateFilteredRecords, shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true, mutex = validateGVCF)
     Boolean DO_NOT_VALIDATE_FILTERED = false;
 
     @Argument(fullName = "warnOnErrors", shortName = "warnOnErrors", doc = "just emit warnings on errors instead of terminating the run at the first instance", optional = true)
@@ -154,7 +158,7 @@ public final class ValidateVariants extends VariantWalker {
      *  If you specifed intervals (using -L or -XL) to restrict analysis to a subset of genomic regions,
      *  those intervals will need to be covered in a valid gvcf.
      */
-    @Argument(fullName = "validateGVCF", shortName = "gvcf", doc = "Validate this file as a GVCF", optional = true, mutex = "doNotValidateFilteredRecords")
+    @Argument(fullName = validateGVCF, shortName = "gvcf", doc = "Validate this file as a GVCF", optional = true, mutex = doNotValidateFilteredRecords)
     Boolean VALIDATE_GVCF = false;
 
     /**
@@ -164,9 +168,16 @@ public final class ValidateVariants extends VariantWalker {
 
     private GenomeLocSortedSet genomeLocSortedSet;
 
+    @Override
     public void onTraversalStart() {
-        if (VALIDATE_GVCF)
-            genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(getBestAvailableSequenceDictionary()));
+        if (VALIDATE_GVCF) {
+            SAMSequenceDictionary dict = getBestAvailableSequenceDictionary();
+
+            if (dict == null)
+                throw new UserException("Could not find valid sequence dictionary for this command.");
+
+            genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(dict));
+        }
         validationTypes = calculateValidationTypesToApply(excludeTypes);
     }
 
@@ -185,14 +196,14 @@ public final class ValidateVariants extends VariantWalker {
 
         if (VALIDATE_GVCF) {
             genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), ref.getInterval().getStart(), vc.getEnd()), true);
-            ValidateGVCFVariant(vc);
+            validateGVCFVariant(vc);
         }
 
         for (final ValidationType t : validationTypes) {
             try{
                 applyValidationType(vc, reportedRefAllele, observedRefAllele, rsIDs, t);
             } catch (TribbleException e) {
-                if ( WARN_ON_ERROR ) {
+                if (WARN_ON_ERROR) {
                     logger.warn("***** " + e.getMessage() + " *****");
                 } else {
                     throw new UserException.FailsStrictValidation(drivingVariantFile, t, e.getMessage());
@@ -211,11 +222,7 @@ public final class ValidateVariants extends VariantWalker {
                 final UserException e = new UserException("A GVCF must cover the entire region. Found " + uncoveredIntervals.coveredSize() +
                         " loci with no VariantContext covering it. The first uncovered segment is:" +
                         uncoveredIntervals.iterator().next());
-                if (WARN_ON_ERROR) {
-                    logger.warn("***** " + e.getMessage() + " *****");
-                } else {
-                    throw e;
-                }
+                throwOrWarn(e);
             }
         }
         return null;
@@ -269,10 +276,11 @@ public final class ValidateVariants extends VariantWalker {
         }
     }
 
-    private void ValidateGVCFVariant(final VariantContext vc) {
+    private void validateGVCFVariant(final VariantContext vc) {
         if (!vc.hasAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
-            throw new TribbleException.InternalCodecException(String.format("In a GVCF all records must contain a %s allele. Offending record: %s",
+            final UserException e = new UserException(String.format("In a GVCF all records must contain a %s allele. Offending record: %s",
                     GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, vc.toStringWithoutGenotypes()));
+            throwOrWarn(e);
         }
     }
 
@@ -299,6 +307,14 @@ public final class ValidateVariants extends VariantWalker {
             case CHR_COUNTS:
                 vc.validateChromosomeCounts();
                 break;
+        }
+    }
+
+    private void throwOrWarn(UserException e) {
+        if (WARN_ON_ERROR) {
+            logger.warn("***** " + e.getMessage() + " *****");
+        } else {
+            throw e;
         }
     }
 }
