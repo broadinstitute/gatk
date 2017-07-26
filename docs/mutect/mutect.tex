@@ -302,4 +302,26 @@ which gives the following bound for the standard deviation:
 This standard deviation is quite small.  For example, in an exome with 1000 hom alt sites (as is typical) and an average depth of 30 reads, a true contamination of 0.05 is estimated with an error of 0.0013.
 
 It remains to describe how we determine which sites are hom alt.  Our simple heuristic is to consider only sites with sufficient depth and fraction of alt reads, say 80 percent.  (If this measure fails to find enough hom alt sites, we can conclude that contamination is greater than 20 percent, which is so large as to make the sample worthless for somatic variant calling).  We must additionally reject apparent hom alt sites that are actually het sites with deletion of the ref allele.  We do this by looking for copy number variation and loss of heterozygosity in the vicinity of this site.  To find sites with anomalous copy number, we compute the average depth smoothed over a scale of one megabase and compare it to the average depth of the sample as a whole and reject sites that show evidence of a deletion.  To find loss of heterozygosity, we obtain ref and alt read counts of common SNPs within a megabase and compare the number of hets found to that expected based on the known allele frequencies.  If too few hets are found, we reject the site.  These two heuristics suffice to screen out false hom alts.
+
+\section{Proposed tumor in normal estimation tool}
+Similar to the spirit of CalculateContamination, the fraction of tumor reads in the normal bam is a single number with a large amount of evidence and is probably well-estimated by simple descriptive statistics rather than a full-fledged probabilistic model.  It shouldn't be much more complicated than finding somatic variants and comparing their signal in the normal sample to that in the tumor.
+
+We propose the following steps to obtain our input of confident somatic SNVs:
+\begin{itemize}
+\item Run Mutect in tumor-only mode to obtain a preliminary list of somatic SNVs.  For the sake of speed, we could implement a pileup-based mode in which we skip reassembly and equate read likelihoods with base qualities.  This would allow us to obtain variant annotations using the existing architecture of Mutect and therefore to filter calls with no new code.  It would probably make sense at this stage to filter more stringently than usual based on population allele frequencies in gnomAD.
+\item Run FilterMutectCalls.  With default settings this eliminates the great majority of sequencing artifacts.  To eliminate even more we could increase the log odds threshold slightly, essentially requiring a slightly larger alt allele count.  Normally we don't do this because it sacrifices some sensitivity, but for our purposes here a 10 or 20 percent loss of sensitivity is perfectly acceptable as long as we are left with enough SNVs for our estimate.
+\item Remove all SNVs that have enough read counts in the normal that we conclude they are germline variants, as opposed to tumor in normal contamination.  We could also accomplish this by using tumor-normal mode in the first step, but we would need to modify our active region determination which currently would mark a region as inactive based only on a small number of tumor-in-normal alt reads.  We would also have to turn off the normal artifact filter.
+\end{itemize}
+
+The above steps are all very reliable, so at this point we can assume we have a collection of confident biallelic somatic SNVs that are hom ref in the germline.  Similar to CalculateContamination, we can now estimate the number of alt reads in the normal at these sites:
+\begin{align}
+{\rm alt~in~normal} \approx \sum_{\rm sites} ({\rm depth~in~normal}) \times ({\rm alt~fraction~in~tumor}) \times ({\rm tumor~in~normal~fraction})
+\end{align}
+Hence we estimate
+\begin{align}
+{\rm tumor~in~normal~fraction} \approx 
+\frac{\rm total~number~of~alt~reads~in~normal~at~somatic~SNV~sites}
+{\sum_{\rm somatic~SNV~sites} ({\rm depth~in~normal}) \times ({\rm alt~fraction~in~tumor})}
+\end{align}
+
 \end{document}
