@@ -6,12 +6,14 @@ import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/genome");
@@ -80,6 +82,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         };
         runCommandLine(arguments);
         Assert.assertTrue(outputFile.exists());
+        Assert.assertFalse(new File(outputFile + SparkGenomeReadCounts.HDF5_WRITE_EXT).exists());
         Assert.assertTrue(outputFile.length() > 0);
 
         // Proportional Coverage
@@ -195,5 +198,40 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
             Assert.assertEquals(targets.get(i).getStart(), i*100 + 1);
             Assert.assertEquals(targets.get(i).getEnd(), (i+1)*100);
         }
+    }
+
+    @Test
+    public void testSparkGenomeReadCountsHdf5Writing() throws IOException {
+        final File outputFile = createTempFile(BAM_FILE.getName(),".cov");
+        final String[] arguments = {
+                "--disableSequenceDictionaryValidation",
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.OUTPUT_FILE_SHORT_NAME, outputFile.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.BINSIZE_SHORT_NAME, "10000",
+                "-" + SparkGenomeReadCounts.HDF5_WRITE_SHORT_NAME, "True"
+        };
+        runCommandLine(arguments);
+        Assert.assertTrue(outputFile.exists());
+        final File hdf5File = new File(outputFile + SparkGenomeReadCounts.HDF5_WRITE_EXT);
+        Assert.assertTrue(hdf5File.exists());
+        Assert.assertTrue(hdf5File.length() > 0);
+        final File tsvFile = new File(outputFile + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION);
+        Assert.assertTrue(tsvFile.exists());
+
+        final ReadCountCollection rccHdf5 = ReadCountCollectionUtils.parseHdf5AsDouble(hdf5File);
+        final ReadCountCollection rccTsv = ReadCountCollectionUtils.parse(tsvFile);
+
+        Assert.assertEquals(rccHdf5.counts(), rccTsv.counts());
+        Assert.assertEquals(rccHdf5.columnNames(), rccTsv.columnNames());
+        Assert.assertEquals(rccHdf5.targets(), rccTsv.targets());
+
+        // For some reason the interval of the target is not considered in Target.equals
+        Assert.assertTrue(IntStream.range(0, rccHdf5.targets().size())
+                .allMatch(i -> rccHdf5.targets().get(i).getInterval().equals(rccTsv.targets().get(i).getInterval()))
+        );
+
+        // Make sure we are putting raw counts in the HDF5, not proportional counts
+        Assert.assertEquals(MathUtils.sum(rccHdf5.getColumn(0)), 4.0);
     }
 }

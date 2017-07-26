@@ -12,8 +12,10 @@ import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
+import org.broadinstitute.hellbender.tools.pon.coverage.coveragehdf5.HDF5Coverage;
 import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -411,13 +413,55 @@ public final class ReadCountCollectionUtils {
 
             for (final Locatable locatable : byKeySorted.keySet()) {
                 final SimpleInterval interval = new SimpleInterval(locatable);
-                final double coverage = byKeySorted.get(locatable).doubleValue();
+                final double coverage = byKeySorted.get(interval).doubleValue();
                 writer.writeRecord(new ReadCountRecord.SingleSampleRecord(new Target(interval), coverage));
             }
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outName, e);
         }
 
+    }
+
+    /**
+     *  Write a simple target to number mapping as a HDF5 file.
+     *
+     *  When this file is read, all numbers will have been converted to double.  See {@link ReadCountCollectionUtils::parseHdf5AsDouble}
+     *
+     * @param outFile output file.  Cannot already exist.  Not {@code null}
+     * @param sampleName Name for the values per interval.  Not {@code null}
+     * @param byKeySorted Mapping of interval to number.  Not {@code null}
+     * @param <N> Class that extends Number.  Stored as a double.
+     */
+    public static <N extends Number> void writeReadCountsFromSimpleIntervalToHdf5(final File outFile, final String sampleName,
+                                                                                  final SortedMap<SimpleInterval, N> byKeySorted) {
+        Utils.nonNull(outFile, "Output file cannot be null.");
+        Utils.nonNull(sampleName, "Sample name cannot be null.");
+        Utils.nonNull(byKeySorted, "Targets cannot be null.");
+        if (outFile.exists()) {throw new UserException("Cannot overwrite HDF5 file that already exists.");}
+
+        final List<Target> newTargets = new ArrayList<>(byKeySorted.size());
+        final double[][] newTargetValues = new double[byKeySorted.size()][1];
+        final Iterator<Map.Entry<SimpleInterval, N>> iterator = byKeySorted.entrySet().iterator();
+        for (int i = 0; i < byKeySorted.entrySet().size(); i++) {
+            Map.Entry<SimpleInterval, N> entry = iterator.next();
+            newTargets.add(new Target(entry.getKey()));
+            newTargetValues[i][0] = entry.getValue().doubleValue();
+        }
+        HDF5Coverage.create(outFile, newTargets, newTargetValues, Collections.singletonList(sampleName));
+    }
+
+    /**
+     *
+     * @param hdf5File hdf5 file written by {@link ReadCountCollectionUtils::writeReadCountsFromSimpleIntervalToHdf5}
+     * @return ReadCountCollection with data stored as doubles.
+     * @throws IOException when HDF5 file cannot be read properly.
+     */
+    public static ReadCountCollection parseHdf5AsDouble(final File hdf5File) throws IOException {
+        try (final HDF5File hdf5ReadCountCollectionReader = new HDF5File(hdf5File, HDF5File.OpenMode.READ_ONLY)) {
+            final HDF5Coverage hdf5Coverage = new HDF5Coverage(hdf5ReadCountCollectionReader);
+            final double[][] targetValues = hdf5Coverage.getTargetValues();
+            return new ReadCountCollection(hdf5Coverage.getRawTargets(), hdf5Coverage.getSampleNames(), new Array2DRowRealMatrix(targetValues));
+        }
     }
 
     /**

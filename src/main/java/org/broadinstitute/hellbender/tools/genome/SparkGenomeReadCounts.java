@@ -86,6 +86,16 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
             optional = true)
     protected int binsize = 10000;
 
+    protected static final String HDF5_WRITE_SHORT_NAME = "rawhdf5";
+    protected static final String HDF5_WRITE_LONG_NAME = "writeRawHdf5";
+    protected static final String HDF5_WRITE_EXT = ".raw_cov.hdf5";
+
+    @Argument(doc = "Whether we should write an additional raw coverage file in HDF5 with extension " + HDF5_WRITE_EXT,
+            fullName = HDF5_WRITE_LONG_NAME,
+            shortName = HDF5_WRITE_SHORT_NAME,
+            optional = true)
+    protected boolean isWritingRawHdf5 = false;
+
     protected static final String OUTPUT_FILE_SHORT_NAME = "o";
     protected static final String OUTPUT_FILE_LONG_NAME = "outputFile";
 
@@ -222,6 +232,16 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         final long writingPCovFileEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished writing proportional coverage file. Elapse of %d seconds",
                 (writingPCovFileEndTime - writingPCovFileStartTime) / 1000));
+
+        if (isWritingRawHdf5) {
+            logger.info("Writing raw coverage file in HDF5...");
+            final long writingrawHdf5CovFileStartTime = System.currentTimeMillis();
+            ReadCountCollectionUtils.writeReadCountsFromSimpleIntervalToHdf5(new File(outputFile.getAbsolutePath() + HDF5_WRITE_EXT), sampleName,
+                    byKeySorted);
+            final long writingrawHdf5CovFileEndTime = System.currentTimeMillis();
+            logger.info(String.format("Finished writing raw coverage file (HDF5). Elapse of %d seconds",
+                    (writingrawHdf5CovFileEndTime - writingrawHdf5CovFileStartTime) / 1000));
+        }
     }
 
     private List<SimpleInterval> createFullGenomeBins(final int binsize){

@@ -51,6 +51,10 @@ public class Target implements Locatable, Feature, Serializable {
         this(createDummyTargetName(interval), interval, annotations);
     }
 
+    public Target(final String name, final Locatable locatable) {
+        this(name, new SimpleInterval(locatable));
+    }
+
     /**
      * Creates a string for a locatable that can be used when creating dummy target names
      * @param locatable The genome region to create a unique dummy target name. Never {@code null}
