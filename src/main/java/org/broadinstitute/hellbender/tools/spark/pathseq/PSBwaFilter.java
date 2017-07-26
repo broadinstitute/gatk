@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ public class PSBwaFilter {
 
     public PSBwaFilter(final String indexFileName, final int minCov, final int minIdent,
                        final int minSeedLength, final int numThreads, final boolean bPaired) {
-        this.bwaIndex = BwaMemIndexSingleton.getInstance(indexFileName);
+        this.bwaIndex = BwaMemIndexCache.getInstance(indexFileName);
         this.minCov = minCov;
         this.minIdent = minIdent;
         this.minSeedLength = minSeedLength;

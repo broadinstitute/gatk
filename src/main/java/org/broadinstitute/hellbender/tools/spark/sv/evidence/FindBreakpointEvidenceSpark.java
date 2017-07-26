@@ -24,7 +24,7 @@ import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -316,7 +316,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 .collect();
 
         broadcastQNamesMultiMap.destroy();
-        BwaMemIndexSingleton.closeAllDistributedInstances(ctx);
+        BwaMemIndexCache.closeAllDistributedInstances(ctx);
 
         return intervalDispositions;
     }
@@ -375,7 +375,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                     assembly.getContigs().stream()
                             .map(FermiLiteAssembly.Contig::getSequence)
                             .collect(SVUtils.arrayListCollector(assembly.getNContigs()));
-            try ( final BwaMemAligner aligner = new BwaMemAligner(BwaMemIndexSingleton.getInstance(alignerIndexFile)) ) {
+            try ( final BwaMemAligner aligner = new BwaMemAligner(BwaMemIndexCache.getInstance(alignerIndexFile)) ) {
                 aligner.setIntraCtgOptions();
                 final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(tigSeqs);
                 return new AlignedAssemblyOrExcuse(intervalAndReads._1(), assembly, alignments);

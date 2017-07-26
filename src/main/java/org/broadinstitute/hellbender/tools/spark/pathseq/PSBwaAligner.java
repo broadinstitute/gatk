@@ -24,7 +24,7 @@ public final class PSBwaAligner {
     private final boolean pairedAlignment;
 
     public PSBwaAligner(final PSBwaArgumentCollection bwaArgs, final boolean pairedAlignment) {
-        this.bwaIndex = BwaMemIndexSingleton.getInstance(bwaArgs.bwaImage);
+        this.bwaIndex = BwaMemIndexCache.getInstance(bwaArgs.bwaImage);
         this.bwaArgs = bwaArgs;
         this.pairedAlignment = pairedAlignment;
     }

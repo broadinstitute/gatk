@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedAssembly;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import scala.Tuple2;
 
 import java.util.ArrayList;
@@ -41,7 +41,7 @@ public class ContigAligner {
 
         final List<AlignedContig> alignedContigs = new ArrayList<>(contigsCollection.getContents().size());
 
-        final BwaMemIndex index = BwaMemIndexSingleton.getInstance(indexImageFile);
+        final BwaMemIndex index = BwaMemIndexCache.getInstance(indexImageFile);
 
         try ( final BwaMemAligner aligner = new BwaMemAligner(index) ) {
 
