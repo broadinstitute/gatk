@@ -796,6 +796,17 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         return findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v), e -> getEdgeTarget(e));
     }
 
+    /**
+     * Finds a path starting from a given vertex and satisfying various predicates
+     *
+     * @param vertex   the original vertex
+     * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param done test for whether a vertex is at the end of the path
+     * @param returnPath test for whether to return a found path based on its terminal vertex
+     * @param nextEdge function on vertices returning the next edge in the path
+     * @param nextNode function of edges returning the next vertex in the path
+     * @return a path, if one satisfying all predicates is found, {@code null} otherwise
+     */
     private  List<MultiDeBruijnVertex> findPath(final MultiDeBruijnVertex vertex, final int pruneFactor,
                                             final Predicate<MultiDeBruijnVertex> done,
                                             final Predicate<MultiDeBruijnVertex> returnPath,
@@ -1136,8 +1147,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
     }
 
     /**
-     * Add the given read to the sequence graph.  Ultimately the read will get sent through addSequence(), but first
-     * this method ensures we only use high quality bases and accounts for reduced reads, etc.
+     * Add a read to the sequence graph.  Finds maximal consecutive runs of bases with sufficient quality
+     * and applies {@see addSequence} to these subreads if they are longer than the kmer size.
      *
      * @param read a non-null read
      */
