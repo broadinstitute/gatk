@@ -57,7 +57,7 @@ repositories {
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.11.0-4-g958dc6e-SNAPSHOT')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
-final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.0')
+final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.6.4-proto-3.0.0-beta-1')
 final testNGVersion = '6.11'
 
