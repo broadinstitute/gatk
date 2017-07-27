@@ -394,7 +394,7 @@ task Filter {
   output {
     File filtered_vcf = "${output_vcf_name}-filtered.vcf"
     File filtered_vcf_index = "${output_vcf_name}-filtered.vcf.idx"
-    File contamination_table = contamination.table
+    File contamination_table = "contamination.table"
   }
 }
 
