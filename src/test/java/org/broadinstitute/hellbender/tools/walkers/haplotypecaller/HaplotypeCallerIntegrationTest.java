@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.SamFiles;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -7,8 +8,10 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -264,8 +267,19 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in AS GVCF mode is < 99% (" +  concordance + ")");
     }
 
-    @Test
-    public void testBamoutProducesReasonablySizedOutput() {
+    @DataProvider(name="bamoutVariations")
+    public Object[][] getBamoutVariations() {
+        return new Object[][]{
+                // index, md5
+                { true, true },
+                { true, false },
+                { false, true },
+                { false, false },
+        };
+    }
+
+    @Test(dataProvider = "bamoutVariations")
+    public void testBamoutProducesReasonablySizedOutput(final boolean createBamoutIndex, final boolean createBamoutMD5) {
         Utils.resetRandomGenerator();
 
         // We will test that when running with -bamout over the testInterval, we produce
@@ -280,17 +294,19 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File vcfOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".vcf");
         final File bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam");
 
-        final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
-                "-L", testInterval,
-                "-O", vcfOutput.getAbsolutePath(),
-                "-bamout", bamOutput.getAbsolutePath(),
-                "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-stand_call_conf", "30.0"
-        };
+        ArgumentsBuilder argBuilder = new ArgumentsBuilder();
 
-        runCommandLine(args);
+        argBuilder.addInput(new File(NA12878_20_21_WGS_bam));
+        argBuilder.addReference(new File(b37_reference_20_21));
+        argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
+        argBuilder.addArgument("L", testInterval);
+        argBuilder.addArgument("bamout", bamOutput.getAbsolutePath());
+        argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
+        argBuilder.addArgument("stand_call_conf", "30.0");
+        argBuilder.addBooleanArgument("createOutputBamIndex", createBamoutIndex);
+        argBuilder.addBooleanArgument("createOutputBamMD5", createBamoutMD5);
+
+        runCommandLine(argBuilder.getArgsArray());
 
         try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput.toPath()) ) {
             int actualBamoutNumReads = 0;
@@ -302,6 +318,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             Assert.assertTrue(((double)readCountDifference / gatk3BamoutNumReads) < 0.10,
                                "-bamout produced a bam with over 10% fewer/more reads than expected");
         }
+
+        if (createBamoutIndex) {
+            Assert.assertNotNull(SamFiles.findIndex(bamOutput));
+        } else {
+            Assert.assertNull(SamFiles.findIndex(bamOutput));
+        }
+
+        final File expectedMD5File = new File(bamOutput.getAbsolutePath() + ".md5");
+        Assert.assertEquals(expectedMD5File.exists(), createBamoutMD5);
     }
 
     @Test

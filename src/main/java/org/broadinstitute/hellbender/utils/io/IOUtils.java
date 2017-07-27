@@ -466,6 +466,7 @@ public final class IOUtils {
             new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
             new File(file.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION).deleteOnExit();
             new File(file.getAbsolutePath() + ".bai").deleteOnExit();
+            new File(file.getAbsolutePath() + ".md5").deleteOnExit();
             new File(file.getAbsolutePath().replaceAll(extension + "$", ".bai")).deleteOnExit();
 
             return file;
