@@ -26,6 +26,10 @@ public final class PSFilterArgumentCollection implements Serializable {
             fullName = "skipFilters",
             optional = true)
     public boolean skipFilters = false;
+    @Argument(doc = "Skip pre-BWA repartition. Set to true for inputs with a high proportion of microbial reads.",
+            fullName = "skipPreBwaRepartition",
+            optional = true)
+    public boolean skipPreBwaRepartition = false;
     @Argument(doc = "Keep only clipped reads with length at least equal to the specified value",
             fullName = "minClippedReadLength",
             minValue = 0,
