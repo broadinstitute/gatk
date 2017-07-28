@@ -21,10 +21,15 @@ if [[ "$#" -lt 4 ]]; then
   [4] GCS path to reference fasta (required)
       OPTIONAL arguments:
   [5] path to initialization script (local or GCS, defaults to
-      ${GATK_DIR}/scripts/sv/default_init.sh if omitted or empty)
+      \${GATK_DIR}/scripts/sv/default_init.sh if omitted or empty)
   [6] GCS username (defaults to local username if omitted or empty)
   [*] additional arguments to pass to
-      StructuralVariationDiscoveryPipelineSpark"
+      StructuralVariationDiscoveryPipelineSpark
+To leave a value as default but specify a later value, use an empty
+  string. e.g. to use default initialization script but override
+  GCS user name:
+\$ manage_sv_pipeline.sh /my/gatk/dir my_project gs://mybam.bam \\
+     gs://myfasta.fasta \"\" my_gcs_user"
     exit 1
 fi
 
@@ -45,7 +50,7 @@ SV_ARGS=${*:-${SV_ARGS:-""}} && SV_ARGS=${SV_ARGS:+" ${SV_ARGS}"}
 PATH="${GATK_DIR}/scripts/sv:${PATH}"
 
 # configure caching .jar files
-export GATK_GCS_STAGING="gs://${PROJECT_NAME}/${GCS_USER}/staging/"
+export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/staging/"}
 
 # set cluster name based on user and target bam file
 # (NOTE: can override by defining SV_CLUSTER_NAME)

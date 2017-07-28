@@ -9,7 +9,7 @@ set -eu
 set -o pipefail
 
 if [[ "$#" -lt 3 ]]; then
-    echo -e
+    echo -e \
 "Please provide:
   [1] GCS project name (required)
   [2] GCS cluster name (required)
@@ -17,7 +17,11 @@ if [[ "$#" -lt 3 ]]; then
   [4] GCS user name (defaults to local user name)
   [5] path to local log file (default to empty, i.e. no log)
   [*] additional arguments that were passed to
-      StructuralVariationDiscoveryPipelineSpark"
+      StructuralVariationDiscoveryPipelineSpark
+To leave a value as default but specify a later value, use an empty
+  string. e.g. to use default user name but override log file:
+\$ copy_sv_results.sh my_project my_cluster_name /output/dir \\
+     \"\" /my/log/file.log"
   exit 1
 fi
 
