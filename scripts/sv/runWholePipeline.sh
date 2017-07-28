@@ -42,7 +42,15 @@ SV_ARGS=${*:-${SV_ARGS:-""}}
 eval "SV_ARGS=\"${SV_ARGS}\""
 
 # Choose NUM_EXECUTORS = 2 * NUM_WORKERS
-NUM_WORKERS=$(gcloud compute instances list --filter="name ~ ${CLUSTER_NAME}-[sw].*" | grep RUNNING | wc -l)
+# NOTE: this would find preemptible workers, but it produces
+# (erroneous?) deprecation warnings
+#NUM_WORKERS=$(gcloud compute instances list --filter="name ~ ${CLUSTER_NAME}-[sw].*" | grep RUNNING | wc -l)
+# this works but does not see preemptible workers
+NUM_WORKERS=$(gcloud dataproc clusters list --filter "clusterName = ${CLUSTER_NAME}" | tail -n 1 | awk '{print $2}')
+if [ -z "${NUM_WORKERS}" ]; then
+    echo "Cluster \"${CLUSTER_NAME}\" not found"
+    exit 1
+fi
 NUM_EXECUTORS=$((2 * ${NUM_WORKERS}))
 
 "${GATK_DIR}/gatk-launch" StructuralVariationDiscoveryPipelineSpark \

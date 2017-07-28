@@ -56,6 +56,7 @@ export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/st
 # (NOTE: can override by defining SV_CLUSTER_NAME)
 SANITIZED_BAM=$(basename "${GCS_BAM}" | awk '{print tolower($0)}' | sed 's/[^a-z0-9]/-/g')
 CLUSTER_NAME=${SV_CLUSTER_NAME:-"${GCS_USER}-${SANITIZED_BAM}"}
+echo "Using cluster name \"${CLUSTER_NAME}\""
 
 # update gcloud
 gcloud components update
