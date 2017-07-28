@@ -146,6 +146,7 @@ workflow Mutect2_Multi {
         File unfiltered_vcfs = unfilteredOutputList.vcf_list
         File filtered_vcfs = filteredOutputList.vcf_list
         Array[File] unfiltered_vcf_files = Mutect2.unfiltered_vcf
+        Array[File] unfiltered_vcf_index_files = Mutect2.unfiltered_vcf_index
         Array[File] filtered_vcf_files = Mutect2.filtered_vcf
         Array[File] filtered_vcf_index_files = Mutect2.filtered_vcf_index
 
