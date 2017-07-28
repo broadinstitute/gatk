@@ -148,6 +148,7 @@ workflow Mutect2_Multi {
         Array[File] unfiltered_vcf_files = Mutect2.unfiltered_vcf
         Array[File] filtered_vcf_files = Mutect2.filtered_vcf
         Array[File] filtered_vcf_index_files = Mutect2.filtered_vcf_index
+        Array[File] contamination_tables = Mutect2.contamination_table
 
         Array[File?] oncotated_m2_mafs = Mutect2.oncotated_m2_maf
     }

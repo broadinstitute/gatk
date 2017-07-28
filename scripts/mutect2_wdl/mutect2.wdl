@@ -174,6 +174,7 @@ workflow Mutect2 {
         File unfiltered_vcf_index = MergeVCFs.output_vcf_index
         File filtered_vcf = Filter.filtered_vcf
         File filtered_vcf_index = Filter.filtered_vcf_index
+        File contamination_table = Filter.contamination_table
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
@@ -360,6 +361,7 @@ task Filter {
         GATK_JAR=${gatk4_jar_override}
     fi
 
+    touch contamination.table
     if [[ "${variants_for_contamination}" == *.vcf ]]; then
         java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
         java -Xmx4g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
@@ -392,6 +394,7 @@ task Filter {
   output {
     File filtered_vcf = "${output_vcf_name}-filtered.vcf"
     File filtered_vcf_index = "${output_vcf_name}-filtered.vcf.idx"
+    File contamination_table = "contamination.table"
   }
 }
 
