@@ -686,7 +686,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 } else if (scatterTranches) {
                     //skip R plots for scattered tranches because the format is different and the R code parses them
                     logger.info("Tranches plot will not be generated since we are running in scattered mode");
-                } else {
+                } else if (RSCRIPT_FILE != null) { //we don't use the RSCRIPT_FILE for tranches, but here it's an indicator if we're setup to run R
                     // Execute the RScript command to plot the table of truth values
                     final RScriptExecutor executor = new RScriptExecutor();
                     executor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
