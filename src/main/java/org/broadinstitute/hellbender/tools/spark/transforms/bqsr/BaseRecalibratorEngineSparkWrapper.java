@@ -64,6 +64,7 @@ public final class BaseRecalibratorEngineSparkWrapper implements Serializable {
         StandardCovariateList covariates = new StandardCovariateList(recalArgs, header);
         try ( PrintStream reportStream = new PrintStream(oStream) ) {
             RecalUtils.outputRecalibrationReport(reportStream, recalArgs, qi, rt, covariates);
+            reportStream.close();
         }
     }
 
