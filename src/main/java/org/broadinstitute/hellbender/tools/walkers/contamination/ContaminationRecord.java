@@ -17,18 +17,22 @@ import java.util.List;
 public class ContaminationRecord {
     private String level;
     private double contamination;
+    private double error;
 
-    public ContaminationRecord(final String level, final double contamination) {
+    public ContaminationRecord(final String level, final double contamination, final double error) {
         this.level = level;
         this.contamination = contamination;
+        this.error = error;
     }
 
-    public String getLevel() {
-        return level;
-    }
+    public String getLevel() { return level; }
 
     public double getContamination() {
         return contamination;
+    }
+
+    public double getError() {
+        return error;
     }
 
     //----- The following two public static methods read and write contamination files
@@ -57,7 +61,8 @@ public class ContaminationRecord {
         @Override
         protected void composeLine(final ContaminationRecord record, final DataLine dataLine) {
             dataLine.set(ContaminationTableColumn.LEVEL.toString(), record.getLevel())
-                    .set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination());
+                    .set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination())
+                    .set(ContaminationTableColumn.ERROR.toString(), record.getError());
         }
     }
 
@@ -70,13 +75,15 @@ public class ContaminationRecord {
         protected ContaminationRecord createRecord(final DataLine dataLine) {
             final String sample = dataLine.get(ContaminationTableColumn.LEVEL);
             final double contamination = dataLine.getDouble(ContaminationTableColumn.CONTAMINATION);
-            return new ContaminationRecord(sample, contamination);
+            final double error = dataLine.getDouble(ContaminationTableColumn.ERROR);
+            return new ContaminationRecord(sample, contamination, error);
         }
     }
 
     private enum ContaminationTableColumn {
         LEVEL("level"),
-        CONTAMINATION("contamination");
+        CONTAMINATION("contamination"),
+        ERROR("error");
 
         private final String columnName;
 
@@ -89,7 +96,7 @@ public class ContaminationRecord {
             return columnName;
         }
 
-        public static final TableColumnCollection COLUMNS = new TableColumnCollection(LEVEL, CONTAMINATION);
+        public static final TableColumnCollection COLUMNS = new TableColumnCollection(LEVEL, CONTAMINATION, ERROR);
     }
 
     public enum Level {
