@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  */
 public final class SimpleRepeatMaskTransformer implements ReadTransformer {
     private static final long serialVersionUID = 1L;
-    private static final byte MASKED_BASE_QUAL = 2;
 
     private final int windowSize;
     private final int threshAT;
