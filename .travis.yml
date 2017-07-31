@@ -85,6 +85,12 @@ before_install:
 - if [[ $RUN_M2_WDL == true ]]; then
     wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
   fi
+# Installing Travis for test report uploading
+- if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
+    curl -sSL https://get.rvm.io | bash -s stable --ruby;
+    source /home/travis/.rvm/scripts/rvm;
+    gem install travis;
+  fi
 # Download git lfs files
 - git lfs version
 - git lfs install
@@ -106,7 +112,9 @@ install:
 script:
 # run a basic sanity check to be sure that gatk-launch doesn't explode
 # run tests
-- if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
+- if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
+    echo "Not running any tests for nightly builds";
+  elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
@@ -147,12 +155,24 @@ after_success:
     git tag master;
     ./gradlew uploadArchives; 
   fi
+
+# This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
+- if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true && "$(travis show master | head -2 | grep 'State:' | awk '{print $NF}')" == passed ]]; then
+    $GCLOUD/gcloud components -q update gsutil;
+    gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
+    ./gradlew bundle;
+    ZIP_FILE="$(ls build/ | grep .zip)";
+    echo "Uploading zip to gs://gatk-nightly-builds/";
+    $GCLOUD/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
+  fi
 after_failure:
 - dmesg | tail -100
 after_script:
-- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
+- if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     $GCLOUD/gcloud components -q update gsutil;
     REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
     $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/;
     echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/test/index.html";
   fi
+
+
