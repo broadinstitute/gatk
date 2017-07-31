@@ -31,7 +31,18 @@ public class PSScorerTest extends CommandLineProgramTest {
 
     final static double MIN_COV = 0.90;
     final static double MIN_IDENT = 0.90;
+    final static double SCORE_ABSOLUTE_ERROR_TOLERANCE = 1e-6;
+    PSTaxonomyDatabase taxonomyDatabase;
     Map<String, String> refNameToTax;
+
+    @BeforeMethod
+    public void before() {
+        refNameToTax = new HashMap<>(3);
+        refNameToTax.put("recordA", "1");
+        refNameToTax.put("recordB", "2");
+        refNameToTax.put("recordC", "3");
+        taxonomyDatabase = new PSTaxonomyDatabase(new PSTree("1"), refNameToTax);
+    }
 
     private static String getTestCigar(final int readLength, final int insertionLength, final int deletionLength, final int clipLength) {
         final int numMatchOrMismatch = readLength - insertionLength - clipLength;
@@ -104,14 +115,6 @@ public class PSScorerTest extends CommandLineProgramTest {
         pair.add(read2);
 
         return pair;
-    }
-
-    @BeforeMethod
-    public void before() {
-        refNameToTax = new HashMap<>(3);
-        refNameToTax.put("recordA", "1");
-        refNameToTax.put("recordB", "2");
-        refNameToTax.put("recordC", "3");
     }
 
     @Test(groups = "spark")
@@ -225,13 +228,13 @@ public class PSScorerTest extends CommandLineProgramTest {
         }
 
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final Broadcast<Map<String, String>> refNameToTaxBroadcast = ctx.broadcast(refNameToTax);
+        final Broadcast<PSTaxonomyDatabase> taxonomyDatabaseBroadcast = ctx.broadcast(taxonomyDatabase);
 
         //Test with alternate alignments assigned to the XA tag
         final List<Iterable<GATKRead>> readListXA = new ArrayList<>();
         readListXA.add(generateReadPair(readLength, NM1, NM2, clip1, clip2, insert1, insert2, delete1, delete2, contig1, contig2, "XA"));
         final JavaRDD<Iterable<GATKRead>> pairsXA = ctx.parallelize(readListXA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoXA = resultXA.first()._2;
 
         Assert.assertNotNull(infoXA);
@@ -243,7 +246,7 @@ public class PSScorerTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListSA = new ArrayList<>();
         readListSA.add(generateReadPair(readLength, NM1, NM2, clip1, clip2, insert1, insert2, delete1, delete2, contig1, contig2, "SA"));
         final JavaRDD<Iterable<GATKRead>> pairsSA = ctx.parallelize(readListSA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoSA = resultSA.first()._2;
 
         Assert.assertNotNull(infoSA);
@@ -336,13 +339,13 @@ public class PSScorerTest extends CommandLineProgramTest {
         }
 
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final Broadcast<Map<String, String>> refNameToTaxBroadcast = ctx.broadcast(refNameToTax);
+        final Broadcast<PSTaxonomyDatabase> taxonomyDatabaseBroadcast = ctx.broadcast(taxonomyDatabase);
 
         //Test with alternate alignments assigned to the XA tag
         final List<Iterable<GATKRead>> readListXA = new ArrayList<>();
         readListXA.add(generateUnpairedRead(readLength, NM, clip, insert, delete, contig, "XA"));
         final JavaRDD<Iterable<GATKRead>> pairsXA = ctx.parallelize(readListXA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoXA = resultXA.first()._2;
 
         Assert.assertNotNull(infoXA);
@@ -354,13 +357,19 @@ public class PSScorerTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListSA = new ArrayList<>();
         readListSA.add(generateUnpairedRead(readLength, NM, clip, insert, delete, contig, "SA"));
         final JavaRDD<Iterable<GATKRead>> pairsSA = ctx.parallelize(readListSA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, refNameToTaxBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoSA = resultSA.first()._2;
 
         Assert.assertNotNull(infoSA);
         Assert.assertEquals(infoSA.taxIDs.size(), truthTax.size());
         Assert.assertTrue(infoSA.taxIDs.containsAll(truthTax));
         Assert.assertEquals(infoSA.numMates, 1);
+    }
+    
+    private static Map<String,PSPathogenTaxonScore> scoreIteratorToMap(final Iterator<Tuple2<String, PSPathogenTaxonScore>> iter) {
+        final Map<String,PSPathogenTaxonScore> map = new HashMap<>();
+        iter.forEachRemaining(pair -> map.put(pair._1, pair._2));
+        return map;
     }
 
     @Test
@@ -369,28 +378,32 @@ public class PSScorerTest extends CommandLineProgramTest {
         PSTree tree = new PSTree("1");
         List<PSPathogenAlignmentHit> readTaxHits = new ArrayList<>(1);
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("4"), 2));
+        final PSTaxonomyDatabase testDatabase = new PSTaxonomyDatabase(tree, null);
         try {
-            final Map<String, PSPathogenTaxonScore> result = PSScorer.computeTaxScores(readTaxHits, tree);
-            Assert.assertTrue(result.isEmpty(), "Result should be empty since the hit does not exist in the tree");
+            final Iterator<Tuple2<String, PSPathogenTaxonScore>> resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase);
+            Map<String,PSPathogenTaxonScore> resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), testDatabase.tree);
+            Assert.assertTrue(resultMap.isEmpty(), "Result should be empty since the hit does not exist in the tree");
         } catch (Exception e) {
-            Assert.fail("Threw and exception when a HitInfo references a tax ID not in the tree, or vice versa", e);
+            Assert.fail("Threw an exception when a HitInfo references a tax ID not in the tree, or vice versa", e);
         }
 
         tree.addNode("2", "n2", "1", 0, "genus");
         tree.addNode("3", "n3", "2", 100, "species");
         readTaxHits.clear();
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("3"), 2));
-        Map<String, PSPathogenTaxonScore> result = PSScorer.computeTaxScores(readTaxHits, tree);
-        Assert.assertEquals(result.size(), 3);
-        Assert.assertEquals(result.get("1").score, result.get("2").score);
-        Assert.assertEquals(result.get("2").score, result.get("3").score);
-        Assert.assertEquals(result.get("1").score, PSScorer.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100);
-        Assert.assertEquals(result.get("1").scoreNormalized, 100.0);
-        Assert.assertEquals(result.get("2").scoreNormalized, 100.0);
-        Assert.assertEquals(result.get("3").scoreNormalized, 100.0);
-        Assert.assertEquals(result.get("3").reads, 2);
-        Assert.assertEquals(result.get("3").unambiguous, 2);
-        Assert.assertEquals(result.get("3").refLength, 100);
+        Iterator<Tuple2<String, PSPathogenTaxonScore>> resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase);
+        Map<String,PSPathogenTaxonScore> resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), testDatabase.tree);
+        Assert.assertEquals(resultMap.size(), 3);
+        Assert.assertEquals(resultMap.get("1").selfScore, resultMap.get("2").selfScore);
+        Assert.assertEquals(resultMap.get("1").descendentScore, resultMap.get("2").descendentScore);
+        Assert.assertEquals(resultMap.get("2").descendentScore, resultMap.get("3").selfScore);
+        Assert.assertEquals(resultMap.get("3").selfScore, PSScorer.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100);
+        Assert.assertEquals(resultMap.get("1").scoreNormalized, 100.0);
+        Assert.assertEquals(resultMap.get("2").scoreNormalized, 100.0);
+        Assert.assertEquals(resultMap.get("3").scoreNormalized, 100.0);
+        Assert.assertEquals(resultMap.get("3").totalReads, 2);
+        Assert.assertEquals(resultMap.get("3").unambiguousReads, 2);
+        Assert.assertEquals(resultMap.get("3").referenceLength, 100);
 
         tree.addNode("4", "n4", "1", 0, "genus");
         tree.addNode("5", "n5", "2", 100, "species");
@@ -403,7 +416,8 @@ public class PSScorerTest extends CommandLineProgramTest {
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("5"), 2));
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("6"), 1));
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("8"), 2)); //Invalid hit, not in tree
-        result = PSScorer.computeTaxScores(readTaxHits, tree);
+        resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase);
+        resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), tree);
 
         final double score3 = PSScorer.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 2.0) / 100;
         final double score5 = PSScorer.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100;
@@ -426,39 +440,39 @@ public class PSScorerTest extends CommandLineProgramTest {
         final int unambiguous5 = 2;
         final int unambiguous6 = 1;
 
-        Assert.assertEquals(result.size(), 6);
-        Assert.assertFalse(result.containsKey("7"));
-        Assert.assertEquals(result.get("1").score, score1);
-        Assert.assertEquals(result.get("2").score, score2);
-        Assert.assertEquals(result.get("3").score, score3);
-        Assert.assertEquals(result.get("4").score, score4);
-        Assert.assertEquals(result.get("5").score, score5);
-        Assert.assertEquals(result.get("6").score, score6);
+        Assert.assertEquals(resultMap.size(), 6);
+        Assert.assertFalse(resultMap.containsKey("7"));
+        Assert.assertEquals(resultMap.get("1").selfScore + resultMap.get("1").descendentScore, score1);
+        Assert.assertEquals(resultMap.get("2").selfScore + resultMap.get("2").descendentScore, score2);
+        Assert.assertEquals(resultMap.get("3").selfScore + resultMap.get("3").descendentScore, score3);
+        Assert.assertEquals(resultMap.get("4").selfScore + resultMap.get("4").descendentScore, score4);
+        Assert.assertEquals(resultMap.get("5").selfScore + resultMap.get("5").descendentScore, score5);
+        Assert.assertEquals(resultMap.get("6").selfScore + resultMap.get("6").descendentScore, score6);
 
-        Assert.assertEquals(result.get("1").scoreNormalized, 100.0 * score1 / score1);
-        Assert.assertEquals(result.get("2").scoreNormalized, 100.0 * score2 / score1);
-        Assert.assertEquals(result.get("3").scoreNormalized, 100.0 * score3 / score1);
-        Assert.assertEquals(result.get("4").scoreNormalized, 100.0 * score4 / score1);
-        Assert.assertEquals(result.get("5").scoreNormalized, 100.0 * score5 / score1);
-        Assert.assertEquals(result.get("6").scoreNormalized, 100.0 * score6 / score1);
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("1").scoreNormalized, 100.0 * score1 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("2").scoreNormalized, 100.0 * score2 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("3").scoreNormalized, 100.0 * score3 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("4").scoreNormalized, 100.0 * score4 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("5").scoreNormalized, 100.0 * score5 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("6").scoreNormalized, 100.0 * score6 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
 
-        Assert.assertEquals(result.get("1").reads, reads1);
-        Assert.assertEquals(result.get("2").reads, reads2);
-        Assert.assertEquals(result.get("3").reads, reads3);
-        Assert.assertEquals(result.get("4").reads, reads4);
-        Assert.assertEquals(result.get("5").reads, reads5);
-        Assert.assertEquals(result.get("6").reads, reads6);
+        Assert.assertEquals(resultMap.get("1").totalReads, reads1);
+        Assert.assertEquals(resultMap.get("2").totalReads, reads2);
+        Assert.assertEquals(resultMap.get("3").totalReads, reads3);
+        Assert.assertEquals(resultMap.get("4").totalReads, reads4);
+        Assert.assertEquals(resultMap.get("5").totalReads, reads5);
+        Assert.assertEquals(resultMap.get("6").totalReads, reads6);
 
-        Assert.assertEquals(result.get("1").unambiguous, unambiguous1);
-        Assert.assertEquals(result.get("2").unambiguous, unambiguous2);
-        Assert.assertEquals(result.get("3").unambiguous, unambiguous3);
-        Assert.assertEquals(result.get("4").unambiguous, unambiguous4);
-        Assert.assertEquals(result.get("5").unambiguous, unambiguous5);
-        Assert.assertEquals(result.get("6").unambiguous, unambiguous6);
+        Assert.assertEquals(resultMap.get("1").unambiguousReads, unambiguous1);
+        Assert.assertEquals(resultMap.get("2").unambiguousReads, unambiguous2);
+        Assert.assertEquals(resultMap.get("3").unambiguousReads, unambiguous3);
+        Assert.assertEquals(resultMap.get("4").unambiguousReads, unambiguous4);
+        Assert.assertEquals(resultMap.get("5").unambiguousReads, unambiguous5);
+        Assert.assertEquals(resultMap.get("6").unambiguousReads, unambiguous6);
 
-        Assert.assertEquals(result.get("1").refLength, 0);
-        Assert.assertEquals(result.get("3").refLength, 100);
-        Assert.assertEquals(result.get("4").refLength, 0);
+        Assert.assertEquals(resultMap.get("1").referenceLength, 0);
+        Assert.assertEquals(resultMap.get("3").referenceLength, 100);
+        Assert.assertEquals(resultMap.get("4").referenceLength, 0);
 
     }
 

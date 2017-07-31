@@ -5,10 +5,12 @@ import com.esotericsoftware.kryo.io.Input;
 import htsjdk.samtools.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -44,7 +46,7 @@ public final class PSScorer {
 
         //Load taxonomy database, created by running PathSeqBuildReferenceTaxonomy with this reference
         final PSTaxonomyDatabase taxDB = readTaxonomyDatabase(scoreArgs.taxonomyDatabasePath);
-        final Broadcast<Map<String, String>> accessionToTaxIdBroadcast = ctx.broadcast(taxDB.accessionToTaxId);
+        final Broadcast<PSTaxonomyDatabase> taxonomyDatabaseBroadcast = ctx.broadcast(taxDB);
 
         //Check header against database
         if (scoreArgs.headerWarningFile != null) {
@@ -54,19 +56,21 @@ public final class PSScorer {
         //Determine which alignments are valid hits and return their tax IDs in PSPathogenAlignmentHit
         //Also adds pathseq tags containing the hit IDs to the reads
         final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> readHits = mapGroupedReadsToTax(groupedReads,
-                scoreArgs.minCoverage, scoreArgs.minIdentity, accessionToTaxIdBroadcast);
-
-        //Collect PSPathogenAlignmentHit objects
-        final Iterable<PSPathogenAlignmentHit> hitInfo = collectValues(readHits);
+                scoreArgs.minCoverage, scoreArgs.minIdentity, taxonomyDatabaseBroadcast);
 
         //Get the original reads, now with their pathseq hit tags set
         final JavaRDD<GATKRead> readsFinal = flattenIterableKeys(readHits);
 
-        //Compute taxonomic scores
-        final Map<String, PSPathogenTaxonScore> taxScores = computeTaxScores(hitInfo, taxDB.tree);
+        //Compute taxonomic scores from the alignment hits
+        final JavaRDD<PSPathogenAlignmentHit> alignmentHits = readHits.map(Tuple2::_2);
+        final JavaPairRDD<String, PSPathogenTaxonScore> taxScoresRdd = alignmentHits.mapPartitionsToPair(iter -> computeTaxScores(iter, taxonomyDatabaseBroadcast.value()));
+
+        //Reduce scores by taxon and compute normalized scores
+        Map<String, PSPathogenTaxonScore> taxScoresMap = new HashMap<>(taxScoresRdd.reduceByKey(PSPathogenTaxonScore::add).collectAsMap());
+        taxScoresMap = computeNormalizedScores(taxScoresMap, taxDB.tree);
 
         //Write scores to file
-        writeScoresFile(taxScores, taxDB.tree, scoreArgs.scoresPath);
+        writeScoresFile(taxScoresMap, taxDB.tree, scoreArgs.scoresPath);
 
         return readsFinal;
     }
@@ -161,7 +165,7 @@ public final class PSScorer {
     static JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> mapGroupedReadsToTax(final JavaRDD<Iterable<GATKRead>> pairs,
                                                                                             final double minCoverage,
                                                                                             final double minIdentity,
-                                                                                            final Broadcast<Map<String, String>> refNameToTaxBroadcast) {
+                                                                                            final Broadcast<PSTaxonomyDatabase> taxonomyDatabaseBroadcast) {
         return pairs.map(readIter -> {
 
             //Number of reads in the pair (1 for unpaired reads)
@@ -169,7 +173,7 @@ public final class PSScorer {
 
             //Get tax IDs of all alignments in all reads that meet the coverage/identity criteria.
             final Stream<String> taxIds = Utils.stream(readIter)
-                    .flatMap(read -> getValidHits(read, refNameToTaxBroadcast, minCoverage, minIdentity).stream());
+                    .flatMap(read -> getValidHits(read, taxonomyDatabaseBroadcast.value(), minCoverage, minIdentity).stream());
 
             //Get list of tax IDs that are hits in all reads
             final List<String> hitTaxIds;
@@ -204,7 +208,7 @@ public final class PSScorer {
      * Gets set of sufficiently well-mapped hits
      */
     private static Set<String> getValidHits(final GATKRead read,
-                                            final Broadcast<Map<String, String>> refNameToTaxBroadcast,
+                                            PSTaxonomyDatabase taxonomyDatabase,
                                             final double minCoverage,
                                             final double minIdentity) {
 
@@ -226,7 +230,7 @@ public final class PSScorer {
 
         //Throw out duplicates and accessions not in the taxonomic database so it returns a list of unique tax ID's
         // for each read in the pair
-        return hits.stream().map(contig -> refNameToTaxBroadcast.value().containsKey(contig) ? refNameToTaxBroadcast.value().get(contig) : null)
+        return hits.stream().map(contig -> taxonomyDatabase.accessionToTaxId.containsKey(contig) ? taxonomyDatabase.accessionToTaxId.get(contig) : null)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
@@ -277,25 +281,22 @@ public final class PSScorer {
     }
 
     /**
-     * Computes abundance scores and returns map from taxonomic id to scores
+     * Computes abundance scores and returns key-values of taxonomic id and scores
      */
-    public static Map<String, PSPathogenTaxonScore> computeTaxScores(final Iterable<PSPathogenAlignmentHit> readTaxHits,
-                                                                     final PSTree tree) {
+    public static Iterator<Tuple2<String, PSPathogenTaxonScore>> computeTaxScores(final Iterator<PSPathogenAlignmentHit> taxonHits,
+                                                                                  final PSTaxonomyDatabase taxonomyDatabase) {
+        final PSTree tree = taxonomyDatabase.tree;
         final Map<String, PSPathogenTaxonScore> taxIdsToScores = new HashMap<>();
         final Set<String> invalidIds = new HashSet<>();
-        Double sum = 0.0;
-        for (final PSPathogenAlignmentHit hit : readTaxHits) {
+        while (taxonHits.hasNext()) {
+            final PSPathogenAlignmentHit hit = taxonHits.next();
             final Collection<String> hitTaxIds = new ArrayList<>(hit.taxIDs);
-
-            //Find and omit hits to tax ID's not in the database
-            final Set<String> invalidHitIds = new HashSet<>(hitTaxIds.size());
-            for (final String taxid : hitTaxIds) {
-                if (!tree.hasNode(taxid) || tree.getLengthOf(taxid) == 0) {
-                    invalidHitIds.add(taxid);
-                }
+            final Set<String> hitInvalidTaxIds = new HashSet<>(SVUtils.hashMapCapacity(hitTaxIds.size()));
+            for (final String taxId : hitTaxIds) {
+                if (!tree.hasNode(taxId) || tree.getLengthOf(taxId) == 0) hitInvalidTaxIds.add(taxId);
             }
-            hitTaxIds.removeAll(invalidHitIds);
-            invalidIds.addAll(invalidHitIds);
+            hitTaxIds.removeAll(hitInvalidTaxIds);
+            invalidIds.addAll(hitInvalidTaxIds);
 
             //Number of genomes hit by this read and number of mates in the tuple (1 for single, 2 for pair)
             final int numHits = hitTaxIds.size();
@@ -305,43 +306,69 @@ public final class PSScorer {
             final String lowestCommonAncestor = tree.getLCA(hitTaxIds);
             final List<String> lcaPath = tree.getPathOf(lowestCommonAncestor);
             for (final String taxId : lcaPath) {
-                getOrAddScoreInfo(taxId, taxIdsToScores, tree).unambiguous += hit.numMates;
+                getOrAddScoreInfo(taxId, taxIdsToScores, tree).unambiguousReads += hit.numMates;
             }
 
             //Scores normalized by genome length and degree of ambiguity (number of hits)
             final Set<String> hitPathNodes = new HashSet<>(); //Set of all unique hits and ancestors
             for (final String taxId : hitTaxIds) {
+                if (!tree.hasNode(taxId) || tree.getLengthOf(taxId) == 0) {
+                    invalidIds.add(taxId);
+                    continue;
+                }
                 final Double score = SCORE_GENOME_LENGTH_UNITS * hit.numMates / (numHits * tree.getLengthOf(taxId));
-                sum += score;
+                //Git list containing this node and its ancestors
                 final List<String> path = tree.getPathOf(taxId);
                 hitPathNodes.addAll(path);
-                for (final String pathTaxID : path) {
-                    PSPathogenTaxonScore info = getOrAddScoreInfo(pathTaxID, taxIdsToScores, tree);
-                    info.score += score;
-                    taxIdsToScores.put(pathTaxID, info);
+                for (final String pathTaxId : path) {
+                    final PSPathogenTaxonScore info = getOrAddScoreInfo(pathTaxId, taxIdsToScores, tree);
+                    if (pathTaxId.equals(taxId)) {
+                        info.selfScore += score;
+                    } else {
+                        info.descendentScore += score;
+                    }
+                    taxIdsToScores.put(pathTaxId, info);
                 }
             }
 
             //"reads" score is the number of reads that COULD belong to each node i.e. an upper-bound
             for (final String taxId : hitPathNodes) {
-                getOrAddScoreInfo(taxId, taxIdsToScores, tree).reads += hit.numMates;
+                getOrAddScoreInfo(taxId, taxIdsToScores, tree).totalReads += hit.numMates;
             }
-        }
-
-        //Scores normalized to 100%
-        for (final Map.Entry<String, PSPathogenTaxonScore> entry : taxIdsToScores.entrySet()) {
-            final String readName = entry.getKey();
-            final PSPathogenTaxonScore score = entry.getValue();
-            if (sum == 0) {
-                score.scoreNormalized = 0;
-            } else {
-                score.scoreNormalized = 100.0 * score.score / sum;
-            }
-            taxIdsToScores.replace(readName, score);
         }
         PSUtils.logItemizedWarning(logger, invalidIds, "The following taxonomic ID hits were ignored because " +
                 "they either could not be found in the tree or had a reference length of 0 (this may happen when " +
                 "the catalog file, taxdump file, and/or pathogen reference are inconsistent)");
+        return taxIdsToScores.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), entry.getValue())).iterator();
+    }
+
+    /**
+     * Assigns scores normalized to 100%. For each taxon, its normalized score is own score divided by the sum
+     * over all scores, plus the sum of its childrens' normalized scores.
+     */
+    final static Map<String, PSPathogenTaxonScore> computeNormalizedScores(final Map<String, PSPathogenTaxonScore> taxIdsToScores,
+                                                                           final PSTree tree) {
+        //Get sum of all scores that were assigned directly to each taxa (as opposed to being propagated up from descendents)
+        double sum = 0.;
+        for (final PSPathogenTaxonScore score : taxIdsToScores.values()) {
+            sum += score.selfScore;
+        }
+
+        //Gets normalized selfScores and adds it to all ancestors
+        for (final Map.Entry<String, PSPathogenTaxonScore> entry : taxIdsToScores.entrySet()) {
+            final String taxId = entry.getKey();
+            final double selfScore = entry.getValue().selfScore;
+            final double normalizedScore;
+            if (sum == 0) {
+                normalizedScore = 0;
+            } else {
+                normalizedScore = 100.0 * selfScore / sum;
+            }
+            final List<String> path = tree.getPathOf(taxId);
+            for (final String pathTaxId : path) {
+                taxIdsToScores.get(pathTaxId).scoreNormalized += normalizedScore;
+            }
+        }
         return taxIdsToScores;
     }
 
@@ -356,7 +383,7 @@ public final class PSScorer {
             score = taxScores.get(taxIds);
         } else {
             score = new PSPathogenTaxonScore();
-            score.refLength = tree.getLengthOf(taxIds);
+            score.referenceLength = tree.getLengthOf(taxIds);
             taxScores.put(taxIds, score);
         }
         return score;
