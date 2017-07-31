@@ -14,64 +14,212 @@
 # 4.  Compare Mutect calls to the truth data and output a table of true positives and false negatives along with
 #     annotations from the truth VCF prepared in steps 1 and 2.
 
-# Here we implement steps 3 and 4 for several replicate bams of a *single* plex, e.g. 4 different 10-plex bams.  Note that each
-# replicate has its own truth vcf because although the truth variants are identical, the bam-derived annotations may
-# differ slightly.
+# Here we implement these steps, except for the subsampling in step 1, for several replicate bams of a *single* plex,
+# e.g. 4 different 10-plex bams.  Note that each replicate has its own truth vcf because although the truth variants are identical,
+# the bam-derived annotations differ slightly.
 
-#Inputs are identical to mutect2_multi_sample_concordance.wdl except for the addition of a python script for generating plots
+import "mutect2.wdl" as MutectSingleSample
 
-import "mutect2_multi_sample_concordance.wdl" as concordance
+workflow HapmapSensitivity {
+    File gatk
+  	Int scatter_count
+  	File bam_list
+  	Array[Array[String]] replicates = read_tsv(bam_list)
+  	File ref_fasta
+  	File ref_fasta_index
+  	File ref_dict
+  	File? intervals
+  	File? pon
+  	File? pon_index
+  	Boolean is_run_orientation_bias_filter
+    Array[String] artifact_modes
+    File picard_jar
+    String? m2_extra_args
+    String? m2_extra_filtering_args
+    String prefix   #a prefix string like "5plex"
+    File python_script
+    Int max_depth
+    File preprocessed_hapmap
+    File preprocessed_hapmap_idx
 
+    call RestrictIntervals {
+        input: gatk = gatk, vcf = preprocessed_hapmap, vcf_idx = preprocessed_hapmap_idx, intervals = intervals
+    }
+
+    scatter (row in replicates) {
+        File bam = row[0]
+        File index = row[1]
+        String sample = row[2]
+
+        call MixingFractions {
+            input: gatk = gatk, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, bam = bam, bam_idx = index
+        }
+
+        call ExpectedAlleleFraction {
+            input: gatk = gatk, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, mixing_fractions = MixingFractions.mixing
+        }
+
+        call BamDepth {
+            input: gatk = gatk, vcf = ExpectedAlleleFraction.output_vcf, vcf_idx = ExpectedAlleleFraction.output_vcf_idx,
+                bam = bam, bam_idx = index, max_depth = max_depth
+        }
+
+        call MutectSingleSample.Mutect2 {
+            input:
+                gatk4_jar = "OVERRIDDEN",
+                scatter_count = scatter_count,
+                tumor_bam = bam,
+                tumor_bam_index = index,
+                tumor_sample_name = sample,
+                intervals = intervals,
+                ref_fasta = ref_fasta,
+                ref_fasta_index = ref_fasta_index,
+                ref_dict = ref_dict,
+                pon = pon,
+                pon_index = pon_index,
+                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
+                is_run_oncotator = false,
+		m2_docker = "ubuntu:16.04",
+                oncotator_docker = "ubuntu:16.04",
+		gatk4_jar_override = gatk,
+                preemptible_attempts = 2,
+                artifact_modes = artifact_modes,
+                picard_jar = picard_jar,
+                m2_extra_args = m2_extra_args,
+                m2_extra_filtering_args = m2_extra_filtering_args
+        }
+
+        call Concordance {
+            input: gatk = gatk, intervals = intervals,
+                  truth = BamDepth.output_vcf,
+                  truth_idx = BamDepth.output_vcf_idx,
+                  eval = Mutect2.filtered_vcf,
+                  eval_idx = Mutect2.filtered_vcf_index
+        }
+
+        call ConvertToTable {
+            input: gatk = gatk, input_vcf = Concordance.tpfn, input_vcf_idx = Concordance.tpfn_idx
+        }
+    } #done with scatter over replicates
+
+    call CombineTables as SensitivityTables {
+        input: input_tables = ConvertToTable.table, prefix = prefix
+    }
+
+    call AnalyzeSensitivity {
+        input: input_table = SensitivityTables.table, python_script = python_script, prefix = prefix
+    }
+
+    call CombineTables as SummaryTables {
+        input: input_tables = Concordance.summary, prefix = prefix
+    }
+
+    call Jaccard as JaccardSNP {
+        input: gatk = gatk, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "SNP"
+    }
+
+    call Jaccard as JaccardINDEL {
+        input: gatk = gatk, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "INDEL"
+    }
+
+    output {
+        File snp_table = AnalyzeSensitivity.snp_table
+        File snp_plot = AnalyzeSensitivity.snp_plot
+        File indel_table = AnalyzeSensitivity.indel_table
+        File indel_plot = AnalyzeSensitivity.indel_plot
+        File summary = SummaryTables.table
+        File raw_table = SensitivityTables.table
+        File snp_jaccard_table = JaccardSNP.table
+        File indel_jaccard_table = JaccardINDEL.table
+        Array[File] tpfn = Concordance.tpfn
+        Array[File] tpfn_idx = Concordance.tpfn_idx
+        Array[File] ftnfn = Concordance.ftnfn
+        Array[File] ftnfn_idx = Concordance.ftnfn_idx
+    }
+} #end of workflow
+
+#### Tasks for making truth
+task RestrictIntervals {
+    File gatk
+    File vcf
+    File vcf_idx
+    File? intervals
+
+    command {
+        # subsampling and restriction to biallelics and intervals
+        java -jar ${gatk} SelectVariants -V ${vcf} -O restricted.vcf \
+            ${"-L " + intervals} \
+    }
+
+    output {
+        File output_vcf = "restricted.vcf"
+        File output_vcf_idx = "restricted.vcf.idx"
+    }
+}
+
+task BamDepth {
+    File gatk
+    File vcf
+    File vcf_idx
+    File bam
+    File bam_idx
+    Int  max_depth   #ignore sites with depth greater than this because they are alignment artifacts
+
+    command {
+        java -jar ${gatk} AnnotateVcfWithBamDepth -V ${vcf} -I ${bam} -O "bam_depth.vcf"
+        java -jar ${gatk} SelectVariants -V bam_depth.vcf --select "BAM_DEPTH < ${max_depth}" -O truth.vcf
+    }
+
+    output {
+        File output_vcf = "truth.vcf"
+        File output_vcf_idx = "truth.vcf.idx"
+    }
+}
+
+task MixingFractions {
+    File gatk
+    File vcf
+    File vcf_idx
+    File bam
+    File bam_idx
+
+    command {
+        java -jar ${gatk} CalculateMixingFractions -V ${vcf} -I ${bam} -O "mixing.table"
+    }
+
+    output { File mixing = "mixing.table" }
+}
+
+task ExpectedAlleleFraction {
+    File gatk
+    File vcf
+    File vcf_idx
+    File mixing_fractions
+
+    command {
+        java -jar ${gatk} AnnotateVcfWithExpectedAlleleFraction -V ${vcf} -O af_exp.vcf --mixingFractions  ${mixing_fractions}
+    }
+
+    output {
+        File output_vcf = "af_exp.vcf"
+        File output_vcf_idx = "af_exp.vcf.idx"
+    }
+}
+
+### Tasks for analysing sensitivity
 
 task ConvertToTable {
-  String gatk4_jar
-  File? gatk4_jar_override
+  File gatk
   File input_vcf
   File input_vcf_idx
 
   command {
-  # Use GATK Jar override if specified
-            GATK_JAR=${gatk4_jar}
-            if [[ "${gatk4_jar_override}" == *.jar ]]; then
-                GATK_JAR=${gatk4_jar_override}
-            fi
-
-        java -jar $GATK_JAR VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
+      java -jar ${gatk} VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
   }
 
-  runtime {
-          memory: "5 GB"
-      }
+  runtime { memory: "5 GB" }
 
-  output {
-    File table = "result.table"
-  }
-}
-
-task AnalyzeSensitivity {
-    File input_table
-    File python_sensitivity_script
-    String prefix
-
-    command {
-        python ${python_sensitivity_script} ${input_table}
-        mv "SNP_sensitivity.tsv" "${prefix}_SNP_sensitivity.tsv"
-        mv "SNP_sensitivity.png" "${prefix}_SNP_sensitivity.png"
-        mv "Indel_sensitivity.tsv" "${prefix}_Indel_sensitivity.tsv"
-        mv "Indel_sensitivity.png" "${prefix}_Indel_sensitivity.png"
-    }
-
-    runtime {
-            continueOnReturnCode: [0,1]
-            memory: "5 GB"
-        }
-
-    output {
-        File snp_table = "${prefix}_SNP_sensitivity.tsv"
-        File snp_plot = "${prefix}_SNP_sensitivity.png"
-        File indel_table = "${prefix}_Indel_sensitivity.tsv"
-        File indel_plot = "${prefix}_Indel_sensitivity.png"
-    }
+  output { File table = "result.table" }
 }
 
 task CombineTables {
@@ -87,40 +235,55 @@ task CombineTables {
         cat header body > "${prefix}_combined.txt"
     }
 
+    runtime { memory: "5 GB" }
+
+    output { File table = "${prefix}_combined.txt" }
+}
+
+task AnalyzeSensitivity {
+    File input_table
+    File python_script
+    String prefix
+
+    command {
+        . /broad/software/scripts/useuse
+        use Python-2.7
+	python ${python_script} ${input_table}
+        mv "SNP_sensitivity.tsv" "${prefix}_SNP_sensitivity.tsv"
+        mv "SNP_sensitivity.png" "${prefix}_SNP_sensitivity.png"
+        mv "Indel_sensitivity.tsv" "${prefix}_Indel_sensitivity.tsv"
+        mv "Indel_sensitivity.png" "${prefix}_Indel_sensitivity.png"
+    }
+
     runtime {
+            continueOnReturnCode: [0,1]
             memory: "5 GB"
-        }
+    }
 
     output {
-        File table = "${prefix}_combined.txt"
+        File snp_table = "${prefix}_SNP_sensitivity.tsv"
+        File snp_plot = "${prefix}_SNP_sensitivity.png"
+        File indel_table = "${prefix}_Indel_sensitivity.tsv"
+        File indel_plot = "${prefix}_Indel_sensitivity.png"
     }
 }
 
+#Make Jaccard index table for SNVs or indels from an array of called vcfs
 task Jaccard {
-    String gatk4_jar
-    File? gatk4_jar_override
-    Array[File] tpfp_vcfs
-    Array[File] tpfp_vcfs_idx
+    File gatk
+    Array[File] calls
+    Array[File] calls_idx
     String prefix
-
-    #type is SNP or INDEL
-    String type
+    String type #SNP or INDEL
 
     command {
-
-        # Use GATK Jar override if specified
-        GATK_JAR=${gatk4_jar}
-        if [[ "${gatk4_jar_override}" == *.jar ]]; then
-          GATK_JAR=${gatk4_jar_override}
-        fi
-
         result="${prefix}_${type}_jaccard.txt"
         touch $result
 
         count=0
-        for vcf in ${sep = ' ' tpfp_vcfs}; do
+        for vcf in ${sep = ' ' calls}; do
             ((count++))
-            java -jar $GATK_JAR SelectVariants -V $vcf -selectType ${type} -O ${type}_only_$count.vcf
+            java -jar ${gatk} SelectVariants -V $vcf -selectType ${type} -O ${type}_only_$count.vcf
         done
 
         for file1 in ${type}_only*.vcf; do
@@ -134,7 +297,7 @@ task Jaccard {
             if [ $file1 == $file2 ]; then
                 printf 1.0000 >> $result
             else
-                java -jar $GATK_JAR SelectVariants -V $file1 --concordance $file2 -O overlap.vcf
+                java -jar ${gatk} SelectVariants -V $file1 --concordance $file2 -O overlap.vcf
                 overlap=`grep -v '#' overlap.vcf | wc -l`
 
                 num1=`grep -v '#' $file1 | wc -l`
@@ -153,118 +316,34 @@ task Jaccard {
 
     }
 
-    runtime {
-        memory: "5 GB"
-    }
+    runtime { memory: "5 GB" }
 
-    output {
-        File table = "${prefix}_${type}_jaccard.txt"
-    }
+    output { File table = "${prefix}_${type}_jaccard.txt" }
 }
 
-workflow HapmapSensitivity {
-   # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-  	String gatk4_jar
-  	Int scatter_count
-  	File bam_list
-  	File ref_fasta
-  	File ref_fasta_index
-  	File ref_dict
-  	File? intervals
-  	File? pon
-  	File? pon_index
-  	Boolean is_run_orientation_bias_filter
-    String m2_docker
-    File? gatk4_jar_override
-    Int preemptible_attempts
-    Array[String] artifact_modes
-    File picard_jar
-    File truth_list
-    String? m2_extra_args
-    String? m2_extra_filtering_args
-    #a prefix string like "5plex"
-    String prefix
+task Concordance {
+      File gatk
+      File? intervals
+      File truth
+      File truth_idx
+      File eval
+      File eval_idx
 
-    File python_sensitivity_script
-
-    Array[Array[String]] truth_files = read_tsv(truth_list)
-
-  call concordance.Mutect2_Multi_Concordance {
-    input:
-     # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-    	gatk4_jar = gatk4_jar,
-    	scatter_count = scatter_count,
-    	pair_list = bam_list,
-    	intervals = intervals,
-    	ref_fasta = ref_fasta,
-    	ref_fasta_index = ref_fasta_index,
-    	ref_dict = ref_dict,
-    	pon = pon,
-    	pon_index = pon_index,
-    	is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-        m2_docker = m2_docker,
-        gatk4_jar_override = gatk4_jar_override,
-        preemptible_attempts = preemptible_attempts,
-        artifact_modes = artifact_modes,
-        picard_jar = picard_jar,
-        truth_list = truth_list,
-        m2_extra_args = m2_extra_args,
-        m2_extra_filtering_args = m2_extra_filtering_args
-  }
-
-  scatter(n in range(length(read_tsv(bam_list)))) {
-    call ConvertToTable {
-        input:
-              gatk4_jar = gatk4_jar,
-              gatk4_jar_override = gatk4_jar_override,
-              input_vcf = Mutect2_Multi_Concordance.tpfn[n],
-              input_vcf_idx = Mutect2_Multi_Concordance.tpfn_idx[n]
+      command {
+          java -jar ${gatk} Concordance ${"-L " + intervals} \
+            -truth ${truth} -eval ${eval} \
+            -tpfn "tpfn.vcf" \
+            -ftnfn "ftnfn.vcf" \
+            -summary summary.tsv
       }
-  }
 
-  call CombineTables as SensitivityTables { input: input_tables = ConvertToTable.table, prefix = prefix }
+      runtime { memory: "5 GB" }
 
-  call AnalyzeSensitivity {
-             input:
-              input_table = SensitivityTables.table,
-              python_sensitivity_script = python_sensitivity_script,
-              prefix = prefix
-  }
-
-  call CombineTables as SummaryTables { input: input_tables = Mutect2_Multi_Concordance.summary, prefix = prefix }
-
-  call Jaccard as JaccardSNP {
-    input:
-        gatk4_jar = gatk4_jar,
-        gatk4_jar_override = gatk4_jar_override,
-        tpfp_vcfs = Mutect2_Multi_Concordance.tpfp,
-        tpfp_vcfs_idx = Mutect2_Multi_Concordance.tpfp_idx,
-        prefix = prefix,
-        type = "SNP"
-  }
-
-  call Jaccard as JaccardINDEL {
-      input:
-          gatk4_jar = gatk4_jar,
-          gatk4_jar_override = gatk4_jar_override,
-          tpfp_vcfs = Mutect2_Multi_Concordance.tpfp,
-          tpfp_vcfs_idx = Mutect2_Multi_Concordance.tpfp_idx,
-          prefix = prefix,
-          type = "INDEL"
-    }
-
-  output {
-    File snp_table = AnalyzeSensitivity.snp_table
-    File snp_plot = AnalyzeSensitivity.snp_plot
-    File indel_table = AnalyzeSensitivity.indel_table
-    File indel_plot = AnalyzeSensitivity.indel_plot
-    File summary = SummaryTables.table
-    File raw_table = SensitivityTables.table
-    File snp_jaccard_table = JaccardSNP.table
-    File indel_jaccard_table = JaccardINDEL.table
-    Array[File] tpfn = Mutect2_Multi_Concordance.tpfn
-    Array[File] tpfn_idx = Mutect2_Multi_Concordance.tpfn_idx
-    Array[File] ftnfn = Mutect2_Multi_Concordance.ftnfn
-    Array[File] ftnfn_idx = Mutect2_Multi_Concordance.ftnfn_idx
-  }
+      output {
+            File tpfn = "tpfn.vcf"
+            File tpfn_idx = "tpfn.vcf.idx"
+            File ftnfn = "ftnfn.vcf"
+            File ftnfn_idx = "ftnfn.vcf.idx"
+            File summary = "summary.tsv"
+      }
 }

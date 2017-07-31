@@ -14,14 +14,13 @@
 # 4.  Compare Mutect calls to the truth data and output a table of true positives and false negatives along with
 #     annotations from the truth VCF prepared in steps 1 and 2.
 
-# Here we implement steps 3 and 4 for several replicate each of 5-plex, 10-plex, and 20-plex pools.
-
+# Here we implement these steps, except for the subsampling in step 1, for several replicate bams each of 5-plex, 10-plex, and 20-plex mixtures
+# e.g. 4 different 10-plex bams, 3 10-plex bams, and 7 20-plex bams.
 
 import "hapmap_sensitivity.wdl" as single_plex
 
 workflow HapmapSensitivityAllPlexes {
-   # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-  	String gatk4_jar
+    Int max_depth
   	Int scatter_count
 
   	File five_plex_bam_list
@@ -34,26 +33,27 @@ workflow HapmapSensitivityAllPlexes {
   	File? pon
   	File? pon_index
   	Boolean is_run_orientation_bias_filter
-    String m2_docker
-    File? gatk4_jar_override
-    Int preemptible_attempts
+    File gatk
     Array[String] artifact_modes
     File picard_jar
 
-    File five_plex_truth_list
-    File ten_plex_truth_list
-    File twenty_plex_truth_list
+    File five_plex_preprocessed
+    File five_plex_preprocessed_idx
+    File ten_plex_preprocessed
+    File ten_plex_preprocessed_idx
+    File twenty_plex_preprocessed
+    File twenty_plex_preprocessed_idx
 
     String? m2_extra_args
-    String? m2_filtering_extra_args
+    String? m2_extra_filtering_args
 
     File? intervals
 
-    File python_sensitivity_script
+    File python_script
 
   call single_plex.HapmapSensitivity as FivePlex {
       input:
-          gatk4_jar = gatk4_jar,
+          max_depth = max_depth,
           scatter_count = scatter_count,
           bam_list = five_plex_bam_list,
           ref_fasta = ref_fasta,
@@ -62,22 +62,22 @@ workflow HapmapSensitivityAllPlexes {
           pon = pon,
           pon_index = pon_index,
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          m2_docker = m2_docker,
-          gatk4_jar_override = gatk4_jar_override,
+          gatk = gatk,
           preemptible_attempts = preemptible_attempts,
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
-          truth_list = five_plex_truth_list,
+          preprocessed_hapmap = five_plex_preprocessed,
+          preprocessed_hapmap_idx = five_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
-          m2_filtering_extra_args = m2_filtering_extra_args,
+          m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "5plex",
-          python_sensitivity_script = python_sensitivity_script,
+          python_script = python_script,
           intervals = intervals
   }
 
   call single_plex.HapmapSensitivity as TenPlex {
       input:
-          gatk4_jar = gatk4_jar,
+          max_depth = max_depth,
           scatter_count = scatter_count,
           bam_list = ten_plex_bam_list,
           ref_fasta = ref_fasta,
@@ -86,22 +86,22 @@ workflow HapmapSensitivityAllPlexes {
           pon = pon,
           pon_index = pon_index,
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          m2_docker = m2_docker,
-          gatk4_jar_override = gatk4_jar_override,
+          gatk = gatk,
           preemptible_attempts = preemptible_attempts,
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
-          truth_list = ten_plex_truth_list,
+          preprocessed_hapmap = ten_plex_preprocessed,
+          preprocessed_hapmap_idx = ten_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
-          m2_filtering_extra_args = m2_filtering_extra_args,
+          m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "10plex",
-          python_sensitivity_script = python_sensitivity_script,
+          python_script = python_script,
           intervals = intervals
   }
 
   call single_plex.HapmapSensitivity as TwentyPlex {
       input:
-          gatk4_jar = gatk4_jar,
+          max_depth = max_depth,
           scatter_count = scatter_count,
           bam_list = twenty_plex_bam_list,
           ref_fasta = ref_fasta,
@@ -110,16 +110,16 @@ workflow HapmapSensitivityAllPlexes {
           pon = pon,
           pon_index = pon_index,
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          m2_docker = m2_docker,
-          gatk4_jar_override = gatk4_jar_override,
+          gatk = gatk,
           preemptible_attempts = preemptible_attempts,
           artifact_modes = artifact_modes,
           picard_jar = picard_jar,
-          truth_list = twenty_plex_truth_list,
+          preprocessed_hapmap = twenty_plex_preprocessed,
+          preprocessed_hapmap_idx = twenty_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
-          m2_filtering_extra_args = m2_filtering_extra_args,
+          m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "20plex",
-          python_sensitivity_script = python_sensitivity_script,
+          python_script = python_script,
           intervals = intervals
   }
 
@@ -128,11 +128,8 @@ workflow HapmapSensitivityAllPlexes {
   call single_plex.CombineTables as AllPlexTable { input: input_tables = all_plex_sensitivity_tables, prefix = "all_plex" }
 
   call single_plex.AnalyzeSensitivity as AllPlex {
-               input:
-                input_table = AllPlexTable.table,
-                python_sensitivity_script = python_sensitivity_script,
-                prefix = "all_plex"
-    }
+    input: input_table = AllPlexTable.table, python_script = python_script, prefix = "all_plex"
+  }
 
   output {
       File snp_table_5_plex = FivePlex.snp_table
