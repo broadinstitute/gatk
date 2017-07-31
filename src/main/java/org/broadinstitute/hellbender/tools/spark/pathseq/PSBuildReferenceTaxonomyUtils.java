@@ -52,7 +52,7 @@ public final class PSBuildReferenceTaxonomyUtils {
                 }
                 accessionToNameAndLength.put(recordAccession, new Tuple2<>(recordName, recordLength));
             } else {
-                updateAccessionTaxonProperties(recordTaxId, recordName, recordLength, taxIdToProperties);
+                addReferenceAccessionToTaxon(recordTaxId, recordName, recordLength, taxIdToProperties);
             }
         }
         return accessionToNameAndLength;
@@ -124,7 +124,7 @@ public final class PSBuildReferenceTaxonomyUtils {
                     final String accession = tokens[accessionColumnIndex];
                     if (accessionToNameAndLength.containsKey(accession)) {
                         final Tuple2<String, Long> nameAndLength = accessionToNameAndLength.get(accession);
-                        updateAccessionTaxonProperties(taxId, nameAndLength._1, nameAndLength._2, taxIdToProperties);
+                        addReferenceAccessionToTaxon(taxId, nameAndLength._1, nameAndLength._2, taxIdToProperties);
                         accessionsNotFoundOut.remove(accession);
                     }
                 } else {
@@ -156,9 +156,11 @@ public final class PSBuildReferenceTaxonomyUtils {
                 if (nameType.equals("scientific name\t|")) {
                     final String taxId = tokens[0];
                     final String name = tokens[1];
-                    final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.containsKey(taxId) ? taxIdToProperties.get(taxId) : new PSPathogenReferenceTaxonProperties();
-                    taxonProperties.name = name;
-                    taxIdToProperties.put(taxId, taxonProperties);
+                    if (taxIdToProperties.containsKey(taxId)) {
+                        taxIdToProperties.get(taxId).setName(name);
+                    } else {
+                        taxIdToProperties.put(taxId, new PSPathogenReferenceTaxonProperties(name));
+                    }
                 }
             }
         } catch (final IOException e) {
@@ -187,13 +189,12 @@ public final class PSBuildReferenceTaxonomyUtils {
                 if (taxIdToProperties.containsKey(taxId)) {
                     taxonProperties = taxIdToProperties.get(taxId);
                 } else {
-                    taxonProperties = new PSPathogenReferenceTaxonProperties();
-                    taxonProperties.name = "tax_" + taxId;
+                    taxonProperties = new PSPathogenReferenceTaxonProperties("tax_" + taxId);
                     taxIdsNotFound.add(taxId);
                 }
-                taxonProperties.rank = rank;
+                taxonProperties.setRank(rank);
                 if (!taxId.equals(ROOT_ID)) { //keep root's parent set to null
-                    taxonProperties.parentTaxId = parent;
+                    taxonProperties.setParent(parent);
                 }
                 taxIdToProperties.put(taxId, taxonProperties);
             }
@@ -206,15 +207,9 @@ public final class PSBuildReferenceTaxonomyUtils {
     /**
      * Helper function for building the map from tax id to reference contig accession
      */
-    private static void updateAccessionTaxonProperties(final String accession, final String name, final long length, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
-        final PSPathogenReferenceTaxonProperties taxonProperties;
-        if (taxIdToProperties.containsKey(accession)) {
-            taxonProperties = taxIdToProperties.get(accession);
-        } else {
-            taxonProperties = new PSPathogenReferenceTaxonProperties();
-        }
-        taxonProperties.addAccession(name, length);
-        taxIdToProperties.put(accession, taxonProperties);
+    private static void addReferenceAccessionToTaxon(final String taxId, final String accession, final long length, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+        taxIdToProperties.putIfAbsent(taxId, new PSPathogenReferenceTaxonProperties());
+        taxIdToProperties.get(taxId).addAccession(accession, length);
     }
 
     /**
@@ -222,9 +217,7 @@ public final class PSBuildReferenceTaxonomyUtils {
      */
     static void removeUnusedTaxIds(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties,
                                    final PSTree tree) {
-        final Set<String> unusedNodes = new HashSet<>(taxIdToProperties.keySet());
-        unusedNodes.removeAll(tree.getNodeIDs());
-        taxIdToProperties.keySet().removeAll(unusedNodes);
+        taxIdToProperties.keySet().retainAll(tree.getNodeIDs());
     }
 
     /**
@@ -237,7 +230,7 @@ public final class PSBuildReferenceTaxonomyUtils {
         for (final String taxId : taxIdToProperties.keySet()) {
             final boolean isVirus = tree.getPathOf(taxId).contains(VIRUS_ID);
             final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
-            for (String name : taxonProperties.getAccessions()) {
+            for (final String name : taxonProperties.getAccessions()) {
                 if (isVirus || taxonProperties.getAccessionLength(name) >= minNonVirusContigLength) {
                     accessionToTaxId.put(name, taxId);
                 }
@@ -257,8 +250,8 @@ public final class PSBuildReferenceTaxonomyUtils {
         for (final String taxId : taxIdToProperties.keySet()) {
             if (!taxId.equals(ROOT_ID)) {
                 final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
-                if (taxonProperties.name != null && taxonProperties.parentTaxId != null && taxonProperties.rank != null) {
-                    tree.addNode(taxId, taxonProperties.name, taxonProperties.parentTaxId, taxonProperties.getTotalLength(), taxonProperties.rank);
+                if (taxonProperties.getName() != null && taxonProperties.getParent() != null && taxonProperties.getRank() != null) {
+                    tree.addNode(taxId, taxonProperties.getName(), taxonProperties.getParent(), taxonProperties.getTotalLength(), taxonProperties.getRank());
                 } else {
                     invalidIds.add(taxId);
                 }
