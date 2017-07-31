@@ -46,7 +46,6 @@ task downloadGsaLibFile(type: Download) {
 
 repositories {
 
-    mavenLocal()
     mavenCentral()
     jcenter()
 
@@ -54,7 +53,7 @@ repositories {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
 
-
+   mavenLocal()
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.10.1')
@@ -193,7 +192,7 @@ dependencies {
     // Dependency change for including MLLib
     compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
 
-    compile('com.intel.gkl:gkl:0.5.3-4-gaf86a65-SNAPSHOT') {
+    compile('com.intel.gkl:gkl:0.5.3') {
         exclude module: 'htsjdk'
     }
 
