@@ -83,15 +83,15 @@ public class CalculateContamination extends CommandLineProgram {
         // if eg ref is A, alt is C, then # of ref reads due to error is roughly (# of G read + # of T reads)/2
         final long errorRefCount = homAltSites.stream().mapToLong(PileupSummary::getOtherAltCount).sum() / 2;
         final long contaminationRefCount = Math.max(totalRefCount - errorRefCount, 0);
-        final double totalDepthWeightedByRefFraction = homAltSites.stream()
+        final double totalDepthWeightedByRefFrequency = homAltSites.stream()
                 .mapToDouble(ps -> ps.getTotalCount() * (1 - ps.getAlleleFrequency()))
                 .sum();
-        final double contamination = contaminationRefCount / totalDepthWeightedByRefFraction;
-        final double standardError = Math.sqrt(contamination / totalDepthWeightedByRefFraction);
+        final double contamination = contaminationRefCount / totalDepthWeightedByRefFrequency;
+        final double standardError = Math.sqrt(contamination / totalDepthWeightedByRefFrequency);
 
         logger.info(String.format("In %d homozygous variant sites we find %d reference reads due to contamination and %d" +
                         " due to to sequencing error out of a total %d reads.", homAltSites.size(), contaminationRefCount, errorRefCount, totalReadCount));
-        logger.info(String.format("Based on population data, we would expect %d reference reads in a contaminant with the same depths at these sites.", (long) totalDepthWeightedByRefFraction));
+        logger.info(String.format("Based on population data, we would expect %d reference reads in a contaminant with equal depths at these sites.", (long) totalDepthWeightedByRefFrequency));
         logger.info(String.format("Therefore, we estimate a contamination of %.3f.", contamination));
         logger.info(String.format("The error bars on this estimate are %.5f.", standardError));
         return Pair.of(contamination, standardError);
