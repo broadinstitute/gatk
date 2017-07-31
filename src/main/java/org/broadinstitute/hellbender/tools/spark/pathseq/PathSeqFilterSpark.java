@@ -26,7 +26,7 @@ import java.io.IOException;
  * Output: set of high quality non-host reads.
  *
  * Filtering steps:
- * 1)  Remove secondary and supplementary reads
+ * 1)  Remove secondary and supplementary alignments
  * 2)  Trim adapter sequences
  * 3)  Mask sequences with excessive A/T or G/C content
  * 4)  Mask repetitive sequences with 'N' and base quality --dustPhred using symmetric DUST
@@ -49,7 +49,7 @@ import java.io.IOException;
  *
  */
 @CommandLineProgramProperties(summary = "First, low-quality and repetitive sequences reads are filtered: \n\t(1) Remove secondary and " +
-        "supplementary reads; \n\t(2) trim adapter sequences; \n\t(3) mask sequences with excessive A/T or G/C content; " +
+        "supplementary alignments; \n\t(2) trim adapter sequences; \n\t(3) mask sequences with excessive A/T or G/C content; " +
         "\n\t(4) mask repetitive sequences using the sDUST algorithm; \n\t(5) hard clip according to masked " +
         "and low-quality bases; \n\t(6) remove reads below minimum length; \n\t(7) mask low-quality bases; \n\t(8) filter reads with" +
         " too many masked bases. \nHost reads are then filtered using optionally-supplied host k-mer database (created " +

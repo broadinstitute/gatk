@@ -12,6 +12,8 @@ public class SimpleRepeatMaskTransformerTest {
     @DataProvider(name = "testData")
     public Object[][] getTestData() {
         return new Object[][]{
+                {"GATCGATCGCGCGACTAGCTACGACTAGCTACGATCTAGCAGCTACG",
+                        "GATCGATCGCGCGACTAGCTACGACTAGCTACGATCTAGCAGCTACG", 20, 29, 30},
                 {"GCGCGCGCGCGCGCGCGCGCGCGCGCGCGCATGCATGCATGCATGC",
                         "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNTGCATGCATGCATGC", 20, 29, 30},
                 {"GCGCGCGCGCGCGCGCGCGCGCGCGCGCGTATGCATGCATGCATGC",
@@ -30,7 +32,8 @@ public class SimpleRepeatMaskTransformerTest {
                         "GCGCGNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", 29, 20, 30},
                 {"AAAAAAAAAA", "NNNNNNNNNN", 10, 10, 11},
                 {"AAAAAAAAGA", "AAAAAAAAGA", 10, 10, 11},
-                {"CGACGCATAC", "CNNNGNNNNN", 1, 4, 2},
+                {"CATATATTTGGGGGAT", "NNNNNNNNNNNNNNNN", 3, 8, 8},
+                {"CATATATTTGGGGGGAT","NNNNNNNNNNNNNNGAT", 3, 8, 8},
                 {"", "", 29, 20, 30}
         };
     }

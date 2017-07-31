@@ -51,6 +51,13 @@ public final class PSFilter implements AutoCloseable {
             IlluminaAdapterPair.INDEXED.get3PrimeAdapter()
     );
 
+    private final static int REPEAT_WINDOW_SIZE_1 = 30;
+    private final static int MAX_AT_CONTENT_1 = 29;
+    private final static int MAX_GC_CONTENT_1 = 29;
+    private final static int REPEAT_WINDOW_SIZE_2= 100;
+    private final static int MAX_AT_CONTENT_2 = 87;
+    private final static int MAX_GC_CONTENT_2 = 89;
+
 
     public PSFilter(final JavaSparkContext ctx, final PSFilterArgumentCollection filterArgs, final JavaRDD<GATKRead> inputReads,
                     final SAMFileHeader header) {
@@ -224,12 +231,12 @@ public final class PSFilter implements AutoCloseable {
         if (!filterArgs.skipFilters) {
 
             //Adapter trimming
-            reads = reads.map(new ReadTransformerSparkifier(new IlluminaAdapterTrimTransformer(filterArgs.maxAdapterMismatches, filterArgs.minAdapterLength, ADAPTER_SEQUENCES)));
+            reads = reads.map(new ReadTransformerSparkifier(new AdapterTrimTransformer(filterArgs.maxAdapterMismatches, filterArgs.minAdapterLength, ADAPTER_SEQUENCES)));
 
             //Apply simple repeat masking
             //See "Low-complexity DNA and simple repeats" at http://www.repeatmasker.org/webrepeatmaskerhelp.html
-            reads = reads.map(new ReadTransformerSparkifier(new SimpleRepeatMaskTransformer(29, 29, 30)));
-            reads = reads.map(new ReadTransformerSparkifier(new SimpleRepeatMaskTransformer(87, 89, 100)));
+            reads = reads.map(new ReadTransformerSparkifier(new SimpleRepeatMaskTransformer(MAX_AT_CONTENT_1, MAX_GC_CONTENT_1, REPEAT_WINDOW_SIZE_1)));
+            reads = reads.map(new ReadTransformerSparkifier(new SimpleRepeatMaskTransformer(MAX_AT_CONTENT_2, MAX_GC_CONTENT_2, REPEAT_WINDOW_SIZE_2)));
 
             //Apply DUST masking
             reads = reads.map(new ReadTransformerSparkifier(new DUSTReadTransformer(filterArgs.dustMask, filterArgs.dustW, filterArgs.dustT)));

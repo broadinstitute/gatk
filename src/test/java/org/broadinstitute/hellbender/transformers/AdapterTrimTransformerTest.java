@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
-public class IlluminaAdapterTrimTransformerTest {
+public class AdapterTrimTransformerTest {
 
     private static final List<String> ADAPTER_SEQUENCES = CollectionUtil.makeList(
             IlluminaAdapterPair.SINGLE_END.get5PrimeAdapter(),
@@ -19,7 +19,9 @@ public class IlluminaAdapterTrimTransformerTest {
             IlluminaAdapterPair.PAIRED_END.get5PrimeAdapter(),
             IlluminaAdapterPair.PAIRED_END.get3PrimeAdapter(),
             IlluminaAdapterPair.INDEXED.get5PrimeAdapter(),
-            IlluminaAdapterPair.INDEXED.get3PrimeAdapter()
+            IlluminaAdapterPair.INDEXED.get3PrimeAdapter(),
+            "AAAAAAAAAAAAAA",
+            "AAAAAAAAAAAAAAA"
     );
 
     @DataProvider(name = "testData")
@@ -37,12 +39,28 @@ public class IlluminaAdapterTrimTransformerTest {
                         "GCATGCGATTCGAGTACTTACGGCATTCAGGTATCG"},
                 {"GCATGCGATTCGAGTACTTACGGCATTCAGGTATCGAGATCGGAAGA",
                         "GCATGCGATTCGAGTACTTACGGCATTCAGGTATCGAGATCGGAAGA"},
+                {"CGATGCGATCGATAAAAAAAAAAAAAAA",
+                        "CGATGCGATCGAT"},
+                {"CGATGCGATCGATAAAAAAAAAAAAA",
+                        "CGATGCGATCGAT"},
+                {"CGATGCGATCGATAAAAAAAAAAAAAAACTCCGTCACG",
+                        "CGATGCGATCGAT"},
+                {"CGATGCGATCGATAAAAAAAAAAAAAAAACTCCGTCACG",
+                        "CGATGCGATCGAT"},
+                {"CGATGCGATCGATAAAAAAAAAAAAAAGAAAAAAAAAAAAAA",
+                        "CGATGCGATCGAT"},
+                {"CGATGCGATCGATAAAAAATAAAAAAAGAAAAAAAAAAAAAA",
+                        "CGATGCGATCGATAAAAAATAAAAAAAG"},
+                {"CGATGCGATCGATAAAAAAACAAAAAAGAAAAAAAGAAAAAA",
+                        "CGATGCGATCGAT"},
+                {"CGATGCGATCGATAAAAAAANAAAAAAGAAAAAAAAAAAAAA",
+                        "CGATGCGATCGATAAAAAAANAAAAAAG"},
         };
     }
 
     @Test(dataProvider = "testData")
     public void test(final String seqIn, final String seqOut) {
-        final IlluminaAdapterTrimTransformer trans = new IlluminaAdapterTrimTransformer(2, 12, ADAPTER_SEQUENCES);
+        final AdapterTrimTransformer trans = new AdapterTrimTransformer(2, 12, ADAPTER_SEQUENCES);
         final GATKRead read = new SAMRecordToGATKReadAdapter(new SAMRecord(null));
         read.setBases(seqIn.getBytes());
         read.setBaseQualities(new byte[seqIn.length()]);
