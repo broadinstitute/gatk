@@ -36,7 +36,7 @@ ALTS_KILL_LIST=$(echo "${REF_FASTA}" | sed 's/.fasta$/.kill.alts/')
 REF_TWOBIT=$(echo "${REF_FASTA}" | sed 's/.fasta$/.2bit/')
 
 # extract any extra arguments to StructuralVariationDiscoveryPipelineSpark
-shift 6
+shift $(($# < 6 ? $# : 6))
 SV_ARGS=${*:-${SV_ARGS:-""}}
 # expand any local variables passed as strings (e.g. PROJECT_OUTPUT_DIR)
 eval "SV_ARGS=\"${SV_ARGS}\""

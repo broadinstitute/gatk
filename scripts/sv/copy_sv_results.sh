@@ -15,7 +15,9 @@ if [[ "$#" -lt 3 ]]; then
   [2] GCS cluster name (required)
   [3] cluster output directory (required)
   [4] GCS user name (defaults to local user name)
-  [5] path to local log file (default to empty, i.e. no log)
+  [5] GCS save bucket/path (defaults to \$PROJECT_NAME/\$GCS_USER if
+      omitted or empty)
+  [6] path to local log file (default to empty, i.e. no log)
   [*] additional arguments that were passed to
       StructuralVariationDiscoveryPipelineSpark
 To leave a value as default but specify a later value, use an empty
@@ -29,9 +31,10 @@ PROJECT_NAME=$1
 CLUSTER_NAME=$2
 OUTPUT_DIR=$3
 GCS_USER=${4:-${USER}}
-LOCAL_LOG_FILE=${5:-"/dev/null"}
+GCS_SAVE_PATH=${5:-"${PROJECT_NAME}/${GCS_USER}"}
+LOCAL_LOG_FILE=${6:-"/dev/null"}
 
-shift 5
+shift $(($# < 6 ? $# : 6))
 SV_ARGS=${*:-${SV_ARGS:-""}}
 
 # get appropriate ZONE for cluster
@@ -55,11 +58,11 @@ if [ -z "${RESULTS_DIR}" ]; then
     # directory is empty (presumably the job crashed). Use OUTPUT_DIR (without leading slash)
     RESULTS_DIR=$(echo "${OUTPUT_DIR}" | sed -e 's/^\///')
     echo "RESULTS_DIR=${RESULTS_DIR}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
-    GCS_RESULTS_DIR="gs://${PROJECT_NAME}/${GCS_USER}/${RESULTS_DIR}"
+    GCS_RESULTS_DIR="gs://${GCS_SAVE_PATH}/${RESULTS_DIR}"
 else
     # copy the latest results to google cloud
     echo "RESULTS_DIR=${RESULTS_DIR}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
-    GCS_RESULTS_DIR="gs://${PROJECT_NAME}/${GCS_USER}/${RESULTS_DIR}"
+    GCS_RESULTS_DIR="gs://${GCS_SAVE_PATH}/${RESULTS_DIR}"
     # chose semi-optimal parallel args for distcp
     # 1) count number of files to copy
     COUNT_FILES_CMD="hadoop fs -count /${RESULTS_DIR}/ | tr -s ' ' | cut -d ' ' -f 3"

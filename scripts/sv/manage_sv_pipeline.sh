@@ -17,12 +17,15 @@ if [[ "$#" -lt 4 ]]; then
 "Please provide:
   [1] local directory of GATK build (required)
   [2] project name (required)
-  [3] GCS path to indexed BAM (required)
+  [3] Google Cloud Service (GCS) path to indexed BAM (required)
   [4] GCS path to reference fasta (required)
       OPTIONAL arguments:
   [5] path to initialization script (local or GCS, defaults to
       \${GATK_DIR}/scripts/sv/default_init.sh if omitted or empty)
   [6] GCS username (defaults to local username if omitted or empty)
+  [7] GCS save bucket/path (defaults to \$PROJECT_NAME/\$GCS_USER if
+      omitted or empty)
+  [8] Run without prompting (Y or N, defaults to N if omitted or empty)
   [*] additional arguments to pass to
       StructuralVariationDiscoveryPipelineSpark
 To leave a value as default but specify a later value, use an empty
@@ -43,7 +46,10 @@ GCS_REFERENCE_FASTA="$4"
 # passed value -> overrides system value -> overrides default value
 INIT_SCRIPT=${5:-${INIT_SCRIPT:-"${GATK_DIR}/scripts/sv/default_init.sh"}}
 GCS_USER=${6:-${GCS_USER:-${USER}}}
-shift 6
+GCS_SAVE_PATH=${7:-${GCS_SAVE_PATH:-"${PROJECT_NAME}/${GCS_USER}"}}
+QUIET=${8:-${SV_QUIET:-"N"}}
+
+shift $(($# < 9 ? $# : 9))
 SV_ARGS=${*:-${SV_ARGS:-""}} && SV_ARGS=${SV_ARGS:+" ${SV_ARGS}"}
 
 # add GATK SV scripts to PATH
@@ -59,7 +65,11 @@ CLUSTER_NAME=${SV_CLUSTER_NAME:-"${GCS_USER}-${SANITIZED_BAM}"}
 echo "Using cluster name \"${CLUSTER_NAME}\""
 
 # update gcloud
-gcloud components update
+if [ "${QUIET}" == "Y" ]; then
+    gcloud components update --quiet
+else
+    gcloud components update
+fi
 
 # for now assume the reference image is just the reference fasta + ".img"
 GCS_REFERENCE_IMAGE="${GCS_REFERENCE_FASTA}.img"
@@ -81,18 +91,18 @@ LOCAL_LOG_FILE=${SV_LOCAL_LOG_FILE:-"${TMPDIR}sv-discovery-${SANITIZED_BAM}.log"
 # check if GATK jar was compiled from the current .git hash
 GATK_GIT_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | cut -d- -f5 | cut -c2-)
 CURRENT_GIT_HASH=$(git -C ${GATK_DIR} rev-parse --short HEAD | cut -c1-7)
-if [ "${GATK_GIT_HASH}" != "${CURRENT_GIT_HASH}" ]; then
-        while true; do
-                read -p "Current git hash does not match GATK git hash. Run anyway?" yn
-                case $yn in
-                        [Yy]*)  break
-                                ;;
-                        [Nn]*)  exit
-                                ;;
-                        *)      echo "Please answer yes or no"
-                        
-                esac
-        done
+if [ "${QUIET}" != "Y" ] && [ "${GATK_GIT_HASH}" != "${CURRENT_GIT_HASH}" ]; then
+    while true; do
+        read -p "Current git hash does not match GATK git hash. Run anyway?" yn
+        case $yn in
+            [Yy]*)  break
+                    ;;
+            [Nn]*)  exit
+                    ;;
+            *)      echo "Please answer yes or no"
+                    ;;
+        esac
+    done
 fi
 GIT_BRANCH=$(git -C ${GATK_DIR} branch --contains ${GATK_GIT_HASH} | rev | cut -d" " -f 1 | rev)
 # set output directory to datetime-git branch-git hash stamped folder
@@ -101,12 +111,16 @@ OUTPUT_DIR="/results/$(date "+%Y-%m-%d_%H.%M.%S")-${GIT_BRANCH}-${GATK_GIT_HASH}
 # call create_cluster, using default_init
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
-    read -p "Create cluster? (yes/no/cancel)" yn
+    if [ "${QUIET}" == "Y" ]; then
+        yn="Y"
+    else
+        read -p "Create cluster? (yes/no/cancel)" yn
+    fi
     case $yn in
         [Yy]*)  if [[ ${INIT_SCRIPT} == gs://* ]]; then
-                        INIT_ARGS=${INIT_SCRIPT}
+                    INIT_ARGS=${INIT_SCRIPT}
                 else
-                        INIT_ARGS="${INIT_SCRIPT} gs://${PROJECT_NAME}/${GCS_USER}/init/$(basename INIT_SCRIPT)"
+                    INIT_ARGS="${INIT_SCRIPT} gs://${PROJECT_NAME}/${GCS_USER}/init/$(basename INIT_SCRIPT)"
                 fi
 
                 echo "create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${GCS_REFERENCE_DIR} ${GCS_BAM_DIR} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
@@ -125,7 +139,11 @@ done
 # call runWholePipeline
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
-    read -p "Run whole pipeline? (yes/no/cancel)" yn
+    if [ "${QUIET}" == "Y" ]; then
+      yn="Y"
+    else
+      read -p "Run whole pipeline? (yes/no/cancel)" yn
+    fi
     case $yn in
         [Yy]*)  SECONDS=0
                 echo "runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_BAM} ${GCS_REFERENCE_FASTA} ${GCS_REFERENCE_IMAGE}${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
@@ -145,10 +163,14 @@ done
 # copy results into gcloud
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
-    read -p "Copy results? (yes/no/cancel)" yn
+    if [ "${QUIET}" == "Y" ]; then
+      yn="Y"
+    else
+      read -p "Copy results? (yes/no/cancel)" yn
+    fi
     case $yn in
-        [Yy]*)  echo "copy_sv_results.sh ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_USER} ${LOCAL_LOG_FILE} 2>&1" | tee -a ${LOCAL_LOG_FILE}
-                copy_sv_results.sh ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_USER} ${LOCAL_LOG_FILE}${SV_ARGS}
+        [Yy]*)  echo "copy_sv_results.sh ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_USER} ${GCS_SAVE_PATH} ${LOCAL_LOG_FILE} 2>&1" | tee -a ${LOCAL_LOG_FILE}
+                copy_sv_results.sh ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_USER} ${GCS_SAVE_PATH} ${LOCAL_LOG_FILE}${SV_ARGS}
                 break
                 ;;
         [Nn]*)  break
@@ -163,7 +185,11 @@ done
 # delete cluster
 while true; do
     echo "#############################################################"
-    read -p "Delete cluster? (yes/no/cancel)" yn
+    if [ "${QUIET}" == "Y" ]; then
+      yn="Y"
+    else
+      read -p "Delete cluster? (yes/no/cancel)" yn
+    fi
     case $yn in
         [Yy]*)  echo "gcloud dataproc clusters delete ${CLUSTER_NAME} --project=${PROJECT_NAME} --async --quiet"
                 gcloud dataproc clusters delete ${CLUSTER_NAME} --project=${PROJECT_NAME} --async --quiet
