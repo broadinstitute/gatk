@@ -805,6 +805,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 }, true);
         evidenceRDD.cache();
 
+        // record the evidence
+        if ( params.unfilteredEvidenceDir != null ) {
+            evidenceRDD.map(e -> e.stringRep(broadcastMetadata.getValue(), filter.getMinEvidenceMapQ()))
+                       .saveAsTextFile(params.unfilteredEvidenceDir);
+        }
+
         final JavaRDD<EvidenceTargetLink> evidenceTargetLinkJavaRDD = evidenceRDD.mapPartitions(
                 itr -> {
                     final ReadMetadata readMetadata = broadcastMetadata.getValue();

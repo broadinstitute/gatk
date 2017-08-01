@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A bag of data about reads:  contig name to id mapping, fragment length statistics by read group, mean length.
@@ -328,6 +330,14 @@ public class ReadMetadata {
                 final PartitionBounds bounds = partitionBounds[idx];
                 writer.write(idx + "\t" + bounds.firstContigID + "\t" + bounds.getFirstStart() + "\t" +
                         bounds.getLastContigID() + "\t" + bounds.getLastStart() + "\n");
+            }
+            writer.write("contigs map:\n");
+            try {
+                for (int i = 0; i < readMetadata.contigIDToName.length; ++i) {
+                    writer.write(i + ":" + readMetadata.contigIDToName[i] + "\n");
+                }
+            } catch (IOException ex) {
+                throw new GATKException("Can't write metadata contig entry", ex);
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write metadata file.", ioe);

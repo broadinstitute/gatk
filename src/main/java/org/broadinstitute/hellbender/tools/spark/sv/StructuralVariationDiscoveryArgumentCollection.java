@@ -110,6 +110,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "directory for evidence output", fullName = "breakpointEvidenceDir", optional = true)
         public String evidenceDir;
 
+        @Argument(doc = "directory for evidence output", fullName = "unfilteredBreakpointEvidenceDir", optional = true)
+        public String unfilteredEvidenceDir;
+
         @Argument(doc = "file for breakpoint intervals output", fullName = "breakpointIntervals", optional = true)
         public String intervalFile;
 
