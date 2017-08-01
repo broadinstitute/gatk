@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import java.util.HashSet;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -8,13 +11,48 @@ import java.util.Set;
  * and reference contig names of a given taxon in the pathogen reference.
  */
 public final class PSPathogenReferenceTaxonProperties {
-    public String name = null;
-    public String rank = null;
-    public String parentTaxId = null;
-    public long length = 0;
-    public final Set<String> accessions;
+    private String name;
+    private String rank = null;
+    private String parentTaxId = null;
+    private long length = 0;
+    private final Map<String, Long> accessions;
 
     public PSPathogenReferenceTaxonProperties() {
-        accessions = new HashSet<>(1);
+        accessions = new HashMap<>(SVUtils.hashMapCapacity(1));
+    }
+
+    public PSPathogenReferenceTaxonProperties(final String name) {
+        this();
+        this.name = name;
+    }
+
+    public void addAccession(final String name, final long length) {
+        accessions.put(name, length);
+        this.length += length;
+    }
+
+    public boolean hasAccession(final String name) {
+        return accessions.containsKey(name);
+    }
+
+    public long getAccessionLength(final String name) {
+        if (accessions.containsKey(name)) {
+            return accessions.get(name);
+        }
+        return 0;
+    }
+
+    public void setName(final String name) { this.name = name;}
+    public void setRank(final String rank) { this.rank = rank;}
+    public void setParent(final String parentTaxId) { this.parentTaxId = parentTaxId;}
+
+    public String getName() { return name; }
+    public String getRank() { return rank; }
+    public String getParent() { return parentTaxId; }
+    public Set<String> getAccessions() {
+        return accessions.keySet();
+    }
+    public long getTotalLength() {
+        return length;
     }
 }

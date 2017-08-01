@@ -38,14 +38,14 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         Assert.assertEquals(taxIdToProperties.size(), 2);
         Assert.assertTrue(taxIdToProperties.containsKey("1"));
-        Assert.assertEquals(taxIdToProperties.get("1").accessions.size(), 2);
-        Assert.assertTrue(taxIdToProperties.get("1").accessions.contains("record2|taxid|1"));
-        Assert.assertTrue(taxIdToProperties.get("1").accessions.contains("record5|ref|NC_2|taxid|1"));
-        Assert.assertEquals(taxIdToProperties.get("1").length, 6000);
+        Assert.assertEquals(taxIdToProperties.get("1").getAccessions().size(), 2);
+        Assert.assertTrue(taxIdToProperties.get("1").getAccessions().contains("record2|taxid|1"));
+        Assert.assertTrue(taxIdToProperties.get("1").getAccessions().contains("record5|ref|NC_2|taxid|1"));
+        Assert.assertEquals(taxIdToProperties.get("1").getTotalLength(), 6000);
         Assert.assertTrue(taxIdToProperties.containsKey("2"));
-        Assert.assertEquals(taxIdToProperties.get("2").accessions.size(), 1);
-        Assert.assertTrue(taxIdToProperties.get("2").accessions.contains("record3|taxid|2|"));
-        Assert.assertEquals(taxIdToProperties.get("2").length, 1000);
+        Assert.assertEquals(taxIdToProperties.get("2").getAccessions().size(), 1);
+        Assert.assertTrue(taxIdToProperties.get("2").getAccessions().contains("record3|taxid|2|"));
+        Assert.assertEquals(taxIdToProperties.get("2").getTotalLength(), 1000);
     }
 
     @Test(expectedExceptions = Exception.class)
@@ -61,8 +61,7 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
         final PSPathogenReferenceTaxonProperties taxonProperties = new PSPathogenReferenceTaxonProperties();
-        taxonProperties.accessions.add("ref|acc_B|taxid|3");
-        taxonProperties.length = 1000;
+        taxonProperties.addAccession("ref|acc_B|taxid|3", 1000);
         taxIdToProperties.put("3", taxonProperties);
 
         final Collection<String> result = PSBuildReferenceTaxonomyUtils.parseCatalog(reader, accessionToNameAndLength, taxIdToProperties, false, null);
@@ -75,16 +74,15 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         //Information expected to be added to taxIdToProperties
         final PSPathogenReferenceTaxonProperties expectedProperties = new PSPathogenReferenceTaxonProperties();
-        expectedProperties.length = 2000L;
-        expectedProperties.accessions.add("ref|acc_A");
+        expectedProperties.addAccession("ref|acc_A", 2000);
 
         Assert.assertEquals(taxIdToProperties.size(), 2);
         Assert.assertTrue(taxIdToProperties.containsKey("2"));
-        Assert.assertEquals(taxIdToProperties.get("2").length, expectedProperties.length);
-        Assert.assertEquals(taxIdToProperties.get("2").name, expectedProperties.name);
-        Assert.assertEquals(taxIdToProperties.get("2").rank, expectedProperties.rank);
-        Assert.assertEquals(taxIdToProperties.get("2").accessions.size(), expectedProperties.accessions.size());
-        Assert.assertTrue(taxIdToProperties.get("2").accessions.containsAll(expectedProperties.accessions));
+        Assert.assertEquals(taxIdToProperties.get("2").getTotalLength(), expectedProperties.getTotalLength());
+        Assert.assertEquals(taxIdToProperties.get("2").getName(), expectedProperties.getName());
+        Assert.assertEquals(taxIdToProperties.get("2").getRank(), expectedProperties.getRank());
+        Assert.assertEquals(taxIdToProperties.get("2").getAccessions().size(), expectedProperties.getAccessions().size());
+        Assert.assertTrue(taxIdToProperties.get("2").getAccessions().containsAll(expectedProperties.getAccessions()));
 
         //Test bad catalog input
         final String badInput = "2\tx\n";
@@ -108,10 +106,10 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         PSBuildReferenceTaxonomyUtils.parseNamesFile(reader, taxIdToProperties);
 
-        Assert.assertEquals(taxIdToProperties.get("1").name, "name A");
-        Assert.assertEquals(taxIdToProperties.get("2").name, "name B");
-        Assert.assertEquals(taxIdToProperties.get("3").name, "name C");
-        Assert.assertEquals(taxIdToProperties.get("4").name, null);
+        Assert.assertEquals(taxIdToProperties.get("1").getName(), "name A");
+        Assert.assertEquals(taxIdToProperties.get("2").getName(), "name B");
+        Assert.assertEquals(taxIdToProperties.get("3").getName(), "name C");
+        Assert.assertEquals(taxIdToProperties.get("4").getName(), null);
 
         //Throw exception when the input has wrong number of columns
         final String badInput = input + "1\t|\tname A\t|\t-\t|\n";
@@ -130,34 +128,32 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
 
-        final PSPathogenReferenceTaxonProperties rootProperties = new PSPathogenReferenceTaxonProperties();
-        rootProperties.name = "root";
+        final PSPathogenReferenceTaxonProperties rootProperties = new PSPathogenReferenceTaxonProperties("root");
         taxIdToProperties.put("1", rootProperties);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesA = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesA.accessions.add("ref|acc_A|taxid|2");
+        taxPropertiesA.addAccession("ref|acc_A|taxid|2", 100);
         taxIdToProperties.put("2", taxPropertiesA);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesB = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesB.accessions.add("ref|acc_B|taxid|3");
+        taxPropertiesB.addAccession("ref|acc_B|taxid|3", 100);
         taxIdToProperties.put("3", taxPropertiesB);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesC = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesC.accessions.add("ref|acc_C|taxid|5");
+        taxPropertiesC.addAccession("ref|acc_C|taxid|5", 100);
         taxIdToProperties.put("5", taxPropertiesC);
 
         final Collection<String> result = PSBuildReferenceTaxonomyUtils.parseNodesFile(reader, taxIdToProperties);
 
-        rootProperties.parentTaxId = null;
-        rootProperties.rank = "root";
+        rootProperties.setRank("root");
         Assert.assertEquals(taxIdToProperties.get("1"), rootProperties);
 
-        taxPropertiesA.parentTaxId = "1";
-        taxPropertiesA.rank = "kingdom";
+        taxPropertiesA.setParent("1");
+        taxPropertiesA.setRank("kingdom");
         Assert.assertEquals(taxIdToProperties.get("2"), taxPropertiesA);
 
-        taxPropertiesB.parentTaxId = "1";
-        taxPropertiesB.rank = "kingdom";
+        taxPropertiesB.setParent("1");
+        taxPropertiesB.setRank("kingdom");
         Assert.assertEquals(taxIdToProperties.get("3"), taxPropertiesB);
 
         Assert.assertNotNull(result);
@@ -174,35 +170,57 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
     @Test
     public void testBuildReferenceNameToTaxMap() {
         final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        final PSTree tree = new PSTree("1");
+        tree.addNode(PSBuildReferenceTaxonomyUtils.VIRUS_ID,"Virus","1",0,"kingdom");
+        tree.addNode("3","Bacteria","1",0,"kingdom");
+        tree.addNode("4","A",PSBuildReferenceTaxonomyUtils.VIRUS_ID,600,"species");
+        tree.addNode("5","B","3",1000,"species");
 
         //Empty input
-        Map<String, String> result = PSBuildReferenceTaxonomyUtils.buildAccessionToTaxIdMap(taxIdToProperties);
+        Map<String, String> result = PSBuildReferenceTaxonomyUtils.buildAccessionToTaxIdMap(taxIdToProperties, tree, 0);
         Assert.assertTrue(result.isEmpty());
         Assert.assertTrue(taxIdToProperties.isEmpty());
 
         //Main test case
-        final PSPathogenReferenceTaxonProperties taxPropertiesRoot = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesRoot.name = "root";
+        final PSPathogenReferenceTaxonProperties taxPropertiesRoot = new PSPathogenReferenceTaxonProperties("root");
         taxIdToProperties.put("1", taxPropertiesRoot);
 
+        final String accA = "ref|acc_A|taxid|4";
+        final String accB = "ref|acc_B|taxid|4";
+        final String accC = "ref|acc_C|taxid|5";
+        final String accD = "ref|acc_D|taxid|5";
+
         final PSPathogenReferenceTaxonProperties taxPropertiesA = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesA.accessions.add("ref|acc_A|taxid|2");
-        taxPropertiesA.accessions.add("ref|acc_B|taxid|2");
-        taxIdToProperties.put("2", taxPropertiesA);
+        taxPropertiesA.addAccession(accA, 100);
+        taxPropertiesA.addAccession(accB, 500);
+        taxIdToProperties.put("4", taxPropertiesA);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesB = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesB.accessions.add("ref|acc_C|taxid|3");
-        taxIdToProperties.put("3", taxPropertiesB);
+        taxPropertiesB.addAccession(accC, 1000);
+        taxPropertiesB.addAccession(accD, 100);
+        taxIdToProperties.put("5", taxPropertiesB);
 
-        result = PSBuildReferenceTaxonomyUtils.buildAccessionToTaxIdMap(taxIdToProperties);
+        result = PSBuildReferenceTaxonomyUtils.buildAccessionToTaxIdMap(taxIdToProperties, tree, 100);
+
+        Assert.assertEquals(result.size(), 4);
+        Assert.assertTrue(result.containsKey(accA));
+        Assert.assertEquals(result.get(accA), "4");
+        Assert.assertTrue(result.containsKey(accB));
+        Assert.assertEquals(result.get(accB), "4");
+        Assert.assertTrue(result.containsKey(accC));
+        Assert.assertEquals(result.get(accC), "5");
+        Assert.assertTrue(result.containsKey(accD));
+        Assert.assertEquals(result.get(accD), "5");
+
+        result = PSBuildReferenceTaxonomyUtils.buildAccessionToTaxIdMap(taxIdToProperties, tree, 101);
 
         Assert.assertEquals(result.size(), 3);
-        Assert.assertTrue(result.containsKey("ref|acc_A|taxid|2"));
-        Assert.assertEquals(result.get("ref|acc_A|taxid|2"), "2");
-        Assert.assertTrue(result.containsKey("ref|acc_B|taxid|2"));
-        Assert.assertEquals(result.get("ref|acc_B|taxid|2"), "2");
-        Assert.assertTrue(result.containsKey("ref|acc_C|taxid|3"));
-        Assert.assertEquals(result.get("ref|acc_C|taxid|3"), "3");
+        Assert.assertTrue(result.containsKey(accA));
+        Assert.assertEquals(result.get(accA), "4");
+        Assert.assertTrue(result.containsKey(accB));
+        Assert.assertEquals(result.get(accB), "4");
+        Assert.assertTrue(result.containsKey(accC));
+        Assert.assertEquals(result.get(accC), "5");
     }
 
     //Empty input should throw exception
@@ -223,9 +241,9 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         //Note taxPropertiesC.accessions is empty
         final PSPathogenReferenceTaxonProperties taxPropertiesC = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesC.parentTaxId = "1";
-        taxPropertiesC.name = "species Y";
-        taxPropertiesC.rank = "species";
+        taxPropertiesC.setParent("1");
+        taxPropertiesC.setName("species Y");
+        taxPropertiesC.setRank("species");
         taxIdToProperties.put("4", taxPropertiesC);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesD = new PSPathogenReferenceTaxonProperties();
@@ -233,18 +251,18 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         //Main test: add nodes associated with references
         final PSPathogenReferenceTaxonProperties taxPropertiesA = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesA.parentTaxId = "1";
-        taxPropertiesA.accessions.add("ref|acc_A|taxid|2");
-        taxPropertiesA.accessions.add("ref|acc_B|taxid|2");
-        taxPropertiesA.name = "species X";
-        taxPropertiesA.rank = "species";
+        taxPropertiesA.setParent("1");
+        taxPropertiesA.addAccession("ref|acc_A|taxid|2", 100);
+        taxPropertiesA.addAccession("ref|acc_B|taxid|2", 100);
+        taxPropertiesA.setName("species X");
+        taxPropertiesA.setRank("species");
         taxIdToProperties.put("2", taxPropertiesA);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesB = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesB.parentTaxId = "1";
-        taxPropertiesB.accessions.add("ref|acc_C|taxid|3");
-        taxPropertiesB.name = "species Z";
-        taxPropertiesB.rank = "species";
+        taxPropertiesB.setParent("1");
+        taxPropertiesB.addAccession("ref|acc_C|taxid|3", 100);
+        taxPropertiesB.setName("species Z");
+        taxPropertiesB.setRank("species");
         taxIdToProperties.put("3", taxPropertiesB);
 
         final PSTree tree = PSBuildReferenceTaxonomyUtils.buildTaxonomicTree(taxIdToProperties);
@@ -264,9 +282,9 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
         taxIdToProperties.put("1", taxPropertiesRoot);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesC = new PSPathogenReferenceTaxonProperties();
-        taxPropertiesC.parentTaxId = "1";
-        taxPropertiesC.name = "species Y";
-        taxPropertiesC.rank = "species";
+        taxPropertiesC.setParent("1");
+        taxPropertiesC.setName("species Y");
+        taxPropertiesC.setRank("species");
         taxIdToProperties.put("4", taxPropertiesC);
 
         final PSPathogenReferenceTaxonProperties taxPropertiesD = new PSPathogenReferenceTaxonProperties();
@@ -274,6 +292,24 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
 
         //Note taxPropertiesC.accessions and taxPropertiesD.accessions are empty
         PSBuildReferenceTaxonomyUtils.buildTaxonomicTree(taxIdToProperties);
+    }
+
+    @Test
+    public void testRemoveUnusedTaxIds() {
+        final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties = new HashMap<>();
+        taxIdToProperties.put("1", new PSPathogenReferenceTaxonProperties());
+        taxIdToProperties.put("2", new PSPathogenReferenceTaxonProperties());
+        taxIdToProperties.put("3", new PSPathogenReferenceTaxonProperties());
+        taxIdToProperties.put("4", new PSPathogenReferenceTaxonProperties());
+        final PSTree tree = new PSTree("1");
+        tree.addNode("2", "node2", "1", 0, "child");
+        tree.addNode("4", "node2", "1", 0, "child");
+        PSBuildReferenceTaxonomyUtils.removeUnusedTaxIds(taxIdToProperties, tree);
+        Assert.assertEquals(taxIdToProperties.size(), 3);
+        Assert.assertTrue(taxIdToProperties.containsKey("1"));
+        Assert.assertTrue(taxIdToProperties.containsKey("2"));
+        Assert.assertTrue(taxIdToProperties.containsKey("4"));
+        Assert.assertTrue(!taxIdToProperties.containsKey("3"));
     }
 
     @Test
