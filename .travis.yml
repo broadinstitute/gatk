@@ -12,7 +12,7 @@ env:
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - RUN_CNV_SOMATIC_WDL=true
-  - RUN_M2_WDL=true
+  - RUN_M2_WDL=true CRON=true
   - RUN_CNV_GERMLINE_WDL=true
   global:
   #gradle needs this
@@ -21,8 +21,8 @@ env:
   - GRADLE_OPTS="-Xmx1024m -Dorg.gradle.daemon=false"
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-  - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 
-  - CLOUDSDK_PYTHON_SITEPACKAGES=1 
+  - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin
+  - CLOUDSDK_PYTHON_SITEPACKAGES=1
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
   #hellbender specific variables
   - HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/
@@ -35,11 +35,6 @@ env:
   - ARTIFACTORY_USERNAME=gatkci
   #artifactory password
   - secure: "E0LWXgX3aWSE/DWHXXDx4vrAq4uX6vKg402wToaZ5otbHQ/UP0H7/FA5jomavAXoC46oMVHZcEltZ5OVhuJ0NW8yYxUCecJ1D/YvVQmnfFABcV/qLM+k4e2rYQOKVw/pejB2gG8XdTA+XE2WyTeENbmIkputS8f1ndKWCmZxuuk="
-matrix:
-  fast_finish: true
-  include:
-     - jdk: oraclejdk8
-       env: TEST_TYPE=integration TEST_VERBOSITY=minimal
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
@@ -50,6 +45,7 @@ cache:
     - $HOME/.m2
     - $HOME/gcloud/
     - $HOME/site-library
+
 before_install:
 #setup google cloud and github authentication
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
@@ -63,10 +59,10 @@ before_install:
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
     ssh -T git@github.com;
-    echo "Done testing github authentication";  
+    echo "Done testing github authentication";
   fi
 #install R
-- if [[ $TEST_DOCKER != true ]]; then
+- if [[ $TEST_DOCKER != true && $DEPLOY != true ]]; then
    sudo mkdir -p /usr/local/lib/R/;
    sudo mkdir -p site-library;
    sudo ln -sFv ~/site-library /usr/local/lib/R/site-library;
@@ -85,17 +81,13 @@ before_install:
 - if [[ $RUN_M2_WDL == true ]]; then
     wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
   fi
-# Installing Travis for test report uploading
-- if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
-    curl -sSL https://get.rvm.io | bash -s stable --ruby;
-    source /home/travis/.rvm/scripts/rvm;
-    gem install travis;
-  fi
 # Download git lfs files
-- git lfs version
-- git lfs install
-- git lfs fetch
-- git lfs checkout
+- if [[ $DEPLOY != true ]]; then
+    git lfs version;
+    git lfs install;
+    git lfs fetch;
+    git lfs checkout;
+  fi
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
@@ -112,9 +104,7 @@ install:
 script:
 # run a basic sanity check to be sure that gatk-launch doesn't explode
 # run tests
-- if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
-    echo "Not running any tests for nightly builds";
-  elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
+- if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
@@ -146,24 +136,13 @@ script:
     ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;
   fi
-
 after_success:
 - bash <(curl -s https://codecov.io/bash)
 - if [[ $TRAVIS_BRANCH == master && $UPLOAD == true ]]; then ./gradlew uploadArchives; fi
 # if this is actually a commit to master and not a pull request build into master, then publish master-snapshot
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $UPLOAD == true ]]; then
     git tag master;
-    ./gradlew uploadArchives; 
-  fi
-
-# This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
-- if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true && "$(travis show master | head -2 | grep 'State:' | awk '{print $NF}')" == passed ]]; then
-    $GCLOUD/gcloud components -q update gsutil;
-    gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
-    ./gradlew bundle;
-    ZIP_FILE="$(ls build/ | grep .zip)";
-    echo "Uploading zip to gs://gatk-nightly-builds/";
-    $GCLOUD/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
+    ./gradlew uploadArchives;
   fi
 after_failure:
 - dmesg | tail -100
@@ -175,4 +154,21 @@ after_script:
     echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/test/index.html";
   fi
 
-
+# This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
+jobs:
+  fast_finish: true
+  include:
+    - jdk: oraclejdk8
+      env: TEST_TYPE=integration TEST_VERBOSITY=minimal
+    - stage: deploy
+      install: skip
+      script:
+      - if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron ]]; then
+          $GCLOUD/gcloud components -q update gsutil;
+          gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
+          ./gradlew bundle;
+          ZIP_FILE="$(ls build/ | grep .zip)";
+          echo "Uploading zip to gs://gatk-nightly-builds/";
+          $GCLOUD/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
+        fi
+      env: TEST_TYPE=integration TEST_VERBOSITY=minimal DEPLOY=true
