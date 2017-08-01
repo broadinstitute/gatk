@@ -151,7 +151,6 @@ public class Main {
         try {
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
-            System.exit(0);
         } catch (final CommandLineException e){
             System.err.println(program.getUsage());
             handleUserException(e);
