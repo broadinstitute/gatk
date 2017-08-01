@@ -1,39 +1,129 @@
 #!/bin/bash
 
-# This script manages the SV discovery pipeline by calling other scripts
-# a) it creates a Google Dataproc cluster used for running the GATK-SV
-#    pipeline (call create_cluster.sh)
-# b) it runs the analysis (call runWholePipeline.sh)
-# c) it copies results to a datetime and git-version stamped directory
-#    on GCS, along with logged console output (call copy_sv_results.sh)
-# d) it shuts down the cluster
+
 
 # terminate script on error or if a command fails before piping to another command
 set -eu
 set -o pipefail
 
-if [[ "$#" -lt 4 ]]; then
-    echo -e \
-"Please provide:
-  [1] local directory of GATK build (required)
-  [2] project name (required)
-  [3] Google Cloud Service (GCS) path to indexed BAM (required)
-  [4] GCS path to reference fasta (required)
-      OPTIONAL arguments:
-  [5] path to initialization script (local or GCS, defaults to
-      \${GATK_DIR}/scripts/sv/default_init.sh if omitted or empty)
-  [6] GCS username (defaults to local username if omitted or empty)
-  [7] GCS save bucket/path (defaults to \$PROJECT_NAME/\$GCS_USER if
-      omitted or empty)
-  [8] Run without prompting (Y or N, defaults to N if omitted or empty)
-  [*] additional arguments to pass to
-      StructuralVariationDiscoveryPipelineSpark
-To leave a value as default but specify a later value, use an empty
-  string. e.g. to use default initialization script but override
-  GCS user name:
-\$ manage_sv_pipeline.sh /my/gatk/dir my_project gs://mybam.bam \\
-     gs://myfasta.fasta \"\" my_gcs_user"
+show_help() {
+cat << EOF
+Manage the SV discovery pipeline on Google Cloud Services (GCS) cluster
+Syntax
+  manage_sv_pipeline.sh [Options] GATK_Folder Project_Name \\
+                        GCS_BAM_File GCS_FASTA_File \\
+                        [args to SV discovery pipeline]
+  Options:
+    -h or --help:
+      display help and exit
+    -q or --quiet:
+      run without prompting for user input
+    -u [GCS_USER] or --user [GCS_USER]:
+      set GCS username (defaults to ${USER})
+    -i [INIT_SCRIPT] or --init [INIT_SCRIPT]
+      use specified spark init script
+      (defaults to \${GATK_FOLDER}/scripts/sv/default_init.sh)
+    -s [GCS_SAVE_PATH] or --save [GCS_SAVE_PATH]
+      save results in specified bucket/folder
+      (defaults to \$PROJECT_NAME/\$GCS_USER)
+
+  Manditory Positional Arguments:
+    GATK_Folder: path to local copy of GATK
+    Project_Name: name of GCS project
+    GCS_BAM_File: path to .bam file hosted in GCS
+                  (e.g. gs://bucket/path/to/file.bam)
+    GCS_FASTA_File: path to reference .fasta file hosted in GCS
+
+  Optional Positional Arguments:
+    [args to SV discovery pipeline]: additional arguments will be passed
+                  to StructuralVariationDiscoveryPipelineSpark.
+                  NOTE: these args will be eval-ed within
+                  runWholePipeline.sh, so it is possible to pass
+                  variable names as strings, provided they reference
+                  variables defined within runWholePipeline.sh
+
+This script manages the SV discovery pipeline by calling other scripts
+a) ensure that the gcloud utility is up to date
+b) ensure that local GATK .git hash matches local GATK .jar file.
+c) create a Google Dataproc cluster used for running the GATK-SV
+   pipeline (call create_cluster.sh)
+d) run the analysis (call runWholePipeline.sh)
+e) copy results to a datetime and git-version stamped directory
+   on GCS, along with logged console output (call copy_sv_results.sh)
+f) shut down the cluster
+EOF
+}
+
+throw_error() {
+    echo "$1" >&2
     exit 1
+}
+
+QUIET=${SV_QUIET:-"N"}
+GCS_USER=${GCS_USER:-${USER}}
+
+while [ $# -ge 1 ]; do
+    case $1 in
+        -h|-\?|--help)
+            show_help
+            exit 0
+            ;;
+        -q|--quiet)
+            QUIET="Y"
+            shift
+            ;;
+        -u|--user)
+            if [ $# -ge 2 ]; then
+                GCS_USER="$2"
+                shift 2
+            else
+                throw_error "--user requires a non-empty argument"
+            fi
+            ;;
+        --user=?*)
+            GCS_USER=${1#*=} # remove everything up to = and assign rest to user
+            shift
+            ;;
+        -i|--init)
+            if [ $# -ge 2 ]; then
+                INIT_SCRIPT="$2"
+                shift 2
+            else
+                throw_error "--init requires a non-empty argument"
+            fi
+            ;;
+        --init=?*)
+            INIT_SCRIPT=${1#*=} # remove everything up to = and assign rest to init
+            shift
+            ;;
+        -s|--save)
+            if [ $# -ge 2 ]; then
+                GCS_SAVE_PATH="$2"
+                shift 2
+            else
+                throw_error "--save requires a non-empty argument"
+            fi
+            ;;
+        --save=?*)
+            GCS_SAVE_PATH=${1#*=} # remove everything up to = and assign rest to save
+            shift
+            ;;
+        --)   # explicit call to end of all options
+            shift
+            break
+            ;;
+        -?*)  # unsupported option
+            throw_error "Unknown option \"$1\". use --help for syntax"
+            ;;
+        *)  # not an option, a positional argument. break out
+            break
+            ;;
+    esac
+done
+
+if [ $# -lt 4 ]; then
+  show_help
+  exit 1
 fi
 
 # init variables that MUST be defined
@@ -41,16 +131,11 @@ GATK_DIR="$1"
 PROJECT_NAME="$2"
 GCS_BAM="$3"
 GCS_REFERENCE_FASTA="$4"
-
-# init variables with optional overrides / defaults
-# passed value -> overrides system value -> overrides default value
-INIT_SCRIPT=${5:-${INIT_SCRIPT:-"${GATK_DIR}/scripts/sv/default_init.sh"}}
-GCS_USER=${6:-${GCS_USER:-${USER}}}
-GCS_SAVE_PATH=${7:-${GCS_SAVE_PATH:-"${PROJECT_NAME}/${GCS_USER}"}}
-QUIET=${8:-${SV_QUIET:-"N"}}
-
-shift $(($# < 9 ? $# : 9))
+shift $(($# < 4 ? $# : 4))
 SV_ARGS=${*:-${SV_ARGS:-""}} && SV_ARGS=${SV_ARGS:+" ${SV_ARGS}"}
+
+INIT_SCRIPT=${INIT_SCRIPT:-"${GATK_DIR}/scripts/sv/default_init.sh"}
+GCS_SAVE_PATH=${GCS_SAVE_PATH:-"${PROJECT_NAME}/${GCS_USER}"}
 
 # add GATK SV scripts to PATH
 PATH="${GATK_DIR}/scripts/sv:${PATH}"
@@ -120,7 +205,7 @@ while true; do
         [Yy]*)  if [[ ${INIT_SCRIPT} == gs://* ]]; then
                     INIT_ARGS=${INIT_SCRIPT}
                 else
-                    INIT_ARGS="${INIT_SCRIPT} gs://${PROJECT_NAME}/${GCS_USER}/init/$(basename INIT_SCRIPT)"
+                    INIT_ARGS="${INIT_SCRIPT} gs://${GCS_SAVE_PATH}/init/$(basename INIT_SCRIPT)"
                 fi
 
                 echo "create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${GCS_REFERENCE_DIR} ${GCS_BAM_DIR} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
