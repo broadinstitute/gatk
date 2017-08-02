@@ -45,6 +45,7 @@ task downloadGsaLibFile(type: Download) {
 
 
 repositories {
+
     mavenCentral()
     jcenter()
 
@@ -52,7 +53,7 @@ repositories {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
 
-    mavenLocal()
+   mavenLocal()
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.10.1')

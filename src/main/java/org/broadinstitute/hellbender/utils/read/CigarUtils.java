@@ -3,8 +3,10 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWAlignerNativeArguments;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SWAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment.Parameters;
 import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
 
@@ -14,7 +16,7 @@ public final class CigarUtils {
 
     // used in the bubble state machine to apply Smith-Waterman to the bubble sequence
     // these values were chosen via optimization against the NA12878 knowledge base
-    public static final Parameters NEW_SW_PARAMETERS = new Parameters(200, -150, -260, -11);
+    public static final SWAlignerNativeArguments NEW_SW_PARAMETERS = new SWAlignerNativeArguments(SWAlignerNativeArguments.OverhangStrategy.SOFTCLIP, 200, -150, -260, -11);
 
     private static final String SW_PAD = "NNNNNNNNNN";
 
@@ -288,7 +290,8 @@ public final class CigarUtils {
 
         final String paddedRef = SW_PAD + new String(refSeq) + SW_PAD;
         final String paddedPath = SW_PAD + new String(altSeq) + SW_PAD;
-        final SWPairwiseAlignment alignment = new SWPairwiseAlignment( paddedRef.getBytes(), paddedPath.getBytes(), NEW_SW_PARAMETERS);
+       // final SWPairwiseAlignment alignment = new SWPairwiseAlignment( paddedRef.getBytes(), paddedPath.getBytes(), NEW_SW_PARAMETERS);
+        final SWAligner aligner 
 
         if ( isSWFailure(alignment) ) {
             return null;
