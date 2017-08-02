@@ -8,8 +8,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 /**
  * Clips reads on both ends using base quality scores
  */
-public class BaseQualityClipReadTransformer implements ReadTransformer {
-    public static final long serialVersionUID = 1L;
+public final class BaseQualityClipReadTransformer implements ReadTransformer {
+    private static final long serialVersionUID = 1L;
     private int qTrimmingThreshold = 15;
 
     public BaseQualityClipReadTransformer(final int trim_thresh) {
@@ -35,6 +35,9 @@ public class BaseQualityClipReadTransformer implements ReadTransformer {
         return clipReadLeftEnd(readClippedRightEnd);
     }
 
+    /**
+     * Returns right clip point or -1 if no clip
+     */
     public int getRightClipPoint( final byte[] quals ) {
         int clipSum = 0, lastMax = -1, clipPoint = -1; // -1 means no clip
         final int readLength = quals.length;
@@ -48,6 +51,9 @@ public class BaseQualityClipReadTransformer implements ReadTransformer {
         return clipPoint;
     }
 
+    /**
+     * Returns left clip point or -1 if no clip
+     */
     public int getLeftClipPoint( final byte[] quals ) {
         int clipSum = 0, lastMax = -1, clipPoint = -1; // -1 means no clip
         final int readLength = quals.length;
