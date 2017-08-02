@@ -85,12 +85,6 @@ before_install:
 - if [[ $RUN_M2_WDL == true ]]; then
     wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
   fi
-# Installing Travis for test report uploading
-- if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
-    curl -sSL https://get.rvm.io | bash -s stable --ruby;
-    source /home/travis/.rvm/scripts/rvm;
-    gem install travis;
-  fi
 # Download git lfs files
 - git lfs version
 - git lfs install
@@ -157,7 +151,7 @@ after_success:
   fi
 
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
-- if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true && "$(travis show master | head -2 | grep 'State:' | awk '{print $NF}')" == passed ]]; then
+- if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
     $GCLOUD/gcloud components -q update gsutil;
     gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
     ./gradlew bundle;
