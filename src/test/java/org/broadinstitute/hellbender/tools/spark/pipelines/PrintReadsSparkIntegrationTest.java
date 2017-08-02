@@ -52,9 +52,8 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         return new Object[][]{
             {"org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam",
                 ".bam", false, null},
-// TODO: uncomment once we upgrade to the version of gcloud that includes JP's fix (#2124)
-//            {"org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam",
-//                ".bam", true, null},
+            {"org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam",
+                ".bam", true, null},
         };
     }
 
