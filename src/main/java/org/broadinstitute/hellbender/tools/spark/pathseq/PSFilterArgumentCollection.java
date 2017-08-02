@@ -111,4 +111,14 @@ public final class PSFilterArgumentCollection implements Serializable {
             }
         }
     }
+    @Argument(doc = "Maximum number of mismatches for adapter trimming",
+            fullName = "maxAdapterMismatches",
+            minValue = 0,
+            optional = true)
+    public int maxAdapterMismatches = 1;
+    @Argument(doc = "Minimum length of adapter sequence to trim",
+            fullName = "minAdapterLength",
+            minValue = 1,
+            optional = true)
+    public int minAdapterLength = 12;
 }
