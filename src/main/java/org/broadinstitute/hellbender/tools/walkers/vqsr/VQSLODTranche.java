@@ -63,7 +63,14 @@ public class VQSLODTranche extends Tranche {
     }
 
     protected static VQSLODTranche trancheOfVariants(final List<VariantDatum> data, final int minI, final double trancheThreshold, final VariantRecalibratorArgumentCollection.Mode model ) {
-        Tranche basicTranche = Tranche.trancheOfVariants(data, minI, trancheThreshold, model);
+        final Tranche basicTranche = Tranche.trancheOfVariants(data, minI, trancheThreshold, model);
+
+        //First column should be the requested threshold, not the value in the data closest to the threshold
+        return new VQSLODTranche(trancheThreshold, basicTranche.numKnown, basicTranche.knownTiTv, basicTranche.numNovel, basicTranche.novelTiTv, basicTranche.accessibleTruthSites, basicTranche.callsAtTruthSites, model, DEFAULT_TRANCHE_NAME);
+    }
+
+    protected static VQSLODTranche emptyTranche(final List<VariantDatum> data, final int minI, final double trancheThreshold, final VariantRecalibratorArgumentCollection.Mode model ) {
+        final Tranche basicTranche = Tranche.emptyTranche(data, minI, trancheThreshold, model);
 
         //First column should be the requested threshold, not the value in the data closest to the threshold
         return new VQSLODTranche(trancheThreshold, basicTranche.numKnown, basicTranche.knownTiTv, basicTranche.numNovel, basicTranche.novelTiTv, basicTranche.accessibleTruthSites, basicTranche.callsAtTruthSites, model, DEFAULT_TRANCHE_NAME);

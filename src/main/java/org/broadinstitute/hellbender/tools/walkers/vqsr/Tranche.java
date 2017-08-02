@@ -140,6 +140,19 @@ public class Tranche {
         return new Tranche("unnamed", knownTiTv, numNovel, minLod, model, novelTiTv, accessibleTruthSites, numKnown, nCallsAtTruth);
     }
 
+    protected static Tranche emptyTranche(final List<VariantDatum> data, final int minI, final double ts, final VariantRecalibratorArgumentCollection.Mode model ) {
+        final double minLod = data.isEmpty() ? Double.NEGATIVE_INFINITY : data.get(minI).lod;
+        final int accessibleTruthSites = VariantDatum.countCallsAtTruth(data, Double.NEGATIVE_INFINITY);
+        final int nCallsAtTruth = VariantDatum.countCallsAtTruth(data, minLod);
+
+        final double knownTiTv = 0.0;
+        final double novelTiTv = 0.0;
+        final int numKnown = 0;
+        final int numNovel = 0;
+
+        return new Tranche("unnamed", knownTiTv, numNovel, minLod, model, novelTiTv, accessibleTruthSites, numKnown, nCallsAtTruth);
+    }
+
 
     protected static double getRequiredDouble(final Map<String, String> bindings, final String key) {
         if ( bindings.containsKey(key) ) {
