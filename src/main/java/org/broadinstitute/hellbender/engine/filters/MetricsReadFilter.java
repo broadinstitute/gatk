@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  *     <li>Represent secondary/supplementary alignments (0x100 or 0x800)</li>
  * </ul>
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads that fail platform quality checks, are unmapped and represent secondary/supplementary alignments")
 public final class MetricsReadFilter extends ReadFilter {
   // TODO: Should this be something more unique, such as a timestamp, in order
   // to behave with Spark's serialization?

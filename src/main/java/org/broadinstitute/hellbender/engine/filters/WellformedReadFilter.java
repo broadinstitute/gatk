@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * to errors downstream. If a read passes this filter, the rest of the engine should be able to process it without
  * blowing up.
  *
- * <b>Well-formed reads definition</b>
+ * <p><b>Well-formed reads definition</b></p>
  * <ul>
  *     <li><b>Alignment coordinates:</b> start larger than 0 and end after the start position.</li>
  *     <li><b>Alignment agrees with header:</B> contig exists and start is within its range.</li>
