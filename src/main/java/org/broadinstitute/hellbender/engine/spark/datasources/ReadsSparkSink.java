@@ -226,7 +226,7 @@ public final class ReadsSparkSink {
             final SAMFileHeader header, final int numReducers) throws IOException {
 
         final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
-        final String outputPartsDirectory = outputFile + ".parts";
+        final String outputPartsDirectory = outputFile + ".parts/";
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header);
     }

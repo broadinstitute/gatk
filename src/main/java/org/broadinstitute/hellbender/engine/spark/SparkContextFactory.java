@@ -22,6 +22,8 @@ public final class SparkContextFactory {
     public static final String DEFAULT_SPARK_MASTER = determineDefaultSparkMaster();
     private static final boolean SPARK_DEBUG_ENABLED = Boolean.getBoolean("gatk.spark.debug");
     private static final String SPARK_CORES_ENV_VARIABLE = "GATK_TEST_SPARK_CORES";
+    private static final String TEST_PROJECT_ENV_VARIABLE = "HELLBENDER_TEST_PROJECT";
+    private static final String TEST_JSON_KEYFILE_ENV_VARIABLE = "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY";
 
     /**
      * GATK will not run without these properties
@@ -51,6 +53,13 @@ public final class SparkContextFactory {
             .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
             .put("spark.kryoserializer.buffer.max", "256m")
             .put("spark.hadoop.fs.file.impl.disable.cache", "true") // so NonChecksumLocalFileSystem is not cached between tests
+            // configure the gcs-connector
+            .put("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
+            .put("spark.hadoop.fs.AbstractFileSystem.gs.impl",
+                "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS")
+            .put("spark.hadoop.fs.gs.project.id", System.getenv(TEST_PROJECT_ENV_VARIABLE))
+            .put("spark.hadoop.google.cloud.auth.service.account.json.keyfile",
+                System.getenv(TEST_JSON_KEYFILE_ENV_VARIABLE))
             .build();
 
     private static boolean testContextEnabled;
