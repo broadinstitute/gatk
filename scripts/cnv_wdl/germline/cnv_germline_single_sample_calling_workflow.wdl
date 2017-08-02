@@ -42,13 +42,14 @@ workflow gCNVSingleSampleWorkflow {
   File sex_genotypes
   File contig_ploidy_annotations 
   String gatk_jar
+  String gatk_docker
 
   # Transtion prior table files
   File transition_prior_table
   Array[File] copy_number_transition_prior_files
 
   # Model directory and parameters
-  String model_path
+  File model_path
   Int num_latents
 
   # Output path
@@ -60,8 +61,10 @@ workflow gCNVSingleSampleWorkflow {
   if (!is_wgs) {
     call CNVTasks.PadTargets {
       input:
-        targets = targets,
-        gatk_jar = gatk_jar
+        # The task will fail if targets is not defined when it gets here, but that should not be allowed to happen.
+        targets = select_first([targets, ""]),
+        gatk_jar = gatk_jar,
+        gatk_docker = gatk_docker
     }
   }
 
@@ -74,6 +77,7 @@ workflow gCNVSingleSampleWorkflow {
       ref_fasta_fai = ref_fasta_fai,
       ref_fasta_dict = ref_fasta_dict,
       gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker,
       transform = "RAW"
   }
 
@@ -84,7 +88,8 @@ workflow gCNVSingleSampleWorkflow {
       ref_fasta = ref_fasta,
       ref_fasta_fai = ref_fasta_fai,
       ref_fasta_dict = ref_fasta_dict,
-      gatk_jar = gatk_jar
+      gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker
   }
 
   call CNVTasks.CorrectGCBias {
@@ -92,7 +97,8 @@ workflow gCNVSingleSampleWorkflow {
       entity_id = CollectCoverage.entity_id,
       coverage = CollectCoverage.coverage,
       annotated_targets = AnnotateTargets.annotated_targets,
-      gatk_jar = gatk_jar
+      gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker
   }
 
   call GermlineCNVCaller {
@@ -105,7 +111,8 @@ workflow gCNVSingleSampleWorkflow {
       model_path = model_path,
       num_latents = num_latents, 
       output_path = output_path,
-      gatk_jar = gatk_jar
+      gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker
   }
  
   output {
@@ -121,10 +128,15 @@ task GermlineCNVCaller {
     File transition_prior_table
     Array[File] copy_number_transition_prior_files
     String output_path
-    String model_path
+    File model_path
     Int num_latents
-    File gatk_jar
+    String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     command {
         java -Xmx${default=4 mem}g -Ddtype=double -jar ${gatk_jar} GermlineCNVCaller \
@@ -138,6 +150,13 @@ task GermlineCNVCaller {
             --jobType CALL_ONLY \
             --rddCheckpointing false \
             --disableSpark true
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 200]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {

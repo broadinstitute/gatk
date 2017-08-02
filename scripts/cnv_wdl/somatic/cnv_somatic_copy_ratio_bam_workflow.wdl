@@ -22,6 +22,7 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
     File ref_fasta_fai
     File cnv_panel_of_normals
     String gatk_jar
+    String gatk_docker
 
     # If no padded target file is input, then do WGS workflow
     Boolean is_wgs = select_first([padded_targets, ""]) == ""
@@ -34,7 +35,8 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call CNVTasks.AnnotateTargets {
@@ -44,7 +46,8 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call CNVTasks.CorrectGCBias {
@@ -52,7 +55,8 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             entity_id = CollectCoverage.entity_id,
             coverage = CollectCoverage.coverage,
             annotated_targets = AnnotateTargets.annotated_targets,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call NormalizeSomaticReadCounts {
@@ -61,7 +65,8 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             coverage = CorrectGCBias.corrected_coverage,
             padded_targets = AnnotateTargets.annotated_targets,
             cnv_panel_of_normals = cnv_panel_of_normals,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call PerformSegmentation {
@@ -69,7 +74,8 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             entity_id = CollectCoverage.entity_id,
             tn_coverage = NormalizeSomaticReadCounts.tn_coverage,
             is_wgs = is_wgs,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call CallSegments {
@@ -77,7 +83,8 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             entity_id = CollectCoverage.entity_id,
             tn_coverage = NormalizeSomaticReadCounts.tn_coverage,
             segments = PerformSegmentation.segments,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call PlotSegmentedCopyRatio  {
@@ -87,7 +94,8 @@ workflow CNVSomaticCopyRatioBAMWorkflow {
             pre_tn_coverage = NormalizeSomaticReadCounts.pre_tn_coverage,
             called_segments = CallSegments.called_segments,
             ref_fasta_dict = ref_fasta_dict,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     output {
@@ -104,7 +112,12 @@ task NormalizeSomaticReadCounts {
     File padded_targets
     File cnv_panel_of_normals
     String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     command {
         java -Xmx${default=4 mem}g -jar ${gatk_jar} NormalizeSomaticReadCounts \
@@ -115,6 +128,13 @@ task NormalizeSomaticReadCounts {
             --factorNormalizedOutput ${entity_id}.fnt.tsv \
             --preTangentNormalized ${entity_id}.preTN.tsv \
             --betaHatsOutput ${entity_id}.betaHats.tsv
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(cnv_panel_of_normals, "GB")) + 50]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
@@ -142,7 +162,12 @@ task PerformSegmentation {
     Int? seg_param_undoSD
     String? seg_param_undoSplits
     String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     command <<<
         if [ ${is_wgs} = true ]
@@ -181,6 +206,13 @@ task PerformSegmentation {
         fi
     >>>
 
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
     output {
         File segments = "${entity_id}.seg"
     }
@@ -192,7 +224,12 @@ task CallSegments {
     File tn_coverage
     File segments
     String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     command {
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CallSegments \
@@ -200,6 +237,13 @@ task CallSegments {
             --segments ${segments} \
             --legacy false \
             --output ${entity_id}.called
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
@@ -216,7 +260,11 @@ task PlotSegmentedCopyRatio {
     File ref_fasta_dict
     String? output_dir
     String gatk_jar
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     # If optional output_dir not specified, use "."
     String output_dir_ = select_first([output_dir, "."])
@@ -230,6 +278,13 @@ task PlotSegmentedCopyRatio {
             -SD ${ref_fasta_dict} \
             --output ${output_dir_} \
             --outputPrefix ${entity_id}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {

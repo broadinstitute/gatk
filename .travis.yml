@@ -79,7 +79,7 @@ before_install:
   fi
 # Download Cromwell jar
 - if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
-    wget -O ~/cromwell-0.26.jar https://github.com/broadinstitute/cromwell/releases/download/26/cromwell-26.jar;
+    wget -O ~/cromwell-0.28.jar https://github.com/broadinstitute/cromwell/releases/download/28/cromwell-28.jar;
   fi
 # Download Picard jar
 - if [[ $RUN_M2_WDL == true ]]; then
