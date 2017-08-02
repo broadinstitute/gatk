@@ -127,7 +127,7 @@ dependencies {
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     // this comes built-in when running on Google Dataproc, but the library
-    // allows us to reads from GCS also when testing locally (or on non-Dataproc clusters,
+    // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
     compile group: 'com.google.cloud.bigdataoss', name: 'gcs-connector', version: '1.6.1-hadoop2'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
