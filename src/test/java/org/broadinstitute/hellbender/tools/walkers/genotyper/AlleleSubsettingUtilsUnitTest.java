@@ -117,7 +117,7 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         tests.add(new Object[]{
                 new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(Collections.singletonList(Aref)).AD(homC3AllelesAD).PL(haploidAltG3AllelesPL).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AG).make(),
-                Collections.singletonList(new GenotypeBuilder(base).alleles(Collections.singletonList(Aref)).PL(new double[]{-20, 0}).AD(new int[]{0, 1}).GQ(100).make())});
+                Collections.singletonList(new GenotypeBuilder(base).alleles(Collections.singletonList(Aref)).PL(new double[]{-20, 0}).AD(new int[]{0, 1}).GQ(200).make())});
 
         tests.add(new Object[]{
                 new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(Arrays.asList(Aref, Aref, Aref)).AD(homRef3AllelesAD).PL(triploidRef3AllelesPL).make()).make(),
@@ -132,7 +132,7 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         tests.add(new Object[]{
                 new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(Arrays.asList(Aref, Aref, G)).AD(homRef3AllelesAD).PL(triploidRef3AllelesPL).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AG).make(),
-                Collections.singletonList(new GenotypeBuilder(base).alleles(Arrays.asList(Aref, Aref, G)).PL(new double[]{0, -40, -70, -90}).AD(new int[]{20, 1}).GQ(100).make())});
+                Collections.singletonList(new GenotypeBuilder(base).alleles(Arrays.asList(Aref, Aref, G)).PL(new double[]{0, -40, -70, -90}).AD(new int[]{20, 1}).GQ(400).make())});
 
         final int[] homRef3AllelesSAC = new int[]{20, 19, 0, 1, 3, 4};
         final int[] hetRefC3AllelesSAC = new int[]{10, 9, 10, 9, 1, 1};
@@ -167,21 +167,21 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, hetRefG3AllelesSAC).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AG).make(),
                 Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{-20, 0, -50}).AD(new int[]{10, 11}).
-                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{10, 10, 11, 11}).GQ(100).make())});
+                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{10, 10, 11, 11}).GQ(200).make())});
 
         tests.add(new Object[]{
                 new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AA).AD(hetCG3AllelesAD).PL(hetCG3AllelesPL).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, hetCG3AllelesSAC).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AG).make(),
                 Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{0, -20, -30}).AD(new int[]{0, 11}).
-                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{0, 0, 11, 11}).GQ(100).make())});
+                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{0, 0, 11, 11}).GQ(200).make())});
 
         tests.add(new Object[]{
                 new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AA).AD(homG3AllelesAD).PL(homG3AllelesPL).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, homG3AllelesSAC).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AG).make(),
                 Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{-20, -40, 0}).AD(new int[]{0, 21}).
-                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{0, 0, 21, 21}).GQ(100).make())});
+                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{0, 0, 21, 21}).GQ(200).make())});
 
         return tests.toArray(new Object[][]{});
     }

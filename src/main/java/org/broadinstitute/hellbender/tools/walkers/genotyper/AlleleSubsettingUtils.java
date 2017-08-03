@@ -64,15 +64,21 @@ public final class AlleleSubsettingUtils {
             final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
             // create the new likelihoods array from the alleles we are allowed to use
             double[] newLikelihoods = null;
+            double newLog10GQ = -1;
             if (g.hasLikelihoods()) {
                 final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
                 newLikelihoods = originalLikelihoods.length == expectedNumLikelihoods ?
                         MathUtils.scaleLogSpaceArrayForNumericalStability(Arrays.stream(subsettedLikelihoodIndices)
                                 .mapToDouble(idx -> originalLikelihoods[idx]).toArray()) : null;
+                if (newLikelihoods != null) {
+                    final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
+                    newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
+                }
+
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
-            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods) : new GenotypeBuilder(g).noPL();
+            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ) : new GenotypeBuilder(g).noPL().noGQ();
 
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
 
