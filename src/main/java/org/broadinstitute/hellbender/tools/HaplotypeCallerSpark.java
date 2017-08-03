@@ -120,7 +120,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             // VariantsSparkSink/Hadoop-BAM VCFOutputFormat do not support writing GVCF, see https://github.com/broadinstitute/gatk/issues/2738
             writeVariants(variants);
         } else {
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
             variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
             try {
                 VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(getHeaderForReads().getSequenceDictionary(), new HashSet<>()));
@@ -192,7 +192,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         return regionAndIntervals -> {
             //HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
             final ReferenceMultiSourceAdapter referenceReader = new ReferenceMultiSourceAdapter(referenceBroadcast.getValue(), authHolder);
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), header, referenceReader);
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(),false, false,  header, referenceReader);
             return iteratorToStream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
         };
     }
@@ -224,7 +224,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             .sorted((o1, o2) -> IntervalUtils.compareLocatables(o1, o2, referenceDictionary))
             .collect(Collectors.toList());
 
-        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
+        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
         try(final VariantContextWriter writer = hcEngine.makeVCFWriter(output, getBestAvailableSequenceDictionary())) {
             hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary(), new HashSet<>());
             sortedVariants.forEach(writer::add);
@@ -271,7 +271,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         return shards -> {
             final ReferenceMultiSource referenceMultiSource = reference.value();
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource, authHolder);
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), header, referenceSource);
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource);
 
             return iteratorToStream(shards).flatMap(shardToRegion(assemblyArgs, header, referenceSource, hcEngine)).iterator();
         };

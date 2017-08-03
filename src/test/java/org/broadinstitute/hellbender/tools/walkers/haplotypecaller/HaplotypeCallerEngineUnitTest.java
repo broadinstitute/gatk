@@ -47,7 +47,7 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
               final ReferenceDataSource ref = new ReferenceFileSource(reference);
               final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference);) {
 
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, reads.getHeader(), referenceReader);
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, reads.getHeader(), referenceReader);
 
             List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
             hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));

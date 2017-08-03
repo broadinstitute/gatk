@@ -193,8 +193,13 @@ public class AssemblyBasedCallerUtils {
         return assemblyEngine;
     }
 
-    public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args, final SAMFileHeader header) {
-        return args.bamOutputPath != null ? Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, new File(args.bamOutputPath), header)) : Optional.empty();
+    public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
+                                                               final boolean createBamOutIndex,
+                                                               final boolean createBamOutMD5,
+                                                               final SAMFileHeader header) {
+        return args.bamOutputPath != null ?
+                Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, new File(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
+                Optional.empty();
     }
 
     // create the assembly using just high quality reads (eg Q20 or higher).  We may want to use lower

@@ -135,18 +135,20 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * and a reference file
      *
      * @param hcArgs command-line arguments for the HaplotypeCaller
+     * @param createBamOutIndex true to create an index file for the bamout
+     * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param readsHeader header for the reads
      * @param referenceReader reader to provide reference data
      */
-    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader ) {
+    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs,  boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader ) {
         this.hcArgs = Utils.nonNull(hcArgs);
         this.readsHeader = Utils.nonNull(readsHeader);
         this.referenceReader = Utils.nonNull(referenceReader);
 
-        initialize();
+        initialize(createBamOutIndex, createBamOutMD5);
     }
 
-    private void initialize() {
+    private void initialize(boolean createBamOutIndex, final boolean createBamOutMD5) {
         // Note: order of operations matters here!
 
         initializeSamples();
@@ -169,7 +171,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
            throw new UserException("Allele-specific annotations are not yet supported in the VCF mode");
         }
 
-        haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, readsHeader);
+        haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader);
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(hcArgs);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);
 
