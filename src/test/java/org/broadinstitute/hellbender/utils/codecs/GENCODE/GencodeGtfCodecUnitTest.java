@@ -3283,7 +3283,7 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
             gencodeGtfCodec.readHeader(lineIterator);
 
             // Setup our expected data iterator:
-            Iterator expectedIterator = expected.iterator();
+            Iterator<GencodeGtfFeature> expectedIterator = expected.iterator();
 
             // Now read our features and make sure they're what we expect:
             while ( lineIterator.hasNext() ) {
