@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import org.broadinstitute.hellbender.exceptions.UserException;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.serializer.KryoSerializer;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collections;
@@ -22,6 +23,10 @@ public final class SparkContextFactory {
     public static final String DEFAULT_SPARK_MASTER = determineDefaultSparkMaster();
     private static final boolean SPARK_DEBUG_ENABLED = Boolean.getBoolean("gatk.spark.debug");
     private static final String SPARK_CORES_ENV_VARIABLE = "GATK_TEST_SPARK_CORES";
+    private static final String TEST_PROJECT_ENV_VARIABLE = "HELLBENDER_TEST_PROJECT";
+    private static final String TEST_JSON_KEYFILE_ENV_VARIABLE = "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY";
+
+    private static final Logger logger = LogManager.getLogger(SparkContextFactory.class);
 
     /**
      * GATK will not run without these properties
@@ -51,7 +56,30 @@ public final class SparkContextFactory {
             .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
             .put("spark.kryoserializer.buffer.max", "256m")
             .put("spark.hadoop.fs.file.impl.disable.cache", "true") // so NonChecksumLocalFileSystem is not cached between tests
+            .putAll(getGcsHadoopAdapterTestProperties())
             .build();
+
+    /**
+     * @return checks if the necessary environment variables are present in order to configure the gcs-hadoop adapter
+     * and returns a map containing the configuration if they are available
+     * returns an empty map otherwise
+     */
+    private static Map<String,String> getGcsHadoopAdapterTestProperties(){
+        final String testProject = System.getenv(TEST_PROJECT_ENV_VARIABLE);
+        final String testKeyFile = System.getenv(TEST_JSON_KEYFILE_ENV_VARIABLE);
+        if( testProject == null || testKeyFile == null) {
+            logger.warn("Environment variables " + TEST_PROJECT_ENV_VARIABLE + " and " + TEST_JSON_KEYFILE_ENV_VARIABLE +
+                                " must be set or the GCS hadoop connector will not be configured properly");
+            return Collections.emptyMap();
+        } else {
+            return ImmutableMap.<String, String>builder()
+                    .put("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
+                    .put("spark.hadoop.fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS")
+                    .put("spark.hadoop.fs.gs.project.id", testProject)
+                    .put("spark.hadoop.google.cloud.auth.service.account.json.keyfile", testKeyFile)
+                    .build();
+        }
+    }
 
     private static boolean testContextEnabled;
     private static JavaSparkContext testContext;
