@@ -91,7 +91,7 @@ if [ -n "$STAGING_DIR" ]; then
     set -e
     GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/${REPO}/${PROJECT}.git ${STAGING_DIR}/${STAGING_CLONE_DIR}
     cd ${STAGING_DIR}/${STAGING_CLONE_DIR}
-   STAGING_ABSOLUTE_PATH=$(pwd)
+    STAGING_ABSOLUTE_PATH=$(pwd)
 
     echo "Now in $(pwd)"
     if [ ${PULL_REQUEST_NUMBER} ]; then
@@ -102,11 +102,6 @@ if [ -n "$STAGING_DIR" ]; then
     GIT_CHECKOUT_COMMAND="git checkout ${GITHUB_DIR}${GITHUB_TAG}"
     echo "${GIT_CHECKOUT_COMMAND}"
     ${GIT_CHECKOUT_COMMAND}
-    if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
-        git lfs pull
-        chmod -R a+w ${STAGING_ABSOLUTE_PATH}/*
-        chmod a+w ${STAGING_ABSOLUTE_PATH}/
-    fi
 fi
 
 # Build
@@ -121,6 +116,10 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 	if [ -n "${IS_NOT_REMOVE_UNIT_TEST_CONTAINER}" ] ; then
 		REMOVE_CONTAINER_STRING=" "
 	fi
+
+	git lfs pull
+    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/*
+    chmod a+w ${STAGING_ABSOLUTE_PATH}/
 
 	echo docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
 	docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
