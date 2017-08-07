@@ -78,7 +78,6 @@ configurations.all {
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
-    all*.exclude group: 'log4j' //exclude log4j (1.x) and let log4j-1.2-api from log4j2 handle it
 }
 
 
@@ -133,7 +132,6 @@ dependencies {
     compile 'com.google.cloud.bigdataoss:gcs-connector:1.6.1-hadoop2'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.3'
-    compile 'org.apache.logging.log4j:log4j-1.2-api:2.3'
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'org.apache.commons:commons-math3:3.5'
     compile 'org.apache.commons:commons-collections4:4.1'
