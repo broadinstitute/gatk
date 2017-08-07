@@ -75,7 +75,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     public boolean useJdkInflater = false;
 
     @Argument(fullName = "nio_max_retries", shortName = "nio_retries", doc = "If the NIO channel errors out, how many times it will attempt to retry", optional = true)
-    private int NIO_MAX_REOPENS = 20;
+    public int NIO_MAX_REOPENS = BucketUtils.DEFAULT_NIO_MAX_REOPENS;
 
     private CommandLineParser commandLineParser;
 

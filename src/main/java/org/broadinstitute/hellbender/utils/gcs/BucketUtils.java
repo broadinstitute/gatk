@@ -369,9 +369,7 @@ public final class BucketUtils {
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
-        CloudStorageConfiguration cloudConfig = getCloudStorageConfiguration(DEFAULT_NIO_MAX_REOPENS);
-        StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
-        return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
+        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 
     /** The config we want to use. **/
