@@ -15,10 +15,8 @@ import java.io.File;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,7 +33,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
 
     @Test(dataProvider = "okFeatureFiles")
     public void testLoadIndex(final File featureFile) throws Exception {
-        final Index index = IndexUtils.loadTribbleIndex(featureFile, false);
+        final Index index = IndexUtils.loadTribbleIndex(featureFile);
         Assert.assertNotNull(index);
     }
 
@@ -48,7 +46,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
 
     @Test(dataProvider = "okFeatureFilesTabix")
     public void testLoadTabixIndex(final File featureFile) throws Exception {
-        final Index index = IndexUtils.loadTabixIndex(featureFile, false);
+        final Index index = IndexUtils.loadTabixIndex(featureFile);
         Assert.assertNotNull(index);
     }
 
@@ -63,7 +61,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
 
     @Test(dataProvider = "failTabixIndexFiles")
     public void testFailLoadTabixIndex(final File featureFile) throws Exception {
-        final Index index = IndexUtils.loadTabixIndex(featureFile, false);
+        final Index index = IndexUtils.loadTabixIndex(featureFile);
         Assert.assertNull(index);
     }
 
@@ -76,7 +74,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
 
     @Test(dataProvider = "failTribbleIndexFiles")
     public void testFailLoadTribbleIndex(final File featureFile) throws Exception {
-        final Index index = IndexUtils.loadTribbleIndex(featureFile, false);
+        final Index index = IndexUtils.loadTribbleIndex(featureFile);
         Assert.assertNull(index);
     }
 
@@ -97,7 +95,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
         updateFileModifiedTime(tmpFeatureFilePath.toFile()); //touch the file but not the index
 
 
-        final Index index = IndexUtils.loadTribbleIndex(tmpVcf, false);
+        final Index index = IndexUtils.loadTribbleIndex(tmpVcf);
         Assert.assertNotNull(index);
         //this should NOT blow up (files newer than indices are tolerated)
     }
@@ -105,7 +103,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
     @Test
     public void testLoadIndex_noIndex() throws Exception {
         final File featureFile = new File(getToolTestDataDir(), "test_variants_for_index.noIndex.vcf");
-        final Index index = IndexUtils.loadTribbleIndex(featureFile, false);
+        final Index index = IndexUtils.loadTribbleIndex(featureFile);
         Assert.assertNull(index);
     }
 
@@ -118,7 +116,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
         testCheckIndexModificationTimeHelper(vcf, vcfIdx);
 
         final Index index = IndexFactory.loadIndex(vcfIdx.getAbsolutePath());
-        IndexUtils.checkIndexVersionAndModificationTime(vcf, vcfIdx, index, false); //no blowup
+        IndexUtils.checkIndexModificationTime(vcf, vcfIdx, false); //no blowup
     }
 
     @Test(expectedExceptions = UserException.OutOfDateIndex.class)
@@ -130,7 +128,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
         testCheckIndexModificationTimeHelper(vcf, vcfIdx);
 
         final Index index = IndexFactory.loadIndex(vcfIdx.getAbsolutePath());
-        IndexUtils.checkIndexVersionAndModificationTime(vcf, vcfIdx, index, true); //User exception
+        IndexUtils.checkIndexModificationTime(vcf, vcfIdx, true); //User exception
     }
 
     /**
@@ -170,21 +168,21 @@ public final class IndexUtilsUnitTest extends BaseTest{
 
     @Test
     public void testCreateSequenceDictionaryFromTribbleIndex() throws Exception {
-        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf"), false);
+        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf"));
         final Set<String> contigs = dict.getSequences().stream().map(s -> s.getSequenceName()).collect(Collectors.toSet());
         Assert.assertEquals(contigs, Sets.newHashSet("1", "2", "3", "4"));
     }
 
     @Test
     public void testCreateSequenceDictionaryFromTabixIndex() throws Exception {
-        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf.bgz"), false);
+        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf.bgz"));
         final Set<String> contigs = dict.getSequences().stream().map(s -> s.getSequenceName()).collect(Collectors.toSet());
         Assert.assertEquals(contigs, Sets.newHashSet("1", "2", "3", "4"));
     }
 
     @Test
     public void testIsSequenceDictionaryFromIndexPositive() throws Exception {
-        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf"), false);
+        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf"));
         Assert.assertTrue(IndexUtils.isSequenceDictionaryFromIndex(dict));
     }
 

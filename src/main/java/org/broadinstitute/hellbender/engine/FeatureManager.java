@@ -278,12 +278,9 @@ public final class FeatureManager implements AutoCloseable {
     /**
      * Returns the sequence dictionaries associated with all feature sources.
      * This method will return an empty List if none of the feature sources have dictionaries.
-     *
-     * @param errorOnOutOfDateIndex If true, will raise a UserException when an out of date index file is detected.
-     *
      */
-    public List<SAMSequenceDictionary> getAllSequenceDictionaries(final boolean errorOnOutOfDateIndex) {
-        return featureSources.values().stream().map(fs -> fs.getSequenceDictionary(errorOnOutOfDateIndex))
+    public List<SAMSequenceDictionary> getAllSequenceDictionaries() {
+        return featureSources.values().stream().map(fs -> fs.getSequenceDictionary())
                 .filter(dict -> dict != null)
                 .collect(Collectors.toList());
     }

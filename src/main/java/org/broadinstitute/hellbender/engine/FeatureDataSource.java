@@ -100,6 +100,12 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private final int queryLookaheadBases;
 
     /**
+     * If true, the constructor will throw a {@link UserException.OutOfDateIndex} if the index is out of date
+     * (i.e. if the index file has an older timestamp than the feature file).
+     */
+    private final boolean errorOnOutOfDateIndex;
+
+    /**
      * Holds information about the path this datasource reads from.
      */
     private final FeatureInput<T> featureInput;
@@ -198,7 +204,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
     public FeatureDataSource(final String featurePath, final String name, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
-                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
         this(new FeatureInput<>(featurePath, name != null ? name : featurePath), queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
     }
 
@@ -215,8 +221,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
-        this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-             null);
+        this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, null);
     }
 
     /**
@@ -233,8 +238,29 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+        this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference, false);
+    }
+
+    /**
+     * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
+     * during queries that produce cache misses.
+     *
+     * @param featureInput a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param reference Path to a reference. May be null. Needed only for reading from GenomicsDB.
+     * @param errorOnOutOfDateIndex If true, will throw a {@link UserException.OutOfDateIndex} if the index is out of date
+     */
+    public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference,
+                             final boolean errorOnOutOfDateIndex) {
         Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
+
+        this.errorOnOutOfDateIndex = errorOnOutOfDateIndex;
 
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
@@ -248,8 +274,22 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             this.hasIndex = false;
             this.supportsRandomAccess = true;
         } else if (featureReader instanceof AbstractFeatureReader) {
+
             this.hasIndex = ((AbstractFeatureReader<T, ?>) featureReader).hasIndex();
             this.supportsRandomAccess = hasIndex;
+
+            // Check that our index is not out-of-date:
+            if( hasIndex ) {
+                File featureFile = new File(featureInput.getFeaturePath());
+                File indexFile = IndexUtils.getIndexFile( featureFile );
+
+                if ( indexFile == null ) {
+                    throw new RuntimeException("Index file should exist, but unable to find it!");
+                }
+
+                IndexUtils.checkIndexModificationTime(featureFile, indexFile, this.errorOnOutOfDateIndex);
+            }
+
         } else {
             throw new GATKException("Found a feature input that was neither GenomicsDB or a Tribble AbstractFeatureReader.  Input was " + featureInput.toString() + ".");
         }
@@ -358,12 +398,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Returns the sequence dictionary for this source of Features.
      * Uses the dictionary from the VCF header (if present) for variant inputs,
      * otherwise attempts to create a sequence dictionary from the index file (if present).
-     * Returns null if no dictionary could be created from either the header or the index.
      *
-     * @oaram errorOnOutOfDateIndex If true, will raise a UserException when an out of date index file is detected.
-     *
+     * @return null if no dictionary could be created from either the header or the index.
      */
-    public SAMSequenceDictionary getSequenceDictionary(final boolean errorOnOutOfDateIndex) {
+    public SAMSequenceDictionary getSequenceDictionary() {
         SAMSequenceDictionary dict = null;
         final Object header = getHeader();
         if (header instanceof VCFHeader) {
@@ -374,8 +412,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
         if (hasIndex) {
             return IndexUtils.createSequenceDictionaryFromFeatureIndex(
-                    new File(featureInput.getFeaturePath()),
-                    errorOnOutOfDateIndex
+                    new File(featureInput.getFeaturePath())
             );
         }
         return null;
