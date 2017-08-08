@@ -151,7 +151,7 @@ public class Main {
         try {
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
-            System.exit(0);
+            //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){
             System.err.println(program.getUsage());
             handleUserException(e);
