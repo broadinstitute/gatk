@@ -14,7 +14,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -40,7 +39,7 @@ public final class BucketUtils {
     public static final String FILE_PREFIX = "file:";
 
     // if the channel errors out, re-open up to this many times
-    public static final int DEFAULT_NIO_MAX_REOPENS = 20;
+    public static final int DEFAULT_GCS_MAX_REOPENS = 20;
 
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
@@ -352,7 +351,7 @@ public final class BucketUtils {
      * These will apply even to library code that creates its own paths to access with NIO.
      */
     public static void setGlobalNIODefaultOptions() {
-        setGlobalNIODefaultOptions(DEFAULT_NIO_MAX_REOPENS);
+        setGlobalNIODefaultOptions(DEFAULT_GCS_MAX_REOPENS);
     }
     public static void setGlobalNIODefaultOptions(int maxReopens) {
         CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens));

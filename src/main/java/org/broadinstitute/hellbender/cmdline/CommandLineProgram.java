@@ -74,8 +74,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = "use_jdk_inflater", shortName = "jdk_inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
     public boolean useJdkInflater = false;
 
-    @Argument(fullName = "nio_max_retries", shortName = "nio_retries", doc = "If the NIO channel errors out, how many times it will attempt to retry", optional = true)
-    public int NIO_MAX_REOPENS = BucketUtils.DEFAULT_NIO_MAX_REOPENS;
+    @Argument(fullName = "gcs_max_retries", shortName = "gcs_retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
+    public int NIO_MAX_REOPENS = BucketUtils.DEFAULT_GCS_MAX_REOPENS;
 
     private CommandLineParser commandLineParser;
 
