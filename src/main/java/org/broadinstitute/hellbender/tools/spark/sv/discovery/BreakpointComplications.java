@@ -131,7 +131,7 @@ final class BreakpointComplications {
                         ChimericAlignment.involvesRefPositionSwitch(firstAlignmentInterval, secondAlignmentInterval));
 
         // TODO: 12/5/16 simple translocation, don't tackle yet
-        if (chimericAlignment.strandSwitch!= ChimericAlignment.StrandSwitch.NO_SWITCH) { // the case involves an inversion
+        if (chimericAlignment.strandSwitch!= StrandSwitch.NO_SWITCH) { // the case involves an inversion
             // TODO: 12/5/16 duplication detection to be done for inversion alleles
             initForSimpleInversion(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
         } else if (isNotSimpleTranslocation) {

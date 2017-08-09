@@ -13,10 +13,10 @@ class SvTypeInference {
 
         final int start = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd();
         final int end = novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
-        final NovelAdjacencyReferenceLocations.EndConnectionType endConnectionType = novelAdjacencyReferenceLocations.endConnectionType;
+        final StrandSwitch strandSwitch = novelAdjacencyReferenceLocations.strandSwitch;
 
         final SvType type;
-        if (endConnectionType == NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_THREE) { // no strand switch happening, so no inversion
+        if (strandSwitch == StrandSwitch.NO_SWITCH) { // no strand switch happening, so no inversion
             if (start==end) { // something is inserted
                 final boolean hasNoDupSeq = !novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation();
                 final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().isEmpty();
