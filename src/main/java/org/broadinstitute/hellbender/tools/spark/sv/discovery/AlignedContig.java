@@ -4,10 +4,13 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Locally assembled contig:
@@ -20,15 +23,16 @@ public final class AlignedContig {
 
     public final String contigName;
     public final byte[] contigSequence;
-    public final List<AlignedAssembly.AlignmentInterval> alignmentIntervals;
+    public final List<AlignmentInterval> alignmentIntervals;
 
-    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignedAssembly.AlignmentInterval> alignmentIntervals) {
+    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
         this.contigName = contigName;
         this.contigSequence = contigSequence;
-        this.alignmentIntervals = alignmentIntervals;
+        this.alignmentIntervals = Utils.stream(alignmentIntervals)
+                .sorted(Comparator.comparing(a -> a.startInAssembledContig)).collect(Collectors.toList());
     }
 
-    public AlignedContig(final Kryo kryo, final Input input) {
+    AlignedContig(final Kryo kryo, final Input input) {
 
         contigName = input.readString();
 
@@ -41,11 +45,11 @@ public final class AlignedContig {
         final int nAlignments = input.readInt();
         alignmentIntervals = new ArrayList<>(nAlignments);
         for (int i = 0; i < nAlignments; ++i) {
-            alignmentIntervals.add(new AlignedAssembly.AlignmentInterval(kryo, input));
+            alignmentIntervals.add(new AlignmentInterval(kryo, input));
         }
     }
 
-    public void serialize(final Kryo kryo, final Output output) {
+    void serialize(final Kryo kryo, final Output output) {
 
         output.writeString(contigName);
 

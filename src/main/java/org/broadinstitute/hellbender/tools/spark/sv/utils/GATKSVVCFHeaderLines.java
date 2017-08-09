@@ -1,67 +1,91 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLineCount;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.*;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
+// TODO: 7/24/17 the structure of this file is resembling that of {@link GATKVCFHeaderLines}, should we move this there?
 public class GATKSVVCFHeaderLines {
 
-    public static Map<String, VCFHeaderLine> vcfHeaderLines = new HashMap<>();
+    public static VCFInfoHeaderLine getInfoLine(final String id) { return infoLines.get(id); }
+    public static Set<VCFInfoHeaderLine> getInfoLines() { return new HashSet<>(infoLines.values()); }
+    public static VCFFormatHeaderLine getFormatLine(final String id) { return formatLines.get(id); }
+    public static Set<VCFFormatHeaderLine> getFormatLines() { return new HashSet<>(formatLines.values()); }
+    public static VCFFilterHeaderLine getFilterLine(final String id) { return filterLines.get(id); }
+    public static Set<VCFFilterHeaderLine> getFilterLines() { return new HashSet<>(filterLines.values());  }
 
-    // VCF standard SV header lines
-    // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
-    public static final String SVTYPE = "SVTYPE";
-    public static final String SVLEN = "SVLEN";
+    private static final Map<String, VCFInfoHeaderLine> infoLines = new LinkedHashMap<>(20);
+    private static final Map<String, VCFFormatHeaderLine> formatLines = new LinkedHashMap<>(5);
+    private static final Map<String, VCFFilterHeaderLine> filterLines = new LinkedHashMap<>(2);
 
-    // GATK-SV specific header lines
-    public static final String TOTAL_MAPPINGS = "TOTAL_MAPPINGS";
-    public static final String HQ_MAPPINGS = "HQ_MAPPINGS";
-    public static final String MAPPING_QUALITIES = "MAPPING_QUALITIES";
-    public static final String ALIGN_LENGTHS = "ALIGN_LENGTHS";
-    public static final String MAX_ALIGN_LENGTH = "MAX_ALIGN_LENGTH";
-    public static final String CONTIG_NAMES = "CTG_NAMES";
-    public static final String INSERTED_SEQUENCE = "INSERTED_SEQUENCE";
-    public static final String INSERTED_SEQUENCE_MAPPINGS = "INSERTED_SEQUENCE_MAPPINGS";
-    public static final String HOMOLOGY = "HOMOLOGY";
-    public static final String HOMOLOGY_LENGTH = "HOMOLOGY_LENGTH";
-    public static final String INV33 = "INV33";
-    public static final String INV55 = "INV55";
-    public static final String DUP_REPET_UNIT_REF_SPAN = "DUP_REPET_UNIT_REF_SPAN";
-    public static final String DUP_SEQ_CIGARS = "DUP_SEQ_CIGARS";
-    public static final String DUPLICATION_NUMBERS = "DUP_NUM";
 
-    public static final String DUP_ANNOTATIONS_IMPRECISE = "DUP_ANNOTATIONS_IMPRECISE";
-
-    static {
-        vcfHeaderLines.put(SVTYPE, new VCFInfoHeaderLine(SVTYPE, 1, VCFHeaderLineType.String, "Type of structural variant"));
-        vcfHeaderLines.put(SVLEN, new VCFInfoHeaderLine(SVLEN, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Difference in length between REF and ALT alleles"));
-
-        vcfHeaderLines.put(TOTAL_MAPPINGS, new VCFInfoHeaderLine(TOTAL_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of contig alignments that support the variant"));
-        vcfHeaderLines.put(HQ_MAPPINGS, new VCFInfoHeaderLine(HQ_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of high-quality contig alignments that support the variant"));
-        vcfHeaderLines.put(MAPPING_QUALITIES, new VCFInfoHeaderLine(MAPPING_QUALITIES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Mapping qualities of the contig alignments that support the variant"));
-        vcfHeaderLines.put(ALIGN_LENGTHS, new VCFInfoHeaderLine(ALIGN_LENGTHS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Minimum lengths of the flanking aligned region from each contig alignment"));
-        vcfHeaderLines.put(MAX_ALIGN_LENGTH, new VCFInfoHeaderLine(MAX_ALIGN_LENGTH, 1, VCFHeaderLineType.Integer, "Maximum of the minimum aligned lengths of flanking regions from each contig alignment"));
-
-        // todo: create an alternate assembly file and link to it with breakpoint IDs according to the VCF spec
-        vcfHeaderLines.put(CONTIG_NAMES, new VCFInfoHeaderLine(CONTIG_NAMES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Name of contigs that evidenced this variant, formatted as \"asm%06d:tig%05d\""));
-
-        vcfHeaderLines.put(INSERTED_SEQUENCE, new VCFInfoHeaderLine(INSERTED_SEQUENCE, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Inserted sequence at the breakpoint"));
-        vcfHeaderLines.put(INSERTED_SEQUENCE_MAPPINGS, new VCFInfoHeaderLine(INSERTED_SEQUENCE_MAPPINGS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Alignments of inserted sequence"));
-
-        vcfHeaderLines.put(HOMOLOGY, new VCFInfoHeaderLine(HOMOLOGY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Homologous sequence from contig at the breakpoint"));
-        vcfHeaderLines.put(HOMOLOGY_LENGTH, new VCFInfoHeaderLine(HOMOLOGY_LENGTH, 1, VCFHeaderLineType.Integer, "Length of homologous sequence"));
-        vcfHeaderLines.put(INV33, new VCFInfoHeaderLine(INV33, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
-        vcfHeaderLines.put(INV55, new VCFInfoHeaderLine(INV55, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
-
-        vcfHeaderLines.put(DUP_REPET_UNIT_REF_SPAN, new VCFInfoHeaderLine(DUP_REPET_UNIT_REF_SPAN, 1, VCFHeaderLineType.String, "Reference span of the suspected repeated unit in a tandem duplication"));
-        vcfHeaderLines.put(DUP_SEQ_CIGARS, new VCFInfoHeaderLine(DUP_SEQ_CIGARS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String,
-                "CIGARs of the repeated sequence on the locally-assembled contigs when aligned to " + DUP_REPET_UNIT_REF_SPAN + " (currently only available for repeats when " + DUP_ANNOTATIONS_IMPRECISE + " is false)"));
-        vcfHeaderLines.put(DUPLICATION_NUMBERS, new VCFInfoHeaderLine(DUPLICATION_NUMBERS, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Number of times the sequence is duplicated on reference and on the alternate alleles"));
-        vcfHeaderLines.put(DUP_ANNOTATIONS_IMPRECISE, new VCFInfoHeaderLine(DUP_ANNOTATIONS_IMPRECISE, 0, VCFHeaderLineType.Flag, "Whether the duplication annotations are from an experimental optimization procedure"));
+    private static void addFormatLine(final VCFFormatHeaderLine line) {
+        Utils.nonNull(line);
+        formatLines.put(line.getID(), line);
     }
 
+    private static void addInfoLine(final VCFInfoHeaderLine line) {
+        Utils.nonNull(line);
+        infoLines.put(line.getID(), line);
+    }
+
+    private static void addFilterLine(final VCFFilterHeaderLine line) {
+        Utils.nonNull(line);
+        filterLines.put(line.getID(), line);
+    }
+
+    // todo htsjdk should have these defined
+    public static VCFSimpleHeaderLine getSymbAltAlleleLine(final String id) { return symbAltAlleleLines.get(id); }
+    public static Set<VCFSimpleHeaderLine> getSymbAltAlleleLines() { return new HashSet<>(symbAltAlleleLines.values()); }
+    private static final Map<String, VCFSimpleHeaderLine> symbAltAlleleLines = new LinkedHashMap<>(10);
+    private static void addSymbAltAlleleLine(final VCFSimpleHeaderLine line) {
+        Utils.nonNull(line);
+        symbAltAlleleLines.put(line.getID(), line);
+    }
+
+    public static Map<String, VCFHeaderLine> vcfHeaderLines = new LinkedHashMap<>();
+
+    static {
+
+        addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER, "Inversion of reference sequence"));
+        addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, "Deletion relative to the reference"));
+        addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER, "Insertion of novel sequence relative to the reference"));
+        addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
+                GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, "Region of elevated copy number relative to the reference"));
+
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SVTYPE, 1, VCFHeaderLineType.String, "Type of structural variant"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SVLEN, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Difference in length between REF and ALT alleles"));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TOTAL_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of contig alignments that support the variant"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HQ_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of high-quality contig alignments that support the variant"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MAPPING_QUALITIES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Mapping qualities of the contig alignments that support the variant"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.ALIGN_LENGTHS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Minimum lengths of the flanking aligned region from each contig alignment"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MAX_ALIGN_LENGTH, 1, VCFHeaderLineType.Integer, "Maximum of the minimum aligned lengths of flanking regions from each contig alignment"));
+
+        // todo: create an alternate assembly file and link to it with breakpoint IDs according to the VCF spec
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CONTIG_NAMES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Name of contigs that evidenced this variant, formatted as \"asm%06d:tig%05d\""));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INSERTED_SEQUENCE, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Inserted sequence at the breakpoint"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Alignments of inserted sequence"));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HOMOLOGY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Homologous sequence from contig at the breakpoint"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HOMOLOGY_LENGTH, 1, VCFHeaderLineType.Integer, "Length of homologous sequence"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV33, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV55, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, 1, VCFHeaderLineType.String, "Reference span of the suspected repeated unit in a tandem duplication"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_SEQ_CIGARS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String,
+                "CIGARs of the repeated sequence on the locally-assembled contigs when aligned to " + GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN + " (currently only available for repeats when " + GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE + " is false)"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUPLICATION_NUMBERS, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Number of times the sequence is duplicated on reference and on the alternate alleles"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, 0, VCFHeaderLineType.Flag, "Whether the duplication annotations are from an experimental optimization procedure"));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING, 0, VCFHeaderLineType.Flag, "Tandem repeats contraction compared to reference"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TANDUP_EXPANSION_STRING, 0, VCFHeaderLineType.Flag, "Tandem repeats expansion compared to reference"));
+    }
 }

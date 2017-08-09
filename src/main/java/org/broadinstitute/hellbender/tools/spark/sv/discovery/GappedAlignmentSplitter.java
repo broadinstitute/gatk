@@ -5,13 +5,15 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 
 public final class GappedAlignmentSplitter {
 
@@ -49,25 +51,26 @@ public final class GappedAlignmentSplitter {
      * @return an iterable of size >= 1. if size==1, the returned iterable contains only the input (i.e. either no gap or hasn't reached sensitivity)
      */
     @VisibleForTesting
-    public static Iterable<AlignedAssembly.AlignmentInterval> split(final AlignedAssembly.AlignmentInterval oneRegion,
-                                                                    final int sensitivity,
-                                                                    final int unclippedContigLen) {
+    public static Iterable<AlignmentInterval> split(final AlignmentInterval oneRegion,
+                                                    final int sensitivity,
+                                                    final int unclippedContigLen) {
 
         final List<CigarElement> cigarElements = checkCigarAndConvertTerminalInsertionToSoftClip(oneRegion.cigarAlong5to3DirectionOfContig);
         if (cigarElements.size() == 1) return new ArrayList<>( Collections.singletonList(oneRegion) );
 
-        final List<AlignedAssembly.AlignmentInterval> result = new ArrayList<>(3); // blunt guess
+        final List<AlignmentInterval> result = new ArrayList<>(3); // blunt guess
         final int originalMapQ = oneRegion.mapQual;
 
         final List<CigarElement> cigarMemoryList = new ArrayList<>();
-        final int clippedNBasesFromStart = SVVariantDiscoveryUtils.getNumClippedBases(true, cigarElements);
+        final int clippedNBasesFromStart = SvCigarUtils.getNumClippedBases(true, cigarElements);
 
-        final int hardClippingAtBeginning = cigarElements.get(0).getOperator()== CigarOperator.H ? cigarElements.get(0).getLength() : 0;
-        final int hardClippingAtEnd = (cigarElements.get(cigarElements.size()-1).getOperator()== CigarOperator.H)? cigarElements.get(cigarElements.size()-1).getLength() : 0;
+        final int hardClippingAtBeginning = cigarElements.get(0).getOperator() == CigarOperator.H ? cigarElements.get(0).getLength() : 0;
+        final int hardClippingAtEnd = (cigarElements.get(cigarElements.size()-1).getOperator() == CigarOperator.H) ? cigarElements.get(cigarElements.size()-1).getLength() : 0;
         final CigarElement hardClippingAtBeginningMaybeNull = hardClippingAtBeginning==0 ? null : new CigarElement(hardClippingAtBeginning, CigarOperator.H);
         int contigIntervalStart = 1 + clippedNBasesFromStart;
         // we are walking along the contig following the cigar, which indicates that we might be walking backwards on the reference if oneRegion.forwardStrand==false
-        int refBoundary1stInTheDirectionOfContig = oneRegion.forwardStrand ? oneRegion.referenceInterval.getStart() : oneRegion.referenceInterval.getEnd();
+        int refBoundary1stInTheDirectionOfContig = oneRegion.forwardStrand ? oneRegion.referenceSpan.getStart() :
+                oneRegion.referenceSpan.getEnd();
         for (final CigarElement cigarElement : cigarElements) {
             final CigarOperator op = cigarElement.getOperator();
             final int operatorLen = cigarElement.getLength();
@@ -83,16 +86,18 @@ public final class GappedAlignmentSplitter {
 
                     // collapse cigar memory list into a single cigar for ref & contig interval computation
                     final Cigar memoryCigar = new Cigar(cigarMemoryList);
-                    final int effectiveReadLen = memoryCigar.getReadLength() + SVVariantDiscoveryUtils.getTotalHardClipping(memoryCigar) - SVVariantDiscoveryUtils.getNumClippedBases(true, memoryCigar);
+                    final int effectiveReadLen = memoryCigar.getReadLength()
+                            + SvCigarUtils.getTotalHardClipping(memoryCigar)
+                            - SvCigarUtils.getNumClippedBases(true, memoryCigar);
 
                     // task 1: infer reference interval taking into account of strand
                     final SimpleInterval referenceInterval;
                     if (oneRegion.forwardStrand) {
-                        referenceInterval = new SimpleInterval(oneRegion.referenceInterval.getContig(),
+                        referenceInterval = new SimpleInterval(oneRegion.referenceSpan.getContig(),
                                 refBoundary1stInTheDirectionOfContig,
                                 refBoundary1stInTheDirectionOfContig + (memoryCigar.getReferenceLength()-1));
                     } else {
-                        referenceInterval = new SimpleInterval(oneRegion.referenceInterval.getContig(),
+                        referenceInterval = new SimpleInterval(oneRegion.referenceSpan.getContig(),
                                 refBoundary1stInTheDirectionOfContig - (memoryCigar.getReferenceLength()-1), // step backward
                                 refBoundary1stInTheDirectionOfContig);
                     }
@@ -107,7 +112,10 @@ public final class GappedAlignmentSplitter {
                     }
                     final Cigar cigarForNewAlignmentInterval = new Cigar(cigarMemoryList);
 
-                    final AlignedAssembly.AlignmentInterval split = new AlignedAssembly.AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd, cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH);
+                    final AlignmentInterval split = new AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd,
+                            cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ,
+                            DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.ARTIFICIAL_MISMATCH,
+                            oneRegion.alnScore, true);
 
                     result.add(split);
 
@@ -116,16 +124,19 @@ public final class GappedAlignmentSplitter {
                     if (hardClippingAtBeginningMaybeNull != null) {
                         cigarMemoryList.add(hardClippingAtBeginningMaybeNull); // be faithful about hard clippings
                     }
-                    cigarMemoryList.add(new CigarElement(contigIntervalEnd - hardClippingAtBeginning + (op.consumesReadBases() ? operatorLen : 0), CigarOperator.S));
+                    cigarMemoryList.add(new CigarElement(contigIntervalEnd - hardClippingAtBeginning +
+                            (op.consumesReadBases() ? operatorLen : 0), CigarOperator.S));
 
                     // update pointers into reference and contig
-                    final int refBoundaryAdvance = op.consumesReadBases() ? memoryCigar.getReferenceLength() : memoryCigar.getReferenceLength() + operatorLen;
+                    final int refBoundaryAdvance = op.consumesReadBases() ? memoryCigar.getReferenceLength()
+                            : memoryCigar.getReferenceLength() + operatorLen;
                     refBoundary1stInTheDirectionOfContig += oneRegion.forwardStrand ? refBoundaryAdvance : -refBoundaryAdvance;
                     contigIntervalStart += op.consumesReadBases() ? effectiveReadLen + operatorLen : effectiveReadLen;
 
                     break;
                 default:
-                    throw new GATKException("Alignment CIGAR contains an unexpected N or P element: " + oneRegion.toPackedString()); // TODO: 1/20/17 still not quite sure if this is quite right, it doesn't blow up on NA12878 WGS, but who knows what happens in the future
+                    // TODO: 1/20/17 still not quite sure if this is quite right, it doesn't blow up on NA12878 WGS, but who knows what happens in the future
+                    throw new GATKException("Alignment CIGAR contains an unexpected N or P element: " + oneRegion.toPackedString());
             }
         }
 
@@ -135,16 +146,20 @@ public final class GappedAlignmentSplitter {
 
         final SimpleInterval lastReferenceInterval;
         if (oneRegion.forwardStrand) {
-            lastReferenceInterval =  new SimpleInterval(oneRegion.referenceInterval.getContig(), refBoundary1stInTheDirectionOfContig, oneRegion.referenceInterval.getEnd());
+            lastReferenceInterval =  new SimpleInterval(oneRegion.referenceSpan.getContig(), refBoundary1stInTheDirectionOfContig,
+                    oneRegion.referenceSpan.getEnd());
         } else {
-            lastReferenceInterval =  new SimpleInterval(oneRegion.referenceInterval.getContig(), oneRegion.referenceInterval.getStart(), refBoundary1stInTheDirectionOfContig);
+            lastReferenceInterval =  new SimpleInterval(oneRegion.referenceSpan.getContig(), oneRegion.referenceSpan.getStart(),
+                    refBoundary1stInTheDirectionOfContig);
         }
 
         final Cigar lastForwardStrandCigar = new Cigar(cigarMemoryList);
-        int clippedNBasesFromEnd = SVVariantDiscoveryUtils.getNumClippedBases(false, cigarElements);
-        result.add(new AlignedAssembly.AlignmentInterval(lastReferenceInterval,
+        int clippedNBasesFromEnd = SvCigarUtils.getNumClippedBases(false, cigarElements);
+        result.add(new AlignmentInterval(lastReferenceInterval,
                 contigIntervalStart, unclippedContigLen-clippedNBasesFromEnd, lastForwardStrandCigar,
-                oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH));
+                oneRegion.forwardStrand, originalMapQ,
+                DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.ARTIFICIAL_MISMATCH,
+                oneRegion.alnScore, true));
 
 
         return result;
@@ -167,7 +182,7 @@ public final class GappedAlignmentSplitter {
         if (cigarAlongInput5to3Direction.numCigarElements()<2 ) return cigarAlongInput5to3Direction.getCigarElements();
 
         final List<CigarElement> cigarElements = new ArrayList<>(cigarAlongInput5to3Direction.getCigarElements());
-        SVVariantDiscoveryUtils.validateCigar(cigarElements);
+        SvCigarUtils.validateCigar(cigarElements);
 
         final List<CigarElement> convertedList = convertInsToSoftClipFromOneEnd(cigarElements, true);
         return convertInsToSoftClipFromOneEnd(convertedList, false);
@@ -181,8 +196,8 @@ public final class GappedAlignmentSplitter {
     @VisibleForTesting
     public static List<CigarElement> convertInsToSoftClipFromOneEnd(final List<CigarElement> cigarElements,
                                                                     final boolean fromStart) {
-        final int numHardClippingBasesFromOneEnd = SVVariantDiscoveryUtils.getNumHardClippingBases(fromStart, cigarElements);
-        final int numSoftClippingBasesFromOneEnd = SVVariantDiscoveryUtils.getNumSoftClippingBases(fromStart, cigarElements);
+        final int numHardClippingBasesFromOneEnd = SvCigarUtils.getNumHardClippingBases(fromStart, cigarElements);
+        final int numSoftClippingBasesFromOneEnd = SvCigarUtils.getNumSoftClippingBases(fromStart, cigarElements);
 
         final int indexOfFirstNonClippingOperation;
         if (numHardClippingBasesFromOneEnd==0 && numSoftClippingBasesFromOneEnd==0) { // no clipping

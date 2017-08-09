@@ -23,16 +23,23 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+
 
 /**
  * This tool takes a SAM file containing the alignments of assembled contigs or long reads to the reference
@@ -51,7 +58,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
 
     @ArgumentCollection
-    private StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs
+    private StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection
+            discoverStageArgs
             = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
     @Argument(doc = "sam file for aligned contigs", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -77,7 +85,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     protected void runTool(final JavaSparkContext ctx) {
 
         final JavaRDD<AlignedContig> parsedContigAlignments
-                = new SAMFormattedContigAlignmentParser(getReads(), getHeaderForReads(), localLogger).getAlignedContigs();
+                = new SAMFormattedContigAlignmentParser(getReads(), getHeaderForReads(), true, localLogger)
+                .getAlignedContigs();
 
         discoverVariantsAndWriteVCF(parsedContigAlignments, discoverStageArgs.fastaReference,
                 ctx.broadcast(getReference()), getAuthenticatedGCSOptions(), vcfOutputFileName, localLogger);
@@ -88,14 +97,16 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
         private final JavaRDD<GATKRead> unfilteredContigAlignments;
         private final SAMFileHeader header;
+        private final boolean splitGapped;
         private final Logger toolLogger;
 
         public SAMFormattedContigAlignmentParser(final JavaRDD<GATKRead> unfilteredContigAlignments,
-                                                 final SAMFileHeader header,
+                                                 final SAMFileHeader header, final boolean splitGapped,
                                                  final Logger toolLogger) {
             this.unfilteredContigAlignments = unfilteredContigAlignments;
             this.header = header;
             this.toolLogger = toolLogger;
+            this.splitGapped = splitGapped;
         }
 
         @Override
@@ -104,24 +115,28 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                     .filter(r -> !r.isSecondaryAlignment())
                     .groupBy(GATKRead::getName)
                     .map(Tuple2::_2)
-                    .map(iterable -> parseReadsAndBreakGaps(Utils.stream(iterable).map(r->r.convertToSAMRecord(header)).collect(Collectors.toList()), header, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, toolLogger));
+                    .map(gatkReads ->
+                            parseReadsAndOptionallySplitGappedAlignments(
+                                    Utils.stream(gatkReads).map(r->r.convertToSAMRecord(header)).collect(Collectors.toList()),
+                                    GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, splitGapped, toolLogger));
         }
 
         /**
          * Iterates through the input {@code noSecondaryAlignments}, which are assumed to contain no secondary alignment (i.e. records with "XA" tag),
-         * converts to custom {@link AlignedAssembly.AlignmentInterval} format and
+         * converts to custom {@link AlignmentInterval} format and
          * split the records when the gap in the alignment reaches the specified {@code sensitivity}.
-         * The size of the returned iterable of {@link AlignedAssembly.AlignmentInterval}'s is guaranteed to be no lower than that of the input iterable.
+         * The size of the returned iterable of {@link AlignmentInterval}'s is guaranteed to be no lower than that of the input iterable.
          */
         @VisibleForTesting
-        public static AlignedContig parseReadsAndBreakGaps(final Iterable<SAMRecord> noSecondaryAlignments,
-                                                           final SAMFileHeader header,
-                                                           final int sensitivity,
-                                                           final Logger toolLogger) {
+        public static AlignedContig parseReadsAndOptionallySplitGappedAlignments(final Iterable<SAMRecord> noSecondaryAlignments,
+                                                                                 final int gapSplitSensitivity,
+                                                                                 final boolean splitGapped,
+                                                                                 final Logger toolLogger) {
 
             Utils.validateArg(noSecondaryAlignments.iterator().hasNext(), "input collection of GATK reads is empty");
 
-            final SAMRecord primaryAlignment = Utils.stream(noSecondaryAlignments).filter(sam -> !sam.getSupplementaryAlignmentFlag())
+            final SAMRecord primaryAlignment
+                    = Utils.stream(noSecondaryAlignments).filter(sam -> !sam.getSupplementaryAlignmentFlag())
                     .findFirst()
                     .orElseThrow(() -> new GATKException("no primary alignment for read " + noSecondaryAlignments.iterator().next().getReadName()));
 
@@ -132,13 +147,17 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             if (primaryAlignment.getReadNegativeStrandFlag()) {
                 SequenceUtil.reverseComplement(contigSequence);
             }
-            final int unClippedContigLength = primaryAlignment.getReadLength();
 
-            final List<AlignedAssembly.AlignmentInterval> parsedAlignments =
-                    Utils.stream(noSecondaryAlignments)
-                            .map(AlignedAssembly.AlignmentInterval::new)
-                            .map(ar -> GappedAlignmentSplitter.split(ar, sensitivity, unClippedContigLength))
-                            .flatMap(Utils::stream).collect(Collectors.toList());
+            final Stream<AlignmentInterval> unSplitAIList = Utils.stream(noSecondaryAlignments).map(AlignmentInterval::new);
+            final List<AlignmentInterval> parsedAlignments;
+            if (splitGapped) {
+                final int unClippedContigLength = primaryAlignment.getReadLength();
+                parsedAlignments = unSplitAIList.map(ar ->
+                        GappedAlignmentSplitter.split(ar, gapSplitSensitivity, unClippedContigLength))
+                        .flatMap(Utils::stream).collect(Collectors.toList());
+            } else {
+                parsedAlignments = unSplitAIList.collect(Collectors.toList());
+            }
             return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments);
         }
     }
@@ -147,15 +166,58 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * Makes sense out of the alignment records of the locally assembled contigs,
      * turn into annotated {@link VariantContext}'s, and writes them to VCF.
      */
-    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> contigAlignments,
+    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
                                                    final String fastaReference, final Broadcast<ReferenceMultiSource> broadcastReference,
                                                    final PipelineOptions pipelineOptions, final String vcfFileName,
                                                    final Logger toolLogger) {
 
-        final JavaRDD<VariantContext> variants
-                = SVVariantConsensusDiscovery.discoverNovelAdjacencyFromChimericAlignments(contigAlignments, toolLogger)
-                .map(tuple2 -> SVVariantConsensusDiscovery.discoverVariantsFromConsensus(tuple2, broadcastReference));
+        final JavaRDD<VariantContext> annotatedVariants =
+                alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
+                        .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
+                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH)))
+                        .flatMapToPair(DiscoverVariantsFromContigAlignmentsSAMSpark::discoverNovelAdjacencyFromChimericAlignments)    // a filter-passing contig's alignments may or may not produce novel adjacency
+                        .groupByKey()                                                                                                 // group the same novel adjacency produced by different contigs together
+                        .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments
+                        .map(noveltyTypeAndEvidence -> annotateVariant(noveltyTypeAndEvidence._1,                                     // annotate the novel adjacency and inferred type
+                                noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2, broadcastReference));
 
-        SVVCFWriter.writeVCF(pipelineOptions, vcfFileName, fastaReference, variants, toolLogger);
+        SVVCFWriter.writeVCF(pipelineOptions, vcfFileName, fastaReference, annotatedVariants, toolLogger);
+    }
+
+    // TODO: 7/6/17 interface to be changed in the new implementation, where one contig produces a set of NARL's.
+    /**
+     * Given contig alignments, emit novel adjacency not present on the reference to which the locally-assembled contigs were aligned.
+     */
+    public static Iterator<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>>
+    discoverNovelAdjacencyFromChimericAlignments(final Tuple2<byte[], List<ChimericAlignment>> tigSeqAndChimerics) {
+        return Utils.stream(tigSeqAndChimerics._2)
+                .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, tigSeqAndChimerics._1), ca))
+                .collect(Collectors.toList()).iterator();
+    }
+
+    // TODO: 7/6/17 interface to be changed in the new implementation, where a set of NRAL's associated with a single contig is considered together.
+    /**
+     * Given input novel adjacency and evidence chimeric alignments, infer type of variant.
+     */
+    public static Tuple2<NovelAdjacencyReferenceLocations, Tuple2<SvType, Iterable<ChimericAlignment>>> inferType(
+            final NovelAdjacencyReferenceLocations novelAdjacency,
+            final Iterable<ChimericAlignment> chimericAlignments) {
+        return new Tuple2<>(novelAdjacency,
+                new Tuple2<>(SvTypeInference.inferFromNovelAdjacency(novelAdjacency),
+                        chimericAlignments));
+    }
+
+    /**
+     * Produces annotated variant as described in {@link GATKSVVCFHeaderLines}, given input arguments.
+     */
+    public static VariantContext annotateVariant(final NovelAdjacencyReferenceLocations novelAdjacency,
+                                                 final SvType inferredType,
+                                                 final Iterable<ChimericAlignment> chimericAlignments,
+                                                 final Broadcast<ReferenceMultiSource> broadcastReference)
+            throws IOException {
+        return AnnotatedVariantProducer
+                .produceAnnotatedVcFromNovelAdjacency(novelAdjacency,
+                        inferredType, chimericAlignments,
+                        broadcastReference);
     }
 }

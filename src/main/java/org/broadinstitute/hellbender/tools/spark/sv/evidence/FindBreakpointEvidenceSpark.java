@@ -77,7 +77,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     protected void runTool( final JavaSparkContext ctx ) {
 
         gatherEvidenceAndWriteContigSamFile(ctx, params, getHeaderForReads(),
-                getUnfilteredReads(), outputAssemblyAlignments, params.assembliesSortOrder, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
+                getUnfilteredReads(), outputAssemblyAlignments, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
 
     }
 
@@ -93,7 +93,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
             final String outputAssembliesFile,
-            final SAMFileHeader.SortOrder outputSortOrder,
             final Logger toolLogger) {
 
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
@@ -135,9 +134,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // write the output file
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-        cleanHeader.setSortOrder(outputSortOrder);
+        cleanHeader.setSortOrder(params.assembliesSortOrder);
 
-        AlignedAssemblyOrExcuse.writeSAMFile(outputAssembliesFile, cleanHeader, alignedAssemblyOrExcuseList, outputSortOrder == SAMFileHeader.SortOrder.queryname);
+        AlignedAssemblyOrExcuse.writeSAMFile(outputAssembliesFile, cleanHeader, alignedAssemblyOrExcuseList,
+                params.assembliesSortOrder == SAMFileHeader.SortOrder.queryname);
         log("Wrote SAM file of aligned contigs.", toolLogger);
 
         return alignedAssemblyOrExcuseList;

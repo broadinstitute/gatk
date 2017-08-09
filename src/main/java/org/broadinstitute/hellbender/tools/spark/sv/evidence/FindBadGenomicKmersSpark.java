@@ -19,7 +19,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSp
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVDUSTFilteredKmerizer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
@@ -56,10 +56,10 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private String outputFile;
 
     @Argument(doc = "kmer size", fullName = "kSize", optional = true)
-    private int kSize = SVConstants.KMER_SIZE;
+    private int kSize = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
 
     @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
-    private int maxDUSTScore = SVConstants.MAX_DUST_SCORE;
+    private int maxDUSTScore = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.MAX_DUST_SCORE;
 
     @Argument(doc = "additional high copy kmers (mitochondrion, e.g.) fasta file name",
             fullName = "highCopyFasta", optional = true)

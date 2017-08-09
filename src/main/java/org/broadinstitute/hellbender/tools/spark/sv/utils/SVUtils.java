@@ -33,7 +33,9 @@ public final class SVUtils {
 
     /**
      * Read a file of kmers.
-     * Each line must be exactly SVConstants.KMER_SIZE characters long, and must match [ACGT]*.
+     * Each line must be exactly
+     * {@link org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection#KMER_SIZE}
+     * characters long, and must match [ACGT]*.
      */
     public static Set<SVKmer> readKmersFile(final int kSize, final String kmersFile,
                                             final SVKmer kmer ) {
