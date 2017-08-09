@@ -68,10 +68,9 @@ public class ReadPositionUnitTest extends BaseTest {
         rp.annotate(null, vc, DUMMY_GENOTYPE, gb, likelihoods);
         final Genotype g = gb.make();
 
-        final int[] medianRefAndAltPositions = (int[]) g.getExtendedAttribute(ReadPosition.KEY);
+        final int[] medianAltPositions = (int[]) g.getExtendedAttribute(ReadPosition.KEY);
 
-        Assert.assertEquals( medianRefAndAltPositions[0], 2);
-        Assert.assertEquals(medianRefAndAltPositions[1], 1);
+        Assert.assertEquals(medianAltPositions[0], 1);
     }
 
 }

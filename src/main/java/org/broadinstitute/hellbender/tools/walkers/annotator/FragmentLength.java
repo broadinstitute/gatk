@@ -26,6 +26,9 @@ public class FragmentLength extends PerAlleleAnnotation {
     }
 
     @Override
+    protected boolean includeRefAllele() { return true; }
+
+    @Override
     protected String getVcfKey() { return KEY; }
 
     @Override
