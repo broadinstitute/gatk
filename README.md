@@ -42,6 +42,7 @@ releases of the toolkit.
     * [Setting up profiling using JProfiler](#jprofiler)
     * [Uploading Archives to Sonatype](#sonatype)
     * [Building GATK4 Docker images](#docker_building)
+    * [Releasing GATK4](#releasing_gatk)
     * [Generating GATK4 documentation](#gatkdocs)
     * [Using Zenhub to track github issues](#zenhub)
 * [Further Reading on Spark](#spark_further_reading)
@@ -461,6 +462,10 @@ Currently all builds are considered snapshots.  The archive name is based off of
 #### <a name="docker_building">Building GATK4 Docker images</a>
 
 Please see the [the Docker README](scripts/docker/README.md) in ``scripts/docker``.  This has instructions for the Dockerfile in the root directory.
+
+#### <a name="releasing_gatk">Releasing GATK4</a>
+
+Please see the [How to release GATK4](https://github.com/broadinstitute/gatk/wiki/How-to-release-GATK4) wiki article for instructions on releasing GATK4.
 
 #### <a name="gatkdocs">Generating GATK4 documentation</a>
 
