@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -44,6 +45,9 @@ import java.util.List;
  * which will be important for the Spark equivalent of this traversal.
  */
 public abstract class AssemblyRegionWalker extends GATKTool {
+
+    @Argument(fullName="enableReadSharding", shortName="enableReadSharding", doc="Enable read sharding", optional = true)
+    protected boolean enableReadSharding = false;
 
     @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. For good performance, this should be much larger than the maximum assembly region size.", optional = true)
     protected int readShardSize = defaultReadShardSize();
@@ -166,7 +170,12 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         final List<LocalReadShard> shards = new ArrayList<>();
 
         for ( final SimpleInterval interval : intervals ) {
-            shards.addAll(LocalReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
+            if ( enableReadSharding ) {
+                shards.addAll(LocalReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
+            }
+            else {
+                shards.add(new LocalReadShard(interval, interval.expandWithinContig(assemblyRegionPadding, getHeaderForReads().getSequenceDictionary()), reads));
+            }
         }
 
         return shards;
@@ -214,9 +223,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null);
             currentReadShard = readShard;
 
-            processReadShard(readShard,
-                    new ReferenceContext(reference, readShard.getPaddedInterval()), // use the fully-padded window to fetch overlapping data
-                    new FeatureContext(features, readShard.getPaddedInterval()));
+            processReadShard(readShard, reference, features);
         }
 
         logger.info(countedFilter.getSummaryLine());
@@ -227,19 +234,27 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * and send each region to the tool implementation for processing.
      *
      * @param shard Shard to process
-     * @param referenceContext Reference bases spanning the fully-padded interval of the shard
-     * @param featureContext Features spanning the fully-padded interval of the shard
+     * @param reference Reference data source
+     * @param features FeatureManager
      */
-    private void processReadShard(Shard<GATKRead> shard, ReferenceContext referenceContext, FeatureContext featureContext ) {
+    private void processReadShard(Shard<GATKRead> shard, ReferenceDataSource reference, FeatureManager features ) {
         // Divide each shard into one or more assembly regions using our AssemblyRegionEvaluator:
-        final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shard,
-                getHeaderForReads(), referenceContext, featureContext, assemblyRegionEvaluator(),
-                minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
-                maxProbPropagationDistance);
+        // final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shard,
+        //        getHeaderForReads(), referenceContext, featureContext, assemblyRegionEvaluator(),
+        //        minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
+        //        maxProbPropagationDistance);
+
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance);
 
         // Call into the tool implementation to process each assembly region from this shard.
-        for ( final AssemblyRegion assemblyRegion : assemblyRegions ) {
+        while ( assemblyRegionIter.hasNext() ) {
+            final AssemblyRegion assemblyRegion = assemblyRegionIter.next();
+            
             logger.debug("Processing assembly region at " + assemblyRegion.getSpan() + " isActive: " + assemblyRegion.isActive() + " numReads: " + assemblyRegion.getReads().size() + " in read shard " + shard.getInterval());
+            //for ( final GATKRead read : assemblyRegion.getReads() ) {
+            //    logger.debug(String.format("\tRead at %s:%d-%d", read.getContig(), read.getStart(), read.getEnd()));
+            //    logger.debug("\n");
+            //}
 
             apply(assemblyRegion,
                     new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),

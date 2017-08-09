@@ -242,11 +242,16 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        m2Engine.callRegion(region, referenceContext, featureContext).stream()
-                // Only include calls that start within the current read shard (as opposed to the padded regions around it).
-                // This is critical to avoid duplicating events that span shard boundaries!
-                .filter(call -> getCurrentReadShardBounds().contains(new SimpleInterval(call.getContig(), call.getStart(), call.getStart())))
-                .forEach(vcfWriter::add);
+        if ( enableReadSharding ) {
+            m2Engine.callRegion(region, referenceContext, featureContext).stream()
+                    // Only include calls that start within the current read shard (as opposed to the padded regions around it).
+                    // This is critical to avoid duplicating events that span shard boundaries!
+                    .filter(call -> getCurrentReadShardBounds().contains(new SimpleInterval(call.getContig(), call.getStart(), call.getStart())))
+                    .forEach(vcfWriter::add);
+        }
+        else {
+            m2Engine.callRegion(region, referenceContext, featureContext).forEach(vcfWriter::add);
+        }
     }
 
     @Override
