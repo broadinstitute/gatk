@@ -317,7 +317,7 @@ public final class PSScorer {
                     continue;
                 }
                 final Double score = SCORE_GENOME_LENGTH_UNITS * hit.numMates / (numHits * tree.getLengthOf(taxId));
-                //Git list containing this node and its ancestors
+                //Get list containing this node and its ancestors
                 final List<String> path = tree.getPathOf(taxId);
                 hitPathNodes.addAll(path);
                 for (final String pathTaxId : path) {
