@@ -44,6 +44,7 @@ import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The core engine for the HaplotypeCaller that does all of the actual work of the tool.
@@ -596,7 +597,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
         else {
-            return calledHaplotypes.getCalls();
+            //TODO this should be updated once reducible annotations are handled properly.
+            return calledHaplotypes.getCalls()
+                    .stream()
+                    .map(RMSMappingQuality.getInstance()::finalizeRawMQ)
+                    .collect(Collectors.toList());
         }
     }
 

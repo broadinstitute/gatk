@@ -139,7 +139,7 @@ import java.util.List;
 @BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
-    public static final int DEFAULT_READSHARD_SIZE = 5000;
+    public static final int DEFAULT_READSHARD_SIZE = NO_INTERVAL_SHARDING;
     public static final int DEFAULT_READSHARD_PADDING = 100;
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
@@ -218,11 +218,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        hcEngine.callRegion(region, featureContext).stream()
-                // Only include calls that start within the current read shard (as opposed to the padded regions around it).
-                // This is critical to avoid duplicating events that span shard boundaries!
-                .filter(call -> getCurrentReadShardBounds().contains(new SimpleInterval(call.getContig(), call.getStart(), call.getStart())))
-                .forEach(vcfWriter::add);
+        hcEngine.callRegion(region, featureContext).forEach(vcfWriter::add);
     }
 
     @Override
