@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A Gencode GTF Feature representing a gene.
@@ -22,65 +23,23 @@ final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
         return new GencodeGtfGeneFeature(gtfFields);
     }
 
-    private GencodeGtfGeneFeature(long lineNumber,
-                                  String chromosomeName,
-                                  AnnotationSource annotationSource,
-                                  FeatureType featureType,
-                                  int genomicStartLocation,
-                                  int genomicEndLocation,
-                                  GenomicStrand genomicStrand,
-                                  GenomicPhase genomicPhase,
-                                  String geneId,
-                                  String transcriptId,
-                                  GeneTranscriptType geneType,
-                                  GeneTranscriptStatus geneStatus,
-                                  String geneName,
-                                  GeneTranscriptType transcriptType,
-                                  GeneTranscriptStatus transcriptStatus,
-                                  String transcriptName,
-                                  int exonNumber,
-                                  String exonId,
-                                  LocusLevel locusLevel,
-                                  ArrayList<OptionalField<?>> optionalFields,
-                                  String anonymousOptionalFields) {
-
-        super(lineNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    private GencodeGtfGeneFeature(final GencodeGtfFeatureBaseData baseData) {
+        super(baseData);
     }
 
-    public static GencodeGtfFeature create(long lineNumber,
-                                           String chromosomeName,
-                                           AnnotationSource annotationSource,
-                                           FeatureType featureType,
-                                           int genomicStartLocation,
-                                           int genomicEndLocation,
-                                           GenomicStrand genomicStrand,
-                                           GenomicPhase genomicPhase,
-                                           String geneId,
-                                           String transcriptId,
-                                           GeneTranscriptType geneType,
-                                           GeneTranscriptStatus geneStatus,
-                                           String geneName,
-                                           GeneTranscriptType transcriptType,
-                                           GeneTranscriptStatus transcriptStatus,
-                                           String transcriptName,
-                                           int exonNumber,
-                                           String exonId,
-                                           LocusLevel locusLevel,
-                                           ArrayList<OptionalField<?>> optionalFields,
-                                           String anonymousOptionalFields) {
-
-        return new GencodeGtfGeneFeature(lineNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    public static GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+        return new GencodeGtfGeneFeature(baseData);
     }
 
     // ================================================================================================
 
-    private ArrayList<GencodeGtfTranscriptFeature> transcripts = new ArrayList<>();
+    private List<GencodeGtfTranscriptFeature> transcripts = new ArrayList<>();
 
     // ================================================================================================
 
     public void addTranscript(GencodeGtfTranscriptFeature transcript) { transcripts.add(transcript); }
 
-    public ArrayList<GencodeGtfTranscriptFeature> getTranscripts() {
+    public List<GencodeGtfTranscriptFeature> getTranscripts() {
         return transcripts;
     }
 
@@ -98,24 +57,35 @@ final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
 
     @Override
     public boolean equals(Object other) {
+
+        if (other == null) {
+            return false;
+        }
+        else if ( this == other ) {
+            return true;
+        }
+
         if ( (!(other instanceof GencodeGtfGeneFeature)) ) {
             return false;
         }
 
         GencodeGtfGeneFeature otherGene = (GencodeGtfGeneFeature) other;
 
-        if ( !super.equals(otherGene) ) {
+        if ( (!super.equals(otherGene)) ) {
             return false;
         }
 
-        for ( int i = 0 ; i < transcripts.size(); ++i ) {
-            if ( !transcripts.get(i).equals(otherGene.transcripts.get(i))) {
-                return false;
-            }
+        if ( (!Objects.equals(transcripts, otherGene.transcripts)) ) {
+            return false;
         }
-
 
         return true;
     }
 
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (transcripts != null ? transcripts.hashCode() : 0);
+        return result;
+    }
 }

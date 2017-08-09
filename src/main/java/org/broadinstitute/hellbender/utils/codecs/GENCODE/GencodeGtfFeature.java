@@ -1,65 +1,74 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
-import htsjdk.samtools.util.Locus;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import scala.tools.nsc.Global;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * A GTF Feature represents one row of a GTF File.
+ * A {@link GencodeGtfFeature} represents data in a GENCODE GTF file.
+ *
+ * Features are grouped logically by related data.
+ * While the abstract class {@link GencodeGtfFeature} represents a single line
+ * of a GENCODE GTF File, the concrete instantiations represent at least one line,
+ * and often more than one.
+ *
+ * For example, a {@link GencodeGtfGeneFeature} represents all lines in the given
+ * data file with information on a particular gene.  This includes all transcripts,
+ * exons, coding regions, etc. in that gene.
+ *
+ * Similarly, a {@link GencodeGtfTranscriptFeature} represents all lines in the given
+ * data file with information on a particular transcript.
+ *
+ * However, a {@link GencodeGtfSelenocysteineFeature} represents a particular line
+ * in the given data file that contains information on a specific selenocysteine.
+ *
  * The specification of a GTF file is defined here:
  * http://mblab.wustl.edu/GTF22.html
  *
- * Currently only supports version 26 or greater!
+ * Currently only supports GENCODE versions 19-26.
  *
  * Created by jonn on 7/21/17.
  */
 public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGtfFeature> {
 
-    protected final Logger logger = LogManager.getLogger(this.getClass());
+    private static final Logger logger = LogManager.getLogger(GencodeGtfFeature.class);
 
     // Metadata fields:
 
-    /**
-     * The relative order of this Feature.
-     * Normally it is a line number indicating the position in the original data file of this feature.
-     */
-    private long                    featureOrderNumber              = -1;
+    private static final String FIELD_DELIMITER                 = "\t";
 
-    // Required base GTF Fields:
-    private String                  chromosomeName;
-    private AnnotationSource        annotationSource;
-    private FeatureType             featureType;
-    private int                     genomicStartLocation;
-    private int                     genomicEndLocation;
-    private GenomicStrand           genomicStrand;
-    private GenomicPhase            genomicPhase;
+    public static final int NO_FEATURE_ORDER                    = -1;
+    public static final int NO_EXON_NUMBER                      = -1;
 
-    // "Required" GENCODE GTF Fields:
-    private String                  geneId                          = null;
-    private String                  transcriptId                    = null;
-    private GeneTranscriptStatus    geneStatus                      = null;
-    private GeneTranscriptType      geneType                        = null;
-    private String                  geneName                        = null;
-    private GeneTranscriptType      transcriptType                  = null;
-    private GeneTranscriptStatus    transcriptStatus                = null;
-    private String                  transcriptName                  = null;
-    private int                     exonNumber                      = -1;
-    private String                  exonId                          = null;
-    private LocusLevel              locusLevel                      = null;
+    private static final int CHROMOSOME_NAME_INDEX              = 0;
+    private static final int ANNOTATION_SOURCE_INDEX            = 1;
+    private static final int FEATURE_TYPE_INDEX                 = 2;
+    private static final int START_LOCATION_INDEX               = 3;
+    private static final int END_LOCATION_INDEX                 = 4;
+    private static final int GENOMIC_STRAND_INDEX               = 6;
+    private static final int GENOMIC_PHASE_INDEX                = 7;
+    private static final int EXTRA_FIELDS_INDEX                 = 8;
 
-    // Optional GENCODE GTF Fields:
-    private ArrayList<OptionalField<?>> optionalFields              = new ArrayList<>();
+    private static final String EXTRA_FIELD_DELIMITER           = ";";
 
-    // Optional General GTF Fields:
-    private String anonymousOptionalFields                          = null;
+    private static final int EXTRA_FIELD_KEY_INDEX              = 0;
+    private static final int EXTRA_FIELD_VALUE_INDEX            = 1;
+    public static final String EXTRA_FIELD_KEY_VALUE_SPLITTER   = " ";
+
+    private static final Pattern NUMBER_PATTERN                 = Pattern.compile("\\d\\d*");
+
+    private final GencodeGtfFeatureBaseData baseData;
 
     // ================================================================================================
 
@@ -67,16 +76,22 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * Populate this GencodeGtfFeature with the given data.
      */
     protected GencodeGtfFeature(String[] gtfFields) {
-        chromosomeName          = gtfFields[0];
-        annotationSource        = AnnotationSource.valueOf( gtfFields[1] );
-        featureType             = GencodeGtfFeature.FeatureType.valueOf( gtfFields[2].toLowerCase() );
-        genomicStartLocation    = Integer.valueOf( gtfFields[3] );
-        genomicEndLocation      = Integer.valueOf( gtfFields[4] );
-        genomicStrand           = GenomicStrand.getEnum( gtfFields[6] );
-        genomicPhase            = GenomicPhase.getEnum( gtfFields[7] );
+
+        baseData = new GencodeGtfFeatureBaseData();
+
+        baseData.genomicPosition = new SimpleInterval (
+                gtfFields[CHROMOSOME_NAME_INDEX],
+                Integer.valueOf( gtfFields[START_LOCATION_INDEX] ),
+                Integer.valueOf( gtfFields[END_LOCATION_INDEX] )
+        );
+
+        baseData.annotationSource        = AnnotationSource.valueOf( gtfFields[ANNOTATION_SOURCE_INDEX] );
+        baseData.featureType             = GencodeGtfFeature.FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX].toLowerCase() );
+        baseData.genomicStrand           = GenomicStrand.getEnum( gtfFields[GENOMIC_STRAND_INDEX] );
+        baseData.genomicPhase            = GenomicPhase.getEnum( gtfFields[GENOMIC_PHASE_INDEX] );
 
         // Get the extra fields from the last column:
-        String[] extraFields    = gtfFields[8].split(";");
+        String[] extraFields    = gtfFields[EXTRA_FIELDS_INDEX].split(EXTRA_FIELD_DELIMITER, -1);
 
         StringBuilder anonymousOptionalFieldBuilder = new StringBuilder();
 
@@ -84,50 +99,60 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // But we need to match up the field names to the fields themselves:
         for ( String extraField : extraFields ) {
 
-            String[] fieldParts = extraField.trim().split(" ");
+            String[] fieldParts = extraField.trim().split(EXTRA_FIELD_KEY_VALUE_SPLITTER);
 
-            String fieldName = fieldParts[0].trim();
+            if ( fieldParts.length == 1 ){
+                if ( fieldParts[EXTRA_FIELD_KEY_INDEX].isEmpty() ){
+                    continue;
+                }
+                else {
+                    throw new UserException.MalformedFile("Extraneous optional field data - not in a key/value pair: " + extraField);
+                }
+            }
+
+            // Each optional field is in a key/value pair:
+            String fieldName = fieldParts[EXTRA_FIELD_KEY_INDEX].trim();
 
             // The value of the field may be between two quotes.
             // We remove them here.
-            String fieldValue = fieldParts[1].trim().replaceAll("\"", "");
+            String fieldValue = fieldParts[EXTRA_FIELD_VALUE_INDEX].trim().replaceAll("\"", "");
 
             OptionalField<?> optionalField = null;
 
             switch (fieldName) {
                 // Find the right field to set:
                 case "gene_id":
-                    geneId = fieldValue;
+                    baseData.geneId = fieldValue;
                     break;
                 case "transcript_id":
-                    transcriptId = fieldValue;
+                    baseData.transcriptId = fieldValue;
                     break;
                 case "gene_type":
-                    geneType = GeneTranscriptType.getEnum(fieldValue);
+                    baseData.geneType = GeneTranscriptType.getEnum(fieldValue);
                     break;
                 case "gene_status":
-                    geneStatus = GeneTranscriptStatus.valueOf(fieldValue);
+                    baseData.geneStatus = GeneTranscriptStatus.valueOf(fieldValue);
                     break;
                 case "gene_name":
-                    geneName = fieldValue;
+                    baseData.geneName = fieldValue;
                     break;
                 case "transcript_type":
-                    transcriptType = GeneTranscriptType.getEnum(fieldValue);
+                    baseData.transcriptType = GeneTranscriptType.getEnum(fieldValue);
                     break;
                 case "transcript_status":
-                    transcriptStatus = GeneTranscriptStatus.valueOf(fieldValue);
+                    baseData.transcriptStatus = GeneTranscriptStatus.valueOf(fieldValue);
                     break;
                 case "transcript_name":
-                    transcriptName = fieldValue;
+                    baseData.transcriptName = fieldValue;
                     break;
                 case "exon_number":
-                    exonNumber = Integer.valueOf(fieldValue);
+                    baseData.exonNumber = Integer.valueOf(fieldValue);
                     break;
                 case "exon_id":
-                    exonId = fieldValue;
+                    baseData.exonId = fieldValue;
                     break;
                 case "level":
-                    locusLevel = LocusLevel.getEnum(fieldValue);
+                    baseData.locusLevel = LocusLevel.getEnum(fieldValue);
                     break;
                 case "tag":
                     optionalField = new OptionalField<>(fieldName, FeatureTag.getEnum(fieldValue));
@@ -151,7 +176,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     optionalField = new OptionalField<>(fieldName, TranscriptSupportLevel.getEnum(fieldValue));
                     break;
                 case "remap_status":
-                    optionalField = new OptionalField<>(fieldName, RemapStatus.valueOf(fieldValue));
+                    optionalField = new OptionalField<>(fieldName, RemapStatus.getEnum(fieldValue));
                     break;
                 case "remap_original_id":
                     optionalField = new OptionalField<>(fieldName, fieldValue);
@@ -169,132 +194,42 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 default:
-                    anonymousOptionalFieldBuilder.append(extraField + ";");
+                    anonymousOptionalFieldBuilder.append(extraField + EXTRA_FIELD_DELIMITER);
             }
 
             // If the optional field was good, we add it:
             if ( optionalField != null ) {
-                optionalFields.add(optionalField);
+                baseData.optionalFields.add(optionalField);
             }
         }
 
         // Save our anonymous optional fields:
         if ( anonymousOptionalFieldBuilder.length() != 0 ) {
-            anonymousOptionalFields = anonymousOptionalFieldBuilder.toString();
+            baseData.anonymousOptionalFields = anonymousOptionalFieldBuilder.toString();
         }
     }
 
     /**
      * Populate this GencodeGtfFeature with the given data.
      */
-    protected GencodeGtfFeature(long featureOrderNumber,
-                            String chromosomeName,
-                            AnnotationSource annotationSource,
-                            FeatureType featureType,
-                            int genomicStartLocation,
-                            int genomicEndLocation,
-                            GenomicStrand genomicStrand,
-                            GenomicPhase genomicPhase,
-                            String geneId,
-                            String transcriptId,
-                            GeneTranscriptType geneType,
-                            GeneTranscriptStatus geneStatus,
-                            String geneName,
-                            GeneTranscriptType transcriptType,
-                            GeneTranscriptStatus transcriptStatus,
-                            String transcriptName,
-                            int exonNumber,
-                            String exonId,
-                            LocusLevel locusLevel,
-                            ArrayList<OptionalField<?>> optionalFields,
-                            String anonymousOptionalFields) {
-
-        this.featureOrderNumber = featureOrderNumber;
-        this.chromosomeName = chromosomeName;
-        this.annotationSource = annotationSource;
-        this.featureType = featureType;
-        this.genomicStartLocation = genomicStartLocation;
-        this.genomicEndLocation = genomicEndLocation;
-        this.genomicStrand = genomicStrand;
-        this.genomicPhase = genomicPhase;
-        this.geneId = geneId;
-        this.transcriptId = transcriptId;
-        this.geneType = geneType;
-        this.geneStatus = geneStatus;
-        this.geneName = geneName;
-        this.transcriptType = transcriptType;
-        this.transcriptStatus = transcriptStatus;
-        this.transcriptName = transcriptName;
-        this.exonNumber = exonNumber;
-        this.exonId = exonId;
-        this.locusLevel = locusLevel;
-
-        if ( optionalFields != null ) {
-            this.optionalFields = optionalFields;
-        }
-
-        this.anonymousOptionalFields = anonymousOptionalFields;
+    protected GencodeGtfFeature(final GencodeGtfFeatureBaseData baseData) {
+        this.baseData = baseData;
     }
 
     // ================================================================================================
 
-    public static GencodeGtfFeature create(long featureOrderNumber,
-                                           String chromosomeName,
-                                           AnnotationSource annotationSource,
-                                           FeatureType featureType,
-                                           int genomicStartLocation,
-                                           int genomicEndLocation,
-                                           GenomicStrand genomicStrand,
-                                           GenomicPhase genomicPhase,
-                                           String geneId,
-                                           String transcriptId,
-                                           GeneTranscriptType geneType,
-                                           GeneTranscriptStatus geneStatus,
-                                           String geneName,
-                                           GeneTranscriptType transcriptType,
-                                           GeneTranscriptStatus transcriptStatus,
-                                           String transcriptName,
-                                           int exonNumber,
-                                           String exonId,
-                                           LocusLevel locusLevel,
-                                           ArrayList<OptionalField<?>> optionalFields,
-                                           String anonymousOptionalFields) {
+    /**
+     * Create the appropriate {@link GencodeGtfFeature} object based on the given {@code baseData}
+     * @param baseData A {@link GencodeGtfFeatureBaseData} object containing all data for a single line in a GENCODE GTF File.
+     * @return A {@link GencodeGtfFeature} containing the data in {@code baseData}
+     */
+    public static GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+        Utils.nonNull(baseData);
 
-        GencodeGtfFeature feature;
-
-        // Figure out which kind of feature to make:
-        switch (featureType) {
-            case gene:
-                feature = GencodeGtfGeneFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            case transcript:
-                feature = GencodeGtfTranscriptFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            case exon:
-                feature = GencodeGtfExonFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            case cds:
-                feature = GencodeGtfCDSFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            case utr:
-                feature = GencodeGtfUTRFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            case start_codon:
-                feature = GencodeGtfStartCodonFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            case stop_codon:
-                feature = GencodeGtfStopCodonFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            case selenocysteine:
-                feature = GencodeGtfSelenocysteineFeature.create(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
-                break;
-            default:
-                throw new UserException.MalformedFile("Unknown type of GencodeGtfFeature: " + featureType);
-
-        }
+        // Create our feature:
+        GencodeGtfFeature feature = baseData.featureType.create(baseData);
 
         return feature;
-
     }
 
     /**
@@ -303,15 +238,17 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @return The {@link GencodeGtfFeature} representing the information in {@code gtfLine}
      */
     public static GencodeGtfFeature create(String gtfLine) {
-        return create(gtfLine.split("\t"));
+        Utils.nonNull(gtfLine);
+        return create(gtfLine.split(FIELD_DELIMITER));
     }
 
     /**
      * Create a {@link GencodeGtfFeature} based on a line from a Gencode GTF File.
-     * @param gtfFields A line from a Gencode GTF File split on the {@code \t} character.
+     * @param gtfFields A line from a Gencode GTF File split on the {@link #FIELD_DELIMITER} character.
      * @return The {@link GencodeGtfFeature} representing the information in {@code gtfLine}
      */
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
+        Utils.nonNull(gtfFields);
 
         // Ensure that the input data are superficially well-formed:
         if ( gtfFields.length != GencodeGtfCodec.NUM_COLUMNS ) {
@@ -319,38 +256,12 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     " - Given: " + gtfFields.length + " Expected: " + GencodeGtfCodec.NUM_COLUMNS);
         }
 
-        GencodeGtfFeature feature = null;
 
-        String featureType = gtfFields[2].toLowerCase();
 
-        // Figure out which kind of feature to make:
-        if ( featureType.equals("gene") ) {
-            feature = GencodeGtfGeneFeature.create(gtfFields);
-        }
-        else if ( featureType.equals("transcript") ) {
-            feature = GencodeGtfTranscriptFeature.create(gtfFields);
-        }
-        else if ( featureType.equals("exon") ) {
-            feature = GencodeGtfExonFeature.create(gtfFields);
-        }
-        else if ( featureType.equals("cds") ) {
-            feature = GencodeGtfCDSFeature.create(gtfFields);
-        }
-        else if ( featureType.equals("utr") ) {
-            feature = GencodeGtfUTRFeature.create(gtfFields);
-        }
-        else if ( featureType.equals("start_codon") ) {
-            feature = GencodeGtfStartCodonFeature.create(gtfFields);
-        }
-        else if ( featureType.equals("stop_codon") ) {
-            feature = GencodeGtfStopCodonFeature.create(gtfFields);
-        }
-        else if ( featureType.equals("selenocysteine") ) {
-            feature = GencodeGtfSelenocysteineFeature.create(gtfFields);
-        }
-        else {
-            throw new UserException.MalformedFile("Unknown type of GencodeGtfFeature: " + featureType);
-        }
+        FeatureType featureType = FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX] );
+
+        // Create our feature:
+        GencodeGtfFeature feature = featureType.create(gtfFields);
 
         return feature;
     }
@@ -359,62 +270,20 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     @Override
     public String getContig() {
-        return chromosomeName;
+        return baseData.genomicPosition.getContig();
     }
 
     @Override
     public int getStart() {
-        return genomicStartLocation;
+        return baseData.genomicPosition.getStart();
     }
 
     @Override
     public int getEnd() {
-        return genomicEndLocation;
+        return baseData.genomicPosition.getEnd();
     }
 
     // ================================================================================================
-
-    @Override
-    public boolean equals(Object other) {
-
-        boolean isEqual = other instanceof GencodeGtfFeature;
-
-        if ( isEqual ) {
-
-            GencodeGtfFeature otherFeature = (GencodeGtfFeature) other;
-
-            // It goes like this:
-            //      If the field is a primitive, just check it.
-            //      If the field is an object:
-            //          check if both this and the other field is null
-            //          if they are not, make sure this one is not null and do a comparison against the other.
-            // All compacted together in short-circuited comparisons.
-            isEqual =
-                    (featureOrderNumber == otherFeature.featureOrderNumber) &&
-                    (((chromosomeName == null) && (otherFeature.chromosomeName == null)) || ((chromosomeName != null) && chromosomeName.equals(otherFeature.chromosomeName))) &&
-                    (((annotationSource == null) && (otherFeature.annotationSource == null)) || ((annotationSource != null) && annotationSource.equals(otherFeature.annotationSource))) &&
-                    (((featureType == null) && (otherFeature.featureType == null)) || ((featureType != null) && featureType.equals(otherFeature.featureType))) &&
-                    (genomicStartLocation == otherFeature.genomicStartLocation) &&
-                    (genomicEndLocation == otherFeature.genomicEndLocation) &&
-                    (((genomicStrand == null) && (otherFeature.genomicStrand == null)) || ((genomicStrand != null) && genomicStrand.equals(otherFeature.genomicStrand))) &&
-                    (((genomicPhase == null) && (otherFeature.genomicPhase == null)) || ((genomicPhase != null) && genomicPhase.equals(otherFeature.genomicPhase))) &&
-                    (((geneId == null) && (otherFeature.geneId == null)) || ((geneId != null) && geneId.equals(otherFeature.geneId))) &&
-                    (((transcriptId == null) && (otherFeature.transcriptId == null)) || ((transcriptId != null) && transcriptId.equals(otherFeature.transcriptId))) &&
-                    (((geneType == null) && (otherFeature.geneType == null)) || ((geneType != null) && geneType.equals(otherFeature.geneType))) &&
-                    (geneStatus == otherFeature.geneStatus) &&
-                    (((geneName == null) && (otherFeature.geneName == null)) || ((geneName != null) && geneName.equals(otherFeature.geneName))) &&
-                    (((transcriptType == null) && (otherFeature.transcriptType == null)) || ((transcriptType != null) && transcriptType.equals(otherFeature.transcriptType))) &&
-                    (transcriptStatus == otherFeature.transcriptStatus) &&
-                    (((transcriptName == null) && (otherFeature.transcriptName == null)) || ((transcriptName != null) && transcriptName.equals(otherFeature.transcriptName))) &&
-                    (exonNumber == otherFeature.exonNumber) &&
-                    (((exonId == null) && (otherFeature.exonId == null)) || ((exonId != null) && exonId.equals(otherFeature.exonId))) &&
-                    (((locusLevel == null) && (otherFeature.locusLevel == null)) || ((locusLevel != null) && locusLevel.equals(otherFeature.locusLevel))) &&
-                    (((anonymousOptionalFields == null) && (otherFeature.anonymousOptionalFields == null)) || ((anonymousOptionalFields != null) && anonymousOptionalFields.equals(otherFeature.anonymousOptionalFields)) &&
-                    optionalFields.equals(otherFeature.optionalFields));
-        }
-
-        return isEqual;
-    }
 
     /**
      * Get all the features from this {@link GencodeGtfFeature} itself.
@@ -422,87 +291,87 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @return A {@link List} of the features represented in this {@link GencodeGtfFeature}.
      */
     protected List<GencodeGtfFeature> getAllFeatures() {
-        ArrayList<GencodeGtfFeature> list = new ArrayList<>();
+        List<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
         return list;
     }
 
     /**
-     * Serializes this {@link GencodeGtfFeature} to a string.
+     * Serializes the base data in {@link GencodeGtfFeature} to a string.
      * @return a {@link String} representing this {@link GencodeGtfFeature}
      */
-    private String serializeToString() {
+    private String serializeToStringHelper() {
 
         StringBuilder stringBuilder = new StringBuilder();
 
-        stringBuilder.append( chromosomeName );
+        stringBuilder.append( baseData.genomicPosition.getContig() );
         stringBuilder.append( '\t' );
-        stringBuilder.append( annotationSource );
+        stringBuilder.append( baseData.annotationSource );
         stringBuilder.append( '\t' );
-        stringBuilder.append( featureType );
+        stringBuilder.append( baseData.featureType );
         stringBuilder.append( '\t' );
-        stringBuilder.append( genomicStartLocation );
+        stringBuilder.append( baseData.genomicPosition.getStart() );
         stringBuilder.append( '\t' );
-        stringBuilder.append( genomicEndLocation );
+        stringBuilder.append( baseData.genomicPosition.getEnd() );
         stringBuilder.append( "\t.\t" );
-        stringBuilder.append( genomicStrand );
+        stringBuilder.append( baseData.genomicStrand );
         stringBuilder.append( '\t' );
-        stringBuilder.append( genomicPhase );
+        stringBuilder.append( baseData.genomicPhase );
         stringBuilder.append( '\t' );
 
-        if ( geneId != null ) {
+        if ( baseData.geneId != null ) {
             stringBuilder.append("gene_id \"");
-            stringBuilder.append(geneId);
+            stringBuilder.append(baseData.geneId);
             stringBuilder.append( "\"; " );
         }
-        if ( transcriptId != null) {
+        if ( baseData.transcriptId != null) {
             stringBuilder.append("transcript_id \"");
-            stringBuilder.append(transcriptId);
+            stringBuilder.append(baseData.transcriptId);
             stringBuilder.append( "\"; " );
         }
-        if ( geneType != null ) {
+        if ( baseData.geneType != null ) {
             stringBuilder.append("gene_type \"");
-            stringBuilder.append(geneType);
+            stringBuilder.append(baseData.geneType);
             stringBuilder.append( "\"; " );
         }
-        if ( geneStatus != null ) {
+        if ( baseData.geneStatus != null ) {
             stringBuilder.append("gene_status \"");
-            stringBuilder.append(geneStatus);
+            stringBuilder.append(baseData.geneStatus);
             stringBuilder.append( "\"; " );
         }
-        if ( geneName != null ) {
+        if ( baseData.geneName != null ) {
             stringBuilder.append("gene_name \"");
-            stringBuilder.append(geneName);
+            stringBuilder.append(baseData.geneName);
             stringBuilder.append( "\"; " );
         }
-        if ( transcriptType != null ) {
+        if ( baseData.transcriptType != null ) {
             stringBuilder.append("transcript_type \"");
-            stringBuilder.append(transcriptType);
+            stringBuilder.append(baseData.transcriptType);
             stringBuilder.append( "\"; " );
         }
-        if ( transcriptStatus != null ) {
+        if ( baseData.transcriptStatus != null ) {
             stringBuilder.append("transcript_status \"");
-            stringBuilder.append(transcriptStatus);
+            stringBuilder.append(baseData.transcriptStatus);
             stringBuilder.append( "\"; " );
         }
-        if ( transcriptName != null ) {
+        if ( baseData.transcriptName != null ) {
             stringBuilder.append("transcript_name \"");
-            stringBuilder.append(transcriptName);
+            stringBuilder.append(baseData.transcriptName);
             stringBuilder.append( "\"; " );
         }
-        if ( exonNumber != -1 ) {
+        if ( baseData.exonNumber != NO_EXON_NUMBER ) {
             stringBuilder.append("exon_number ");
-            stringBuilder.append(exonNumber);
+            stringBuilder.append(baseData.exonNumber);
             stringBuilder.append( "; " );
         }
-        if ( exonId != null) {
+        if ( baseData.exonId != null) {
             stringBuilder.append("exon_id \"");
-            stringBuilder.append(exonId);
+            stringBuilder.append(baseData.exonId);
             stringBuilder.append( "\"; ");
         }
-        if (locusLevel != null) {
+        if (baseData.locusLevel != null) {
             stringBuilder.append("level ");
-            stringBuilder.append(locusLevel);
+            stringBuilder.append(baseData.locusLevel);
             stringBuilder.append("; ");
         }
 
@@ -510,25 +379,29 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         // Output our optional fields:
         stringBuilder.append(
-                optionalFields.stream().map(Object::toString).collect(Collectors.joining(" "))
+                baseData.optionalFields.stream().map(Object::toString).collect(Collectors.joining(" "))
         );
 
-        if ( anonymousOptionalFields != null ) {
-            stringBuilder.append(anonymousOptionalFields);
+        if ( baseData.anonymousOptionalFields != null ) {
+            stringBuilder.append(baseData.anonymousOptionalFields);
         }
 
         return stringBuilder.toString().trim();
     }
 
-    @Override
-    public String toString() {
+    /**
+     * Serializes all data in {@link GencodeGtfFeature} to a string.
+     * This includes all subfields of child classes.
+     * @return a {@link String} representing this {@link GencodeGtfFeature}
+     */
+    public String serializeToString() {
         StringBuilder stringBuilder = new StringBuilder();
 
         List<GencodeGtfFeature> features = getAllFeatures();
         Collections.sort( features );
 
         for ( GencodeGtfFeature feature : features ) {
-            stringBuilder.append( feature.serializeToString() );
+            stringBuilder.append( feature.serializeToStringHelper() );
             stringBuilder.append("\n");
         }
 
@@ -536,88 +409,98 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     }
 
     @Override
-    public int hashCode() {
-        return this.serializeToString().hashCode();
+    public String toString() {
+        return serializeToString();
     }
 
     // ================================================================================================
 
-    public long getFeatureOrderNumber() { return featureOrderNumber; }
+    public SimpleInterval getGenomicPosition() { return baseData.genomicPosition; }
+
+    public int getFeatureOrderNumber() { return baseData.featureOrderNumber; }
 
     public String getChromosomeName() {
-        return chromosomeName;
+        return baseData.genomicPosition.getContig();
     }
 
     public AnnotationSource getAnnotationSource() {
-        return annotationSource;
+        return baseData.annotationSource;
     }
 
     public FeatureType getFeatureType() {
-        return featureType;
+        return baseData.featureType;
     }
 
     public int getGenomicStartLocation() {
-        return genomicStartLocation;
+        return baseData.genomicPosition.getStart();
     }
 
     public int getGenomicEndLocation() {
-        return genomicEndLocation;
+        return baseData.genomicPosition.getEnd();
     }
 
     public GenomicStrand getGenomicStrand() {
-        return genomicStrand;
+        return baseData.genomicStrand;
     }
 
     public GenomicPhase getGenomicPhase() {
-        return genomicPhase;
+        return baseData.genomicPhase;
     }
 
     public String getGeneId() {
-        return geneId;
+        return baseData.geneId;
     }
 
     public String getTranscriptId() {
-        return transcriptId;
+        return baseData.transcriptId;
     }
 
     public GeneTranscriptType getGeneType() {
-        return geneType;
+        return baseData.geneType;
     }
 
     public String getGeneName() {
-        return geneName;
+        return baseData.geneName;
     }
 
     public GeneTranscriptType getTranscriptType() {
-        return transcriptType;
+        return baseData.transcriptType;
     }
 
     public String getTranscriptName() {
-        return transcriptName;
+        return baseData.transcriptName;
+    }
+
+    public GeneTranscriptStatus getGeneStatus() {
+        return baseData.geneStatus;
+    }
+
+    public GeneTranscriptStatus getTranscriptStatus() {
+        return baseData.transcriptStatus;
     }
 
     public int getExonNumber() {
-        return exonNumber;
+        return baseData.exonNumber;
     }
 
     public String getExonId() {
-        return exonId;
+        return baseData.exonId;
     }
 
     public LocusLevel getLocusLevel() {
-        return locusLevel;
+        return baseData.locusLevel;
     }
 
-    public ArrayList<OptionalField<?>> getOptionalFields() {
-        return optionalFields;
+    public List<OptionalField<?>> getOptionalFields() {
+        return baseData.optionalFields;
     }
 
     public String getAnonymousOptionalFields() {
-        return anonymousOptionalFields;
+        return baseData.anonymousOptionalFields;
     }
 
     public OptionalField<?> getOptionalField(String key) {
-        for (OptionalField<?> optionalField : optionalFields) {
+        for (OptionalField<?> optionalField : baseData.optionalFields) {
             if ( optionalField.getName().equals(key) ) {
                 return optionalField;
             }
@@ -628,28 +511,53 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     /**
      * Comparable interface implementation for {@link GencodeGtfFeature}.
      *
-     * Order is determined by {@link #featureOrderNumber}
+     * Order is determined by {@link GencodeGtfFeatureBaseData#featureOrderNumber}
      *
      * @param other {@link GencodeGtfFeature} to which to compare
      * @return -1 if this < other; 0 if this == other; 1 if this > other
      */
     @Override
     public int compareTo(GencodeGtfFeature other) {
-        return (int)(featureOrderNumber - other.featureOrderNumber);
+        Utils.nonNull(other);
+        return (baseData.featureOrderNumber - other.baseData.featureOrderNumber);
+    }
+
+    @Override
+    public boolean equals(Object that) {
+        if (that == null) {
+            return false;
+        }
+        else if ( this == that ) {
+            return true;
+        }
+
+        boolean isEqual = that instanceof GencodeGtfFeature;
+        if (isEqual) {
+            GencodeGtfFeature thatFeature = (GencodeGtfFeature) that;
+            Objects.equals(baseData, thatFeature.baseData);
+        }
+
+        return isEqual;
+    }
+
+    @Override
+    public int hashCode() {
+        return baseData != null ? baseData.hashCode() : 0;
     }
 
     /**
      * Checks if {@code other} is contained within this {@link GencodeGtfFeature}.
-     * Comparison is made using {@link #genomicStartLocation} and {@link #genomicEndLocation} (both ends inclusive).
+     * Comparison is made using {@link SimpleInterval#contains(Locatable)} ala {@link GencodeGtfFeatureBaseData#genomicPosition}
      * @param other {@link GencodeGtfFeature} of which to check the bounds.
      * @return true if {@code other} is contained within the bounds of this {@link GencodeGtfFeature}, false otherwise.
      */
     public boolean contains(GencodeGtfFeature other) {
-        return (other.getStart() >= getStart()) && (other.getEnd() <= getEnd());
+        Utils.nonNull(other);
+        return baseData.genomicPosition.contains(other.baseData.genomicPosition);
     }
 
-    public void setFeatureOrderNumber(long featureOrderNumber) {
-        this.featureOrderNumber = featureOrderNumber;
+    public void setFeatureOrderNumber(int featureOrderNumber) {
+        this.baseData.featureOrderNumber = featureOrderNumber;
     }
 
     // ================================================================================================
@@ -690,7 +598,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
             // We need to do some formatting for the numbers / non-numbers in the field:
             String valueString = value.toString();
-            if ( valueString.matches("\\d\\d*") ) {
+            if ( NUMBER_PATTERN.matcher(valueString).matches() ) {
                 sb.append(valueString);
                 sb.append(";");
             }
@@ -711,6 +619,13 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         @Override
         public boolean equals(Object other) {
 
+            if (other == null) {
+                return false;
+            }
+            else if ( this == other ) {
+                return true;
+            }
+
             if ( !(other instanceof OptionalField) ) {
                 return false;
             }
@@ -724,20 +639,91 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     // ================================================================================================
 
+    /**
+     * Keyword identifying the source of the feature, like a program
+     * (e.g. Augustus or RepeatMasker) or an organization (like TAIR).
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum AnnotationSource {
         ENSEMBL,
         HAVANA
     }
 
+    /**
+     * Type of the feature represented in a single line of a GENCODE GTF File.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum FeatureType {
-        gene("gene"),
-        transcript("transcript"),
-        selenocysteine("Selenocysteine"),
-        exon("exon"),
-        cds("CDS"),
-        start_codon("start_codon"),
-        stop_codon("stop_codon"),
-        utr("UTR");
+        GENE("gene"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfGeneFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfGeneFeature.create(gtfFields);
+            }
+        },
+        TRANSCRIPT("transcript"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfTranscriptFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfTranscriptFeature.create(gtfFields);
+            }
+        },
+        SELENOCYSTEINE("Selenocysteine"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfSelenocysteineFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfSelenocysteineFeature.create(gtfFields);
+            }
+        },
+        EXON("exon"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfExonFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfExonFeature.create(gtfFields);
+            }
+        },
+        CDS("CDS"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfCDSFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfCDSFeature.create(gtfFields);
+            }
+        },
+        START_CODON("start_codon"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfStartCodonFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfStartCodonFeature.create(gtfFields);
+            }
+        },
+        STOP_CODON("stop_codon"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfStopCodonFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfStopCodonFeature.create(gtfFields);
+            }
+        },
+        UTR("UTR"){
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfUTRFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields) {
+                return GencodeGtfUTRFeature.create(gtfFields);
+            }
+        };
 
         private String serialized;
 
@@ -752,10 +738,31 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     return val;
                 }
             }
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
+
+        /**
+         * Create a {@link GencodeGtfFeature} of this type given {@code baseData}
+         * @param baseData The data to use to create a {@link GencodeGtfFeature}
+         * @return The {@link GencodeGtfFeature} represented by the given {@code baseData}
+         */
+        abstract public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData);
+
+        /**
+         * Create a {@link GencodeGtfFeature} of this type given {@code gtfFields}
+         * @param gtfFields The data to use to create a {@link GencodeGtfFeature}
+         * @return The {@link GencodeGtfFeature} represented by the given {@code gtfFields}
+         */
+        abstract public GencodeGtfFeature create(final String[] gtfFields);
     }
 
+    /**
+     * The strand of DNA from which a given feature was read.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum GenomicStrand {
         FORWARD("+"),
         BACKWARD("-");
@@ -777,10 +784,18 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     return val;
                 }
             }
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 
+    /**
+     * Whether the first base of the CDS segment is the first (frame 0), second (frame 1) or third (frame 2) \
+     * in the codon of the ORF.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum GenomicPhase {
         ZERO("0"),
         ONE ("1"),
@@ -804,174 +819,201 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     return val;
                 }
             }
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 
+    /**
+     * Biotype / transcript type for the transcript or gene represented in a feature.
+     * This is a tag of some biological function associated with a feature.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum GeneTranscriptType {
         // Immunoglobulin (Ig) variable chain and T-cell receptor (TcR) genes imported or annotated according to the IMGT (http://www.imgt.org/)
-        IG_C_gene,
-        IG_D_gene,
-        IG_J_gene,
-        IG_LV_gene,
-        IG_V_gene,
-        TR_C_gene,
-        TR_J_gene,
-        TR_V_gene,
-        TR_D_gene,
+        IG_C_GENE("IG_C_gene"),
+        IG_D_GENE("IG_D_gene"),
+        IG_J_GENE("IG_J_gene"),
+        IG_LV_GENE("IG_LV_gene"),
+        IG_V_GENE("IG_V_gene"),
+        TR_C_GENE("TR_C_gene"),
+        TR_J_GENE("TR_J_gene"),
+        TR_V_GENE("TR_V_gene"),
+        TR_D_GENE("TR_D_gene"),
 
         // Inactivated immunoglobulin gene.
-        IG_pseudogene,
-        IG_C_pseudogene,
-        IG_J_pseudogene,
-        IG_V_pseudogene,
-        TR_V_pseudogene,
-        TR_J_pseudogene,
+        IG_PSEUDOGENE("IG_pseudogene"),
+        IG_C_PSEUDOGENE("IG_C_pseudogene"),
+        IG_J_PSEUDOGENE("IG_J_pseudogene"),
+        IG_V_PSEUDOGENE("IG_V_pseudogene"),
+        TR_V_PSEUDOGENE("TR_V_pseudogene"),
+        TR_J_PSEUDOGENE("TR_J_pseudogene"),
 
         // Non-coding RNA predicted using sequences from Rfam (http://rfam.xfam.org/) and miRBase (http://www.mirbase.org/)
-        Mt_rRNA,
-        Mt_tRNA,
-        miRNA,
-        misc_RNA,
-        rRNA,
-        scRNA,
-        snRNA,
-        snoRNA,
-        ribozyme,
-        sRNA,
-        scaRNA,
+        MT_RRNA("Mt_rRNA"),
+        MT_TRNA("Mt_tRNA"),
+        MIRNA("miRNA"),
+        MISC_RNA("misc_RNA"),
+        RRNA("rRNA"),
+        SCRNA("scRNA"),
+        SNRNA("snRNA"),
+        SNORNA("snoRNA"),
+        RIBOZYME("ribozyme"),
+        SRNA("sRNA"),
+        SCARNA("scaRNA"),
 
         // Non-coding RNA predicted to be pseudogene by the Ensembl pipeline
-        Mt_tRNA_pseudogene,
-        tRNA_pseudogene,
-        snoRNA_pseudogene,
-        snRNA_pseudogene,
-        scRNA_pseudogene,
-        rRNA_pseudogene,
-        misc_RNA_pseudogene,
-        miRNA_pseudogene,
+        MT_TRNA_PSEUDOGENE("Mt_tRNA_pseudogene"),
+        TRNA_PSEUDOGENE("tRNA_pseudogene"),
+        SNORNA_PSEUDOGENE("snoRNA_pseudogene"),
+        SNRNA_PSEUDOGENE("snRNA_pseudogene"),
+        SCRNA_PSEUDOGENE("scRNA_pseudogene"),
+        RRNA_PSEUDOGENE("rRNA_pseudogene"),
+        MISC_RNA_PSEUDOGENE("misc_RNA_pseudogene"),
+        MIRNA_PSEUDOGENE("miRNA_pseudogene"),
 
         // To be Experimentally Confirmed. This is used for non-spliced EST clusters that have polyA features. This category has been specifically created for the ENCODE project to highlight regions that could indicate the presence of protein coding genes that require experimental validation, either by 5' RACE or RT-PCR to extend the transcripts, or by confirming expression of the putatively-encoded peptide with specific antibodies.
-        TEC,
+        TEC("TEC"),
 
         // If the coding sequence (following the appropriate reference) of a transcript finishes >50bp from a downstream splice site then it is tagged as NMD. If the variant does not cover the full reference coding sequence then it is annotated as NMD if NMD is unavoidable i.e. no matter what the exon structure of the missing portion is the transcript will be subject to NMD.
-        nonsense_mediated_decay,
+        NONSENSE_MEDIATED_DECAY("nonsense_mediated_decay"),
 
         // Transcript that has polyA features (including signal) without a prior stop codon in the CDS, i.e. a non-genomic polyA tail attached directly to the CDS without 3' UTR. These transcripts are subject to degradation.
-        non_stop_decay,
+        NON_STOP_DECAY("non_stop_decay"),
 
         // Alternatively spliced transcript believed to contain intronic sequence relative to other, coding, variants.
-        retained_intron,
+        RETAINED_INTRON("retained_intron"),
 
         // Contains an open reading frame (ORF).
-        protein_coding,
+        PROTEIN_CODING("protein_coding"),
 
         // Doesn't contain an ORF.
-        processed_transcript,
+        PROCESSED_TRANSCRIPT("processed_transcript"),
 
         // Transcript which is known from the literature to not be protein coding.
-        non_coding,
+        NON_CODING("non_coding"),
 
         // Transcript believed to be protein coding, but with more than one possible open reading frame.
-        ambiguous_orf,
+        AMBIGUOUS_ORF("ambiguous_orf"),
 
         // Long non-coding transcript in introns of a coding gene that does not overlap any exons.
-        sense_intronic,
+        SENSE_INTRONIC("sense_intronic"),
 
         // Long non-coding transcript that contains a coding gene in its intron on the same strand.
-        sense_overlapping,
+        SENSE_OVERLAPPING("sense_overlapping"),
 
         // Has transcripts that overlap the genomic span (i.e. exon or introns) of a protein-coding locus on the opposite strand.
-        antisense,
+        ANTISENSE("antisense"),
 
-        known_ncrna,
+        KNOWN_NCRNA("known_ncrna"),
 
         // Have homology to proteins but generally suffer from a disrupted coding sequence and an active homologous gene can be found at another locus. Sometimes these entries have an intact coding sequence or an open but truncated ORF, in which case there is other evidence used (for example genomic polyA stretches at the 3' end) to classify them as a pseudogene. Can be further classified as one of the following.
-        pseudogene,
+        PSEUDOGENE("pseudogene"),
 
         // Pseudogene that lack introns and is thought to arise from reverse transcription of mRNA followed by reinsertion of DNA into the genome.
-        processed_pseudogene,
+        PROCESSED_PSEUDOGENE("processed_pseudogene"),
 
         // Pseudogene owing to a SNP/DIP but in other individuals/haplotypes/strains the gene is translated.
-        polymorphic_pseudogene,
+        POLYMORPHIC_PSEUDOGENE("polymorphic_pseudogene"),
 
         // Pseudogene owing to a reverse transcribed and re-inserted sequence.
-        retrotransposed,
+        RETROTRANSPOSED("retrotransposed"),
 
         // Pseudogene where protein homology or genomic structure indicates a pseudogene, but the presence of locus-specific transcripts indicates expression.
-        transcribed_processed_pseudogene,
-        transcribed_unprocessed_pseudogene,
-        transcribed_unitary_pseudogene,
+        TRANSCRIBED_PROCESSED_PSEUDOGENE("transcribed_processed_pseudogene"),
+        TRANSCRIBED_UNPROCESSED_PSEUDOGENE("transcribed_unprocessed_pseudogene"),
+        TRANSCRIBED_UNITARY_PSEUDOGENE("transcribed_unitary_pseudogene"),
 
         // Pseudogene that has mass spec data suggesting that it is also translated.
-        translated_processed_pseudogene,
-        translated_unprocessed_pseudogene,
+        TRANSLATED_PROCESSED_PSEUDOGENE("translated_processed_pseudogene"),
+        TRANSLATED_UNPROCESSED_PSEUDOGENE("translated_unprocessed_pseudogene"),
 
         // A species specific unprocessed pseudogene without a parent gene, as it has an active orthologue in another species.
-        unitary_pseudogene,
+        UNITARY_PSEUDOGENE("unitary_pseudogene"),
 
         // Pseudogene that can contain introns since produced by gene duplication.
-        unprocessed_pseudogene,
+        UNPROCESSED_PSEUDOGENE("unprocessed_pseudogene"),
 
         // Used to tag mistakes in the public databases (Ensembl/SwissProt/Trembl)
-        artifact,
+        ARTIFACT("artifact"),
 
         // Long, intervening noncoding (linc) RNA that can be found in evolutionarily conserved, intergenic regions.
-        lincRNA,
+        LINCRNA("lincRNA"),
 
         // Unspliced lncRNA that is several kb in size.
-        macro_lncRNA,
+        MACRO_LNCRNA("macro_lncRNA"),
 
         // Transcript where ditag and/or published experimental data strongly supports the existence of short non-coding transcripts transcribed from the 3'UTR.
-        three_prime_overlapping_ncRNA,
+        THREE_PRIME_OVERLAPPING_NCRNA("3prime_overlapping_ncRNA"),
 
         // Otherwise viable coding region omitted from this alternatively spliced transcript because the splice variation affects a region coding for a protein domain.
-        disrupted_domain,
+        DISRUPTED_DOMAIN("disrupted_domain"),
 
         // Short non coding RNA gene that forms part of the vault ribonucleoprotein complex.
-        vaultRNA,
+        VAULTRNA("vaultRNA"),
 
         // A non-coding locus that originates from within the promoter region of a protein-coding gene, with transcription proceeding in the opposite direction on the other strand.
-        bidirectional_promoter_lncRNA;
+        BIDIRECTIONAL_PROMOTER_LNCRNA("bidirectional_promoter_lncRNA");
 
-        public static GeneTranscriptType getEnum(String s) {
+        private String serialized;
 
-            if (s.startsWith("3")) {
-                s = "three_" + s.substring(1);
-            }
-
-            // Looks like sometimes RNA is spelled `rna`.
-            // Here's a fix for that:
-            s = s.replace( "rna", "RNA" );
-
-            return GeneTranscriptType.valueOf(s);
+        GeneTranscriptType(String serializedValue) {
+            serialized = serializedValue;
         }
 
         @Override
         public String toString() {
-            String s = super.toString();
+            return serialized;
+        }
 
-            if ( s.startsWith("three_") ) {
-                s = "3" + s.substring(7);
+        public static GeneTranscriptType getEnum(String s) {
+            for( GeneTranscriptType val : values() ) {
+                if(val.serialized.equalsIgnoreCase(s)) {
+                    return val;
+                }
             }
-            return s;
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
 
     }
 
+    /**
+     * Indication of whether a feature is new, tenatative, or already known.
+     *
+     * This attribute was removed after release 25.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum GeneTranscriptStatus {
         KNOWN,
         NOVEL,
         PUTATIVE
     }
 
+    /**
+     * Status of how a position was annotated / verified:
+     *
+     *      1 - verified locus
+     *      2 - manually annotated locus
+     *      3 - automatically annotated locus
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum LocusLevel {
-        // Verified locus
-        ONE("1"),
-        // Manually annotated locus
-        TWO("2"),
-        // Automatically annotated locus
-        THREE("3");
+        /** Verified locus */
+        VERIFIED("1"),
+
+        /** Manually annotated locus */
+        MANUALLY_ANNOTATED("2"),
+
+        /** Automatically annotated locus */
+        AUTOMATICALLY_ANNOTATED("3");
 
         private String serialized;
 
@@ -990,269 +1032,271 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     return val;
                 }
             }
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 
+    /**
+     * Additional relevant information appended to a feature.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum FeatureTag {
-        // 3' end extended based on RNA-seq data.
-        three_nested_supported_extension,
+        /** 3' end extended based on RNA-seq data. */
+        THREE_PRIME_NESTED_SUPPORTED_EXTENSION("3_nested_supported_extension"),
 
-        // 3' end extended based on RNA-seq data.
-        three_standard_supported_extension,
+        /** 3' end extended based on RNA-seq data. */
+        THREE_PRIME_STANDARD_SUPPORTED_EXTENSION("3_standard_supported_extension"),
 
-        // annotated based on RNA-seq data.
-        fourfivefour_RNA_Seq_supported,
+        /** annotated based on RNA-seq data. */
+        FOURFIVEFOUR_RNA_SEQ_SUPPORTED("454_RNA_Seq_supported"),
 
-        // 5' end extended based on RNA-seq data.
-        five_nested_supported_extension,
+        /** 5' end extended based on RNA-seq data. */
+        FIVE_PRIME_NESTED_SUPPORTED_EXTENSION("5_nested_supported_extension"),
 
-        // 5' end extended based on RNA-seq data.
-        five_standard_supported_extension,
+        /** 5' end extended based on RNA-seq data. */
+        FIVE_PRIME_STANDARD_SUPPORTED_EXTENSION("5_standard_supported_extension"),
 
-        // shares an identical CDS but has alternative 5' UTR with respect to a reference variant.
-        alternative_3_UTR,
+        /** shares an identical CDS but has alternative 5' UTR with respect to a reference variant. */
+        ALTERNATIVE_3_UTR("alternative_3_UTR"),
 
-        // shares an identical CDS but has alternative 3' UTR with respect to a reference variant.
-        alternative_5_UTR,
+        /** shares an identical CDS but has alternative 3' UTR with respect to a reference variant. */
+        ALTERNATIVE_5_UTR("alternative_5_UTR"),
 
-        // (This flag corresponds to the older flag "appris_principal") Where the transcript expected to code for the main
-        appris_principal_1,
+        /** (This flag corresponds to the older flag "appris_principal") Where the transcript expected to code for the main */
+        APPRIS_PRINCIPAL_1("appris_principal_1"),
 
-        // (This flag corresponds to the older flag "appris_candidate_ccds") Where the APPRIS core modules are unable to choose a
-        appris_principal_2,
+        /** (This flag corresponds to the older flag "appris_candidate_ccds") Where the APPRIS core modules are unable to choose a */
+        APPRIS_PRINCIPAL_2("appris_principal_2"),
 
-        // Where the APPRIS core modules are unable to choose a clear principal variant and there more than one of the variants
-        appris_principal_3,
+        /** Where the APPRIS core modules are unable to choose a clear principal variant and there more than one of the variants */
+        APPRIS_PRINCIPAL_3("appris_principal_3"),
 
-        // (This flag corresponds to the Ensembl 78 flag "appris_candidate_longest_ccds") Where the APPRIS core modules are unable
-        appris_principal_4,
+        /** (This flag corresponds to the Ensembl 78 flag "appris_candidate_longest_ccds") Where the APPRIS core modules are unable */
+        APPRIS_PRINCIPAL_4("appris_principal_4"),
 
-        // (This flag corresponds to the Ensembl 78 flag "appris_candidate_longest_seq") Where the APPRIS core modules are unable
-        appris_principal_5,
+        /** (This flag corresponds to the Ensembl 78 flag "appris_candidate_longest_seq") Where the APPRIS core modules are unable */
+        APPRIS_PRINCIPAL_5("appris_principal_5"),
 
-        // Candidate transcript(s) models that are conserved in at least three tested non-primate species.
-        appris_alternative_1,
+        /** Candidate transcript(s) models that are conserved in at least three tested non-primate species. */
+        APPRIS_ALTERNATIVE_1("appris_alternative_1"),
 
-        // Candidate transcript(s) models that appear to be conserved in fewer than three tested non-primate species.
-        appris_alternative_2,
+        /** Candidate transcript(s) models that appear to be conserved in fewer than three tested non-primate species. */
+        APPRIS_ALTERNATIVE_2("appris_alternative_2"),
 
-        // ranscript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline).
-        appris_principal,
+        /** Transcript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
+        APPRIS_PRINCIPAL("appris_principal"),
 
-        // where there is no single 'appris_principal' variant the main functional isoform will be translated from one of the
-        appris_candidate,
+        /** where there is no single 'appris_principal' variant the main functional isoform will be translated from one of the */
+        APPRIS_CANDIDATE("appris_candidate"),
 
-        // he "appris_candidate" transcript that has an unique CCDS.
-        appris_candidate_ccds,
+        /** the "appris_candidate" transcript that has an unique CCDS. */
+        APPRIS_CANDIDATE_CCDS("appris_candidate_ccds"),
 
-        // where there is no 'appris_principal' variant, the candidate with highest APPRIS score is selected as the primary
-        appris_candidate_highest_score,
+        /** where there is no 'appris_principal' variant, the candidate with highest APPRIS score is selected as the primary */
+        APPRIS_CANDIDATE_HIGHEST_SCORE("appris_candidate_highest_score"),
 
-        // where there is no 'appris_principal' variant, the longest of the 'appris_candidate' variants is selected as the primary
-        appris_candidate_longest,
+        /** where there is no 'appris_principal' variant, the longest of the 'appris_candidate' variants is selected as the primary */
+        APPRIS_CANDIDATE_LONGEST("appris_candidate_longest"),
 
-        // he "appris_candidate" transcripts where there are several CCDS, in this case APPRIS labels the longest CCDS.
-        appris_candidate_longest_ccds,
+        /** the "appris_candidate" transcripts where there are several CCDS, in this case APPRIS labels the longest CCDS. */
+        APPRIS_CANDIDATE_LONGEST_CCDS("appris_candidate_longest_ccds"),
 
-        // where there is no "appris_candidate_ccds" or "appris_candidate_longest_ccds" variant, the longest protein of the
-        appris_candidate_longest_seq,
+        /** where there is no "appris_candidate_ccds" or "appris_candidate_longest_ccds" variant, the longest protein of the */
+        APPRIS_CANDIDATE_LONGEST_SEQ("appris_candidate_longest_seq"),
 
-        // identifies a subset of representative transcripts for each gene; prioritises full-length protein coding transcripts
-        basic,
+        /** identifies a subset of representative transcripts for each gene; prioritises full-length protein coding transcripts */
+        BASIC("basic"),
 
-        // ranscript contains two confidently annotated CDSs. Support may come from eg proteomic data, cross-species conservation
-        bicistronic,
+        /** Transcript contains two confidently annotated CDSs. Support may come from eg proteomic data, cross-species conservation */
+        BICISTRONIC("bicistronic"),
 
-        // ranscript 5' end overlaps ENCODE or Fantom CAGE cluster.
-        CAGE_supported_TSS,
+        /** Transcript 5' end overlaps ENCODE or Fantom CAGE cluster. */
+        CAGE_SUPPORTED_TSS("CAGE_supported_TSS"),
 
-        // member of the consensus CDS gene set, confirming coding regions between ENSEMBL, UCSC, NCBI and HAVANA.
-        CCDS,
+        /** member of the consensus CDS gene set, confirming coding regions between ENSEMBL, UCSC, NCBI and HAVANA. */
+        CCDS("CCDS"),
 
-        // he coding region end could not be confirmed.
-        cds_end_NF,
+        /** The coding region end could not be confirmed. */
+        CDS_END_NF("cds_end_NF"),
 
-        // he coding region start could not be confirmed.
-        cds_start_NF,
+        /** The coding region start could not be confirmed. */
+        CDS_START_NF("cds_start_NF"),
 
-        // ranscript QC checked using dotplot to identify features eg splice junctions, end of homology.
-        dotter_confirmed,
+        /** Transcript QC checked using dotplot to identify features eg splice junctions, end of homology. */
+        DOTTER_CONFIRMED("dotter_confirmed"),
 
-        // an upstream ATG is used where a downstream ATG seems more evolutionary conserved.
-        downstream_ATG,
+        /** an upstream ATG is used where a downstream ATG seems more evolutionary conserved. */
+        DOWNSTREAM_ATG("downstream_ATG"),
 
-        // ranscript was tested and confirmed experimentally.
-        exp_conf,
+        /** Transcript was tested and confirmed experimentally. */
+        EXP_CONF("exp_conf"),
 
-        // locus consists of non-overlapping transcript fragments either because of genome assembly issues (i.e., gaps or
-        fragmented_locus,
+        /** locus consists of non-overlapping transcript fragments either because of genome assembly issues (i.e., gaps or */
+        FRAGMENTED_LOCUS("fragmented_locus"),
 
-        // ranscript model contains all possible in-frame exons supported by homology, experimental evidence or conservation, but
-        inferred_exon_combination,
+        /** Transcript model contains all possible in-frame exons supported by homology, experimental evidence or conservation, but */
+        INFERRED_EXON_COMBINATION("inferred_exon_combination"),
 
-        // ranscript model is not supported by a single piece of transcript evidence. May be supported by multiple fragments of
-        inferred_transcript_model,
+        /** Transcript model is not supported by a single piece of transcript evidence. May be supported by multiple fragments of */
+        INFERRED_TRANSCRIPT_MODEL("inferred_transcript_model"),
 
-        // ranscript supported by transcript evidence that, while ampping best-in-genome, shows regions of poor sequence quality.
-        low_sequence_quality,
+        /** Transcript supported by transcript evidence that, while ampping best-in-genome, shows regions of poor sequence quality. */
+        LOW_SEQUENCE_QUALITY("low_sequence_quality"),
 
-        // he mRNA end could not be confirmed.
-        mRNA_end_NF,
+        /** the mRNA end could not be confirmed. */
+        MRNA_END_NF("mRNA_end_NF"),
 
-        // he mRNA start could not be confirmed.
-        mRNA_start_NF,
+        /** the mRNA start could not be confirmed. */
+        MRNA_START_NF("mRNA_start_NF"),
 
-        // in-frame type of variation where, at the acceptor site, some variants splice after the first AG and others after the
-        NAGNAG_splice_site,
+        /** in-frame type of variation where, at the acceptor site, some variants splice after the first AG and others after the */
+        NAGNAG_SPLICE_SITE("NAGNAG_splice_site"),
 
-        // he locus is a host for small non-coding RNAs.
-        ncRNA_host,
+        /** the locus is a host for small non-coding RNAs. */
+        NCRNA_HOST("ncRNA_host"),
 
-        // annotated based on RNA-seq data.
-        nested_454_RNA_Seq_supported,
+        /** annotated based on RNA-seq data. */
+        NESTED_454_RNA_SEQ_SUPPORTED("nested_454_RNA_Seq_supported"),
 
-        // he transcript looks like it is subject to NMD but publications, experiments or conservation support the translation of
-        NMD_exception,
+        /** the transcript looks like it is subject to NMD but publications, experiments or conservation support the translation of */
+        NMD_EXCEPTION("NMD_exception"),
 
-        // codon if the transcript were longer but cannot currently be annotated as NMD as does not fulfil all criteria - most
-        NMD_likely_if_extended,
+        /** codon if the transcript were longer but cannot currently be annotated as NMD as does not fulfil all criteria - most */
+        NMD_LIKELY_IF_EXTENDED("NMD_likely_if_extended"),
 
-        // he CDS has a non-ATG start and its validity is supported by publication or conservation.
-        non_ATG_start,
+        /** the CDS has a non-ATG start and its validity is supported by publication or conservation. */
+        NON_ATG_START("non_ATG_start"),
 
-        // he transcript has a non-canonical splice site conserved in other species.
-        non_canonical_conserved,
+        /** the transcript has a non-canonical splice site conserved in other species. */
+        NON_CANONICAL_CONSERVED("non_canonical_conserved"),
 
-        // he transcript has a non-canonical splice site explained by a genomic sequencing error.
-        non_canonical_genome_sequence_error,
+        /** the transcript has a non-canonical splice site explained by a genomic sequencing error. */
+        NON_CANONICAL_GENOME_SEQUENCE_ERROR("non_canonical_genome_sequence_error"),
 
-        // he transcript has a non-canonical splice site explained by other reasons.
-        non_canonical_other,
+        /** the transcript has a non-canonical splice site explained by other reasons. */
+        NON_CANONICAL_OTHER("non_canonical_other"),
 
-        // he transcript has a non-canonical splice site explained by a SNP.
-        non_canonical_polymorphism,
+        /** the transcript has a non-canonical splice site explained by a SNP. */
+        NON_CANONICAL_POLYMORPHISM("non_canonical_polymorphism"),
 
-        // he transcript has a non-canonical splice site that needs experimental confirmation.
-        non_canonical_TEC,
+        /** the transcript has a non-canonical splice site that needs experimental confirmation. */
+        NON_CANONICAL_TEC("non_canonical_TEC"),
 
-        // he transcript has a non-canonical splice site explained by a U12 intron (i.e. AT-AC splice site).
-        non_canonical_U12,
+        /** the transcript has a non-canonical splice site explained by a U12 intron (i.e. AT-AC splice site). */
+        NON_CANONICAL_U12("non_canonical_U12"),
 
-        // a splice variant for which supporting evidence has not been submitted to databases, i.e. the model is based on
-        non_submitted_evidence,
+        /** a splice variant for which supporting evidence has not been submitted to databases, i.e. the model is based on */
+        NON_SUBMITTED_EVIDENCE("non_submitted_evidence"),
 
-        // a transcript is supported by evidence from same species paralogous loci.
-        not_best_in_genome_evidence,
+        /** a transcript is supported by evidence from same species paralogous loci. */
+        NOT_BEST_IN_GENOME_EVIDENCE("not_best_in_genome_evidence"),
 
-        // evidence from other species was used to build model.
-        not_organism_supported,
+        /** evidence from other species was used to build model. */
+        NOT_ORGANISM_SUPPORTED("not_organism_supported"),
 
-        // protein-coding locus with no paralogues or orthologs.
-        orphan,
+        /** protein-coding locus with no paralogues or orthologs. */
+        ORPHAN("orphan"),
 
-        // exon(s) of the locus overlap exon(s) of a readthrough transcript or a transcript belonging to another locus.
-        overlapping_locus,
+        /** exon(s) of the locus overlap exon(s) of a readthrough transcript or a transcript belonging to another locus. */
+        OVERLAPPING_LOCUS("overlapping_locus"),
 
-        // a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high
-        overlapping_uORF,
+        /** a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high */
+        OVERLAPPING_UORF("overlapping_uORF"),
 
-        // annotation in the pseudo-autosomal region, which is duplicated between chromosomes X and Y.
-        PAR,
+        /** annotation in the pseudo-autosomal region, which is duplicated between chromosomes X and Y. */
+        PAR("PAR"),
 
-        // member of the pseudogene set predicted by YALE, UCSC and HAVANA.
-        pseudo_consens,
+        /** member of the pseudogene set predicted by YALE, UCSC and HAVANA. */
+        PSEUDO_CONSENS("pseudo_consens"),
 
-        // a transcript that overlaps two or more independent loci but is considered to belong to a third, separate locus.
-        readthrough_transcript,
+        /** a transcript that overlaps two or more independent loci but is considered to belong to a third, separate locus. */
+        READTHROUGH_TRANSCRIPT("readthrough_transcript"),
 
-        // locus overlaps a sequence error or an assembly error in the reference genome that affects its annotation (e.g., 1 or
-        reference_genome_error,
+        /** locus overlaps a sequence error or an assembly error in the reference genome that affects its annotation (e.g., 1 or */
+        REFERENCE_GENOME_ERROR("reference_genome_error"),
 
-        // internal intron of CDS portion of transcript is retained.
-        retained_intron_CDS,
+        /** internal intron of CDS portion of transcript is retained. */
+        RETAINED_INTRON_CDS("retained_intron_CDS"),
 
-        // final intron of CDS portion of transcript is retained.
-        retained_intron_final,
+        /** final intron of CDS portion of transcript is retained. */
+        RETAINED_INTRON_FINAL("retained_intron_final"),
 
-        // first intron of CDS portion of transcript is retained.
-        retained_intron_first,
+        /** first intron of CDS portion of transcript is retained. */
+        RETAINED_INTRON_FIRST("retained_intron_first"),
 
-        // protein-coding locus created via retrotransposition.
-        retrogene,
+        /** protein-coding locus created via retrotransposition. */
+        RETROGENE("retrogene"),
 
-        // ranscript supported by RNAseq data and not supported by mRNA or EST evidence.
-        RNA_Seq_supported_only,
+        /** Transcript supported by RNAseq data and not supported by mRNA or EST evidence. */
+        RNA_SEQ_SUPPORTED_ONLY("RNA_Seq_supported_only"),
 
-        // ranscript annotated based on mixture of RNA-seq data and EST/mRNA/protein evidence.
-        RNA_Seq_supported_partial,
+        /** Transcript annotated based on mixture of RNA-seq data and EST/mRNA/protein evidence. */
+        RNA_SEQ_SUPPORTED_PARTIAL("RNA_Seq_supported_partial"),
 
-        // ranscript that contains a CDS that has a translation initiation site supported by Ribosomal Profiling data.
-        RP_supported_TIS,
+        /** Transcript that contains a CDS that has a translation initiation site supported by Ribosomal Profiling data. */
+        RP_SUPPORTED_TIS("RP_supported_TIS"),
 
-        // contains a selenocysteine.
-        seleno,
+        /** contains a selenocysteine. */
+        SELENO("seleno"),
 
-        // a processed pseudogene with one or more introns still present. These are likely formed through the retrotransposition
-        semi_processed,
+        /** a processed pseudogene with one or more introns still present. These are likely formed through the retrotransposition */
+        SEMI_PROCESSED("semi_processed"),
 
-        // ranscript contains at least 1 non-canonical splice junction that is associated with a known or novel genome sequence
-        sequence_error,
+        /** Transcript contains at least 1 non-canonical splice junction that is associated with a known or novel genome sequence */
+        SEQUENCE_ERROR("sequence_error"),
 
-        // an upstream ATG exists when a downstream ATG is better supported.
-        upstream_ATG,
+        /** an upstream ATG exists when a downstream ATG is better supported. */
+        UPSTREAM_ATG("upstream_ATG"),
 
-        // a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high
-        upstream_uORF;
+        /** a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high */
+        UPSTREAM_UORF("upstream_uORF");
 
-        public static FeatureTag getEnum(String s) {
+        private String serialized;
 
-            if ( s.startsWith("3") ){
-                s = "three" + s.substring(1);
-            }
-            else if ( s.startsWith("5") ){
-                s = "five" + s.substring(1);
-            }
-            else if ( s.startsWith("454") ){
-                s = "fourfivefour" + s.substring(3);
-            }
-
-            return FeatureTag.valueOf(s);
+        FeatureTag(String serializedValue) {
+            serialized = serializedValue;
         }
 
         @Override
         public String toString() {
-            String s = super.toString();
+            return serialized;
+        }
 
-            if ( s.startsWith("three_") ){
-                s = "2" + s.substring(6);
+        public static FeatureTag getEnum(String s) {
+            for( FeatureTag val : values() ) {
+                if(val.serialized.equalsIgnoreCase(s)) {
+                    return val;
+                }
             }
-            else if ( s.startsWith("five_") ){
-                s = "5" + s.substring(5);
-            }
-            else if ( s.startsWith("fourfivefour_") ){
-                s = "454" + s.substring(13);
-            }
-
-            return s;
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 
+    /**
+     * Transcript score according to how well mRNA and EST alignments match over its full length.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     */
     public enum TranscriptSupportLevel {
         /** all splice junctions of the transcript are supported by at least one non-suspect mRNA */
-        ONE("1"),
+        ALL_MRNA_VERIFIED("1"),
 
         /** the best supporting mRNA is flagged as suspect or the support is from multiple ESTs */
-        TWO("2"),
+        BEST_MRNA_SUSPECT("2"),
 
         /** the only support is from a single EST */
-        THREE("3"),
+        SINGLE_EST_SUPPORT("3"),
 
         /** the best supporting EST is flagged as suspect */
-        FOUR("4"),
+        BEST_EST_SUSPECT("4"),
 
         /** no single transcript supports the model structure */
-        FIVE("5"),
+        NO_SINGLE_TRANSCRIPT_SUPPORT("5"),
 
         /** the transcript was not analyzed */
         NA("NA");
@@ -1274,27 +1318,116 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     return val;
                 }
             }
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 
+    /**
+     * Attribute that indicates the status of the mapping.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     *     http://www.gencodegenes.org/releases/grch37_mapped_releases.html#attrib
+     */
     public enum RemapStatus {
-        full_contig,
-        full_fragment,
-        partial,
-        deleted,
-        no_seq_map,
-        gene_conflict,
-        gene_size_change,
-        automatic_small_ncrna_gene,
-        automatic_gene,
-        pseudogene
+        /**
+         * Gene or transcript completely mapped to the target genome with all features intact.
+         */
+        FULL_CONTIG("full_contig"),
+
+        /**
+         * Gene or transcript completely mapped to the target genome with insertions in some features. These are usually small insertions.
+         */
+        FULL_FRAGMENT("full_fragment"),
+
+        /**
+         * Gene or transcript partially mapped to the target genome.
+         */
+        PARTIAL("partial"),
+
+        /**
+         * Gene or transcript did not map to the target genome.
+         */
+        DELETED("deleted"),
+
+        /**
+         * The source sequence is not in the assembly alignments. This will occur with alt loci genes if the alignments only contain the primary assembly.
+         */
+        NO_SEQ_MAP("no_seq_map"),
+
+        /**
+         * Transcripts in the gene mapped to multiple locations.
+         */
+        GENE_CONFLICT("gene_conflict"),
+
+        /**
+         * Transcripts caused gene length to change by more than 50%. This is to detect mapping to processed pseudogenes and mapping across tandem gene duplications.
+         */
+        GENE_SIZE_CHANGE("gene_size_change"),
+
+        /**
+         * Gene is from a small, automatic (ENSEMBL source) non-coding RNA. Taken from the target annotation.
+         */
+        AUTOMATIC_SMALL_NCRNA_GENE("automatic_small_ncrna_gene"),
+
+        /**
+         * Gene is from an automatic process (ENSEMBL source). Taken from the target annotation.
+         */
+        AUTOMATIC_GENE("automatic_gene"),
+
+        /**
+         * Pseudogene annotations (excluding polymorphic).
+         */
+        PSEUDOGENE("pseudogene");
+
+        private String serialized;
+
+        RemapStatus(String serializedValue) { serialized = serializedValue; }
+
+        @Override
+        public String toString() {
+            return serialized;
+        }
+
+        public static RemapStatus getEnum(String s) {
+            for( RemapStatus val : values() ) {
+                if(val.serialized.equalsIgnoreCase(s)) {
+                    return val;
+                }
+            }
+            throw new IllegalArgumentException("Unexpected value: " + s);
+        }
     }
 
+    /**
+     * Attribute that compares the mapping to the existing target annotations.
+     *
+     * For more information, see:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://en.wikipedia.org/wiki/General_feature_format
+     *     http://www.gencodegenes.org/releases/grch37_mapped_releases.html#attrib
+     */
     public enum RemapTargetStatus {
+
+        /**
+         * Gene or transcript was not in target annotations.
+         */
         NEW("new"),
+
+        /**
+         * Gene or transcript exists in source and target genome, however source was not mapped.
+         */
         LOST("lost"),
+
+        /**
+         * Gene or transcript overlaps previous version of annotation on target genome.
+         */
         OVERLAP("overlap"),
+
+        /**
+         * Gene or transcript exists in target, however source mapping is to a different location. This is often mappings to a gene family members or pseudogenes.
+         */
         NONOVERLAP("nonOverlap");
 
         private String serialized;
@@ -1314,7 +1447,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     return val;
                 }
             }
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 }

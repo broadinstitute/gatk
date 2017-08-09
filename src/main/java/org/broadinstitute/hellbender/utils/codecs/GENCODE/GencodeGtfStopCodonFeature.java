@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A Gencode GTF Feature representing a stop codon.
@@ -21,54 +22,11 @@ final public class GencodeGtfStopCodonFeature extends GencodeGtfFeature {
         return new GencodeGtfStopCodonFeature(gtfFields);
     }
 
-    private GencodeGtfStopCodonFeature(long featureOrderNumber,
-                                       String chromosomeName,
-                                       AnnotationSource annotationSource,
-                                       FeatureType featureType,
-                                       int genomicStartLocation,
-                                       int genomicEndLocation,
-                                       GenomicStrand genomicStrand,
-                                       GenomicPhase genomicPhase,
-                                       String geneId,
-                                       String transcriptId,
-                                       GeneTranscriptType geneType,
-                                       GeneTranscriptStatus geneStatus,
-                                       String geneName,
-                                       GeneTranscriptType transcriptType,
-                                       GeneTranscriptStatus transcriptStatus,
-                                       String transcriptName,
-                                       int exonNumber,
-                                       String exonId,
-                                       LocusLevel locusLevel,
-                                       ArrayList<OptionalField<?>> optionalFields,
-                                       String anonymousOptionalFields) {
-
-        super(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    private GencodeGtfStopCodonFeature(final GencodeGtfFeatureBaseData baseData) {
+        super(baseData);
     }
 
-    public static GencodeGtfFeature create(long featureOrderNumber,
-                                           String chromosomeName,
-                                           AnnotationSource annotationSource,
-                                           FeatureType featureType,
-                                           int genomicStartLocation,
-                                           int genomicEndLocation,
-                                           GenomicStrand genomicStrand,
-                                           GenomicPhase genomicPhase,
-                                           String geneId,
-                                           String transcriptId,
-                                           GeneTranscriptType geneType,
-                                           GeneTranscriptStatus geneStatus,
-                                           String geneName,
-                                           GeneTranscriptType transcriptType,
-                                           GeneTranscriptStatus transcriptStatus,
-                                           String transcriptName,
-                                           int exonNumber,
-                                           String exonId,
-                                           LocusLevel locusLevel,
-                                           ArrayList<OptionalField<?>> optionalFields,
-                                           String anonymousOptionalFields) {
-
-        return new GencodeGtfStopCodonFeature(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    public static GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+        return new GencodeGtfStopCodonFeature(baseData);
     }
-
 }

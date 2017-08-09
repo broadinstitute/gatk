@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A Gencode GTF Feature representing an untranslated region.
@@ -21,54 +22,11 @@ final public class GencodeGtfUTRFeature extends GencodeGtfFeature {
         return new GencodeGtfUTRFeature(gtfFields);
     }
 
-    private GencodeGtfUTRFeature(long featureOrderNumber,
-                                 String chromosomeName,
-                                 AnnotationSource annotationSource,
-                                 FeatureType featureType,
-                                 int genomicStartLocation,
-                                 int genomicEndLocation,
-                                 GenomicStrand genomicStrand,
-                                 GenomicPhase genomicPhase,
-                                 String geneId,
-                                 String transcriptId,
-                                 GeneTranscriptType geneType,
-                                 GeneTranscriptStatus geneStatus,
-                                 String geneName,
-                                 GeneTranscriptType transcriptType,
-                                 GeneTranscriptStatus transcriptStatus,
-                                 String transcriptName,
-                                 int exonNumber,
-                                 String exonId,
-                                 LocusLevel locusLevel,
-                                 ArrayList<OptionalField<?>> optionalFields,
-                                 String anonymousOptionalFields) {
-
-        super(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    private GencodeGtfUTRFeature(final GencodeGtfFeatureBaseData baseData) {
+        super(baseData);
     }
 
-    public static GencodeGtfFeature create(long featureOrderNumber,
-                                           String chromosomeName,
-                                           AnnotationSource annotationSource,
-                                           FeatureType featureType,
-                                           int genomicStartLocation,
-                                           int genomicEndLocation,
-                                           GenomicStrand genomicStrand,
-                                           GenomicPhase genomicPhase,
-                                           String geneId,
-                                           String transcriptId,
-                                           GeneTranscriptType geneType,
-                                           GeneTranscriptStatus geneStatus,
-                                           String geneName,
-                                           GeneTranscriptType transcriptType,
-                                           GeneTranscriptStatus transcriptStatus,
-                                           String transcriptName,
-                                           int exonNumber,
-                                           String exonId,
-                                           LocusLevel locusLevel,
-                                           ArrayList<OptionalField<?>> optionalFields,
-                                           String anonymousOptionalFields) {
-
-        return new GencodeGtfUTRFeature(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    public static GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+        return new GencodeGtfUTRFeature(baseData);
     }
-
 }

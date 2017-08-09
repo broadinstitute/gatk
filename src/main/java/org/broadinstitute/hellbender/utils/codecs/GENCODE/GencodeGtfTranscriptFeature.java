@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -24,65 +25,23 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         return new GencodeGtfTranscriptFeature(gtfFields);
     }
 
-    private GencodeGtfTranscriptFeature(long featureOrderNumber,
-                                        String chromosomeName,
-                                        AnnotationSource annotationSource,
-                                        FeatureType featureType,
-                                        int genomicStartLocation,
-                                        int genomicEndLocation,
-                                        GenomicStrand genomicStrand,
-                                        GenomicPhase genomicPhase,
-                                        String geneId,
-                                        String transcriptId,
-                                        GeneTranscriptType geneType,
-                                        GeneTranscriptStatus geneStatus,
-                                        String geneName,
-                                        GeneTranscriptType transcriptType,
-                                        GeneTranscriptStatus transcriptStatus,
-                                        String transcriptName,
-                                        int exonNumber,
-                                        String exonId,
-                                        LocusLevel locusLevel,
-                                        ArrayList<OptionalField<?>> optionalFields,
-                                        String anonymousOptionalFields) {
-
-        super(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    private GencodeGtfTranscriptFeature(final GencodeGtfFeatureBaseData baseData) {
+        super(baseData);
     }
 
-    public static GencodeGtfFeature create(long featureOrderNumber,
-                                           String chromosomeName,
-                                           AnnotationSource annotationSource,
-                                           FeatureType featureType,
-                                           int genomicStartLocation,
-                                           int genomicEndLocation,
-                                           GenomicStrand genomicStrand,
-                                           GenomicPhase genomicPhase,
-                                           String geneId,
-                                           String transcriptId,
-                                           GeneTranscriptType geneType,
-                                           GeneTranscriptStatus geneStatus,
-                                           String geneName,
-                                           GeneTranscriptType transcriptType,
-                                           GeneTranscriptStatus transcriptStatus,
-                                           String transcriptName,
-                                           int exonNumber,
-                                           String exonId,
-                                           LocusLevel locusLevel,
-                                           ArrayList<OptionalField<?>> optionalFields,
-                                           String anonymousOptionalFields) {
-
-        return new GencodeGtfTranscriptFeature(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    public static GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+        return new GencodeGtfTranscriptFeature(baseData);
     }
 
     // ================================================================================================
 
-    private ArrayList<GencodeGtfExonFeature>            exons = new ArrayList<>();
-    private ArrayList<GencodeGtfSelenocysteineFeature>  selenocysteines = new ArrayList<>();
-    private ArrayList<GencodeGtfUTRFeature>             utrs = new ArrayList<>();
+    private List<GencodeGtfExonFeature>            exons = new ArrayList<>();
+    private List<GencodeGtfSelenocysteineFeature>  selenocysteines = new ArrayList<>();
+    private List<GencodeGtfUTRFeature>             utrs = new ArrayList<>();
 
     // ================================================================================================
 
-    public ArrayList<GencodeGtfExonFeature> getExons() {
+    public List<GencodeGtfExonFeature> getExons() {
         return exons;
     }
 
@@ -90,7 +49,7 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         exons.add(exon);
     }
 
-    public ArrayList<GencodeGtfSelenocysteineFeature> getSelenocysteines() {
+    public List<GencodeGtfSelenocysteineFeature> getSelenocysteines() {
         return selenocysteines;
     }
 
@@ -98,7 +57,7 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         selenocysteines.add(selenocysteine);
     }
 
-    public ArrayList<GencodeGtfUTRFeature> getUtrs() {
+    public List<GencodeGtfUTRFeature> getUtrs() {
         return utrs;
     }
 
@@ -126,19 +85,38 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
 
     @Override
     public boolean equals(Object other) {
+        if (other == null) {
+            return false;
+        }
+        else if ( this == other ) {
+            return true;
+        }
+
         if ( (!(other instanceof GencodeGtfTranscriptFeature)) ) {
             return false;
         }
 
         GencodeGtfTranscriptFeature otherTranscript = (GencodeGtfTranscriptFeature) other;
 
-        if ( (!super.equals(otherTranscript)) ||
-             (!exons.equals(otherTranscript.exons)) ||
-             (!selenocysteines.equals(otherTranscript.selenocysteines)) ||
-             (!utrs.equals(otherTranscript.utrs))) {
+        if ( !super.equals(otherTranscript) ) {
+            return false;
+        }
+
+        if ( (!Objects.equals(exons, otherTranscript.exons)) ||
+             (!Objects.equals(selenocysteines, otherTranscript.selenocysteines)) ||
+             (!Objects.equals(utrs, otherTranscript.utrs)) ) {
             return false;
         }
 
         return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (exons != null ? exons.hashCode() : 0);
+        result = 31 * result + (selenocysteines != null ? selenocysteines.hashCode() : 0);
+        result = 31 * result + (utrs != null ? utrs.hashCode() : 0);
+        return result;
     }
 }

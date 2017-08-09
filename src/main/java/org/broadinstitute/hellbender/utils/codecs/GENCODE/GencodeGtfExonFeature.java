@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -24,62 +25,20 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
         return new GencodeGtfExonFeature(gtfFields);
     }
 
-    private GencodeGtfExonFeature(long featureOrderNumber,
-                                  String chromosomeName,
-                                  AnnotationSource annotationSource,
-                                  FeatureType featureType,
-                                  int genomicStartLocation,
-                                  int genomicEndLocation,
-                                  GenomicStrand genomicStrand,
-                                  GenomicPhase genomicPhase,
-                                  String geneId,
-                                  String transcriptId,
-                                  GeneTranscriptType geneType,
-                                  GeneTranscriptStatus geneStatus,
-                                  String geneName,
-                                  GeneTranscriptType transcriptType,
-                                  GeneTranscriptStatus transcriptStatus,
-                                  String transcriptName,
-                                  int exonNumber,
-                                  String exonId,
-                                  LocusLevel locusLevel,
-                                  ArrayList<OptionalField<?>> optionalFields,
-                                  String anonymousOptionalFields) {
-
-        super(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    private GencodeGtfExonFeature(final GencodeGtfFeatureBaseData baseData) {
+        super(baseData);
     }
 
-    public static GencodeGtfFeature create(long featureOrderNumber,
-                                           String chromosomeName,
-                                           AnnotationSource annotationSource,
-                                           FeatureType featureType,
-                                           int genomicStartLocation,
-                                           int genomicEndLocation,
-                                           GenomicStrand genomicStrand,
-                                           GenomicPhase genomicPhase,
-                                           String geneId,
-                                           String transcriptId,
-                                           GeneTranscriptType geneType,
-                                           GeneTranscriptStatus geneStatus,
-                                           String geneName,
-                                           GeneTranscriptType transcriptType,
-                                           GeneTranscriptStatus transcriptStatus,
-                                           String transcriptName,
-                                           int exonNumber,
-                                           String exonId,
-                                           LocusLevel locusLevel,
-                                           ArrayList<OptionalField<?>> optionalFields,
-                                           String anonymousOptionalFields) {
-
-        return new GencodeGtfExonFeature(featureOrderNumber, chromosomeName, annotationSource, featureType, genomicStartLocation, genomicEndLocation, genomicStrand, genomicPhase, geneId, transcriptId, geneType, geneStatus, geneName, transcriptType, transcriptStatus, transcriptName, exonNumber, exonId, locusLevel, optionalFields, anonymousOptionalFields);
+    public static GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+        return new GencodeGtfExonFeature(baseData);
     }
 
     // ============================================================================================================
 
 
-    GencodeGtfCDSFeature                        cds = null;
-    GencodeGtfStartCodonFeature                 startCodon = null;
-    GencodeGtfStopCodonFeature                  stopCodon = null;
+    private GencodeGtfCDSFeature                        cds = null;
+    private GencodeGtfStartCodonFeature                 startCodon = null;
+    private GencodeGtfStopCodonFeature                  stopCodon = null;
 
     // ============================================================================================================
 
@@ -98,14 +57,23 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
     // ============================================================================================================
 
     public void setCds(GencodeGtfCDSFeature cds) {
+        if (this.cds != null) {
+            throw new RuntimeException("Attempting to set cds, but it already contains a value!");
+        }
         this.cds = cds;
     }
 
     public void setStartCodon(GencodeGtfStartCodonFeature startCodon) {
+        if (this.startCodon != null) {
+            throw new RuntimeException("Attempting to set cds, but it already contains a value!");
+        }
         this.startCodon = startCodon;
     }
 
     public void setStopCodon(GencodeGtfStopCodonFeature stopCodon) {
+        if (this.stopCodon != null) {
+            throw new RuntimeException("Attempting to set cds, but it already contains a value!");
+        }
         this.stopCodon = stopCodon;
     }
 
@@ -124,6 +92,13 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
 
     @Override
     public boolean equals(Object other) {
+        if (other == null) {
+            return false;
+        }
+        else if ( this == other ) {
+            return true;
+        }
+
         if (!(other instanceof GencodeGtfExonFeature)) {
             return false;
         }
@@ -134,12 +109,21 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
             return false;
         }
 
-        if (!(((cds == null) && (otherExon.cds == null)) || ((cds != null) && cds.equals(otherExon.cds))) ||
-            !(((startCodon == null) && (otherExon.startCodon == null)) || ((startCodon != null) && startCodon.equals(otherExon.startCodon))) ||
-            !(((stopCodon == null) && (otherExon.stopCodon == null)) || ((stopCodon != null) && stopCodon.equals(otherExon.stopCodon))) ) {
+        if ( (!Objects.equals(cds, otherExon.cds)) ||
+             (!Objects.equals(startCodon, otherExon.startCodon)) ||
+             (!Objects.equals(stopCodon, otherExon.stopCodon)) ) {
             return false;
         }
 
         return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + (cds != null ? cds.hashCode() : 0);
+        result = 31 * result + (startCodon != null ? startCodon.hashCode() : 0);
+        result = 31 * result + (stopCodon != null ? stopCodon.hashCode() : 0);
+        return result;
     }
 }

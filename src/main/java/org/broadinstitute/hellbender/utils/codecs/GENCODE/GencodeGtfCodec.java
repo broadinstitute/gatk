@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.sun.tools.internal.xjc.reader.xmlschema.bindinfo.BIConversion;
 import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.LocationAware;
 import htsjdk.tribble.AbstractFeatureCodec;
 import htsjdk.tribble.FeatureCodecHeader;
@@ -8,29 +11,79 @@ import htsjdk.tribble.readers.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import scala.tools.nsc.Global;
 
+import javax.ws.rs.HEAD;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * {@link htsjdk.tribble.Tribble} Codec to read data from a GENCODE GTF file.
  *
  * GENCODE GTF Files are defined here: https://www.gencodegenes.org/data_format.html
  *
+ * This codec will scan through a GENCODE GTF file and return {@link GencodeGtfFeature} objects.
+ * {@link GencodeGtfFeature} objects contain fields that have sub-features.  All features are
+ * grouped by gene (this is the natural formatting of a GENCODE GTF file).
+ *
+ * All fields exist in the Abstract {@link GencodeGtfFeature}.  The subclasses contain representations of the logical
+ * data hierarchy that reflect how the data were presented in the feature file itself (to preserve the natural
+ * grouping by gene).
+ * The {@link GencodeGtfFeature} logical data hierarchy (NOT the class hierarchy) is as follows
+ * (with | representing a "has a" relationship)
+ *
+ * +--> {@link GencodeGtfGeneFeature}
+ *    |
+ *    +--> {@link GencodeGtfTranscriptFeature}
+ *       |
+ *       +--> {@link GencodeGtfSelenocysteineFeature}
+ *       +--> {@link GencodeGtfUTRFeature}
+ *       +--> {@link GencodeGtfExonFeature}
+ *          |
+ *          +--> {@link GencodeGtfCDSFeature}
+ *          +--> {@link GencodeGtfStartCodonFeature}
+ *          +--> {@link GencodeGtfStopCodonFeature}
+ *
+ * {@link htsjdk.tribble.Tribble} indexing has been tested and works as expected.
+ * Does not support {@link htsjdk.tribble.index.tabix.TabixIndex} indexing.
+ *
+ * Unlike many other {@link htsjdk.tribble.Tribble} codecs, this one scans multiple input file lines to produce
+ * a single feature.  This is due to how GENCODE GTF files are structured (essentially grouped by contig and gene).
+ * For this reason, {@link GencodeGtfCodec} inherits from {@link AbstractFeatureCodec}, as opposed to {@link htsjdk.tribble.AsciiFeatureCodec}
+ * (i.e. {@link htsjdk.tribble.AsciiFeatureCodec}s read a single line at a time, and {@link AbstractFeatureCodec} do not have that explicit purpose).
+ *
  * Created by jonn on 7/21/17.
  */
 final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeature, LineIterator> {
 
-    protected final Logger logger = LogManager.getLogger(this.getClass());
+    static final Logger logger = LogManager.getLogger(GencodeGtfCodec.class);
+
+    public static final int GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE = 19;
+    public static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 26;
+
+    public static final String GENCODE_GTF_FILE_EXTENSION = "gtf";
+    public static final String GENCODE_GTF_FILE_PREFIX = "gencode";
 
     private static final String COMMENT_START = "##";
 
+    private static final String GTF_FIELD_DELIMITER = "\t";
+
+    private static final int FEATURE_TYPE_FIELD_INDEX = 2;
+
     static final int NUM_COLUMNS = 9;
 
-    private long currentLineNum = 1;
-    protected List<String> header = new ArrayList<>();
+    private int currentLineNum = 1;
+    private final List<String> header = new ArrayList<>();
+    private static final int HEADER_NUM_LINES = 5;
+
+    private static final Pattern VERSION_PATTERN = Pattern.compile("version (\\d+)");
+    private int versionNumber = GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE;
 
     // ============================================================================================================
 
@@ -83,8 +136,10 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
         // Create some caches for our data (as we need to group it):
         GencodeGtfGeneFeature gene = null;
         GencodeGtfTranscriptFeature transcript = null;
-        final ArrayList< GencodeGtfExonFeature > exonStore = new ArrayList<>();
-        final ArrayList< GencodeGtfFeature > leafFeatureStore = new ArrayList<>();
+        final List<GencodeGtfExonFeature> exonStore = new ArrayList<>();
+        final List<GencodeGtfFeature> leafFeatureStore = new ArrayList<>();
+
+        boolean lastRecordWasTranscript = false;
 
         // Accumulate lines until we have a full gene and all of its internal features:
         while ( lineIterator.hasNext() ) {
@@ -99,7 +154,10 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
                 return null;
             }
 
-            String[] splitLine = line.split("\t", -1);
+            // Split the line into different GTF Fields
+            // Note that we're using -1 as the limit so that empty tokens will still be counted
+            // (as opposed to discarded).
+            String[] splitLine = line.split(GTF_FIELD_DELIMITER, -1);
 
             // Ensure the file is at least trivially well-formed:
             if (splitLine.length != NUM_COLUMNS) {
@@ -108,7 +166,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             }
 
             // We need to key off the feature type to collapse our accumulated records:
-            final String featureType = splitLine[2];
+            final GencodeGtfFeature.FeatureType featureType = GencodeGtfFeature.FeatureType.getEnum( splitLine[FEATURE_TYPE_FIELD_INDEX] );
 
             // Create a baseline feature to add into our data:
             GencodeGtfFeature feature = GencodeGtfFeature.create(splitLine);
@@ -116,20 +174,36 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             // Make sure we keep track of the line number for if and when we need to write the file back out:
             feature.setFeatureOrderNumber(currentLineNum);
 
-            // Once we see another gene, we take all accumulated records and combine them into a
-            // GencodeGtfFeature.
-            if ((gene != null) && (transcript != null) && (featureType.equals("gene") || featureType.equals("transcript") )) {
+            // Once we see another gene we take all accumulated records and combine them into the
+            // current GencodeGtfFeature.
+            // Then we then break out of the loop and return the last full gene object.
+            if ((gene != null) && (featureType == GencodeGtfFeature.FeatureType.GENE)) {
 
                 aggregateRecordsIntoGeneFeature(gene, transcript, exonStore, leafFeatureStore);
 
-                if ( featureType.equals("gene") ) {
-                    decodedFeature = gene;
-                    break;
-                }
-                else if ( featureType.equals("transcript") ) {
-                    transcript = (GencodeGtfTranscriptFeature) feature;
-                    ++currentLineNum;
-                }
+                // If we found a new gene line, we set our decodedFeature to be
+                // the gene we just finished building.
+                //
+                // We intentionally break here so that we do not call lineIterator.next().
+                // This is so that the new gene (i.e. the one that triggered us to be in this if statement)
+                // remains intact for the next call to decode.
+                decodedFeature = gene;
+
+                lastRecordWasTranscript = false;
+
+                break;
+            }
+            // Once we see a transcript we aggregate our data into our current gene object and
+            // set the current transcript object to the new transcript we just read.
+            // Then we continue reading from the line iterator.
+            else if ((transcript != null) && (featureType == GencodeGtfFeature.FeatureType.TRANSCRIPT)) {
+
+                aggregateRecordsIntoGeneFeature(gene, transcript, exonStore, leafFeatureStore);
+
+                transcript = (GencodeGtfTranscriptFeature) feature;
+                ++currentLineNum;
+
+                lastRecordWasTranscript = true;
             }
             else {
                 // We have not reached the end of this set of gene / transcript records.
@@ -138,13 +212,13 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
 
                 // Add the feature to the correct storage unit for easy assembly later:
                 switch (featureType) {
-                    case "gene":
+                    case GENE:
                         gene = (GencodeGtfGeneFeature)feature;
                         break;
-                    case "transcript":
+                    case TRANSCRIPT:
                         transcript = (GencodeGtfTranscriptFeature)feature;
                         break;
-                    case "exon":
+                    case EXON:
                         exonStore.add((GencodeGtfExonFeature)feature);
                         break;
                     default:
@@ -152,6 +226,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
                         break;
                 }
 
+                lastRecordWasTranscript = false;
                 ++currentLineNum;
             }
 
@@ -159,9 +234,9 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             lineIterator.next();
         }
 
-        // Do we have some records leftover that we need to aggregate into a feature:
-        if ( (gene != null) &&
-                (exonStore.size() != 0) || (leafFeatureStore.size() != 0) ) {
+        // For the last record in the file, we need to do one final check to make sure that we don't miss it.
+        // This is because there will not be a subsequent `gene` line to read:
+        if ( (gene != null) && (lastRecordWasTranscript || (!exonStore.isEmpty()) || (!leafFeatureStore.isEmpty())) ) {
 
             aggregateRecordsIntoGeneFeature(gene, transcript, exonStore, leafFeatureStore);
             decodedFeature = gene;
@@ -172,18 +247,23 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
         //
         // However, this should never actually happen.
         //
-        if ( (exonStore.size() != 0) || (leafFeatureStore.size() != 0) ) {
+        if ( (!exonStore.isEmpty()) || (!leafFeatureStore.isEmpty()) ) {
 
-            if (exonStore.size() != 0) {
+            if (!exonStore.isEmpty()) {
                 logger.error("Gene Feature Aggregation: Exon store not empty: " + exonStore.toString());
             }
 
-            if (leafFeatureStore.size() != 0) {
+            if (!leafFeatureStore.isEmpty()) {
                 logger.error("Gene Feature Aggregation: leaf feature store not empty: " + leafFeatureStore.toString());
             }
 
             String msg = "Aggregated data left over after parsing complete: Exons: " + exonStore.size() + " ; LeafFeatures: " + leafFeatureStore.size();
             throw new RuntimeException(msg);
+        }
+
+        // Now we validate our feature before returning it:
+        if ( ! validateGencodeGtfFeature( decodedFeature, versionNumber ) ) {
+            throw new RuntimeException("Decoded feature is not valid: " + decodedFeature);
         }
 
         return decodedFeature;
@@ -198,77 +278,196 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
      */
     private List<String> readActualHeader(LineIterator reader) {
 
-        boolean isFirst = true;
+        // Make sure we start with a clear header:
+        header.clear();
 
+        // Clear our version number too:
+        versionNumber = GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE;
+
+        int numHeaderLinesRead = 0;
         while ( reader.hasNext() ) {
             String line = reader.peek();
 
             // The file will start with commented out lines.
             // Grab them until there are no more commented out lines.
             if ( line.startsWith(COMMENT_START) ) {
-                header.add(line);
-                reader.next();
-                isFirst = false;
-            }
-            else if ( isFirst ) {
-                throw new UserException.MalformedFile("GENCODE file does not have a header!");
-            }
-            else {
-                // Validate our header:
-                if ( !validateHeader(header.toArray(new String[0])) ) {
-                    throw new UserException.MalformedFile("Invalid GENCODE GTF File - Header does not conform to GENCODE GTF Specifications!");
+
+                // Sanity check for if a file has
+                // WAY too many commented out lines at the top:
+                if (numHeaderLinesRead > HEADER_NUM_LINES) {
+                    break;
                 }
 
+                header.add(line);
+                reader.next();
+                ++numHeaderLinesRead;
+            }
+            else {
                 break;
             }
         }
 
+        // Validate our header:
+        validateHeader(header, true);
+
+        // Set our version number:
+        setVersionNumber();
+
         // Set our line number to be the line of the first actual Feature:
-        currentLineNum = 6;
+        currentLineNum = HEADER_NUM_LINES + 1;
 
         return header;
     }
 
-    @Override
-    public boolean canDecode(String path) {
+    /**
+     * Sets {@link #versionNumber} to the number corresponding to the value in the header.
+     */
+    private void setVersionNumber() {
+        Matcher versionMatcher = VERSION_PATTERN.matcher(header.get(0));
+        versionMatcher.find();
+        versionNumber = Integer.valueOf( versionMatcher.group(1) );
+    }
 
-        // Simple file and name checks to start with:
-        File f = new File(path);
-        boolean canDecode = f.getName().toLowerCase().startsWith("gencode") && f.getName().toLowerCase().endsWith(".gtf");
+    /**
+     * Validates a given {@link GencodeGtfFeature} against a given version of the GENCODE GTF file spec.
+     * This method ensures that all required fields are defined, but does not interrogate their values.
+     * Will validate against the newest possible GENCODE Gtf Version, {@link #GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE}
+     * @param feature A {@link GencodeGtfFeature} to validate.
+     * @return True if {@code feature} contains all required fields for the given GENCODE GTF version, {@code gtfVersion}
+     */
+    static public boolean validateGencodeGtfFeature(final GencodeGtfFeature feature) {
+        return validateGencodeGtfFeature(feature, GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE);
+    }
 
-        if ( canDecode ) {
+    /**
+     * Validates a given {@link GencodeGtfFeature} against a given version of the GENCODE GTF file spec.
+     * This method ensures that all required fields are defined, but does not interrogate their values.
+     * @param feature A {@link GencodeGtfFeature} to validate.
+     * @param gtfVersion The GENCODE GTF version against which to validate {@code feature}
+     * @return True if {@code feature} contains all required fields for the given GENCODE GTF version, {@code gtfVersion}
+     */
+    static public boolean validateGencodeGtfFeature(final GencodeGtfFeature feature, final int gtfVersion) {
 
-            String localPath = path;
-            if ( path.startsWith("file://") ) {
-                localPath = path.substring(7);
+        if ( feature == null ) {
+            return false;
+        }
+
+        if ( (gtfVersion < GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) ||
+                (gtfVersion > GencodeGtfCodec.GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE) ) {
+            throw new RuntimeException("Invalid version number for validation: " + gtfVersion +
+                    " must be in acceptable range: " + GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE +
+                    " - " + GencodeGtfCodec.GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE);
+        }
+
+        final GencodeGtfFeature.FeatureType featureType = feature.getFeatureType();
+
+        if (feature.getChromosomeName() == null) {
+            return false;
+        }
+        if (feature.getAnnotationSource() == null) {
+            return false;
+        }
+        if (feature.getFeatureType() == null) {
+            return false;
+        }
+        if (feature.getGenomicStrand() == null) {
+            return false;
+        }
+        if (feature.getGenomicPhase() == null) {
+            return false;
+        }
+
+        if (feature.getGeneId() == null) {
+            return false;
+        }
+        if (feature.getGeneType() == null) {
+            return false;
+        }
+        if (feature.getGeneName() == null) {
+            return false;
+        }
+        if (feature.getLocusLevel() == null) {
+            return false;
+        }
+
+        if ( gtfVersion < 26 ) {
+            if (feature.getGeneStatus() == null) {
+                return false;
             }
+            if (feature.getTranscriptStatus() == null) {
+                return false;
+            }
+        }
 
-            // Crack open the file and look at the top of it:
-            try {
-                try (BufferedReader br = new BufferedReader(new FileReader(localPath))) {
-                    // Read the first 5 lines.
-                    // They compose the header of a valid GTF File.
-                    String[] stringArray = new String[5];
+        if ( (featureType != GencodeGtfFeature.FeatureType.GENE) ||
+                (gtfVersion < 21) ) {
+            if (feature.getTranscriptId() == null) {
+                return false;
+            }
+            if (feature.getTranscriptType() == null) {
+                return false;
+            }
+            if (feature.getTranscriptName() == null) {
+                return false;
+            }
+        }
 
-                    for (int i = 0; i < stringArray.length; ++i){
-                        stringArray[i] = br.readLine();
+        if ( (featureType != GencodeGtfFeature.FeatureType.GENE) &&
+             (featureType != GencodeGtfFeature.FeatureType.TRANSCRIPT) &&
+             (featureType != GencodeGtfFeature.FeatureType.SELENOCYSTEINE) ) {
+
+            if (feature.getExonNumber() == GencodeGtfFeature.NO_EXON_NUMBER) {
+                return false;
+            }
+            if (feature.getExonId() == null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean canDecode(String inputFilePath) {
+
+        boolean canDecode;
+        try {
+            // Simple file and name checks to start with:
+            Path p = IOUtil.getPath(inputFilePath);
+
+            canDecode = p.getFileName().toString().toLowerCase().startsWith(GENCODE_GTF_FILE_PREFIX) &&
+                        p.getFileName().toString().toLowerCase().endsWith("." + GENCODE_GTF_FILE_EXTENSION);
+
+            if (canDecode) {
+
+                // Crack open the file and look at the top of it:
+                try ( BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(p))) ) {
+
+                    // TThe first HEADER_NUM_LINES compose the header of a valid GTF File:
+                    List<String> headerLines = new ArrayList<>(HEADER_NUM_LINES);
+
+                    for (int i = 0; i < HEADER_NUM_LINES; ++i) {
+                        String line = br.readLine();
+                        if ( line == null ) {
+                            break;
+                        }
+                        headerLines.add( line );
                     }
 
                     // Validate our header:
-                    canDecode = validateHeader(stringArray);
+                    canDecode = validateHeader(headerLines);
                 }
+
+            } else {
+                logger.warn("Given file name does not conform to GENCODE GTF standards: " + inputFilePath);
             }
-            catch (FileNotFoundException ex) {
-                logger.warn("File does not exist! - " + path + " - returning can decode as failure.");
-                canDecode = false;
-            }
-            catch (IOException ex) {
-                logger.warn("Caught IOException on file: " + path + " - returning can decode as failure.");
-                canDecode = false;
-            }
+        } catch (FileNotFoundException ex) {
+            logger.warn("File does not exist! - " + inputFilePath + " - returning can decode as failure.");
+            canDecode = false;
         }
-        else {
-            logger.warn("Given file name does not conform to GENCODE GTF standards: " + path);
+            catch (IOException ex) {
+            logger.warn("Caught IOException on file: " + inputFilePath + " - returning can decode as failure.");
+            canDecode = false;
         }
 
         return canDecode;
@@ -281,22 +480,136 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
      * @param header Header lines to check for conformity to GENCODE GTF specifications.
      * @return true if the given {@code header} is that of a GENCODE GTF file; false otherwise.
      */
-    static boolean validateHeader(final String[] header) {
-        boolean isValid = false;
+    @VisibleForTesting
+    static boolean validateHeader(final List<String> header) {
+        return validateHeader(header, false);
+    }
 
-        if ( header.length == 5 ) {
-            // Check the normal commented fields:
-            isValid = header[0].startsWith("##description:");
-            isValid = isValid && header[1].startsWith("##provider: GENCODE");
+    /**
+     * Check if the given header of a tentative GENCODE GTF file is, in fact, the header to such a file.
+     * @param header Header lines to check for conformity to GENCODE GTF specifications.
+     * @param throwIfInvalid If true, will throw a {@link UserException.MalformedFile} if the header is invalid.
+     * @return true if the given {@code header} is that of a GENCODE GTF file; false otherwise.
+     */
+    @VisibleForTesting
+    static boolean validateHeader(final List<String> header, final boolean throwIfInvalid) {
 
-            isValid = isValid && header[2].startsWith("##contact: gencode");
-            isValid = isValid && header[2].endsWith("@sanger.ac.uk");
-
-            isValid = isValid && header[3].startsWith("##format: gtf");
-            isValid = isValid && header[4].startsWith("##date:");
+        if ( header.size() != HEADER_NUM_LINES) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header is of unexpected length: " +
+                        header.size() + " != " + HEADER_NUM_LINES);
+            }
+            else {
+                return false;
+            }
         }
 
-        return isValid;
+        // Check the normal commented fields:
+        if ( !header.get(0).startsWith("##description:") ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 1 does not contain expected description specification (" +
+                        "##description:): " + header.get(0));
+            }
+            else {
+                return false;
+            }
+        }
+
+        if ( !header.get(0).contains("version") ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 1 does not contain version specification: " +
+                                header.get(0));
+            }
+            else {
+                return false;
+            }
+        }
+
+        // Grab the version from the file and make sure it's within the acceptable range:
+        Matcher versionMatcher = VERSION_PATTERN.matcher(header.get(0));
+        if ( !versionMatcher.find() ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 1 does not contain version number: " +
+                                header.get(0));
+            }
+            else {
+                return false;
+            }
+        }
+
+        int versionNumber = Integer.valueOf( versionMatcher.group(1) );
+        if ( (versionNumber < GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) ||
+             (versionNumber > GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE) ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 1 has an incompatible version number (" +
+                                versionNumber + "): " + header.get(0));
+            }
+            else {
+                return false;
+            }
+        }
+
+        if ( !header.get(1).startsWith("##provider: GENCODE") ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 2 does not contain expected provider specification (" +
+                                "##provider: GENCODE): " + header.get(1));
+            }
+            else {
+                return false;
+            }
+        }
+
+        if ( !header.get(2).startsWith("##contact: gencode") ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 2 does not contain expected contact information (" +
+                                "##contact: gencode): " + header.get(2));
+            }
+            else {
+                return false;
+            }
+        }
+
+        if ( !header.get(2).endsWith("@sanger.ac.uk") ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 2 does not contain expected contact email address (" +
+                                "@sanger.ac.uk): " + header.get(2));
+            }
+            else {
+                return false;
+            }
+        }
+
+        if ( !header.get(3).startsWith("##format: gtf") ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 4 does not contain expected format specification (" +
+                                "##format: gtf): " + header.get(3));
+            }
+            else {
+                return false;
+            }
+        }
+
+        if ( !header.get(4).startsWith("##date:") ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "GENCODE GTF Header line 5 does not contain expected date information (" +
+                                "##date:): " + header.get(4));
+            }
+            else {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -311,9 +624,9 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
      * @param leafFeatureStore {@link List} of {@link GencodeGtfFeature}s to insert into corresponding {@link GencodeGtfExonFeature} objects in {@code exonStore}
      */
     private void aggregateRecordsIntoGeneFeature(final GencodeGtfGeneFeature gene,
-                                                                  final GencodeGtfTranscriptFeature transcript,
-                                                                  final ArrayList< GencodeGtfExonFeature > exonStore,
-                                                                  final ArrayList< GencodeGtfFeature > leafFeatureStore ) {
+                                                 final GencodeGtfTranscriptFeature transcript,
+                                                 final List< GencodeGtfExonFeature > exonStore,
+                                                 final List< GencodeGtfFeature > leafFeatureStore ) {
 
         // OK, we go through the record and consolidate the sub parts of the record.
         // We must consolidate these records through grouping by genomic position.
@@ -331,19 +644,19 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
 
                     // Add the feature to the correct place in the exon:
                     switch (featureType) {
-                        case cds:
+                        case CDS:
                             exon.setCds((GencodeGtfCDSFeature) feature);
                             break;
-                        case start_codon:
+                        case START_CODON:
                             exon.setStartCodon((GencodeGtfStartCodonFeature) feature);
                             break;
-                        case stop_codon:
+                        case STOP_CODON:
                             exon.setStopCodon((GencodeGtfStopCodonFeature) feature);
                             break;
-                        case utr:
+                        case UTR:
                             transcript.addUtr((GencodeGtfUTRFeature) feature);
                             break;
-                        case selenocysteine:
+                        case SELENOCYSTEINE:
                             transcript.addSelenocysteine(((GencodeGtfSelenocysteineFeature) feature));
                             break;
                         default:
