@@ -26,7 +26,32 @@ public final class PSFilterArgumentCollection implements Serializable {
             fullName = "skipFilters",
             optional = true)
     public boolean skipFilters = false;
-    @Argument(doc = "Skip pre-BWA repartition. Set to true for inputs with a high proportion of microbial reads.",
+    /**
+     * <p>
+     *     Advanced optimization option that should be used only in the case of inputs with a high proportion of microbial
+     *     reads that are not host-aligned/coordinate-sorted.
+     * </p>
+     * <p>
+         * In the filter tool, the input reads are initially divided up into smaller partitions (default size is usually
+         * the size of one HDFS block, or ~64MB) that Spark works on in parallel. In samples with a low proportion of microbial
+         * reads (e.g. < 1%), the steps leading up to the host BWA alignment will whittle these partitions down to a small
+         * fraction of their original size. At that point, the distribution of reads across the partitions may be unbalanced.
+     * </p>
+     * <p>
+     *     For example, say the input is 256MB and Spark splits this into 4 even partitions. It is possible that, after
+     *     running through the quality filters and host kmer search, there are 5% remaining in partition #1, 8% in partition #2,
+     *     2% in partition #3, and 20% in partition #4. Thus there is an imbalance of work across the partitions. To
+     *     correct this, a "reparitioning" is invoked that distributes the reads evenly. Note this is especially important
+     *     for host-aligned, coordinate-sorted inputs, in which unmapped reads would be concentrated in the last partitions.
+     * </p>
+     * <p>
+     *     If, however, the proportion of microbial reads is higher, say 30%, then the partitions are generally more
+     *     balanced (except for in the aforementioned coordinate-sorted case). In this case, the time spent doing
+     *     the repartitioning is usually greater than the time saved by rebalancing, and this option should be invoked.
+     * </p>
+     */
+    @Argument(doc = "Skip pre-BWA repartition. Set to true for inputs with a high proportion of microbial reads that " +
+            "are not host coordinate-sorted.",
             fullName = "skipPreBwaRepartition",
             optional = true)
     public boolean skipPreBwaRepartition = false;
