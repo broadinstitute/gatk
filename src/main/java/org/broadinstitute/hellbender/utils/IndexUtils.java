@@ -30,31 +30,17 @@ public final class IndexUtils {
      */
     public static File getIndexFile(final File featureFile) {
 
+        File indexFile = null;
+
         // Try tribble first, if it's not there, we try tabix after:
+        indexFile = getTribbleIndexFile(featureFile);
 
-        final File tribbleIndexFile = Tribble.indexFile(featureFile);
-        if (tribbleIndexFile.canRead()) {
-            return tribbleIndexFile;
+        // Try Tabix:
+        if ( indexFile == null ) {
+            indexFile = getTabixIndexFile(featureFile);
         }
 
-
-        final String path = featureFile.getAbsolutePath();
-        boolean isTabix = false;
-
-        try {
-            isTabix = new AbstractFeatureReader.ComponentMethods().isTabix(path, null);
-        } catch (IOException ex) {
-            throw new RuntimeException("IO Exception when trying to check for Tabix index!", ex);
-        }
-
-        if (isTabix) {
-            final String tabixIndexPath = ParsingUtils.appendToPath(path, TabixUtils.STANDARD_INDEX_EXTENSION);
-
-            return new File(tabixIndexPath);
-        }
-
-
-        return null;
+        return indexFile;
     }
 
     /**
@@ -63,18 +49,37 @@ public final class IndexUtils {
      */
     public static Index loadTribbleIndex(final File featureFile) {
         Utils.nonNull(featureFile);
+
+        Index index = null;
+        final File indexFile = getTribbleIndexFile(featureFile);
+
+        if ( indexFile != null ) {
+            logger.debug("Loading Tribble index from disk for file " + featureFile);
+            try {
+                index = IndexFactory.loadIndex(indexFile.getAbsolutePath());
+                checkIndexVersion(featureFile, indexFile, index);
+            } catch (final RuntimeException e) {
+                index = null;
+            }
+        }
+
+        return index;
+    }
+
+    /**
+     * Try to get the {@link File} representing the tribble index on disk
+     * Does not perform any checks for validity.
+     * @return a {@link File}, or null if we're unable to find it.
+     */
+    public static File getTribbleIndexFile(final File featureFile) {
+        Utils.nonNull(featureFile);
+
         final File indexFile = Tribble.indexFile(featureFile);
         if (! indexFile.canRead()) {
             return null;
         }
-        logger.debug("Loading Tribble index from disk for file " + featureFile);
-        try {
-            final Index index = IndexFactory.loadIndex(indexFile.getAbsolutePath());
-            checkIndexVersion(featureFile, indexFile, index);
-            return index;
-        } catch (final RuntimeException e){
-            return null;
-        }
+
+        return indexFile;
     }
 
     /**
@@ -83,6 +88,25 @@ public final class IndexUtils {
      */
     public static Index loadTabixIndex(final File featureFile) {
         Utils.nonNull(featureFile);
+
+        final File indexFile = getTabixIndexFile(featureFile);
+        if ( indexFile != null ) {
+            logger.debug("Loading tabix index from disk for file " + featureFile);
+            final Index index = IndexFactory.loadIndex(indexFile.getAbsolutePath());
+            checkIndexVersion(featureFile, indexFile, index);
+            return index;
+        }
+
+        return null;
+    }
+
+    /**
+     * Try to get the {@link File} representing the tabix index on disk
+     * Does not perform any checks for validity.
+     * @return a {@link File}, or null if we're unable to find it.
+     */
+    public static File getTabixIndexFile(final File featureFile) {
+        Utils.nonNull(featureFile);
         try {
             final String path = featureFile.getAbsolutePath();
             final boolean isTabix = new AbstractFeatureReader.ComponentMethods().isTabix(path, null);
@@ -90,11 +114,8 @@ public final class IndexUtils {
                 return null;
             }
             final String indexPath = ParsingUtils.appendToPath(path, TabixUtils.STANDARD_INDEX_EXTENSION);
-            logger.debug("Loading tabix index from disk for file " + featureFile);
-            final Index index = IndexFactory.loadIndex(indexPath);
-            final File indexFile = new File(indexPath);
-            checkIndexVersion(featureFile, indexFile, index);
-            return index;
+            logger.debug("Getting tabix file on disk for feature file: " + featureFile);
+            return new File(indexPath);
         } catch (final IOException | RuntimeException e) {
             return null;
         }
