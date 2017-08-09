@@ -283,11 +283,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 File featureFile = new File(featureInput.getFeaturePath());
                 File indexFile = IndexUtils.getIndexFile( featureFile );
 
+                // TODO: Should I change this back to an exception?
                 if ( indexFile == null ) {
-                    throw new RuntimeException("Index file should exist, but unable to find it!");
+                    logger.warn("Index file should exist, but unable to find it!  Unable to check if index is out of date!");
                 }
-
-                IndexUtils.checkIndexModificationTime(featureFile, indexFile, this.errorOnOutOfDateIndex);
+                else {
+                    IndexUtils.checkIndexModificationTime(featureFile, indexFile, this.errorOnOutOfDateIndex);
+                }
             }
 
         } else {
