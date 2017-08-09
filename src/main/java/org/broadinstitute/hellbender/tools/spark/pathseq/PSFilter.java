@@ -263,7 +263,9 @@ public final class PSFilter implements AutoCloseable {
         }
 
         //Redistribute reads
-        reads = repartitionReadsByName(reads);
+        if (!filterArgs.skipPreBwaRepartition) {
+            reads = repartitionReadsByName(reads);
+        }
 
         //Bwa host alignment filtering
         if (filterArgs.indexImageFile != null) {
