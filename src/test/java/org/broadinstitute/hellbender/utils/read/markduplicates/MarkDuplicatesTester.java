@@ -14,6 +14,7 @@ public final class MarkDuplicatesTester extends AbstractMarkDuplicatesTester {
 
     public MarkDuplicatesTester() {
         super(DuplicateScoringStrategy.ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH);
+        addArg("--VALIDATION_STRINGENCY", ValidationStringency.LENIENT.name());
     }
 
     @Override
