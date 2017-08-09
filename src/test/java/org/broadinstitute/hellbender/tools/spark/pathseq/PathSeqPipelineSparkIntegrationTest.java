@@ -5,7 +5,6 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
-import org.junit.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -49,8 +48,8 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
         SamAssertionUtils.assertEqualBamFiles(outputBam, expectedBam, true, ValidationStringency.STRICT);
 
         final File expectedScores = getTestFile("pipeline_output.txt");
-        final byte[] expectedScoresBytes = FileUtils.readFileToByteArray(expectedScores);
-        final byte[] actualScoresBytes = FileUtils.readFileToByteArray(outputScores);
-        Assert.assertArrayEquals(expectedScoresBytes, actualScoresBytes);
+        final String expectedScoreString = FileUtils.readFileToString(expectedScores);
+        final String actualScoresString = FileUtils.readFileToString(outputScores);
+        PathSeqScoreIntegrationTest.compareScoreTables(expectedScoreString, actualScoresString);
     }
 }
