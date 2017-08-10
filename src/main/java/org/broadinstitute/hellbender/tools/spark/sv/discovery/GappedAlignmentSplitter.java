@@ -68,8 +68,8 @@ public final class GappedAlignmentSplitter {
         final CigarElement hardClippingAtBeginningMaybeNull = hardClippingAtBeginning==0 ? null : new CigarElement(hardClippingAtBeginning, CigarOperator.H);
         int contigIntervalStart = 1 + clippedNBasesFromStart;
         // we are walking along the contig following the cigar, which indicates that we might be walking backwards on the reference if oneRegion.forwardStrand==false
-        int refBoundary1stInTheDirectionOfContig = oneRegion.forwardStrand ? oneRegion.referenceSpan.getStart() :
-                oneRegion.referenceSpan.getEnd();
+        int refBoundary1stInTheDirectionOfContig = oneRegion.forwardStrand ? oneRegion.referenceSpan.getStart()
+                                                                           : oneRegion.referenceSpan.getEnd();
         for (final CigarElement cigarElement : cigarElements) {
             final CigarOperator op = cigarElement.getOperator();
             final int operatorLen = cigarElement.getLength();
@@ -114,7 +114,7 @@ public final class GappedAlignmentSplitter {
                     final AlignmentInterval split = new AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd,
                             cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ,
                             DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.ARTIFICIAL_MISMATCH,
-                            oneRegion.alnScore, true);
+                            oneRegion.alnScore, true, false);
 
                     result.add(split);
 
@@ -128,7 +128,7 @@ public final class GappedAlignmentSplitter {
 
                     // update pointers into reference and contig
                     final int refBoundaryAdvance = op.consumesReadBases() ? memoryCigar.getReferenceLength()
-                            : memoryCigar.getReferenceLength() + operatorLen;
+                                                                          : memoryCigar.getReferenceLength() + operatorLen;
                     refBoundary1stInTheDirectionOfContig += oneRegion.forwardStrand ? refBoundaryAdvance : -refBoundaryAdvance;
                     contigIntervalStart += op.consumesReadBases() ? effectiveReadLen + operatorLen : effectiveReadLen;
 
@@ -158,7 +158,7 @@ public final class GappedAlignmentSplitter {
                 contigIntervalStart, unclippedContigLen-clippedNBasesFromEnd, lastForwardStrandCigar,
                 oneRegion.forwardStrand, originalMapQ,
                 DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.ARTIFICIAL_MISMATCH,
-                oneRegion.alnScore, true));
+                oneRegion.alnScore, true, false));
 
 
         return result;

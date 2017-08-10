@@ -116,7 +116,8 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
                                                                 (alignmentInterval.forwardStrand ? "+" : "-"),
                                                                 alignmentInterval.mapQual, alignmentInterval.mismatches,
                                                                 alignmentInterval.alnScore,
-                                                                (alignmentInterval.isFromSplitGapAlignment ? "s" : "o")),
+                                                                (alignmentInterval.isFromSplitGapAlignment ? "s" : "o"),
+                                                                (alignmentInterval.hasUndergoneOverlapRemoval ? "h" : "nh")),
                                                         MAPPED_CONTIG_ALIGNMENT_INTERVAL_STRING_REP_FIELD_SEPARATOR))
                                         .collect(Collectors.toList());
                         mappingInfo = StringUtils.join(intervals,"\t");

@@ -184,9 +184,9 @@ public final class SVDiscoveryTestDataProvider {
         System.arraycopy(rightFlankRC, 0, contigSeq, leftFlank.length+1, rightFlankRC.length);
 
 
-        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 108569149, 108569294), 1, 146, TextCigarCodec.decode("146M51S"), true, 60, 0, 100, false);
-        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 108569315, 108569364), 148, 197, TextCigarCodec.decode("147S50M"), false, 60, 0, 100, false);
-        final AlignedContig alignedContig = new AlignedContig("asm000001:tig00001", contigSeq, Arrays.asList(region1, region2));
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 108569149, 108569294), 1, 146, TextCigarCodec.decode("146M51S"), true, 60, 0, 100, false, false);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 108569315, 108569364), 148, 197, TextCigarCodec.decode("147S50M"), false, 60, 0, 100, false, false);
+        final AlignedContig alignedContig = new AlignedContig("asm000001:tig00001", contigSeq, Arrays.asList(region1, region2), false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), alignedContig.contigName), alignedContig.contigSequence);
         return new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001");
     }
@@ -195,10 +195,10 @@ public final class SVDiscoveryTestDataProvider {
     forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint() throws IOException {
         // inversion with strange left breakpoint
         final byte[] contigSequence = LONG_CONTIG1.getBytes();
-        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, false);
-        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, false);
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, false, false);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, false, false);
 
-        final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2));
+        final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2), false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(ChimericAlignment.parseOneContig(alignedContig, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH).get(0), contigSequence);
         return new Tuple4<>(region1, region2, breakpoints, "asm702700:tig00001");
     }
@@ -236,16 +236,16 @@ public final class SVDiscoveryTestDataProvider {
             outputStream.write(leftLeftPlus);outputStream.write(leftHomology);outputStream.write(rightLeftMinus);
             byte[] contigSeq = outputStream.toByteArray();
 
-            AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 205), 1, 105, TextCigarCodec.decode("105M100S"), true, 60, 0, 100, false);
-            AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 605), 101, 205, TextCigarCodec.decode("100S105M"), false, 60, 0, 100, false);
+            AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 205), 1, 105, TextCigarCodec.decode("105M100S"), true, 60, 0, 100, false, false);
+            AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 605), 101, 205, TextCigarCodec.decode("100S105M"), false, 60, 0, 100, false, false);
             final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, new ArrayList<>(), "asm000001:tig00001"), contigSeq);
             result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
             outputStream.reset();
             outputStream.write(rightLeftPlus);outputStream.write(rightHomology);outputStream.write(leftLeftMinus);
             contigSeq = outputStream.toByteArray();
-            region1 = new AlignmentInterval(new SimpleInterval("20", 501, 605), 1, 105, TextCigarCodec.decode("105M100S"), true, 60, 0, 100, false);
-            region2 = new AlignmentInterval(new SimpleInterval("20", 101, 205), 101, 205, TextCigarCodec.decode("100S105M"), false, 60, 0, 100, false);
+            region1 = new AlignmentInterval(new SimpleInterval("20", 501, 605), 1, 105, TextCigarCodec.decode("105M100S"), true, 60, 0, 100, false, false);
+            region2 = new AlignmentInterval(new SimpleInterval("20", 101, 205), 101, 205, TextCigarCodec.decode("100S105M"), false, 60, 0, 100, false, false);
             final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, new ArrayList<>(), "asm000001:tig00001"), contigSeq);
             result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
@@ -254,8 +254,8 @@ public final class SVDiscoveryTestDataProvider {
             outputStream.write(leftRightMinus);outputStream.write(rightHomology);outputStream.write(rightRightPlus);
             byte[] contigSeq = outputStream.toByteArray();
 
-            AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 201, 305), 1, 105, TextCigarCodec.decode("105M100S"), false, 60, 0, 100, false);
-            AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 601, 705), 101, 205, TextCigarCodec.decode("100S105M"), true, 60, 0, 100, false);
+            AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 201, 305), 1, 105, TextCigarCodec.decode("105M100S"), false, 60, 0, 100, false, false);
+            AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 601, 705), 101, 205, TextCigarCodec.decode("100S105M"), true, 60, 0, 100, false, false);
             final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, new ArrayList<>(), "asm000001:tig00001"), contigSeq);
             result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -263,8 +263,8 @@ public final class SVDiscoveryTestDataProvider {
             outputStream.write(rightRightMinus);outputStream.write(leftHomology);outputStream.write(leftRightPlus);
             contigSeq = outputStream.toByteArray();
 
-            region1 = new AlignmentInterval(new SimpleInterval("20", 601, 705), 1, 105, TextCigarCodec.decode("105M100S"), false, 60, 0, 100, false);
-            region2 = new AlignmentInterval(new SimpleInterval("20", 201, 305), 101, 205, TextCigarCodec.decode("100S105M"), true, 60, 0, 100, false);
+            region1 = new AlignmentInterval(new SimpleInterval("20", 601, 705), 1, 105, TextCigarCodec.decode("105M100S"), false, 60, 0, 100, false, false);
+            region2 = new AlignmentInterval(new SimpleInterval("20", 201, 305), 101, 205, TextCigarCodec.decode("100S105M"), true, 60, 0, 100, false, false);
             final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, new ArrayList<>(), "asm000001:tig00001"), contigSeq);
             result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
@@ -286,8 +286,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.reset();
         outputStream.write(leftRefFlank);outputStream.write(rightRefFlank);
         byte[] contigSeq = outputStream.toByteArray();
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M40S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 41 ,80, TextCigarCodec.decode("40S40M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M40S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 41 ,80, TextCigarCodec.decode("40S40M"), true, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -297,8 +297,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.reset();
         outputStream.write(rightRefFlank);outputStream.write(leftRefFlank);
         contigSeq = outputStream.toByteArray();
-        region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M40S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 41 ,80, TextCigarCodec.decode("40S40M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M40S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 41 ,80, TextCigarCodec.decode("40S40M"), false, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
@@ -320,8 +320,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.reset();
         outputStream.write(leftRefFlank);outputStream.write(insertedSeq);outputStream.write(rightRefFlank);
         byte[] contigSeq = outputStream.toByteArray();
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 1 ,100, TextCigarCodec.decode("100M100S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 151 ,250, TextCigarCodec.decode("100S100M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 1 ,100, TextCigarCodec.decode("100M100S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 151 ,250, TextCigarCodec.decode("100S100M"), true, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -332,8 +332,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.reset();
         outputStream.write(rightRefFlank);outputStream.write(insertedSeq);outputStream.write(leftRefFlank);
         contigSeq = outputStream.toByteArray();
-        region1 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 1 ,100, TextCigarCodec.decode("100M100S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 151 ,250, TextCigarCodec.decode("100S100M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 1 ,100, TextCigarCodec.decode("100M100S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 151 ,250, TextCigarCodec.decode("100S100M"), false, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
@@ -356,8 +356,8 @@ public final class SVDiscoveryTestDataProvider {
         System.arraycopy(leftRefFlank, 0, contigSeq, 0, 40);
         System.arraycopy(substitution, 0, contigSeq, 40, substitution.length);
         System.arraycopy(rightRefFlank, 0, contigSeq, 50, 40);
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M50S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 51 ,90, TextCigarCodec.decode("50S40M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M50S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 51 ,90, TextCigarCodec.decode("50S40M"), true, 60, 0, 100, false, false);
         NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -368,8 +368,8 @@ public final class SVDiscoveryTestDataProvider {
         System.arraycopy(rightRefFlank, 0, contigSeq, 0, 40);
         System.arraycopy(substitution, 0, contigSeq, 40, substitution.length);
         System.arraycopy(leftRefFlank, 0, contigSeq, 40 + substitution.length, 40);
-        region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M50S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 51 ,90, TextCigarCodec.decode("50S40M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M50S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 51 ,90, TextCigarCodec.decode("50S40M"), false, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
@@ -392,8 +392,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.reset();
         outputStream.write(leftRefFlank);outputStream.write(homology);outputStream.write(rightRefFlank);
         byte[] contigSeq = outputStream.toByteArray();
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100044), 1 ,44, TextCigarCodec.decode("44M40S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100079, 100122), 41 ,84, TextCigarCodec.decode("40S44M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100044), 1 ,44, TextCigarCodec.decode("44M40S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100079, 100122), 41 ,84, TextCigarCodec.decode("40S44M"), true, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -404,8 +404,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.reset();
         outputStream.write(rightRefFlank);outputStream.write(homology);outputStream.write(leftRefFlank);
         contigSeq = outputStream.toByteArray();
-        region1 = new AlignmentInterval(new SimpleInterval("21", 100079, 100122), 1 ,44, TextCigarCodec.decode("44M40S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100044), 41 ,84, TextCigarCodec.decode("40S44M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("21", 100079, 100122), 1 ,44, TextCigarCodec.decode("44M40S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100044), 41 ,84, TextCigarCodec.decode("40S44M"), false, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
@@ -430,8 +430,8 @@ public final class SVDiscoveryTestDataProvider {
         System.arraycopy(doubleDup, 0, contigSeq, 40, 10);
         System.arraycopy(rightRefFlank, 0, contigSeq, 50, 40);
 
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 1 ,50, TextCigarCodec.decode("50M40S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 41 ,100, TextCigarCodec.decode("40S50M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 1 ,50, TextCigarCodec.decode("50M40S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 41 ,100, TextCigarCodec.decode("40S50M"), true, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -442,8 +442,8 @@ public final class SVDiscoveryTestDataProvider {
         System.arraycopy(rightRefFlank, 0, contigSeq, 0, 40);
         System.arraycopy(doubleDup, 0, contigSeq, 40, 10);
         System.arraycopy(leftRefFlank, 0, contigSeq, 50, 40);
-        region1 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 1 ,50, TextCigarCodec.decode("50M40S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 41 ,100, TextCigarCodec.decode("40S50M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 1 ,50, TextCigarCodec.decode("50M40S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 41 ,100, TextCigarCodec.decode("40S50M"), false, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
@@ -467,8 +467,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.write(leftRefFlank);outputStream.write(doubleDup);outputStream.write(rightRefFlank);
         byte[] contigSeq = outputStream.toByteArray();
 
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 1 ,50, TextCigarCodec.decode("50M50S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100041, 100090), 51 ,100, TextCigarCodec.decode("50S50M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 1 ,50, TextCigarCodec.decode("50M50S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100041, 100090), 51 ,100, TextCigarCodec.decode("50S50M"), true, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -479,8 +479,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.reset();
         outputStream.write(rightRefFlank);outputStream.write(doubleDup);outputStream.write(leftRefFlank);
         contigSeq = outputStream.toByteArray();
-        region1 = new AlignmentInterval(new SimpleInterval("21", 100041, 100090), 1 ,50, TextCigarCodec.decode("50M50S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 51 ,100, TextCigarCodec.decode("50S50M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("21", 100041, 100090), 1 ,50, TextCigarCodec.decode("50M50S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 51 ,100, TextCigarCodec.decode("50S50M"), false, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
@@ -513,8 +513,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.write(leftRefFlank);outputStream.write(dup);outputStream.write(insertedSeq);outputStream.write(dup);outputStream.write(rightRefFlank);
         byte[] contigSeq = outputStream.toByteArray();
 
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 25297101, 25297252), 1 ,152, TextCigarCodec.decode("152M147S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 25297164, 25297300), 163 ,299, TextCigarCodec.decode("162S137M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 25297101, 25297252), 1 ,152, TextCigarCodec.decode("152M147S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 25297164, 25297300), 163 ,299, TextCigarCodec.decode("162S137M"), true, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -527,8 +527,8 @@ public final class SVDiscoveryTestDataProvider {
         outputStream.write(rightRefFlank);outputStream.write(dup);outputStream.write(insertedSeq);outputStream.write(dup);outputStream.write(leftRefFlank);
         contigSeq = outputStream.toByteArray();
 
-        region1 = new AlignmentInterval(new SimpleInterval("21", 25297164, 25297300), 1 ,137, TextCigarCodec.decode("137M162S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 25297101, 25297252), 148 ,299, TextCigarCodec.decode("147S152M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("21", 25297164, 25297300), 1 ,137, TextCigarCodec.decode("137M162S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 25297101, 25297252), 148 ,299, TextCigarCodec.decode("147S152M"), false, 60, 0, 100, false, false);
         final NovelAdjacencyReferenceLocations breakpointsDetectedFromReverseStrand = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeq);
         result.add(new Tuple4<>(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
@@ -562,8 +562,8 @@ public final class SVDiscoveryTestDataProvider {
         // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
         final byte[] fakeRefSeqForComplexExpansionWithPseudoHomology = String.format("%s%s%s%s", leftRefFlank, firstRepeat, pseudoHomology, rightRefFlank).getBytes();
         final byte[] contigSeqForComplexExpansionWithPseudoHomology = String.format("%s%s%s%s%s", leftRefFlank, firstRepeat, secondRepeat, pseudoHomology, rightRefFlank).getBytes();
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 1 ,140, TextCigarCodec.decode("140M135S"), true, 60, 0, 100, false);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 312610, 312757), 128 ,275, TextCigarCodec.decode("127S148M"), true, 60, 0, 100, false);
+        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 1 ,140, TextCigarCodec.decode("140M135S"), true, 60, 0, 100, false, false);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 312610, 312757), 128 ,275, TextCigarCodec.decode("127S148M"), true, 60, 0, 100, false, false);
         NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexExpansionWithPseudoHomology);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -572,16 +572,16 @@ public final class SVDiscoveryTestDataProvider {
         SequenceUtil.reverseComplement(fakeRefSeqForComplexExpansionWithPseudoHomology_reverseStrand);
         SequenceUtil.reverseComplement(contigSeqForComplexExpansionWithPseudoHomology_reverseStrand);
 
-        region1 = new AlignmentInterval(new SimpleInterval("20", 312610, 312757), 1 ,148, TextCigarCodec.decode("148M127S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 136 ,275, TextCigarCodec.decode("135S140M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("20", 312610, 312757), 1 ,148, TextCigarCodec.decode("148M127S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 136 ,275, TextCigarCodec.decode("135S140M"), false, 60, 0, 100, false, false);
         breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexExpansionWithPseudoHomology_reverseStrand);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
         // second test: contraction from 2 units to 1 unit with pseudo-homology
         final byte[] fakeRefSeqForComplexContractionWithPseudoHomology = contigSeqForComplexExpansionWithPseudoHomology;
         final byte[] contigSeqForComplexContractionWithPseudoHomology = fakeRefSeqForComplexExpansionWithPseudoHomology;
-        region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 1, 140, TextCigarCodec.decode("140M39S"), true, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("20", 312706, 312853), 32, 179, TextCigarCodec.decode("31S148M"), true, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 1, 140, TextCigarCodec.decode("140M39S"), true, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("20", 312706, 312853), 32, 179, TextCigarCodec.decode("31S148M"), true, 60, 0, 100, false, false);
         breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexContractionWithPseudoHomology);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -589,8 +589,8 @@ public final class SVDiscoveryTestDataProvider {
         final byte[] contigSeqForComplexContractionWithPseudoHomology_reverseStrand = Arrays.copyOf(contigSeqForComplexContractionWithPseudoHomology, contigSeqForComplexContractionWithPseudoHomology.length);
         SequenceUtil.reverseComplement(fakeRefSeqForComplexContractionWithPseudoHomology_reverseStrand);
         SequenceUtil.reverseComplement(contigSeqForComplexContractionWithPseudoHomology_reverseStrand);
-        region1 = new AlignmentInterval(new SimpleInterval("20", 312706, 312853), 1, 148, TextCigarCodec.decode("148M31S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 40, 179, TextCigarCodec.decode("39S140M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("20", 312706, 312853), 1, 148, TextCigarCodec.decode("148M31S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 40, 179, TextCigarCodec.decode("39S140M"), false, 60, 0, 100, false, false);
         breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexContractionWithPseudoHomology_reverseStrand);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -598,8 +598,8 @@ public final class SVDiscoveryTestDataProvider {
         final byte[] fakeRefSeqForComplexContractionNoPseudoHomology = String.format("%s%s%s%s%s", leftRefFlank, firstRepeat, secondRepeat, firstRepeat, rightRefFlank).getBytes();
         final byte[] contigSeqForComplexContractionNoPseudoHomology = String.format("%s%s%s%s", leftRefFlank, firstRepeat, secondRepeat, rightRefFlank).getBytes();
 
-        region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 1, 223, TextCigarCodec.decode("223M39S"), true, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("20", 312706, 312936), 32, 262, TextCigarCodec.decode("31S231M"), true, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 1, 223, TextCigarCodec.decode("223M39S"), true, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("20", 312706, 312936), 32, 262, TextCigarCodec.decode("31S231M"), true, 60, 0, 100, false, false);
         breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexContractionNoPseudoHomology);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -607,16 +607,16 @@ public final class SVDiscoveryTestDataProvider {
         final byte[] contigSeqForComplexContractionNoPseudoHomology_reverseStrand = Arrays.copyOf(contigSeqForComplexContractionNoPseudoHomology, contigSeqForComplexContractionNoPseudoHomology.length);
         SequenceUtil.reverseComplement(fakeRefSeqForComplexContractionNoPseudoHomology_reverseStrand);
         SequenceUtil.reverseComplement(contigSeqForComplexContractionNoPseudoHomology_reverseStrand);
-        region1 = new AlignmentInterval(new SimpleInterval("20", 312706, 312936), 1, 231, TextCigarCodec.decode("231M31S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 40, 262, TextCigarCodec.decode("39S223M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("20", 312706, 312936), 1, 231, TextCigarCodec.decode("231M31S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 40, 262, TextCigarCodec.decode("39S223M"), false, 60, 0, 100, false, false);
         breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexContractionNoPseudoHomology_reverseStrand);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
         // fourth test: expansion from 2 units to 3 units without pseudo-homology
         final byte[] fakeRefSeqForComplexExpansionNoPseudoHomology = contigSeqForComplexContractionNoPseudoHomology;
         final byte[] contigSeqForComplexExpansionNoPseudoHomology = fakeRefSeqForComplexContractionNoPseudoHomology;
-        region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 1, 223, TextCigarCodec.decode("223M135S"), true, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("20", 312610, 312840), 128, 358, TextCigarCodec.decode("127S231M"), true, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 1, 223, TextCigarCodec.decode("223M135S"), true, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("20", 312610, 312840), 128, 358, TextCigarCodec.decode("127S231M"), true, 60, 0, 100, false, false);
         breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexExpansionNoPseudoHomology);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -624,8 +624,8 @@ public final class SVDiscoveryTestDataProvider {
         final byte[] contigSeqForComplexExpansionNoPseudoHomology_reverseStrand = Arrays.copyOf(contigSeqForComplexExpansionNoPseudoHomology, contigSeqForComplexExpansionNoPseudoHomology.length);
         SequenceUtil.reverseComplement(fakeRefSeqForComplexExpansionNoPseudoHomology_reverseStrand);
         SequenceUtil.reverseComplement(contigSeqForComplexExpansionNoPseudoHomology_reverseStrand);
-        region1 = new AlignmentInterval(new SimpleInterval("20", 312610, 312840), 1, 231, TextCigarCodec.decode("231M127S"), false, 60, 0, 100, false);
-        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 136, 358, TextCigarCodec.decode("135S223M"), false, 60, 0, 100, false);
+        region1 = new AlignmentInterval(new SimpleInterval("20", 312610, 312840), 1, 231, TextCigarCodec.decode("231M127S"), false, 60, 0, 100, false, false);
+        region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 136, 358, TextCigarCodec.decode("135S223M"), false, 60, 0, 100, false, false);
         breakpoints = new NovelAdjacencyReferenceLocations(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001"), contigSeqForComplexExpansionNoPseudoHomology_reverseStrand);
         result.add(new Tuple4<>(region1, region2, breakpoints, "asm000001:tig00001"));
 

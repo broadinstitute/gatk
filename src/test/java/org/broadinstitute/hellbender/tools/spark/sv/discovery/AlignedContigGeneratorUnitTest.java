@@ -48,8 +48,8 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
             final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
             final FSDataOutputStream fsOutStream = fs.create(tempPath);
 
-            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3%100%o";
-            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5%100%o";
+            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3%100%o%nh";
+            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5%100%o%nh";
             fsOutStream.writeBytes(gappedAlignmentContig_1);
             fsOutStream.writeBytes("\n");
             fsOutStream.writeBytes(gappedAlignmentContig_2);
@@ -191,7 +191,7 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
 
         final List<AlignmentInterval> alignmentIntervalsForCleanContig = it.next().alignmentIntervals;
         Assert.assertEquals(alignmentIntervalsForCleanContig.size(), 1);
-        Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0, 100, false));
+        Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0, 100, false, false));
 
         final List<AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
         Assert.assertEquals(alignmentIntervalsForContigWithGappedAlignment.size(), 3);
