@@ -13,7 +13,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType.createBracketedSymbAlleleString;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType.createBracketedSymbAlleleString;
 
 public class SVVCFWriterUnitTest extends BaseTest{
 

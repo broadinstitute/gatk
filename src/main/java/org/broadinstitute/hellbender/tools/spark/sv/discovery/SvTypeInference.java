@@ -25,13 +25,13 @@ class SvTypeInference {
                         throw new GATKException("Something went wrong in type inference, there's suspected insertion happening but no inserted sequence could be inferred "
                                 + novelAdjacencyReferenceLocations.toString());
                     } else {
-                        type = new SvType.Insertion(novelAdjacencyReferenceLocations); // simple insertion (no duplication)
+                        type = new SimpleSVType.Insertion(novelAdjacencyReferenceLocations); // simple insertion (no duplication)
                     }
                 } else {
                     if (hasNoInsertedSeq) {
-                        type = new SvType.DuplicationTandem(novelAdjacencyReferenceLocations); // clean expansion of repeat 1 -> 2, or complex expansion
+                        type = new SimpleSVType.DuplicationTandem(novelAdjacencyReferenceLocations); // clean expansion of repeat 1 -> 2, or complex expansion
                     } else {
-                        type = new SvType.DuplicationTandem(novelAdjacencyReferenceLocations); // expansion of 1 repeat on ref to 2 repeats on alt with inserted sequence in between the 2 repeats
+                        type = new SimpleSVType.DuplicationTandem(novelAdjacencyReferenceLocations); // expansion of 1 repeat on ref to 2 repeats on alt with inserted sequence in between the 2 repeats
                     }
                 }
             } else {
@@ -39,13 +39,13 @@ class SvTypeInference {
                 final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().isEmpty();
                 if (hasNoDupSeq) {
                     if (hasNoInsertedSeq) {
-                        type = new SvType.Deletion(novelAdjacencyReferenceLocations); // clean deletion
+                        type = new SimpleSVType.Deletion(novelAdjacencyReferenceLocations); // clean deletion
                     } else {
-                        type = new SvType.Deletion(novelAdjacencyReferenceLocations); // scarred deletion
+                        type = new SimpleSVType.Deletion(novelAdjacencyReferenceLocations); // scarred deletion
                     }
                 } else {
                     if (hasNoInsertedSeq) {
-                        type = new SvType.Deletion(novelAdjacencyReferenceLocations); // clean contraction of repeat 2 -> 1, or complex contraction
+                        type = new SimpleSVType.Deletion(novelAdjacencyReferenceLocations); // clean contraction of repeat 2 -> 1, or complex contraction
                     } else {
                         throw new GATKException("Something went wrong in type inference, there's suspected deletion happening but both inserted sequence and duplication exits (not supported yet): "
                                 + novelAdjacencyReferenceLocations.toString());
@@ -53,12 +53,12 @@ class SvTypeInference {
                 }
             }
         } else {
-            type = new SvType.Inversion(novelAdjacencyReferenceLocations);
+            type = new SimpleSVType.Inversion(novelAdjacencyReferenceLocations);
         }
 
         // developer check to make sure new types are treated correctly
         try {
-            SvType.TYPES.valueOf(type.toString());
+            SimpleSVType.TYPES.valueOf(type.toString());
         } catch (final IllegalArgumentException ex) {
             throw new GATKException.ShouldNeverReachHereException("Inferred type is not known yet: " + type.toString(), ex);
         }

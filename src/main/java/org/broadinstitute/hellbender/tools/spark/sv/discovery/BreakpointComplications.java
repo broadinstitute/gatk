@@ -25,7 +25,7 @@ import java.util.*;
  * {@link BreakpointComplications( ChimericAlignment )}.
  */
 @DefaultSerializer(BreakpointComplications.Serializer.class)
-final class BreakpointComplications {
+public final class BreakpointComplications {
 
     @SuppressWarnings("unchecked")
     private static final List<String> DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG = new ArrayList<>(Collections.EMPTY_LIST);
@@ -148,6 +148,17 @@ final class BreakpointComplications {
         cigarStringsForDupSeqOnCtg = null;
         dupAnnotIsFromOptimization = false;
         hasDuplicationAnnotation = false;
+    }
+
+    /**
+     * todo : see ticket #3529
+     * @return true iff the two AI of the {@code longRead} overlaps on reference is more than half of the two AI's minimal read span.
+     */
+    @VisibleForTesting
+    public static boolean isLikelyInvertedDuplication(final AlignmentInterval one, final AlignmentInterval two) {
+        return 2 * AlignmentInterval.overlapOnRefSpan(one, two) >
+                Math.min(one.endInAssembledContig - one.startInAssembledContig,
+                        two.endInAssembledContig - two.startInAssembledContig) + 1;
     }
 
     private void initForInsDel(final ChimericAlignment chimericAlignment, final SimpleInterval leftReferenceInterval,

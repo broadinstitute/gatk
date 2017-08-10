@@ -8,6 +8,7 @@ public class GATKSVVCFConstants {
     public static final String SVLEN = "SVLEN";
 
     public static final String BREAKEND_STR = "BND";
+    public static final String BND_MATEID_STR = "MATEID";
 
     // symbolic alt alleles
     public static final String INV33 = "INV33";

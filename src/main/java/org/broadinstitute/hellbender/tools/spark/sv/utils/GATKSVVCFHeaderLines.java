@@ -4,7 +4,10 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 // TODO: 7/24/17 the structure of this file is resembling that of {@link GATKVCFHeaderLines}, should we move this there?
 public class GATKSVVCFHeaderLines {
@@ -76,8 +79,10 @@ public class GATKSVVCFHeaderLines {
 
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HOMOLOGY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Homologous sequence from contig at the breakpoint"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HOMOLOGY_LENGTH, 1, VCFHeaderLineType.Integer, "Length of homologous sequence"));
-        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV33, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
-        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV55, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV33, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' breakpoint"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV55, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' breakpoint"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BND_MATEID_STR, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "ID(s) for mate(s) of a BND record")); // technically there could be multiple mates, but currently we only have case for 1 mate
 
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, 1, VCFHeaderLineType.String, "Reference span of the suspected repeated unit in a tandem duplication"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_SEQ_CIGARS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String,

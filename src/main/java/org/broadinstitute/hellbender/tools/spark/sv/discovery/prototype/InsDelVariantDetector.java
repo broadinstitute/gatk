@@ -21,6 +21,7 @@ import java.util.List;
 
 final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyContigAlignments {
 
+    @Override
     public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> localAssemblyContigs, final String vcfOutputFileName,
                                    final Broadcast<ReferenceMultiSource> broadcastReference, final String fastaReference,
                                    final Logger toolLogger){

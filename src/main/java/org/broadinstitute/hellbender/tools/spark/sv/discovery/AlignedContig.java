@@ -31,7 +31,7 @@ public final class AlignedContig {
         this.contigName = contigName;
         this.contigSequence = contigSequence;
         this.alignmentIntervals = Utils.stream(alignmentIntervals)
-                .sorted(sortAlignments()).collect(Collectors.toList());
+                .sorted(getAlignmentIntervalComparator()).collect(Collectors.toList());
         this.hasEquallyGoodAlnConfigurations = hasEquallyGoodAlnConfigurations;
     }
 
@@ -54,7 +54,7 @@ public final class AlignedContig {
         hasEquallyGoodAlnConfigurations = input.readBoolean();
     }
 
-    public static Comparator<AlignmentInterval> sortAlignments() {
+    public static Comparator<AlignmentInterval> getAlignmentIntervalComparator() {
         Comparator<AlignmentInterval> comparePos = (AlignmentInterval a1, AlignmentInterval a2) -> Integer.compare(a1.startInAssembledContig, a2.startInAssembledContig);
         Comparator<AlignmentInterval> compareRefTig = (AlignmentInterval a1, AlignmentInterval a2) -> a1.referenceSpan.getContig().compareTo(a2.referenceSpan.getContig());
         Comparator<AlignmentInterval> compareRefSpanStart = (AlignmentInterval a1, AlignmentInterval a2) -> a1.referenceSpan.getStart() - a2.referenceSpan.getStart();
