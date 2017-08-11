@@ -914,6 +914,8 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     public void updateNonRefAlleleLikelihoods(final AlleleList<A> allelesToConsider) {
         final int alleleCount = alleles.numberOfAlleles();
         final int nonRefAlleleIndex = indexOfAllele((A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        if (nonRefAlleleIndex < 0)
+            return;
         final int nonSymbolicAlleleCount = nonRefAlleleIndex < 0 ? alleleCount : alleleCount - 1;
         // likelihood buffer reused across reads:
         final double[] qualifiedAlleleLikelihoods = new double[nonSymbolicAlleleCount];
