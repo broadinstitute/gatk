@@ -112,6 +112,11 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         while ( locusIterator.hasNext() && readyRegions.isEmpty() ) {
             final AlignmentContext pileup = locusIterator.next();
 
+            // Ignore sites that are not contained within this shard's interval
+            if ( ! readShard.getInterval().contains(pileup) ) {
+                continue;
+            }
+
             if ( ! activityProfile.isEmpty() ) {
                 final boolean forceConversion = pileup.getLocation().getStart() != activityProfile.getEnd() + 1;
                 readyRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionPadding, minRegionSize, maxRegionSize, forceConversion));
