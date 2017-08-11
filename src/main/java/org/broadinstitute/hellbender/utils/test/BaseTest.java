@@ -16,14 +16,13 @@ import org.testng.Reporter;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeSuite;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import static java.util.UUID.randomUUID;
 
 
 /**
@@ -289,7 +288,24 @@ public abstract class BaseTest {
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
     public static File createTempFile(final String name, final String extension) {
-        return IOUtils.createTempFile(name, extension);
+        final String testOutputDir = System.getProperty("gatk.test.output.dir");
+        if (testOutputDir != null) {
+            final File dir = new File(testOutputDir);
+            if( !dir.isDirectory() && !dir.mkdir()){
+                throw new RuntimeException("Couldn't create output dir " + dir.toString());
+            }
+            final File file = new File(dir, name + "-" + randomUUID().toString() + extension);
+            try {
+                if(!file.createNewFile()){
+                    throw new RuntimeException("Couldn't create temp file " + file.toString());
+                }
+            } catch (final IOException e) {
+                throw new RuntimeException(e);
+            }
+            return file;
+        } else {
+            return IOUtils.createTempFile(name, extension);
+        }
     }
 
     /**
