@@ -16,6 +16,10 @@ import java.security.GeneralSecurityException;
 
 public final class BucketUtilsTest extends BaseTest {
 
+    static {
+        BucketUtils.setGlobalNIODefaultOptions();
+    }
+
     @Test(groups={"bucket"})
     public void testIsCloudStorageURL(){
         Assert.assertTrue(BucketUtils.isCloudStorageUrl("gs://abucket/bucket"));

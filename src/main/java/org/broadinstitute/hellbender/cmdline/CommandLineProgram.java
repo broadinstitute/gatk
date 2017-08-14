@@ -74,6 +74,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = "use_jdk_inflater", shortName = "jdk_inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
     public boolean useJdkInflater = false;
 
+    @Argument(fullName = "gcs_max_retries", shortName = "gcs_retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
+    public int NIO_MAX_REOPENS = BucketUtils.DEFAULT_GCS_MAX_REOPENS;
+
     private CommandLineParser commandLineParser;
 
     private final List<Header> defaultHeaders = new ArrayList<>();
@@ -149,7 +152,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
         }
 
-        BucketUtils.setGlobalNIODefaultOptions();
+        BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS);
 
         if (!QUIET) {
             System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] " + commandLine);
@@ -300,7 +303,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
 
-        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration().maxChannelReopens());
+        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS).maxChannelReopens());
         logger.info("Using google-cloud-java patch c035098b5e62cb4fe9155eff07ce88449a361f5d from https://github.com/droazen/google-cloud-java/tree/dr_all_nio_fixes");
     }
 
