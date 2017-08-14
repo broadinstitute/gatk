@@ -277,6 +277,9 @@ test {
         } else if (TEST_TYPE == "unit") {
             exclude "**/*IntegrationTest.class"
             excludeGroups "cloud", "bucket"
+        } else if (TEST_TYPE == "spark") {
+            includeGroups "spark"
+            excludeGroups "cloud", "bucket"
         } else if (TEST_TYPE == "all"){
             //include everything
         } else {
