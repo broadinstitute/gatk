@@ -11,7 +11,7 @@ if (!("optparse" %in% rownames(installed.packages()))) {
 }
 dependencies = c("naturalsort","ggplot2","gplots","reshape","gsalib")
 if (!all(dependencies %in% rownames(installed.packages()))) {
-  install.packages(setdiff(dependencies, rownames(installed.packages())), repos="http://cran.cnr.Berkeley.edu")
+  install.packages(setdiff(dependencies, rownames(installed.packages())), repos="https://cran.mtu.edu")
 }
 
 # HMM is only required for testing and not in production:
