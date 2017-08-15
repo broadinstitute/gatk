@@ -7,7 +7,7 @@ cd "$script_path"
 ln -fs /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/cnv_common_tasks.wdl
 ln -fs /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_copy_ratio_bam_workflow.wdl
 ln -fs /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_allele_fraction_pair_workflow.wdl
-ln -fs /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_oncotate.wdl
+ln -fs /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_oncotate.wdl
 
 WORKING_DIR=/home/travis/build/broadinstitute
 
