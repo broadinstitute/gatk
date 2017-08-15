@@ -168,10 +168,16 @@ public final class ValidateVariants extends VariantWalker {
 
     private GenomeLocSortedSet genomeLocSortedSet;
 
+    // information to keep track of when validating a GVCF
+    private int currentEnd;
+    private String currentContig;
+
+    SAMSequenceDictionary dict;
+
     @Override
     public void onTraversalStart() {
         if (VALIDATE_GVCF) {
-            SAMSequenceDictionary dict = getBestAvailableSequenceDictionary();
+            dict = getBestAvailableSequenceDictionary();
 
             if (dict == null)
                 throw new UserException("Validating a GVCF requires a sequence dictionary but no dictionary was able to be constructed from your input.");
@@ -195,7 +201,13 @@ public final class ValidateVariants extends VariantWalker {
         final Set<String> rsIDs = getRSIDs(featureContext);
 
         if (VALIDATE_GVCF) {
-            genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), ref.getInterval().getStart(), vc.getEnd()), true);
+            // Take advantage of adjacent blocks and just merge them so we dont have to keep so many objects in the set.
+            if (ref.getInterval().getContig().equals(currentContig) && currentEnd == (ref.getInterval().getStart() - 1))
+                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), ref.getInterval().getStart() - 1, vc.getEnd()), true);
+            else
+                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), ref.getInterval().getStart(), vc.getEnd()), true);
+            currentEnd = vc.getEnd();
+            currentContig = vc.getContig();
             validateGVCFVariant(vc);
         }
 
@@ -211,7 +223,13 @@ public final class ValidateVariants extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (VALIDATE_GVCF) {
-            GenomeLocSortedSet intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary())));
+            GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
+
+            if (intervalArgumentCollection.intervalsSpecified()){
+                intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(dict)));
+            } else {
+                intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(dict);
+            }
 
             final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(genomeLocSortedSet);
             if (uncoveredIntervals.coveredSize() > 0) {
