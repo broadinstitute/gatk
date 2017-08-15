@@ -203,7 +203,7 @@ public final class ValidateVariants extends VariantWalker {
         if (VALIDATE_GVCF) {
             // Take advantage of adjacent blocks and just merge them so we dont have to keep so many objects in the set.
             if (ref.getInterval().getContig().equals(currentContig) && currentEnd == (ref.getInterval().getStart() - 1))
-                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), ref.getInterval().getStart() - 1, vc.getEnd()), true);
+                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), currentEnd, vc.getEnd()), true);
             else
                 genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(ref.getInterval().getContig(), ref.getInterval().getStart(), vc.getEnd()), true);
             currentEnd = vc.getEnd();
