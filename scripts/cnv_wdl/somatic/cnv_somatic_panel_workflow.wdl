@@ -45,7 +45,7 @@ workflow CNVSomaticPanelWorkflow {
     if (!is_wgs) {
         call CNVTasks.PadTargets {
             input:
-                # This is a bit of a hack.  The task will fail if targets is not defined when it gets here.
+                # The task will fail if targets is not defined when it gets here, but that should not be allowed to happen.
                 targets = select_first([targets, ""]),
                 gatk_jar = gatk_jar,
                 gatk_docker = gatk_docker
