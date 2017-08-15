@@ -48,6 +48,7 @@ workflow CNVGermlinePanelWorkflow {
   File ref_fasta_dict
   File ref_fasta_fai
   File gatk_jar
+  String gatk_docker
 
   # Model parameters
   Int num_latents
@@ -63,8 +64,10 @@ workflow CNVGermlinePanelWorkflow {
   if (!is_wgs) {
     call CNVTasks.PadTargets {
       input:
-        targets = targets,
-        gatk_jar = gatk_jar
+        # This is a bit of a hack.  The task will fail if targets is not defined when it gets here.
+        targets = select_first([targets, ""]),
+        gatk_jar = gatk_jar,
+        gatk_docker = gatk_docker
     }
   }
 
@@ -79,6 +82,7 @@ workflow CNVGermlinePanelWorkflow {
         ref_fasta_fai = ref_fasta_fai,
         ref_fasta_dict = ref_fasta_dict,
         gatk_jar = gatk_jar,
+        gatk_docker = gatk_docker,
         transform = "RAW"
     }
   }
@@ -87,7 +91,8 @@ workflow CNVGermlinePanelWorkflow {
     input:
       combined_entity_id = combined_entity_id,
       coverage_file_list = CollectCoverage.coverage,
-      gatk_jar = gatk_jar
+      gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker
   }
 
   call CNVTasks.AnnotateTargets {
@@ -97,7 +102,8 @@ workflow CNVGermlinePanelWorkflow {
       ref_fasta = ref_fasta,
       ref_fasta_fai = ref_fasta_fai,
       ref_fasta_dict = ref_fasta_dict,
-      gatk_jar = gatk_jar
+      gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker
   }
 
   call CNVTasks.CorrectGCBias {
@@ -105,7 +111,8 @@ workflow CNVGermlinePanelWorkflow {
       entity_id = combined_entity_id,
       coverage = CombineReadCounts.combined_coverage,
       annotated_targets = AnnotateTargets.annotated_targets,
-      gatk_jar = gatk_jar
+      gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker
   } 
 
   call GermlineCNVCaller {
@@ -117,7 +124,8 @@ workflow CNVGermlinePanelWorkflow {
       copy_number_transition_prior_files = copy_number_transition_prior_files,
       pon_output_path = pon_output_path,
       num_latents = num_latents, 
-      gatk_jar = gatk_jar
+      gatk_jar = gatk_jar,
+      gatk_docker = gatk_docker
   }
 
   output {
@@ -132,14 +140,26 @@ task CombineReadCounts {
     String combined_entity_id
     Array[File]+ coverage_file_list
     Int? max_open_files
-    File gatk_jar
+    String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     command {
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CombineReadCounts \
             --input ${sep=" --input " coverage_file_list} \
             --maxOpenFiles ${default=100 max_open_files} \
             --output ${combined_entity_id}.tsv
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
@@ -156,8 +176,13 @@ task GermlineCNVCaller {
     Array[File] copy_number_transition_prior_files
     String pon_output_path
     Int num_latents
-    File gatk_jar
+    String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     command {
         java -Xmx${default=4 mem}g -Ddtype=double -jar ${gatk_jar} GermlineCNVCaller \
@@ -170,6 +195,13 @@ task GermlineCNVCaller {
             --numLatents ${default=5 num_latents} \
             --rddCheckpointing false \
             --disableSpark true
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 200]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {

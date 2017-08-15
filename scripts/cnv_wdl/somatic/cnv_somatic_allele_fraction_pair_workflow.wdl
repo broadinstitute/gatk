@@ -27,6 +27,7 @@ workflow CNVSomaticAlleleFractionPairWorkflow {
     File ref_fasta_dict
     File ref_fasta_fai
     String gatk_jar
+    String gatk_docker
 
     # If WGS, different segment-merging parameters will be used for ACNV
     Boolean is_wgs
@@ -41,7 +42,8 @@ workflow CNVSomaticAlleleFractionPairWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call AllelicCNV {
@@ -51,7 +53,8 @@ workflow CNVSomaticAlleleFractionPairWorkflow {
             tn_coverage = tumor_tn_coverage,
             called_segments = tumor_called_segments,
             is_wgs = is_wgs,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call PlotACNVResults {
@@ -61,7 +64,8 @@ workflow CNVSomaticAlleleFractionPairWorkflow {
             tn_coverage = tumor_tn_coverage,
             acnv_segments = AllelicCNV.acnv_segments,
             ref_fasta_dict = ref_fasta_dict,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     call ConvertACNVResults {
@@ -70,7 +74,8 @@ workflow CNVSomaticAlleleFractionPairWorkflow {
             hets = GetBayesianHetCoverage.tumor_hets,
             tn_coverage = tumor_tn_coverage,
             acnv_segments = AllelicCNV.acnv_segments,
-            gatk_jar = gatk_jar
+            gatk_jar = gatk_jar,
+            gatk_docker = gatk_docker
     }
 
     output {
@@ -95,7 +100,12 @@ task GetBayesianHetCoverage {
     File ref_fasta_dict
     File ref_fasta_fai
     String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     # Sample names are derived from the bam filenames
     String tumor_base_filename = sub(sub(sub(tumor_bam, "gs://", ""), "[/]*.*/", ""), "\\.bam$", "")
@@ -129,6 +139,13 @@ task GetBayesianHetCoverage {
         fi
     >>>
 
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(tumor_bam, "GB")*2.0)+50]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
     output {
         String tumor_entity_id = tumor_base_filename
         File tumor_hets = "${tumor_base_filename}.tumor.hets.tsv"
@@ -154,7 +171,12 @@ task AllelicCNV {
     Float? interval_threshold_allele_fraction
     Int? num_iterations_sim_seg_per_fit
     Int? max_num_iterations_sim_seg
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     command <<<
         if [ ${is_wgs} = true ]
@@ -195,6 +217,13 @@ task AllelicCNV {
         fi
     >>>
 
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 75]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
     output {
         File acnv_segments = "${entity_id}-sim-final.seg"
     }
@@ -209,7 +238,12 @@ task PlotACNVResults {
     File ref_fasta_dict
     String? output_dir
     String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     # If optional output_dir not specified, use "."
     String output_dir_ = select_first([output_dir, "."])
@@ -225,6 +259,13 @@ task PlotACNVResults {
             --outputPrefix ${entity_id}
     }
 
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 75]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
     output {
         File acnv_plot = "${output_dir_}/${entity_id}_ACNV.png"
     }
@@ -238,7 +279,12 @@ task ConvertACNVResults {
     File acnv_segments
     String? output_dir
     String gatk_jar
+
+    # Runtime parameters
     Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
     # If optional output_dir not specified, use "."
     String output_dir_ = select_first([output_dir, "."])
@@ -250,6 +296,13 @@ task ConvertACNVResults {
             --tangentNormalized ${tn_coverage} \
             --segments ${acnv_segments} \
             --outputDir ${output_dir_}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 75]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
