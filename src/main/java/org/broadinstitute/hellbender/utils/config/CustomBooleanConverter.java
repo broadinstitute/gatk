@@ -5,12 +5,12 @@ import org.aeonbits.owner.Converter;
 import java.lang.reflect.Method;
 
 /**
- * Created by jonn on 7/21/17.
+ * Converts a given string into a Boolean after trimming whitespace from that string.
  */
-public class CustomBooleanConverter implements Converter<Boolean> {
+final public class CustomBooleanConverter implements Converter<Boolean> {
 
     @Override
     public Boolean convert(Method method, String input) {
-        return Boolean.getBoolean( input.trim() );
+        return Boolean.parseBoolean( input.trim() );
     }
 }

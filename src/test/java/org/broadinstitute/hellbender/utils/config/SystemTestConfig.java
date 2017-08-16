@@ -13,32 +13,35 @@ import java.util.List;
 public interface SystemTestConfig extends Mutable, Accessible {
 
     @DefaultValue("true")
+    boolean booleanDefTrue();
+
+    @DefaultValue("false")
+    boolean booleanDefFalse();
+
+    @DefaultValue("207")
+    int intDef207();
+
+    @DefaultValue("string1,string2,string3,string4")
+    List<String> listOfStringTest();
+
+
+    @SystemProperty
+    @Key("system.Boolean.Def.True")
+    @DefaultValue("true")
     boolean systemBooleanDefTrue();
 
+    @SystemProperty
+    @Key("system.Boolean.Def.False")
     @DefaultValue("false")
     boolean systemBooleanDefFalse();
 
+    @SystemProperty
+    @Key("system.Int.Def.207")
     @DefaultValue("207")
     int systemIntDef207();
 
-    @DefaultValue("string1,string2,string3,string4")
-    List<String> systemListOfStringTest();
-
-
-
-    @Key("system.Boolean.Def.True")
-    @DefaultValue("true")
-    boolean systemBooleanDefTrue2();
-
-    @Key("system.Boolean.Def.False")
-    @DefaultValue("false")
-    boolean systemBooleanDefFalse2();
-
-    @Key("system.Int.Def.207")
-    @DefaultValue("207")
-    int systemIntDef2072();
-
+    @SystemProperty
     @Key("system.List.Of.String.Test")
     @DefaultValue("string1,string2,string3,string4")
-    List<String> systemListOfStringTest2();
+    List<String> systemListOfStringTest();
 }

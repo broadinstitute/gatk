@@ -25,7 +25,11 @@ public interface GATKConfig extends Mutable, Accessible {
     // =================================================================================================================
     // =================================================================================================================
 
-    String CONFIG_FILE_VARIABLE_NAME = "pathToGatkConfig";
+    /**
+     * Name of the configuration file variable to be used in the {@link Sources} annotation for {@link GATKConfig}
+     * as a place to find the configuration file corresponding to this interface.
+     */
+    String CONFIG_FILE_VARIABLE_NAME = "GATKConfig.pathToGatkConfig";
 
     // =================================================================================================================
     // =================================================================================================================
@@ -33,85 +37,92 @@ public interface GATKConfig extends Mutable, Accessible {
     // =================================================================================================================
     // =================================================================================================================
 
-    String SYSTEM_PROPERTY_PREFIX = "system.";
-
     // ----------------------------------------------------------
-    // General Options:
+    // Miscellaneous Options:
     // ----------------------------------------------------------
 
-    @Key("system.gatk_stacktrace_on_user_exception")
+    @SystemProperty
+    @Key("gatk_stacktrace_on_user_exception")
     @DefaultValue("true")
     boolean gatk_stacktrace_on_user_exception();
 
     // ----------------------------------------------------------
-    // SAMJDK Options:
+    // HTSJDK Options:
     // ----------------------------------------------------------
 
-    @Key("system.samjdk.use_async_io_read_samtools")
+    @SystemProperty
+    @Key("samjdk.use_async_io_read_samtools")
     @ConverterClass(CustomBooleanConverter.class)
     @DefaultValue("false")
     Boolean samjdk_use_async_io_read_samtools();
 
-    @Key("system.samjdk.use_async_io_write_samtools")
+    @SystemProperty
+    @Key("samjdk.use_async_io_write_samtools")
     @DefaultValue("true")
     boolean samjdk_use_async_io_write_samtools();
 
-    @Key("system.samjdk.use_async_io_write_tribble")
+    @SystemProperty
+    @Key("samjdk.use_async_io_write_tribble")
     @DefaultValue("false")
     boolean samjdk_use_async_io_write_tribble();
 
-    @Key("system.samjdk.compression_level")
+    @SystemProperty
+    @Key("samjdk.compression_level")
     @DefaultValue("1")
     int samjdk_compression_level();
+
+    @SystemProperty
+    @Key("snappy.disable")
+    @DefaultValue("true")
+    boolean snappy_disable();
 
     // ----------------------------------------------------------
     // Spark Options:
     // ----------------------------------------------------------
 
-    @Key("system.spark.kryoserializer.buffer.max")
+    @SystemProperty
+    @Key("spark.kryoserializer.buffer.max")
     @DefaultValue("512m")
     String spark_kryoserializer_buffer_max();
 
-    @Key("system.spark.driver.maxResultSize")
+    @SystemProperty
+    @Key("spark.driver.maxResultSize")
     @DefaultValue("0")
     int spark_driver_maxResultSize();
 
-    @Key("system.spark.driver.userClassPathFirst")
+    @SystemProperty
+    @Key("spark.driver.userClassPathFirst")
     @DefaultValue("true")
     boolean spark_driver_userClassPathFirst();
 
-    @Key("system.spark.io.compression.codec")
+    @SystemProperty
+    @Key("spark.io.compression.codec")
     @DefaultValue("lzf")
     String spark_io_compression_codec();
 
-    @Key("system.spark.yarn.executor.memoryOverhead")
+    @SystemProperty
+    @Key("spark.yarn.executor.memoryOverhead")
     @DefaultValue("600")
     int spark_yarn_executor_memoryOverhead();
 
-    @Key("system.spark.driver.extraJavaOptions")
+    @SystemProperty
+    @Key("spark.driver.extraJavaOptions")
     @DefaultValue("")
     String spark_driver_extraJavaOptions();
 
-    @Key("system.spark.executor.extraJavaOptions")
+    @SystemProperty
+    @Key("spark.executor.extraJavaOptions")
     @DefaultValue("")
     String spark_executor_extraJavaOptions();
 
-    // ----------------------------------------------------------
-    // Other Options:
-    // ----------------------------------------------------------
-
-    @Key("system.snappy.disable")
-    @DefaultValue("true")
-    boolean snappy_disable();
-
     // =================================================================================================================
     // =================================================================================================================
-    // System Options:
+    // GATK  Options:
     // =================================================================================================================
     // =================================================================================================================
     
     // ----------------------------------------------------------
-    // General Options:
+    // Miscellaneous Options:
     // ----------------------------------------------------------
 
     @DefaultValue("htsjdk.variant,htsjdk.tribble,org.broadinstitute.hellbender.utils.codecs")

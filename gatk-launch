@@ -91,7 +91,7 @@ def main(args):
             print("    ./gatk-launch Tool --help  Print help on a particular tool" )
             print("")
             print(" Configuration File Specification")
-            print("     --gatkConfigFile                PATH/TO/GATK/PROPERTIES/FILE")
+            print("     --gatk-config-file                PATH/TO/GATK/PROPERTIES/FILE")
             print("")
             print(" gatk-launch forwards commands to GATK and adds some sugar for submitting spark jobs")
             print("")

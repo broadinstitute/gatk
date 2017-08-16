@@ -37,8 +37,6 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,7 +80,7 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
             doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
-    public boolean createOutputBamIndex = ConfigUtils.getFromConfig("createOutputBamIndex");
+    public boolean createOutputBamIndex = ConfigCache.getOrCreate(GATKConfig.class).createOutputBamIndex();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_SHORT_NAME,
@@ -112,10 +110,10 @@ public abstract class GATKTool extends CommandLineProgram {
 
     // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
-    public int cloudPrefetchBuffer = ConfigUtils.getFromConfig("cloudPrefetchBuffer");
+    public int cloudPrefetchBuffer = getCloudPrefetchBufferSize();
 
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to cloudPrefetchBuffer if unset.", optional=true)
-    public int cloudIndexPrefetchBuffer = ConfigUtils.getFromConfig("cloudPrefetchBuffer");
+    public int cloudIndexPrefetchBuffer = getCloudPrefetchBufferSize();
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_LONG_NAME,
             shortName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_SHORT_NAME,
@@ -271,11 +269,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return The cloud prefetch buffer size as set in {@link GATKConfig}
      */
     public int getCloudPrefetchBufferSize() {
-
-        // Get our configuration:
-        final GATKConfig config = ConfigCache.getOrCreate( GATKConfig.class );
-
-        return config.cloudPrefetchBuffer();
+        return ConfigCache.getOrCreate(GATKConfig.class).cloudPrefetchBuffer();
     }
 
     /**
@@ -283,23 +277,7 @@ public abstract class GATKTool extends CommandLineProgram {
      *         A return value of -1 means to use the same value as returned by {@link #getCloudPrefetchBufferSize()}.
      */
     public int getCloudIndexPrefetchBufferSize() {
-
-        // Get our configuration:
-        final GATKConfig config = ConfigCache.getOrCreate( GATKConfig.class );
-
-        return config.cloudIndexPrefetchBuffer();
-    }
-
-    /**
-     * @return The cloud index prefetch buffer size as set in {@link GATKConfig}
-     *         A return value of -1 means to use the same value as returned by {@link #getCloudPrefetchBufferSize()}.
-     */
-    private boolean getCreateOutputBamIndexFrom() {
-
-        // Get our configuration:
-        final GATKConfig config = ConfigCache.getOrCreate( GATKConfig.class );
-
-        return config.createOutputBamIndex();
+        return ConfigCache.getOrCreate(GATKConfig.class).cloudIndexPrefetchBuffer();
     }
 
     /**

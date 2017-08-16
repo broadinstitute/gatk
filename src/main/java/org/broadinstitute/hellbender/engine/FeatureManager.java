@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * Handles discovery of available codecs and Feature arguments, file format detection and codec selection,
  * and creation/management/querying of FeatureDataSources for each source of Features.
  *
- * At startup, walks the packages specified in codec packages in the config file to discover what codecs are available
+ * At startup, walks the packages specified in {@link GATKConfig#codec_packages} in the config file to discover what codecs are available
  * to decode Feature-containing files.
  *
  * Then, given a tool instance, it discovers what FeatureInput argument fields are declared in the

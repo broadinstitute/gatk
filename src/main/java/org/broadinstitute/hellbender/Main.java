@@ -80,7 +80,7 @@ public class Main {
     /**
      * The option specifying a main configuration file.
      */
-    private static final String gatkConfigFileOption = "--gatkConfigFile";
+    private static final String gatkConfigFileOption = "--gatk-config-file";
 
     /**
      * Prints the given message (may be null) to the provided stream, adding adornments and formatting.
@@ -162,15 +162,23 @@ public class Main {
      */
     protected final void mainEntry(final String[] args) {
 
-        // First we package our args together a little better:
-        ArrayList<String> argArrayList = new ArrayList<>( Arrays.asList(args) );
+        // First we package our args together a little better
+        // so that we can pull out the argument for the config file (and the config filename itself)
+        // prior to the args being processed by extractCommandLineProgram.
+        final ArrayList<String> argArrayList = new ArrayList<>( Arrays.asList(args) );
 
         // Now we setup our configurations:
+        // This method will modify the given argArrayList to remove the gatkConfigFileOption and value
+        // if they are specified.  This is so that the later validation of commandline arguments can still
+        // happen properly and so that we can have the configuration initialized as early as possible.
         ConfigUtils.initializeConfigurationsFromCommandLineArgs(argArrayList, gatkConfigFileOption);
 
-        final CommandLineProgram program = extractCommandLineProgram(argArrayList.toArray(new String[] {}), getPackageList(), getClassList(), getCommandLineName());
+        // Create an arg array for the other methods to use:
+        final String[] argArray = argArrayList.toArray(new String[argArrayList.size()]);
+
+        final CommandLineProgram program = extractCommandLineProgram(argArray, getPackageList(), getClassList(), getCommandLineName());
         try {
-            final Object result = runCommandLineProgram(program, argArrayList.toArray(new String[] {}));
+            final Object result = runCommandLineProgram(program, argArray);
             handleResult(result);
             //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){
