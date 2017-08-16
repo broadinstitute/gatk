@@ -444,6 +444,9 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     /**
      * Returns an iterator on the remaining records in
      * the input.
+     * <p>
+     *     Notice that next operations in the returned iterator will consume record from this reader.
+     * </p>
      *
      * @return never {@code null}.
      */
@@ -488,7 +491,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     }
 
     /**
-     * Returns an stream on the reaming records in the source.
+     * Returns a stream on the reaming records in the source.
      * <p>
      * Notice that the returned stream will consume records as if you were calling {@link #readRecord} directly.
      * </p>
@@ -499,6 +502,9 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * Any format exception will still be indicated with a {@link UserException.BadInput}.
      * </p>
      *
+     * @throws UncheckedIOException in leu of {@link IOException} occurring when doing the actual write operation.
+     * @throws UserException.BadInput if there is some formatting issues.
+     *
      * @return never {@code null}.
      */
     public Stream<R> stream() {
@@ -507,12 +513,15 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
 
 
     /**
-     * Read the remaining records into a list.
+     * Read the remaining records into a list. The resulting list might be further modified by the invoking code.
      * <p>
      *     Notice that this operation does not close the reader.
      * </p>
      *
-     * @return never {@code null}, but potentially empty.
+     * @throws UncheckedIOException in leu of {@link IOException} occurring when doing the actual write operation.
+     * @throws UserException.BadInput if there is some formatting issues.
+     *
+     * @return never {@code null}, but potentially an empty list.
      */
     public List<R> toList() {
         return stream().collect(Collectors.toList());

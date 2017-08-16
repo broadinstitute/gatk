@@ -374,6 +374,84 @@ public final class CigarUtils {
     }
 
     /**
+     * Returns a new cigar where any existing soft-clips are transformed into
+     * hard-clips.
+     * <p>
+     *     If the input cigar have a combination of hard and soft-clips then these are
+     *     combined into single hard-clip elements on either side (left and right).
+     * </p>
+     * <p>
+     *     The input cigar must be valid (see {@link Cigar#isValid}).
+     * </p>
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if the input {@code cigar} is {@code null} or non-valid.
+     * @return never {@code null}.
+     */
+    public static Cigar hardReclip(final Cigar cigar) {
+        return softOrHardReclip(cigar, true);
+    }
+
+    /**
+     * Returns a new cigar where any existing hard-clips are transformed into
+     * soft-clips.
+     * <p>
+     *     If the input cigar have a combination of hard and soft-clips then these are
+     *     combined into single soft-clip elements on either side (left and right).
+     * </p>
+     * <p>
+     *     The input cigar must be valid (see {@link Cigar#isValid}).
+     * </p>
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if the input {@code cigar} is {@code null} or non-valid.
+     * @return never {@code null}.
+     */
+    public static Cigar softReclip(final Cigar cigar) {
+        return softOrHardReclip(cigar, false);
+    }
+
+    /**
+     * Returns a cigar where all clips are transform into either soft or hard clips.
+     *
+     * <p>
+     *     After such transformation, adjacent soft-clips are merged into single elements.
+     * </p>
+     * @param cigar the input cigar.
+     * @param hard whether the output cigar should contain only hard ({@code true}) or soft ({@code true}) clips.
+     *
+     * @throws IllegalArgumentException if the input cigar cannot be {@code null}, or if it is invalid.
+     * @return the output cigar after the transformation.
+     */
+    private static Cigar softOrHardReclip(final Cigar cigar, final boolean hard) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        final CigarOperator clipOperator = hard ? CigarOperator.H : CigarOperator.S;
+        final List<CigarElement> elements = cigar.getCigarElements();
+        if (elements.isEmpty()) {
+            return new Cigar(Collections.emptyList());
+        } else {
+            final List<CigarElement> resultElements = new ArrayList<>(elements.size());
+            CigarElement lastElement = null; // caches the last cigar element added to resultElements.
+            for (final CigarElement element : elements) {
+                final CigarOperator operator = element.getOperator();
+                if (operator.isClipping()) {
+                    if (lastElement != null && lastElement.getOperator().isClipping()) {
+                        final int newLength = element.getLength() + lastElement.getLength();
+                        resultElements.set(resultElements.size() - 1, lastElement = new CigarElement(newLength, clipOperator));
+                    } else if (operator != clipOperator) {
+                        resultElements.add(lastElement = new CigarElement(element.getLength(), clipOperator));
+                    } else {
+                        resultElements.add(lastElement = element);
+                    }
+                } else {
+                    resultElements.add(lastElement = element);
+                }
+            }
+            return new Cigar(resultElements);
+        }
+    }
+
+    /**
      * Returns the length of the original read considering all clippings based on this cigar.
      * <p>
      *     The result of applying this method on a empty cigar is zero.

@@ -3,16 +3,15 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.io.Serializable;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -35,7 +34,10 @@ import java.util.stream.Collectors;
  * supplementary to each other with correct SA tags. If there are existing SA tags on any of the reads they will be
  * preserved in the operation.
  */
-public class SATagBuilder {
+public class SATagBuilder implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private List<SARead> supplementaryReads;
     final private GATKRead read;
     private SARead thisRead;
@@ -71,11 +73,13 @@ public class SATagBuilder {
 
     // Class that generates the output tag string for this builder
     private String getTag() {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (SARead sa : supplementaryReads) {
-            stringBuilder.append(sa.toString());
+        if (supplementaryReads.isEmpty()) {
+            return "";
+        } else if (supplementaryReads.size() == 1) {
+            return supplementaryReads.get(0).toString();
+        } else {
+            return supplementaryReads.stream().distinct().map(Object::toString).collect(Collectors.joining());
         }
-        return stringBuilder.toString();
     }
 
     // Set a given read as the primary read within its group
@@ -88,14 +92,33 @@ public class SATagBuilder {
      * advanced to the front of the list, otherwise it will be placed at the back of the SA string.
      *
      * @param otherTag a SATagBuilder encapsulating the SARead to add
-     * @return
+     * @return always this builder.
+     * @throws IllegalArgumentException if {@code otherTag} is {@code null}.
      */
-    public SATagBuilder addTag(SATagBuilder otherTag) {
+    public SATagBuilder addTag(final SATagBuilder otherTag) {
+        Utils.nonNull(otherTag);
+        final SARead thisRead = otherTag.getThisRead();
         if (otherTag.isPrimary()) {
             supplementaryReads.add(0, otherTag.getThisRead());
-        } else {
+            if (supplementaryReads.lastIndexOf(thisRead) != 0) {
+                supplementaryReads.remove(supplementaryReads.lastIndexOf(thisRead));
+            }
+        } else if (!supplementaryReads.contains(thisRead)){
             supplementaryReads.add(otherTag.getThisRead());
         }
+        return this;
+    }
+
+    /**
+     * Adds the encapsulated read an any other supplementary read from the input tag builder to this tag builder.
+     * @param otherTag the input tag.
+     * @return a reference to this builder.
+     * @throws IllegalArgumentException if {@code otherTag} is {@code null}.
+     */
+    public SATagBuilder addAllTags(SATagBuilder otherTag) {
+        Utils.nonNull(otherTag);
+        supplementaryReads.addAll(otherTag.supplementaryReads.stream().filter(r -> !supplementaryReads.contains(r)).collect(Collectors.toList()));
+        addTag(otherTag);
         return this;
     }
 
@@ -201,18 +224,23 @@ public class SATagBuilder {
     /**
      * Private subclass corresponding to an SA read "unit" with all of the attributes for a given SA tag section
      */
-    private static class SARead {
+    private class SARead implements Serializable {
+
+
+        private static final long serialVersionUID = 1L;
+
         // each of the fields that could be in an SA tag
-        String contig;
-        String pos;
-        String strand;
-        String cigar;
-        String mapQ;
-        String NM;
+        final String contig;
+        final String pos;
+        final String strand;
+        final String cigar;
+        final String mapQ;
+        final String NM;
 
         // builder for SARead that parses the existing SA tag
-        private SARead(String SATag) {
-            String[] values = SATag.split(",", -1);
+        private SARead(final String SATag) {
+            Utils.nonNull(SATag);
+            final String[] values = SATag.split(",", -1);
             if (values.length != 6) {
                 throw new GATKException("Could not parse SATag: "+SATag);
             }
@@ -233,17 +261,40 @@ public class SATagBuilder {
             this.NM = values[5];
         }
 
-        private SARead(GATKRead read) {
+        private SARead(final GATKRead read) {
             Utils.nonNull(read);
 
             this.contig = read.getContig();
-            this.pos = read.getStart()+"";
+            this.pos = ""+ read.getStart()+"";
             this.strand = (read.isReverseStrand()?"-":"+");
             this.cigar = read.getCigar().toString();
             this.mapQ = read.getMappingQuality()+"";
-            this.NM = (read.hasAttribute("NM")? read.getAttributeAsString("NM"):"*");
+            this.NM = (read.hasAttribute(SAMTag.NM.name())? read.getAttributeAsString(SAMTag.NM.name()):"*");
         }
 
+        @Override
+        public int hashCode() {
+            return contig.hashCode() + pos.hashCode() + strand.hashCode() + cigar.hashCode() + NM.hashCode();
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+            return other instanceof SARead && equals((SARead) other);
+        }
+
+        public boolean equals(final SARead other) {
+            if (other == null) {
+                return false;
+            } else {
+                return Objects.equals(this.contig, other.contig)
+                        && Objects.equals(this.pos, other.pos)
+                        && Objects.equals(this.strand, other.strand)
+                        && Objects.equals(this.cigar, other.cigar)
+                        && Objects.equals(this.NM, other.NM);
+            }
+        }
+
+        @Override
         public String toString() {
             return String.format("%s,%s,%s,%s,%s,%s;",
                     ((this.contig!=null)?this.contig:"*"),
