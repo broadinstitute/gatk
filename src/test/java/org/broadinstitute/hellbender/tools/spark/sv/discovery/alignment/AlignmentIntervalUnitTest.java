@@ -342,7 +342,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "randomValidCigars")
     public static Object[][] randomValidCigars() {
-        final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, new Cigar());
+        final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, true, new Cigar());
         return cigars.stream().map(x -> new Object[] { x }).toArray(Object[][]::new);
     }
 

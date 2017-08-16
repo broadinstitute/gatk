@@ -474,7 +474,7 @@ public final class CigarUtilsUnitTest {
     @DataProvider(name = "randomValidCigars")
     public static Object[][] randomValidCigars() {
         return CigarTestUtils.randomValidCigars(new Random(13), 1_000,
-                10, 100, new Cigar()).stream()
+                10, 100, true, new Cigar()).stream()
                 .map(x -> new Object[] { x }).toArray(Object[][]::new);
     }
 

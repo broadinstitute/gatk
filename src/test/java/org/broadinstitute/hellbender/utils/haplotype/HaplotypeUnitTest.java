@@ -4,11 +4,20 @@ package org.broadinstitute.hellbender.utils.haplotype;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.RandomDNA;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarTestUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.testng.Assert;
@@ -17,6 +26,8 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * Basic unit test for Haplotype Class
@@ -219,5 +230,59 @@ public final class HaplotypeUnitTest extends GATKBaseTest {
     public void testBadTrimNoLoc() {
         final Haplotype hap = new Haplotype("ACGTAACCGGT".getBytes());
         hap.trim(new UnvalidatingGenomeLoc("20", 0, 1, 20));
+    }
+
+    @Test(dataProvider = "toSamRecordData")
+    public void testToSamRecord(final Haplotype haplotype) {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final SAMRecord record = haplotype.toSAMRecord(header, "test-name");
+        Assert.assertNotNull(record);
+        Assert.assertFalse(record.getReadPairedFlag());
+        Assert.assertFalse(record.getReadNegativeStrandFlag());
+        Assert.assertEquals(record.getReadName(), "test-name");
+        Assert.assertEquals(record.getReadBases(), haplotype.getBases());
+        Assert.assertEquals(haplotype.getGenomeLocation() == null, record.getReadUnmappedFlag());
+        Assert.assertEquals(haplotype.getCigar() == null || haplotype.getCigar().isEmpty(), record.getReadUnmappedFlag());
+        if (haplotype.getLocation() != null) {
+            Assert.assertEquals(haplotype.getLocation().getContig(), record.getContig());
+            Assert.assertEquals(haplotype.getLocation().getStart(), record.getStart());
+        }
+        if (haplotype.getCigar() != null) {
+            Assert.assertEquals(haplotype.getCigar(), record.getCigar());
+        }
+    }
+
+    @Test(dataProvider = "toSamRecordData")
+    public void testToSamRecordExtras(final Haplotype haplotype) {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final SAMRecord[] extraTarget = new SAMRecord[1];
+        final SAMRecord record = haplotype.toSAMRecord(header, "test-name", r -> {extraTarget[0] = r;});
+        Assert.assertSame(extraTarget[0], record);
+    }
+
+    @DataProvider(name = "toSamRecordData")
+    public Object[][] toSamRecordData() {
+        final SAMSequenceDictionary dictionary = ArtificialReadUtils.createArtificialSamHeader().getSequenceDictionary();
+        final Random rdn = new Random(11);
+        final RandomDNA randomDNA = new RandomDNA(13);
+        final List<Cigar> randomCigars = CigarTestUtils.randomValidCigars(rdn, 1_000, 3, 100, false);
+        return randomCigars.stream()
+                .map(cigar -> {
+                    final int haplotypeLength = CigarUtils.countUnclippedReadBases(cigar);
+                    final byte[] bases = randomDNA.nextBases(haplotypeLength);
+                    final boolean mapped = rdn.nextDouble() < 0.1;
+                    final Haplotype result = new Haplotype(bases, false);
+                    if (mapped) {
+                        final int contigIndex = rdn.nextInt(dictionary.getSequences().size());
+                        final String contigName = dictionary.getSequence(contigIndex).getSequenceName();
+                        final int contigLength = dictionary.getSequence(contigIndex).getSequenceLength();
+                        final int start = rdn.nextInt(contigLength - cigar.getReferenceLength()) + 1;
+                        result.setGenomeLocation(new SimpleInterval(contigName, start, start));
+                        result.setCigar(cigar);
+                    }
+                    return result;
+                })
+                .map(h -> new Object[] { h })
+                .toArray(Object[][]::new);
     }
 }

@@ -26,8 +26,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class SVContextUnitTest extends GATKBaseTest {
@@ -198,7 +201,7 @@ public class SVContextUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testTestOutputFileContent(final VariantContext vc, final ReferenceMultiSource reference, final String file) throws IOException {
-        testCreate(vc, reference);
+        testOf(vc, reference);
         testLength(vc, reference);
         testEnd(vc, reference);
         testType(vc, reference);
@@ -209,6 +212,29 @@ public class SVContextUnitTest extends GATKBaseTest {
         try { testComposeAlternativeHaplotype(vc, reference); } catch (final SkipException ex) {}
         try { testComposeReferenceHaplotype(vc, reference); } catch (final SkipException ex) {}
     }
+
+    @Test(dependsOnMethods = {"testOf"})
+    public void testUniqueID() {
+        final Object[][] validVariantContexts = validVariantContexts();
+        final List<String> ids = Stream.of(validVariantContexts)
+                .map(oo -> (VariantContext) oo[0])
+                .map(SVContext::of)
+                .map(SVContext::getUniqueID)
+                .collect(Collectors.toList());
+        final List<String> secondTake = Stream.of(validVariantContexts)
+                .map(oo -> (VariantContext) oo[0])
+                .map(SVContext::of)
+                .map(SVContext::getUniqueID)
+                .collect(Collectors.toList());
+        for(final String id : ids) {
+            Assert.assertNotNull(id);
+        }
+        Assert.assertEquals(ids, secondTake);
+        final Set<String> idSet = new HashSet<>(ids.size());
+        for (final String id : ids) {
+            Assert.assertTrue(idSet.add(id), "duplicated id: " + id);
+        }
+     }
 
     @DataProvider(name="validVariantContexts")
     public Object[][] validVariantContexts(){

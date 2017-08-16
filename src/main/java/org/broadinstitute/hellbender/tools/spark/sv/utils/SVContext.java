@@ -3,7 +3,12 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFRecordCodec;
+import org.apache.avro.ipc.MD5;
+import org.apache.hadoop.io.MD5Hash;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
@@ -12,11 +17,15 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import scala.tools.cmd.gen.AnyVals;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Variant context with additional method to mine the structural variant specific information from structural
@@ -40,6 +49,12 @@ public final class SVContext extends VariantContext {
      * Indicates that the variant does not have a length or this could not be determined, e.g. for BND records.
      */
     public static final int NO_LENGTH = -1;
+
+    /**
+     * Holds the unique id for this structural variant. A {@link null} indicates that the ID has not yet been
+     * calculated.
+     */
+    public String uid = null;
 
     private int end = MISSING_END;
     private int length = MISSING_LENGTH;
@@ -325,5 +340,33 @@ public final class SVContext extends VariantContext {
         } else {
             throw new UnsupportedOperationException("currently only supported for DELs");
         }
+    }
+
+    /**
+     * Returns a unique id for this structural variant based on its location, type and
+     * attributes.
+     * @return never {@code null}.
+     */
+    public String getUniqueID() {
+        if (uid == null) {
+            uid = composeUniqueID();
+        }
+        return uid;
+    }
+
+    private String composeUniqueID() {
+        final StringBuilder builder = new StringBuilder(50);
+        builder.append("sv/");
+        if (hasID()) {
+            builder.append(getID()).append('/');
+        }
+
+        builder.append(getStructuralVariantType().name().toLowerCase()).append('/');
+        final String attributeString = getAttributes().entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + String.valueOf(entry.getValue()))
+                .sorted()
+                .collect(Collectors.joining(";"));
+        builder.append("dg:").append(Integer.toHexString(MD5Hash.digest(attributeString).quarterDigest()));
+        return builder.toString();
     }
 }
