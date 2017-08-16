@@ -169,7 +169,7 @@ public final class ValidateVariants extends VariantWalker {
     private GenomeLocSortedSet genomeLocSortedSet;
 
     // information to keep track of when validating a GVCF
-    private SimpleInterval currentInterval;
+    private SimpleInterval previousInterval;
 
     SAMSequenceDictionary dict;
 
@@ -202,12 +202,12 @@ public final class ValidateVariants extends VariantWalker {
         if (VALIDATE_GVCF) {
             final SimpleInterval refInterval = ref.getInterval();
             // Take advantage of adjacent blocks and just merge them so we dont have to keep so many objects in the set.
-            if (currentInterval != null && currentInterval.overlapsWithMargin(refInterval, 1)) {
-                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), currentInterval.getEnd(), vc.getEnd()), true);
+            if (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) {
+                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), previousInterval.getEnd(), vc.getEnd()), true);
             } else {
                 genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), refInterval.getStart(), vc.getEnd()), true);
             }
-            currentInterval = refInterval;
+            previousInterval = refInterval;
             validateGVCFVariant(vc);
         }
 
