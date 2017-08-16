@@ -19,8 +19,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class BreakpointEvidenceTest extends BaseTest {
-    private final static FragmentLengthStatistics stats =
-            new FragmentLengthStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000));
+    private final static LibraryStatistics stats =
+            new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
+                    60000000000L, 600000000L, 3000000000L);
 
     @Test(groups = "sv")
     void restOfFragmentSizeTest() {

@@ -155,19 +155,25 @@ public final class IntHistogram {
             output.writeLong(nCounts);
         }
 
+        public int size() { return cdfFractions.length; }
+        public float getFraction( final int idx ) { return cdfFractions[idx]; }
+        public long getTotalObservations() { return nCounts; }
+
         public IntHistogram createEmptyHistogram() {
             return new IntHistogram(cdfFractions.length - 2);
         }
 
         /** Using the Kolmogorov-Smirnov statistic for two samples:
-         *  Is the specified histogram significantly different from the CDF. */
+         *  Is the specified histogram significantly different from the CDF?
+         *  This is what we use in production code: It minimizes the number of comparisons, and quits
+         *  as soon as it finds a significant K-S stat (rather than finding the max). */
         public boolean isDifferentByKSStatistic( final IntHistogram sampleHistogram, final float significance ) {
             final long[] sampleCounts = sampleHistogram.counts;
 
             Utils.validateArg(significance > 0f && significance < .2f,
                     "The significance must be specifed as a probability of a chance occurrence (a number like .01f).");
             Utils.validateArg(sampleCounts.length == cdfFractions.length,
-                    "The supplied histogram doesn't have the right shape.");
+                    "The supplied histogram doesn't have the right size.");
 
             final long mCounts = sampleHistogram.getTotalObservations();
             Utils.validateArg(mCounts > 0, "The supplied histogram is empty.");

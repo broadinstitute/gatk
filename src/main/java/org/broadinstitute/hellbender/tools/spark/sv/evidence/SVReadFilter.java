@@ -32,6 +32,10 @@ public class SVReadFilter implements java.io.Serializable {
         return notJunk(read) && !read.isUnmapped();
     }
 
+    public boolean isMappedPrimary( final GATKRead read ) {
+        return isMapped(read) && isPrimaryLine(read);
+    }
+
     public boolean isEvidence( final GATKRead read ) {
         return isMapped(read) && read.getMappingQuality() >= minEvidenceMapQ &&
                 SVUtils.matchLen(read.getCigar()) >= minEvidenceMatchLength;

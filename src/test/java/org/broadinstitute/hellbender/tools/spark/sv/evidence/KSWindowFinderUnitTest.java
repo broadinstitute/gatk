@@ -3,11 +3,11 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.experimental.FindSmallIndelRegions;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -17,7 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class FindSmallIndelRegionsUnitTest extends BaseTest {
+public class KSWindowFinderUnitTest extends BaseTest {
     @Test(groups = "sv")
     public void testContigCrossing() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(3, 1, 10000000, 1);
@@ -33,15 +33,16 @@ public class FindSmallIndelRegionsUnitTest extends BaseTest {
         final StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection params =
                 new StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection();
         final SVReadFilter filter = new SVReadFilter(params);
-        final FragmentLengthStatistics stats =
-                new FragmentLengthStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000));
+        final LibraryStatistics stats =
+                new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
+                        60000000000L, 600000000L, 3000000000L);
         final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
         crossContigIgnoreSet.add(2);
         final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, stats, null, 4L, 4L, 1);
-        final FindSmallIndelRegions.Finder finder = new FindSmallIndelRegions.Finder(readMetadata, filter);
+        final KSWindowFinder finder = new KSWindowFinder(readMetadata, filter);
         final List<BreakpointEvidence> evList = new ArrayList<>();
         for ( final GATKRead read : reads ) {
-            finder.test(read, evList);
+            finder.testReadAndGatherEvidence(read, evList);
         }
         final IntHistogram[] histoPair = finder.getLibraryToHistoPairMap().get(readGroup.getLibrary());
         Assert.assertEquals(histoPair[1].getTotalObservations(), 0L);
