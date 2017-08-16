@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Interval;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
