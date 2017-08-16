@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -57,31 +56,23 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "ReadsPipeline")
     public Object[][] createReadsPipelineSparkTestData() {
-        final String GRCh37Ref_2021 = b37_reference_20_21;
         final String GRCh37Ref2bit_chr2021 = b37_2bit_reference_20_21;
         final String hiSeqBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.bam";
-        final String hiSeqBam_chr20_queryNameSorted = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.queryNameSorted.bam";
-        final String hiSeqCram_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.cram";
         final String dbSNPb37_20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String more20Sites = getResourceDir() + "dbsnp_138.b37.20.10m-10m100.vcf"; //for testing 2 input files
 
-        final String expectedSingleKnownSites = "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.md.bqsr.bam";
-        final String expectedMultipleKnownSites = "expected.MultiSite.reads.pipeline.bam";
-        final String expectedMultipleKnownSitesCram = "expected.MultiSite.reads.pipeline.cram";
+        final String expectedMultipleKnownSites = "expected.MultiSite.reads.pipeline.vcf";
 
         return new Object[][]{
                 // input local, computation local.
-                //Note: these output files were created by running Picard 1.130 and GATK3.46
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE", getResourceDir() + expectedSingleKnownSites)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER", getResourceDir() + expectedSingleKnownSites)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + expectedMultipleKnownSites)},
-
-                // Output generated with GATK4
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
+                // Output generated with GATK4 using
+                // ./gatk-launch HaplotypeCaller \
+                //        -I src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.bam \
+                //        -R src/test/resources/large/human_g1k_v37.20.21.fasta \
+                //        -O src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.vcf \
+                //        -pairHMM AVX_LOGLESS_CACHING \
+                //        -stand_call_conf 30.0
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".vcf", dbSNPb37_20, "-indelBQSR -enableBAQ -pairHMM AVX_LOGLESS_CACHING -stand_call_conf 30.0 " +"--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
         };
     }
 
@@ -111,11 +102,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args);
 
-        if (referenceFile != null && !ReferenceTwoBitSource.isTwoBit(referenceFile.getName())) { // htsjdk can't handle 2bit reference files
-            SamAssertionUtils.assertEqualBamFiles(outFile, new File(params.expectedFileName), referenceFile, true, ValidationStringency.SILENT);
-        }
-        else {
-            SamAssertionUtils.assertEqualBamFiles(outFile, new File(params.expectedFileName), true, ValidationStringency.SILENT);
-        }
+        final double concordance = HaplotypeCallerIntegrationTest.calculateConcordance(outFile, new File(params.expectedFileName));
+        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 4 in VCF mode is < 99% (" +  concordance + ")");
     }
 }
