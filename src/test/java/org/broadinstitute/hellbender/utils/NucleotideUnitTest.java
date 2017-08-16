@@ -284,6 +284,45 @@ public class NucleotideUnitTest {
         }
     }
 
+    @Test
+    public void testIntersect() {
+        // Checks reflexive property:
+        for (final Nucleotide nuc : Nucleotide.values()) {
+            Assert.assertEquals(nuc.intersects(nuc), nuc.isValid());
+        }
+        // Checks commutative:
+        for (final Nucleotide nuc1 : Nucleotide.values()) {
+            for (final Nucleotide nuc2 : Nucleotide.values()) {
+                Assert.assertEquals(nuc1.intersects(nuc2), nuc2.intersects(nuc1));
+            }
+        }
+        // Checks that any does all valids:
+        for (final Nucleotide nuc : Nucleotide.values()) {
+            Assert.assertEquals(Nucleotide.ANY.intersects(nuc), nuc.isValid());
+        }
+        // Check standard don't intersect other standard:
+        for (final Nucleotide nuc1 : Nucleotide.STANDARD_BASES) {
+            for (final Nucleotide nuc2 : Nucleotide.STANDARD_BASES) {
+                Assert.assertEquals(nuc1.intersects(nuc2), nuc1 == nuc2);
+            }
+        }
+    }
+
+    @Test(dependsOnMethods = "testIntersects")
+    public void testIntersectsOnBytes() {
+        final boolean[] trueOrFalse = new boolean[] { true, false};
+        for (final Nucleotide nuc1 : Nucleotide.values()) {
+            for (final Nucleotide nuc2 : Nucleotide.values()) {
+                final boolean intersect = nuc1.intersects(nuc2);
+                for (final boolean upper1 : trueOrFalse) {
+                    for (final boolean upper2 : trueOrFalse) {
+                        Assert.assertEquals(Nucleotide.intersect(nuc1.encodeAsByte(upper1), nuc2.encodeAsByte(upper2)), intersect);
+                    }
+                }
+            }
+        }
+    }
+
     @Test(dataProvider = "values")
     public void testComplement(final Nucleotide nuc) {
         final boolean thisA = nuc.includes(Nucleotide.A);

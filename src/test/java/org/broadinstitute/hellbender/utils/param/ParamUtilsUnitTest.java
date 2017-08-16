@@ -7,6 +7,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.*;
 
 /**
  * Created by lichtens on 8/25/15.
@@ -276,6 +277,26 @@ public class ParamUtilsUnitTest {
             } else {
                 Assert.assertEquals(valuesInFile[i], testData[i], 1e-20);
             }
+        }
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIsNotEmptyOnAnNull() {
+        ParamUtils.isNotEmpty(null);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIsNotEmptyOnAnEmptyCollection() {
+        ParamUtils.isNotEmpty(Collections.emptySortedSet());
+    }
+
+    @Test
+    public void testIsNotEmptyOnNonEmptyCollections() {
+        final List<Collection<?>> subjects = Arrays.asList(Collections.singleton("1"),
+                    Arrays.asList("1", "2", "3"),
+                    Collections.singletonList("a"));
+        for (final Collection<?> collection : subjects) {
+            Assert.assertSame(ParamUtils.isNotEmpty(collection), collection);
         }
     }
 }

@@ -1,5 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public final class GATKSVVCFConstants {
 
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
@@ -85,4 +91,30 @@ public final class GATKSVVCFConstants {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    //genotyping annotations
+    public static final String TEMPLATE_COUNT = "TEMPLATE_COUNT";
+    public static final String HAPLOTYPE_COUNT = "HAPLOTYPE_COUNT";
+    public static final String GENOTYPING_PROCESSING_TIME = "GENOTYPING_TIME_IN_MILLIS";
+    public static final String TEMPLATE_MAPPING_LIKELIHOODS = "RML";
+    public static final String INSERT_SIZE_LIKELIHOODS = "ISL";
+    public static final String DISCORDANT_PAIR_ORIENTATION_LIKELIHOODS = "DPOL";
+    public static final String EXPECTED_RELATIVE_ALLELE_FREQUENCIES = "EXPREL_AFREQ";
+    public static final String TEMPLATE_MAPPING_ALLELE_DEPTH = "RAD";
+    public static final String INSERT_SIZE_ALLELE_DEPTH = "ISAD";
+    public static final String DISCORDANT_PAIR_ORIENTATION_ALLELE_DEPTH = "DPOAD";
+
+    public static final List<String> GENOTYPING_OPTIONAL_INFO_ANNOTATION_IDS = Collections.unmodifiableList(Arrays.asList(GENOTYPING_PROCESSING_TIME, TEMPLATE_COUNT, HAPLOTYPE_COUNT, EXPECTED_RELATIVE_ALLELE_FREQUENCIES));
+    public static final List<String> GENOTYPING_OPTIONAL_FORMAT_ANNOTATION_IDS = Collections.unmodifiableList(Arrays.asList(
+            TEMPLATE_MAPPING_LIKELIHOODS, INSERT_SIZE_LIKELIHOODS, DISCORDANT_PAIR_ORIENTATION_LIKELIHOODS,
+            TEMPLATE_MAPPING_ALLELE_DEPTH, INSERT_SIZE_ALLELE_DEPTH, DISCORDANT_PAIR_ORIENTATION_ALLELE_DEPTH
+    ));
+
+    public static final List<String> expectedHeaderLinesInVCF
+            = Stream.of("SVTYPE", "SVLEN", "MATEID", "INV", "DEL", "INS", "DUP", "DUP:INV",
+                    "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT",
+                    "CTG_NAMES", "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH",
+                    "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSLEN", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
+                    "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_ORIENTATIONS",
+                    "INV33", "INV55", "EXTERNAL_CNV_CALLS", "DUP_IMPRECISE_AFFECTED_RANGE", "CTG_GOOD_NONCANONICAL_MAPPING")
+                    .sorted().collect(Collectors.toList());
 }

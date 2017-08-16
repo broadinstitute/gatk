@@ -305,10 +305,9 @@ public class AssemblyContigAlignmentsConfigPicker {
      *
      * @return a 2-D list, where in the case when multiple configurations are equally top-scored, all such configurations are picked up
      */
-    @VisibleForTesting
     public static List<GoodAndBadMappings> pickBestConfigurations(final AlignedContig alignedContig,
-                                                                  final Set<String> canonicalChromosomes,
-                                                                  final Double scoreDiffTolerance) {
+                                                           final Set<String> canonicalChromosomes,
+                                                           final Double scoreDiffTolerance) {
         // nothing to score if only one alignment
         if (alignedContig.getAlignments().size() == 1) {
             return Collections.singletonList(

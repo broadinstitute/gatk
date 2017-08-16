@@ -197,7 +197,7 @@ public class SingleSequenceReferenceAligner<T, U> implements AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         if (!closed) {
             aligner.close();
             closed = true;

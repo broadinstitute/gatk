@@ -12,6 +12,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Test code for {@link ReadLikelihoods}
@@ -56,6 +57,134 @@ public final class ReadLikelihoodsUnitTest {
             }
         }
         return likelihoods;
+    }
+
+    @Test(dataProvider = "dataSetsWithNumber")
+    public void testSum(final String[] samples, final Allele[] alleles, final Map<String, List<GATKRead>> reads, final int numberOfLks) {
+        final SampleList sampleList = new IndexedSampleList(samples);
+        final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles);
+        final double[][][][] likelihoods = new double[sampleList.numberOfSamples()][alleleList.numberOfAlleles()][][];
+        final double[][][] expectedSum = new double[sampleList.numberOfSamples()][alleleList.numberOfAlleles()][];
+        final Random rdn = new Random(1313 + Arrays.hashCode(samples) + Arrays.hashCode(alleles) + Integer.hashCode(numberOfLks));
+        @SuppressWarnings("unchecked")
+        final List<ReadLikelihoods<Allele>> lks = new ArrayList<>(numberOfLks);
+        for (int s = 0; s < sampleList.numberOfSamples(); s++) {
+            for (int a = 0; a < alleleList.numberOfAlleles(); a++) {
+                final int numberOfReads = reads.get(sampleList.getSample(s)).size();
+                likelihoods[s][a] = new double[numberOfReads][numberOfLks];
+                expectedSum[s][a] = new double[numberOfReads];
+                for (int r = 0; r < numberOfReads; r++) {
+                    for(int l = 0; l < numberOfLks; l++) {
+                        likelihoods[s][a][r][l] = rdn.nextDouble() * -10;
+                    }
+                    expectedSum[s][a][r] = MathUtils.sum(likelihoods[s][a][r]);
+                }
+            }
+        }
+        for (int l = 0; l < numberOfLks; l++) {
+            final Map<String, List<GATKRead>> otherReads = new HashMap<>(reads);
+            for (final Map.Entry<String, List<GATKRead>> entry : reads.entrySet()) {
+                final List<GATKRead> readList = new ArrayList<>(entry.getValue());
+                Collections.shuffle(readList, rdn);
+                otherReads.put(entry.getKey(), readList);
+            }
+            final ReadLikelihoods<Allele> lk = new ReadLikelihoods<>(sampleList, alleleList, otherReads);
+            for (int s = 0; s < sampleList.numberOfSamples(); s++) {
+                for (int a = 0; a < alleleList.numberOfAlleles(); a++) {
+                    final int numberOfReads = reads.get(sampleList.getSample(s)).size();
+                    likelihoods[s][a] = new double[numberOfReads][numberOfLks];
+                    expectedSum[s][a] = new double[numberOfReads];
+                    for (int r = 0; r < numberOfReads; r++) {
+                        lk.sampleMatrix(s).set(a, lk.sampleMatrix(s).indexOfRead(reads.get(sampleList.getSample(s)).get(r)), likelihoods[s][a][r][l]);
+                    }
+                }
+            }
+            lks.add(lk);
+        }
+        final ReadLikelihoods<Allele> result = ReadLikelihoods.sum(lks);
+        Assert.assertTrue(AlleleList.equals(alleleList, result.alleles));
+        Assert.assertTrue(SampleList.equals(sampleList, result.samples));
+        for (int s = 0; s < result.samples.numberOfSamples(); s++) {
+            for (int a = 0; a < result.alleles.numberOfAlleles(); a++) {
+                final GATKRead[] expectedReads = reads.get(sampleList.getSample(s)).toArray(new GATKRead[0]);
+                final GATKRead[] actualReads = result.readsBySampleIndex[s];
+                final List<GATKRead> actualReadsList = Arrays.asList(actualReads);
+                Assert.assertEquals(Arrays.stream(actualReads).collect(Collectors.toSet()),Arrays.stream(expectedReads).collect(Collectors.toSet()));
+                for (int r = 0; r < expectedReads.length; r++) {
+                    final int ridx = actualReadsList.indexOf(expectedReads[r]);
+                    Assert.assertEquals(result.sampleMatrix(s).get(a, ridx), expectedSum[s][a][r]);
+                }
+            }
+        }
+
+    }
+
+    @Test(dataProvider = "dataSets")
+    public void testSum0(final String[] samples, final Allele[] alleles, final Map<String, List<GATKRead>> reads) {
+        final SampleList sampleList = new IndexedSampleList(samples);
+        final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles);
+        final double[][][] likelihoods = new double[sampleList.numberOfSamples()][alleleList.numberOfAlleles()][];
+        final double[][][] expectedSum = new double[sampleList.numberOfSamples()][alleleList.numberOfAlleles()][];
+        final Random rdn = new Random(1313 + Arrays.hashCode(samples) + Arrays.hashCode(alleles));
+        for (int s = 0; s < sampleList.numberOfSamples(); s++) {
+            for (int a = 0; a < alleleList.numberOfAlleles(); a++) {
+                final int numberOfReads = reads.get(sampleList.getSample(s)).size();
+                likelihoods[s][a] = new double[numberOfReads];
+                expectedSum[s][a] = new double[numberOfReads];
+                for (int r = 0; r < numberOfReads; r++) {
+                    likelihoods[s][a][r] = rdn.nextDouble() * -10;
+                    expectedSum[s][a][r] = likelihoods[s][a][r];
+                }
+            }
+        }
+        final Map<String, List<GATKRead>> otherReads = new HashMap<>(reads);
+        for (final Map.Entry<String, List<GATKRead>> entry : reads.entrySet()) {
+            final List<GATKRead> readList = new ArrayList<>(entry.getValue());
+            Collections.shuffle(readList, rdn);
+            otherReads.put(entry.getKey(), readList);
+        }
+        final ReadLikelihoods<Allele> lk = new ReadLikelihoods<>(sampleList, alleleList, otherReads);
+        final ReadLikelihoods<Allele> lk0 = new ReadLikelihoods<>(sampleList, alleleList, otherReads);
+        for (int s = 0; s < sampleList.numberOfSamples(); s++) {
+            for (int a = 0; a < alleleList.numberOfAlleles(); a++) {
+                final int numberOfReads = reads.get(sampleList.getSample(s)).size();
+                likelihoods[s][a] = new double[numberOfReads];
+                expectedSum[s][a] = new double[numberOfReads];
+                for (int r = 0; r < numberOfReads; r++) {
+                    lk.sampleMatrix(s).set(a, lk.sampleMatrix(s).indexOfRead(reads.get(sampleList.getSample(s)).get(r)), likelihoods[s][a][r]);
+                }
+            }
+        }
+        final ReadLikelihoods<Allele> result = ReadLikelihoods.sum(Arrays.asList(lk, lk0));
+        Assert.assertTrue(AlleleList.equals(alleleList, result.alleles));
+        Assert.assertTrue(SampleList.equals(sampleList, result.samples));
+        for (int s = 0; s < result.samples.numberOfSamples(); s++) {
+            for (int a = 0; a < result.alleles.numberOfAlleles(); a++) {
+                final GATKRead[] expectedReads = reads.get(sampleList.getSample(s)).toArray(new GATKRead[0]);
+                final GATKRead[] actualReads = result.readsBySampleIndex[s];
+                final List<GATKRead> actualReadsList = Arrays.asList(actualReads);
+                Assert.assertEquals(Arrays.stream(actualReads).collect(Collectors.toSet()),Arrays.stream(expectedReads).collect(Collectors.toSet()));
+                for (int r = 0; r < expectedReads.length; r++) {
+                    final int ridx = actualReadsList.indexOf(expectedReads[r]);
+                    Assert.assertEquals(result.sampleMatrix(s).get(a, ridx), expectedSum[s][a][r]);
+                }
+            }
+        }
+    }
+
+    @DataProvider(name ="dataSetsWithNumber")
+    public Object[][] dataSetsWithNumberData() {
+        final Object[][] dataSets = dataSets();
+        final List<Object[]> result = new ArrayList<>(dataSets.length * 3);
+
+        for (final Object[] objs : dataSets) {
+            final Object[] newObjs = Arrays.copyOf(objs, objs.length + 1);
+            for (final int num : new int[] {1, 2, 3, 5}) {
+                newObjs[objs.length] = num;
+                result.add(newObjs.clone());
+            }
+        }
+        return result.toArray(new Object[result.size()][]);
     }
 
     @Test(dataProvider = "dataSets")
@@ -673,8 +802,7 @@ public final class ReadLikelihoodsUnitTest {
     }
 
     private SAMFileHeader SAM_HEADER = ArtificialReadUtils.createArtificialSamHeader(10, 0, 1000);
-    final GenomeLocParser locParser = new GenomeLocParser(SAM_HEADER.getSequenceDictionary());
-
+    final GenomeLocParser   locParser = new GenomeLocParser(SAM_HEADER.getSequenceDictionary());
 
     private int[][] READ_COUNTS = {
             {},

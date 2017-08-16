@@ -73,6 +73,30 @@ public class SVIntervalTreeTest extends GATKBaseTest {
     }
 
     @Test(groups = "sv")
+    public void putIfAbsentTest() {
+        final SVIntervalTree<Integer> testTree = initTree();
+        final int size = testTree.size();
+        for ( int idx = 0; idx != intervals.length; ++idx ) {
+            final SVInterval interval = intervals[idx];
+            final int prev = testTree.putIfAbsent(intervals[idx], idx + 101);
+            Assert.assertSame(prev, idx);
+            Assert.assertSame(testTree.size(), size);
+            final SVIntervalTree.Entry<Integer> entry = testTree.find(interval);
+            Assert.assertEquals(entry.getInterval(), interval);
+            Assert.assertEquals(entry.getValue().intValue(), idx);
+        }
+        final Integer sentinel = -47;
+        testTree.setSentinel(sentinel);
+        Assert.assertEquals(testTree.getSentinel(), sentinel);
+
+        Assert.assertEquals(testTree.putIfAbsent(new SVInterval(-1, 0, 0), 666), sentinel);
+        Assert.assertEquals(testTree.size(), size+1);
+        Assert.assertSame(testTree.putIfAbsent(new SVInterval(-1, 0, 0), 999), 666);
+        Assert.assertEquals(testTree.size(), size+1);
+        Assert.assertSame(testTree.find(new SVInterval(-1, 0, 0)).getValue(), 666);
+    }
+
+    @Test(groups = "sv")
     public void removeTest() {
         for ( int deletedIdx = 0; deletedIdx != intervals.length; ++deletedIdx ) {
             final SVIntervalTree<Integer> testTree = initTree();

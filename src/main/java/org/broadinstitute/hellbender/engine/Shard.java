@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.ArrayList;
 import java.util.List;
 
-
 /**
  * A Shard of records of type T covering a specific genomic interval, optionally expanded by a configurable
  * amount of padded data, that provides the ability to iterate over its records.
@@ -26,6 +25,14 @@ public interface Shard<T> extends Iterable<T>, Locatable {
      * it must be the case that for a given Shard getPaddedInterval().contains(getInterval())
      */
     SimpleInterval getPaddedInterval();
+
+    /**
+     * Returns the {@link ShardBoundary boundary} for this {@link Shard}.
+     * @return never {@code null}.
+     */
+    default ShardBoundary getBoundary() {
+        return new ShardBoundary(getInterval(), getPaddedInterval());
+    }
 
     /**
      * @return the start of the non-padded interval this shard covers

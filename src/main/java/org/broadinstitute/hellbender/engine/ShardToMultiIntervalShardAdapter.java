@@ -47,4 +47,9 @@ public class ShardToMultiIntervalShardAdapter<T> implements MultiIntervalShard<T
     public SimpleInterval getPaddedInterval() {
         return shard.getPaddedInterval();
     }
+
+    @Override
+    public ShardBoundary getBoundary() {
+        return shard.getBoundary();
+    }
 }

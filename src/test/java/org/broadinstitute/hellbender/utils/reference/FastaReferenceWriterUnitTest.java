@@ -242,7 +242,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testSingleSequenceStaticWithBpl() throws IOException, GeneralSecurityException, URISyntaxException {
+    public void testSingleSequenceStatic() throws IOException, GeneralSecurityException, URISyntaxException {
         final File testOutputFile = createTempFile("fwr-test", ".random0.fasta");
         final Map<String, byte[]> seqs = Collections.singletonMap("seqA", new RandomDNA(1341).nextBases(100));
         final Map<String, Integer> bpls = Collections.singletonMap("seqA", 42);
@@ -252,22 +252,6 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         FastaReferenceWriter.writeSingleSequenceReference(testOutputFile.toPath(), 42,
                 true, true, "seqA", null, seqs.get("seqA"));
         assertOutput(testOutputFile.toPath(), true, true, false, dictionary, 42, seqs, bpls);
-        Assert.assertTrue(testOutputFile.delete());
-        Assert.assertTrue(ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(testOutputFile).delete());
-        Assert.assertTrue(ReferenceSequenceFileFactory.getFastaIndexFileName(testOutputFile.toPath()).toFile().delete());
-    }
-
-    @Test
-    public void testSingleSequenceStatic() throws IOException, GeneralSecurityException, URISyntaxException {
-        final File testOutputFile = createTempFile("fwr-test", ".random0.fasta");
-        final Map<String, byte[]> seqs = Collections.singletonMap("seqA", new RandomDNA(1341).nextBases(100));
-        final Map<String, Integer> bpls = Collections.singletonMap("seqA", FastaReferenceWriter.DEFAULT_BASES_PER_LINE);
-        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(
-                Collections.singletonList(new SAMSequenceRecord("seqA", 100))
-        );
-        FastaReferenceWriter.writeSingleSequenceReference(testOutputFile.toPath(),
-                true, true, "seqA", null, seqs.get("seqA"));
-        assertOutput(testOutputFile.toPath(), true, true, false, dictionary, FastaReferenceWriter.DEFAULT_BASES_PER_LINE, seqs, bpls);
         Assert.assertTrue(testOutputFile.delete());
         Assert.assertTrue(ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(testOutputFile).delete());
         Assert.assertTrue(ReferenceSequenceFileFactory.getFastaIndexFileName(testOutputFile.toPath()).toFile().delete());
@@ -321,6 +305,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         Assert.assertTrue(testDictOutputFile.delete());
     }
 
+
     private void generateRandomBasesAndBpls(SAMSequenceDictionary dictionary, int minBpl, int maxBpl, Map<String, byte[]> bases, Map<String, Integer> bpl, Random rdn) {
         final RandomDNA rdnDNA = new RandomDNA(rdn.nextLong());
         // We avoid to use the obvious first choice {@link RandomDNA#nextFasta} as these may actually use
@@ -335,8 +320,6 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         }
     }
 
-
-
     private void writeReference(final FastaReferenceWriter writer, final boolean withDescriptions,
                                 final Random rdn, final SAMSequenceDictionary dictionary,
                                 final Map<String, byte[]> seqs,
@@ -344,43 +327,24 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
             throws IOException {
         for (final SAMSequenceRecord sequence : dictionary.getSequences()) {
             final int bpl = basesPerLine.get(sequence.getSequenceName());
-            final boolean onOneGo = rdn.nextDouble() < 0.25; // 25% of times we just write the whole sequence of one go.
-            final boolean useAppendSequence = onOneGo && rdn.nextBoolean();
             if (withDescriptions) {
                 final String description = String.format("index=%d\tlength=%d",
                         dictionary.getSequenceIndex(sequence.getSequenceName()),
                         sequence.getSequenceLength());
                 if (bpl < 0) {
-                    if (useAppendSequence) {
-                        Assert.assertSame(writer.appendSequence(sequence.getSequenceName(), description, seqs.get(sequence.getSequenceName())), writer);
-                    } else {
-                        Assert.assertSame(writer.startSequence(sequence.getSequenceName(), description), writer);
-                    }
+                    Assert.assertSame(writer.startSequence(sequence.getSequenceName(), description), writer);
                 } else {
-                    if (useAppendSequence) {
-                        Assert.assertSame(writer.appendSequence(sequence.getSequenceName(), description, bpl, seqs.get(sequence.getSequenceName())), writer);
-                    } else {
-                        Assert.assertSame(writer.startSequence(sequence.getSequenceName(), description, bpl), writer);
-                    }
+                    Assert.assertSame(writer.startSequence(sequence.getSequenceName(), description, bpl), writer);
                 }
             } else {
                 if (bpl < 0) {
-                    if (useAppendSequence) {
-                        Assert.assertSame(writer.appendSequence(sequence.getSequenceName(), seqs.get(sequence.getSequenceName())), writer);
-                    } else {
-                        Assert.assertSame(writer.startSequence(sequence.getSequenceName()), writer);
-                    }
+                    Assert.assertSame(writer.startSequence(sequence.getSequenceName()), writer);
                 } else {
-                    if (useAppendSequence) {
-                        Assert.assertSame(writer.appendSequence(sequence.getSequenceName(), null, bpl, seqs.get(sequence.getSequenceName())), writer);
-                    } else {
-                        Assert.assertSame(writer.startSequence(sequence.getSequenceName(), bpl), writer);
-                    }
+                    Assert.assertSame(writer.startSequence(sequence.getSequenceName(), bpl), writer);
                 }
             }
-            if (useAppendSequence) {
-                // added already.
-            } else if (onOneGo) {
+            final boolean onOneGo = rdn.nextDouble() < 0.25; // 25% of times we just write the whole sequence of one go.
+            if (onOneGo) {
                 Assert.assertSame(writer.appendBases(seqs.get(sequence.getSequenceName())), writer);
             } else {
                 int done = 0;
@@ -416,6 +380,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
             assertFastaIndexContent(path, ReferenceSequenceFileFactory.getFastaIndexFileName(path), dictionary, bases);
         }
     }
+
 
     private void assertFastaContent(final Path path, final boolean withDescriptions, final SAMSequenceDictionary dictionary, final int defaultBpl,
                                     final Map<String, byte[]> bases, final Map<String, Integer> basesPerLine)
@@ -522,4 +487,5 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         }
         return result.toArray(new Object[result.size()][]);
     }
+
 }

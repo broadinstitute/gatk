@@ -14,12 +14,24 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.SamStreams;
 import htsjdk.samtools.cram.build.CramIO;
-import java.io.*;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.*;
-
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -379,6 +391,26 @@ public final class ReadUtils {
     }
 
     /**
+     * Encapsulates a string attribute into an {@link Optional<String>} instance.
+     *
+     * @param read the input read.
+     * @param tag the attribute tag name.
+     * @throws IllegalArgumentException if {@code read} or {@code tag} are {@code null}.
+     * @throws GATKException.ReadAttributeTypeMismatch if the attribute
+     *         value cannot be typed as a single String value.
+     * @return never {@code null}, but perhaps empty indicating that no value was provided for this attribute.
+     */
+    public static Optional<String> getOptionalStringAttribute(final GATKRead read, final String tag) {
+        Utils.nonNull(read);
+        Utils.nonNull(tag);
+        if (!read.hasAttribute(tag)) {
+            return Optional.empty();
+        } else {
+            return Optional.of(read.getAttributeAsString(tag));
+        }
+    }
+
+    /**
      * Encapsulates a integer attribute into an {@link OptionalInt} instance.
      * @param read the input read.
      * @param tag the attribute tag name.
@@ -392,6 +424,7 @@ public final class ReadUtils {
         final Integer obj = read.getAttributeAsInteger(tag);
         return obj == null ? OptionalInt.empty() : OptionalInt.of(obj);
     }
+
 
     /**
      * Helper method for interrogating if a read and its mate (if it exists) are unmapped
@@ -1198,7 +1231,7 @@ public final class ReadUtils {
                 return SamStreams.isCRAMFile(bis);
             }
         }
-        catch (IOException e) {
+        catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(e.getMessage());
         }
     }

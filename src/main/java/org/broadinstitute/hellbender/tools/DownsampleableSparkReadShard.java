@@ -51,4 +51,9 @@ public final class DownsampleableSparkReadShard implements Shard<GATKRead>, Seri
 
         return readsIterator;
     }
+
+    @Override
+    public ShardBoundary getBoundary() {
+        return boundaries;
+    }
 }

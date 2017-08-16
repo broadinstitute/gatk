@@ -26,7 +26,7 @@ public enum Strand {
         charEncoding = ce;
     }
 
-    public static Strand decode(final String ce) {
+    public static Strand decode(final CharSequence ce) {
         Utils.nonNull(ce);
         if (ce.length() == 1)
             return decode(ce.charAt(0));
@@ -48,10 +48,14 @@ public enum Strand {
     @Override
     public String toString() { return encodeAsString(); };
 
-    String encodeAsString() { return "" + charEncoding; }
+    public String encodeAsString() { return "" + charEncoding; }
 
     public void serialize(final Kryo kryo, final Output output) {
         output.write(this.ordinal());
+    }
+
+    public char encodeAsChar() {
+        return charEncoding;
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<Strand> {

@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.utils.reference;
 
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -55,8 +58,134 @@ public final class ReferenceBases implements Serializable {
         return result;
     }
 
+    /**
+     * Returns the bases.
+     * @return never {@code null}, this is a direct reference to this object bases, so the caller must refrain from modifying them
+     *  as it will alter the state of this object.
+     */
     public byte[] getBases() {
         return bases;
+    }
+
+    /**
+     * Returns a copy of a subrange of the bases given the start and end positions (1-based closed).
+     *
+     * <p>
+     *     This is a more efficient short-hand for {@code this.getSubset(new SimpleInterval(this.getContig(), start, end)).getBases() }.
+     * </p>
+     * @param start the sub-interval start.
+     * @param end the sub-interval end.
+     * @IllegalArgumentException if the input start-end interval is not completelly contained in this reference-bases own interval or it
+     * is an empty interval (start > end).
+     * @return the returned array is a new byte array so the caller is free to modify it.
+     */
+    public byte[] getSubsetBases(final int start, final int end) {
+        final int intervalStart = interval.getStart();
+        final int intervalEnd = interval.getEnd();
+        Utils.validateArg(start >= intervalStart, "the start of the subset must be within this reference bases interval");
+        Utils.validateArg(end <= intervalEnd, "the end of the subset must be within this reference bases interval");
+        Utils.validateArg(start <= end, "the start must be less or equal to the end");
+        return Arrays.copyOfRange(bases, start - intervalStart, bases.length  + end - intervalEnd);
+    }
+
+    public StringBuilder appendBasesTo(final StringBuilder builder, final int start, final int end) {
+        Utils.nonNull(builder);
+        final int intervalStart = interval.getStart();
+        final int intervalEnd = interval.getEnd();
+        Utils.validateArg(start >= intervalStart, "the start of the subset must be within this reference bases interval");
+        Utils.validateArg(end <= intervalEnd, "the end of the subset must be within this reference bases interval");
+
+        final int firstIndex = start - intervalStart;
+        final int lastIndex = end - intervalStart;
+        for (int i = firstIndex; i <= lastIndex; ++i) {
+            builder.append((char) bases[i]);
+        }
+        return builder;
+    }
+
+    public String toBaseString(final int start, final int end) {
+        return appendBasesTo(new StringBuilder(Math.min(0, end - start)), start, end).toString();
+    }
+
+    public String toBaseString() {
+        return toBaseString(getInterval().getStart(), getInterval().getEnd());
+    }
+
+    /**
+     * Copies the base into an existing array.
+     * <p>
+     *     This method accepts a {@code end} smaller than start in which case copies the bases in the reverse order.
+     * </p>
+     *
+     *
+     * @param dest the destination array.
+     * @param offset the offset in the destination array of the first base copied.
+     * @param start the absolute position in the enclosing contig of the first base to be copied (inclusive).
+     * @param end the absolute position in the enclosing contig of the last base to be copied (inclusive).
+     * @param complement whether to copy the complement bases rather than the actual bases.
+     * @throws IllegalArgumentException if {@code dest} is {@code null}, it is not large enough to contain the requested
+     * bases given the input {@code offset} or if the requested sub-interval and offset values are invalid (negative or outside this reference-bases interval) otherwise.
+     */
+    public void copyBases(final byte[] dest, final int offset, final int start, final int end, final boolean complement) {
+        ParamUtils.inRange(offset, 0, dest.length, "the offset must be a valid index");
+        Utils.validateArg(offset + end - start + 1 <= dest.length, "the destination array must be large enough to contain the requested bases");
+        final int intervalStart = interval.getStart();
+        final int intervalEnd = interval.getEnd();
+        Utils.validateArg(start >= intervalStart, "the requested start must be part of this reference base interval");
+        Utils.validateArg(end <= intervalEnd, "the requested end must be part of this reference base interval");
+        final boolean reverse = start > end;
+        final int actualStart = !reverse ? start : end;
+        final int actualEnd = !reverse ? end : start;
+        final int length = actualEnd - actualStart + 1;
+        System.arraycopy(bases, actualStart - intervalStart, dest, offset, length);
+        if (reverse) {
+            if (complement) {
+                SequenceUtil.reverseComplement(dest, offset, length);
+            } else {
+                SequenceUtil.reverse(dest, offset, length);
+            }
+        } else if (complement) {
+            //TODO submitted a PR to htjdk to add a complement(byte[]) method to SequenceUtil.
+            //TODO once accepted this loop should be subtituted to a call to that method.
+            for (int i = 0; i < length; i++) {
+                dest[offset + i] = SequenceUtil.complement(dest[offset + i]);
+            }
+        }
+    }
+
+    /**
+     * Returns the union of two overlapping reference-bases.
+     * @param a
+     * @param b
+     * @throws IllegalArgumentException if either input in {@code null} or they don't overlap or they are not
+     * adjacent.
+     * @return never {@code null}
+     */
+    public static ReferenceBases union(final ReferenceBases a, final ReferenceBases b) {
+        Utils.nonNull(a, "the input reference bases cannot be null");
+        Utils.nonNull(b, "the input reference bases cannot be null");
+        Utils.validateArg(a.getInterval().overlapsWithMargin(b.getInterval(), 1), "the input reference bases must overlap or be adjacent");
+        if (a.getInterval().contains(b.getInterval())) {
+            return a;
+        } else if (b.getInterval().contains(b.getInterval())) {
+            return b;
+        } else {
+            final ReferenceBases upstream, downstream;
+            if (a.getInterval().getStart() < b.getInterval().getStart()) {
+                upstream = a; downstream = b;
+            } else {
+                upstream = b; downstream = a;
+            }
+            final SimpleInterval resultInterval = new SimpleInterval(upstream.getInterval().getContig(),
+                    upstream.getInterval().getStart(),
+               downstream.getInterval().getEnd());
+
+            final byte[] bases = new byte[resultInterval.size()];
+            upstream.copyBases(bases, 0, upstream.getInterval().getStart(), upstream.getInterval().getEnd(), false);
+            downstream.copyBases(bases, upstream.getInterval().size(), upstream.getInterval().getEnd() + 1,
+                    downstream.getInterval().getEnd(), false);
+            return new ReferenceBases(bases, resultInterval);
+        }
     }
 
     public SimpleInterval getInterval() {

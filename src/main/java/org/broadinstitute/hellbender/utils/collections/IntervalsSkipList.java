@@ -5,6 +5,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Holds many intervals in memory, with an efficient operation to get
@@ -12,7 +14,7 @@ import java.util.*;
  *
  * This version allows intervals to lie on different contigs.
  */
-public final class IntervalsSkipList<T extends Locatable> implements Serializable {
+public final class IntervalsSkipList<T extends Locatable> implements Serializable, Iterable<T> {
     private static final long serialVersionUID = 1L;
 
     private final Map<String, IntervalsSkipListOneContig<T>> intervals;
@@ -51,4 +53,10 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
         return result.getOverlapping(query);
     }
 
+    @Override
+    public Iterator<T> iterator() {
+        return intervals.values().stream()
+                .flatMap(contig -> StreamSupport.stream(contig.spliterator(), false))
+                .iterator();
+    }
 }

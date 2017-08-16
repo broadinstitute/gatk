@@ -169,5 +169,4 @@ public final class BucketUtilsTest extends GATKBaseTest {
         BucketUtils.deleteFile(intermediate);
         Assert.assertFalse(BucketUtils.fileExists(intermediate));
     }
-
 }

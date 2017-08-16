@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import breeze.util.Opt;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -242,8 +244,8 @@ public class SVFastqUtils {
         }
 
         private FastqRead( final Kryo kryo, final Input input ) {
-            header = input.readString();
-            final int nBases = input.readInt();
+           header = input.readString();
+           final int nBases = input.readInt();
             bases = new byte[nBases];
             input.readBytes(bases);
             quals = new byte[nBases];
@@ -261,6 +263,21 @@ public class SVFastqUtils {
         public String getId() {
             final String[] headerParts = header.split(HEADER_FIELD_SEPARATOR_STR);
             return headerParts[0].substring(1); // skip the '@'.
+        }
+
+        public TemplateFragmentOrdinal getFragmentOrdinal() {
+            final String id = getId();
+            final int fragmentPartStart = id.lastIndexOf(FRAGMENT_NUMBER_SEPARATOR_CHR);
+            if (fragmentPartStart < 0) {
+                return TemplateFragmentOrdinal.UNPAIRED;
+            } else {
+                try {
+                    final int number = Integer.parseInt(id.substring(fragmentPartStart + 1));
+                    return TemplateFragmentOrdinal.valueOf(number);
+                } catch (final NumberFormatException ex) {
+                    return TemplateFragmentOrdinal.PAIRED_UNKNOWN;
+                }
+            }
         }
 
         public String getName() { final String id = getId();

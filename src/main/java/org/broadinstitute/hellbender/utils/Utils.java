@@ -1,11 +1,15 @@
 package org.broadinstitute.hellbender.utils;
 
+import breeze.collection.immutable.BinomialHeap;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
+import java.io.FileNotFoundException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -721,7 +725,7 @@ public final class Utils {
 
     public static void validateArg(final boolean condition, final String msg){
         if (!condition){
-            throw new IllegalArgumentException(msg);
+                    throw new IllegalArgumentException(msg);
         }
     }
 
@@ -1094,11 +1098,33 @@ public final class Utils {
         };
     }
 
+
+    /**
+     * Returns a new iterable that goes over two other iterables in order.
+     *
+     * @param head the first input collection.
+     * @param tail the second input collection.
+     * @param <T> the element type.
+     * @return never {@code null}, but perhaps empty.
+     */
+    public static <T> Iterable<? extends T> concat(final Iterable<? extends T> head,
+                                                   final Iterable<? extends T> tail) {
+        if (Utils.isEmpty(head)) {
+            return Utils.nonNull(tail);
+        } else if (Utils.isEmpty(tail)) {
+            return Utils.nonNull(head);
+        } else {
+            return (Iterable<T>) () -> Iterators.concat(head.iterator(), tail.iterator());
+        }
+    }
+
     public static <T> Stream<T> stream(final Iterable<T> iterable) {
+        Utils.nonNull(iterable);
         return StreamSupport.stream(iterable.spliterator(), false);
     }
 
     public static <T> Stream<T> stream(final Iterator<T> iterator) {
+        Utils.nonNull(iterator);
         return stream(() -> iterator);
     }
 
@@ -1180,7 +1206,6 @@ public final class Utils {
         final List<T> sorted = values.stream().sorted().collect(Collectors.toList());
         return sorted.get(sorted.size() / 2);
     }
-
 
     /**
      * Splits a String using indexOf instead of regex to speed things up.
@@ -1366,9 +1391,143 @@ public final class Utils {
 
     private static Collection<Pattern> compilePatterns(final Collection<String> filters) {
         final Collection<Pattern> patterns = new ArrayList<Pattern>();
-        for (final String filter: filters) {
+        for (final String filter : filters) {
             patterns.add(Pattern.compile(filter));
         }
         return patterns;
+    }
+
+    /**
+     * Returns the number of elements in an iterable.
+     * @param elements the target iterable.
+     * @return 0 or greater.
+     */
+    public static int size(final Iterable<?> elements) {
+        Utils.nonNull(elements);
+        // Considerable speed-up for most {@link Collection} implementations:
+        if (elements instanceof Collection) {
+            ((Collection<?>) elements).stream().spliterator().characteristics();
+            return ((Collection)elements).size();
+        } else {
+            final Spliterator<?> spliterator = elements.spliterator();
+            final long estimatedSize = spliterator.getExactSizeIfKnown();
+            if (estimatedSize >= 0) {
+                return (int) estimatedSize;
+            } else {
+                // fail-over general approach using an iterator:
+                final Iterator<?> it = elements.iterator();
+                int result = 0;
+                while (it.hasNext()) {
+                    it.next();
+                }
+                return result;
+            }
+        }
+    }
+
+    /**
+     * Checks whether a iterable has any elements.
+     * @param elements the target iterable.
+     * @return {@code true} iff {@code elements} has elements.
+     */
+    public static boolean isEmpty(final Iterable<?> elements) {
+        Utils.nonNull(elements);
+        if (elements instanceof Collection) { // a short cut that will do the job it most cases.
+            return ((Collection)elements).isEmpty();
+        } else { // fail-over general approach using an iterator.
+            return !elements.iterator().hasNext();
+        }
+    }
+
+    /**
+     * Wraps an iterator of a type {@link T} into an iterator of another type {@link U} given
+     * a {@link T} to {@link Iterator Iterator&lt;U&gt;} transformation {@link Function} where an input element may result in
+     * several output elements.
+     * <p>
+     *     Depending on the flat-map function provided this method will support input iterators that may return
+     *     {@code null} elements.
+     * </p>
+     * <p>
+     *     A {@code null} returned by the flat-map function would be interpreted as an empty iterator.
+     * </p>
+     * <p>
+     *     This method assumes that the input iterator's state won't be further modified outside the returned iterator.
+     * </p>
+     *
+     * @param in the input iterator.
+     * @param flatMapFunction the flat-map function.
+     * @param <T> the type parameter for the input element type.
+     * @param <U> the type parameter for the output element type.
+     * @throws IllegalArgumentException if any of {@code in} or {@code flatMapFunction} is {@code null}.
+     * @return never {@code null}.
+     */
+    public static <T, U> Iterator<U> flatMap(final Iterator<T> in,
+                                             final Function<? super T, Iterator<? extends U>> flatMapFunction) {
+        Utils.nonNull(in);
+        Utils.nonNull(flatMapFunction);
+        return new Iterator<U>() {
+
+            private Iterator<? extends U> subIterator;
+
+            @Override
+            public boolean hasNext() {
+                while (subIterator == null) {
+                    if (in.hasNext()) {
+                      subIterator = flatMapFunction.apply(in.next());
+                      if (subIterator != null && subIterator.hasNext()) {
+                          return true;
+                      } else {
+                          subIterator = null;
+                      }
+                    } else {
+                        return false;
+                    }
+                }
+                return true; // subIterator was not null from the start.
+            }
+
+            @Override
+            public U next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                } else {
+                    final U result = subIterator.next();
+                    if (!subIterator.hasNext()) {
+                        subIterator = null;
+                    }
+                    return result;
+                }
+            }
+        };
+    }
+
+
+    /**
+     * Given an iterator of certain type, it returns an iterator of another type given a function to transform
+     * between both types.
+     * <p>
+     *   {@code Null} element in the input and output iterator may be acceptable depending on the transformation function provided.
+     * </p>
+         * @param in the input iterator.
+         * @param mapFunction the function to map from {@link T} to {@link U}
+         * @param <T> the input element type.
+         * @param <U> the output element type.
+         * @throws IllegalArgumentException if {@code in} is {@code null} or {@code mapFunction} is {@code null}.
+         * @return never {@code null}.
+         */
+    public static <T, U> Iterator<U> map(final Iterator<? extends T> in, final Function<? super T, ? extends U> mapFunction) {
+        Utils.nonNull(in);
+        Utils.nonNull(mapFunction);
+        return new Iterator<U>() {
+            @Override
+            public boolean hasNext() {
+                return in.hasNext();
+            }
+
+            @Override
+            public U next() {
+                return mapFunction.apply(in.next());
+            }
+        };
     }
 }

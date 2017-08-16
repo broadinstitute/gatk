@@ -2,17 +2,23 @@ package org.broadinstitute.hellbender.utils.bwa;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 import java.util.stream.Stream;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
+
+import java.util.function.IntFunction;
+import java.util.stream.Collectors;
 
 /**
  * Utils to move data from a BwaMemAlignment into a GATKRead, or into a SAM tag.
  */
 public class BwaMemAlignmentUtils {
+
     /**
      * Builds a SAMRecord from unaligned read data and an alignment.
      * qualsArg can be null.
@@ -91,6 +97,20 @@ public class BwaMemAlignmentUtils {
         //TODO: there ought to be a way to indicate a set of tag names that ought to be copied -- we're just doing RG
         if ( readGroup != null ) samRecord.setAttribute(SAMTag.RG.name(), readGroup);
         return samRecord;
+    }
+
+    public static List<AlignmentInterval> toAlignmentIntervals(final List<BwaMemAlignment> alignments,
+                                                               final IntFunction<String> indexToSeqName, final int sequenceLength) {
+        Utils.nonNull(alignments);
+        Utils.nonNull(indexToSeqName);
+        ParamUtils.isPositive(sequenceLength, "the sequence length cannot be 0 or negative");
+        if (alignments.isEmpty() || SAMFlag.READ_UNMAPPED.isSet(alignments.get(0).getSamFlag())) {
+            return Collections.emptyList();
+        } else {
+            return alignments.stream()
+                    .map(bwa -> new AlignmentInterval(bwa, indexToSeqName, sequenceLength))
+                    .collect(Collectors.toList());
+        }
     }
 
     /**

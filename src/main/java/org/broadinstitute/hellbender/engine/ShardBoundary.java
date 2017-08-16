@@ -30,7 +30,15 @@ public class ShardBoundary implements Locatable, Serializable {
         this.paddedInterval = paddedInterval;
     }
 
+    public ShardBoundary(final SimpleInterval interval) {
+        this(interval, interval);
+    }
 
+    /**
+     * Returns the contig for this shard.
+     *
+     * @return never {@code null}.
+     */
     @Override
     public String getContig() {
         return interval.getContig();
@@ -87,5 +95,23 @@ public class ShardBoundary implements Locatable, Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(interval, paddedInterval);
+    }
+
+    /**
+     * Returns a human readable representation of the boundary.
+     * <p>
+     *     The format is:
+     *     <pre>
+     *         chr:paddedStart[start-end]paddedEnd
+     *     </pre>
+     * </p>
+     *
+     * @return never {@code null}
+     */
+    @Override
+    public String toString() {
+        return String.format("%s:%d[%d-%d]%d", getContig(),
+                paddedInterval.getStart(), interval.getStart(),
+                interval.getEnd(), paddedInterval.getEnd());
     }
 }

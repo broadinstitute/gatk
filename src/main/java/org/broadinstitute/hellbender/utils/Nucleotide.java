@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+
 /**
  * Represents the nucleotide alphabet with support for IUPAC ambiguity codes.
  *
@@ -366,6 +367,18 @@ public enum Nucleotide {
     public Nucleotide intersect(final Nucleotide other) {
         Utils.nonNull(other, "the other nucleotide cannot be null");
         return maskToValue[mask & other.mask];
+    }
+
+    /**
+     * Checks whether this an another nucleotide intersection
+     * is not empty.
+     * @param other the other nucleotide.
+     * @throws IllegalArgumentException if {@code other} is {@code null}.
+     * @return {@code true} iff they intersect.
+     */
+    public boolean intersects(final Nucleotide other) {
+        Utils.nonNull(other);
+        return (this.mask & other.mask) != 0;
     }
 
     /**

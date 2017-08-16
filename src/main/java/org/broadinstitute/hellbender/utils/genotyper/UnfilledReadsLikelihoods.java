@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +52,7 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
                             final GATKRead[][] readsBySampleIndex,
                             final Object2IntMap<GATKRead>[] readIndex,
                             final double[][][] values) {
-       super(alleles, samples, readsBySampleIndex, readIndex, values);
+       super(alleles, samples, readsBySampleIndex, Arrays.asList(readIndex), values);
     }
 
     /**
@@ -85,7 +86,7 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
      * Create an independent copy of this read-likelihoods collection
      */
     @Override
-    ReadLikelihoods<A> copy() {
+    public ReadLikelihoods<A> copy() {
 
         final int sampleCount = samples.numberOfSamples();
         final int alleleCount = alleles.numberOfAlleles();

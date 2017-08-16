@@ -40,6 +40,13 @@ public final class SimpleInterval implements Locatable, Serializable {
         this.end = end;
     }
 
+     /**
+      * Create a single base interval
+      */
+     public SimpleInterval(final String contig, final int position) {
+         this(contig, position, position);
+     }
+
     /**
      * Create a new SimpleInterval from a {@link Locatable}
      * @param locatable any Locatable
@@ -69,6 +76,25 @@ public final class SimpleInterval implements Locatable, Serializable {
       */
      public static boolean isValid(final String contig, final int start, final int end) {
          return contig != null && start > 0 && end >= start;
+     }
+
+     /**
+      * Returns a {@link SimpleInterval} that represent the interval that a locatable extends.
+      * <p>
+      *     The difference with just using {@link #SimpleInterval(Locatable)} is that method will avoid
+      *     the instantiation of new object if the input locatable happens to be a {@link SimpleInterval} instance.
+      * </p>
+      * @param locatable the input locatable.
+      * @throws IllegalArgumentException if {@code locatable} is not valid as described in {@link #SimpleInterval(Locatable)}
+      * @return never {@code null}.
+      */
+     public static SimpleInterval valueOf(final Locatable locatable) {
+         Utils.nonNull(locatable);
+         if (locatable instanceof SimpleInterval) {
+             return (SimpleInterval) locatable;
+         } else {
+             return new SimpleInterval(locatable);
+         }
      }
 
      /**
@@ -340,5 +366,17 @@ public final class SimpleInterval implements Locatable, Serializable {
          Utils.nonNull( contigRecord, () -> "Contig " + contig + " not found in provided dictionary");
 
          return expandWithinContig(padding, contigRecord.getSequenceLength());
+     }
+
+     /**
+      * Returns an interval that expands only the first base of this interval.
+      * @return never {@code null}.
+      */
+     public SimpleInterval getStartInterval() {
+         if (start == end) {
+             return this;
+         } else {
+             return new SimpleInterval(contig, start, start);
+         }
      }
  }

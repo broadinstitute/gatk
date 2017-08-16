@@ -57,9 +57,67 @@ public final class GenotypeLikelihoodCalculator {
     private final int ploidy;
 
     /**
+     * Precalculate log10(ploidy) often used in calculations.
+     */
+    private final double log10Ploidy;
+
+    /**
      * Max-heap for integers used for this calculator internally.
      */
     private final PriorityQueue<Integer> alleleHeap;
+
+    private double[] relativeAlleleFrequency;
+    private double[] log10RelativeAlleleFrequency;
+
+    /**
+     * Sets relative frequencies to be used in heterozygous genotypes.
+     * <p>
+     *     By default all allele are have the same relative frequencies in
+     *     heterozygous genotypes.
+     * </p>
+     * @param value it could be null indicating the default (uniform) is to be applied.
+     * @throws IllegalArgumentException if the input array length does not correspond for
+     * the number of alleles for this calculator. Also if it contains negative or non-finite
+     * values.
+     */
+    public void setRelativeAlleleFrequency(final double ... value) {
+        Utils.nonNull(value); // just in case
+        if (value.length != alleleCount) {
+            throw new IllegalArgumentException();
+        } else {
+            relativeAlleleFrequency = value.clone();
+            log10RelativeAlleleFrequency = new double[relativeAlleleFrequency.length];
+            double sum = 0;
+            for (final double freq : relativeAlleleFrequency) {
+                if (Double.isFinite(freq) && freq > 0) {
+                    sum += freq;
+                } else {
+                    throw new IllegalArgumentException("invalid freq value: " + freq);
+                }
+            }
+            final double invSum = 1.0 / sum;
+            for (int i = 0; i < relativeAlleleFrequency.length; i++) {
+                relativeAlleleFrequency[i] *= invSum;
+                log10RelativeAlleleFrequency[i] = Math.log10(relativeAlleleFrequency[i]);
+            }
+        }
+    }
+
+    /**
+     * Reverts relative frequencies to the default uniform.
+     */
+    public void resetRelativeAlleleFrequency() {
+        relativeAlleleFrequency = null;
+        log10RelativeAlleleFrequency = null;
+    }
+
+    /**
+     * Returns a copy of the current relative frequencies to be applied for alleles in heterozygous genotype likelihoods.
+     * @return might be {@code null} indicating the default (all equal) frequencies are to be used.
+     */
+    public double[] getRelativeAlleleFrequency() {
+        return relativeAlleleFrequency != null ? relativeAlleleFrequency.clone() : null;
+    }
 
     /**
      * Cache of the last genotype-allele-count requested using {@link #genotypeAlleleCountsAt(int)}, when it
@@ -148,6 +206,7 @@ public final class GenotypeLikelihoodCalculator {
         genotypeAlleleCounts = genotypeTableByPloidy[ploidy];
         this.alleleCount = alleleCount;
         this.ploidy = ploidy;
+        this.log10Ploidy = Math.log10(ploidy);
         genotypeCount = this.alleleFirstGenotypeOffsetByPloidy[ploidy][alleleCount];
         alleleHeap = new PriorityQueue<>(ploidy, Comparator.<Integer>naturalOrder().reversed());
         readLikelihoodsByGenotypeIndex = new double[genotypeCount][];
@@ -275,7 +334,7 @@ public final class GenotypeLikelihoodCalculator {
      */
     private double[] genotypeLikelihoods(final double[][] readLikelihoodsByGenotypeIndex, final int readCount) {
         final double[] result = new double[genotypeCount];
-        final double denominator = readCount * MathUtils.log10(ploidy);
+        final double denominator = readCount * log10Ploidy;
         // instead of dividing each read likelihood by ploidy ( so subtract log10(ploidy) )
          // we multiply them all and the divide by ploidy^readCount (so substract readCount * log10(ploidy) )
         for (int g = 0; g < genotypeCount; g++) {
@@ -348,13 +407,26 @@ public final class GenotypeLikelihoodCalculator {
         genotypeAlleleCounts.copyAlleleCounts(genotypeAllelesAndCounts,0);
         final int componentCount = genotypeAlleleCounts.distinctAlleleCount();
         final int alleleDataSize = (ploidy + 1) * readCount;
-        for (int c = 0,cc = 0; c < componentCount; c++) {
-            final int alleleIndex = genotypeAllelesAndCounts[cc++];
-            final int alleleCount = genotypeAllelesAndCounts[cc++];
-            // alleleDataOffset will point to the index of the first read likelihood for that allele and allele count.
-            int alleleDataOffset = alleleDataSize * alleleIndex + alleleCount * readCount;
-            for (int r = 0, readDataOffset = c; r < readCount; r++, readDataOffset += maximumDistinctAllelesInGenotype) {
-                readGenotypeLikelihoodComponents[readDataOffset] = readLikelihoodComponentsByAlleleCount[alleleDataOffset++];
+        if (relativeAlleleFrequency == null) {
+            for (int c = 0, cc = 0; c < componentCount; c++) {
+                final int alleleIndex = genotypeAllelesAndCounts[cc++];
+                final int alleleCount = genotypeAllelesAndCounts[cc++];
+                // alleleDataOffset will point to the index of the first read likelihood for that allele and allele count.
+                int alleleDataOffset = alleleDataSize * alleleIndex + alleleCount * readCount;
+                for (int r = 0, readDataOffset = c; r < readCount; r++, readDataOffset += maximumDistinctAllelesInGenotype) {
+                    readGenotypeLikelihoodComponents[readDataOffset] = readLikelihoodComponentsByAlleleCount[alleleDataOffset++];
+                }
+            }
+        } else {
+            for (int c = 0, cc = 0; c < componentCount; c++) {
+                final int alleleIndex = genotypeAllelesAndCounts[cc++];
+                final int alleleCount = genotypeAllelesAndCounts[cc++];
+                final double rel = log10RelativeAlleleFrequency[alleleIndex] + log10Ploidy;
+                // alleleDataOffset will point to the index of the first read likelihood for that allele and allele count.
+                int alleleDataOffset = alleleDataSize * alleleIndex + alleleCount * readCount;
+                for (int r = 0, readDataOffset = c; r < readCount; r++, readDataOffset += maximumDistinctAllelesInGenotype) {
+                    readGenotypeLikelihoodComponents[readDataOffset] = readLikelihoodComponentsByAlleleCount[alleleDataOffset++] + rel;
+                }
             }
         }
 
@@ -378,10 +450,20 @@ public final class GenotypeLikelihoodCalculator {
         final int freq1 = ploidy - freq0; // no need to get it from genotypeAlleleCounts.
         int allele0LnLkOffset = readCount * ((ploidy + 1) * allele0 + freq0);
         int allele1LnLkOffset = readCount * ((ploidy + 1) * allele1 + freq1);
-        for (int r = 0; r < readCount; r++) {
-            final double lnLk0 = readLikelihoodComponentsByAlleleCount[allele0LnLkOffset++];
-            final double lnLk1 = readLikelihoodComponentsByAlleleCount[allele1LnLkOffset++];
-            likelihoodByRead[r] = MathUtils.approximateLog10SumLog10(lnLk0, lnLk1);
+        if (relativeAlleleFrequency == null) {
+            for (int r = 0; r < readCount; r++) {
+                final double lnLk0 = readLikelihoodComponentsByAlleleCount[allele0LnLkOffset++];
+                final double lnLk1 = readLikelihoodComponentsByAlleleCount[allele1LnLkOffset++];
+                likelihoodByRead[r] = MathUtils.approximateLog10SumLog10(lnLk0, lnLk1);
+            }
+        } else {
+            final double rel0 = log10RelativeAlleleFrequency[allele0] + log10Ploidy;
+            final double rel1 = log10RelativeAlleleFrequency[allele1] + log10Ploidy;
+            for (int r = 0; r < readCount; r++) {
+                final double lnLk0 = readLikelihoodComponentsByAlleleCount[allele0LnLkOffset++];
+                final double lnLk1 = readLikelihoodComponentsByAlleleCount[allele1LnLkOffset++];
+                likelihoodByRead[r] = MathUtils.approximateLog10SumLog10(lnLk0 + rel0, lnLk1 + rel1);
+            }
         }
     }
 

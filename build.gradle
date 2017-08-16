@@ -318,7 +318,7 @@ dependencies {
         exclude module: 'htsjdk'
     }
 
-    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
+    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.5'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
 
     // Required for COSMIC Funcotator data source:

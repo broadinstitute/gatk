@@ -288,4 +288,20 @@ public final class RandomDNA {
         nextBasesSize--;
         return result;
     }
+
+    /**
+     * Generates a random mutation given the original base.
+     * @param base
+     * @return
+     */
+    public byte mutate(final byte base) {
+        final int type = random.nextInt(3);
+        final Nucleotide original = Nucleotide.decode(base);
+        if (type == 0) {
+            return original.transition().encodeAsByte();
+        }
+        final Nucleotide result = type == 0 ? original.transition()
+                : original.transversion(type == 1);
+        return result.encodeAsByte(Character.isLowerCase((char) base));
+    }
 }

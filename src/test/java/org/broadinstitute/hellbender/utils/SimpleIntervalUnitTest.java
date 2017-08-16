@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.SimpleFeature;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -319,6 +320,24 @@ public final class SimpleIntervalUnitTest extends GATKBaseTest {
                 { new SimpleInterval("1", 1, 10), 1, CONTIG_LENGTH, null },
                 { new SimpleInterval("1", 1, 10), 1, CONTIG_LENGTH, badDictionary }
         };
+    }
+
+    @Test
+    public void testValueOf() {
+        final SimpleInterval subject = new SimpleInterval("ctg1", 1, 100);
+        Assert.assertSame(SimpleInterval.valueOf(subject), subject);
+        Assert.assertEquals(SimpleInterval.valueOf(new SimpleFeature("ctg1", 1, 100)), subject);
+    }
+
+    @Test
+    public void testStartInterval() {
+        Assert.assertEquals(new SimpleInterval("ctg1", 2, 100).getStartInterval(), new SimpleInterval("ctg1", 2, 2));
+        Assert.assertEquals(new SimpleInterval("ctg1", 2, 2).getStartInterval(), new SimpleInterval("ctg1", 2, 2));
+    }
+
+    @Test
+    public void testSingleBaseIntervalConstructor() {
+        Assert.assertEquals(new SimpleInterval("ctg1", 2), new SimpleInterval("ctg1", 2, 2));
     }
 
     @Test(dataProvider = "ExpandWithinContigInvalidData", expectedExceptions = IllegalArgumentException.class)

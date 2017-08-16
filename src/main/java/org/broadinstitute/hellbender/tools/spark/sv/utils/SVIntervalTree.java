@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
@@ -117,6 +118,55 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
         }
 
         return result;
+    }
+
+    /**
+     * Get an value if the interval is already present in the try, otherwise add it to it.
+     * @param interval
+     * @param value
+     * @return {@code null} if the entry wasn't present in the tree, otherwise its value (which could itself be {@code null}).
+     */
+    public V putIfAbsent(final SVInterval interval, final V value) {
+        V result = sentinel;
+
+        if ( root == null ) {
+            root = new Node<>(interval, value);
+        } else {
+            Node<V> parent = null;
+            Node<V> node = root;
+            int cmpVal = 0;
+
+            while ( node != null ) {
+                parent = node; // last non-null node
+                cmpVal = interval.compareTo(node.getInterval());
+                if ( cmpVal == 0 ) {
+                    break;
+                }
+                node = cmpVal < 0 ? node.getLeft() : node.getRight();
+            }
+
+            if ( cmpVal == 0 ) {
+                result = parent.getValue();
+            } else if ( cmpVal < 0 ) {
+                root = parent.insertLeft(interval, value, root);
+            } else {
+                root = parent.insertRight(interval, value, root);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Put all the elements in another tree into this one.
+     * @param other the other tree.
+     * @throws IllegalArgumentException if {@code other} is {@code null}.
+     */
+    public void putAll(final SVIntervalTree<? extends V> other) {
+        Utils.nonNull(other);
+        for (final Entry<? extends V> entry : other) {
+            put(entry.getInterval(), entry.getValue());
+        }
     }
 
     /**
@@ -259,6 +309,27 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
             }
         }
         return false;
+    }
+
+    public int smallestGapLength(final SVInterval interval) {
+        return smallestGapLength(root, interval);
+    }
+
+    private int smallestGapLength(final Node<V> node, final SVInterval interval) {
+        if (node == null) {
+            return Integer.MAX_VALUE;
+        } else if (node.getMaxEndInterval().isUpstreamOf(interval)) {
+            return node.getMaxEndInterval().gapLen(interval);
+        } else if (node.getInterval().overlaps(interval)) {
+            return 0;
+        } else if (node.getLeft() == null && node.getRight() == null) {
+            return node.getInterval().gapLen(interval);
+        } else if (interval.isUpstreamOf(node.getInterval())) {
+            return Math.min(node.getInterval().gapLen(interval), smallestGapLength(node.getLeft(), interval));
+        } else {
+            return Math.min(node.getInterval().gapLen(interval), Math.min(smallestGapLength(node.getLeft(), interval),
+                    smallestGapLength(node.getRight(), interval)));
+        }
     }
 
     /**

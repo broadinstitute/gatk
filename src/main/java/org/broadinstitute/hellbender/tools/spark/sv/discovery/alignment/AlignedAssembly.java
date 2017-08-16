@@ -72,5 +72,5 @@ public final class AlignedAssembly {
         result = 31 * result + alignedContigs.hashCode();
         return result;
     }
-
+    
 }

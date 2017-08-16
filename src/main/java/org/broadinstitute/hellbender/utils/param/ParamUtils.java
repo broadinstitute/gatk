@@ -7,7 +7,12 @@ import org.apache.commons.math3.util.MathUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Collection;
 
 /**
  * This class should eventually be merged into Utils, which is in hellbender, and then this class should be deleted.
@@ -154,6 +159,14 @@ public class ParamUtils {
         return val;
     }
 
+    public static int isPositiveOrZeroInteger(final CharSequence seq, final String message) {
+        try {
+            return isPositiveOrZero(Integer.parseInt(seq.toString()), message);
+        } catch (final NumberFormatException | NullPointerException ex) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
     /**
      * Checks that the  input is greater than zero and returns the same value or throws an {@link IllegalArgumentException}
      * @param val value to check
@@ -296,5 +309,71 @@ public class ParamUtils {
                     prefix, value, validRange.getMinimumInteger(), validRange.getMaximumInteger()));
         }
         return value;
+    }
+
+    /**
+     * Checks that the input {@link Iterable} does not contain any {@code null}.
+     * <p>
+     *     Notice that this check won't fail if the input passed is itself a {@code null}, since a {@code null}
+     *     doesn't in fact contain any {@code null}.
+     * </p>
+     * <p>
+     *     If you want to customize the error message if the input is itself a null then you should use
+     *     {@link Utils#nonNull} to that effect:
+     *     <pre>
+     *         Utils.nonNull(input, "the input cannot be null");
+     *         ParamUtils.isNullFree(input, "the input must not contain any nulls");
+     *     </pre>
+     * </p>
+     * @param input the input iterable.
+     * @param message the error message for the exception in any null is is in the input.
+     * @param <E> the input iterable type.
+     * @return the same reference as the input iterable.
+     * @throws IllegalArgumentException if either the input does not contain any null.
+     */
+    public static <E extends Iterable<?>> E doesNotContainNulls(final E input, final String message) {
+        if (input != null) {
+            for (final Object obj : input) {
+                if (obj == null) {
+                    throw new IllegalArgumentException(message);
+                }
+            }
+        }
+        return input;
+    }
+
+    public static <E extends Iterable<?>> E doesNotContainNulls(final E input) {
+        return doesNotContainNulls(input, null);
+    }
+
+    /**
+     * Asserts that a collection is not empty.
+     * @param arg the collection to check.
+     * @param role name that identifies the collection amongst the parameters of the invoking method.
+     * @param <C> type of the input collection.
+     * @throws IllegalArgumentException if the input collection is {@code null} or it is empty.
+     * @return never {@code null}, the passed input collection reference.
+     */
+    public static <C extends Collection<?>> C isNotEmpty(final C arg, final String role) {
+        if (arg == null) {
+            throw new IllegalArgumentException(role + " must not be null");
+        } else if (arg.isEmpty()) {
+            throw new IllegalArgumentException(role + " must not be empty");
+        } else {
+            return arg;
+        }
+    }
+
+    public static <C extends Collection<?>> C isNotEmpty(final C arg) {
+        return isNotEmpty(arg, "input collection");
+    }
+
+    public static double isDouble(final CharSequence seq, final String error) {
+        Utils.nonNull(seq, "the input char sequence must not be null");
+        try {
+            return Double.parseDouble(seq.toString());
+        } catch (final NumberFormatException ex) {
+            throw new IllegalArgumentException(error, ex);
+        }
     }
 }

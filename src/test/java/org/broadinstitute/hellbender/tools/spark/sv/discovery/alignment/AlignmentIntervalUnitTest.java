@@ -5,6 +5,10 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.RandomDNA;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
@@ -122,6 +126,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
         final boolean[] strandedness = {true, false, true, false, false, true, false, true};
         final String[] cigarStrings = {"4M4S", "4M4H", "5M5S", "5M5H", "6S6M", "6H6M", "7S7M", "7H7M"}; // each different number represent a different contig's pair of chimeric alignments
         final Cigar[] cigars = Arrays.stream(cigarStrings).map(TextCigarCodec::decode).toArray(Cigar[]::new);
+
 
 
         final Object[][] data = new Object[cigars.length][];
@@ -342,7 +347,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "randomValidCigars")
     public static Object[][] randomValidCigars() {
-        final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, new Cigar());
+        final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, true, new Cigar());
         return cigars.stream().map(x -> new Object[] { x }).toArray(Object[][]::new);
     }
 

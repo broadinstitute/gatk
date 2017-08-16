@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.IndexedSet;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Allele list implementation using and indexed-set.
@@ -54,6 +55,10 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
      * @throws IllegalArgumentException if {@code alleles} is {@code null} or contains {@code null}s.
      */
     public IndexedAlleleList(final Collection<A> alleles) {
+        this.alleles = new IndexedSet<>(alleles);
+    }
+
+    public IndexedAlleleList(final List<A> alleles) {
         this.alleles = new IndexedSet<>(alleles);
     }
 

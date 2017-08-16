@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
@@ -13,6 +14,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -74,7 +76,9 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * <p>In order to save CPU time the indices contained in this array (not the array itself) is
      * lazily initialized by invoking {@link #readIndexBySampleIndex(int)}.</p>
      */
-    private final Object2IntMap<GATKRead>[] readIndexBySampleIndex;
+    private final List<Object2IntMap<GATKRead>> readIndexBySampleIndex;
+
+    private final List<Object2IntMap<String>> readNameIndexBySampleIndex;
 
     /**
      * Index of the reference allele if any, otherwise {@link #MISSING_REF}.
@@ -133,7 +137,12 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         valuesBySampleIndex = new double[sampleCount][][];
         referenceAlleleIndex = findReferenceAllele(alleles);
 
-        readIndexBySampleIndex = new Object2IntMap[sampleCount];
+        readIndexBySampleIndex =  new ArrayList<>(sampleCount);
+        readNameIndexBySampleIndex = new ArrayList<>(sampleCount);
+        for (int i = 0; i < sampleCount; i++) {
+            readIndexBySampleIndex.add(null);
+            readNameIndexBySampleIndex.add(null);
+        }
 
         setupIndexes(reads, sampleCount, alleleCount);
 
@@ -143,16 +152,20 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
 
     // Internally used constructor.
     @SuppressWarnings({"unchecked", "rawtypes"})
-    ReadLikelihoods(final AlleleList alleles,
+    ReadLikelihoods(final AlleleList<A> alleles,
                             final SampleList samples,
                             final GATKRead[][] readsBySampleIndex,
-                            final Object2IntMap<GATKRead>[] readIndex,
+                            final List<Object2IntMap<GATKRead>> readIndex,
                             final double[][][] values) {
         this.samples = samples;
         this.alleles = alleles;
         this.readsBySampleIndex = readsBySampleIndex;
         this.valuesBySampleIndex = values;
         this.readIndexBySampleIndex = readIndex;
+        this.readNameIndexBySampleIndex = new ArrayList<>(readIndex.size());
+        for (int i = 0; i < readIndex.size(); i++) {
+            readNameIndexBySampleIndex.add(null);
+        }
         final int sampleCount = samples.numberOfSamples();
         this.readListBySampleIndex = (List<GATKRead>[])new List[sampleCount];
 
@@ -187,7 +200,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * Create an independent copy of this read-likelihoods collection
      */
     @VisibleForTesting
-    ReadLikelihoods<A> copy() {
+    public ReadLikelihoods<A> copy() {
 
         final int sampleCount = samples.numberOfSamples();
         final int alleleCount = alleles.numberOfAlleles();
@@ -195,7 +208,10 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         final double[][][] newLikelihoodValues = new double[sampleCount][alleleCount][];
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        final Object2IntMap<GATKRead>[] newReadIndexBySampleIndex = new Object2IntMap[sampleCount];
+        final List<Object2IntMap<GATKRead>> newReadIndexBySampleIndex = new ArrayList<>(sampleCount);
+        for (int i = 0; i < sampleCount; i++) {
+            newReadIndexBySampleIndex.add(null);
+        }
         final GATKRead[][] newReadsBySampleIndex = new GATKRead[sampleCount][];
 
         for (int s = 0; s < sampleCount; s++) {
@@ -307,6 +323,14 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
             return readListBySampleIndex[sampleIndex] = Collections.unmodifiableList(Arrays.asList(readsBySampleIndex[sampleIndex]));
         } else {
             return extantList;
+        }
+    }
+
+    public boolean containsRead(final int sampleIndex, final String name) {
+        if (name == null) {
+            return false;
+        } else {
+            return readNameIndexBySampleIndex(sampleIndex).containsKey(name);
         }
     }
 
@@ -467,7 +491,8 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         final int sampleCount = samples.numberOfSamples();
         for (int s = 0; s < sampleCount; s++) {
             final GATKRead[] sampleReads = readsBySampleIndex[s];
-            final Object2IntMap<GATKRead> readIndex = readIndexBySampleIndex[s];
+            final Object2IntMap<GATKRead> readIndex = readIndexBySampleIndex.get(s);
+            final Object2IntMap<String> readNameIndex = readNameIndexBySampleIndex.get(s);
             final int sampleReadCount = sampleReads.length;
             for (int r = 0; r < sampleReadCount; r++) {
                 final GATKRead read = sampleReads[r];
@@ -479,6 +504,10 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
                 if (readIndex != null) {
                     readIndex.remove(read);
                     readIndex.put(replacement, r);
+                }
+                if (readNameIndex != null) {
+                    readNameIndex.remove(read.getName());
+                    readNameIndex.put(replacement.getName(), r);
                 }
             }
         }
@@ -561,9 +590,9 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
     public <B extends Allele> ReadLikelihoods<B> marginalize(final Map<B, List<A>> newToOldAlleleMap) {
         Utils.nonNull(newToOldAlleleMap);
 
-        final B[] newAlleles = newToOldAlleleMap.keySet().toArray((B[]) new Allele[newToOldAlleleMap.size()]);
+        final List<B> newAlleles = new ArrayList<>(newToOldAlleleMap.keySet());
         final int oldAlleleCount = alleles.numberOfAlleles();
-        final int newAlleleCount = newAlleles.length;
+        final int newAlleleCount = newAlleles.size();
 
         // we get the index correspondence between new old -> new allele, -1 entries mean that the old
         // allele does not map to any new; supported but typically not the case.
@@ -574,7 +603,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
 
         final int sampleCount = samples.numberOfSamples();
 
-        final Object2IntMap<GATKRead>[] newReadIndexBySampleIndex = new Object2IntMap[sampleCount];
+        final List<Object2IntMap<GATKRead>> newReadIndexBySampleIndex = new ArrayList<>(sampleCount);
         final GATKRead[][] newReadsBySampleIndex = new GATKRead[sampleCount][];
 
         for (int s = 0; s < sampleCount; s++) {
@@ -582,8 +611,8 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
 
         // Finally we create the new read-likelihood
-        return new ReadLikelihoods<>(
-                new IndexedAlleleList(newAlleles),
+        return new ReadLikelihoods<B>(
+                new IndexedAlleleList<B>(newAlleles),
                 samples,
                 newReadsBySampleIndex,
                 newReadIndexBySampleIndex, newLikelihoodValues);
@@ -613,9 +642,9 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
 
         @SuppressWarnings("unchecked")
-        final B[] newAlleles = newToOldAlleleMap.keySet().toArray((B[]) new Allele[newToOldAlleleMap.size()]);
+        final List<B> newAlleles = newToOldAlleleMap.keySet().stream().collect(Collectors.toList());
         final int oldAlleleCount = alleles.numberOfAlleles();
-        final int newAlleleCount = newAlleles.length;
+        final int newAlleleCount = newAlleles.size();
 
         // we get the index correspondence between new old -> new allele, -1 entries mean that the old
         // allele does not map to any new; supported but typically not the case.
@@ -629,7 +658,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         final int sampleCount = samples.numberOfSamples();
 
         @SuppressWarnings({"rawtypes","unchecked"})
-        final Object2IntMap<GATKRead>[] newReadIndexBySampleIndex = (Object2IntMap<GATKRead>[])new Object2IntMap[sampleCount];
+        final List<Object2IntMap<GATKRead>> newReadIndexBySampleIndex = new ArrayList<>(sampleCount);
         final GATKRead[][] newReadsBySampleIndex = new GATKRead[sampleCount][];
 
         for (int s = 0; s < sampleCount; s++) {
@@ -648,7 +677,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
 
         // Finally we create the new read-likelihood
-        return new ReadLikelihoods<>(new IndexedAlleleList<>(newAlleles), samples,
+        return new ReadLikelihoods<B>(new IndexedAlleleList<B>(newAlleles), samples,
                 newReadsBySampleIndex,
                 newReadIndexBySampleIndex, newLikelihoodValues);
     }
@@ -711,16 +740,16 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
     }
 
     // calculates an old to new allele index map array.
-    private <B extends Allele> int[] oldToNewAlleleIndexMap(final Map<B, List<A>> newToOldAlleleMap, final int oldAlleleCount, final B[] newAlleles) {
-        Arrays.stream(newAlleles).forEach(Utils::nonNull);
+    private <B extends Allele> int[] oldToNewAlleleIndexMap(final Map<B, List<A>> newToOldAlleleMap, final int oldAlleleCount, final List<B> newAlleles) {
+        newAlleles.stream().forEach(Utils::nonNull);
         Utils.containsNoNull(newToOldAlleleMap.values(), "no new allele list can be null");
         newToOldAlleleMap.values().stream().forEach(oldList -> Utils.containsNoNull(oldList,"old alleles cannot be null"));
 
         final int[] oldToNewAlleleIndexMap = new int[oldAlleleCount];
         Arrays.fill(oldToNewAlleleIndexMap, -1);  // -1 indicate that there is no new allele that make reference to that old one.
 
-        for (int newIndex = 0; newIndex < newAlleles.length; newIndex++) {
-            final B newAllele = newAlleles[newIndex];
+        for (int newIndex = 0; newIndex < newAlleles.size(); newIndex++) {
+            final B newAllele = newAlleles.get(newIndex);
             for (final A oldAllele : newToOldAlleleMap.get(newAllele)) {
                 final int oldAlleleIndex = indexOfAllele(oldAllele);
                 if (oldAlleleIndex == -1) {
@@ -832,7 +861,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
                 Arrays.copyOf(readsBySampleIndex[sampleIndex], newSampleReadCount);
 
         int nextReadIndex = sampleReadCount;
-        final Object2IntMap<GATKRead> sampleReadIndex = readIndexBySampleIndex[sampleIndex];
+        final Object2IntMap<GATKRead> sampleReadIndex = readIndexBySampleIndex.get(sampleIndex);
         for (final GATKRead newRead : newSampleReads) {
             //    if (sampleReadIndex.containsKey(newRead)) // might be worth handle this without exception (ignore the read?) but in practice should never be the case.
             //        throw new IllegalArgumentException("you cannot add reads that are already in read-likelihood collection");
@@ -1072,6 +1101,39 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
     }
 
+    public int readIndex(final int sampleIndex, final String name) {
+        final Object2IntMap<String> readIndex = readNameIndexBySampleIndex(sampleIndex);
+        if (readIndex.containsKey(name)) {
+            return readIndex.getInt(name);
+        } else {
+            return -1;
+        }
+    }
+
+    public String toString() {
+        final StringBuilder builder = new StringBuilder(1000);
+        builder.append("template");
+        for (final A allele : alleles()) {
+            builder.append('\t').append(allele.getDisplayString());
+        }
+        for (int s = 0; s < numberOfSamples(); s++) {
+            for (final GATKRead read : readsBySampleIndex[s]) {
+                final int templateIndex = readIndex(s, read);
+                builder.append('\n').append(read.getName());
+                final BestAllele best = searchBestAllele(s, templateIndex, true, false);
+                builder.append('\t').append(best.allele.getDisplayString())
+                        .append('\t').append(String.format("%.2f", best.confidence));
+
+                for (final A allele : alleles()) {
+                    final int haplotypeIndex = alleleList.indexOf(allele);
+                    builder.append('\t')
+                            .append(String.format("%.2f", valuesBySampleIndex[s][haplotypeIndex][templateIndex]));
+                }
+            }
+        }
+        return builder.toString();
+    }
+
     /**
      * Returns the total number of reads in the read-likelihood collection.
      *
@@ -1120,6 +1182,33 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
             final List<Integer> removeIndices = new IndexRange(0, sampleReads.length)
                     .filter(r -> !sampleReads[r].overlaps(location));
             removeSampleReads(s, removeIndices, alleleCount);
+        }
+    }
+
+    public void removeUniformativeReads(final double minimumLikelihoodDifference) {
+        final List<Integer> readsToRemove = new ArrayList<>();
+        final int numberOfAlleles = alleles.numberOfAlleles();
+        for (int s = 0; s < samples.numberOfSamples(); s++) {
+            readsToRemove.clear();
+            final int numberOfReadsInSample = readsBySampleIndex[s].length;
+            for (int r = 0; r < numberOfReadsInSample; r++) {
+                double best = Double.NEGATIVE_INFINITY;
+                double secondBest = Double.NEGATIVE_INFINITY;
+                for (int a = 0; a < numberOfAlleles; a++) {
+                    final double value = valuesBySampleIndex[s][a][r];
+                      if (value > best) {
+                        secondBest = best;
+                        best = value;
+                    } else if (value > secondBest) {
+                        secondBest = value;
+                    }
+                }
+                // == is needed to deal with -Inf as Inf - Inf is NaN.
+                if (best == secondBest || best - secondBest < minimumLikelihoodDifference) {
+                    readsToRemove.add(r);
+                }
+            }
+            removeSampleReads(s, readsToRemove, numberOfAlleles);
         }
     }
 
@@ -1177,7 +1266,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         final GATKRead[] sampleReads = readsBySampleIndex[sampleIndex];
         final int sampleReadCount = sampleReads.length;
 
-        final Object2IntMap<GATKRead> indexByRead = readIndexBySampleIndex[sampleIndex];
+        final Object2IntMap<GATKRead> indexByRead = readIndexBySampleIndex.get(sampleIndex);
         if (indexByRead != null) {
             removeIndices.stream().forEach(n -> indexByRead.remove(sampleReads[n]));
         }
@@ -1206,9 +1295,92 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         readListBySampleIndex[sampleIndex] = null; // reset the unmodifiable list.
     }
 
+    public static <A extends Allele> ReadLikelihoods<A> sum(final ReadLikelihoods<A> a, final ReadLikelihoods<A> b) {
+        return sum(Arrays.asList(a, b));
+    }
+
+    public static <A extends Allele> ReadLikelihoods<A> sum(final ReadLikelihoods<A> a, final ReadLikelihoods<A> b, final ReadLikelihoods<A> c) {
+        return sum(Arrays.asList(a, b, c));
+    }
+
+    /**
+     * Adds up the likelihoods from matrices that share the same allele and sample lists.
+     *
+     * @param lks the likelihoods to add.
+     * @param <A> the allele type-parameter.
+     * @return a new likelihood collection.
+     * @throws IllegalArgumentException if there is no likelihood collection in the input, any is null or the multiple inputs
+     * don't share the same list of allele and samples.
+     */
+    public static <A extends Allele> ReadLikelihoods<A> sum(final List<ReadLikelihoods<A>> lks) {
+        Utils.nonNull(lks);
+        for (final ReadLikelihoods<A> lk : lks) {
+            Utils.nonNull(lk);
+        }
+        Utils.validate(lks.size() > 0, "the input lks array must have at least one element");
+        if (lks.size() == 1) {
+            return lks.get(0).copy();
+        } else {
+            final AlleleList<A> alleleList = lks.get(0).alleles;
+            final int numberOfAlleles = alleleList.numberOfAlleles();
+            final SampleList sampleList = lks.get(0).samples;
+            for (int i = 1; i < lks.size(); i++) {
+                Utils.validate(AlleleList.equals(alleleList, lks.get(i).alleles), "input likelihoods have diffierent allele lists");
+                Utils.validate(SampleList.equals(sampleList, lks.get(i).samples), "input likelihoods have different sample lists");
+            }
+            final List<Object2IntMap<GATKRead>> readIndexList = new ArrayList<>(sampleList.numberOfSamples());
+            final double[][][] values = new double[sampleList.numberOfSamples()][][];
+            final GATKRead[][] readsBySampleIndex = new GATKRead[sampleList.numberOfSamples()][];
+            for (int s = 0; s < sampleList.numberOfSamples(); s++) {
+                final int finalS = s;
+                final Set<GATKRead> sampleReadSet = lks.stream()
+                        .map(lk -> lk.readsBySampleIndex[finalS])
+                        .flatMap(Arrays::stream)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+                final GATKRead[] sampleReads = sampleReadSet.toArray(new GATKRead[sampleReadSet.size()]);
+                final Object2IntMap<GATKRead> indexByRead = new Object2IntLinkedOpenHashMap<>(sampleReads.length);
+                for (int i = 0; i < sampleReads.length; i++) {
+                    indexByRead.put(sampleReads[i], i);
+                }
+                if (indexByRead.size() != sampleReads.length) {
+                    throw new IllegalArgumentException("what that heck");
+                }
+                readsBySampleIndex[s] = sampleReads;
+                readIndexList.add(indexByRead);
+                values[s] = new double[alleleList.numberOfAlleles()][indexByRead.size()];
+                int lkIndex = 0;
+                for (final ReadLikelihoods<A> lk : lks) {
+                    final LikelihoodMatrix<A> sampleMatrix = lk.sampleMatrix(s);
+                    final int numberOfReads = sampleMatrix.numberOfReads();
+//                    if (numberOfReads > indexByRead.size()) {
+//                        final Set<GATKRead> rr = new LinkedHashSet<>();
+//                        for (final GATKRead lkRead :  sampleMatrix.reads()) {
+//                            if (!rr.add(lkRead)) {
+//                                throw new IllegalArgumentException("got it " + lkIndex + " " + lkRead);
+//                            }
+//                        }
+//                        throw new IllegalArgumentException("didn't get it " + lkIndex);
+//                    }
+                    for (int r = 0; r < numberOfReads; r++) {
+                        final GATKRead lkRead = sampleMatrix.getRead(r);
+                        final int ridx = indexByRead.getInt(lkRead);
+                        for (int a = 0; a < numberOfAlleles; a++) {
+                            values[s][a][ridx] += sampleMatrix.get(a, r);
+                        }
+                    }
+                    lkIndex++;
+                }
+            }
+            return new ReadLikelihoods<>(alleleList, sampleList, readsBySampleIndex, readIndexList, values);
+        }
+    }
+
 
     // Requires that the collection passed iterator can remove elements, and it can be modified.
     public void removeSampleReads(final int sampleIndex, final Collection<GATKRead> readsToRemove, final int alleleCount) {
+        Utils.validIndex(sampleIndex, samples.numberOfSamples());
+        Utils.nonNull(readsToRemove);
+        ParamUtils.isPositiveOrZero(alleleCount, "allele count must be 0 or greater");
         final GATKRead[] sampleReads = readsBySampleIndex[sampleIndex];
         final int sampleReadCount = sampleReads.length;
 
@@ -1266,15 +1438,27 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
 
 
     private Object2IntMap<GATKRead> readIndexBySampleIndex(final int sampleIndex) {
-        if (readIndexBySampleIndex[sampleIndex] == null) {
+        if (readIndexBySampleIndex.get(sampleIndex) == null) {
             final GATKRead[] sampleReads = readsBySampleIndex[sampleIndex];
             final int sampleReadCount = sampleReads.length;
-            readIndexBySampleIndex[sampleIndex] = new Object2IntOpenHashMap<>(sampleReadCount);
+            readIndexBySampleIndex.set(sampleIndex, new Object2IntOpenHashMap<>(sampleReadCount));
             for (int r = 0; r < sampleReadCount; r++) {
-                readIndexBySampleIndex[sampleIndex].put(sampleReads[r], r);
+                readIndexBySampleIndex.get(sampleIndex).put(sampleReads[r], r);
             }
         }
-        return readIndexBySampleIndex[sampleIndex];
+        return readIndexBySampleIndex.get(sampleIndex);
+    }
+
+    private Object2IntMap<String> readNameIndexBySampleIndex(final int sampleIndex) {
+        if (readNameIndexBySampleIndex.get(sampleIndex) == null) {
+            final GATKRead[] sampleReads = readsBySampleIndex[sampleIndex];
+            final int sampleReadCount = sampleReads.length;
+            readNameIndexBySampleIndex.set(sampleIndex, new Object2IntOpenHashMap<>(sampleReadCount));
+            for (int r = 0; r < sampleReadCount; r++) {
+                readNameIndexBySampleIndex.get(sampleIndex).put(sampleReads[r].getName(), r);
+            }
+        }
+        return readNameIndexBySampleIndex.get(sampleIndex);
     }
 
 
@@ -1365,4 +1549,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
             System.arraycopy(valuesBySampleIndex[sampleIndex][alleleIndex], 0, dest, offset, numberOfReads());
         }
     }
+
+
+
 }

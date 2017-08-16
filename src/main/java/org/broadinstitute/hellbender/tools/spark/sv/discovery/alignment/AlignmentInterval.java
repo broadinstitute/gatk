@@ -19,7 +19,14 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import scala.Tuple2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.function.IntFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Each assembled contig should have at least one such accompanying structure, or 0 when it is unmapped.
@@ -162,6 +169,25 @@ public final class AlignmentInterval {
         this.alnModType = ContigAlignmentsModifier.AlnModType.NONE;
     }
 
+    public AlignmentInterval(final String contig, final int start, final boolean forwardStrand, final Cigar cigar,
+                             final int mapQual, final int mismatches, final int alnScore) {
+        Utils.nonNull(contig, "the input contig name cannot be negative");
+        Utils.nonNull(cigar, "the input cigar cannot be negative");
+        ParamUtils.isPositive(start, "the start position must be positive");
+        Utils.validateArg(mapQual == SAMRecord.UNKNOWN_MAPPING_QUALITY || mapQual >= 0, "the mapping quality must be positive");
+        Utils.validateArg(mismatches == AlignmentInterval.NO_NM || mismatches >= 0, "the number of mismatches must be positive");
+        Utils.validateArg(alnScore == AlignmentInterval.NO_AS || alnScore >= 0, "the alignment score must be positive");
+        this.cigarAlong5to3DirectionOfContig = forwardStrand ? cigar : CigarUtils.invertCigar(cigar);
+        this.referenceSpan = new SimpleInterval(contig, start, start + cigar.getReferenceLength() - 1);
+        this.startInAssembledContig = 1 + CigarUtils.countLeftClippedBases(this.cigarAlong5to3DirectionOfContig);
+        this.endInAssembledContig = CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countRightClippedBases(cigar);
+        this.alnModType = ContigAlignmentsModifier.AlnModType.NONE;
+        this.alnScore = alnScore;
+        this.mapQual = mapQual;
+        this.mismatches = mismatches;
+        this.forwardStrand = forwardStrand;
+    }
+
     /**
      * Returns the SA tag string representation for this interval.
      * @return never {@code null}.
@@ -274,11 +300,22 @@ public final class AlignmentInterval {
 
     @VisibleForTesting
     public AlignmentInterval(final BwaMemAlignment alignment, final List<String> refNames, final int unclippedContigLength) {
+        this(alignment, refNames::get, unclippedContigLength);
+    }
 
+    public AlignmentInterval(final BwaMemAlignment alignment, final IntFunction<String> indexToRefName,
+                             final int unclippedContigLength)  {
+        Utils.nonNull(indexToRefName);
+        Utils.nonNull(alignment);
+        Utils.validateArg(SAMFlag.READ_UNMAPPED.isUnset(alignment.getSamFlag()), "the input alignment must be mapped");
+        final int refIndex = alignment.getRefId();
+        Utils.validateArg(refIndex >= 0, "the ref-id for a mapped alignment cannot be negative");
+        final String refName = indexToRefName.apply(refIndex);
+        Utils.nonNull(refName, "the reference name cannot be null");
         // +1 because the BwaMemAlignment class has 0-based coordinate system
-        this.referenceSpan = new SimpleInterval(refNames.get(alignment.getRefId()),
+        this.referenceSpan = new SimpleInterval(refName,
                 alignment.getRefStart() + 1, alignment.getRefEnd());
-        this.forwardStrand = 0 == (alignment.getSamFlag() & SAMFlag.READ_REVERSE_STRAND.intValue());
+        this.forwardStrand = SAMFlag.READ_REVERSE_STRAND.isUnset(alignment.getSamFlag());
         this.cigarAlong5to3DirectionOfContig = forwardStrand ? TextCigarCodec.decode(alignment.getCigar())
                 : CigarUtils.invertCigar(TextCigarCodec.decode(alignment.getCigar()));
         Utils.validateArg(
@@ -431,6 +468,27 @@ public final class AlignmentInterval {
         return (forwardStrand) ? cigarAlong5to3DirectionOfContig : CigarUtils.invertCigar(cigarAlong5to3DirectionOfContig);
     }
 
+    /**
+     * Composes a list of alignment-interval records based on a {@link String} representation.
+     * @param str the input string representation.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code str} is {@code null} or is not a legal
+     * representation of a sequence of {@link AlignmentInterval alignment-intervals}.
+     */
+    public static List<AlignmentInterval> decodeList(final String str) {
+        Utils.nonNull(str);
+        final String[] parts = str.replaceAll(";$", "").split(";");
+        return Stream.of(parts).map(String::trim).filter(s -> !s.isEmpty() && !s.equals("*")).map(AlignmentInterval::new).collect(Collectors.toList());
+    }
+
+    public static String encode(final List<AlignmentInterval> intervals) {
+        Utils.nonNull(intervals);
+        ParamUtils.doesNotContainNulls(intervals);
+        return intervals.stream()
+                .map(AlignmentInterval::toSATagString)
+                .collect(Collectors.joining(";"));
+    }
+
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentInterval> {
         @Override
         public void write(final Kryo kryo, final Output output, final AlignmentInterval alignmentInterval) {
@@ -503,12 +561,10 @@ public final class AlignmentInterval {
      * @param otherAttributes values for attributes other than the ones this instance has values for; attributes
      *                        for which this instance has value for are ignored.
      * @return never {@code null}.
-     * @throws IllegalArgumentException if either {@code header} or {@code contig} is {@code null}.
      */
     public SAMRecord toSAMRecord(final SAMFileHeader header, final String name,
                                  final byte[] unclippedBases, final boolean hardClip, final int otherFlags,
                                  final Collection<? extends SAMRecord.SAMTagAndValue> otherAttributes) {
-        Utils.nonNull(header, "the input header cannot be null");
         final SAMRecord result = new SAMRecord(header);
         if (hardClip && SAMFlag.SECONDARY_ALIGNMENT.isUnset(otherFlags) && SAMFlag.SUPPLEMENTARY_ALIGNMENT.isUnset(otherFlags)) {
             throw new IllegalArgumentException("you cannot request hard-clipping on a primary non-supplementary alignment record");
@@ -665,5 +721,21 @@ public final class AlignmentInterval {
             end = endInAssembledContig - walkDistOnReadFromEnd;
         }
         return new Tuple2<>(start, end);
+    }
+
+    public List<SimpleInterval> referenceCoveredIntervals() {
+        int referencePos = referenceSpan.getStart();
+        final Cigar cigar = cigarAlongReference();
+        final List<SimpleInterval> result = new ArrayList<>(cigar.numCigarElements());
+        for (final CigarElement element : cigar) {
+            final CigarOperator operator = element.getOperator();
+            if (operator.isAlignment()) {
+                result.add(new SimpleInterval(referenceSpan.getContig(), referencePos, referencePos + element.getLength() - 1));
+            }
+            if (operator.consumesReadBases()) {
+                referencePos += element.getLength();
+            }
+        }
+        return result;
     }
 }

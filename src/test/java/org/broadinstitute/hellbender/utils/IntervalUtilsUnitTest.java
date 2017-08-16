@@ -2080,6 +2080,90 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 {list1, gtList1},
                 {list2, gtList2}
         };
+
+    }
+
+    @Test(dataProvider="testMergeOverlappingIntervalsData")
+    public void testMergeOverlappingIntervals(final Collection<SimpleInterval> input, final boolean mergeAbutters) {
+        final Map<String, List<SimpleInterval>> actual = IntervalUtils.sortAndMergeIntervals(input, mergeAbutters);
+        final Map<String, List<SimpleInterval>> expected = calculateMergeOverlappingIntervalsExpected(input, mergeAbutters);
+         Assert.assertEquals(actual.keySet(), expected.keySet());
+        for (final String key : actual.keySet()) {
+            Assert.assertEquals(actual.get(key), expected.get(key));
+        }
+    }
+
+    private Map<String,List<SimpleInterval>> calculateMergeOverlappingIntervalsExpected(Collection<SimpleInterval> input, boolean mergeAbutters) {
+        final Map<String, List<SimpleInterval>> result = new HashMap<>();
+        for (final SimpleInterval interval : input) {
+            if (!result.containsKey(interval.getContig())) {
+                result.put(interval.getContig(), new ArrayList<>());
+            }
+            final List<SimpleInterval> contigIntervals = result.get(interval.getContig());
+            final List<SimpleInterval> overlapping = new ArrayList<>();
+            final Iterator<SimpleInterval> it = contigIntervals.iterator();
+            while (it.hasNext()) {
+                final SimpleInterval other = it.next();
+                if (other.overlapsWithMargin(interval, mergeAbutters ? 1 : 0)) {
+                    overlapping.add(other);
+                    it.remove();
+                }
+            }
+            if (overlapping.isEmpty()) {
+                contigIntervals.add(interval);
+            } else {
+                final int start = overlapping.stream().mapToInt(Locatable::getStart).reduce(interval.getStart(), Math::min);
+                final int end = overlapping.stream().mapToInt(Locatable::getEnd).reduce(interval.getEnd(), Math::max);
+                contigIntervals.add(new SimpleInterval(interval.getContig(), start, end));
+            }
+        }
+        for (final List<SimpleInterval> contigList : result.values()) {
+            Collections.sort(contigList, Comparator
+                    .comparingInt(Locatable::getStart)
+                    .thenComparingInt(Locatable::getEnd));
+        }
+        return result;
+    }
+
+    @DataProvider
+    public Object[][] testMergeOverlappingIntervalsData() {
+        final List<Object[]> result = new ArrayList<>();
+        final Random rdn = new Random(101);
+        result.add(new Object[] {Collections.emptyList(), true});
+        result.add(new Object[] {Collections.emptyList(), false});
+        result.add(new Object[] {Collections.singleton(new SimpleInterval("1:100-103")), true});
+        result.add(new Object[] {Collections.singleton(new SimpleInterval("1:100-103")), false});
+        for (int i = 0; i < 1_000; i++) {
+            final List<SimpleInterval> input = new ArrayList<>();
+            final int contigCount = 1 + rdn.nextInt(10);
+            final int contigSize = 100 + rdn.nextInt(901);
+            final int averageIntededIntervalsCount = (int) Math.ceil(0.5 * (contigCount * contigSize) / 50.0);
+            final int intendedIntervalCount = (int) Math.max(1.0, averageIntededIntervalsCount + rdn.nextGaussian() * averageIntededIntervalsCount * 0.5);
+            for (int j = 0; j < intendedIntervalCount; j++) {
+                final int chr = rdn.nextInt(contigCount);
+                final int start = 1 + rdn.nextInt(contigSize);
+                final int end = Math.min(contigSize, start + rdn.nextInt(50));
+                input.add(new SimpleInterval("chr" + (chr + 1), start, end));
+                final boolean addAbutter = rdn.nextDouble() < 0.1;
+                final boolean addOverlapping = rdn.nextDouble() < 0.1;
+                if (addAbutter) {
+                    final boolean left = end == contigSize || (start > 1 && rdn.nextBoolean());
+                    final int abStart = left ? Math.max(1, start - rdn.nextInt(50) - 1) : end + 1;
+                    final int abEnd = left ? start - 1 : Math.min(contigSize, end + 1 + rdn.nextInt(50));
+                    input.add(new SimpleInterval("chr" + (chr + 1), abStart, abEnd));
+                }
+                if (addOverlapping) {
+                    final boolean left = rdn.nextBoolean();
+                    final int ovIn = start + rdn.nextInt(end - start + 1);
+                    final int ovOut = left ? Math.max(1, ovIn - rdn.nextInt(50)) : Math.min(contigSize, ovIn + rdn.nextInt(50));
+                    input.add(new SimpleInterval("chr" + (chr +1), Math.min(ovIn, ovOut), Math.max(ovIn, ovOut)));
+                }
+            }
+            Collections.shuffle(input, rdn);
+            result.add(new Object[] {input, true});
+            result.add(new Object[] {input, false});
+        }
+        return result.toArray(new Object[result.size()][]);
     }
 
     @DataProvider

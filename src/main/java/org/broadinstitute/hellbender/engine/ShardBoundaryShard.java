@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import java.io.Serializable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Iterator;
 
@@ -19,9 +20,9 @@ public final class ShardBoundaryShard<T> implements Shard<T>, Serializable {
      * @param shardBoundary the boundary defining the shard
      * @param locatables the records overlapping  the shard
      */
-    public ShardBoundaryShard(ShardBoundary shardBoundary, Iterable<T> locatables) {
-        this.shardBoundary = shardBoundary;
-        this.locatables = locatables;
+    public ShardBoundaryShard(final ShardBoundary shardBoundary, final Iterable<T> locatables) {
+        Utils.nonNull(this.shardBoundary = shardBoundary);
+        Utils.nonNull(this.locatables = locatables);
     }
 
     @Override
@@ -32,6 +33,11 @@ public final class ShardBoundaryShard<T> implements Shard<T>, Serializable {
     @Override
     public SimpleInterval getPaddedInterval() {
         return shardBoundary.getPaddedInterval();
+    }
+
+    @Override
+    public ShardBoundary getBoundary() {
+        return shardBoundary;
     }
 
     @Override

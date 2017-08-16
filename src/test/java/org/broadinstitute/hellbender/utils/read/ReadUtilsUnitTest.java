@@ -812,7 +812,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     public Object[][] mappedGatkReadsData() {
         final Random rdn = new Random(17);
         final RandomDNA rdnDna = new RandomDNA(11);
-        final List<Cigar> randomCigars = CigarTestUtils.randomValidCigars(rdn, 1_000, 10, 100);
+        final List<Cigar> randomCigars = CigarTestUtils.randomValidCigars(rdn, 1_000, 10, 100, true);
         final List<Object[]> result = new ArrayList<>(randomCigars.size());
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         for (final Cigar cigar : randomCigars) {

@@ -124,7 +124,19 @@ public final class SVInterval implements Comparable<SVInterval> {
     }
 
     /**
-     * Returns false if the two intervals overlap as judged by {@link #overlaps(SVInterval)}
+     * Returns true when input interval is upstream of this interval.
+     * <p>
+     *     This is the case either if the contig of this interval has a lower index or
+     *     if both intervals are on the same contig and the end of this interval is located
+     *     before the start of the one passed as an argument.
+     * </p>
+     * <p>
+     *     Even a single base overlap would result is a false return. However adjacency where
+     *     this interval finishes right before the other one will return {@code true}.
+     * </p>
+     * TODO This name is misleading.
+     * @param that the other interval.
+     * @return {@code true iff} this interval up-stream of another one as described above.
      */
     public boolean isUpstreamOf( final SVInterval that ) {
         return this.contig < that.contig || (this.contig == that.contig && this.end <= that.start);
