@@ -11,8 +11,6 @@ import scala.Tuple2;
 
 import java.util.Objects;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.NovelAdjacencyReferenceLocations.EndConnectionType.*;
-
 /**
  * This class represents a pair of inferred genomic locations on the reference whose novel adjacency is generated
  * due to a simple SV event (in other words, a simple rearrangement between two genomic locations)
@@ -22,23 +20,16 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.NovelAdjace
 @DefaultSerializer(NovelAdjacencyReferenceLocations.Serializer.class)
 public class NovelAdjacencyReferenceLocations {
 
-    final SimpleInterval leftJustifiedLeftRefLoc;
-    final SimpleInterval leftJustifiedRightRefLoc;
+    public final SimpleInterval leftJustifiedLeftRefLoc;
+    public final SimpleInterval leftJustifiedRightRefLoc;
 
-    final EndConnectionType endConnectionType;
-    final BreakpointComplications complication;
+    public final StrandSwitch strandSwitch;
+    public final BreakpointComplications complication;
 
-    /**
-     * Represents the strand of evidence that was used in computing this breakpoint pair.
-     */
-    enum EndConnectionType {
-        FIVE_TO_THREE, THREE_TO_THREE, FIVE_TO_FIVE
-    }
+    public NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence){
 
-    NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence){
-
-        // first get endConnectionType, then get complications, finally use complications to justify breakpoints
-        endConnectionType = determineEndConnectionType(chimericAlignment);
+        // first get strand switch type, then get complications, finally use complications to justify breakpoints
+        strandSwitch = chimericAlignment.strandSwitch;
 
         complication = new BreakpointComplications(chimericAlignment, contigSequence);
 
@@ -57,18 +48,8 @@ public class NovelAdjacencyReferenceLocations {
         final int end2 = input.readInt();
         this.leftJustifiedRightRefLoc = new SimpleInterval(contig2, start2, end2);
 
-        this.endConnectionType = EndConnectionType.values()[input.readInt()];
+        this.strandSwitch = StrandSwitch.values()[input.readInt()];
         this.complication = kryo.readObject(input, BreakpointComplications.class);
-    }
-
-    // TODO: 12/12/16 again, does not work for translocation
-    @VisibleForTesting
-    static EndConnectionType determineEndConnectionType(final ChimericAlignment chimericAlignment) {
-        if (chimericAlignment.regionWithLowerCoordOnContig.forwardStrand == chimericAlignment.regionWithHigherCoordOnContig.forwardStrand) {
-            return FIVE_TO_THREE;
-        } else {
-            return chimericAlignment.regionWithLowerCoordOnContig.forwardStrand ? FIVE_TO_FIVE : THREE_TO_THREE;
-        }
     }
 
     // TODO: 12/11/16 again this does not deal with inter-chromosome translocation yet
@@ -113,10 +94,10 @@ public class NovelAdjacencyReferenceLocations {
             }
             leftBreakpointRefContig  = leftReferenceInterval.getContig();
             rightBreakpointRefContig = rightReferenceInterval.getContig();
-            if (ca.strandSwitch == ChimericAlignment.StrandSwitch.NO_SWITCH) {
+            if (ca.strandSwitch == StrandSwitch.NO_SWITCH) {
                 leftBreakpointCoord  = leftReferenceInterval.getEnd() - homologyLen;
                 rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
-            } else if (ca.strandSwitch == ChimericAlignment.StrandSwitch.FORWARD_TO_REVERSE){
+            } else if (ca.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE){
                 leftBreakpointCoord  = leftReferenceInterval.getEnd() - homologyLen;
                 rightBreakpointCoord = rightReferenceInterval.getEnd();
             } else {
@@ -149,13 +130,13 @@ public class NovelAdjacencyReferenceLocations {
                 : that.leftJustifiedRightRefLoc != null)
             return false;
 
-        return endConnectionType.equals(that.endConnectionType) && complication.equals(that.complication);
+        return strandSwitch.equals(that.strandSwitch) && complication.equals(that.complication);
     }
 
     @VisibleForTesting
     @Override
     public int hashCode() {
-        return Objects.hash(leftJustifiedLeftRefLoc, leftJustifiedRightRefLoc, complication, 2659*endConnectionType.ordinal());
+        return Objects.hash(leftJustifiedLeftRefLoc, leftJustifiedRightRefLoc, complication, 2659*strandSwitch.ordinal());
     }
 
     protected void serialize(final Kryo kryo, final Output output) {
@@ -165,7 +146,7 @@ public class NovelAdjacencyReferenceLocations {
         output.writeString(leftJustifiedRightRefLoc.getContig());
         output.writeInt(leftJustifiedRightRefLoc.getStart());
         output.writeInt(leftJustifiedRightRefLoc.getEnd());
-        output.writeInt(endConnectionType.ordinal());
+        output.writeInt(strandSwitch.ordinal());
         kryo.writeObject(output, complication);
     }
 
@@ -187,6 +168,6 @@ public class NovelAdjacencyReferenceLocations {
     @Override
     public String toString() {
         return String.format("%s\t%s\t%s\t%s", leftJustifiedLeftRefLoc.toString(), leftJustifiedRightRefLoc.toString(),
-                endConnectionType.name(), complication.toString());
+                strandSwitch.name(), complication.toString());
     }
 }

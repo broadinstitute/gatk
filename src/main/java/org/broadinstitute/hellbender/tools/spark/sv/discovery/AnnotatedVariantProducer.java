@@ -29,51 +29,51 @@ class AnnotatedVariantProducer implements Serializable {
     /**
      * Produces a VC from a {@link NovelAdjacencyReferenceLocations}
      * (consensus among different assemblies if they all point to the same breakpoint).
-     * @param novelAdjacencyReferenceLocations  consensus among different assemblies if they all point to the same breakpoint
+     * @param refLoc                            corresponds to POS field of the returned VC, hence must be a point location.
+     * @param end                               END of the VC, assumed to be < 0 if for BND formatted variant
+     * @param breakpointComplications           complications associated with this breakpoint
      * @param inferredType                      inferred type of variant
      * @param contigAlignments                  chimeric alignments from contigs used for generating this novel adjacency
      * @param broadcastReference                broadcasted reference
      *
      * @throws IOException                      due to read operations on the reference
      */
-    static VariantContext produceAnnotatedVcFromNovelAdjacency(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations,
-                                                               final SvType inferredType,
-                                                               final Iterable<ChimericAlignment> contigAlignments,
-                                                               final Broadcast<ReferenceMultiSource> broadcastReference)
+    static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final SimpleInterval refLoc, final int end,
+                                                                            final BreakpointComplications breakpointComplications,
+                                                                            final SvType inferredType,
+                                                                            final Iterable<ChimericAlignment> contigAlignments,
+                                                                            final Broadcast<ReferenceMultiSource> broadcastReference)
             throws IOException {
 
-        final String contig = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig();
-        final int    start  = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd();
-        final int    end    = novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
+        final int applicableEnd = end < 0 ? refLoc.getEnd() : end; // BND formatted variant shouldn't have END
 
         // basic information and attributes
         final VariantContextBuilder vcBuilder = new VariantContextBuilder()
-                .chr(contig).start(start).stop(end)
-                .alleles(produceAlleles(novelAdjacencyReferenceLocations, broadcastReference.getValue(), inferredType))
+                .chr(refLoc.getContig()).start(refLoc.getStart()).stop(applicableEnd)
+                .alleles(produceAlleles(refLoc, broadcastReference.getValue(), inferredType))
                 .id(inferredType.getInternalVariantId())
-                .attribute(VCFConstants.END_KEY, end)
                 .attribute(GATKSVVCFConstants.SVTYPE, inferredType.toString())
                 .attribute(GATKSVVCFConstants.SVLEN, inferredType.getSVLength());
 
         // attributes from complications
         inferredType.getTypeSpecificAttributes().forEach(vcBuilder::attribute);
-        parseComplicationsAndMakeThemAttributeMap(novelAdjacencyReferenceLocations.complication).forEach(vcBuilder::attribute);
+        parseComplicationsAndMakeThemAttributeMap(breakpointComplications).forEach(vcBuilder::attribute);
 
         // evidence used for producing the novel adjacency
         getEvidenceRelatedAnnotations(contigAlignments).forEach(vcBuilder::attribute);
 
+        if (end > 0)
+            vcBuilder.attribute(VCFConstants.END_KEY, applicableEnd);
         return vcBuilder.make();
     }
 
     // TODO: 12/13/16 again ignoring translocation
     @VisibleForTesting
-    static List<Allele> produceAlleles(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations,
+    static List<Allele> produceAlleles(final SimpleInterval refLoc,
                                        final ReferenceMultiSource reference, final SvType SvType)
             throws IOException {
 
-        final String contig = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig();
-        final int start = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getStart();
-        final byte[] refBases = reference.getReferenceBases(null, new SimpleInterval(contig, start, start)).getBases();
+        final byte[] refBases = reference.getReferenceBases(null, refLoc).getBases();
 
         return new ArrayList<>(Arrays.asList(Allele.create(new String(refBases), true), SvType.getAltAllele()));
     }

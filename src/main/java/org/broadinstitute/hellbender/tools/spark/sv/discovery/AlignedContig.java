@@ -29,7 +29,7 @@ public final class AlignedContig {
         this.contigName = contigName;
         this.contigSequence = contigSequence;
         this.alignmentIntervals = Utils.stream(alignmentIntervals)
-                .sorted(Comparator.comparing(a -> a.startInAssembledContig)).collect(Collectors.toList());
+                .sorted(sortAlignments()).collect(Collectors.toList());
     }
 
     AlignedContig(final Kryo kryo, final Input input) {
@@ -49,6 +49,13 @@ public final class AlignedContig {
         }
     }
 
+    public static Comparator<AlignmentInterval> sortAlignments() {
+        Comparator<AlignmentInterval> comparePos = (AlignmentInterval a1, AlignmentInterval a2) -> Integer.compare(a1.startInAssembledContig, a2.startInAssembledContig);
+        Comparator<AlignmentInterval> compareRefTig = (AlignmentInterval a1, AlignmentInterval a2) -> a1.referenceSpan.getContig().compareTo(a2.referenceSpan.getContig());
+        Comparator<AlignmentInterval> compareRefSpanStart = (AlignmentInterval a1, AlignmentInterval a2) -> a1.referenceSpan.getStart() - a2.referenceSpan.getStart();
+        return comparePos.thenComparing(compareRefTig).thenComparing(compareRefSpanStart);
+    }
+    
     void serialize(final Kryo kryo, final Output output) {
 
         output.writeString(contigName);

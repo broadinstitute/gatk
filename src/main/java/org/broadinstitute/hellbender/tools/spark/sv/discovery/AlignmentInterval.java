@@ -34,8 +34,10 @@ public final class AlignmentInterval {
     public final boolean forwardStrand;
     public final int mapQual;
     public final int mismatches;
-
     public final int alnScore;
+
+    // if this is true, fields "mapQual", "mismatches", "alnScore" should be viewed with care as they were simply copied from the
+    // original alignment (not for "mismatches"), which after the split are wrong (we didn't recompute them because that would require expensive SW re-alignment)
     public final boolean isFromSplitGapAlignment;
 
     @VisibleForTesting

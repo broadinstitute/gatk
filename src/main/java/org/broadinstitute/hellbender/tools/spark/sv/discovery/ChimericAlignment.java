@@ -68,10 +68,6 @@ public class ChimericAlignment {
 
     final List<String> insertionMappings;
 
-    enum StrandSwitch {
-        NO_SWITCH, FORWARD_TO_REVERSE, REVERSE_TO_FORWARD;
-    }
-
     public List<AlignmentInterval> getAlignmentIntervals() {
         return Arrays.asList(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig);
     }
@@ -96,21 +92,11 @@ public class ChimericAlignment {
     /**
      * Construct a new ChimericAlignment from two alignment intervals.
      * Assumes {@code intervalWithLowerCoordOnContig} has a lower {@link AlignmentInterval#startInAssembledContig}
-     * than {@code regionWithHigherCoordOnContig},
-     * and input {@link AlignmentInterval}s' ref span are NOT completely enclosed in the other.
+     * than {@code regionWithHigherCoordOnContig}.
      */
     @VisibleForTesting
     public ChimericAlignment(final AlignmentInterval intervalWithLowerCoordOnContig, final AlignmentInterval intervalWithHigherCoordOnContig,
                              final List<String> insertionMappings, final String sourceContigName) {
-
-        // check if one of two input intervals consumes the other in their ref span
-        final boolean oneRefSpanIsEnclosed =
-                intervalWithLowerCoordOnContig.referenceSpan.contains(intervalWithHigherCoordOnContig.referenceSpan)
-                        ||
-                        intervalWithHigherCoordOnContig.referenceSpan.contains(intervalWithLowerCoordOnContig.referenceSpan);
-        Utils.validateArg(!oneRefSpanIsEnclosed,
-                "one alignment region contains the other, which is wrong " +
-                        intervalWithLowerCoordOnContig.toPackedString() + intervalWithHigherCoordOnContig.toPackedString());
 
         this.sourceContigName = sourceContigName;
 
@@ -267,6 +253,11 @@ public class ChimericAlignment {
         } else {
             return !involvesReferenceIntervalSwitch;
         }
+    }
+
+    public boolean isNotSimpleTranslocation() {
+        return isNotSimpleTranslocation(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig, strandSwitch,
+                                        involvesRefPositionSwitch(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig));
     }
 
     Tuple2<SimpleInterval, SimpleInterval> getCoordSortedReferenceSpans() {

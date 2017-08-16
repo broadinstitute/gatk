@@ -32,7 +32,7 @@ public class SVTypeUnitTest {
                                final String expectedFirstFieldInIdString) throws IOException {
 
         final SvType SvType = SvTypeInference.inferFromNovelAdjacency(novelAdjacencyReferenceLocations);
-        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations, SVDiscoveryTestDataProvider.reference, SvType);
+        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc, SVDiscoveryTestDataProvider.reference, SvType);
 
         Assert.assertEquals(producedAlleles.size(), 2);
         Assert.assertTrue(producedAlleles.get(0).isReference() && producedAlleles.get(1).isNonReference());

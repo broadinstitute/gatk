@@ -216,7 +216,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                                  final Broadcast<ReferenceMultiSource> broadcastReference)
             throws IOException {
         return AnnotatedVariantProducer
-                .produceAnnotatedVcFromNovelAdjacency(novelAdjacency,
+                .produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacency.leftJustifiedLeftRefLoc,
+                        novelAdjacency.leftJustifiedRightRefLoc.getStart(), novelAdjacency.complication,
                         inferredType, chimericAlignments,
                         broadcastReference);
     }

@@ -17,7 +17,7 @@ public class GappedAlignmentSplitterUnitTest {
 
     @Test(groups = "sv")
     public void testCompactifyNeighboringSoftClippings() {
-        Assert.assertEquals(new Cigar(GappedAlignmentSplitter.compactifyNeighboringSoftClippings(TextCigarCodec.decode("1H2S3S4M5D6M7I8M9S10S11H").getCigarElements())),
+        Assert.assertEquals(new Cigar(SvCigarUtils.compactifyNeighboringSoftClippings(TextCigarCodec.decode("1H2S3S4M5D6M7I8M9S10S11H").getCigarElements())),
                 TextCigarCodec.decode("1H5S4M5D6M7I8M19S11H"));
     }
 

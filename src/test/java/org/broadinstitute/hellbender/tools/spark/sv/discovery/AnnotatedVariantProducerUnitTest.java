@@ -134,9 +134,10 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
 
         final NovelAdjacencyReferenceLocations breakpoints = testData._3();
 
-        final VariantContext variantContext
-                = AnnotatedVariantProducer.produceAnnotatedVcFromNovelAdjacency(breakpoints, SvTypeInference.inferFromNovelAdjacency(breakpoints),
-                evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference));
+        final VariantContext variantContext =
+                AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.leftJustifiedLeftRefLoc,
+                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, SvTypeInference.inferFromNovelAdjacency(breakpoints),
+                        evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference));
 
         final List<String> attributeKeys = variantContext.getAttributes().keySet().stream().sorted().collect(Collectors.toList());
 

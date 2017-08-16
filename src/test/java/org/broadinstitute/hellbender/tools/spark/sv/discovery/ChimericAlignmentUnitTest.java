@@ -42,23 +42,23 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     public void testBooleanStatesAndSerialization_inversion() {
 
         Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.REVERSE_TO_FORWARD, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, false, true, true);
         testSerialization(testData._1(), testData._2());
 
         testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftPlus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.FORWARD_TO_REVERSE, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.FORWARD_TO_REVERSE, false, true, true);
         testSerialization(testData._1(), testData._2());
 
         testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftMinus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.FORWARD_TO_REVERSE, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.FORWARD_TO_REVERSE, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_rightPlus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.REVERSE_TO_FORWARD, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, false, true, true);
         testSerialization(testData._1(), testData._2());
 
         testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_rightMinus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.REVERSE_TO_FORWARD, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, true, true, false);
         testSerialization(testData._1(), testData._2());
     }
 
@@ -67,34 +67,34 @@ public class ChimericAlignmentUnitTest extends BaseTest {
 
         // simple deletion
         Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleDeletion_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forSimpleDeletion_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // simple insertion
         testData = SVDiscoveryTestDataProvider.forSimpleInsertion_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forSimpleInsertion_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // long range substitution
         testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // simple deletion with homology
         testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
     }
 
@@ -103,26 +103,26 @@ public class ChimericAlignmentUnitTest extends BaseTest {
 
         // tandem duplication simple contraction
         Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // tandem duplication simple expansion
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // tandem duplication simple expansion with novel insertion
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
     }
 
@@ -131,39 +131,39 @@ public class ChimericAlignmentUnitTest extends BaseTest {
 
         // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
         Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // second test: contraction from 2 units to 1 unit with pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // third test: contraction from 3 units to 2 units without pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
 
         // fourth test: expansion from 2 units to 3 units without pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, false, true, true);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
         testSerialization(testData._1(), testData._2());
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), ChimericAlignment.StrandSwitch.NO_SWITCH, true, true, false);
+        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
         testSerialization(testData._1(), testData._2());
     }
 
     private static void testBooleanSeries(final AlignmentInterval region1, final AlignmentInterval region2,
-                                          final ChimericAlignment.StrandSwitch expectedStrandSwitch,
+                                          final StrandSwitch expectedStrandSwitch,
                                           final boolean expectedRefPositionSwitch,
                                           final boolean expectedIsNotSimpleTranslocation,
                                           final boolean expectedIsForwardStrandRepresentation) {
