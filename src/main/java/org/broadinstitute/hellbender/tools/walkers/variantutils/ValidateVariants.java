@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Interval;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -169,8 +170,7 @@ public final class ValidateVariants extends VariantWalker {
     private GenomeLocSortedSet genomeLocSortedSet;
 
     // information to keep track of when validating a GVCF
-    private int currentEnd;
-    private String currentContig;
+    private SimpleInterval currentInterval;
 
     SAMSequenceDictionary dict;
 
@@ -201,15 +201,14 @@ public final class ValidateVariants extends VariantWalker {
         final Set<String> rsIDs = getRSIDs(featureContext);
 
         if (VALIDATE_GVCF) {
-            SimpleInterval refInterval = ref.getInterval();
+            final SimpleInterval refInterval = ref.getInterval();
             // Take advantage of adjacent blocks and just merge them so we dont have to keep so many objects in the set.
-            if (refInterval.getContig().equals(currentContig) && currentEnd == (refInterval.getStart() - 1)) {
-                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), currentEnd, vc.getEnd()), true);
+            if (currentInterval != null && currentInterval.overlapsWithMargin(refInterval, 1)) {
+                genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), currentInterval.getEnd(), vc.getEnd()), true);
             } else {
                 genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), refInterval.getStart(), vc.getEnd()), true);
             }
-            currentEnd = vc.getEnd();
-            currentContig = vc.getContig();
+            currentInterval = refInterval;
             validateGVCFVariant(vc);
         }
 
@@ -225,7 +224,7 @@ public final class ValidateVariants extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (VALIDATE_GVCF) {
-            GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
+            final GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
             if (intervalArgumentCollection.intervalsSpecified()){
                 intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(dict)));
