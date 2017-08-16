@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
+import htsjdk.samtools.*;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -83,6 +84,23 @@ public class PSUtilsTest extends BaseTest {
         items.add("y");
         items.add("z");
         PSUtils.logItemizedWarning(logger, items, "Test warning statement");
+    }
+
+    @Test
+    public void testCheckAndClearHeaderSequences() {
+        final List<SAMSequenceRecord> records = new ArrayList<>(1);
+        records.add(new SAMSequenceRecord("rec1", 1));
+        final SAMSequenceDictionary dict = new SAMSequenceDictionary(records);
+        final SAMFileHeader inputHeader = new SAMFileHeader(dict);
+        inputHeader.addReadGroup(new SAMReadGroupRecord("rg1"));
+        inputHeader.addProgramRecord(new SAMProgramRecord("pg1"));
+
+        final SAMFileHeader resultHeader = PSUtils.checkAndClearHeaderSequences(inputHeader, new PSFilterArgumentCollection(), logger);
+        Assert.assertTrue(resultHeader.getSequenceDictionary() == null || resultHeader.getSequenceDictionary().isEmpty());
+        Assert.assertNotEquals(resultHeader, inputHeader);
+
+        resultHeader.setSequenceDictionary(dict);
+        Assert.assertEquals(resultHeader, inputHeader);
     }
 
 }
