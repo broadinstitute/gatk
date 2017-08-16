@@ -85,6 +85,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+
         final SVContext svc = SVContext.of(vc);
         final byte[] actual = svc.getInsertedSequence();
         Assert.assertEquals(actual == null ? "<null>" : new String(actual), vc.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "<null>"));
@@ -165,8 +166,8 @@ public class SVContextUnitTest extends GATKBaseTest {
     }
 
     private void testGetBreakPoints(final VariantContext vc, final ReferenceMultiSource reference, final int paddingSize) throws IOException {
-        final SVContext svc = SVContext.of(vc);
-        if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
+       final SVContext svc = SVContext.of(vc);
+       if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
         }
         final List<SimpleInterval> breakPoints = svc.getBreakPointIntervals(paddingSize, reference.getReferenceSequenceDictionary(null), false);
