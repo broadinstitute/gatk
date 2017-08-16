@@ -3,12 +3,15 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarTestUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.CigarUtilsUnitTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -128,6 +131,7 @@ public class AlignmentIntervalUnitTest extends BaseTest {
         final boolean[] strandedness = {true, false, true, false, false, true, false, true};
         final String[] cigarStrings = {"4M4S", "4M4H", "5M5S", "5M5H", "6S6M", "6H6M", "7S7M", "7H7M"}; // each different number represent a different contig's pair of chimeric alignments
         final Cigar[] cigars = Arrays.stream(cigarStrings).map(TextCigarCodec::decode).toArray(Cigar[]::new);
+
 
 
         final Object[][] data = new Object[cigars.length][];

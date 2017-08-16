@@ -56,7 +56,6 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSpark.class);
 
-
     @ArgumentCollection
     private StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection
             discoverStageArgs

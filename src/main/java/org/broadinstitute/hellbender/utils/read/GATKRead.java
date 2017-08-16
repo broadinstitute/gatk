@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import com.google.api.services.genomics.model.Read;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.ListIterator;
+import java.util.function.Supplier;
 
 /**
  * Unified read interface for use throughout the GATK.
@@ -660,6 +659,204 @@ public interface GATKRead extends Locatable {
             return String.format("%s UNMAPPED", getName());
         } else {
             return String.format("%s %s:%d-%d", getName(), getContig(), getStart(), getEnd());
+        }
+    }
+
+    /**
+     * Returns the offset (0-based index) of the first base in the read that is aligned against the reference.
+     * <p>
+     *     In most cases for mapped reads, this is typically equal to the sum of the size of soft-clipping at the
+     *     beginning of the alignment.
+     * </p>
+     * <p>
+     *     It returns {@code -1} when there is no base against the reference (e.g. the read is unmapped or is all in
+     *     an insertion). Also it will return {@code -1} if it has an empty cigar.
+     * </p>
+     * <p>
+     *     Notice that this index makes reference the base offset as returned by {@link #getBases()}, If you
+     *     are after the first base in the original read considering the strand it maps to you need to use
+     *     {@link #getFirstAlignedReadPosition}
+     * </p>
+     *
+     * @throws IllegalStateException if the read is not marked as unmapped but it does not have a cigar.
+     *
+     * @return a number between {@code -1} and the read length-1.
+     */
+    default int getFirstAlignedBaseOffset() {
+        if (isUnmapped()) {
+            return -1;
+        } else {
+            int result = 0;
+            for (final CigarElement ce : getCigarElements()) {
+                final int length = ce.getLength();
+                if (length != 0) { // paranohic test.
+                    final CigarOperator co = ce.getOperator();
+                    if (co.isAlignment()) {
+                        return result;
+                    } else if (co.consumesReadBases()) {
+                        result += length;
+                    }
+                }
+            }
+            return -1;
+        }
+    }
+
+    /**
+     * Returns the first position (1-based) on the original read in 5to3 prime orientation that is aligned
+     * against the reference.
+     * <p>
+     *     It will return {@code -1} to indicate that there is no base aligned against the reference (e.g.
+     *     the read is unmapped or it totally included in and insertion and or clips. This is also the case if
+     *     the read has an empty cigar for whatever reason.
+     * </p>
+     * <p>
+     *     If what you are after is the offset of the first aligned base in the array returned by {@link #getBases()}
+     *     then you should be looking into {@link #getFirstAlignedBaseOffset()}.
+     * </p>
+     * @return {@code -1} or a number between {@code 1} and the length of the original read. Never {@code 0}.
+     */
+    default int getFirstAlignedReadPosition() {
+        if (isUnmapped()) {
+            return -1;
+        } else {
+            final List<CigarElement> cigarElements = getCigarElements();
+            if (cigarElements.size() < 1) {
+                return -1;
+            } else if (!isReverseStrand()) {
+                final int offset = getFirstAlignedBaseOffset();
+                return offset == -1 ? -1 : offset + 1 + getLeftHardClipLength();
+            } else { // isReverseStrand() == true
+                final int offset = getAfterLastAlignmentBaseOffset();
+                return offset == -1 ? -1 : getLength() - offset + 1 + getRightHardClipLength();
+            }
+        }
+    }
+
+    /**
+     * Returns the offset (0-based) after the last base in the record that is aligned against the reference.
+     *
+     * <p>
+     *     It returns {@code -1} if there is not such a base (e.g. the record is unmapped or is totally enclosed in an
+     *      insertion or clip). Also it will return {@code -1} if it has an empty cigar.
+     * </p>
+     * <p>
+     *     Notice that this does not take in consideration whether the record is mapped against the forward and backward
+     *     strand. If what you want to find out is the last position on the original read sequence that is mapped
+     *     against the reference (including hard-clips) the use {@link #getLastAlignedReadPosition()} instead.
+     * </p>
+     *
+     * @throws IllegalStateException if the read is not marked as unmapped but it does not have a cigar.
+     *
+     * @return a number between {@code -1} and the read's length inclusive.
+     */
+    default int getAfterLastAlignmentBaseOffset() {
+        if (isUnmapped()) {
+            return -1;
+        } else {
+            int result = getLength();
+            final List<CigarElement> cigarElements = getCigarElements();
+            final ListIterator<CigarElement> cigarElementIterator = cigarElements.listIterator(cigarElements.size());
+            while (cigarElementIterator.hasPrevious()) {
+                final CigarElement ce = cigarElementIterator.previous();
+                final int length = ce.getLength();
+                if (length != 0) { // paranohic test.
+                    final CigarOperator co = ce.getOperator();
+                    if (co.isAlignment()) {
+                        return result;
+                    } else if (co.consumesReadBases()) {
+                        result -= length;
+                    }
+                }
+            }
+            return -1;
+        }
+    }
+
+    /**
+     * Returns the last position (1-based) on the original read that is mapped against the reference.
+     * <p>
+     *     This takes into account the hard-clipped bases thus the position returned corresponds to
+     *     full read sequence.
+     * </p>
+     * <p>
+     *     It will return {@code -1} if no position in the read is aligned against the reference (e.g. unmapped).
+     * </p>
+     *
+     * @return {@code -1} or any number between 1 and the length of the original read (including hard-clips). Never {@code 0}.
+     */
+    default int getLastAlignedReadPosition() {
+        if (isUnmapped()) {
+            return -1;
+        } else {
+            final List<CigarElement> cigarElements = getCigarElements();
+            if (cigarElements.isEmpty()) {
+                return -1;
+            } else if (!isReverseStrand()) {
+                final int offset = getAfterLastAlignmentBaseOffset();
+                return offset == -1 ? -1 : offset + getLeftHardClipLength();
+            } else { // isReverseStrand
+                final int offset = getFirstAlignedBaseOffset();
+                return offset == -1 ? -1 : getLength() - offset + getRightHardClipLength();
+            }
+        }
+    }
+
+    /**
+     * Returns the number of bases that are hard-clipped before the beginning of the aligned portion of the read from
+     * the reference's perspective.
+     *
+     * <p>
+     *     It will return {@code 0} if there is no left hard-clips and also for unmapped reads.
+     * </p>
+
+     * @return a number between {@code 0} and the length of the original read before clipping.
+     */
+    default int getLeftHardClipLength() {
+        if (isUnmapped()) {
+            return 0;
+        } else {
+            final List<CigarElement> cigarElements = getCigarElements();
+            if (cigarElements.isEmpty()) {
+                return 0;
+            } else {
+                // Assumption: based on the SAM format spec, there can only be one hard-clip
+                // element and it must be the first.
+                final CigarElement firstCigarElement = cigarElements.get(0);
+                return firstCigarElement.getOperator() == CigarOperator.H ? firstCigarElement.getLength() : 0;
+            }
+        }
+    }
+
+    /**
+     * Returns the number of bases that are hard-clipped after the aligned portion of the read from the reference's
+     * perspective.
+     * <p>
+     *     If the Cigar consists of a single hard-clip (thus nothing is actually aligned) then
+     *     the right hard-clip is considered to have zero length (the only hard-clip element will be considered
+     *     a left hard-clip).
+     * </p>
+     *
+     * <p>
+     *     It will return {@code 0} if there is no right hard-clips and also for unmapped reads.
+     * </p>
+
+     * @return a number between {@code 0} and the length of the original read before clipping.
+     */
+    default int getRightHardClipLength() {
+        if (isUnmapped()) {
+            return 0;
+        } else {
+            final List<CigarElement> cigarElements = getCigarElements();
+            final int cigarElementCount = cigarElements.size();
+            if (cigarElementCount < 2) { // if the only element is a H, is assumed to be left-clip.
+                return 0;
+            } else {
+                // Assumption: based on the SAM format spec, the cigar can only contain one
+                // right hard-clip element and it must be the last.
+                final CigarElement lastCigarElement = cigarElements.get(cigarElementCount - 1);
+                return lastCigarElement.getOperator() == CigarOperator.H ? lastCigarElement.getLength() : 0;
+            }
         }
     }
 }

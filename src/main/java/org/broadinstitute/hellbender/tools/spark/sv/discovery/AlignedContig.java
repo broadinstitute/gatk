@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.OptionalDouble;
 
 /**
  * Locally assembled contig:
@@ -36,7 +37,6 @@ public final class AlignedContig {
     }
 
     AlignedContig(final Kryo kryo, final Input input) {
-
         contigName = input.readString();
 
         final int nBases = input.readInt();

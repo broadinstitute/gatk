@@ -160,7 +160,6 @@ public final class GappedAlignmentSplitter {
                 DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.ARTIFICIAL_MISMATCH,
                 oneRegion.alnScore, true, false));
 
-
         return result;
     }
 
