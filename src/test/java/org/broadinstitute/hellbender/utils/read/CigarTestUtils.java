@@ -20,7 +20,7 @@ public final class CigarTestUtils {
 
     @Test
     public static void testRandomValidCigarsAreValid() {
-        final List<Cigar> randomCigars = randomValidCigars(new Random(113), 1_000, 5, 50);
+        final List<Cigar> randomCigars = randomValidCigars(new Random(113), 1_000, 5, 50, true);
         for (final Cigar cigar : randomCigars) {
             Assert.assertNotNull(cigar);
             Assert.assertNull(cigar.isValid("read-name", 0));
@@ -37,7 +37,7 @@ public final class CigarTestUtils {
      * @return never {@code null}.
      */
     public static List<Cigar> randomValidCigars(final Random rdn, final int count, final int maximumNumberOfCoreElements,
-                                                final int maximumElementLength, final Cigar ... prepend) {
+                                                final int maximumElementLength, final boolean hardClipsAllowed, final Cigar ... prepend) {
         Utils.nonNull(rdn);
         ParamUtils.isPositiveOrZero(count, "number of cigars");
         Utils.nonNull(prepend);
@@ -48,8 +48,8 @@ public final class CigarTestUtils {
         for (int i = 0; i < count; i++) {
             final boolean leftClipping = rdn.nextBoolean();
             final boolean rightClipping = rdn.nextBoolean();
-            final boolean leftHardClipping = leftClipping && rdn.nextBoolean();
-            final boolean rightHardClipping = rightClipping && rdn.nextBoolean();
+            final boolean leftHardClipping = leftClipping && hardClipsAllowed && rdn.nextBoolean();
+            final boolean rightHardClipping = rightClipping && hardClipsAllowed && rdn.nextBoolean();
             final int leftClippingLength = leftClipping ? rdn.nextInt(maximumElementLength) + 1 : 0;
             final int rightClippingLength = rightClipping ? rdn.nextInt(maximumElementLength) + 1: 0;
             final int leftHardClippingLength = leftHardClipping ? (rdn.nextBoolean() ? leftClippingLength : rdn.nextInt(leftClippingLength) + 1) : 0;

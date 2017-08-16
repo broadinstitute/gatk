@@ -451,6 +451,35 @@ public final class AlignmentInterval {
     }
 
     /**
+     * Composes the Supplementary Alignment string that corresponds to the information contain in this interval with respect to
+     * how it maps against the reference.
+     * <p>
+     * The format is the one described in {@link #AlignmentInterval(String)}. Notice that no ';' is appended at the end.
+     * <p>
+     *
+     * @return never {@code null}.
+     */
+    public String toSumpplementaryAlignmentString() {
+        final StringBuilder builder = new StringBuilder(100);
+        builder.append(referenceSpan.getContig()).append(',')
+               .append(referenceSpan.getStart()).append(',')
+               .append(forwardStrand ? '+' : '-').append(',')
+               .append(forwardStrand
+                       ? cigarAlong5to3DirectionOfContig
+                       : CigarUtils.invertCigar(cigarAlong5to3DirectionOfContig)).append(',')
+               .append(mapQual);
+        if (mismatches != NO_NM) {
+            builder.append(',').append(mismatches);
+        }
+        if (alnScore != NO_AS) {
+            builder.append(',').append(alnScore);
+        } else {
+            builder.setLength(builder.length());
+        }
+        return builder.toString();
+    }
+
+    /**
      * Returns a {@link SAMRecord} instance that reflects this alignment interval given the
      * output {@link SAMFileHeader} and the enclosing sequence bases.
      *
