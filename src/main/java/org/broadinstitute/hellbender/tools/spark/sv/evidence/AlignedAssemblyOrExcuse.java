@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Connection;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Contig;
+import org.broadinstitute.hellbender.utils.gcs.BamBucketIoUtils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.BufferedOutputStream;
@@ -98,7 +99,7 @@ public final class AlignedAssemblyOrExcuse {
                               final SAMFileHeader header,
                               final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
                               final boolean preOrdered ) {
-        try ( final SAMFileWriter writer = createSAMFileWriter(samFile, header, preOrdered) ) {
+        try (final SAMFileWriter writer = BamBucketIoUtils.makeWriter(samFile, header, preOrdered) ) {
             final List<String> refNames = getRefNames(header);
             alignedAssemblyOrExcuseList.stream()
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
@@ -109,22 +110,7 @@ public final class AlignedAssemblyOrExcuse {
         }
     }
 
-    private static SAMFileWriter createSAMFileWriter(final String samFile, final SAMFileHeader header, final boolean preOrdered) {
-        final SAMFileWriterFactory factory = new SAMFileWriterFactory();
-        final int lastDotIndex = samFile.lastIndexOf('.');
-        if (lastDotIndex >= 0) {
-            final String extension = samFile.substring(lastDotIndex).toLowerCase();
-            if (extension.equals(BamFileIoUtils.BAM_FILE_EXTENSION)) {
-                return factory.makeBAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
-            } else if (extension.equals(".sam")) {
-                return factory.makeSAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
-            } else {
-                throw new GATKException("unsupported read alignment file name extension (." + extension + ") in requested name: " + samFile);
-            }
-        } else {
-            throw new GATKException("cannot determine the alignment file format from its name: " + samFile);
-        }
-    }
+
 
     public static List<String> getRefNames(final SAMFileHeader header) {
         return header.getSequenceDictionary().getSequences().stream()
@@ -172,6 +158,7 @@ public final class AlignedAssemblyOrExcuse {
         final Map<Integer, AlignedAssemblyOrExcuse> resultsMap = new HashMap<>();
         intervalDispositions.forEach(alignedAssemblyOrExcuse ->
                 resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
+
 
         try ( final OutputStreamWriter writer =
                       new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile))) ) {
