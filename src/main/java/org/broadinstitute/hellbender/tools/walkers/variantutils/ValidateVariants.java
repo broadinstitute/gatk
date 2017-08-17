@@ -171,17 +171,15 @@ public final class ValidateVariants extends VariantWalker {
     // information to keep track of when validating a GVCF
     private SimpleInterval previousInterval;
 
-    SAMSequenceDictionary dict;
-
     @Override
     public void onTraversalStart() {
         if (VALIDATE_GVCF) {
-            dict = getBestAvailableSequenceDictionary();
+            SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
 
-            if (dict == null)
+            if (seqDictionary == null)
                 throw new UserException("Validating a GVCF requires a sequence dictionary but no dictionary was able to be constructed from your input.");
 
-            genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(dict));
+            genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         }
         validationTypes = calculateValidationTypesToApply(excludeTypes);
     }
@@ -202,7 +200,10 @@ public final class ValidateVariants extends VariantWalker {
         if (VALIDATE_GVCF) {
             final SimpleInterval refInterval = ref.getInterval();
 
-            // Take advantage of adjacent blocks and just merge them so we dont have to keep so many objects in the set.
+            // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
+            // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
+            // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
+            // small as possible.
             final int start = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
                     previousInterval.getEnd() : refInterval.getStart();
             genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), start, vc.getEnd()), true);
@@ -224,11 +225,12 @@ public final class ValidateVariants extends VariantWalker {
     public Object onTraversalSuccess() {
         if (VALIDATE_GVCF) {
             final GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
+            SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
 
             if (intervalArgumentCollection.intervalsSpecified()){
-                intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(dict)));
+                intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
             } else {
-                intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(dict);
+                intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(seqDictionary);
             }
 
             final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(genomeLocSortedSet);
