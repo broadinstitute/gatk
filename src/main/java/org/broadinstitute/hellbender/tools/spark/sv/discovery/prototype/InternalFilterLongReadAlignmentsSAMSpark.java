@@ -24,18 +24,14 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.GappedAlignmentSplitter;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.FileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -111,7 +107,7 @@ public final class InternalFilterLongReadAlignmentsSAMSpark extends GATKSparkToo
         }
     }
 
-    private static String formatContigInfo(final Tuple2<String, List<String>> pair) {
+    static String formatContigInfo(final Tuple2<String, List<String>> pair) {
         return "(" + pair._1 + ",[" + pair._2 + "])";
     }
 
