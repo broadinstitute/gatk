@@ -1,0 +1,24 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=MIN_GQ,Number=1,Type=Integer,Description="Minimum GQ observed within the GVCF block">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##GATKCommandLine.CombineGVCFs=<ID=CombineGVCFs,Version=3.8-5-g34e1f1e2f,Date="Tue Sep 19 17:39:50 EDT 2017",Epoch=1505857190909,CommandLineOptions="analysis_type=CombineGVCFs input_file=[] showFullBamList=false read_buffer_size=null read_filter=[] disable_read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/Users/emeryj/hellbender/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 refactor_NDN_cigar_string=false fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 static_quantized_quals=null round_down_quantized=false disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 secondsBetweenProgressUpdates=10 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null use_jdk_deflater=false use_jdk_inflater=false disable_auto_index_creation_and_locking_when_reading_rods=false no_cmdline_in_header=false sites_only=false never_trim_vcf_format_field=false bcf=false bam_compression=null simplifyBAM=false disable_bam_indexing=false generate_md5=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 reference_window_stop=0 phone_home= gatk_key=null tag=NA logging_level=INFO log_to_file=null help=false version=false annotation=[AS_RMSMappingQuality] dbsnp=(RodBinding name= source=UNBOUND) variant=[(RodBindingCollection [(RodBinding name=variant source=/Users/emeryj/hellbender/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/spanningDel.many.tetraploid.g.vcf)])] out=/Users/emeryj/hellbender/gatk/gatk3results/4f9cd592487948e69a79b1e17129722e.vcf convertToBasePairResolution=false breakBandsAtMultiplesOf=0 filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##GVCFBlock=minGQ=0(inclusive),maxGQ=5(exclusive)
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##reference=file:///Users/emeryj/hellbender/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA1
+20	3944040	.	A	<NON_REF>	.	.	END=3944042	GT:DP:GQ:MIN_DP:PL	./././.:81:60:76:0,60,100,300,900
+20	3944043	.	ATTT	A,AT,<NON_REF>	.	.	DP=63	GT:AD:DP:GQ:PL:SB	./././.:7,4,16,36:63:99:600,501,502,503,800,505,506,507,508,509,510,511,512,513,700,515,516,517,518,519,520,521,522,523,524,525,526,527,528,529,530,531,532,533,900:5,2,49,7
+20	3944044	.	T	*,<NON_REF>	.	.	DP=63	GT:AD:DP:GQ:PL:SB	./././.:7,16,36:63:99:600,505,509,512,700,515,519,522,524,525,528,530,531,533,900:5,2,49,7
+20	3944045	.	G	*,<NON_REF>	.	.	DP=63	GT:AD:DP:GQ:PL:SB	./././.:7,16,36:63:99:600,505,509,512,700,515,519,522,524,525,528,530,531,533,900:5,2,49,7
+20	3944046	.	G	*,<NON_REF>	.	.	DP=63	GT:AD:DP:GQ:PL:SB	./././.:7,16,36:63:99:600,505,509,512,700,515,519,522,524,525,528,530,531,533,900:5,2,49,7
+20	3944047	.	T	<NON_REF>	.	.	END=3944245	GT:DP:GQ:MIN_DP:PL	./././.:118:99:70:0,120,320,460,1800

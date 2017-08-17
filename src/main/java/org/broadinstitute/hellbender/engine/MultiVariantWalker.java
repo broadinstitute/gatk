@@ -5,9 +5,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.samples.Sample;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
 import java.util.Spliterator;
 
 /**
@@ -100,5 +102,13 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
         if (drivingVariants != null) {
             drivingVariants.close();
         }
+    }
+
+    /**
+     *
+     *
+     */
+    public final SortedSet<String> getSamplesForVariants() {
+        return drivingVariants.getSamples();
     }
 }

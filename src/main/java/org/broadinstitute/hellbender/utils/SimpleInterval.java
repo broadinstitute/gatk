@@ -333,4 +333,5 @@ public final class SimpleInterval implements Locatable, Serializable {
 
          return expandWithinContig(padding, contigRecord.getSequenceLength());
      }
+
  }
