@@ -37,3 +37,20 @@ time_gatk() {
   fi
   echo "$GATK_ARGS,$NUM_EXECUTORS,$EXECUTOR_CORES,$EXECUTOR_MEMORY,$RC,$DURATION_MINS" >> $RESULTS_CSV
 }
+
+time_gatk_walker() {
+  GATK_ARGS=$1
+  COMMAND=$(echo $GATK_ARGS | awk '{print $1}')
+  RESULTS_CSV=results/$(basename "$0" .sh).csv
+  mkdir -p results
+  LOG=logs/${COMMAND}_$(date +%Y%m%d_%H%M%S).log
+  mkdir -p logs
+  echo "${GATK_HOME:-../..}/gatk-launch $GATK_ARGS" > $LOG
+  ${GATK_HOME:-../..}/gatk-launch $GATK_ARGS >> $LOG 2>&1
+  RC=$?
+  DURATION_MINS=$(grep 'Elapsed time' $LOG | grep -Eow "[0-9]+\.[0-9][0-9]")
+  if [ ! -e $RESULTS_CSV ]; then
+    echo 'Command,Exit code,Time (mins)' > $RESULTS_CSV
+  fi
+  echo "$GATK_ARGS,$RC,$DURATION_MINS" >> $RESULTS_CSV
+}
