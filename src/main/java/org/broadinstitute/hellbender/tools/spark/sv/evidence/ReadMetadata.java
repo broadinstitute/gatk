@@ -364,7 +364,7 @@ public class ReadMetadata {
             nReads += 1;
             nBases += readLength;
             if ( isTemplateLengthTestable ) {
-                fragmentSizes.addObservation(templateLength);
+                fragmentSizes.addObservation(Math.abs(templateLength));
             }
         }
 
