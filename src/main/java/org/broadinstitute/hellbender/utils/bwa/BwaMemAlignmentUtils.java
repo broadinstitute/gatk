@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 
@@ -24,12 +25,21 @@ public class BwaMemAlignmentUtils {
                                            final String readGroup, final BwaMemAlignment alignment,
                                            final List<String> refNames, final SAMFileHeader header,
                                            final boolean softclipAlts, final boolean alwaysGenerateASandXS ) {
+        Utils.nonNull(alignment, "the input alignment cannot be null");
+        Utils.nonNull(basesArg, "the input bases argument cannot be null");
+        Utils.nonNull(refNames, "the input reference name list cannot be null");
+        final int refId = alignment.getRefId();
+        final int refMateId = alignment.getMateRefId();
+        if (refId >= refNames.size()) throw new IllegalArgumentException("reference names array to short for refId");
+        if (refMateId >= refNames.size()) throw new IllegalArgumentException("reference names array to short for refMateId");
+        if (refId >= 0 && refNames.get(refId) == null) throw new IllegalArgumentException("reference name cannot be null");
+        if (refMateId >= 0 && refNames.get(refMateId) == null) throw new IllegalArgumentException("mate reference name cannot be null");
         final SAMRecord samRecord = new SAMRecord(header);
         samRecord.setReadName(readName);
         final int samFlag = alignment.getSamFlag();
         samRecord.setFlags(samFlag);
-        if ( alignment.getRefId() >= 0 ) samRecord.setReferenceName(refNames.get(alignment.getRefId()));
-        else if ( alignment.getMateRefId() >= 0 ) samRecord.setReferenceName(refNames.get(alignment.getMateRefId()));
+        if ( refId >= 0 ) samRecord.setReferenceName(refNames.get(refId));
+        else if ( refMateId >= 0 ) samRecord.setReferenceName(refNames.get(refMateId));
         if ( alignment.getRefStart() >= 0 ) samRecord.setAlignmentStart(alignment.getRefStart()+1);
         else if ( alignment.getMateRefStart() >= 0 ) samRecord.setAlignmentStart(alignment.getMateRefStart()+1);
         if ( alignment.getMapQual() >= 0 ) samRecord.setMappingQuality(alignment.getMapQual());
@@ -57,9 +67,15 @@ public class BwaMemAlignmentUtils {
                         }
                     }
                 }
-                bases = Arrays.copyOfRange(bases, alignment.getSeqStart(), alignment.getSeqEnd());
+            }
+            if (tmpCigar.getFirstCigarElement().getOperator() == CigarOperator.H ||
+                    tmpCigar.getLastCigarElement().getOperator() == CigarOperator.H) {
+                final int leftHardClip = tmpCigar.getFirstCigarElement().getOperator() == CigarOperator.H ? tmpCigar.getFirstCigarElement().getLength() : 0;
+                final int rightHardClip = tmpCigar.getCigarElements().size() > 1 && tmpCigar.getLastCigarElement().getOperator() == CigarOperator.H ? tmpCigar.getLastCigarElement().getLength() : 0;
+                final int firstRightClippedIndex = bases.length - rightHardClip;
+                bases = Arrays.copyOfRange(bases, leftHardClip, firstRightClippedIndex);
                 if ( quals.length != 0 )
-                    quals = Arrays.copyOfRange(quals, alignment.getSeqStart(), alignment.getSeqEnd());
+                    quals = Arrays.copyOfRange(quals, leftHardClip, firstRightClippedIndex);
             }
             samRecord.setCigar(tmpCigar);
             samRecord.setAttribute("NM", alignment.getNMismatches());
@@ -73,8 +89,8 @@ public class BwaMemAlignmentUtils {
             samRecord.setAttribute("XS", 0);
         }
         if ( SAMFlag.READ_PAIRED.isSet(samFlag) ) {
-            if ( alignment.getMateRefId() >= 0 ) samRecord.setMateReferenceName(refNames.get(alignment.getMateRefId()));
-            else if ( alignment.getRefId() >= 0 ) samRecord.setMateReferenceName(refNames.get(alignment.getRefId()));
+            if ( refMateId >= 0 ) samRecord.setMateReferenceName(refNames.get(refMateId));
+            else if ( refId >= 0 ) samRecord.setMateReferenceName(refNames.get(refId));
             if ( alignment.getMateRefStart() >= 0 ) samRecord.setMateAlignmentStart(alignment.getMateRefStart() + 1);
             else if ( alignment.getRefStart() >= 0 ) samRecord.setMateAlignmentStart(alignment.getRefStart() + 1);
             if ( alignment.getTemplateLen() != 0 ) samRecord.setInferredInsertSize(alignment.getTemplateLen());
