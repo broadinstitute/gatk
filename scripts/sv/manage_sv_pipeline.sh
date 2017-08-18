@@ -25,7 +25,7 @@ Syntax
       save results in specified bucket/folder
       (defaults to \$PROJECT_NAME/\$GCS_USER)
 
-  Manditory Positional Arguments:
+  Mandatory Positional Arguments:
     GATK_Folder: path to local copy of GATK
     Project_Name: name of GCS project
     GCS_BAM_File: path to .bam file hosted in GCS
@@ -203,7 +203,7 @@ while true; do
         [Yy]*)  if [[ ${INIT_SCRIPT} == gs://* ]]; then
                     INIT_ARGS=${INIT_SCRIPT}
                 else
-                    INIT_ARGS="${INIT_SCRIPT} gs://${GCS_SAVE_PATH}/init/$(basename INIT_SCRIPT)"
+                    INIT_ARGS="${INIT_SCRIPT} gs://${GCS_SAVE_PATH}/init/"
                 fi
 
                 echo "create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${GCS_REFERENCE_DIR} ${GCS_BAM_DIR} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
