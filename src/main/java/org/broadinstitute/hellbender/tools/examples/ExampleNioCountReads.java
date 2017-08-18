@@ -1,5 +1,10 @@
 package org.broadinstitute.hellbender.tools.examples;
 
+import htsjdk.samtools.SAMRecord;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -8,10 +13,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.nio.NioBam;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
 
 /**
  * Example of how to use Spark on Google Cloud Storage directly, without using the GCS Hadoop Connector.
@@ -46,7 +47,9 @@ public class ExampleNioCountReads extends SparkCommandLineProgram {
         }
 
         NioBam input = new NioBam(path, path + ".bai");
-        long readCount = input.getReads(ctx, parts).count();
+        final JavaRDD<SAMRecord> reads = input.getReads(ctx, parts);
+        outputStream.println("Ready to compute; " + reads.partitions().size() + " partitions.");
+        long readCount = reads.count();
         outputStream.println("Number of reads: " + readCount);
     }
 

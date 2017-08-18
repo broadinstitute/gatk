@@ -11,15 +11,16 @@ import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.CloseableIterator;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * ReadsIterable gives you all the reads for a given genomic interval.
@@ -31,8 +32,9 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
     private static final long serialVersionUID = 1L;
     private final String path;
     private final byte[] index;
-    private final QueryInterval interval;
+    private final QueryInterval[] intervals;
     private final boolean removeHeader = true;
+    private QueryInterval latestInterval = null;
 
     class ReadsIterator implements CloseableIterator<SAMRecord> {
         private final static int BUFSIZE = 200 * 1024 * 1024;
@@ -55,9 +57,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
                     .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES)
                     .open(SamInputResource.of(bamOverNIO).index(indexInMemory));
 
-            QueryInterval[] array = new QueryInterval[1];
-            array[0] = interval;
-            query = bam.query(array, false);
+            query = bam.query(intervals, false);
         }
 
         /**
@@ -101,15 +101,29 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
             while (query.hasNext()) {
                 SAMRecord sr = query.next();
                 int start = sr.getAlignmentStart();
-                if (start >= interval.start && start <= interval.end) {
-                    // read starts in the interval
-                    if (removeHeader) {
-                        sr.setHeader(null);
-                    }
-                    return sr;
+                // only return read if it starts in one of the intervals.
+                // First check the previous interval that worked (most likely to work again)
+                if (latestInterval != null && start >= latestInterval.start && start <= latestInterval.end) {
+                    // read starts in this interval
+                    return maybeRemoveHeader(sr);
                 }
+                for (QueryInterval interval : intervals) {
+                    if (start >= interval.start && start <= interval.end) {
+                        // read starts in this interval
+                        latestInterval = interval;
+                        return maybeRemoveHeader(sr);
+                    }
+                }
+                // read doesn't start inside any of our intervals, drop it.
             }
             return null;
+        }
+
+        private SAMRecord maybeRemoveHeader(SAMRecord sr) {
+            if (removeHeader) {
+                sr.setHeader(null);
+            }
+            return sr;
         }
 
         @Override
@@ -126,10 +140,11 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
         }
     }
 
-    public ReadsIterable(String path, byte[] index, QueryInterval in) {
+    // don't modify ins after passing it to us.
+    public ReadsIterable(String path, byte[] index, QueryInterval[] ins) {
         this.path = path;
         this.index = index;
-        this.interval = in;
+        this.intervals = ins;
     }
 
     @Override
