@@ -258,7 +258,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testNoIntervalShortenedHeaderDict() throws IOException  {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(false, "NA12891.AS.chr20snippet_shortened_dict.g.vcf", true, REF, null, null) + " --gvcf ",
+                baseTestString(false, "NA12891.AS.fullchr20_with_chr20_dict_only.g.vcf", true, REF, null, null) + " --gvcf ",
                 Collections.emptyList());
         spec.executeTest("tests gvcf that has a header dictionary of just chr20 and doesn't give an interval", this);
     }

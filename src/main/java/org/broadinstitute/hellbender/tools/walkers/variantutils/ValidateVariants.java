@@ -174,7 +174,7 @@ public final class ValidateVariants extends VariantWalker {
     @Override
     public void onTraversalStart() {
         if (VALIDATE_GVCF) {
-            SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
+            final SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
 
             if (seqDictionary == null)
                 throw new UserException("Validating a GVCF requires a sequence dictionary but no dictionary was able to be constructed from your input.");
@@ -203,7 +203,7 @@ public final class ValidateVariants extends VariantWalker {
             // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
             // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
             // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
-            // small as possible.
+            // small as possible while still containing the same bases.
             final int start = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
                     previousInterval.getEnd() : refInterval.getStart();
             genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), start, vc.getEnd()), true);
@@ -225,7 +225,7 @@ public final class ValidateVariants extends VariantWalker {
     public Object onTraversalSuccess() {
         if (VALIDATE_GVCF) {
             final GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
-            SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
+            final SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
 
             if (intervalArgumentCollection.intervalsSpecified()){
                 intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
