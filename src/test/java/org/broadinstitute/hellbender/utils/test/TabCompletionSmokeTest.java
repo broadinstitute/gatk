@@ -77,6 +77,10 @@ public class TabCompletionSmokeTest extends CommandLineProgramTest {
         docArgList.addAll(tabCompletionTestPackages);
 
         // This is  smoke test; we just want to make sure it doesn't blow up
+
+        // Run this as a process, not through Java itself:
+//        Process p = Runtime.getRuntime().exec("");
+
         int success = com.sun.tools.javadoc.Main.execute(docArgList.toArray(new String[]{}));
         Assert.assertEquals(success, 0, "Failure processing gatkTabComplete via javadoc");
     }
