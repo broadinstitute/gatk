@@ -59,7 +59,7 @@ public class AlignmentIntervalUnitTest extends BaseTest {
      *                                      intended to be used for testing concordance between the two constructors)
      */
     @DataProvider(name = "AlignmentIntervalCtorTestForSimpleInversion")
-    Object[][] createInputsAndExpectedResults_BwaMemAlignmentConstruction() {
+    public static Object[][] createInputsAndExpectedResults_BwaMemAlignmentConstruction() {
 
         final int[] alignmentStartsOnRef_0Based = {96, 196, 195, 95, 101, 201, 101, 201};
         final int[] alignmentStartsOnTig_0BasedInclusive = {0, 4, 0, 5, 0, 6, 0, 7};
