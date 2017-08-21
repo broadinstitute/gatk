@@ -141,15 +141,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param referenceReader reader to provide reference data
      */
     public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs,  boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader ) {
-        this.hcArgs = Utils.nonNull(hcArgs);
-        this.readsHeader = Utils.nonNull(readsHeader);
-        this.referenceReader = Utils.nonNull(referenceReader);
-
-        initialize(createBamOutIndex, createBamOutMD5);
+        this(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader, referenceReader, null);
     }
 
-    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader,
-            VariantAnnotatorEngine annotationEngine ) {
+    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine ) {
         this.hcArgs = Utils.nonNull(hcArgs);
         this.readsHeader = Utils.nonNull(readsHeader);
         this.referenceReader = Utils.nonNull(referenceReader);

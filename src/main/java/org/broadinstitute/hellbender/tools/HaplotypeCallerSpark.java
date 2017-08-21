@@ -8,8 +8,6 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -26,7 +24,6 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.SparkReadShard;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -125,7 +122,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         // Reads must be coordinate sorted to use the overlaps partitioner
         final SAMFileHeader readsHeader = getHeaderForReads().clone();
         readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.coordinateSortReads(getReads(), readsHeader, numReducers);
+        final JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.coordinateSortReads(getReads(), readsHeader, numReducers);
 
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
@@ -187,9 +184,9 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
         final List<ShardBoundary> shardBoundaries = getShardBoundaries(header, intervals, shardingArgs.readShardSize, shardingArgs.readShardPadding);
 
-        final int maxLocatableSize = reads.map(r -> r.getEnd() - r.getStart() + 1).reduce(Math::max);
+        final int maxReadLength = reads.map(r -> r.getEnd() - r.getStart() + 1).reduce(Math::max);
 
-        final JavaRDD<Shard<GATKRead>> readShards = createReadShards(ctx, shardBoundaries, reads, header, maxLocatableSize);
+        final JavaRDD<Shard<GATKRead>> readShards = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), shardBoundaries, maxReadLength);
 
         final JavaRDD<Tuple2<AssemblyRegion, SimpleInterval>> assemblyRegions = readShards
                 .mapPartitions(shardsToAssemblyRegions(authHolder, referenceBroadcast,
@@ -252,16 +249,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     }
 
     /**
-     * Create an RDD of {@link Shard} from an RDD of {@link GATKRead}
-     * @param shardBoundaries  the shard boundaries for creating shards from
-     * @param reads Rdd of {@link GATKRead}
-     * @return a Rdd of reads grouped into potentially overlapping shards
-     */
-    private static JavaRDD<Shard<GATKRead>> createReadShards(final JavaSparkContext ctx, final List<ShardBoundary> shardBoundaries, final JavaRDD<GATKRead> reads, final SAMFileHeader header, int maxLocatableSize) {
-        return SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), shardBoundaries, maxLocatableSize);
-    }
-
-    /**
      * @return an {@link OverlapDetector} loaded with {@link ShardBoundary}
      * based on the -L intervals
      */
@@ -300,16 +287,10 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource, authHolder);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
 
-            ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
+            final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
                 new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
             return iteratorToStream(shards)
-                .map(shard -> {
-                    DownsampleableSparkReadShard downsampledShard = new
-                        DownsampleableSparkReadShard(new ShardBoundary(shard
-                        .getInterval(), shard.getPaddedInterval()), shard);
-                    downsampledShard.setDownsampler(readsDownsampler);
-                    return downsampledShard;
-                })
+                .map(shard -> new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler))
                 .flatMap(shardToRegion(assemblyArgs, header, referenceSource, hcEngine)).iterator();
         };
     }

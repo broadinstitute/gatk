@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools;
 
-
 import java.io.Serializable;
 import java.util.Iterator;
 import org.broadinstitute.hellbender.engine.Shard;
@@ -21,17 +20,14 @@ public final class DownsampleableSparkReadShard implements Shard<GATKRead>, Seri
     private final Iterable<GATKRead> reads;
     private ReadsDownsampler downsampler;
 
-    public DownsampleableSparkReadShard(final ShardBoundary boundaries, final Iterable<GATKRead> reads){
+    /**
+     * @param boundaries the boundary defining the shard
+     * @param reads the records overlapping  the shard
+     * @param downsampler the downsampler to use (may be null, which signifies that no downsampling is to be performed)
+     */
+    public DownsampleableSparkReadShard(final ShardBoundary boundaries, final Iterable<GATKRead> reads, final ReadsDownsampler downsampler) {
         this.boundaries = Utils.nonNull(boundaries);
         this.reads = Utils.nonNull(reads);
-    }
-
-    /**
-     * Reads in this shard will be downsampled using this downsampler before being returned.
-     *
-     * @param downsampler downsampler to use (may be null, which signifies that no downsampling is to be performed)
-     */
-    public void setDownsampler(final ReadsDownsampler downsampler) {
         this.downsampler = downsampler;
     }
 

@@ -65,7 +65,7 @@ public class AddContextDataToReadSpark {
         JavaPairRDD<GATKRead, Tuple2<Iterable<GATKVariant>, ReferenceBases>> withVariantsWithRef;
         if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
             // Join Reads and Variants
-            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants, variantsPaths);
+            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = variantsPaths == null ? BroadcastJoinReadsWithVariants.join(mappedReads, variants) : BroadcastJoinReadsWithVariants.join(mappedReads, variantsPaths);
             // Join Reads with ReferenceBases
             withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceSource, withVariants);
         } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
