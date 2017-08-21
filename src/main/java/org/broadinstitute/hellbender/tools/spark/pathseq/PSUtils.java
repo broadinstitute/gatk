@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -57,5 +59,31 @@ public final class PSUtils {
             return numReducers;
         }
         return 1 + (int) (BucketUtils.dirSize(inputPath) / targetPartitionSize);
+    }
+
+    /**
+     * Returns a deep copy of the input header with an empty sequence dictionary, and logs warnings if the input may
+     * be aligned but --isHostAligned was not set to true (or vice versa).
+     */
+    public static SAMFileHeader checkAndClearHeaderSequences(final SAMFileHeader inputHeader, final PSFilterArgumentCollection filterArgs, final Logger logger) {
+
+        Utils.nonNull(inputHeader, "Cannot check and clear null input header");
+        Utils.nonNull(filterArgs, "Cannot check header against null filter arguments");
+        Utils.nonNull(logger, "Cannot check header using null logger");
+
+        //Deep copy of header, otherwise aligned reads will be filtered out by WellformedReadFilter because the sequence dictionary is cleared
+        final SAMFileHeader header = inputHeader.clone();
+
+        if (filterArgs.alignedInput && (header.getSequenceDictionary() == null || header.getSequenceDictionary().isEmpty())) {
+            logger.warn("--isHostAligned is true but the BAM header contains no sequences");
+        }
+        if (!filterArgs.alignedInput && header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
+            logger.warn("--isHostAligned is false but there are one or more sequences in the BAM header");
+        }
+
+        //Clear header sequences
+        header.setSequenceDictionary(new SAMSequenceDictionary());
+
+        return header;
     }
 }

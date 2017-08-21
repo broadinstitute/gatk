@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -91,15 +90,8 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        SAMFileHeader header = getHeaderForReads();
-        if (filterArgs.alignedInput && (header.getSequenceDictionary() == null || header.getSequenceDictionary().isEmpty())) {
-            logger.warn("--isHostAligned is true but the BAM header contains no sequences");
-        }
-        if (!filterArgs.alignedInput && header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
-            logger.warn("--isHostAligned is false but there are one or more sequences in the BAM header");
-        }
         filterArgs.doReadFilterArgumentWarnings(getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class), logger);
-        header.setSequenceDictionary(new SAMSequenceDictionary());
+        SAMFileHeader header = PSUtils.checkAndClearHeaderSequences(getHeaderForReads(), filterArgs, logger);
 
         //Filter
         final PSFilter filter = new PSFilter(ctx, filterArgs, getReads(), header);

@@ -16,12 +16,9 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
         return PathSeqPipelineSpark.class.getSimpleName();
     }
 
-    @SuppressWarnings("unchecked")
-    @Test(groups = "spark")
-    public void testPathSeqPipeline() throws Exception {
+    public void runTest( final File inputBam, final File expectedBam, final File expectedScores, final boolean isHostAligned) throws Exception {
         final File outputBam = createTempFile("pathseqPipelineTestOutput", ".bam");
         final File outputScores = createTempFile("pathseqPipelineTestOutput", ".txt");
-        final File inputBam = getTestFile("pipeline_input.bam");
 
         final String baseResourcePath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/");
         final String kmerLibraryPath = baseResourcePath + "/hg19mini.hss";
@@ -38,18 +35,35 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
         args.addFileArgument("scoresOutputPath", outputScores);
         args.addArgument("kmerLibraryPath", kmerLibraryPath);
         args.addArgument("filterBwaImage", filterImagePath);
+        args.addBooleanArgument("isHostAligned", isHostAligned);
         args.addFileArgument("pathogenBwaImage", pathogenBwaImage);
         args.addFileArgument("pathogenFasta", pathogenFasta);
         args.addFileArgument("taxonomicDatabasePath", taxonomyDatabase);
 
         this.runCommandLine(args);
 
-        final File expectedBam = getTestFile("pipeline_output.bam");
         SamAssertionUtils.assertEqualBamFiles(outputBam, expectedBam, true, ValidationStringency.STRICT);
 
-        final File expectedScores = getTestFile("pipeline_output.txt");
-        final String expectedScoreString = FileUtils.readFileToString(expectedScores);
-        final String actualScoresString = FileUtils.readFileToString(outputScores);
+        String expectedScoreString = FileUtils.readFileToString(expectedScores);
+        String actualScoresString = FileUtils.readFileToString(outputScores);
         PathSeqScoreIntegrationTest.compareScoreTables(expectedScoreString, actualScoresString);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test(groups = "spark")
+    public void testPathSeqPipeline() throws Exception {
+        final File inputBam = getTestFile("pipeline_input.bam");
+        final File expectedBam = getTestFile("pipeline_output.bam");
+        final File expectedScores = getTestFile("pipeline_output.txt");
+        runTest(inputBam, expectedBam, expectedScores, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test(groups = "spark")
+    public void testPathSeqPipelineHostAlignedInput() throws Exception {
+        final File inputBam = getTestFile("pipeline_input_aligned.bam");
+        final File expectedBam = getTestFile("pipeline_output_aligned.bam");
+        final File expectedScores = getTestFile("pipeline_output_aligned.txt");
+        runTest(inputBam, expectedBam, expectedScores, true);
     }
 }
