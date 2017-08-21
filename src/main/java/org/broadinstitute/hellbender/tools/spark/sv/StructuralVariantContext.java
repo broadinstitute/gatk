@@ -8,6 +8,7 @@ import org.bdgenomics.formats.avro.StructuralVariantType;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -44,16 +45,16 @@ public class StructuralVariantContext extends VariantContext {
      * <p>
      *     The list returned is an immutable list.
      * </p>
-     * @throws IllegalStateException if the {@link GATKSVVCFHeaderLines#CONTIG_NAMES} annotation contains invalid
+     * @throws IllegalStateException if the {@link GATKSVVCFConstants#CONTIG_NAMES} annotation contains invalid
      *  contig names that do not conform to the pattern {@link AlignedAssemblyOrExcuse#CONTIG_NAME_PATTERN}.
      *
      * @return never {@code null}, an empty list if no structural variant is specified.
      */
     public List<String> contigNames() {
-        if (!hasAttribute(GATKSVVCFHeaderLines.CONTIG_NAMES)) {
+        if (!hasAttribute(GATKSVVCFConstants.CONTIG_NAMES)) {
             return Collections.emptyList();
         } else {
-            final List<String> contigNames = getAttributeAsStringList(GATKSVVCFHeaderLines.CONTIG_NAMES, null);
+            final List<String> contigNames = getAttributeAsStringList(GATKSVVCFConstants.CONTIG_NAMES, null);
             if (contigNames.contains(null)) {
                 throw new IllegalStateException("the contig names annotation contains undefined values");
             }
@@ -140,8 +141,8 @@ public class StructuralVariantContext extends VariantContext {
     }
 
     public byte[] getInsertedSequence() {
-        if (hasAttribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE)) {
-            final String asString = getAttributeAsString(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, null);
+        if (hasAttribute(GATKSVVCFConstants.INSERTED_SEQUENCE)) {
+            final String asString = getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, null);
             if (asString == null) {
                 return null;
             } else {
@@ -153,10 +154,9 @@ public class StructuralVariantContext extends VariantContext {
     }
 
     public int getStructuralVariantLength() {
-
         final Supplier<List<String>> s = ArrayList<String>::new;
-        if (hasAttribute(GATKSVVCFHeaderLines.SVLEN)) {
-            return getAttributeAsInt(GATKSVVCFHeaderLines.SVLEN, 0);
+        if (hasAttribute(GATKSVVCFConstants.SVLEN)) {
+            return getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         } else {
             throw new IllegalStateException("missing insertion length");
         }
