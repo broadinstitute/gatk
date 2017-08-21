@@ -77,7 +77,7 @@ public final class ConfigUtils {
      * @param filenameProperties A {@link List} of filename properties as specified in {@link Config} {@link org.aeonbits.owner.Config.Sources} annotations to check for existence in system and environment properties.
      */
     @VisibleForTesting
-    static void checkFileNamePropertyExistenceAndSetConfigFactoryProperties(List<String> filenameProperties) {
+    static void checkFileNamePropertyExistenceAndSetConfigFactoryProperties(final List<String> filenameProperties) {
         // Grab the system properties:
         final Properties systemProperties = System.getProperties();
 
@@ -223,7 +223,7 @@ public final class ConfigUtils {
         final T gatkConfig = ConfigCache.getOrCreate(configClass);
 
         // To start with we inject our system properties to ensure they are defined for downstream components:
-        ConfigUtils.injectSystemPropertiesFromConfig( gatkConfig );
+        injectSystemPropertiesFromConfig( gatkConfig );
     }
 
     /**

@@ -76,4 +76,10 @@ public final class StandardArgumentDefinitions {
 
     public static final String BQSR_TABLE_SHORT_NAME = "bqsr";
     public static final String BQSR_TABLE_LONG_NAME = "bqsr_recal_file";
+
+    /**
+     * The option specifying a main configuration file.
+     * This is used in {@link org.broadinstitute.hellbender.Main} to control which config file is loaded.
+     */
+    public static final String GATK_CONFIG_FILE_OPTION = "--gatk-config-file";
 }

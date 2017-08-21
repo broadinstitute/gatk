@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
 final public class CustomBooleanConverter implements Converter<Boolean> {
 
     @Override
-    public Boolean convert(Method method, String input) {
+    public Boolean convert(final Method method, final String input) {
         return Boolean.parseBoolean( input.trim() );
     }
 }

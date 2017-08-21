@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -78,11 +79,6 @@ public class Main {
     private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
     /**
-     * The option specifying a main configuration file.
-     */
-    private static final String gatkConfigFileOption = "--gatk-config-file";
-
-    /**
      * Prints the given message (may be null) to the provided stream, adding adornments and formatting.
      */
     protected static void printDecoratedExceptionMessage(final PrintStream ps, final Exception e, String prefix){
@@ -103,6 +99,29 @@ public class Main {
         packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
         packageList.addAll(Arrays.asList("picard"));
         return packageList;
+    }
+
+
+    /**
+     * Reads from the given command-line arguments, pulls out configuration options,
+     * and initializes the configuration for this instance of Main.
+     * Returns the list of arguments without the config file option and config file path.
+     * @param args The Array of command-line arguments.
+     * @return A new Array of command-line arguments with the config file option and config file path removed.
+     */
+    protected String[] parseArgsForConfigSetupAndGetNewArgs(final String[] args) {
+        // First we package our args together a little better
+        // so that we can pull out the argument for the config file (and the config filename itself)
+        // prior to the args being processed by extractCommandLineProgram.
+        final ArrayList<String> argArrayList = new ArrayList<>( Arrays.asList(args) );
+
+        // Now we setup our configurations:
+        // This method will modify the given argArrayList to remove the gatkConfigFileOption and value
+        // if they are specified.  This is so that the later validation of commandline arguments can still
+        // happen properly and so that we can have the configuration initialized as early as possible.
+        ConfigUtils.initializeConfigurationsFromCommandLineArgs(argArrayList, StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+
+        return argArrayList.toArray(new String[] {});
     }
 
     /**
@@ -162,19 +181,9 @@ public class Main {
      */
     protected final void mainEntry(final String[] args) {
 
-        // First we package our args together a little better
-        // so that we can pull out the argument for the config file (and the config filename itself)
-        // prior to the args being processed by extractCommandLineProgram.
-        final ArrayList<String> argArrayList = new ArrayList<>( Arrays.asList(args) );
-
-        // Now we setup our configurations:
-        // This method will modify the given argArrayList to remove the gatkConfigFileOption and value
-        // if they are specified.  This is so that the later validation of commandline arguments can still
-        // happen properly and so that we can have the configuration initialized as early as possible.
-        ConfigUtils.initializeConfigurationsFromCommandLineArgs(argArrayList, gatkConfigFileOption);
-
-        // Create an arg array for the other methods to use:
-        final String[] argArray = argArrayList.toArray(new String[argArrayList.size()]);
+        // Create an arg array for the other methods to use that does
+        // not contain the config file entries (if they exist):
+        final String[] argArray = parseArgsForConfigSetupAndGetNewArgs(args);
 
         final CommandLineProgram program = extractCommandLineProgram(argArray, getPackageList(), getClassList(), getCommandLineName());
         try {

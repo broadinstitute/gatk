@@ -8,6 +8,8 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import java.nio.file.Files;
+
+import org.aeonbits.owner.ConfigCache;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -16,6 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
@@ -39,7 +42,7 @@ public final class BucketUtils {
     public static final String FILE_PREFIX = "file:";
 
     // if the channel errors out, re-open up to this many times
-    public static final int DEFAULT_GCS_MAX_REOPENS = 20;
+    public static final int DEFAULT_GCS_MAX_REOPENS = ConfigCache.getOrCreate(GATKConfig.class).gcsMaxNumRetries();
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 

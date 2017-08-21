@@ -384,7 +384,7 @@ public class ConfigUnitTest extends BaseTest {
         Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.booleanDefTrue(), false);
         Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.intDef207(), 702);
         Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.listOfStringTest(), new ArrayList<>(Arrays.asList("string4", "string3", "string2", "string1")));
-        Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.customBoolean(), new Boolean(true));
+        Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.customBoolean().booleanValue(), true);
 
         // Reset the config factory:
         ConfigFactory.clearProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME);
@@ -470,5 +470,38 @@ public class ConfigUnitTest extends BaseTest {
             System.clearProperty(key);
             Assert.assertEquals(System.getProperty(key), null);
         }
+    }
+
+    @Test
+    void testDerivedClassProperties() throws IOException {
+
+        // Test with our basic test class:
+        final ChildClassConfig childClassConfig = ConfigFactory.create(ChildClassConfig.class);
+
+        // List properties for inspection:
+        listAndStoreConfigToStdOut(childClassConfig);
+
+        Assert.assertEquals(childClassConfig.booleanDefTrue(), false);
+        Assert.assertEquals(childClassConfig.booleanDefFalse(), true);
+        Assert.assertEquals(childClassConfig.intDef207(), 702);
+        Assert.assertEquals(childClassConfig.listOfStringTest(), new ArrayList<>(Arrays.asList("string4", "string3", "string2", "string1")));
+        Assert.assertEquals(childClassConfig.customBoolean().booleanValue(), true);
+        Assert.assertEquals(childClassConfig.newCustomBooleanThatDefaultsToTrue().booleanValue(), false);
+    }
+
+    @Test
+    void testDerivedClassAsParentClassProperties() throws IOException {
+
+        // Test with our basic test class:
+        final BasicTestConfigWithClassPathOverridesAndVariableFile parentClassConfig = ConfigFactory.create(ChildClassConfig.class);
+
+        // List properties for inspection:
+        listAndStoreConfigToStdOut(parentClassConfig);
+
+        Assert.assertEquals(parentClassConfig.booleanDefTrue(), false);
+        Assert.assertEquals(parentClassConfig.booleanDefFalse(), true);
+        Assert.assertEquals(parentClassConfig.intDef207(), 702);
+        Assert.assertEquals(parentClassConfig.listOfStringTest(), new ArrayList<>(Arrays.asList("string4", "string3", "string2", "string1")));
+        Assert.assertEquals(parentClassConfig.customBoolean().booleanValue(), true);
     }
 }
