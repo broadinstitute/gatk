@@ -139,15 +139,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         assertVariantContextsMatch(input, gatk3Result, extraArgs, reference);
     }
 
-
-    private static void runProcess(ProcessController processController, String[] command) {
-            final ProcessSettings prs = new ProcessSettings(command);
-            prs.getStderrSettings().printStandard(true);
-            prs.getStdoutSettings().printStandard(true);
-            final ProcessOutput output = processController.exec(prs);
-            Assert.assertEquals(output.getExitValue(), 0, "Process exited with non-zero value. Command: "+ Arrays.toString(command) + "\n");
-    }
-
     @Test(dataProvider = "gvcfsToGenotype")
     public void testGenotypesOnly(File input, File expected, List<String> extraArgs, String reference) throws IOException {
         assertGenotypesMatch(input, expected, extraArgs, reference);
