@@ -13,7 +13,7 @@ public class BwaMemIntegrationTest extends BaseTest {
     @BeforeSuite
     public void loadIndex() {
         final String imageFile = createTempFile(b37_reference_20_21, ".img").toString();
-        BwaMemIndex.createIndexImage(b37_reference_20_21, imageFile);
+        BwaMemIndex.createIndexImageFromFastaFile(b37_reference_20_21, imageFile);
         index = new BwaMemIndex(imageFile);
     }
 
