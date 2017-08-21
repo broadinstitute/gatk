@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.test;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.help.GATKHelpDoclet;
+import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -42,8 +43,9 @@ public class HelpSmokeTest extends CommandLineProgramTest {
     public static void documentationSmokeTest() throws IOException {
         File docTestTarget = createTempDir("docgentest");
         String[] argArray = new String[]{
+                "javadoc",
                 "-doclet", GATKHelpDoclet.class.getName(),
-                "-docletpath", "build/libs/",
+                "-docletpath", System.getProperty("java.class.path"),
                 "-sourcepath", "src/main/java",
                 "-settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates",
                 "-d", docTestTarget.getAbsolutePath(), // directory must exist
@@ -59,8 +61,9 @@ public class HelpSmokeTest extends CommandLineProgramTest {
         docArgList.addAll(Arrays.asList(docTestPackages));
 
         // This is  smoke test; we just want to make sure it doesn't blow up
-        int success = com.sun.tools.javadoc.Main.execute(docArgList.toArray(new String[]{}));
-        Assert.assertEquals(success, 0, "Failure processing gatkDoc via javadoc");
-    }
 
+        // Run this as a process, not through Java itself:
+        final ProcessController processController = new ProcessController();
+        runProcess(processController, docArgList.toArray(new String[] {}), "Failure processing gatkDoc via javadoc" );
+    }
 }
