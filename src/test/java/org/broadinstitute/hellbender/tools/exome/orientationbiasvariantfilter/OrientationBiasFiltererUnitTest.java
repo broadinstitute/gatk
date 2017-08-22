@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.UniqueIDWrapper;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

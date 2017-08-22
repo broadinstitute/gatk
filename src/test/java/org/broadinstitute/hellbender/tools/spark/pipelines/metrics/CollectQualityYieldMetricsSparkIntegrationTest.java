@@ -14,7 +14,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public final class CollectQualityYieldMetricsSparkIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectQualityYieldMetrics");
+    private static final File TEST_DATA_DIR = new File(
+            "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectQualityYieldMetrics");
 
     //Note: the 'expected' results in this test come from running picard 1.130
     //Note: we don't test the contents of the chart pdf

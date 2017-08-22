@@ -13,7 +13,8 @@ import org.testng.annotations.Test;
 import java.io.*;
 
 public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
+    private static final File TEST_DATA_DIR = new File(
+            "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectInsertSizeMetrics");
 
     @Override
     public String getTestedClassName() {

@@ -27,7 +27,8 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
 
     //Note: we don't test the contents of the chart pdf
 
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/QualityScoreDistribution");
+    private static final File TEST_DATA_DIR = new File(
+            "src/test/resources/org/broadinstitute/hellbender/metrics/analysis//QualityScoreDistribution");
 
     @Override
     public String getTestedClassName() {
@@ -121,6 +122,12 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test
+    public void testGetRScriptResource() {
+        // Make sure the RScript resource can be resolved
+        Assert.assertNotNull(QualityScoreDistributionSpark.getQualityScoreDistributionRScriptResource());
     }
 
 }

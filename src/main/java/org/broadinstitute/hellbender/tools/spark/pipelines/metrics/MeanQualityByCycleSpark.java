@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
-import org.broadinstitute.hellbender.tools.picard.analysis.MeanQualityByCycle;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -242,9 +241,19 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
                 plotSubtitle = StringUtil.asEmptyIfNull(readGroups.get(0).getLibrary());
             }
             final RScriptExecutor executor = new RScriptExecutor();
-            executor.addScript(new Resource(MeanQualityByCycle.R_SCRIPT, MeanQualityByCycle.class));
+            executor.addScript(getMeanQualityByCycleRScriptResource());
             executor.addArgs(out, chartOutput.getAbsolutePath(), inputFileName, plotSubtitle);
             executor.exec();
         }
     }
+
+    /**
+     * Return the R Script resource used by this class
+     */
+    @VisibleForTesting
+    static Resource getMeanQualityByCycleRScriptResource() {
+        final String R_SCRIPT = "meanQualityByCycle.R";
+        return new Resource(R_SCRIPT, MeanQualityByCycleSpark.class);
+    }
+
 }

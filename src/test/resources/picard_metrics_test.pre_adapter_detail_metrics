@@ -1,9 +1,9 @@
 ## htsjdk.samtools.metrics.StringHeader
-# org.broadinstitute.hellbender.tools.picard.analysis.artifacts.CollectSequencingArtifactMetrics  --output /home/lichtens/picard_metrics_test.txt --DB_SNP /home/lichtens/IdeaProjects/hellbender-protected/src/test/resources/large/dbsnp_138.b37.20.21.vcf --input /home/lichtens/IdeaProjects/hellbender-protected/src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam --VALIDATION_STRINGENCY SILENT --reference src/test/resources/large/human_g1k_v37.20.21.fasta  --MINIMUM_QUALITY_SCORE 20 --MINIMUM_MAPPING_QUALITY 30 --MINIMUM_INSERT_SIZE 60 --MAXIMUM_INSERT_SIZE 600 --INCLUDE_UNPAIRED false --TANDEM_READS false --USE_OQ true --CONTEXT_SIZE 1 --ASSUME_SORTED true --STOP_AFTER 0 --COMPRESSION_LEVEL 5 --MAX_RECORDS_IN_RAM 500000 --CREATE_INDEX false --CREATE_MD5_FILE false --help false --version false --verbosity INFO --QUIET false --use_jdk_deflater false
+# org.broadinstitute.hellbender.utils.artifacts.CollectSequencingArtifactMetrics  --output /home/lichtens/picard_metrics_test.txt --DB_SNP /home/lichtens/IdeaProjects/hellbender-protected/src/test/resources/large/dbsnp_138.b37.20.21.vcf --input /home/lichtens/IdeaProjects/hellbender-protected/src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam --VALIDATION_STRINGENCY SILENT --reference src/test/resources/large/human_g1k_v37.20.21.fasta  --MINIMUM_QUALITY_SCORE 20 --MINIMUM_MAPPING_QUALITY 30 --MINIMUM_INSERT_SIZE 60 --MAXIMUM_INSERT_SIZE 600 --INCLUDE_UNPAIRED false --TANDEM_READS false --USE_OQ true --CONTEXT_SIZE 1 --ASSUME_SORTED true --STOP_AFTER 0 --COMPRESSION_LEVEL 5 --MAX_RECORDS_IN_RAM 500000 --CREATE_INDEX false --CREATE_MD5_FILE false --help false --version false --verbosity INFO --QUIET false --use_jdk_deflater false
 ## htsjdk.samtools.metrics.StringHeader
 # Started on: November 14, 2016 10:07:04 AM EST
 
-## METRICS CLASS	org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics$PreAdapterDetailMetrics
+## METRICS CLASS	picard.analysis.artifacts.SequencingArtifactMetrics$PreAdapterDetailMetrics
 SAMPLE_ALIAS	LIBRARY	REF_BASE	ALT_BASE	CONTEXT	PRO_REF_BASES	PRO_ALT_BASES	CON_REF_BASES	CON_ALT_BASES	ERROR_RATE	QSCORE
 NA12878	Solexa-18483	A	C	AAA	365889	34	369967	51	0	100
 NA12878	Solexa-18483	A	C	CAA	185852	11	188082	18	0	100

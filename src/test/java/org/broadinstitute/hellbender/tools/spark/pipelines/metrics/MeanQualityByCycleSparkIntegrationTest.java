@@ -18,7 +18,8 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
 
     //NOTE: these tests use the same data and results as the non-spark ones, by design
 
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/MeanQualityByCycle");
+    private static final File TEST_DATA_DIR = new File(
+            "src/test/resources/org/broadinstitute/hellbender/metrics/analysis//MeanQualityByCycle");
 
     @Override
     public String getTestedClassName() {
@@ -170,4 +171,11 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
+
+    @Test
+    public void testGetRScriptResource() {
+        // Make sure the RScript resource can be resolved
+        Assert.assertNotNull(MeanQualityByCycleSpark.getMeanQualityByCycleRScriptResource());
+    }
+
 }

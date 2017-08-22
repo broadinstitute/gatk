@@ -348,11 +348,7 @@ task CollectSequencingArtifactMetrics {
 
   command {
         set -e
-        java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="metrics" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
-
-        # Convert to GATK format
-        sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
-            "metrics.pre_adapter_detail_metrics" > "gatk.pre_adapter_detail_metrics"
+        java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="gatk" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
   }
 
   runtime {

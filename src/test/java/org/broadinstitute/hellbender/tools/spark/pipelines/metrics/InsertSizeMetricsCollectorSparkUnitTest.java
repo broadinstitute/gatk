@@ -29,7 +29,7 @@ import java.util.List;
  * the MultiLevelCollector combine and combineUnit methods are executed during the test.
  */
 public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramTest {
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
+    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "../metrics/analysis/CollectInsertSizeMetrics");
 
     @Override
     public String getTestedClassName() {

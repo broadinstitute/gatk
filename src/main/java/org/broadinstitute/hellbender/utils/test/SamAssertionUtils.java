@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.test;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.*;
 import org.apache.commons.io.FilenameUtils;
-import org.broadinstitute.hellbender.tools.picard.sam.SortSam;
+import picard.sam.SortSam;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -377,11 +377,16 @@ public final class SamAssertionUtils {
 
     private static void sortSam(final File input, final File output, final File reference, final ValidationStringency stringency) {
         final SortSam sort = new SortSam();
-        sort.INPUT = input;
-        sort.OUTPUT = output;
-        sort.REFERENCE_SEQUENCE = reference;
-        sort.SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
-        sort.VALIDATION_STRINGENCY = stringency;
-        sort.runTool();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addInput(input);
+        args.addOutput(output);
+        if (reference != null) {
+            args.addReference(reference);
+        }
+
+        args.addArgument("VALIDATION_STRINGENCY", stringency.name());
+        sort.instanceMain(args.getArgsArray());
     }
 }

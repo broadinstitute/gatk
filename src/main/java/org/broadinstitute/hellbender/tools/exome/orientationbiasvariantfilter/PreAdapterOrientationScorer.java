@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import picard.analysis.artifacts.SequencingArtifactMetrics;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
