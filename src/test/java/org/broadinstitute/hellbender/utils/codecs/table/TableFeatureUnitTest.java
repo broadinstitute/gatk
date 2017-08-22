@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.codecs.table;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -10,7 +11,7 @@ import java.util.Arrays;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class TableFeatureUnitTest {
+public class TableFeatureUnitTest extends BaseTest {
 
     @Test
     public void testTableFeatureGetters() {

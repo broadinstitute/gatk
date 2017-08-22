@@ -85,7 +85,7 @@ public final class TableFeature implements Feature {
         return getValuesTo(columnCount());
     }
 
-    /** Gets all the values from the first column to the last one specified (exclusive). */
+    /** Gets all the values from the first column (0) to the last one specified (exclusive). */
     public List<String> getValuesTo(int columnPosition) {
         Utils.validateArg(columnPosition >= 0, () -> "Requested a negative column: " + columnPosition);
         Utils.validateArg(columnPosition <= columnCount(), () -> "We only have " + columnCount() + " columns, the requested column = " + columnPosition);
