@@ -74,7 +74,7 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                                                  referenceArguments.getReferencePath());
                 }
         );
-        drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+        drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, getVariantCacheLookAheadBases(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                                      referenceArguments.getReferencePath());
 
         //Note: the intervals for the driving variants are set in onStartup
