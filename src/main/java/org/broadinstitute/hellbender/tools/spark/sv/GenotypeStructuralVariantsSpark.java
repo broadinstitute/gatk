@@ -12,7 +12,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariantInputArgumentCollection;
@@ -26,10 +25,7 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import scala.Tuple2;
 
-import java.io.File;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -41,11 +37,10 @@ import java.util.stream.IntStream;
         programGroup = StructuralVariationSparkProgramGroup.class)
 public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
-
     public static final String FASTQ_FILE_DIR_SHORT_NAME = "fastqDir";
     public static final String FASTQ_FILE_DIR_FULL_NAME = "fastqAssemblyDirectory";
-    public static final String ASSEMBLIES_FILE_SHORT_NAME = "assemblies";
-    public static final String ASSEMBLIES_FILE_FULL_NAME = "assembliesFile";
+    public static final String HAP_AND_CTG_FILE_SHORT_NAME = "assemblies";
+    public static final String HAP_AND_CTG_FILE_FULL_NAME = "haplotypesAndContigsFile";
     public static final String PADDING_SHORT_NAME = "padding";
     public static final String PADDING_FULL_NAME = "padding";
     public static final String INSERT_SIZE_DISTR_SHORT_NAME = "insSize";
@@ -62,9 +57,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     private String fastqDir = null;
 
     @Argument(doc = "assemblies SAM/BAM file location",
-            shortName = ASSEMBLIES_FILE_SHORT_NAME,
-            fullName = ASSEMBLIES_FILE_FULL_NAME)
-    private String assembliesFile = null;
+            shortName = HAP_AND_CTG_FILE_SHORT_NAME,
+            fullName = HAP_AND_CTG_FILE_FULL_NAME)
+    private String haplotypesAndContigsFile = null;
 
     @Argument(doc = "output VCF file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

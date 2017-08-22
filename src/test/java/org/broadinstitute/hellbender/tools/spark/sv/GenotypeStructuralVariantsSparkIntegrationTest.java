@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -45,7 +43,7 @@ public class GenotypeStructuralVariantsSparkIntegrationTest extends CommandLineP
              add( INPUT_FASTQ_DIR.getAbsolutePath());
              add("-L");
              add( INPUT_INTERVALS.getAbsolutePath());
-             add("-" + GenotypeStructuralVariantsSpark.ASSEMBLIES_FILE_SHORT_NAME);
+             add("-" + GenotypeStructuralVariantsSpark.HAP_AND_CTG_FILE_SHORT_NAME);
              add( "test.sam");
             }
         };
