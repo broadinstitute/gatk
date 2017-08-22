@@ -1,0 +1,2 @@
+@HD	VN:1.5	SO:unsorted
+@SQ	SN:ENST00000397910.4|ENSG00000181143.11|OTTHUMG00000169191.3|OTTHUMT00000402806.1|MUC16-001|MUC16|43816|UTR5:1-204|CDS:205-43728|UTR3:43729-43816|	LN:43816	M5:9ce71f77812ccbb0b3afe0a6657ed6b5	UR:file:/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/gencode.v19.MUC16_transcript.fasta
