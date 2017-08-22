@@ -8,7 +8,7 @@ import java.util.function.ToIntFunction;
 
 /**
  * This class helps us compute and compare duplicate scores, which are used for selecting the non-duplicate
- * during duplicate marking (see MarkDuplicates).
+ * during duplicate marking (see MarkDuplicates2).
  *
  * Adapted to GATK from Picard's DuplicateScoringStrategy.
  */

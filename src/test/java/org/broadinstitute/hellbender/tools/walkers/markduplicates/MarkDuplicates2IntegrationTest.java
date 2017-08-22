@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
+package org.broadinstitute.hellbender.tools.walkers.markduplicates;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
@@ -23,12 +23,12 @@ import java.util.*;
  * This class defines the individual test cases to run. The actual running of the test is done
  * by MarkDuplicatesTester (see getTester).
  */
-public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
+public final class MarkDuplicates2IntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
     protected static String TEST_BASE_NAME = null;
 
     @BeforeClass
     public void setUp() {
-        TEST_BASE_NAME = "MarkDuplicates";
+        TEST_BASE_NAME = "MarkDuplicates2";
     }
 
     @Override
@@ -45,14 +45,14 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
 
     @Override
     protected CommandLineProgram getCommandLineProgramInstance() {
-        return new MarkDuplicates();
+        return new MarkDuplicates2();
     }
 
     // NB: this test should return different results than MarkDuplicatesWithMateCigar
 
     /**
      * Test that PG header records are created & chained appropriately (or not created), and that the PG record chains
-     * are as expected.  MarkDuplicates is used both to merge and to mark dupes in this case.
+     * are as expected.  MarkDuplicates2 is used both to merge and to mark dupes in this case.
      * @param suppressPg If true, do not create PG header record.
      * @param expectedPnVnByReadName For each read, info about the expect chain of PG records.
      */
@@ -62,9 +62,9 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
         final File outputDir = IOUtil.createTempDir(TEST_BASE_NAME + ".", ".tmp");
         outputDir.deleteOnExit();
         try {
-            // Run MarkDuplicates, merging the 3 input files, and either enabling or suppressing PG header
+            // Run MarkDuplicates2, merging the 3 input files, and either enabling or suppressing PG header
             // record creation according to suppressPg.
-            final MarkDuplicates markDuplicates = new MarkDuplicates();
+            final MarkDuplicates2 markDuplicates2 = new MarkDuplicates2();
             final ArgumentsBuilder args = new ArgumentsBuilder();
             for (int i = 1; i <= 3; ++i) {
                 args.add("--input");
@@ -84,9 +84,9 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
             // in this case to initialize the command line.
             // Note that for the unit test, version won't come through because it is obtained through jar
             // manifest, and unit test doesn't run code from a jar.
-            markDuplicates.instanceMain(args.getArgsArray());
+            markDuplicates2.instanceMain(args.getArgsArray());
 
-            // Read the MarkDuplicates output file, and get the PG ID for each read.  In this particular test,
+            // Read the MarkDuplicates2 output file, and get the PG ID for each read.  In this particular test,
             // the PG ID should be the same for both ends of a pair.
             final SamReader reader = SamReaderFactory.makeDefault().open(outputSam);
 
@@ -111,8 +111,12 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
                 String pgId = pgIdForReadName.get(readName);
                 for (final ExpectedPnAndVn expected : expectedList) {
                     final SAMProgramRecord programRecord = header.getProgramRecord(pgId);
-                    if (expected.expectedPn != null) Assert.assertEquals(programRecord.getProgramName(), expected.expectedPn);
-                    if (expected.expectedVn != null) Assert.assertEquals(programRecord.getProgramVersion(), expected.expectedVn);
+                    if (expected.expectedPn != null) {
+                        Assert.assertEquals(programRecord.getProgramName(), expected.expectedPn);
+                    }
+                    if (expected.expectedVn != null) {
+                        Assert.assertEquals(programRecord.getProgramVersion(), expected.expectedVn);
+                    }
                     pgId = programRecord.getPreviousProgramGroupId();
                 }
                 Assert.assertNull(pgId);
@@ -163,21 +167,21 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
         outputSam.deleteOnExit();
         final File metricsFile = new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics");
         metricsFile.deleteOnExit();
-        // Run MarkDuplicates, merging the 3 input files, and either enabling or suppressing PG header
+        // Run MarkDuplicates2, merging the 3 input files, and either enabling or suppressing PG header
         // record creation according to suppressPg.
-        final MarkDuplicates markDuplicates = new MarkDuplicates();
-        markDuplicates.setupOpticalDuplicateFinder();
-        markDuplicates.INPUT = CollectionUtil.makeList(sam);
+        final MarkDuplicates2 markDuplicates2 = new MarkDuplicates2();
+        markDuplicates2.setupOpticalDuplicateFinder();
+        markDuplicates2.INPUT = CollectionUtil.makeList(sam);
         if (null != reference) {
-            markDuplicates.REFERENCE_SEQUENCE = reference;
+            markDuplicates2.REFERENCE_SEQUENCE = reference;
         }
-        markDuplicates.OUTPUT = outputSam;
-        markDuplicates.METRICS_FILE = metricsFile;
-        markDuplicates.TMP_DIR = CollectionUtil.makeList(outputDir);
+        markDuplicates2.OUTPUT = outputSam;
+        markDuplicates2.METRICS_FILE = metricsFile;
+        markDuplicates2.TMP_DIR = CollectionUtil.makeList(outputDir);
         // Needed to suppress calling CommandLineProgram.getVersion(), which doesn't work for code not in a jar
-        markDuplicates.PROGRAM_RECORD_ID = null;
-        Assert.assertEquals(markDuplicates.doWork(), null);
-        Assert.assertEquals(markDuplicates.numOpticalDuplicates(), expectedNumOpticalDuplicates);
+        markDuplicates2.PROGRAM_RECORD_ID = null;
+        Assert.assertEquals(markDuplicates2.doWork(), null);
+        Assert.assertEquals(markDuplicates2.numOpticalDuplicates(), expectedNumOpticalDuplicates);
     }
 
     @Test(dataProvider = "strictlyBadBams")
@@ -242,18 +246,18 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
         outputSam.deleteOnExit();
         final File metricsFile = new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics");
         metricsFile.deleteOnExit();
-        // Run MarkDuplicates, merging the 3 input files, and either enabling or suppressing PG header
+        // Run MarkDuplicates2, merging the 3 input files, and either enabling or suppressing PG header
         // record creation according to suppressPg.
-        final MarkDuplicates markDuplicates = new MarkDuplicates();
-        markDuplicates.setupOpticalDuplicateFinder();
-        markDuplicates.INPUT = CollectionUtil.makeList(sam);
-        markDuplicates.OUTPUT = outputSam;
-        markDuplicates.METRICS_FILE = metricsFile;
-        markDuplicates.TMP_DIR = CollectionUtil.makeList(outputDir);
+        final MarkDuplicates2 markDuplicates2 = new MarkDuplicates2();
+        markDuplicates2.setupOpticalDuplicateFinder();
+        markDuplicates2.INPUT = CollectionUtil.makeList(sam);
+        markDuplicates2.OUTPUT = outputSam;
+        markDuplicates2.METRICS_FILE = metricsFile;
+        markDuplicates2.TMP_DIR = CollectionUtil.makeList(outputDir);
         // Needed to suppress calling CommandLineProgram.getVersion(), which doesn't work for code not in a jar
-        markDuplicates.PROGRAM_RECORD_ID = null;
-        Assert.assertEquals(markDuplicates.doWork(), null);
-        Assert.assertEquals(markDuplicates.numOpticalDuplicates(), expectedNumOpticalDuplicates);
+        markDuplicates2.PROGRAM_RECORD_ID = null;
+        Assert.assertEquals(markDuplicates2.doWork(), null);
+        Assert.assertEquals(markDuplicates2.numOpticalDuplicates(), expectedNumOpticalDuplicates);
     }
 
     @DataProvider(name="testDuplicateDetectionDataProvider")

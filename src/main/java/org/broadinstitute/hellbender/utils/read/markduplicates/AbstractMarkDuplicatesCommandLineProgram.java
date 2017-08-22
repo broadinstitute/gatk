@@ -39,7 +39,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
                     "PG record creation.  This string may have a suffix appended to avoid collision with other " +
                     "program record IDs.",
             optional = true)
-    public String PROGRAM_RECORD_ID = "MarkDuplicates";
+    public String PROGRAM_RECORD_ID = "MarkDuplicates2";
 
     @Argument(shortName = "PG_VERSION",
             doc = "Value of VN tag of PG record to be created. If not specified, the version will be detected automatically.",

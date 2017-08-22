@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 /**
- * Encodes a unique key for read, read pairs and fragments. Used to identify duplicates for MarkDuplicates.
+ * Encodes a unique key for read, read pairs and fragments. Used to identify duplicates for MarkDuplicates2.
  */
 public final class ReadsKey {
 

@@ -20,7 +20,7 @@ import java.io.IOException;
 public class MarkDuplicatesSparkUnitTest extends BaseTest {
     @DataProvider(name = "md")
     public Object[][] loadReads() {
-        String dir = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/MarkDuplicates/").getAbsolutePath();
+        String dir = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/MarkDuplicates2/").getAbsolutePath();
         return new Object[][]{
                 {dir + "/example.chr1.1-1K.unmarkedDups.noDups.bam", 20, 0},
                 {dir + "/example.chr1.1-1K.unmarkedDups.bam", 90, 6},
