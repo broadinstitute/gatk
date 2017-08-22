@@ -141,9 +141,14 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param referenceReader reader to provide reference data
      */
     public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs,  boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader ) {
+        this(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader, referenceReader, null);
+    }
+
+    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine ) {
         this.hcArgs = Utils.nonNull(hcArgs);
         this.readsHeader = Utils.nonNull(readsHeader);
         this.referenceReader = Utils.nonNull(referenceReader);
+        this.annotationEngine = annotationEngine;
 
         initialize(createBamOutIndex, createBamOutMD5);
     }
@@ -159,7 +164,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.annotationGroupsToUse, hcArgs.annotationsToUse, hcArgs.annotationsToExclude, hcArgs.dbsnp.dbsnp, hcArgs.comps);
+        if (annotationEngine == null) {
+            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.annotationGroupsToUse, hcArgs.annotationsToUse, hcArgs.annotationsToExclude, hcArgs.dbsnp.dbsnp, hcArgs.comps);
+
+        }
 
         genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs), ! hcArgs.doNotRunPhysicalPhasing);
         genotypingEngine.setAnnotationEngine(annotationEngine);
