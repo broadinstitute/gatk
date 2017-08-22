@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.QualityScoreD
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -97,8 +97,8 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         final File expectedFile = new File(TEST_DATA_DIR, expectedFileName);
 
         //Note we compare to non-spark outputs
-        final File outfile = BaseTest.createTempFile("test", ".metrics");
-        final File pdf = BaseTest.createTempFile("test", ".pdf");
+        final File outfile = GATKBaseTest.createTempFile("test", ".metrics");
+        final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);

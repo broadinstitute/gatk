@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
-
-import org.broadinstitute.hellbender.utils.recalibration.QualQuantizer;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -15,7 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public final class QualQuantizerUnitTest extends BaseTest {
+public final class QualQuantizerUnitTest extends GATKBaseTest {
 
     // --------------------------------------------------------------------------------
     //

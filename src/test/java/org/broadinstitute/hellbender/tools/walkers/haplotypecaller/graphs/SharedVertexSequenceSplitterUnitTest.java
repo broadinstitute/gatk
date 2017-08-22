@@ -4,7 +4,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class SharedVertexSequenceSplitterUnitTest extends BaseTest {
+public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
     private static final boolean PRINT_GRAPHS = false;
 
     @DataProvider(name = "PrefixSuffixData")

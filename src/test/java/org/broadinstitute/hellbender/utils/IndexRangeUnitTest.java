@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -18,7 +18,7 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class IndexRangeUnitTest extends BaseTest {
+public final class IndexRangeUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "correctFromToData")
     public void testCorrectConstruction(final int from, final int to) {

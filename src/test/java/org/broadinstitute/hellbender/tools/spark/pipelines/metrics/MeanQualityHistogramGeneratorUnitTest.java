@@ -4,11 +4,11 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public final class MeanQualityHistogramGeneratorUnitTest extends BaseTest {
+public final class MeanQualityHistogramGeneratorUnitTest extends GATKBaseTest {
 
     @Test
     public void testUsingQualities() throws Exception {

@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 /**
  * Unit tests for SVKmerLong and SVKmerizer.
  */
-public class SVKmerLongUnitTest extends BaseTest {
+public class SVKmerLongUnitTest extends GATKBaseTest {
     @Test
     public void testDefaultConstruction() {
         Assert.assertEquals(new SVKmerLong(10).toString(10), "AAAAAAAAAA");

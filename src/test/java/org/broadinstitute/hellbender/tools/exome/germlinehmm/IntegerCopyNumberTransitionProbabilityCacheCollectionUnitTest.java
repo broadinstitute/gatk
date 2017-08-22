@@ -4,7 +4,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -18,7 +18,7 @@ import java.util.stream.IntStream;
 /**
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class IntegerCopyNumberTransitionProbabilityCacheCollectionUnitTest extends BaseTest {
+public class IntegerCopyNumberTransitionProbabilityCacheCollectionUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/germlinehmm";
     private static final File HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE = new File(TEST_SUB_DIR,
             "homo_sapiens_germline_HMM_priors.tsv");

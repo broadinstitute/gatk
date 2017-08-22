@@ -2,14 +2,14 @@ package org.broadinstitute.hellbender.transformers;
 
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public class DUSTReadTransformerTest extends BaseTest {
+public class DUSTReadTransformerTest extends GATKBaseTest {
 
     @DataProvider(name = "sequenceStrings")
     public Object[][] getSequenceStrings() {

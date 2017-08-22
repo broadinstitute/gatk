@@ -5,7 +5,7 @@ import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,9 +14,10 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-
-public class GenomicsDBImportUnitTest extends BaseTest{
+public class GenomicsDBImportUnitTest extends GATKBaseTest {
 
     private static final String ORDERED_SAMPLE_MAP =    "Sample1\tfile1\n" +
                                                         "Sample2\tfile2\n" +

@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
@@ -161,7 +162,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         CloseableIterator<VariantContext> iterator;
         final List<VariantContext> actualVcs;
         if (onHDFS) {
-            final File tempLocalVCF = BaseTest.createTempFile("variants", "vcf");
+            final File tempLocalVCF = GATKBaseTest.createTempFile("variants", "vcf");
             tempLocalVCF.deleteOnExit();
             BucketUtils.copyFile(generatedVCFPath, tempLocalVCF.getAbsolutePath());
             fileReader = new VCFFileReader(tempLocalVCF, false);
@@ -179,6 +180,6 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         CloserUtil.close(iterator);
         CloserUtil.close(fileReader);
 
-        BaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
+        GATKBaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
     }
 }

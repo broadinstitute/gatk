@@ -4,7 +4,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -37,8 +37,8 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
     public void test(final String inputFile, final String referenceName) throws IOException {
         final File input = new File(TEST_DATA_DIR, inputFile);
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
-        final File outfile = BaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
-        final File pdf = BaseTest.createTempFile("testMeanQualityByCycle", ".pdf");
+        final File outfile = GATKBaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
+        final File pdf = GATKBaseTest.createTempFile("testMeanQualityByCycle", ".pdf");
         outfile.deleteOnExit();
         pdf.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -72,7 +72,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "first5000a.bam");
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
-        final File outfile = BaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
+        final File outfile = GATKBaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(unsortedBam.getCanonicalPath());
@@ -89,7 +89,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         //Note we compare to non-spark outputs
         final File adamFile = new File(TEST_DATA_DIR, "first5000a.adam");
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
-        final File outfile = BaseTest.createTempFile("testMeanQualityByCycleADAM", ".metrics");
+        final File outfile = GATKBaseTest.createTempFile("testMeanQualityByCycleADAM", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(adamFile.getCanonicalPath());
@@ -105,7 +105,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "example_pfFail_reads.bam");
         final File expectedFile = new File(TEST_DATA_DIR, "pfFailBam.pf.txt");
-        final File outfile = BaseTest.createTempFile("pfFailBam.pf.", ".metrics");
+        final File outfile = GATKBaseTest.createTempFile("pfFailBam.pf.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(unsortedBam.getCanonicalPath());
@@ -123,7 +123,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "example_pfFail_reads.bam");
         final File expectedFile = new File(TEST_DATA_DIR, "pfFailBam.pfOnly.txt");
-        final File outfile = BaseTest.createTempFile("pfFailBam.pf.", ".metrics");
+        final File outfile = GATKBaseTest.createTempFile("pfFailBam.pf.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(unsortedBam.getCanonicalPath());
@@ -141,7 +141,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "unmapped.bam");
         final File expectedFile = new File(TEST_DATA_DIR, "unmappedBam.ALIGNED_READS_ONLY_false.txt");
-        final File outfile = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_false.", ".metrics");
+        final File outfile = GATKBaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_false.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(unsortedBam.getCanonicalPath());
@@ -159,7 +159,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "unmapped.bam");
         final File expectedFile = new File(TEST_DATA_DIR, "unmappedBam.ALIGNED_READS_ONLY_true.txt");
-        final File outfile = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_true.", ".metrics");
+        final File outfile = GATKBaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_true.", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(unsortedBam.getCanonicalPath());

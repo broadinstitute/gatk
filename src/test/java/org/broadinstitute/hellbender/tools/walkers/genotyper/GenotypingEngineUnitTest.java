@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class GenotypingEngineUnitTest extends BaseTest {
+public class GenotypingEngineUnitTest extends GATKBaseTest {
 
     private static final Allele refAllele = Allele.create("TCCTTCCTTCCCTCCCTCCCTC", true);
     private static final Allele altT = Allele.create("T");

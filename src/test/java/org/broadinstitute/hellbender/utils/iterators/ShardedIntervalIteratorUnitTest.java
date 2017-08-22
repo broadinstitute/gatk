@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
-import com.google.common.math.IntMath;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 
-public class ShardedIntervalIteratorUnitTest extends BaseTest {
+public class ShardedIntervalIteratorUnitTest extends GATKBaseTest {
     @Test(dataProvider = "simpleData")
     public void testSimpleCount(List<SimpleInterval> intervals, int shardSize, int expectedCount) {
 

@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.tools.spark.utils.LongHopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -16,7 +16,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Arrays;
 
-public class ContainsKmerReadFilterTest extends BaseTest {
+public class ContainsKmerReadFilterTest extends GATKBaseTest {
 
     private final int kSize = 11;
     private LongHopscotchSet kmerSet;

@@ -10,6 +10,7 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.SamFiles;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
@@ -18,7 +19,6 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.Set;
 
 
-public class HaplotypeBAMWriterUnitTest extends BaseTest {
+public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
     private final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeader(20, 1, 1000);
     private final String expectedFilePath = getToolTestDataDir() + "/expected/";
 
@@ -131,7 +131,7 @@ public class HaplotypeBAMWriterUnitTest extends BaseTest {
             final boolean createMD5
         ) throws IOException
     {
-        final File outFile = BaseTest.createTempFile("haplotypeBamWriterTest", outputFileExtension);
+        final File outFile = GATKBaseTest.createTempFile("haplotypeBamWriterTest", outputFileExtension);
         final HaplotypeBAMDestination fileDest = new SAMFileDestination(outFile, createIndex, createMD5, samHeader, "TestHaplotypeRG");
 
         try (final HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, fileDest)) {
@@ -162,7 +162,7 @@ public class HaplotypeBAMWriterUnitTest extends BaseTest {
             final Locatable genomeLoc,
             final ReadLikelihoods <Haplotype> readLikelihoods
     ) throws IOException {
-        final File outputFile = BaseTest.createTempFile("fromHeaderSAM", ".sam");
+        final File outputFile = GATKBaseTest.createTempFile("fromHeaderSAM", ".sam");
 
         try (HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, outputFile, false, false, samHeader)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(

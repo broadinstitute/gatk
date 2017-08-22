@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class DataLineUnitTest extends BaseTest {
+public class DataLineUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "tableColumnsData")
     public void testCreation(final TableColumnCollection columns) {

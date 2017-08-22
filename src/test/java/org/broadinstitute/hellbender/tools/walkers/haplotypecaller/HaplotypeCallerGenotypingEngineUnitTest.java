@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -27,7 +27,7 @@ import java.util.*;
 /**
  * Unit tests for {@link HaplotypeCallerGenotypingEngine}.
  */
-public final class HaplotypeCallerGenotypingEngineUnitTest extends BaseTest {
+public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
     private class BasicGenotypingTestProvider extends TestDataProvider {
         byte[] ref;

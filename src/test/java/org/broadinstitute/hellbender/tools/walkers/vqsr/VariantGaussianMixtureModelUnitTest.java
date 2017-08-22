@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public final class VariantGaussianMixtureModelUnitTest extends BaseTest {
+public final class VariantGaussianMixtureModelUnitTest extends GATKBaseTest {
     private static int N_VARIANTS = 100;
     private VariantDatum[] variantData1 = new VariantDatum[N_VARIANTS];
 

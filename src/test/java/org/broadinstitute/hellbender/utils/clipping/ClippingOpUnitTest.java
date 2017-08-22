@@ -2,12 +2,12 @@ package org.broadinstitute.hellbender.utils.clipping;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public final class ClippingOpUnitTest extends BaseTest {
+public final class ClippingOpUnitTest extends GATKBaseTest {
 
     @Test (dataProvider = "SoftClipedReadsNewStart")
     public void testGetNewAlignmentStartOffset(final String preClip, final String postClip, final int expectedResult) {

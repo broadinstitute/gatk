@@ -5,7 +5,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SegmentMergeUtilsUnitTest extends BaseTest {
+public final class SegmentMergeUtilsUnitTest extends GATKBaseTest {
     //segments for testing mergeSegments
     private static final SimpleInterval segment1 = new SimpleInterval("chr1", 1, 4);
     private static final SimpleInterval segment2 = new SimpleInterval("chr1", 5, 12);

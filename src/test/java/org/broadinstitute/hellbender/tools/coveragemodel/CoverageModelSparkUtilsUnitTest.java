@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +14,7 @@ import java.util.List;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class CoverageModelSparkUtilsUnitTest extends BaseTest {
+public class CoverageModelSparkUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "createLinearSpaceBlocksTestData")
     public void testCreateLinearSpaceBlocks(final int length, final int numBlocks, final int minBlockSize) {

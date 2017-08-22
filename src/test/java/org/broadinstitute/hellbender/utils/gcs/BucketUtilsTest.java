@@ -4,7 +4,7 @@ import htsjdk.samtools.util.IOUtil;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -14,7 +14,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-public final class BucketUtilsTest extends BaseTest {
+public final class BucketUtilsTest extends GATKBaseTest {
 
     static {
         BucketUtils.setGlobalNIODefaultOptions();

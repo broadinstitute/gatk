@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.samples;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -19,7 +19,7 @@ import java.util.*;
  * @author Mark DePristo
  * @since 2011
  */
-public class PedReaderUnitTest extends BaseTest {
+public class PedReaderUnitTest extends GATKBaseTest {
     private static Logger logger = LogManager.getLogger(PedReaderUnitTest.class);
 
     private class PedReaderTest extends TestDataProvider {

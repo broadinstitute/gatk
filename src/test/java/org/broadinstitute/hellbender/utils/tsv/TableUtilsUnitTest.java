@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -16,7 +16,7 @@ import java.util.Objects;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class TableUtilsUnitTest extends BaseTest {
+public class TableUtilsUnitTest extends GATKBaseTest {
 
     private static File CORRECT_TEST_FILE;
 

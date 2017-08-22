@@ -10,7 +10,7 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Basic unit test for CachingIndexedFastaSequenceFile
  */
-public final class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
+public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest {
     private File simpleFasta = new File(publicTestDir + "/exampleFASTA.fasta");
     private static final int STEP_SIZE = 1;
     private final static boolean DEBUG = false;
@@ -213,7 +213,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
 
     @Test(expectedExceptions = {UserException.MissingReference.class})
     public void testNonexistentReference() throws FileNotFoundException, InterruptedException {
-        CachingIndexedFastaSequenceFile.checkAndCreate(BaseTest.getSafeNonExistentFile("NonexistentReference.fasta"));
+        CachingIndexedFastaSequenceFile.checkAndCreate(GATKBaseTest.getSafeNonExistentFile("NonexistentReference.fasta"));
     }
 
 }

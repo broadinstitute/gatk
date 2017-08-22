@@ -17,7 +17,7 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 /**
  * test out the interval utility methods
  */
-public final class IntervalUtilsUnitTest extends BaseTest {
+public final class IntervalUtilsUnitTest extends GATKBaseTest {
     public static final String INTERVAL_TEST_DATA = publicTestDir + "org/broadinstitute/hellbender/utils/interval/";
     public static final String emptyIntervals = publicTestDir + "empty_intervals.list";
     public static final String FULL_HG19_DICT = publicTestDir + "Homo_sapiens_assembly19.dict";
@@ -424,7 +424,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test
     public void testGetContigLengths() {
-        Map<String, Integer> lengths = IntervalUtils.getContigSizes(new File(BaseTest.exampleReference));
+        Map<String, Integer> lengths = IntervalUtils.getContigSizes(new File(GATKBaseTest.exampleReference));
         Assert.assertEquals((long)lengths.get("1"), 16000);
         Assert.assertEquals((long)lengths.get("2"), 16000);
         Assert.assertEquals((long) lengths.get("3"), 16000);
@@ -476,7 +476,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testMissingIntervalFile() {
-        IntervalUtils.isIntervalFile(BaseTest.publicTestDir + "no_such_intervals.list");
+        IntervalUtils.isIntervalFile(GATKBaseTest.publicTestDir + "no_such_intervals.list");
     }
 
     @Test
@@ -990,7 +990,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     }
 
     private File createTempFile( String tempFilePrefix, String tempFileExtension, String... lines ) throws Exception {
-        File tempFile = BaseTest.createTempFile(tempFilePrefix, tempFileExtension);
+        File tempFile = GATKBaseTest.createTempFile(tempFilePrefix, tempFileExtension);
         FileUtils.writeLines(tempFile, Arrays.asList(lines));
         return tempFile;
     }
@@ -1054,7 +1054,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     // So we'll blow up with MalformedGenomeLoc and not anything related to files
     @Test(expectedExceptions = UserException.MalformedGenomeLoc.class)
     public void testLoadIntervalsFromNonExistentFile() {
-        IntervalUtils.loadIntervals(Arrays.asList(BaseTest.getSafeNonExistentFile("non_existent_file.vcf").getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        IntervalUtils.loadIntervals(Arrays.asList(GATKBaseTest.getSafeNonExistentFile("non_existent_file.vcf").getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)

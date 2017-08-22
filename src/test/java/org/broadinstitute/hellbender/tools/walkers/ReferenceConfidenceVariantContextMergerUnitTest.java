@@ -2,12 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
@@ -25,7 +24,7 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class ReferenceConfidenceVariantContextMergerUnitTest extends BaseTest {
+public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTest {
     private final Allele Aref = Allele.create("A", true);
     private final Allele C = Allele.create("C");
     private final Allele G = Allele.create("G");

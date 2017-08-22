@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.tools.exome.samplenamefinder;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.List;
 
-public class SampleNameFinderTest extends BaseTest {
+public class SampleNameFinderTest extends GATKBaseTest {
     static final File INPUT_DIR = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/");
     static final File INPUT_FILE = new File(INPUT_DIR, "HCC1143_reduced_log.tsv");
     static final File TWO_SAMPLE_INPUT_FILE = new File(INPUT_DIR, "HCC1143_short_2samples.tsv");

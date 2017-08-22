@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.PrintReads;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -128,7 +128,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
 
     @Test(dataProvider="testingDataNoRef", expectedExceptions = UserException.MissingReference.class)
     public void testNoRef(String fileIn, String extOut) throws Exception {
-        final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
+        final File outFile = GATKBaseTest.createTempFile(fileIn + ".", extOut);
         File readInput = new File(TEST_DATA_DIR, fileIn);
         final String[] args = new String[]{
                 "--input" , readInput.getAbsolutePath(),
@@ -146,7 +146,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
 
     @Test(dataProvider="testingDataNoRefMultipleInputs", expectedExceptions = UserException.MissingReference.class)
     public void testNoRefMulti(String fileIn1, String fileIn2, String extOut) throws Exception {
-        final File outFile = BaseTest.createTempFile(fileIn1 + ".", extOut);
+        final File outFile = GATKBaseTest.createTempFile(fileIn1 + ".", extOut);
         File readInput1 = new File(TEST_DATA_DIR, fileIn1);
         File readInput2 = new File(TEST_DATA_DIR, fileIn2);
         final String[] args = new String[]{
@@ -168,7 +168,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
     // from the CRAM in its sequence dictionary, we throw a UserException.
     @Test(dataProvider="testingDataWrongRef", expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
     public void testWrongRef(String fileIn, String extOut, String referenceFile) throws Exception {
-        final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
+        final File outFile = GATKBaseTest.createTempFile(fileIn + ".", extOut);
         File readInput = new File(TEST_DATA_DIR, fileIn);
         File reference = new File(TEST_DATA_DIR, referenceFile);
         final String[] args = new String[]{

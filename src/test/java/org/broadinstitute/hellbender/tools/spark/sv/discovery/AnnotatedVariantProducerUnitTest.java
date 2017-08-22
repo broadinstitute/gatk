@@ -6,7 +6,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
-public class AnnotatedVariantProducerUnitTest extends BaseTest {
+public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
     /**
      * Hack to force trigger test data generation.

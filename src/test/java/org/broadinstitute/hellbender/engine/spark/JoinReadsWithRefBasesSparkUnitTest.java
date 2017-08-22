@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -25,7 +25,7 @@ import java.util.Map;
 
 import static org.mockito.Mockito.*;
 
-public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
+public class JoinReadsWithRefBasesSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases(){
         Object[][] data = new Object[2][];

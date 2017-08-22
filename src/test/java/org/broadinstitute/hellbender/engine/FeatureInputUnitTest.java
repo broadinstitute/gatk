@@ -5,14 +5,14 @@ import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
 
-public final class FeatureInputUnitTest extends BaseTest {
+public final class FeatureInputUnitTest extends GATKBaseTest {
     private static final String FEATURE_INPUT_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
     @DataProvider(name = "InvalidFeatureArgumentValuesDataProvider")

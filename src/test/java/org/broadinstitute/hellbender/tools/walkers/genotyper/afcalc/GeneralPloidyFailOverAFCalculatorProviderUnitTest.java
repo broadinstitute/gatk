@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class GeneralPloidyFailOverAFCalculatorProviderUnitTest extends BaseTest {
+public class GeneralPloidyFailOverAFCalculatorProviderUnitTest extends GATKBaseTest {
 
     private final static int[] PLOIDIES = new int[] { AFCalculatorImplementation.UNBOUND_PLOIDY,1,2,3,4,10 };
     private final static int[] MAX_ALT_ALLELES = new int[] { AFCalculatorImplementation.UNBOUND_ALTERNATIVE_ALLELE_COUNT,1,2,3,4,10};

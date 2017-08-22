@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.utils.samples;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class MendelianViolationUnitTest extends BaseTest {
+public final class MendelianViolationUnitTest extends GATKBaseTest {
 
     private static final int GQ30 = 30;
 

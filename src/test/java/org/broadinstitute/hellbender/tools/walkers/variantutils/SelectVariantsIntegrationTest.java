@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -96,7 +96,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testNonExistentSampleFile() throws IOException {
         final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
-        final File nonExistentFile = BaseTest.getSafeNonExistentFile("nonexistentSamples.list");
+        final File nonExistentFile = GATKBaseTest.getSafeNonExistentFile("nonexistentSamples.list");
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(" -sn A -sn Z -sn Q -sn " + nonExistentFile, testFile),

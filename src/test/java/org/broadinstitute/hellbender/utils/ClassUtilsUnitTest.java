@@ -4,14 +4,14 @@ import com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.ApplyBQSR;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class ClassUtilsUnitTest extends BaseTest{
+public final class ClassUtilsUnitTest extends GATKBaseTest {
 
     //These classes are for testing the methods in ClassUtils.
 

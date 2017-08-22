@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -16,7 +16,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.F
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class FilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
+public class FilterLongReadAlignmentsSAMSparkUnitTest extends GATKBaseTest {
 
     private static final Set<String> canonicalChromosomes = getCanonicalChromosomes(null, null);
 

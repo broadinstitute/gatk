@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class SparkReadShardUnitTest extends BaseTest {
+public class SparkReadShardUnitTest extends GATKBaseTest {
     private static final SimpleInterval OUTER = new SimpleInterval("1", 1, 10);
     private static final SimpleInterval INNER = new SimpleInterval("1", 5, 7);
     private static final ShardBoundary BOUND = new ShardBoundary(INNER, OUTER);

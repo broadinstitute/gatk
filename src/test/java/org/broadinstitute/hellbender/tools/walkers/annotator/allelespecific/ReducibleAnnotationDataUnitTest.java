@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class ReducibleAnnotationDataUnitTest extends BaseTest {
+public final class ReducibleAnnotationDataUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = GATKException.class)
     public void testValidateAllelesListMultipleReferenceAlleles() throws Exception {
         final Allele Aref= Allele.create("A", true);

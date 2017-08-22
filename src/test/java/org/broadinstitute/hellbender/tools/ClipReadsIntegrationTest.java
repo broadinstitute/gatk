@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -21,10 +20,10 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "clipOptions")
     public void testClipper(String inBam, String reference, String extension, String option, String optAbrv, boolean doStats) throws IOException {
-        final String tmpBAMOutName = BaseTest.createTempFile(inBam + "." + optAbrv, extension).getAbsolutePath();
+        final String tmpBAMOutName = GATKBaseTest.createTempFile(inBam + "." + optAbrv, extension).getAbsolutePath();
         String tmpStatOutName = null;
         if (doStats) {
-            tmpStatOutName= BaseTest.createTempFile(inBam + "." + optAbrv, ".tmp").getAbsolutePath();
+            tmpStatOutName= GATKBaseTest.createTempFile(inBam + "." + optAbrv, ".tmp").getAbsolutePath();
         }
 
         final List<String> args = new ArrayList<>();
@@ -82,8 +81,8 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
                 {b1, null, ".bam", "-QT 10 -CR WRITE_NS", "QT_10_CR_WRITE_NS", true},
                 {b1, null, ".bam", "-QT 10 -CR WRITE_Q0S", "QT_10_CR_WRITE_Q0S", true},
                 {b1, null, ".bam", "-QT 10 -CR SOFTCLIP_BASES","QT_10_CR_SOFTCLIP_BASES", true} ,
-                {b1, null, ".bam", "-XF " + BaseTest.publicTestDir + "seqsToClip.fasta", "XF", true},
-                {b1, null, ".bam", "-QT 10 -CT 1-5 -X CCCCC -XF " + BaseTest.publicTestDir + "seqsToClip.fasta", "QT_10_CT_15_X_CCCCC_XF", true},
+                {b1, null, ".bam", "-XF " + GATKBaseTest.publicTestDir + "seqsToClip.fasta", "XF", true},
+                {b1, null, ".bam", "-QT 10 -CT 1-5 -X CCCCC -XF " + GATKBaseTest.publicTestDir + "seqsToClip.fasta", "QT_10_CT_15_X_CCCCC_XF", true},
                 {cramFile, referenceFile, ".cram", "-QT 10", "QT_10", true},
                 {cramFile, referenceFile, ".cram", "-QT 10", "QT_10", false},
         };

@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
-import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.broadinstitute.hellbender.BwaMemTestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -25,7 +23,7 @@ public class BwaMemIndexImageCreatorIntegrationTest extends CommandLineProgramTe
     @Test
     public void testImageFileGeneration() throws Exception {
 
-        final File tempImage = BaseTest.createTempFile("tempBwaMemIndexImage", ".img");
+        final File tempImage = GATKBaseTest.createTempFile("tempBwaMemIndexImage", ".img");
         final List<String> args = new ArrayList<>(Arrays.asList(
                 "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, testReferenceFasta.getAbsolutePath(),
                 "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempImage.getAbsolutePath()));

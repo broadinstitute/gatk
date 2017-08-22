@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionLi
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -16,7 +16,7 @@ import java.io.File;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AllelicPanelOfNormalsUnitTest extends BaseTest {
+public final class AllelicPanelOfNormalsUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     // test data is a PoN with counts generated from 50 normals simulated from the allele-fraction model with alpha = 65 and beta = 60

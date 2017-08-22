@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
@@ -12,7 +12,7 @@ import java.util.Arrays;
 /**
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class IntegerCopyNumberTransitionProbabilityCacheUnitTest extends BaseTest {
+public class IntegerCopyNumberTransitionProbabilityCacheUnitTest extends GATKBaseTest {
 
     private static final double EPSILON = 1e-6;
 

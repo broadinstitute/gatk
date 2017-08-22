@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class TableWriterUnitTest extends BaseTest {
+public final class TableWriterUnitTest extends GATKBaseTest {
 
     @Test
     public void testNoRecordsOutput() throws IOException {

@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.utils.text;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
 
-public final class TextFormattingUtilsUnitTest extends BaseTest{
+public final class TextFormattingUtilsUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = GATKException.class)
     public void testSplitWhiteSpaceNullLine() {
         TextFormattingUtils.splitWhiteSpace(null);

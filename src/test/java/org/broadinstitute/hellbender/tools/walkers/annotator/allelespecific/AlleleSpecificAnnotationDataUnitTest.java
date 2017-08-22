@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class AlleleSpecificAnnotationDataUnitTest extends BaseTest{
+public class AlleleSpecificAnnotationDataUnitTest extends GATKBaseTest {
 
     @Test
     public void testCreate() throws Exception {

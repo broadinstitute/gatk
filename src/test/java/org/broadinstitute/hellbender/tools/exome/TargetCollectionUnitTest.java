@@ -4,7 +4,7 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -19,7 +19,7 @@ import java.util.*;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class TargetCollectionUnitTest extends BaseTest {
+public final class TargetCollectionUnitTest extends GATKBaseTest {
 
     /**
      * General target_db_test_data, will contain TargetDB instances as a single arguments.

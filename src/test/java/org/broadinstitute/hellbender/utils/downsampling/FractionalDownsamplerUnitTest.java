@@ -5,7 +5,7 @@ import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public final class FractionalDownsamplerUnitTest extends BaseTest {
+public final class FractionalDownsamplerUnitTest extends GATKBaseTest {
 
     private static class FractionalDownsamplerTest extends TestDataProvider {
         double fraction;

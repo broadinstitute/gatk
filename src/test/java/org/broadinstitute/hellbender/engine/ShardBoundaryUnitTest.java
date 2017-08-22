@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class ShardBoundaryUnitTest extends BaseTest {
+public class ShardBoundaryUnitTest extends GATKBaseTest {
     private static final SimpleInterval OUTER = new SimpleInterval("1", 1, 10);
     private static final SimpleInterval INNER = new SimpleInterval("1", 3, 6);
 

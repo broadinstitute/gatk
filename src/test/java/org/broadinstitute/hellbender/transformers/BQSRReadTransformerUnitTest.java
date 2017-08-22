@@ -2,14 +2,14 @@ package org.broadinstitute.hellbender.transformers;
 
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalDatum;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
 
-public final class BQSRReadTransformerUnitTest extends BaseTest{
+public final class BQSRReadTransformerUnitTest extends GATKBaseTest {
     @Test
     public void basicHierarchicalBayesianQualityEstimateTest() {
 

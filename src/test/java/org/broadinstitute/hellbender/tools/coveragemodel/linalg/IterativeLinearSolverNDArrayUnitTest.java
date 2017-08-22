@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.coveragemodel.linalg;
 
 import org.broadinstitute.hellbender.tools.coveragemodel.StandardSubroutineSignals;
 import org.broadinstitute.hellbender.tools.coveragemodel.SubroutineSignal;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.junit.Assert;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class IterativeLinearSolverNDArrayUnitTest extends BaseTest {
+public class IterativeLinearSolverNDArrayUnitTest extends GATKBaseTest {
 
     private static final int DEFAULT_MAX_ITERS = 10;
     private static final double DEFAULT_REL_TOL = 1e-6;

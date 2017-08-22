@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.validation;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -34,7 +34,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
     @DataProvider(name = "CompareBasesProvider")
     public Object[][] makeCompareBasesProvider() {
         final String resourceDir = getTestDataDir() + "/validation/";
-        final File outFile = BaseTest.createTempFile(getTestDataDir() + "temp.diff", "txt");
+        final File outFile = GATKBaseTest.createTempFile(getTestDataDir() + "temp.diff", "txt");
         final File firstBam = new File(resourceDir, "single.read.bam");
         final File secondBam = new File(resourceDir, "another.single.read.bam");
         final File firstCram = new File(resourceDir, "single.read.cram");

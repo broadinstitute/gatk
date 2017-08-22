@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -27,7 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-public final class BwaMemIntegrationTest extends BaseTest {
+public final class BwaMemIntegrationTest extends GATKBaseTest {
 
     private BwaMemIndex index;
     private File fastaFile;

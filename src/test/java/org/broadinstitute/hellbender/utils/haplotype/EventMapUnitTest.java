@@ -7,7 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class EventMapUnitTest extends BaseTest {
+public final class EventMapUnitTest extends GATKBaseTest {
     private final static String CHR = "20";
     private final static String NAME = "foo";
 

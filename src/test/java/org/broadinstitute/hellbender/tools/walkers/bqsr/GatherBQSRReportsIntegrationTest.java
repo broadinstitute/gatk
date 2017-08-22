@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import java.io.File;
 
 public final class GatherBQSRReportsIntegrationTest extends CommandLineProgramTest {
 
-    private static final String testDir = BaseTest.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
+    private static final String testDir = GATKBaseTest.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
 
     @Test
     public void testCombine5Reports() throws Exception {
@@ -37,7 +37,7 @@ public final class GatherBQSRReportsIntegrationTest extends CommandLineProgramTe
         args.add("--input");
         args.add(recal5.getAbsolutePath());
 
-        final File outFile = BaseTest.createTempFile("bqsr.", "table");
+        final File outFile = GATKBaseTest.createTempFile("bqsr.", "table");
         args.add("-O");
         args.add(outFile.getAbsolutePath());
         final Object res = this.runCommandLine(args.getArgsArray());
@@ -63,7 +63,7 @@ public final class GatherBQSRReportsIntegrationTest extends CommandLineProgramTe
         args.add("--input");
         args.add(chr21.getAbsolutePath());
 
-        final File outFile = BaseTest.createTempFile("bqsr2021.", "table");
+        final File outFile = GATKBaseTest.createTempFile("bqsr2021.", "table");
         args.add("-O");
         args.add(outFile.getAbsolutePath());
         final Object res = this.runCommandLine(args.getArgsArray());

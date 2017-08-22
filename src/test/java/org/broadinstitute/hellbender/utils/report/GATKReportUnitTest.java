@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.report;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import java.io.PrintStream;
 import java.util.Random;
 
 
-public final class GATKReportUnitTest extends BaseTest {
+public final class GATKReportUnitTest extends GATKBaseTest {
 
     private static final String TABLE_NAME = "TableName";
 

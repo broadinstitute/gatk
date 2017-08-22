@@ -25,7 +25,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -42,7 +42,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HDF5PCACoveragePoNCreationUtilsUnitTest extends BaseTest {
+public final class HDF5PCACoveragePoNCreationUtilsUnitTest extends GATKBaseTest {
     private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
     private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
     private static final File TEST_PCOV_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");

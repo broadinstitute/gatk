@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.cachemanager;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 /**
@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class ImmutableComputableGraphUtilsUnitTest extends BaseTest {
+public class ImmutableComputableGraphUtilsUnitTest extends GATKBaseTest {
 
     private static final CacheNode.NodeKey X_KEY = new CacheNode.NodeKey("x");
 

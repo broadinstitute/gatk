@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public final class GeneralPloidyAFCalculationModelUnitTest extends BaseTest {
+public final class GeneralPloidyAFCalculationModelUnitTest extends GATKBaseTest {
 
     static double[] AA1, AB1, BB1;
     static double[] AA2, AB2, AC2, BB2, BC2, CC2;

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.recalibration;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public final class RecalibrationTablesUnitTest extends BaseTest {
+public final class RecalibrationTablesUnitTest extends GATKBaseTest {
     private RecalibrationTables tables;
     private StandardCovariateList covariates;
     private int numReadGroups = 6;

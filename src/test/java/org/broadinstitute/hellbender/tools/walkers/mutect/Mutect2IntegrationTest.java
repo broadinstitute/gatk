@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.Or
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -272,7 +272,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final boolean createBamout,
             final boolean createBamoutIndex,
             final boolean createBamoutMD5) {
-        final File tempDir = BaseTest.createTempDir("mutect2");
+        final File tempDir = GATKBaseTest.createTempDir("mutect2");
         final File outputVcf = new File(tempDir,"output.vcf");
         File bamoutFile = null;
 

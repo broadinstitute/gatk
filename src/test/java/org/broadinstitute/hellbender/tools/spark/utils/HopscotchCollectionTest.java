@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.utils;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public final class HopscotchCollectionTest extends BaseTest {
+public final class HopscotchCollectionTest extends GATKBaseTest {
     private static final List<Integer> testVals = Arrays.asList(1, 4, 3, 3, 2, 5, 1, 2, 2, 4, -1, -2894765);
     private static final Integer notInTestVals = 6;
 

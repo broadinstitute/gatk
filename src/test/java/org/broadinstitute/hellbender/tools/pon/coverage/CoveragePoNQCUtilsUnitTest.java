@@ -6,7 +6,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -16,7 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public final class CoveragePoNQCUtilsUnitTest extends BaseTest {
+public final class CoveragePoNQCUtilsUnitTest extends GATKBaseTest {
     private static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
     // These files were created by adding simulated events to real data.
     private static File TEST_FILE_AMP = new File(TEST_DIR, "events_tn.txt");

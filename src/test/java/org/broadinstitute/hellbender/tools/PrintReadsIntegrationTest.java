@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -34,7 +34,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
     public void doFileToFile(String fileIn, String extOut, String reference, boolean testMD5) throws Exception {
         String samFile = fileIn;
-        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
+        final File outFile = GATKBaseTest.createTempFile(samFile + ".", extOut);
         final File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
         final File refFile;
 
@@ -127,7 +127,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
     @Test
     public void testReadThatConsumesNoReferenceBases() throws IOException {
         final File zeroRefBasesReadBam = new File(TEST_DATA_DIR, "read_consumes_zero_ref_bases.bam");
-        final File outFile = BaseTest.createTempFile("testReadThatConsumesNoReferenceBases", ".bam");
+        final File outFile = GATKBaseTest.createTempFile("testReadThatConsumesNoReferenceBases", ".bam");
         final String[] args = new String[] {
                 "--input" , zeroRefBasesReadBam.getAbsolutePath(),
                 "--output", outFile.getAbsolutePath()
@@ -142,7 +142,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
     @Test
     public void testNoConflictPG() throws IOException {
         final File inFile = new File(TEST_DATA_DIR, "print_reads_withPG.sam");
-        final File outFile = BaseTest.createTempFile("testNoConflictRG", ".sam");
+        final File outFile = GATKBaseTest.createTempFile("testNoConflictRG", ".sam");
         final String[] args = new String[] {
                 "--input" , inFile.getAbsolutePath(),
                 "--addOutputSAMProgramRecord",
@@ -325,7 +325,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void testNonExistentReference() throws Exception {
         final File inCram = new File(TEST_DATA_DIR, "print_reads.sorted.cram");
-        final File outCram = BaseTest.createTempFile("print_reads_bad_reference", ".cram");
+        final File outCram = GATKBaseTest.createTempFile("print_reads_bad_reference", ".cram");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
@@ -333,7 +333,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         args.add(outCram.getCanonicalPath());
         args.add("-R");
-        args.add(BaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
+        args.add(GATKBaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
 
         runCommandLine(args.getArgsArray());
     }

@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
 import org.broadinstitute.hellbender.tools.coveragemodel.cachemanager.ComputableNodeFunction;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.NDArrayIndex;
@@ -17,7 +17,7 @@ import org.testng.internal.junit.ArrayAsserts;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class CoverageModelEMComputeBlockUnitTest extends BaseTest {
+public class CoverageModelEMComputeBlockUnitTest extends GATKBaseTest {
 
     private static final double EPSILON = 1e-12;
 

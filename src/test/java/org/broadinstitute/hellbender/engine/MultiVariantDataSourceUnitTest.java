@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public final class MultiVariantDataSourceUnitTest extends BaseTest {
+public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
     private static final String ENGINE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final String MULTI_VARIANT_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/MultiVariantDataSource/";
 
@@ -32,7 +32,7 @@ public final class MultiVariantDataSourceUnitTest extends BaseTest {
     public void testRejectNonExistentFile() {
         new MultiVariantDataSource(
                 Collections.singletonList(
-                        new FeatureInput<>(BaseTest.getSafeNonExistentFile("nonexistent.vcf").getAbsolutePath(), "nonexistent")),
+                        new FeatureInput<>(GATKBaseTest.getSafeNonExistentFile("nonexistent.vcf").getAbsolutePath(), "nonexistent")),
                 FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES);
     }
 

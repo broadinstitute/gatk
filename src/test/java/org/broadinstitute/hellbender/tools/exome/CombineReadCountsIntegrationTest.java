@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.fakedata.SimulatedTargets;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -262,7 +262,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
 
     private List<File> createInputCountFiles(final List<Target> targets, final List<String> sampleNames, final double[][] counts, final boolean withTargetName, final boolean withTargetCoordinates) throws IOException {
         final List<File> inputFiles = sampleNames.stream()
-                .map(s -> BaseTest.createTempFile(s, ".tab"))
+                .map(s -> GATKBaseTest.createTempFile(s, ".tab"))
                 .collect(Collectors.toList());
         for (int i = 0; i < sampleNames.size(); i++) {
             createCountFile(inputFiles.get(i), targets, sampleNames.get(i), counts[i], withTargetName, withTargetCoordinates);
@@ -271,7 +271,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
     }
 
     private File createTargetFile(final List<Target> targets) throws IOException {
-        final File result = BaseTest.createTempFile("targets",".tab");
+        final File result = GATKBaseTest.createTempFile("targets",".tab");
         final TableWriter<Target> writer = TableUtils.writer(result, new TableColumnCollection(
                         TargetTableColumn.CONTIG,
                         TargetTableColumn.START,

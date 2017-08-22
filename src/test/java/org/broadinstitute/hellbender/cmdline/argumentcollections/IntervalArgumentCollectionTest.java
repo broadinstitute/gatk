@@ -11,14 +11,14 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public final class IntervalArgumentCollectionTest extends BaseTest{
+public final class IntervalArgumentCollectionTest extends GATKBaseTest {
 
     @DataProvider(name = "optionalOrNot")
     public Object[][] optionalOrNot(){

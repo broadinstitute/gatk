@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.PrintReadsIntegrationTest;
@@ -13,7 +14,7 @@ import java.util.Arrays;
 /**
  * Testing the test infrastructure
  */
-public final class IntegrationTestSpecUnitTest extends BaseTest {
+public final class IntegrationTestSpecUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = AssertionError.class)
     public void compareTextFiles() throws IOException {

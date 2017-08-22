@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HashedListTargetCollectionUnitTest extends BaseTest {
+public final class HashedListTargetCollectionUnitTest extends GATKBaseTest {
 
     /**
      * Average target size for randomly generated test data.

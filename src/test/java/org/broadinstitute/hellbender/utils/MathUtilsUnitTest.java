@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,7 +20,7 @@ import static org.broadinstitute.hellbender.utils.MathUtils.*;
 /**
  * Basic unit test for MathUtils
  */
-public final class MathUtilsUnitTest extends BaseTest {
+public final class MathUtilsUnitTest extends GATKBaseTest {
 
     private static final Logger logger = LogManager.getLogger(MathUtilsUnitTest.class);
 

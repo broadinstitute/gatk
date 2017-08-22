@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModTy
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class AlignedAssemblyUnitTest extends BaseTest {
+public class AlignedAssemblyUnitTest extends GATKBaseTest {
     private static final String dummyRefName = "1";
     private static final List<String> refNames = Collections.singletonList(dummyRefName);
 

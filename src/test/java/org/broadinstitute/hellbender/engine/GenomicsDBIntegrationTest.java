@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
@@ -38,7 +38,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
         final File workspace = GenomicsDBTestUtils.createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
                 .addArgument("V", GenomicsDBTestUtils.makeGenomicsDBUri(workspace))
-                .addReference(new File(BaseTest.b37_reference_20_21)));
+                .addReference(new File(GATKBaseTest.b37_reference_20_21)));
     }
 
     @Test
@@ -49,7 +49,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
                 .addArgument("V", TINY_GVCF.getAbsolutePath())
             .addArgument("concordance", GenomicsDBTestUtils.makeGenomicsDBUri(workspace))
             .addArgument("L", "20")
-            .addReference(new File(BaseTest.b37_reference_20_21)));
+            .addReference(new File(GATKBaseTest.b37_reference_20_21)));
     }
 
     @Test
@@ -57,7 +57,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
         final File workspace = GenomicsDBTestUtils.createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
                 .addArgument("L", "20")
-                .addReference(new File(BaseTest.b37_reference_20_21))
+                .addReference(new File(GATKBaseTest.b37_reference_20_21))
                 .addArgument("V", GenomicsDBTestUtils.makeGenomicsDBUri(workspace))
         );
     }
@@ -67,7 +67,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
     public void testRestrictingIntervals() throws IOException {
         final File workspace = GenomicsDBTestUtils.createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(new File(TEST_DATA_PATH, "intervalsRestrictedExpected.g.vcf"), new ArgumentsBuilder()
-                .addReference(new File(BaseTest.b37_reference_20_21))
+                .addReference(new File(GATKBaseTest.b37_reference_20_21))
                 .addArgument("L", "20:69491-69521")
                 .addArgument("V", GenomicsDBTestUtils.makeGenomicsDBUri(workspace)));
     }
@@ -80,7 +80,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
 
         try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output);
              final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(expected)) {
-            BaseTest.assertCondition(actualVcs, expectedVcs,
+            GATKBaseTest.assertCondition(actualVcs, expectedVcs,
                                      (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
                                                                                                      Collections.emptyList()));
         }
@@ -92,6 +92,6 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
                     .addArgument("V", TINY_GVCF.getAbsolutePath())
                     .addArgument("concordance", GenomicsDBTestUtils.makeGenomicsDBUri(workspace))
-                    .addReference(new File(BaseTest.b37_reference_20_21)));
+                    .addReference(new File(GATKBaseTest.b37_reference_20_21)));
     }
 }
