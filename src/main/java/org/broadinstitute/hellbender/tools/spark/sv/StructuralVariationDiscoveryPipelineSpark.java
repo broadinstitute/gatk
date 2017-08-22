@@ -200,7 +200,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                         final String contigName = AlignedAssemblyOrExcuse.formatContigName(alignedAssembly.getAssemblyId(), contigIdx);
                         final List<AlignmentInterval> arOfAContig
                                 = getAlignmentsForOneContig(contigName, contigSequence, allAlignments.get(contigIdx), refNames, header);
-                        return new AlignedContig(contigName, contigSequence, arOfAContig);
+                        return new AlignedContig(contigName, contigSequence, arOfAContig, false);
                     } ).collect(Collectors.toList());
         }
 

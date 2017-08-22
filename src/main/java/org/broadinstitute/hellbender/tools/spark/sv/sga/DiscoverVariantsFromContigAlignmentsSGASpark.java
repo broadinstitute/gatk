@@ -95,7 +95,7 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
 
             final JavaPairRDD<String, List<AlignmentInterval>> contigNameAndAlignments = parseAndBreakAlignmentTextRecords(ctx, pathToInputAlignments, toolLogger);
 
-            return contigNameAndAlignments.join(contigNameAndSequence).map(pair -> new AlignedContig(pair._1, pair._2._2, pair._2._1));
+            return contigNameAndAlignments.join(contigNameAndSequence).map(pair -> new AlignedContig(pair._1, pair._2._2, pair._2._1, false));
         }
 
         /**
@@ -154,7 +154,8 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
                                                         contigStart, contigEnd, TextCigarCodec.decode(intervalFields[2]),
                                                         intervalFields[3].equals("+"),
                                                         Integer.valueOf(intervalFields[4]), Integer.valueOf(intervalFields[5]),
-                                                        Integer.valueOf(intervalFields[6]), intervalFields[7].equals("s")));
+                                                        Integer.valueOf(intervalFields[6]), intervalFields[7].equals("s"),
+                                                        intervalFields[8].equals("h")));
                 }
                 return new Tuple2<>(contigName, intervals);
             } catch (final Exception ex) {

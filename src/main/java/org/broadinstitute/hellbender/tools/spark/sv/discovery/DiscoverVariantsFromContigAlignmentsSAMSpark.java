@@ -158,7 +158,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             } else {
                 parsedAlignments = unSplitAIList.collect(Collectors.toList());
             }
-            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments);
+            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments, false);
         }
     }
 

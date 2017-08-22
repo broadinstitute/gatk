@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 
 /**
  * Locally assembled contig:
- * its name
- * its sequence as produced by the assembler (no reverse complement like in the SAM record if it maps to '-' strand), and
- * its stripped-down alignment information.
+ *   its name
+ *   its sequence as produced by the assembler (no reverse complement like in the SAM record if it maps to '-' strand), and
+ *   its stripped-down alignment information.
  */
 @DefaultSerializer(AlignedContig.Serializer.class)
 public final class AlignedContig {
@@ -24,12 +24,15 @@ public final class AlignedContig {
     public final String contigName;
     public final byte[] contigSequence;
     public final List<AlignmentInterval> alignmentIntervals;
+    public final boolean hasEquallyGoodAlnConfigurations;
 
-    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
+    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals,
+                         final boolean hasEquallyGoodAlnConfigurations) {
         this.contigName = contigName;
         this.contigSequence = contigSequence;
         this.alignmentIntervals = Utils.stream(alignmentIntervals)
                 .sorted(sortAlignments()).collect(Collectors.toList());
+        this.hasEquallyGoodAlnConfigurations = hasEquallyGoodAlnConfigurations;
     }
 
     AlignedContig(final Kryo kryo, final Input input) {
@@ -47,6 +50,8 @@ public final class AlignedContig {
         for (int i = 0; i < nAlignments; ++i) {
             alignmentIntervals.add(new AlignmentInterval(kryo, input));
         }
+
+        hasEquallyGoodAlnConfigurations = input.readBoolean();
     }
 
     public static Comparator<AlignmentInterval> sortAlignments() {
@@ -67,6 +72,8 @@ public final class AlignedContig {
 
         output.writeInt(alignmentIntervals.size());
         alignmentIntervals.forEach(it -> it.serialize(kryo, output));
+
+        output.writeBoolean(hasEquallyGoodAlnConfigurations);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignedContig> {
@@ -88,6 +95,7 @@ public final class AlignedContig {
 
         AlignedContig that = (AlignedContig) o;
 
+        if (hasEquallyGoodAlnConfigurations != that.hasEquallyGoodAlnConfigurations) return false;
         if (!contigName.equals(that.contigName)) return false;
         if (!Arrays.equals(contigSequence, that.contigSequence)) return false;
         return alignmentIntervals.equals(that.alignmentIntervals);
@@ -98,6 +106,7 @@ public final class AlignedContig {
         int result = contigName.hashCode();
         result = 31 * result + Arrays.hashCode(contigSequence);
         result = 31 * result + alignmentIntervals.hashCode();
+        result = 31 * result + (hasEquallyGoodAlnConfigurations ? 1 : 0);
         return result;
     }
 }

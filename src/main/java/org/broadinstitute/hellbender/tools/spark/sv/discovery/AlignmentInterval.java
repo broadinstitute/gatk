@@ -36,9 +36,11 @@ public final class AlignmentInterval {
     public final int mismatches;
     public final int alnScore;
 
-    // if this is true, fields "mapQual", "mismatches", "alnScore" should be viewed with care as they were simply copied from the
-    // original alignment (not for "mismatches"), which after the split are wrong (we didn't recompute them because that would require expensive SW re-alignment)
+    // if any of the following boolean fields are true, fields "mapQual", "mismatches", "alnScore" should be viewed
+    // with care as they were simply copied from the original alignment (not for "mismatches"),
+    // which after the split are wrong (we didn't recompute them because that would require expensive SW re-alignment)
     public final boolean isFromSplitGapAlignment;
+    public final boolean hasUndergoneOverlapRemoval;
 
     @VisibleForTesting
     public AlignmentInterval(final SAMRecord samRecord) {
@@ -63,6 +65,7 @@ public final class AlignmentInterval {
         }
         this.alnScore = alignerScore;
         this.isFromSplitGapAlignment = false;
+        this.hasUndergoneOverlapRemoval = false;
     }
 
     @VisibleForTesting
@@ -73,7 +76,7 @@ public final class AlignmentInterval {
                                             alignment.getRefStart() + 1, alignment.getRefEnd());
         this.forwardStrand = 0==(alignment.getSamFlag() & SAMFlag.READ_REVERSE_STRAND.intValue());
         this.cigarAlong5to3DirectionOfContig = forwardStrand ? TextCigarCodec.decode(alignment.getCigar())
-                                                             : CigarUtils.invertCigar(TextCigarCodec.decode(alignment.getCigar()));
+                                                               : CigarUtils.invertCigar(TextCigarCodec.decode(alignment.getCigar()));
         Utils.validateArg(
                 cigarAlong5to3DirectionOfContig.getReadLength() + SvCigarUtils.getTotalHardClipping(cigarAlong5to3DirectionOfContig)
                         == unclippedContigLength,
@@ -84,7 +87,7 @@ public final class AlignmentInterval {
         // (see BwaMemAlignmentUtils.applyAlignment())
         this.mapQual = Math.max(SAMRecord.NO_MAPPING_QUALITY, alignment.getMapQual());
         this.mismatches = alignment.getNMismatches();
-        if ( forwardStrand ) {
+        if (forwardStrand) {
             this.startInAssembledContig = alignment.getSeqStart() + 1;
             this.endInAssembledContig = alignment.getSeqEnd();
         } else {
@@ -94,11 +97,13 @@ public final class AlignmentInterval {
 
         this.alnScore = alignment.getAlignerScore();
         this.isFromSplitGapAlignment = false;
+        this.hasUndergoneOverlapRemoval = false;
     }
 
     public AlignmentInterval(final SimpleInterval referenceSpan, final int startInAssembledContig, final int endInAssembledContig,
                              final Cigar cigarAlong5to3DirectionOfContig, final boolean forwardStrand,
-                             final int mapQual, final int mismatches, final int alignerScore, final boolean isFromSplitGapAlignment) {
+                             final int mapQual, final int mismatches, final int alignerScore,
+                             final boolean isFromSplitGapAlignment, final boolean hasUndergoneOverlapRemoval) {
         this.referenceSpan = referenceSpan;
         this.startInAssembledContig = startInAssembledContig;
         this.endInAssembledContig = endInAssembledContig;
@@ -110,6 +115,7 @@ public final class AlignmentInterval {
         this.mismatches = mismatches;
         this.alnScore = alignerScore;
         this.isFromSplitGapAlignment = isFromSplitGapAlignment;
+        this.hasUndergoneOverlapRemoval = hasUndergoneOverlapRemoval;
     }
 
     /**
@@ -117,7 +123,7 @@ public final class AlignmentInterval {
      *          Mostly useful for computing micro-homologyForwardStrandRep.
      */
     @VisibleForTesting
-    static int overlapOnContig(final AlignmentInterval one, final AlignmentInterval two) {
+    public static int overlapOnContig(final AlignmentInterval one, final AlignmentInterval two) {
         return Math.max(0,
                 Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1)
                         - Math.max(one.startInAssembledContig, two.startInAssembledContig)
@@ -147,6 +153,7 @@ public final class AlignmentInterval {
         mismatches = input.readInt();
         alnScore = input.readInt();
         isFromSplitGapAlignment = input.readBoolean();
+        hasUndergoneOverlapRemoval = input.readBoolean();
     }
 
     void serialize(final Kryo kryo, final Output output) {
@@ -161,6 +168,7 @@ public final class AlignmentInterval {
         output.writeInt(mismatches);
         output.writeInt(alnScore);
         output.writeBoolean(isFromSplitGapAlignment);
+        output.writeBoolean(hasUndergoneOverlapRemoval);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentInterval> {
@@ -185,7 +193,7 @@ public final class AlignmentInterval {
                 String.valueOf(endInAssembledContig), referenceSpan.toString(), (forwardStrand ? "+" : "-"),
                 TextCigarCodec.encode(cigarAlong5to3DirectionOfContig),
                 String.valueOf(mapQual), String.valueOf(mismatches), String.valueOf(alnScore),
-                (isFromSplitGapAlignment ? "s" : "o"));
+                (isFromSplitGapAlignment ? "s" : "o"), (hasUndergoneOverlapRemoval ? "h" : "nh"));
     }
 
     @Override
@@ -193,17 +201,18 @@ public final class AlignmentInterval {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        AlignmentInterval that = (AlignmentInterval) o;
+        AlignmentInterval interval = (AlignmentInterval) o;
 
-        if (startInAssembledContig != that.startInAssembledContig) return false;
-        if (endInAssembledContig != that.endInAssembledContig) return false;
-        if (forwardStrand != that.forwardStrand) return false;
-        if (mapQual != that.mapQual) return false;
-        if (mismatches != that.mismatches) return false;
-        if (alnScore != that.alnScore) return false;
-        if (isFromSplitGapAlignment != that.isFromSplitGapAlignment) return false;
-        if (!referenceSpan.equals(that.referenceSpan)) return false;
-        return cigarAlong5to3DirectionOfContig.equals(that.cigarAlong5to3DirectionOfContig);
+        if (startInAssembledContig != interval.startInAssembledContig) return false;
+        if (endInAssembledContig != interval.endInAssembledContig) return false;
+        if (forwardStrand != interval.forwardStrand) return false;
+        if (mapQual != interval.mapQual) return false;
+        if (mismatches != interval.mismatches) return false;
+        if (alnScore != interval.alnScore) return false;
+        if (isFromSplitGapAlignment != interval.isFromSplitGapAlignment) return false;
+        if (hasUndergoneOverlapRemoval != interval.hasUndergoneOverlapRemoval) return false;
+        if (!referenceSpan.equals(interval.referenceSpan)) return false;
+        return cigarAlong5to3DirectionOfContig.equals(interval.cigarAlong5to3DirectionOfContig);
     }
 
     @Override
@@ -217,6 +226,7 @@ public final class AlignmentInterval {
         result = 31 * result + mismatches;
         result = 31 * result + alnScore;
         result = 31 * result + (isFromSplitGapAlignment ? 1 : 0);
+        result = 31 * result + (hasUndergoneOverlapRemoval ? 1 : 0);
         return result;
     }
 }
