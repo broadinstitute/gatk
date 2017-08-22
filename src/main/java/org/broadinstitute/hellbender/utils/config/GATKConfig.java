@@ -13,9 +13,10 @@ import java.util.List;
  */
 @LoadPolicy(LoadType.MERGE)
 @Sources({
-        "file:${" + GATKConfig.CONFIG_FILE_VARIABLE_NAME + "}",                         // Variable for file loading
-        "file:GATKConfig.properties",                                                   // Default path
-        "classpath:org/broadinstitute/hellbender/utils/config/GATKConfig.properties"    // Class path
+        "file:${" + GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME + "}",                 // Variable for file loading
+        "classpath:${" + GATKConfig.CONFIG_FILE_VARIABLE_CLASS_PATH + "}",           // Variable for class path loading
+        "file:GATKConfig.properties",                                                // Default path
+        "classpath:org/broadinstitute/hellbender/utils/config/GATKConfig.properties" // Class path
 })
 public interface GATKConfig extends Mutable, Accessible {
 
@@ -29,7 +30,13 @@ public interface GATKConfig extends Mutable, Accessible {
      * Name of the configuration file variable to be used in the {@link Sources} annotation for {@link GATKConfig}
      * as a place to find the configuration file corresponding to this interface.
      */
-    String CONFIG_FILE_VARIABLE_NAME = "GATKConfig.pathToGatkConfig";
+    String CONFIG_FILE_VARIABLE_FILE_NAME = "GATKConfig.pathToGatkConfig";
+
+    /**
+     * Name of the configuration file variable to be used in the {@link Sources} annotation for {@link GATKConfig}
+     * as a place to find the configuration file corresponding to this interface.
+     */
+    String CONFIG_FILE_VARIABLE_CLASS_PATH = "GATKConfig.classPathToGatkConfig";
 
     // =================================================================================================================
     // =================================================================================================================

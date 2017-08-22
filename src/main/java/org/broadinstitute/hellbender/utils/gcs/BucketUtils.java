@@ -18,6 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigUtils;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
@@ -42,7 +43,7 @@ public final class BucketUtils {
     public static final String FILE_PREFIX = "file:";
 
     // if the channel errors out, re-open up to this many times
-    public static final int DEFAULT_GCS_MAX_REOPENS = ConfigCache.getOrCreate(GATKConfig.class).gcsMaxNumRetries();
+    public static final int DEFAULT_GCS_MAX_REOPENS = ConfigUtils.getOrCreate(GATKConfig.class).gcsMaxNumRetries();
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 

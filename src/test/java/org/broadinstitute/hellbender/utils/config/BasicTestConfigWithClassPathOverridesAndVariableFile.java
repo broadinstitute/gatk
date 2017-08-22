@@ -11,13 +11,13 @@ import java.util.List;
  */
 @Config.LoadPolicy(Config.LoadType.MERGE)
 @Config.Sources({
-        "file:${" + BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME + "}",
+        "file:${" + BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME + "}",
         "file:/etc/jaiow",                          // Test of non-existent bad path
         "classpath:org/broadinstitute/hellbender/utils/config/BasicTestConfigWithClassPathOverrides.properties",
 })
 public interface BasicTestConfigWithClassPathOverridesAndVariableFile extends Mutable, Accessible {
 
-    String CONFIG_FILE_VARIABLE_NAME = "BasicTestConfigWithClassPathOverridesAndVariableFile.pathToGatkConfig";;
+    String CONFIG_FILE_VARIABLE_FILE_NAME = "BasicTestConfigWithClassPathOverridesAndVariableFile.pathToGatkConfig";;
 
     @DefaultValue("true")
     boolean booleanDefTrue();

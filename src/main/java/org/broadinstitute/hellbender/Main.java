@@ -30,6 +30,7 @@ import java.util.*;
  * - {@link #getCommandLineName()} for the name of the toolkit.
  * - {@link #handleResult(Object)} for handle the result of the tool.
  * - {@link #handleNonUserException(Exception)} for handle non {@link UserException}.
+ * - {@link #parseArgsForConfigSetupAndGetNewArgs(String[])} for pulling command-line configuration options out and initializing the {@link org.broadinstitute.hellbender.utils.config.GATKConfig}
  *
  * Note: If any of the previous methods was overrided, {@link #main(String[])} should be implemented to instantiate your class
  * and call {@link #mainEntry(String[])} to make the changes effective.
@@ -46,9 +47,6 @@ public class Main {
         // Turn off the Picard legacy parser and opt in to Barclay syntax for Picard tools. This should be replaced
         // with a config setting once PR https://github.com/broadinstitute/gatk/pull/3447 is merged.
         System.setProperty("picard.useLegacyParser", "false");
-
-        // Set config factory to know about the configuration options that we have.
-        ConfigUtils.setConfigFactoryVariableDefaults();
     }
 
     /**
@@ -106,6 +104,13 @@ public class Main {
      * Reads from the given command-line arguments, pulls out configuration options,
      * and initializes the configuration for this instance of Main.
      * Returns the list of arguments without the config file option and config file path.
+     *
+     * Suggested use for this is to handle downstream project configuration options and overrides.
+     * For example this would allow:
+     *
+     *      Custom command-line arguments for use in tools
+     *      Custom config file loading and initialization
+     *
      * @param args The Array of command-line arguments.
      * @return A new Array of command-line arguments with the config file option and config file path removed.
      */

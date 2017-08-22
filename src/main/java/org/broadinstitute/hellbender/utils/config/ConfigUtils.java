@@ -30,9 +30,14 @@ public final class ConfigUtils {
     private ConfigUtils() {}
 
     /**
-     * Whether we have already set the config factory variable defaults.
+     * A regex to use to look for variables in the Sources annotation
      */
-    private static boolean hasSetConfigFactoryVariableDefaults = false;
+    private static final Pattern sourcesAnnotationPathVariablePattern = Pattern.compile("\\$\\{(.*)}");
+
+    /**
+     * A set to keep track of the classes we've already resolved for configuration path purposes:
+     */
+    private static final Set<Class<? extends Config>> alreadyResolvedPathVariables = new HashSet<>();
 
     /**
      * Value to set each variable for configuration file paths when the variable
@@ -41,33 +46,7 @@ public final class ConfigUtils {
     @VisibleForTesting
     static final String NO_PATH_VARIABLE_VALUE = "/dev/null";
 
-    /**
-     * Sets the {@link org.aeonbits.owner.ConfigFactory} variables so that it knows about
-     * the variable paths for config files.
-     */
-    public static synchronized void setConfigFactoryVariableDefaults() {
-
-        // You only need to do this once.
-
-        if ( !hasSetConfigFactoryVariableDefaults ) {
-
-            // Get the classes from which we need to look for sources:
-            // We need to enumerate all of our config sources here:
-            final List<Class<?>> configurationClasses = Arrays.asList( GATKConfig.class );
-
-            // Get our property names from the configuration classes:
-            final List<String> filenameProperties = getConfigPathVariableNamesFromConfigClasses(configurationClasses);
-
-            // Check if the filename properties exist and if they do not, add them
-            // to the ConfigFactory.
-            checkFileNamePropertyExistenceAndSetConfigFactoryProperties(filenameProperties);
-
-            hasSetConfigFactoryVariableDefaults = true;
-        }
-        else {
-            logger.error("Attempted to setConfigFactoryVariableDefaults more than once!");
-        }
-    }
+    // =================================================================================================================
 
     /**
      * Checks each of the given {@code filenameProperties} for if they are defined in system {@link System#getProperties()}
@@ -110,10 +89,7 @@ public final class ConfigUtils {
     @VisibleForTesting
     static List<String> getConfigPathVariableNamesFromConfigClasses(final List<Class<?>> configurationClasses) {
 
-        final List<String> propertyNames = new ArrayList<>();
-
-        // Create a regex to use to look for variables in the Sources annotation:
-        final Pattern p = Pattern.compile("\\$\\{(.*)}");
+        final List<String> configPathVariableNames = new ArrayList<>();
 
         // Loop through our classes and grab any sources with variables in there:
         for ( final Class<?> clazz : configurationClasses ) {
@@ -127,159 +103,41 @@ public final class ConfigUtils {
 
                     for (final String val : annotationValues) {
 
-                        final Matcher m = p.matcher(val);
+                        final Matcher m = sourcesAnnotationPathVariablePattern.matcher(val);
                         if (m.find()) {
-                            propertyNames.add(m.group(1));
+                            configPathVariableNames.add(m.group(1));
                         }
                     }
                 }
             }
         }
 
-        return propertyNames;
+        return configPathVariableNames;
     }
 
     /**
-     * Get the configuration file name from the given arguments.
-     * Modifies the given arguments to remove both the configuration file specification string
-     * and the configuration file name from the args.
-     *
-     * NOTE: Does NOT validate that the resulting string is a valid configuration file.
-     *
-     * @param args Command-line arguments passed to this program.
-     * @param configFileOption The command-line option indicating that the config file is next
-     * @return The name of the configuration file for this program or {@code null}.
+     * Get a list of the config file variables from the given {@link Config} class.
+     * @param configClass A lconfiguration class from which to extract variable names in its {@link org.aeonbits.owner.Config.Sources}.
+     * @return A list of variables in the {@link org.aeonbits.owner.Config.Sources} of the given {@code configClass}
      */
-    public static String getConfigFilenameFromArgs( final ArrayList<String> args, final String configFileOption ) {
+    @VisibleForTesting
+    static <T extends Config> List<String> getSourcesAnnotationPathVariables(final Class<? extends T> configClass) {
 
-        Utils.nonNull(args);
-        Utils.nonNull(configFileOption);
+        final List<String> configPathVariableNames = new ArrayList<>();
 
-        String configFileName = null;
+        final Config.Sources annotation = configClass.getAnnotation(Config.Sources.class);
 
-        for ( int i = 0 ; i < args.size() ; ++i ) {
-            if (args.get(i).equals(configFileOption)) {
+        if ( annotation != null ) {
+            for (final String val : annotation.value()) {
 
-                // Get rid of the command-line argument name:
-                args.remove(i);
-
-                if ( i < args.size() ) {
-
-                    // Get and remove the specified config file:
-                    configFileName = args.remove(i);
-                    break;
-                }
-                else {
-                    // Option was provided, but no file was specified.
-                    // We cannot work under these conditions:
-                    throw new UserException.BadInput("ERROR: Configuration file not given after config file option specified: " + configFileOption);
+                final Matcher m = sourcesAnnotationPathVariablePattern.matcher(val);
+                if (m.find()) {
+                    configPathVariableNames.add(m.group(1));
                 }
             }
         }
 
-        return configFileName;
-    }
-
-    /**
-     * Get the configuration filename from the command-line (if it exists) and create a configuration for it.
-     * Configuration type defaults to {@link GATKConfig}
-     * Removes the configuration filenames and configuration file options from the given {@code argList}.
-     * Also sets system-level properties from the system config file.
-     * @param argList The list of arguments from which to read the config file.
-     * @param configFileOption The command-line option specifying the main configuration file.
-     */
-    public static void initializeConfigurationsFromCommandLineArgs(final ArrayList<String> argList,
-                                                                   final String configFileOption) {
-        initializeConfigurationsFromCommandLineArgs(
-                argList,
-                configFileOption,
-                GATKConfig.class
-        );
-    }
-
-    /**
-     * Get the configuration from filename the command-line (if it exists) and create a configuration for it of the given type.
-     * Removes the configuration filenames and configuration file options from the given {@code argList}.
-     * Also sets system-level properties from the system config file.
-     * @param argList The list of arguments from which to read the config file.
-     * @param configFileOption The command-line option specifying the main configuration file.
-     * @param configClass The class of the configuration file to instantiate.
-     */
-    public static <T extends Config> void initializeConfigurationsFromCommandLineArgs(final ArrayList<String> argList,
-                                                                                      final String configFileOption,
-                                                                                      final Class<? extends T> configClass) {
-        Utils.nonNull(argList);
-        Utils.nonNull(configFileOption);
-
-        // Get main config from args:
-        final String configFileName = getConfigFilenameFromArgs( argList, configFileOption );
-
-        // Set the config path if we've specified it:
-        if ( configFileName != null ){
-            ConfigFactory.setProperty( GATKConfig.CONFIG_FILE_VARIABLE_NAME, configFileName );
-        }
-
-        // Set the config file to be the one we want to use from the command-line:
-        final T gatkConfig = ConfigCache.getOrCreate(configClass);
-
-        // To start with we inject our system properties to ensure they are defined for downstream components:
-        injectSystemPropertiesFromConfig( gatkConfig );
-    }
-
-    /**
-     * Initializes and returns the configuration as specified by {@code configFileName}
-     * Also caches this configuration in the {@link ConfigCache} for use elsewhere.
-     * @param configFileName The name of the file from which to initialize the configuration
-     * @param configClass The type of configuration in which to interpret the given {@code configFileName}
-     * @return The configuration instance implementing {@link GATKConfig} containing any overrides in the given file.
-     */
-    public static <T extends Config> T initializeConfigurationAsProperties(final String configFileName,
-                                                                           final Class<? extends T> configClass) {
-
-        Utils.nonNull(configClass);
-
-        // Get a place to store our properties:
-        final Properties userConfigFileProperties = new Properties();
-
-        // Try to get the config from the specified file:
-        if ( configFileName != null ) {
-
-            try (final FileInputStream userConfigFileInputStream = new FileInputStream(configFileName)) {
-                userConfigFileProperties.load(userConfigFileInputStream);
-
-                logger.info("Found " + configClass.getSimpleName() + " Configuration File: " + configFileName);
-
-            } catch (final FileNotFoundException e) {
-                throw new GATKException("Unable to find specified " + configClass.getSimpleName() + " configuration file: "
-                        + configFileName + " - defaulting to built-in config settings.", e);
-            }
-            catch (final IOException e) {
-                throw new GATKException("Unable to load specified " + configClass.getSimpleName() + " configuration file: "
-                        + configFileName + " - defaulting to built-in config settings.", e);
-            }
-        }
-
-        // Cache and return our configuration:
-        // NOTE: The configuration will be stored in the ConfigCache under the key GATKConfig.class.
-        //       This means that any future call to getOrCreate for this GATKConfig.class will return
-        //       Not only the configuration itself, but also the overrides as specified in userConfigFileProperties
-        return ConfigCache.getOrCreate(configClass, userConfigFileProperties);
-    }
-
-    /**
-     * Injects system properties from the given configuration file.
-     * System properties are specified by the presence of the {@link SystemProperty} annotation.
-     * @param config The {@link GATKConfig} object from which to inject system properties.
-     */
-    public static <T extends Config> void injectSystemPropertiesFromConfig(final T config) {
-        
-        Utils.nonNull(config);
-
-        // Get our system properties:
-        final Map<String, String> properties = getSystemPropertiesFromConfig(config);
-
-        // Set our properties:
-        injectToSystemProperties(properties);
+        return configPathVariableNames;
     }
 
     /**
@@ -370,6 +228,315 @@ public final class ConfigUtils {
                 throw new GATKException("System Property corrupted (" + propertyName + "!=" + propertyValue + " -> " + propertyValueThatWasSet + ")!");
             }
         }
+    }
+
+    // =================================================================================================================
+
+    /**
+     * Override for {@link ConfigFactory#create(Class, Map[])} which will ensure that
+     * path variables specified in {@link org.aeonbits.owner.Config.Sources} annotations are resolved prior
+     * to creation.
+     *
+     * Creates a {@link Config} instance from the specified interface
+     *
+     * @param clazz   the interface extending from {@link Config} that you want to instantiate.
+     * @param imports additional variables to be used to resolve the properties.
+     * @param <T>     type of the interface.
+     * @return an object implementing the given interface, which maps methods to property values.
+     */
+    public static <T extends Config> T create(final Class<? extends T> clazz, final Map<?, ?>... imports) {
+
+        Utils.nonNull(clazz);
+
+        if ( !alreadyResolvedPathVariables.contains(clazz) ) {
+            checkFileNamePropertyExistenceAndSetConfigFactoryProperties(
+                    getSourcesAnnotationPathVariables(clazz)
+            );
+
+            alreadyResolvedPathVariables.add(clazz);
+        }
+
+        return ConfigFactory.create(clazz, imports);
+    }
+
+    /**
+     * Override for {@link ConfigCache#getOrCreate(Class, Map[])} which will ensure that
+     * path variables specified in {@link org.aeonbits.owner.Config.Sources} annotations are resolved prior
+     * to creation.
+     *
+     * Gets from the cache or create, an instance of the given class using the given imports.
+     * The factory used to create new instances is the static {@link ConfigFactory#INSTANCE}.
+     *
+     * @param clazz     the interface extending from {@link Config} that you want to instantiate.
+     * @param imports   additional variables to be used to resolve the properties.
+     * @param <T>       type of the interface.
+     * @return          an object implementing the given interface, that can be taken from the cache,
+     *                  which maps methods to property values.
+     */
+    public static <T extends Config> T getOrCreate(final Class<? extends T> clazz, final Map<?, ?>... imports) {
+
+        Utils.nonNull(clazz);
+
+        if ( !alreadyResolvedPathVariables.contains(clazz) ) {
+            checkFileNamePropertyExistenceAndSetConfigFactoryProperties(
+                    getSourcesAnnotationPathVariables(clazz)
+            );
+
+            alreadyResolvedPathVariables.add(clazz);
+        }
+
+        return ConfigCache.getOrCreate(clazz, imports);
+    }
+
+    /**
+     * Override for {@link ConfigCache#getOrCreate(Factory, Class, Map[])} which will ensure that
+     * path variables specified in {@link org.aeonbits.owner.Config.Sources} annotations are resolved prior
+     * to creation.
+     *
+     * Gets from the cache or create, an instance of the given class using the given imports.
+     *
+     * @param factory   the factory to use to eventually create the instance.
+     * @param clazz     the interface extending from {@link Config} that you want to instantiate.
+     * @param imports   additional variables to be used to resolve the properties.
+     * @param <T>       type of the interface.
+     * @return          an object implementing the given interface, that can be taken from the cache,
+     *                  which maps methods to property values.
+     */
+    public static <T extends Config> T getOrCreate(final Factory factory, final Class<? extends T> clazz, final Map<?, ?>... imports) {
+
+        Utils.nonNull(factory);
+        Utils.nonNull(clazz);
+
+        if ( !alreadyResolvedPathVariables.contains(clazz) ) {
+            checkFileNamePropertyExistenceAndSetConfigFactoryProperties(
+                    getSourcesAnnotationPathVariables(clazz)
+            );
+
+            alreadyResolvedPathVariables.add(clazz);
+        }
+
+        return ConfigCache.getOrCreate(factory, clazz, imports);
+    }
+
+    /**
+     * Override for {@link ConfigCache#getOrCreate(Object, Class, Map[])} which will ensure that
+     * path variables specified in {@link org.aeonbits.owner.Config.Sources} annotations are resolved prior
+     * to creation.
+     *
+     * Gets from the cache or create, an instance of the given class using the given imports.
+     * The factory used to create new instances is the static {@link ConfigFactory#INSTANCE}.
+     *
+     * @param key       the key object to be used to identify the instance in the cache.
+     * @param clazz     the interface extending from {@link Config} that you want to instantiate.
+     * @param imports   additional variables to be used to resolve the properties.
+     * @param <T>       type of the interface.
+     * @return          an object implementing the given interface, that can be taken from the cache,
+     *                  which maps methods to property values.
+     */
+    public static <T extends Config> T getOrCreate(final Object key, final Class<? extends T> clazz, final Map<?, ?>... imports) {
+
+        Utils.nonNull(key);
+        Utils.nonNull(clazz);
+
+        if ( !alreadyResolvedPathVariables.contains(clazz) ) {
+            checkFileNamePropertyExistenceAndSetConfigFactoryProperties(
+                    getSourcesAnnotationPathVariables(clazz)
+            );
+
+            alreadyResolvedPathVariables.add(clazz);
+        }
+
+        return ConfigCache.getOrCreate(key, clazz, imports);
+    }
+
+    /**
+     * Override for {@link ConfigCache#getOrCreate(Factory, Object, Class, Map[])} which will ensure that
+     * path variables specified in {@link org.aeonbits.owner.Config.Sources} annotations are resolved prior
+     * to creation.
+     *
+     * @param factory   the factory to use to eventually create the instance.
+     * @param key       the key object to be used to identify the instance in the cache.
+     * @param clazz     the interface extending from {@link Config} that you want to instantiate.
+     * @param imports   additional variables to be used to resolve the properties.
+     * @param <T>       type of the interface.
+     * @return          an object implementing the given interface, that can be taken from the cache,
+     *                  which maps methods to property values.
+     */
+    public static <T extends Config> T getOrCreate(final Factory factory, final Object key,
+                                                   final Class<? extends T> clazz, final Map<?, ?>... imports) {
+
+        Utils.nonNull(factory);
+        Utils.nonNull(key);
+        Utils.nonNull(clazz);
+
+        if ( !alreadyResolvedPathVariables.contains(clazz) ) {
+            checkFileNamePropertyExistenceAndSetConfigFactoryProperties(
+                    getSourcesAnnotationPathVariables(clazz)
+            );
+
+            alreadyResolvedPathVariables.add(clazz);
+        }
+
+        return ConfigCache.getOrCreate(key, clazz, imports);
+    }
+
+    /**
+     * Override for {@link ConfigCache#get(Object)}.
+     * This method is here to complete the interface for getting {@link Config} objects.
+     * It is basically a wrapper.
+     *
+     * Gets from the cache the {@link Config} instance identified by the given key.
+     *
+     * @param key       the key object to be used to identify the instance in the cache.
+     * @param <T>       type of the interface.
+     * @return          the {@link Config} object from the cache if exists, or <tt>null</tt> if it doesn't.
+     */
+    public static <T extends Config> T get(final Object key) {
+        Utils.nonNull(key);
+        return ConfigCache.get(key);
+    }
+
+    /**
+     * Get the configuration file name from the given arguments.
+     * Modifies the given arguments to remove both the configuration file specification string
+     * and the configuration file name from the args.
+     *
+     * NOTE: Does NOT validate that the resulting string is a valid configuration file.
+     *
+     * @param args Command-line arguments passed to this program.
+     * @param configFileOption The command-line option indicating that the config file is next
+     * @return The name of the configuration file for this program or {@code null}.
+     */
+    public static String getConfigFilenameFromArgs( final ArrayList<String> args, final String configFileOption ) {
+
+        Utils.nonNull(args);
+        Utils.nonNull(configFileOption);
+
+        String configFileName = null;
+
+        for ( int i = 0 ; i < args.size() ; ++i ) {
+            if (args.get(i).equals(configFileOption)) {
+
+                // Get rid of the command-line argument name:
+                args.remove(i);
+
+                if ( i < args.size() ) {
+
+                    // Get and remove the specified config file:
+                    configFileName = args.remove(i);
+                    break;
+                }
+                else {
+                    // Option was provided, but no file was specified.
+                    // We cannot work under these conditions:
+                    throw new UserException.BadInput("ERROR: Configuration file not given after config file option specified: " + configFileOption);
+                }
+            }
+        }
+
+        return configFileName;
+    }
+
+    /**
+     * Get the configuration filename from the command-line (if it exists) and create a configuration for it.
+     * Configuration type defaults to {@link GATKConfig}
+     * Removes the configuration filenames and configuration file options from the given {@code argList}.
+     * Also sets system-level properties from the system config file.
+     * @param argList The list of arguments from which to read the config file.
+     * @param configFileOption The command-line option specifying the main configuration file.
+     */
+    public static void initializeConfigurationsFromCommandLineArgs(final ArrayList<String> argList,
+                                                                   final String configFileOption) {
+        initializeConfigurationsFromCommandLineArgs(
+                argList,
+                configFileOption,
+                GATKConfig.class
+        );
+    }
+
+    /**
+     * Get the configuration from filename the command-line (if it exists) and create a configuration for it of the given type.
+     * Removes the configuration filenames and configuration file options from the given {@code argList}.
+     * Also sets system-level properties from the system config file.
+     * @param argList The list of arguments from which to read the config file.
+     * @param configFileOption The command-line option specifying the main configuration file.
+     * @param configClass The class of the configuration file to instantiate.
+     */
+    public static <T extends Config> void initializeConfigurationsFromCommandLineArgs(final ArrayList<String> argList,
+                                                                                      final String configFileOption,
+                                                                                      final Class<? extends T> configClass) {
+        Utils.nonNull(argList);
+        Utils.nonNull(configFileOption);
+
+        // Get main config from args:
+        final String configFileName = getConfigFilenameFromArgs( argList, configFileOption );
+
+        // Set the config path if we've specified it:
+        if ( configFileName != null ){
+            ConfigFactory.setProperty( GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME, configFileName );
+        }
+
+        // Set the config file to be the one we want to use from the command-line:
+        final T gatkConfig = ConfigUtils.getOrCreate(configClass);
+
+        // To start with we inject our system properties to ensure they are defined for downstream components:
+        injectSystemPropertiesFromConfig( gatkConfig );
+    }
+
+    /**
+     * Initializes and returns the configuration as specified by {@code configFileName}
+     * Also caches this configuration in the {@link ConfigCache} for use elsewhere.
+     * @param configFileName The name of the file from which to initialize the configuration
+     * @param configClass The type of configuration in which to interpret the given {@code configFileName}
+     * @return The configuration instance implementing {@link GATKConfig} containing any overrides in the given file.
+     */
+    public static <T extends Config> T initializeConfigurationAsProperties(final String configFileName,
+                                                                           final Class<? extends T> configClass) {
+
+        Utils.nonNull(configClass);
+
+        // Get a place to store our properties:
+        final Properties userConfigFileProperties = new Properties();
+
+        // Try to get the config from the specified file:
+        if ( configFileName != null ) {
+
+            try (final FileInputStream userConfigFileInputStream = new FileInputStream(configFileName)) {
+                userConfigFileProperties.load(userConfigFileInputStream);
+
+                logger.info("Found " + configClass.getSimpleName() + " Configuration File: " + configFileName);
+
+            } catch (final FileNotFoundException e) {
+                throw new GATKException("Unable to find specified " + configClass.getSimpleName() + " configuration file: "
+                        + configFileName + " - defaulting to built-in config settings.", e);
+            }
+            catch (final IOException e) {
+                throw new GATKException("Unable to load specified " + configClass.getSimpleName() + " configuration file: "
+                        + configFileName + " - defaulting to built-in config settings.", e);
+            }
+        }
+
+        // Cache and return our configuration:
+        // NOTE: The configuration will be stored in the ConfigCache under the key GATKConfig.class.
+        //       This means that any future call to getOrCreate for this GATKConfig.class will return
+        //       Not only the configuration itself, but also the overrides as specified in userConfigFileProperties
+        return ConfigUtils.getOrCreate(configClass, userConfigFileProperties);
+    }
+
+    /**
+     * Injects system properties from the given configuration file.
+     * System properties are specified by the presence of the {@link SystemProperty} annotation.
+     * @param config The {@link GATKConfig} object from which to inject system properties.
+     */
+    public static <T extends Config> void injectSystemPropertiesFromConfig(final T config) {
+        
+        Utils.nonNull(config);
+
+        // Get our system properties:
+        final Map<String, String> properties = getSystemPropertiesFromConfig(config);
+
+        // Set our properties:
+        injectToSystemProperties(properties);
     }
 
     /**

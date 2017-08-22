@@ -34,9 +34,6 @@ import java.util.function.Consumer;
 public abstract class BaseTest {
 
     static {
-        // Set config factory to know about the configuration options that we have.
-        ConfigUtils.setConfigFactoryVariableDefaults();
-
         // set properties for the local Spark runner
         System.setProperty("dataflow.spark.test.reuseSparkContext", "true");
         SparkContextFactory.enableTestSparkContext();

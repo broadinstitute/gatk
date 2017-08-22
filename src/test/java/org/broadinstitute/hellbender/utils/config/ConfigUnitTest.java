@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.config;
 
 import org.aeonbits.owner.Accessible;
 import org.aeonbits.owner.Config;
+import org.aeonbits.owner.ConfigCache;
 import org.aeonbits.owner.ConfigFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
@@ -108,18 +109,36 @@ public class ConfigUnitTest extends BaseTest {
                 },
                 // One Path:
                 {
-                        Collections.singletonList( GATKConfig.class ),
-                        Collections.singletonList( GATKConfig.CONFIG_FILE_VARIABLE_NAME )
+                        Arrays.asList( BasicTestConfig.class, BasicTestConfigWithClassPathOverridesAndVariableFile.class  ),
+                        Collections.singletonList( BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME )
                 },
-                // One Path:
+                // Two Path:
                 {
-                        Arrays.asList( BasicTestConfig.class, GATKConfig.class ),
-                        Collections.singletonList( GATKConfig.CONFIG_FILE_VARIABLE_NAME)
+                        Collections.singletonList( GATKConfig.class ),
+                        Arrays.asList( GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME, GATKConfig.CONFIG_FILE_VARIABLE_CLASS_PATH )
                 },
-                // Two Paths:
+                // Three Paths:
                 {
                         Arrays.asList( BasicTestConfig.class, GATKConfig.class, BasicTestConfigWithClassPathOverridesAndVariableFile.class ),
-                        Arrays.asList(GATKConfig.CONFIG_FILE_VARIABLE_NAME, BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME)
+                        Arrays.asList( GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME, GATKConfig.CONFIG_FILE_VARIABLE_CLASS_PATH, BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME )
+                },
+        };
+    }
+
+    @DataProvider
+    Object[][] createConfigFileAndVariableNames() {
+        return new Object[][] {
+                {
+                        BasicTestConfig.class,
+                        Collections.emptyList()
+                },
+                {
+                        BasicTestConfigWithClassPathOverridesAndVariableFile.class,
+                        Collections.singletonList( BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME )
+                },
+                {
+                        GATKConfig.class,
+                        Arrays.asList( GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME, GATKConfig.CONFIG_FILE_VARIABLE_CLASS_PATH )
                 },
         };
     }
@@ -172,11 +191,11 @@ public class ConfigUnitTest extends BaseTest {
 
         return new Object [][] {
                 {
-                        ConfigFactory.create(GATKConfig.class),
+                        ConfigUtils.create(GATKConfig.class),
                         propertyMap1
                 },
                 {
-                        ConfigFactory.create(BasicTestConfig.class),
+                        ConfigUtils.create(BasicTestConfig.class),
                         propertyMap2
                 },
         };
@@ -334,10 +353,10 @@ public class ConfigUnitTest extends BaseTest {
                 StandardCopyOption.REPLACE_EXISTING);
 
         // Assert that our config property is not set:
-        Assert.assertEquals( ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME), null);
+        Assert.assertEquals( ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME), null);
 
         // Set our file location here:
-        ConfigFactory.setProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME, outputDir.getAbsolutePath() + File.separator + overrideFilename);
+        ConfigFactory.setProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME, outputDir.getAbsolutePath() + File.separator + overrideFilename);
 
         // Test with the class that overrides on the class path:
         final BasicTestConfigWithClassPathOverridesAndVariableFile basicTestConfigWithClassPathOverridesAndVariableFile =
@@ -350,11 +369,11 @@ public class ConfigUnitTest extends BaseTest {
         Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.booleanDefTrue(), false);
         Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.intDef207(), 999);
         Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.listOfStringTest(), new ArrayList<>(Arrays.asList("string4", "string3", "string2", "string1")));
-        Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.customBoolean(), new Boolean(false));
+        Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.customBoolean().booleanValue(), false);
 
         // Reset the config factory:
-        ConfigFactory.clearProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME);
-        Assert.assertEquals(ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME), null);
+        ConfigFactory.clearProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME);
+        Assert.assertEquals(ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME), null);
     }
 
     @Test
@@ -368,10 +387,10 @@ public class ConfigUnitTest extends BaseTest {
         outputDir.deleteOnExit();
 
         // Assert that our config property is not set:
-        Assert.assertEquals( ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME), null);
+        Assert.assertEquals( ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME), null);
 
         // Set our file location here:
-        ConfigFactory.setProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME, outputDir.getAbsolutePath() + File.separator + overrideFilename);
+        ConfigFactory.setProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME, outputDir.getAbsolutePath() + File.separator + overrideFilename);
 
         // Test with the class that overrides on the class path:
         final BasicTestConfigWithClassPathOverridesAndVariableFile basicTestConfigWithClassPathOverridesAndVariableFile =
@@ -387,8 +406,8 @@ public class ConfigUnitTest extends BaseTest {
         Assert.assertEquals(basicTestConfigWithClassPathOverridesAndVariableFile.customBoolean().booleanValue(), true);
 
         // Reset the config factory:
-        ConfigFactory.clearProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME);
-        Assert.assertEquals(ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_NAME), null);
+        ConfigFactory.clearProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME);
+        Assert.assertEquals(ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME), null);
     }
 
     @Test(dataProvider = "createSourcesFilenamesAndSystemPropertiesFlags")
@@ -442,6 +461,11 @@ public class ConfigUnitTest extends BaseTest {
     @Test(dataProvider= "createConfigListsAndResults")
     void testConfigUtilsGetConfigPathVariableNamesFromConfigClasses(final List<Class<?>> configurationClasses, final List<String> expectedFilePathVariables ) {
         Assert.assertEquals( ConfigUtils.getConfigPathVariableNamesFromConfigClasses(configurationClasses), expectedFilePathVariables );
+    }
+
+    @Test(dataProvider = "createConfigFileAndVariableNames")
+    void testGetSourcesAnnotationPathVariables(final Class<? extends Config> configClass, final List<String> expectedFilePathVariables ) {
+            Assert.assertEquals( ConfigUtils.getSourcesAnnotationPathVariables(configClass), expectedFilePathVariables );
     }
 
     @Test(dataProvider = "createConfigAndExpectedProperties")
@@ -503,5 +527,63 @@ public class ConfigUnitTest extends BaseTest {
         Assert.assertEquals(parentClassConfig.intDef207(), 702);
         Assert.assertEquals(parentClassConfig.listOfStringTest(), new ArrayList<>(Arrays.asList("string4", "string3", "string2", "string1")));
         Assert.assertEquals(parentClassConfig.customBoolean().booleanValue(), true);
+    }
+
+    @Test
+    void testDerivedClassMappingToParentAndSelf() throws IOException {
+
+        Assert.assertEquals(
+                ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME),
+                null
+        );
+
+        // This is `assertTrue` because of conflicting type comparisons:
+        Assert.assertTrue(ConfigCache.get(ChildClassConfig.class) == null);
+        Assert.assertTrue(ConfigCache.get(BasicTestConfigWithClassPathOverridesAndVariableFile.class) == null);
+
+        final BasicTestConfigWithClassPathOverridesAndVariableFile parentClassConfig = ConfigUtils.getOrCreate(ChildClassConfig.class);
+        final ChildClassConfig childClassConfig = ConfigUtils.getOrCreate(ChildClassConfig.class);
+
+        ConfigCache.add(BasicTestConfigWithClassPathOverridesAndVariableFile.class, childClassConfig);
+
+        // List parent properties for inspection:
+        listAndStoreConfigToStdOut(parentClassConfig);
+
+        Assert.assertEquals(parentClassConfig.booleanDefTrue(), false);
+        Assert.assertEquals(parentClassConfig.booleanDefFalse(), true);
+        Assert.assertEquals(parentClassConfig.intDef207(), 702);
+        Assert.assertEquals(parentClassConfig.listOfStringTest(), new ArrayList<>(Arrays.asList("string4", "string3", "string2", "string1")));
+        Assert.assertEquals(parentClassConfig.customBoolean().booleanValue(), true);
+
+        // List child properties for inspection:
+        listAndStoreConfigToStdOut(childClassConfig);
+
+        Assert.assertEquals(childClassConfig.booleanDefTrue(), false);
+        Assert.assertEquals(childClassConfig.booleanDefFalse(), true);
+        Assert.assertEquals(childClassConfig.intDef207(), 702);
+        Assert.assertEquals(childClassConfig.listOfStringTest(), new ArrayList<>(Arrays.asList("string4", "string3", "string2", "string1")));
+        Assert.assertEquals(childClassConfig.customBoolean().booleanValue(), true);
+        Assert.assertEquals(childClassConfig.newCustomBooleanThatDefaultsToTrue().booleanValue(), false);
+
+        // Now check that getting them back produces the same object:
+        // This is `assertTrue` because of conflicting type comparisons:
+        Assert.assertTrue(
+                ConfigCache.get(BasicTestConfigWithClassPathOverridesAndVariableFile.class) ==  ConfigCache.get(ChildClassConfig.class)
+        );
+
+        // Now we clean the cache and the path variables:
+        ConfigFactory.clearProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME);
+        ConfigCache.remove(BasicTestConfigWithClassPathOverridesAndVariableFile.class);
+        ConfigCache.remove(ChildClassConfig.class);
+
+        // Verify that we've cleaned up:
+        Assert.assertEquals(
+                ConfigFactory.getProperty(BasicTestConfigWithClassPathOverridesAndVariableFile.CONFIG_FILE_VARIABLE_FILE_NAME),
+                null
+        );
+
+        // This is `assertTrue` because of conflicting type comparisons:
+        Assert.assertTrue(ConfigCache.get(ChildClassConfig.class) == null);
+        Assert.assertTrue(ConfigCache.get(BasicTestConfigWithClassPathOverridesAndVariableFile.class) == null);
     }
 }

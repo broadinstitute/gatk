@@ -144,7 +144,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
         // Log the configuration options:
-        ConfigUtils.logConfigFields(ConfigCache.getOrCreate(GATKConfig.class));
+        ConfigUtils.logConfigFields(ConfigUtils.getOrCreate(GATKConfig.class));
 
         for (final File f : TMP_DIR) {
             // Intentionally not checking the return values, because it may be that the program does not

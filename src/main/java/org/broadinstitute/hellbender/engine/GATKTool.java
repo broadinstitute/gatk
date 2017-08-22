@@ -68,8 +68,6 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
     private String masterSequenceDictionaryFilename = null;
 
-
-
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
@@ -80,7 +78,7 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
             doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
-    public boolean createOutputBamIndex = ConfigCache.getOrCreate(GATKConfig.class).createOutputBamIndex();
+    public boolean createOutputBamIndex = ConfigUtils.getOrCreate(GATKConfig.class).createOutputBamIndex();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_SHORT_NAME,
@@ -277,7 +275,7 @@ public abstract class GATKTool extends CommandLineProgram {
      *         A return value of -1 means to use the same value as returned by {@link #getCloudPrefetchBufferSize()}.
      */
     public int getCloudIndexPrefetchBufferSize() {
-        return ConfigCache.getOrCreate(GATKConfig.class).cloudIndexPrefetchBuffer();
+        return ConfigUtils.getOrCreate(GATKConfig.class).cloudIndexPrefetchBuffer();
     }
 
     /**

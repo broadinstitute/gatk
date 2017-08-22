@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.config.ConfigUtils;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
 import java.io.File;
@@ -67,7 +68,7 @@ public final class FeatureManager implements AutoCloseable {
     static {
 
         // Get our configuration:
-        final GATKConfig config = ConfigCache.getOrCreate( GATKConfig.class );
+        final GATKConfig config = ConfigUtils.getOrCreate( GATKConfig.class );
 
         final ClassFinder finder = new ClassFinder();
         for ( final String codecPackage : config.codec_packages() ) {
