@@ -101,7 +101,8 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
             while (query.hasNext()) {
                 SAMRecord sr = query.next();
                 int start = sr.getAlignmentStart();
-                // only return read if it starts in one of the intervals.
+                // only return read if it starts in one of the intervals
+                // (query returns all overlapping reads).
                 // First check the previous interval that worked (most likely to work again)
                 if (latestInterval != null && start >= latestInterval.start && start <= latestInterval.end) {
                     // read starts in this interval

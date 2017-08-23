@@ -13,14 +13,13 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
+import java.util.Collections;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.FileNotFoundException;
@@ -106,7 +105,11 @@ public class NioBam implements Serializable {
 
             // Ideally we'd get exactly the number of chunks the user is asking for, but until then...
             logger.info("We got: " + chunks.size() + " batches of chunks.");
-
+            for (QueryInterval[] a : chunks) {
+                for (QueryInterval q : a) {
+                    logger.info(" [--] " + q.referenceIndex + ": " + q.start + " - " + q.end);
+                }
+            }
             return ctx.parallelize(chunks, chunks.size()).flatMap(qis -> new ReadsIterable(bam, index, qis).iterator());
         }
         catch ( IOException e ) {
@@ -132,7 +135,7 @@ public class NioBam implements Serializable {
         }
     }
 
-    // this isn't very good yet, ideally we want just this number of query intervals, not per-contig.
+    // not perfect, but gives reasonable output now.
     private static List<QueryInterval[]> getAllChunksBalanced(SamReader bam, int countPerContig, int totalCount) {
         List<SizedQueryInterval> ret = new ArrayList<>();
         SAMFileHeader header = bam.getFileHeader();
@@ -210,15 +213,43 @@ public class NioBam implements Serializable {
             }
         }
         if (!batch.isEmpty()) {
+            if (sizeSoFar > longestBatch) longestBatch = sizeSoFar;
+            if (sizeSoFar < shortestBatch) shortestBatch = sizeSoFar;
             ret.add(optimize(batch));
         }
         logger.info("Batch size range: " + shortestBatch + " to " + longestBatch);
         return ret;
     }
 
+//    private static QueryInterval[] optimize(List<QueryInterval> list) {
+//        QueryInterval[] array = new QueryInterval[0];
+//        return QueryInterval.optimizeIntervals(list.toArray(array));
+//    }
+
+    private static boolean touches(QueryInterval a, QueryInterval b) {
+        return a.referenceIndex == b.referenceIndex && a.end + 1 == b.start;
+    }
+
     private static QueryInterval[] optimize(List<QueryInterval> list) {
+        Collections.sort(list);
+        final List<QueryInterval> unique = new ArrayList<QueryInterval>();
+        QueryInterval previous = list.get(0);
+
+        for (int i = 1; i < list.size(); ++i) {
+            final QueryInterval next = list.get(i);
+            if (touches(previous, next) || previous.overlaps(next)) {
+                final int newEnd = ((previous.end == 0 || next.end == 0) ? 0 : Math.max(previous.end, next.end));
+                previous = new QueryInterval(previous.referenceIndex, previous.start, newEnd);
+            } else {
+                unique.add(previous);
+                previous = next;
+            }
+        }
+
+        if (previous != null) unique.add(previous);
+
         QueryInterval[] array = new QueryInterval[0];
-        return QueryInterval.optimizeIntervals(list.toArray(array));
+        return unique.toArray(array);
     }
 
     private static List<SizedQueryInterval> getChunksBalanced(SamReader bam, int sequenceIndex, int retCount) {
@@ -236,9 +267,9 @@ public class NioBam implements Serializable {
         int step = s.getSequenceLength() / (100 * retCount);
         if (step < 1) step = 1;
         int start = 1;
-        for (int j = step; j < end; j += step) {
+        for (int j = step; j <= end; j += step) {
             if (j > end) j = end;
-            List<Chunk> candidate = getChunks(index, sequenceIndex, start, j);
+            List<Chunk> candidate = getChunks(index, sequenceIndex, start, j + 1);
             long size = chunksLength(candidate);
             if (size < targetLength) {
                 // not big enough yet
@@ -249,15 +280,20 @@ public class NioBam implements Serializable {
                 // TODO
             }
             // good, emit.
-            ret.add(new SizedQueryInterval(new QueryInterval(sequenceIndex, start, j + 1), size));
-            start = j;
+            ret.add(new SizedQueryInterval(new QueryInterval(sequenceIndex, start, j), size));
+            start = j + 1;
             sofar += size;
             if (ret.size() < retCount) {
                 targetLength = (totalLength - sofar) / (retCount - ret.size());
             } else {
                 targetLength = totalLength / retCount;
             }
-
+        }
+        if (start <= end) {
+            // emit the final interval, to make sure we cover to the end.
+            List<Chunk> candidate = getChunks(index, sequenceIndex, start, end + 1);
+            long size = chunksLength(candidate);
+            ret.add(new SizedQueryInterval(new QueryInterval(sequenceIndex, start, end), size));
         }
         return ret;
     }
