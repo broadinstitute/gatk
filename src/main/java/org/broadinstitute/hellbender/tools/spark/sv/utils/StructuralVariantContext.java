@@ -26,8 +26,20 @@ public final class StructuralVariantContext extends VariantContext {
 
     private static final long serialVersionUID = 1L;
 
-    private static final int MISSING_END = -1;
-    private static final int MISSING_LENGTH = -1;
+    /**
+     * Indicates that the 'end' has not been calculated yet.
+     */
+    private static final int MISSING_END = -2;
+
+    /**
+     * Indicates that the length has not been calculated yet.
+     */
+    private static final int MISSING_LENGTH = -2;
+
+    /**
+     * Indicates that the variant does not have a length or this could not be determined.
+     */
+    public static final int NO_LENGTH = -1;
 
     private int end = MISSING_END;
     private int length = MISSING_LENGTH;
@@ -82,13 +94,14 @@ public final class StructuralVariantContext extends VariantContext {
      */
     @Override
     public int getEnd() {
-        if (end <= 0) {
-            if (hasAttribute(VCFConstants.END_KEY)) {
-                end = getAttributeAsInt(VCFConstants.END_KEY, -1);
-            } else if (getStructuralVariantType() == StructuralVariantType.DEL) {
-                end = getStart() + getStructuralVariantLength();
-            } else {
-                end = super.getEnd();
+        if (end == MISSING_END) {
+            end = getAttributeAsInt(VCFConstants.END_KEY, MISSING_END);
+            if (end == MISSING_END) { // need to test a second time as "END=." would result in still a missing-end.
+                if (getStructuralVariantType() == StructuralVariantType.DEL) {
+                    end = getStart() + getStructuralVariantLength();
+                } else {
+                    end = super.getEnd();
+                }
             }
         }
         return end;
@@ -127,7 +140,8 @@ public final class StructuralVariantContext extends VariantContext {
      * @param pipelineOptions pipeline options.
      * @return never {@code null}.
      */
-    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference, final PipelineOptions pipelineOptions)  {
+    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference,
+                                                      final PipelineOptions pipelineOptions)  {
         Utils.nonNull(reference, "the input reference cannot be null");
         ParamUtils.isPositiveOrZero(paddingSize, "the input padding must be 0 or greater");
         ParamUtils.inRange(index, 0, 1, "the input allele index must be 0 or 1");
@@ -137,6 +151,7 @@ public final class StructuralVariantContext extends VariantContext {
 
         final SAMSequenceRecord contigRecord = dictionary.getSequence(getContig());
         Utils.nonNull(contigRecord, "the input reference does not have a contig named: " + getContig());
+
         final int contigLength = contigRecord.getSequenceLength();
         if (contigLength < getEnd()) {
             throw new IllegalArgumentException(String.format("this variant goes beyond the end of "
@@ -223,16 +238,16 @@ public final class StructuralVariantContext extends VariantContext {
     /**
      * Returns the absolute structural variant length as recorded in the SVLEN annotation.
      * <p>
-     *     When SVLEN is absent this method returns -1.
+     *     When SVLEN is absent this method returns {@link #NO_LENGTH} ({@value #NO_LENGTH}).
      * <p>
      *     Otherwise this method will return 0 or positive value, so for example for a deletion of 10bp
-     *     it will return 10 despite that the SVLEN annotation should be -10.
+     *     it will return {@code 10} despite that the SVLEN annotation should be {@code -10}.
      * </p>
-     * @return -1 if there is no SVLEN annotation and the length could not be inferred, 0 or greater otherwise.
+     * @return {@link #NO_LENGTH} if there is no SVLEN annotation and the length could not be inferred, 0 or greater otherwise.
      */
     public int getStructuralVariantLength() {
-        if (length < 0 && hasAttribute(GATKSVVCFConstants.SVLEN)) {
-            length = Math.abs(getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        if (length == MISSING_END && hasAttribute(GATKSVVCFConstants.SVLEN)) {
+            length = Math.abs(getAttributeAsInt(GATKSVVCFConstants.SVLEN, NO_LENGTH));
         }
         return length;
     }
