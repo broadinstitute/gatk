@@ -258,7 +258,16 @@ public class Main {
                 if (null == property) {
                     if (missingAnnotationClasses.isEmpty()) missingAnnotationClasses += clazz.getSimpleName();
                     else missingAnnotationClasses += ", " + clazz.getSimpleName();
-                } else if (!property.omitFromCommandLine()) { /** We should check for missing annotations later **/
+                } else if (property.omitFromCommandLine()) {
+                    // for classes that should be removed from the command line, run directly if is it called in the command line
+                    if (args.length > 1 && clazz.getSimpleName().equals(args[0])) {
+                        try {
+                            return (CommandLineProgram) clazz.newInstance();
+                        } catch (final InstantiationException | IllegalAccessException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                } else { /** We should check for missing annotations later **/
                     if (simpleNameToClass.containsKey(clazz.getSimpleName())) {
                         throw new RuntimeException("Simple class name collision: " + clazz.getSimpleName());
                     }
