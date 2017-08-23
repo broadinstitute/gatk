@@ -70,7 +70,7 @@ public class ReadPositionUnitTest extends BaseTest {
 
         final int[] medianAltPositions = (int[]) g.getExtendedAttribute(ReadPosition.KEY);
 
-        Assert.assertEquals(medianAltPositions[0], 1);
+        Assert.assertEquals(medianAltPositions[0], 2);
     }
 
 }

@@ -31,6 +31,9 @@ public class ReadPosition extends PerAlleleAnnotation {
     protected String getDescription() { return "median distance from end of read"; }
 
     @Override
+    protected boolean includeRefAllele() { return true; }
+
+    @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);

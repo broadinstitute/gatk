@@ -34,6 +34,9 @@ public class MappingQuality extends PerAlleleAnnotation {
     protected String getDescription() { return "median mapping quality"; }
 
     @Override
+    protected boolean includeRefAllele() { return true; }
+
+    @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         return OptionalInt.of(read.getMappingQuality());
