@@ -151,6 +151,7 @@ after_success:
   fi
 
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
+# This also pokes the Dockerhub web api which is securely stored in the travis API with the variable "DOCKERHUB_URL"
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
     $GCLOUD/gcloud components -q update gsutil;
     gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
@@ -158,6 +159,8 @@ after_success:
     ZIP_FILE="$(ls build/ | grep .zip)";
     echo "Uploading zip to gs://gatk-nightly-builds/";
     $GCLOUD/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
+    echo "Triggering an automatic build on dockerhub";
+    curl -H "Content-Type:application/json" --data '{"build":true}' -X POST ${DOCKERHUB_URL};
   fi
 after_failure:
 - dmesg | tail -100
