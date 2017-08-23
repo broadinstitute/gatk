@@ -14,27 +14,21 @@ import java.io.File;
  */
 public final class TargetsToolsTestUtils {
 
-    private TargetsToolsTestUtils(){} //don't instantiate this
-
-    /**
-     * Returns a {@link File} pointing to the directory that contains the test data.
-     * @return never {@code null}.
-     */
-    // TODO: this use a reference file in the test resource, and thus this file could not be used for testing downstream projects
-    // TODO: it should be moved to the test sources or being abstract to allow projects to use their own test directory
-    public static File getTestDataDir(){
-        return new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
+    /** Initialize the reference file and dictionary to use for creating intervals. */
+    public TargetsToolsTestUtils(final File referenceFile){
+        this.REFERENCE_FILE = referenceFile;
+        this.REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);;
     }
 
     /**
      * {@link File} pointing to the test toy reference used in targets analysis tool tests.
      */
-    public static final File REFERENCE_FILE = new File(getTestDataDir(),"test_reference.fasta");
+    public final File REFERENCE_FILE;
 
     /**
      * Sequence dictionary extracted from {@link #REFERENCE_FILE}.
      */
-    public static final SAMSequenceDictionary REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);
+    public final SAMSequenceDictionary REFERENCE_DICTIONARY;
 
     /**
      * Creates a {@link SimpleInterval} instance given its contig and base range.
@@ -44,7 +38,7 @@ public final class TargetsToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    public static SimpleInterval createInterval(final String contig, final int start, final int stop) {
+    public SimpleInterval createInterval(final String contig, final int start, final int stop) {
         return new SimpleInterval(REFERENCE_DICTIONARY.getSequence(contig).getSequenceName(),start,stop);
     }
 
@@ -55,7 +49,7 @@ public final class TargetsToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    public static SimpleInterval createOverEntireContig(final int contigIndex) {
+    public SimpleInterval createOverEntireContig(final int contigIndex) {
         final int contigLength = REFERENCE_DICTIONARY.getSequence(contigIndex).getSequenceLength();
         return new SimpleInterval(REFERENCE_DICTIONARY.getSequence(contigIndex).getSequenceName(),1,contigLength);
     }
@@ -66,7 +60,7 @@ public final class TargetsToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    public static SimpleInterval createOverEntireContig(final String contig) {
+    public SimpleInterval createOverEntireContig(final String contig) {
         final int contigLength = REFERENCE_DICTIONARY.getSequence(contig).getSequenceLength();
         return new SimpleInterval(REFERENCE_DICTIONARY.getSequence(contig).getSequenceName(),1,contigLength);
     }
@@ -78,7 +72,8 @@ public final class TargetsToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    public static SimpleInterval createInterval(final String contig, final int start) {
+    public SimpleInterval createInterval(final String contig, final int start) {
+        // TODO: should this really be createInterval(contig, start, start) instead of using the constructor supplied here?
         return new SimpleInterval(contig,start,start);
     }
 }
