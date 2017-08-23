@@ -1,0 +1,4 @@
+#!/bin/bash
+## This is a dockerhub hook and is separate from a .git hook, which lives elsewhere.
+## This file ensures that docker, which performs a shallow clone, has the source tree in order to properly label the file
+git fetch --unshallow
