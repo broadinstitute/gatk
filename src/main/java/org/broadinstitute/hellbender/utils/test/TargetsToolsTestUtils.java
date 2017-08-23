@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -21,8 +20,10 @@ public final class TargetsToolsTestUtils {
      * Returns a {@link File} pointing to the directory that contains the test data.
      * @return never {@code null}.
      */
+    // TODO: this use a reference file in the test resource, and thus this file could not be used for testing downstream projects
+    // TODO: it should be moved to the test sources or being abstract to allow projects to use their own test directory
     public static File getTestDataDir(){
-        return new File(CommandLineProgramTest.getTestDataDir(),"exome");
+        return new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
     }
 
     /**

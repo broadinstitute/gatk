@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -46,12 +45,7 @@ public final class GenomicsDBTestUtils {
     public static File createTempGenomicsDB(final List<File> gvcfs, final Locatable interval) {
         final File workspaceDir = BaseTest.createTempDir("genomicsDBWorkspace");
 
-        final CommandLineProgramTest importer = new CommandLineProgramTest() {
-            @Override
-            public String getTestedToolName() {
-                return GenomicsDBImport.class.getSimpleName();
-            }
-        };
+        final CommandLineProgramTester importer = GenomicsDBImport.class::getSimpleName;
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         gvcfs.forEach(args::addVCF);

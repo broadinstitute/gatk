@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
+public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
 
     private static final File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/engine");
 
