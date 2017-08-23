@@ -18,11 +18,15 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariant
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.util.*;
@@ -83,6 +87,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     private StructuralVariantPairHMMImplementation pairHmm = new StructuralVariantPairHMMImplementation("Affine(45,10)");
 
     private VariantsSparkSource variantsSource;
+    private ReadsSparkSource haplotypesAndContigsSource;
 
     @Override
     public boolean requiresReads() {
@@ -95,15 +100,23 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     }
 
     private void setUp(final JavaSparkContext ctx) {
+
         variantsSource = new VariantsSparkSource(ctx);
+        haplotypesAndContigsSource = new ReadsSparkSource(ctx);
     }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         setUp(ctx);
+        final JavaRDD<GATKRead> haplotypeAndContigs = haplotypesAndContigsSource.getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), getIntervals(), 0);
         final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .map(StructuralVariantContext::new);
+        final Java
+        final JavaPairRDD<SimpleInterval, GATKRead> readsPerShard;
+        final JavaPairRDD<SimpleInterval, StructuralVariantContext> variantsPerShard;
+        final JavaPairRDD<SimpleInterval, Tuple2<List<StructuralVariantContext>, List<GATKRead>>> variantsHaplotypesAndContigsPerShard;
+        final JavaPairRDD<StructuralVariantContext, List<GATKRead>> variantsHaplotypeAndContigs;
         final JavaRDD<StructuralVariantContext> outputVariants = processVariants(variants, ctx);
         final VCFHeader header = composeOutputHeader();
         SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
