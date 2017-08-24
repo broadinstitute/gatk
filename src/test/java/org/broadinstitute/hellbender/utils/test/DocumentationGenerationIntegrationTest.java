@@ -15,7 +15,7 @@ import java.util.List;
 /**
  * Smoke test to run doc gen on a subset of classes to make sure it doesn't regress.
  */
-public class HelpSmokeTest extends CommandLineProgramTest {
+public class DocumentationGenerationIntegrationTest extends CommandLineProgramTest {
     /**
      * Entry point for manually running the gatkDoc process on a subset of packages from within GATK.
      */
