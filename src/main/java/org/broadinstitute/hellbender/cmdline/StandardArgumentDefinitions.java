@@ -81,5 +81,5 @@ public final class StandardArgumentDefinitions {
      * The option specifying a main configuration file.
      * This is used in {@link org.broadinstitute.hellbender.Main} to control which config file is loaded.
      */
-    public static final String GATK_CONFIG_FILE_OPTION = "--gatk-config-file";
+    public static final String GATK_CONFIG_FILE_OPTION = "gatk-config-file";
 }

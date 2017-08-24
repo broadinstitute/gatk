@@ -407,23 +407,20 @@ public final class ConfigUtils {
      * @param configFileOption The command-line option indicating that the config file is next
      * @return The name of the configuration file for this program or {@code null}.
      */
-    public static String getConfigFilenameFromArgs( final ArrayList<String> args, final String configFileOption ) {
+    public static String getConfigFilenameFromArgs( final String[] args, final String configFileOption ) {
 
         Utils.nonNull(args);
         Utils.nonNull(configFileOption);
 
         String configFileName = null;
 
-        for ( int i = 0 ; i < args.size() ; ++i ) {
-            if (args.get(i).equals(configFileOption)) {
+        for ( int i = 0 ; i < args.length ; ++i ) {
+            if (args[i].equals(configFileOption)) {
 
-                // Get rid of the command-line argument name:
-                args.remove(i);
-
-                if ( i < args.size() ) {
+                if ( (i+1) < args.length ) {
 
                     // Get and remove the specified config file:
-                    configFileName = args.remove(i);
+                    configFileName = args[i+1];
                     break;
                 }
                 else {
@@ -445,7 +442,7 @@ public final class ConfigUtils {
      * @param argList The list of arguments from which to read the config file.
      * @param configFileOption The command-line option specifying the main configuration file.
      */
-    public static void initializeConfigurationsFromCommandLineArgs(final ArrayList<String> argList,
+    public static void initializeConfigurationsFromCommandLineArgs(final String[] argList,
                                                                    final String configFileOption) {
         initializeConfigurationsFromCommandLineArgs(
                 argList,
@@ -462,7 +459,7 @@ public final class ConfigUtils {
      * @param configFileOption The command-line option specifying the main configuration file.
      * @param configClass The class of the configuration file to instantiate.
      */
-    public static <T extends Config> void initializeConfigurationsFromCommandLineArgs(final ArrayList<String> argList,
+    public static <T extends Config> void initializeConfigurationsFromCommandLineArgs(final String[] argList,
                                                                                       final String configFileOption,
                                                                                       final Class<? extends T> configClass) {
         Utils.nonNull(argList);

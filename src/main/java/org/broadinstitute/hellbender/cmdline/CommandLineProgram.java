@@ -85,6 +85,16 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = "gcs_max_retries", shortName = "gcs_retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
     public int NIO_MAX_REOPENS = BucketUtils.DEFAULT_GCS_MAX_REOPENS;
 
+    // This option is here for documentation completeness.
+    // This is actually parsed out in Main to initialize configuration files because
+    // we need to have the configuration completely set up before we create our CommandLinePrograms.
+    // (Some of the CommandLinePrograms have default values set to config values, and these are loaded
+    // at class load time as static initializers).
+    @Argument(fullName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
+              shortName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
+              doc = "A configuration file to use with the GATK.")
+    public String GATK_CONFIG_FILE = "/dev/null";
+
     private CommandLineParser commandLineParser;
 
     private final List<Header> defaultHeaders = new ArrayList<>();

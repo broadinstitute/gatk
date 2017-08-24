@@ -56,22 +56,19 @@ public class ConfigUnitTest extends BaseTest {
     Object[][] createArgsAndConfigFileOptions() {
         return new Object[][] {
                 {
-                    new ArrayList<>(Arrays.asList("main","--zonfigurati","DUMMY_FILE","END")),
+                    new String[] {"main","--zonfigurati","DUMMY_FILE","END"},
                     "--config",
                     null,
-                    new ArrayList<>(Arrays.asList("main","--zonfigurati","DUMMY_FILE","END")),
                 },
                 {
-                    new ArrayList<>(Arrays.asList("main","--config","DUMMY_FILE","END")),
+                    new String[] {"main","--config","DUMMY_FILE","END"},
                     "--config",
                     "DUMMY_FILE",
-                    new ArrayList<>(Arrays.asList("main","END")),
                 },
                 {
-                    new ArrayList<>(Arrays.asList("main","END","--config","DUMMY_FILE")),
+                    new String[] {"main","END","--config","DUMMY_FILE"},
                     "--config",
                     "DUMMY_FILE",
-                    new ArrayList<>(Arrays.asList("main","END")),
                 },
         };
     }
@@ -80,15 +77,15 @@ public class ConfigUnitTest extends BaseTest {
     Object[][] createArgsAndConfigFileOptionsBadInput() {
         return new Object[][] {
                 {
-                        new ArrayList<>(Arrays.asList("main", "testArg", "--config")),
+                        new String[] {"main", "testArg", "--config"},
                         "--config",
                 },
                 {
-                        new ArrayList<>(Arrays.asList("main","--config")),
+                        new String[] {"main","--config"},
                         "--config",
                 },
                 {
-                        new ArrayList<>(Collections.singletonList("--config")),
+                        new String[] {"--config"},
                         "--config",
                 },
         };
@@ -241,22 +238,20 @@ public class ConfigUnitTest extends BaseTest {
 
     @Test(dataProvider = "createArgsAndConfigFileOptionsBadInput",
             expectedExceptions = UserException.BadInput.class)
-    void testGetConfigFilenameFromArgsBadInput( final ArrayList<String> args,
+    void testGetConfigFilenameFromArgsBadInput( final String[] args,
                                         final String configFileOption) {
 
         ConfigUtils.getConfigFilenameFromArgs(args, configFileOption);
     }
 
     @Test(dataProvider= "createArgsAndConfigFileOptions")
-    void testGetConfigFilenameFromArgs( final ArrayList<String> args,
+    void testGetConfigFilenameFromArgs( final String[] args,
                                         final String configFileOption,
-                                        final String expectedFilename,
-                                        final ArrayList<String> expectedRemainingArgs) {
+                                        final String expectedFilename) {
 
         final String outFileName = ConfigUtils.getConfigFilenameFromArgs(args, configFileOption);
 
         Assert.assertEquals(expectedFilename, outFileName);
-        Assert.assertEquals(expectedRemainingArgs, args);
     }
 
     @Test
