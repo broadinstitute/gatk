@@ -307,9 +307,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         testBedIndex(getTestFile("test_bed_for_index.bed"), LinearIndex.class);
     }
 
-    // TODO: this is not enabled because canDecode returns false for bed.gz extension
-    // TODO: enable when using htsjdk with this PR accepted: https://github.com/samtools/htsjdk/pull/704
-    @Test(enabled = false)
+    @Test
     public void testBedGZIndex() {
         // made with bgzip
         testBedIndex(getTestFile("test_bed_for_index.bed.gz"), TabixIndex.class);
