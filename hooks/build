@@ -1,0 +1,3 @@
+#!/usr/bin/env
+
+docker build --build-arg=COMMIT=$(git rev-parse --short HEAD) --build-arg=BRANCH=${SOURCE_BRANCH} -t $IMAGE_NAME .
