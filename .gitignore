@@ -17,6 +17,7 @@ gsalib.tar.gz
 gradlew.bat
 tmp/
 src/main/java/local/
+out/
 
 #Please don't commit me
 client_secret.json
