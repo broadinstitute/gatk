@@ -53,13 +53,20 @@ where $i$ and $j$ represent positions within the read and haplotype, respectivel
 \item $(i, j, M/D) \rightarrow (i, j+1, D)$: deletion after read position $i$ -- haplotype position $j+1$ is deleted
 \item $(i, j, M/I) \rightarrow (i + 1, j, I)$: insertion at read position $i + 1$
 \end{itemize}
-Note that the state label $s$ seems redundant because it can be reconstructed from the sequence of $i$ an $j$.  While this is true, our model treats indel starts differently from indel continuations, and by including the state label we can distinguish these conveniently\footnote{That is, we can tell which type of transition it is by looking back one unit instead of two.  Thus we have a first-order Markov model instead of a second-order Markov model.}.
+Note that the state label $s$ seems redundant because it can be reconstructed from the sequence of $i$ an $j$.  While this is true, our model treats indel starts differently from indel continuations, and by including the state label we can distinguish these conveniently\footnote{That is, we can tell which type of transition it is by looking back one unit instead of two.  Thus we have a first-order Markov model instead of a second-order Markov model.}.  These transitions are illustrated as a finite state machine in Figure \ref{fig:fsm}.
+
+\begin{figure}
+\center
+\includegraphics[scale=0.35]{finite_state.png}
+\caption{Finite state machine of transitions among match, insertion, and deletion alignment states.  In the absence of per-base BQSR indel qualities transition probabilities are parametrized  by two constants, the indel start probability $\delta$ and the indel continuation probability $\epsilon$, such that $T_{MI} = T_{MD} = \delta$, $T_{MM} = 1 - 2 \delta$, $T_{II} = T_{DD} = \epsilon$, $T_{IM} = T_{DM} = 1 - \epsilon$, and $T_{ID} = T_{DI} = 0$.}
+\label{fig:fsm}
+\end{figure}
 
 The read-alignment likelihood has two components.  First is the probability of the sequence of match, insertion, and deletion states, which is
 \begin{equation}
 P(\mc{A}) = \prod_k T_{s_k, s_{k+1}},
 \end{equation}
-where $T$ is a constant matrix of state transition probabilities\footnote{The gap continuation probability corresponds to a phred-scaled quality that is set by the \code{gcpHMM} argument, which is 10 by default, implying that $T_{DD} = T_{II} = 0.1$ and $T_{DM} = T{IM} = 0.9$.  The other transitions are hard-coded based on a phred-scaled indel start quality of 45.  That is, $T_{MD} = T{MI} = 10^{-4.5}$ and $T_{MM} = 1 - 2 \times 10^{-4.5}$.  This fact is somewhat obscured in the code, which gives a position index to the transition matrices.  Nonetheless, the array representing transitions is constant over this index.}.  Next is the emission probability of the read bases given the haplotype bases they align to and the base qualities:
+where $T$ is a matrix of state transition probabilities\footnote{The gap continuation probability corresponds to a phred-scaled quality that is set by the \code{gcpHMM} argument, which is 10 by default, implying that $T_{DD} = T_{II} = 10^{-10/10} = 1/10$ and $T_{DM} = T_{IM} = 1 - T_{II}$.  The indel start transitions are derived from the read's BQSR base insertion and base deletion qualities, if they exist, or a phred-scaled indel start quality of 45 if they do not.  In production at the Broad Institute bams do not have BQSR indel qualities, hence the constant default is used.  That is, $T_{MD} = T_{MI} = 10^{-4.5}$ and $T_{MM} = 1 - 2 \times 10^{-4.5}$.}.  The index $k$ runs from 1 to the number of states in the alignment, that is, the read length plus the number of deleted reference bases.  Next is the emission probability of the read bases given the haplotype bases they align to and the base qualities:
 \begin{equation}
 P(\mc{R} | \mc{A}, \mc{H}) = \prod_k P(r_{i_k} | h_{j_k}, q_{i_k})^{{\rm I}[s_k = M]},
 \end{equation}
@@ -67,6 +74,7 @@ where $r_m$ and $h_n$ are the $m$th read bases and $n$th haplotype base and $q_m
 \begin{equation}
 P(b_2 | b_1, q) = \left\{ \begin{array}{cc} \epsilon(q)/3 & (b_1 \ne b_2) \\ 1 - \epsilon(q) & (b_1 = b_2)  \end{array} \right.
 \end{equation}
+where $\epsilon(q) = 10^{-q/10}$ is the error rate implied by the phred-scaled quality $q$.
 
 \section{Dynamic Programming}
 
@@ -94,8 +102,8 @@ define the entire pair HMM algorithm:
 \label{pairHMM}
 \end{algorithm}
 
-That the $i = 0$ rows of $M$ and $I$ are initialized to zero corresponds to starting at an imaginary position one base before the read start in a deletion state.  The factor of $1/|\mc{H}|$ corresponds to a flat prior on which $j$ an alignment starts at.  The curious factor of $2^{1020}$ is a huge number to prevent underflow -- all multiplications are by numbers less than 1, so we needn't worry about overflow -- which is a much more efficient approach than performing the computation in log space.  The omission of $D$ from the returned value recognizes the fact that a terminal deletion is meaningless.
+That the $i = 0$ rows of $M$ and $I$ are initialized to zero corresponds to starting at an imaginary position one base before the read start in a deletion state\footnote{Since $T_{DI} = 0$ this means that an alignment may not start with an insertion, though it may begin with one.  This limitation is unnecessary and could be fixed by initializing the $i = 0$ row of $I$ to a non-zero value as well.}.  The factor of $1/|\mc{H}|$ corresponds to a flat prior on which $j$ an alignment starts at.  This is important for a local alignment because we don't want to penalize reads that start in the middle of the haplotype.  The curious factor of $2^{1020}$ is a huge number to prevent underflow -- all multiplications are by numbers less than 1, so we needn't worry about overflow -- which is a much more efficient approach than performing the computation in log space.  The omission of $D$ from the returned value recognizes the fact that a terminal deletion is meaningless.
 
-Finally, we note a shortcut that the GATK exploits: when two consecutive haplotypes agree up to the $k$th position, the first $k$ columns of $M$, $D$ and $I$ are recycled and the inner loop is over $k < j \le \mc{H}$.
+Finally, we note a shortcut that the GATK exploits: when two consecutive haplotypes of the same length\footnote{The condition on the same length could easily be relaxed simply by accounting for the constant $1/|\mc{H}|$ initialization.}  agree up to the $k$th position, the first $k$ columns of $M$, $D$ and $I$ are recycled and the inner loop is over $k < j \le \mc{H}$.
 
 \end{document}
