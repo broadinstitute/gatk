@@ -7,6 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -17,51 +21,53 @@ import org.testng.Assert;
  * Stress test for reading lots of data from the cloud using a very small prefetch buffer.
  * Do not run this too often.
  */
-public final class ExtremeReadsTest extends BaseTest implements Runnable {
+public final class ExtremeReadsTest extends BaseTest {
 
-    String fname = GCS_GATK_TEST_RESOURCES + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
+    static String fname = GCS_GATK_TEST_RESOURCES + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
 
     static int THREAD_COUNT = 1000;
     static int CHANNELS_PER_THREAD = 1000;
     static volatile int errors = 0;
 
-    /**
-     * Read a bunch of bytes. Part of the manyParallelReads test.
-     */
-    @Override
-    public void run() {
-        try {
-            Path path = IOUtils.getPath(fname);
-            ArrayList<SeekableByteChannel> chans = new ArrayList<SeekableByteChannel>();
-            for (int i=0; i<CHANNELS_PER_THREAD; i++) {
-                SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
-                    Files.newByteChannel(path), 2 * 1024 * 1024);
-                // skip the first half
-                chan.position(chan.position()/2);
-                chans.add(chan);
-            }
-            long size = chans.get(0).size();
-            ByteBuffer buf = ByteBuffer.allocate(1024*1024 - 5);
-            while (!chans.isEmpty()) {
-                SeekableByteChannel chan = chans.remove(0);
-                buf.clear();
-                int read = chan.read(buf);
-                if (read>=0) {
+    private static class Runner implements Runnable {
+        /**
+         * Read a bunch of bytes. Part of the manyParallelReads test.
+         */
+        @Override
+        public void run() {
+            try {
+                Path path = IOUtils.getPath(ExtremeReadsTest.fname);
+                ArrayList<SeekableByteChannel> chans = new ArrayList<SeekableByteChannel>();
+                for (int i=0; i<CHANNELS_PER_THREAD; i++) {
+                    SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
+                        Files.newByteChannel(path), 2 * 1024 * 1024);
+                    // skip the first half
+                    chan.position(chan.position()/2);
                     chans.add(chan);
-                    continue;
                 }
-                // EOF
-                long position = chan.position();
-                if (size != position) {
-                    System.out.println("Done at wrong position! " + position + " != " + size);
-                    errors++;
+                long size = chans.get(0).size();
+                ByteBuffer buf = ByteBuffer.allocate(1024*1024 - 5);
+                while (!chans.isEmpty()) {
+                    SeekableByteChannel chan = chans.remove(0);
+                    buf.clear();
+                    int read = chan.read(buf);
+                    if (read>=0) {
+                        chans.add(chan);
+                        continue;
+                    }
+                    // EOF
+                    long position = chan.position();
+                    if (size != position) {
+                        System.out.println("Done at wrong position! " + position + " != " + size);
+                        ExtremeReadsTest.errors++;
+                    }
                 }
+            } catch (Exception x) {
+                ExtremeReadsTest.errors++;
+                System.out.println("Caught: " + x.getMessage());
+                x.printStackTrace();
+                System.out.println();
             }
-        } catch (Exception x) {
-            errors++;
-            System.out.println("Caught: " + x.getMessage());
-            x.printStackTrace();
-            System.out.println();
         }
     }
 
@@ -73,20 +79,17 @@ public final class ExtremeReadsTest extends BaseTest implements Runnable {
      **/
     @Test(groups={"bucket"}, enabled=false)
     public void manyParallelReads() throws InterruptedException {
-        List<Thread> threads = new ArrayList<>();
+        final ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
         Stopwatch sw = Stopwatch.createStarted();
         errors = 0;
-        int count = THREAD_COUNT;
-        for (int i=0; i<count; i++) {
-            Thread t = new Thread(this);
-            threads.add(t);
-            t.start();
+        final Runner runner = new Runner();
+        for (int i=0; i<THREAD_COUNT; i++) {
+            executor.execute(runner);
         }
         long parallel_reads = THREAD_COUNT * CHANNELS_PER_THREAD;
         System.out.println(parallel_reads + " parallel reads via " + THREAD_COUNT + " threads (this will take a while).");
-        for (Thread t : threads) {
-            t.join();
-        }
+        executor.shutdown();
+        executor.awaitTermination(1, TimeUnit.DAYS);
         sw.stop();
         System.out.println("All done. Elapsed: " + sw.elapsed(TimeUnit.MINUTES) + " min.");
         System.out.println("There were " + errors + " error(s).");
