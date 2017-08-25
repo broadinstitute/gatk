@@ -13,7 +13,7 @@ public final class ExampleReadWalkerWithReferenceIntegrationTest extends Command
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
 
     @Test
-    public void testExampleVariantWalker() throws IOException {
+    public void testExampleReadWalkerWithReference() throws IOException {
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -R " + hg19MiniReference +
                 " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +

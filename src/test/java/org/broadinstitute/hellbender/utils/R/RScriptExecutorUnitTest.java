@@ -18,7 +18,7 @@ public final class RScriptExecutorUnitTest extends BaseTest {
 
     @Test(groups = {"R"})
     public void testRscriptExists() {
-        Assert.assertTrue(RScriptExecutor.RSCRIPT_EXISTS, "Rscript not found in environment ${PATH}");
+        Assert.assertTrue(new RScriptExecutor().getExternalExecutorExists(), "Rscript not found in environment ${PATH}");
     }
 
     @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
@@ -34,17 +34,17 @@ public final class RScriptExecutorUnitTest extends BaseTest {
     }
 
     @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
-    public void testNonExistantScriptException() {
+    public void testNonExistentScriptException() {
         RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new File("does_not_exists.R"));
+        executor.addScript(BaseTest.getSafeNonExistentFile("does_not_exists.R"));
         executor.exec();
     }
 
     @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
-    public void testNonExistantScriptNoException() {
+    public void testNonExistentScriptNoException() {
         logger.warn("Testing that warning is printed an no exception thrown for missing script.");
         RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new File("does_not_exists.R"));
+        executor.addScript(BaseTest.getSafeNonExistentFile("does_not_exists.R"));
         executor.setIgnoreExceptions(true);
         Assert.assertFalse(executor.exec(), "Exec should have returned false when the job failed");
     }
