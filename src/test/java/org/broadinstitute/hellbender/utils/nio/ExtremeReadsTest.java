@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -79,7 +80,14 @@ public final class ExtremeReadsTest extends BaseTest {
      **/
     @Test(groups={"bucket"}, enabled=false)
     public void manyParallelReads() throws InterruptedException {
-        final ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+        final ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT,
+            new ThreadFactory() {
+                public Thread newThread(Runnable r) {
+                    Thread t = Executors.defaultThreadFactory().newThread(r);
+                    t.setDaemon(true);
+                    return t;
+                }
+            });
         Stopwatch sw = Stopwatch.createStarted();
         errors = 0;
         final Runner runner = new Runner();
