@@ -116,6 +116,9 @@ public abstract class GATKTool extends CommandLineProgram {
             optional = true)
     public boolean disableBamIndexCaching = false;
 
+    @Argument(fullName = "invertReadFilter", shortName = "invRF", doc ="invert read filtering", optional = true)
+    private boolean invertReadFilter = false;
+
     /**
      * Master sequence dictionary to be used instead of all other dictionaries (if provided).
      */
@@ -251,9 +254,18 @@ public abstract class GATKTool extends CommandLineProgram {
         if (hasReads()) {
             final ReadTransformer preTransformer = makePreReadFilterTransformer();
             final ReadTransformer postTransformer = makePostReadFilterTransformer();
+            final ReadFilter actualFilter = !invertReadFilter ? filter
+                    : new ReadFilter() {
+
+                private static final long serialVersionUID = 1L;
+                @Override
+                public boolean test(final GATKRead read) {
+                    return !filter.test(read);
+                }
+            };
             return Utils.stream(reads)
                     .map(preTransformer)
-                    .filter(filter)
+                    .filter(actualFilter)
                     .map(postTransformer);
         }
         // returns an empty Stream if there are no reads
