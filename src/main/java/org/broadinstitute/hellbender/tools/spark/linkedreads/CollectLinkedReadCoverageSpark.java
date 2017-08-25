@@ -28,7 +28,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
-import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -168,6 +167,110 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final Tuple2<double[], long[]> molSizeHistogram = molSizeHistogramFile != null ? computeMolSizeHistogram(barcodeIntervals, molSizeHistogramFile) : null;
 
 
+        final Map<String, SVIntervalTree<Integer>> localBarcodeIntervals = barcodeIntervals.mapValues(oldTree -> {
+            final SVIntervalTree<Integer> newTree = new SVIntervalTree<>();
+            oldTree.forEach(e -> newTree.put(e.getInterval(), null));
+            return newTree;
+        }).collectAsMap();
+
+        Broadcast<Map<String, SVIntervalTree<Integer>>> broadcastAllIntervals = ctx.broadcast(localBarcodeIntervals);
+
+        JavaPairRDD<Integer, SVIntervalTree<String>> barcodeIntervalsByContig = barcodeIntervals.flatMapToPair(entry -> {
+            final String barcode = entry._1();
+            final SVIntervalTree<List<ReadInfo>> tree = entry._2();
+            final Map<Integer, SVIntervalTree<String>> intervalsByChrom = new HashMap<>();
+            tree.iterator().forEachRemaining(e -> {
+                final int contig = e.getInterval().getContig();
+                final SVInterval interval = e.getInterval();
+                if (!intervalsByChrom.containsKey(contig)) intervalsByChrom.put(contig, new SVIntervalTree<>());
+                intervalsByChrom.get(contig).put(interval, barcode);
+            });
+            return Utils.stream(intervalsByChrom.entrySet()).map(e -> new Tuple2<>(e.getKey(), e.getValue())).iterator();
+        }).reduceByKey((tree1, tree2) -> {
+            tree2.iterator().forEachRemaining(e -> tree1.put(e.getInterval(), e.getValue()));
+            return tree1;
+        }) .repartition(readMetadata.getContigNameMap().size());
+
+
+        final JavaPairRDD<SVInterval, Set<String>> barcodeSetsByIntervals = barcodeIntervalsByContig.flatMapToPair(kv -> {
+            final int contig = kv._1();
+            final SVIntervalTree<String> intervals = kv._2();
+            final List<Tuple2<Integer, String>> starts = new ArrayList<>(intervals.size());
+            intervals.iterator().forEachRemaining(e -> starts.add(new Tuple2<>(e.getInterval().getStart(), e.getValue())));
+            final List<Tuple2<Integer, String>> stops = new ArrayList<>(intervals.size());
+            intervals.iterator().forEachRemaining(e -> stops.add(new Tuple2<>(e.getInterval().getEnd(), e.getValue())));
+            stops.sort(Comparator.comparingInt(Tuple2::_1));
+
+            int startIdx = 0;
+            int stopIdx = 0;
+            int prevBoundary = 0;
+
+            final Set<String> currentBarcodes = new HashSet<>();
+
+            final List<Tuple2<SVInterval, Set<String>>> results = new ArrayList<>(starts.size() + stops.size());
+            while (stopIdx < stops.size()) {
+                final int nextStart = startIdx < starts.size() ? starts.get(startIdx)._1 : -1;
+                final int nextStop = stops.get(stopIdx)._1;
+                if (nextStart != -1 && nextStart <= nextStop) {
+                    // process a start
+                    //System.out.println("Process a start at " + nextStart + ": " + starts.get(startIdx)._2);
+                    if (!currentBarcodes.isEmpty()) {
+                        final SVInterval newInterval = new SVInterval(contig, prevBoundary, nextStart);
+                        final Set<String> barcodes = new HashSet<>(currentBarcodes);
+                        results.add(new Tuple2<>(newInterval, barcodes));
+                    }
+
+                    currentBarcodes.add(starts.get(startIdx)._2);
+                    prevBoundary = starts.get(startIdx)._1;
+                    startIdx++;
+                } else {
+                    // process a stop
+                    //System.out.println("Process a stop at " + nextStop + ": " + stops.get(stopIdx)._2);
+                    final SVInterval newInterval = new SVInterval(contig, prevBoundary, nextStop);
+                    final Set<String> barcodes = new HashSet<>(currentBarcodes);
+                    results.add(new Tuple2<>(newInterval, barcodes));
+
+                    currentBarcodes.remove(stops.get(stopIdx)._2);
+                    prevBoundary = stops.get(stopIdx)._1;
+                    stopIdx++;
+                }
+
+            }
+            return results.iterator();
+        });
+
+        barcodeSetsByIntervals.saveAsTextFile("foo");
+
+        JavaPairRDD<Tuple2<SVInterval, SVInterval>, Integer> allIntervalPairOverlaps = barcodeSetsByIntervals.flatMapToPair(kv -> {
+            final SVInterval interval = kv._1();
+            final Set<String> barcodes = kv._2();
+
+            final SVIntervalTree<Integer> sharedBarcodeIntervals = new SVIntervalTree<>();
+            barcodes.iterator().forEachRemaining(barcode -> {
+                broadcastAllIntervals.getValue().get(barcode).iterator().forEachRemaining(barcodeIntervalEntry -> {
+                    if (!barcodeIntervalEntry.getInterval().overlaps(interval)) {
+                        sharedBarcodeIntervals.put(barcodeIntervalEntry.getInterval(), barcodeIntervalEntry.getValue());
+                    }
+                });
+            });
+
+            return new IntervalDepthIterator(interval, sharedBarcodeIntervals);
+
+        });
+
+        JavaPairRDD<Tuple2<SVInterval, SVInterval>, Integer> filteredPairedOverlaps = allIntervalPairOverlaps.filter(kv -> kv._2() > 1);
+        filteredPairedOverlaps.saveAsTextFile("foobar");
+
+        final SVIntervalTree<String> allIntervals = new SVIntervalTree<>();
+        localBarcodeIntervals.forEach((barcode, value) -> {
+            // todo: could be a bug if exact overlapping intervals
+            value.forEach(intervalEntry -> allIntervals.put(intervalEntry.getInterval(), barcode));
+        });
+
+
+
+
+        //final Set<String> currentBarcodes = new HashSet<>();
 
 
 
@@ -785,5 +888,101 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     }
 
+    private class IntervalDepthIterator implements Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, Integer>> {
+        private final SVInterval interval;
+        private final Iterator<Integer> contigIterator;
+        private int currentDepth;
+        private int currentContig;
+
+        private int startIdx;
+        private int stopIdx;
+        private int prevBoundary;
+
+        private final Map<Integer, List<Integer>> stops;
+        private final Map<Integer, List<Integer>> starts;
+
+        public IntervalDepthIterator(final SVInterval interval, final SVIntervalTree<Integer> sharedBarcodeIntervals) {
+            //System.out.println("DepthIterator for " + interval);
+            this.interval = interval;
+
+            starts = new HashMap<>();
+            stops = new HashMap<>();
+
+            if (! (sharedBarcodeIntervals.size() == 0)) {
+                sharedBarcodeIntervals.iterator().forEachRemaining(e -> {
+                    final int contig = e.getInterval().getContig();
+                    if (! starts.containsKey(contig)) starts.put(contig, new ArrayList<>());
+                    starts.get(contig).add(e.getInterval().getStart());
+                    if (! stops.containsKey(contig)) stops.put(contig, new ArrayList<>());
+                    stops.get(contig).add(e.getInterval().getEnd());
+                });
+
+                for (Integer contig : stops.keySet()) {
+                    Collections.sort(stops.get(contig));
+                }
+
+                contigIterator = starts.keySet().iterator();
+                currentContig = contigIterator.next();
+
+                startIdx = 1;
+                stopIdx = 0;
+                prevBoundary = starts.get(currentContig).get(0);
+                currentDepth = 1;
+
+            } else {
+                contigIterator = null;
+            }
+
+        }
+
+        @Override
+        public boolean hasNext() {
+            return contigIterator != null && (stopIdx < stops.get(currentContig).size() || contigIterator.hasNext());
+        }
+
+        @Override
+        public Tuple2<Tuple2<SVInterval, SVInterval>, Integer> next() {
+            if (stopIdx == stops.get(currentContig).size()) {
+                currentContig = contigIterator.next();
+
+                startIdx = 1;
+                stopIdx = 0;
+                prevBoundary = starts.get(currentContig).get(0);
+                currentDepth = 1;
+
+            }
+
+            final int nextStart = startIdx < starts.get(currentContig).size() ? starts.get(currentContig).get(startIdx) : -1;
+            final int nextStop = stops.get(currentContig).get(stopIdx);
+
+            Tuple2<Tuple2<SVInterval, SVInterval>, Integer> result;
+            if (nextStart != -1 && nextStart <= nextStop) {
+                // process a start
+                //System.out.println("Process a start at " + nextStart + ": " + starts.get(startIdx));
+
+                final SVInterval newInterval = new SVInterval(currentContig, prevBoundary, nextStart);
+                result = new Tuple2<>(new Tuple2<>(interval, newInterval), currentDepth);
+
+                currentDepth++;
+                prevBoundary = starts.get(currentContig).get(startIdx);
+                startIdx++;
+
+            } else {
+                // process a stop
+                //System.out.println("Process a stop at " + nextStop + ": " + stops.get(stopIdx));
+
+                currentDepth--;
+                final SVInterval newInterval = new SVInterval(currentContig, prevBoundary, nextStart);
+                result = new Tuple2<>(new Tuple2<>(interval, newInterval), currentDepth);
+
+
+                currentDepth--;
+                prevBoundary = stops.get(currentContig).get(stopIdx);
+                stopIdx++;
+            }
+
+            return result;
+        }
+    }
 }
 
