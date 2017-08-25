@@ -111,7 +111,7 @@ dependencies {
     compileOnly(javadocJDKFiles)
     testCompile(javadocJDKFiles)
 
-    compile 'org.broadinstitute:barclay:1.1.0'
+    compile 'org.broadinstitute:barclay:1.2.1'
     compile ('com.intel:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'spark-core_2.10'
         exclude module: 'htsjdk'
@@ -496,6 +496,56 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
     options.addStringOption("absolute-version", getVersion())
     options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
     options.addStringOption("verbose")
+}
+
+// Generate GATK Bash Tab Completion File
+task gatkTabComplete(type: Javadoc, dependsOn: classes) {
+    final File tabCompletionDir = new File("build/docs/tabCompletion")
+    doFirst {
+        // make sure the output folder exists or we can create it
+        if (!tabCompletionDir.exists() && !tabCompletionDir.mkdirs()) {
+            throw new GradleException(String.format("Failure creating folder (%s) for GATK tab completion output in task (%s)",
+                    tabCompletionDir.getAbsolutePath(),
+                    it.name));
+        }
+    }
+    source = sourceSets.main.allJava
+
+    // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
+    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
+    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+
+    options.docletpath = classpath.asType(List)
+    options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
+
+    outputs.dir(tabCompletionDir)
+    options.destinationDirectory(tabCompletionDir)
+
+    // This is a hack to work around a gross Gradle bug:
+    options.addStringOption('use-default-templates', '-use-default-templates')
+
+    options.addStringOption("output-file-extension", "sh")
+    options.addStringOption("index-file-extension", "sh")
+    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
+
+    options.addStringOption("caller-script-name", "gatk-launch")
+
+    options.addStringOption("caller-pre-legal-args", "--help --list --dryRun --javaOptions")
+    options.addStringOption("caller-pre-arg-val-types", "null null null String")
+    options.addStringOption("caller-pre-mutex-args", "--help;list,dryRun,javaOptions --list;help,dryRun,javaOptions")
+    options.addStringOption("caller-pre-alias-args", "--help;-h")
+    options.addStringOption("caller-pre-arg-min-occurs", "0 0 0 0")
+    options.addStringOption("caller-pre-arg-max-occurs", "1 1 1 1")
+
+    options.addStringOption("caller-post-legal-args", "--sparkRunner --spark-master --cluster --dryRun --javaOptions --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors")
+    options.addStringOption("caller-post-arg-val-types", "String String String null String file int int int int int")
+    options.addStringOption("caller-post-mutex-args", "")
+    options.addStringOption("caller-post-alias-args", "")
+    options.addStringOption("caller-post-arg-min-occurs", "0 0 0 0 0 0 0 0 0 0")
+    options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
+
+    options.addStringOption("verbose", "-verbose")
 }
 
 /**
