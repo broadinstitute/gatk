@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
+import javafx.collections.transformation.SortedList;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -834,6 +835,45 @@ public final class IntervalUtils {
     public static String locatableToString(Locatable interval) {
         Utils.nonNull(interval);
         return String.format("%s:%s-%s", interval.getContig(), interval.getStart(), interval.getEnd());
+    }
+
+    /**
+     * Return a list with the input interval sorted using the reference dictionary to indicate order across contigs
+     * where overlapping intervals are merged.
+     * <p>
+     *     Within each chromosome we list first the intervals with lower start position.
+     * </p>
+     * @param intervals the input intervals, cannot be {@code null} but perhaps empty.
+     * @param referenceDictionary the input reference sequence dictionary, cannot be {@code null} but perhaps empty.
+     *
+     * @throws IllegalArgumentException if any of the following is true:
+     * <ul>
+     *     <li>the input {@code intervals} is {@code null},</li>
+     *     <li>the input {@code referenceDictionary} is {@code null},</li>
+     *     <li>the input {@code intervals} list contains {@code null} elements or</li>
+     *     <li>the input {@code intervals} list contains intervals with a contig that is not in the input {@code referenceDictionary}.</li>
+     * </ul>
+     *
+     * @return never {@code null}, the returned list can be farther modified for the invoking code.
+     */
+    public static List<SimpleInterval> sortAndMergeIntervals(final Collection<SimpleInterval> intervals,
+                                                             final SAMSequenceDictionary referenceDictionary,
+                                                             final IntervalMergingRule mergingRule) {
+        Utils.nonNull(referenceDictionary);
+        Utils.nonNull(intervals);
+        Utils.nonNull(mergingRule);
+        final GenomeLocParser parser = new GenomeLocParser(referenceDictionary);
+        final List<GenomeLoc> locs = new ArrayList<>(intervals.size());
+        for (final SimpleInterval interval : intervals) {
+            Utils.nonNull(interval, "the input interval collection contains null elements");
+            if (referenceDictionary.getSequence(interval.getContig()) == null) {
+                throw new IllegalArgumentException("there is at least one input interval with an unknown contig: " + interval);
+            }
+            locs.add(parser.createGenomeLoc(interval));
+        }
+        return sortAndMergeIntervals(parser, locs, mergingRule).stream()
+                .map(loc -> new SimpleInterval(loc.getContig(), loc.getStart(), loc.getEnd()))
+                .collect(Collectors.toList());
     }
 
     private static final class SplitLocusRecursive {
