@@ -2,12 +2,11 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerShort;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerizer;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
