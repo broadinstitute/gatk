@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.collections;
 
+import com.google.common.collect.Iterators;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -12,7 +13,7 @@ import java.util.*;
  *
  * This version allows intervals to lie on different contigs.
  */
-public final class IntervalsSkipList<T extends Locatable> implements Serializable {
+public final class IntervalsSkipList<T extends Locatable> implements Serializable, Iterable<T> {
     private static final long serialVersionUID = 1L;
 
     private final Map<String, IntervalsSkipListOneContig<T>> intervals;
@@ -49,5 +50,11 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
             return new ArrayList<>();
         }
         return result.getOverlapping(query);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Iterator<T> iterator() {
+        return Iterators.concat(intervals.values().stream().map(Iterable::iterator).toArray(i -> (Iterator<T>[]) new Iterator[i]));
     }
 }

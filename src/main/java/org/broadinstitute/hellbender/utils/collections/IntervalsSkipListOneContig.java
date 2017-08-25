@@ -7,10 +7,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -19,7 +16,7 @@ import java.util.stream.Collectors;
  *
  * This version assumes that all the intervals lie on the same contig.
  */
-public final class IntervalsSkipListOneContig<T extends Locatable> implements Serializable {
+public final class IntervalsSkipListOneContig<T extends Locatable> implements Serializable, Iterable<T> {
     private static final long serialVersionUID = 1L;
 
     // approx number of buckets we're aiming for.
@@ -169,4 +166,20 @@ public final class IntervalsSkipListOneContig<T extends Locatable> implements Se
         return 31 - Integer.numberOfLeadingZeros(n);
     }
 
+    @Override
+    public Iterator<T> iterator() {
+        final Iterator<T> mutableIterator = vs.iterator();
+        return new Iterator<T>() {
+
+            @Override
+            public boolean hasNext() {
+                return mutableIterator.hasNext();
+            }
+
+            @Override
+            public T next() {
+                return mutableIterator.next();
+            }
+        };
+    }
 }
