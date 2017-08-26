@@ -32,6 +32,7 @@ releases of the toolkit.
     * [Note on 2bit Reference](#2bit)
     * [Using R to generate plots](#R)
     * [Running the CNV workflows](#cnv_workflows)
+    * [GATK Tab Completion for Bash](#tab_completion)
 * [For GATK Developers](#developers)
     * [General guidelines for GATK4 developers](#dev_guidelines)
     * [Testing GATK4](#testing)
@@ -274,6 +275,34 @@ source("scripts/install_R_packages.R")
 #### <a name="cnv_workflows">Running the CNV workflows</a>
 
 * A walkthrough and examples for the CNV workflows can be found [here](http://gatkforums.broadinstitute.org/gatk/discussion/9143)
+
+#### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
+
+* A tab completion bootstrap file for the bash shell is now included in releases.  This file allows the command-line shell to complete GATK run options in a manner equivalent to built-in command-line tools (e.g. grep).  
+
+* This tab completion functionality has only been tested in the bash shell, and is released as a beta feature.
+
+* To enable tab completion for the GATK, open a terminal window and source the included tab completion script:
+
+```
+source gatk-launch-completion.sh
+```
+
+* Sourcing this file will allow you to press the tab key twice to get a list of options available to add to your current GATK command.  By default you will have to source this file once in each command-line session, then for the rest of the session the GATK tab completion functionality will be available.  GATK tab completion will be available in that current command-line session only.
+
+* Note that you must have already started typing an invocation of the GATK (using gatk-launch) for tab completion to initiate:
+
+```
+./gatk-launch <TAB><TAB>
+```
+
+* We recommend adding a line to your bash settings file (i.e. your ~/.bashrc file) that sources the tab completion script.  To add this line to your bash settings / bashrc file you can use the following command:
+
+```
+echo "source <PATH_TO>/gatk-launch-completion.sh" >> ~/.bashrc
+```
+
+* Where ```<PATH_TO>``` is the fully qualified path to the ```gatk-launch-completion.sh``` script.
 
 ## <a name="developers">For GATK Developers</a>
 
