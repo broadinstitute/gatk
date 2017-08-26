@@ -140,11 +140,6 @@ public final class GenotypeGVCFs extends VariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    //todo: remove this when the reducible annotation framework is in place
-    //this is ok because RMS_MAPPING is stateless, but it needs to be instantiated in order to call its
-    //overridden instance methods
-    private static final RMSMappingQuality RMS_MAPPING_QUALITY = new RMSMappingQuality();
-
     /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
 
@@ -236,7 +231,7 @@ public final class GenotypeGVCFs extends VariantWalker {
                 final VariantContext allelesTrimmed = GATKVariantContextUtils.reverseTrimAlleles(regenotypedVC);
                 final VariantContext withAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), allelesTrimmed);
                 //TODO: remove this when proper support for reducible annotations is added
-                result = RMS_MAPPING_QUALITY.finalizeRawMQ(withAnnotations);
+                result = RMSMappingQuality.getInstance().finalizeRawMQ(withAnnotations);
             } else if (includeNonVariants) {
                 result = originalVC;
             } else {

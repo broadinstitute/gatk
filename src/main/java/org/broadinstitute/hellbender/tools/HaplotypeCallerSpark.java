@@ -66,6 +66,8 @@ import java.util.stream.StreamSupport;
 public final class HaplotypeCallerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
+    public static final int DEFAULT_READSHARD_SIZE = 5000;
+
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Single file to which variants should be written")
     public String output;
 
@@ -76,7 +78,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         private static final long serialVersionUID = 1L;
 
         @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. For good performance, this should be much larger than the maximum assembly region size.", optional = true)
-        public int readShardSize = HaplotypeCaller.DEFAULT_READSHARD_SIZE;
+        public int readShardSize = DEFAULT_READSHARD_SIZE;
 
         @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Read shards must have as much or more padding than assembly regions.", optional = true)
         public int readShardPadding = HaplotypeCaller.DEFAULT_READSHARD_PADDING;
@@ -306,6 +308,9 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             //TODO load features as a side input
             final FeatureContext features = new FeatureContext();
 
+            // TODO: this should use the new AssemblyRegionIterator instead of AssemblyRegion.createFromReadShard(),
+            // TODO: since AssemblyRegion.createFromReadShard() slurps all reads in the shard into memory at once,
+            // TODO: whereas AssemblyRegionIterator loads the reads from the shard as lazily as possible.
             final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(
                     shard, header, refContext, features, evaluator,
                     assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize,
