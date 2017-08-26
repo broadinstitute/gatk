@@ -416,11 +416,12 @@ task sparkJar(type: ShadowJar) {
 }
 
 task bundle(type: Zip) {
-    dependsOn shadowJar, sparkJar
+    dependsOn shadowJar, sparkJar, 'gatkTabComplete'
 
     doFirst {
         assert file("gatk-launch").exists()
         assert file("README.md").exists()
+        assert file("build/docs/tabCompletion/gatk-launch-completion.sh").exists()
     }
 
     baseName = project.name + "-" + project.version
@@ -431,6 +432,8 @@ task bundle(type: Zip) {
     from(sparkJar.archivePath)
     from("gatk-launch")
     from("README.md")
+    from("build/docs/tabCompletion/gatk-launch-completion.sh")
+
     into(baseName)
 
     doLast {
