@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -137,11 +136,9 @@ public final class StructuralVariantContext extends VariantContext {
      * @param index the index of the target allele.
      * @param paddingSize extra bases from the reference sequence to be added on either side.
      * @param reference the reference to use as source.
-     * @param pipelineOptions pipeline options.
      * @return never {@code null}.
      */
-    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference,
-                                                      final PipelineOptions pipelineOptions)  {
+    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
         Utils.nonNull(reference, "the input reference cannot be null");
         ParamUtils.isPositiveOrZero(paddingSize, "the input padding must be 0 or greater");
         ParamUtils.inRange(index, 0, 1, "the input allele index must be 0 or 1");
@@ -163,7 +160,7 @@ public final class StructuralVariantContext extends VariantContext {
 
         final ReferenceBases bases;
         try {
-            bases = reference.getReferenceBases(pipelineOptions, referenceInterval);
+            bases = reference.getReferenceBases(null, referenceInterval);
         } catch (final IOException ex) {
             throw new GATKException("could not read reference file");
         }

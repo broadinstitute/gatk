@@ -101,7 +101,7 @@ public class StructuralVariantContextUnitTest {
     }
 
     /**
-     * Tests {@link StructuralVariantContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource, PipelineOptions)}} when used
+     * Tests {@link StructuralVariantContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
@@ -109,7 +109,7 @@ public class StructuralVariantContextUnitTest {
     public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
         final int paddingSize = 10;
-        final Haplotype refHaplotype = svc.composeHaplotypeBasedOnReference(0, paddingSize, reference, null);
+        final Haplotype refHaplotype = svc.composeHaplotypeBasedOnReference(0, paddingSize, reference);
         Assert.assertNotNull(refHaplotype);
         Assert.assertTrue(refHaplotype.isReference());
         final SimpleInterval expectedInterval = new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getEnd() + paddingSize);
@@ -119,7 +119,7 @@ public class StructuralVariantContextUnitTest {
     }
 
     /**
-     * Tests {@link StructuralVariantContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource, PipelineOptions)}} when used
+     * Tests {@link StructuralVariantContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
@@ -130,7 +130,7 @@ public class StructuralVariantContextUnitTest {
             throw new SkipException("unsupported type; skipped for now");
         }
         final int paddingSize = 10;
-        final Haplotype altHaplotype = svc.composeHaplotypeBasedOnReference(1, paddingSize, reference, null);
+        final Haplotype altHaplotype = svc.composeHaplotypeBasedOnReference(1, paddingSize, reference);
         Assert.assertNotNull(altHaplotype);
         Assert.assertFalse(altHaplotype.isReference());
         final SimpleInterval expectedInterval = new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getEnd() + paddingSize);
