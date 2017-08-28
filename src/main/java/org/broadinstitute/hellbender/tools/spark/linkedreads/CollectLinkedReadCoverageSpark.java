@@ -209,6 +209,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             final SVInterval interval = kv._1();
             final Set<String> barcodes = kv._2();
 
+            if (barcodes.size() > 1000) {
+                return Collections.emptyIterator();
+            }
             final SVIntervalTree<Integer> sharedBarcodeIntervals = new SVIntervalTree<>();
             barcodes.iterator().forEachRemaining(barcode -> {
                 broadcastAllIntervals.getValue().get(barcode).iterator().forEachRemaining(barcodeIntervalEntry -> {
