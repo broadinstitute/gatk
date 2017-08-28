@@ -175,15 +175,19 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         Broadcast<Map<String, SVIntervalTree<Integer>>> broadcastAllIntervals = ctx.broadcast(localBarcodeIntervals);
 
-        JavaPairRDD<Integer, SVIntervalTree<String>> barcodeIntervalsByContig = barcodeIntervals.flatMapToPair(entry -> {
+        JavaPairRDD<Integer, SVIntervalTree<List<String>>> barcodeIntervalsByContig = barcodeIntervals.flatMapToPair(entry -> {
             final String barcode = entry._1();
             final SVIntervalTree<List<ReadInfo>> tree = entry._2();
-            final Map<Integer, SVIntervalTree<String>> intervalsByChrom = new HashMap<>();
+            final Map<Integer, SVIntervalTree<List<String>>> intervalsByChrom = new HashMap<>();
             tree.iterator().forEachRemaining(e -> {
                 final int contig = e.getInterval().getContig();
                 final SVInterval interval = e.getInterval();
                 if (!intervalsByChrom.containsKey(contig)) intervalsByChrom.put(contig, new SVIntervalTree<>());
-                intervalsByChrom.get(contig).put(interval, barcode);
+                if (intervalsByChrom.get(contig).find(interval) != null) {
+                    intervalsByChrom.get(contig).put(interval, new ArrayList<>());
+                }
+                intervalsByChrom.get(contig).find(interval).getValue().add(barcode);
+
             });
             return Utils.stream(intervalsByChrom.entrySet()).map(e -> new Tuple2<>(e.getKey(), e.getValue())).iterator();
         }).reduceByKey((tree1, tree2) -> {
@@ -193,53 +197,13 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
 
         final JavaPairRDD<SVInterval, Set<String>> barcodeSetsByIntervals = barcodeIntervalsByContig.flatMapToPair(kv -> {
+
             final int contig = kv._1();
-            final SVIntervalTree<String> intervals = kv._2();
-            final List<Tuple2<Integer, String>> starts = new ArrayList<>(intervals.size());
-            intervals.iterator().forEachRemaining(e -> starts.add(new Tuple2<>(e.getInterval().getStart(), e.getValue())));
-            final List<Tuple2<Integer, String>> stops = new ArrayList<>(intervals.size());
-            intervals.iterator().forEachRemaining(e -> stops.add(new Tuple2<>(e.getInterval().getEnd(), e.getValue())));
-            stops.sort(Comparator.comparingInt(Tuple2::_1));
+            final SVIntervalTree<List<String>> intervals = kv._2();
 
-            int startIdx = 0;
-            int stopIdx = 0;
-            int prevBoundary = 0;
+            return new BarcodeSetByIntervalIterator(contig, intervals);
 
-            final Set<String> currentBarcodes = new HashSet<>();
-
-            final List<Tuple2<SVInterval, Set<String>>> results = new ArrayList<>(starts.size() + stops.size());
-            while (stopIdx < stops.size()) {
-                final int nextStart = startIdx < starts.size() ? starts.get(startIdx)._1 : -1;
-                final int nextStop = stops.get(stopIdx)._1;
-                if (nextStart != -1 && nextStart <= nextStop) {
-                    // process a start
-                    //System.out.println("Process a start at " + nextStart + ": " + starts.get(startIdx)._2);
-                    if (!currentBarcodes.isEmpty()) {
-                        final SVInterval newInterval = new SVInterval(contig, prevBoundary, nextStart);
-                        final Set<String> barcodes = new HashSet<>(currentBarcodes);
-                        results.add(new Tuple2<>(newInterval, barcodes));
-                    }
-
-                    currentBarcodes.add(starts.get(startIdx)._2);
-                    prevBoundary = starts.get(startIdx)._1;
-                    startIdx++;
-                } else {
-                    // process a stop
-                    //System.out.println("Process a stop at " + nextStop + ": " + stops.get(stopIdx)._2);
-                    final SVInterval newInterval = new SVInterval(contig, prevBoundary, nextStop);
-                    final Set<String> barcodes = new HashSet<>(currentBarcodes);
-                    results.add(new Tuple2<>(newInterval, barcodes));
-
-                    currentBarcodes.remove(stops.get(stopIdx)._2);
-                    prevBoundary = stops.get(stopIdx)._1;
-                    stopIdx++;
-                }
-
-            }
-            return results.iterator();
         });
-
-        barcodeSetsByIntervals.saveAsTextFile("foo");
 
         JavaPairRDD<Tuple2<SVInterval, SVInterval>, Integer> allIntervalPairOverlaps = barcodeSetsByIntervals.flatMapToPair(kv -> {
             final SVInterval interval = kv._1();
@@ -259,7 +223,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         });
 
         JavaPairRDD<Tuple2<SVInterval, SVInterval>, Integer> filteredPairedOverlaps = allIntervalPairOverlaps.filter(kv -> kv._2() > 1);
-        filteredPairedOverlaps.saveAsTextFile("foobar");
+        filteredPairedOverlaps.repartition(1).saveAsTextFile("foobar");
 
         final SVIntervalTree<String> allIntervals = new SVIntervalTree<>();
         localBarcodeIntervals.forEach((barcode, value) -> {
@@ -808,10 +772,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     private static String lookupContigName(final int contig, final ReadMetadata readMetadata) {
-        for (Map.Entry<String, Integer> entry : readMetadata.getContigNameMap().entrySet()) {
-            if (entry.getValue().equals(contig)) return entry.getKey();
-        }
-        throw new GATKException("Invalid contig ID: "+ contig);
+        return readMetadata.getContigName(contig);
     }
 
     @DefaultSerializer(ReadInfo.Serializer.class)
@@ -972,7 +933,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 //System.out.println("Process a stop at " + nextStop + ": " + stops.get(stopIdx));
 
                 currentDepth--;
-                final SVInterval newInterval = new SVInterval(currentContig, prevBoundary, nextStart);
+                final SVInterval newInterval = new SVInterval(currentContig, prevBoundary, nextStop);
                 result = new Tuple2<>(new Tuple2<>(interval, newInterval), currentDepth);
 
 
@@ -984,5 +945,6 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             return result;
         }
     }
+
 }
 
