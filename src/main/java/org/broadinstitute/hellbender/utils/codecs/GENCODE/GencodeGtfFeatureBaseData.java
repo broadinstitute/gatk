@@ -72,27 +72,27 @@ final public class GencodeGtfFeatureBaseData {
     public GencodeGtfFeatureBaseData() {}
 
     public GencodeGtfFeatureBaseData(
-            int featureOrderNumber,
-            String chromosomeName,
-            GencodeGtfFeature.AnnotationSource annotationSource,
-            GencodeGtfFeature.FeatureType featureType,
-            int genomicStartLocation,
-            int genomicEndLocation,
-            GencodeGtfFeature.GenomicStrand genomicStrand,
-            GencodeGtfFeature.GenomicPhase genomicPhase,
-            String geneId,
-            String transcriptId,
-            GencodeGtfFeature.GeneTranscriptType geneType,
-            GencodeGtfFeature.GeneTranscriptStatus geneStatus,
-            String geneName,
-            GencodeGtfFeature.GeneTranscriptType transcriptType,
-            GencodeGtfFeature.GeneTranscriptStatus transcriptStatus,
-            String transcriptName,
-            int exonNumber,
-            String exonId,
-            GencodeGtfFeature.LocusLevel locusLevel,
-            List<GencodeGtfFeature.OptionalField<?>> optionalFields,
-            String anonymousOptionalFields
+            final int featureOrderNumber,
+            final String chromosomeName,
+            final GencodeGtfFeature.AnnotationSource annotationSource,
+            final GencodeGtfFeature.FeatureType featureType,
+            final int genomicStartLocation,
+            final int genomicEndLocation,
+            final GencodeGtfFeature.GenomicStrand genomicStrand,
+            final GencodeGtfFeature.GenomicPhase genomicPhase,
+            final String geneId,
+            final String transcriptId,
+            final GencodeGtfFeature.GeneTranscriptType geneType,
+            final GencodeGtfFeature.GeneTranscriptStatus geneStatus,
+            final String geneName,
+            final GencodeGtfFeature.GeneTranscriptType transcriptType,
+            final GencodeGtfFeature.GeneTranscriptStatus transcriptStatus,
+            final String transcriptName,
+            final int exonNumber,
+            final String exonId,
+            final GencodeGtfFeature.LocusLevel locusLevel,
+            final List<GencodeGtfFeature.OptionalField<?>> optionalFields,
+            final String anonymousOptionalFields
     ) {
         this.featureOrderNumber = featureOrderNumber;
 
@@ -122,7 +122,7 @@ final public class GencodeGtfFeatureBaseData {
     }
 
     @Override
-    public boolean equals(Object that) {
+    public boolean equals(final Object that) {
 
         if (that == null) {
             return false;
@@ -135,7 +135,7 @@ final public class GencodeGtfFeatureBaseData {
 
         if ( isEqual ) {
 
-            GencodeGtfFeatureBaseData thatBaseData = (GencodeGtfFeatureBaseData) that;
+            final GencodeGtfFeatureBaseData thatBaseData = (GencodeGtfFeatureBaseData) that;
 
             isEqual =
                     Objects.equals(featureOrderNumber,      thatBaseData.featureOrderNumber)        &&

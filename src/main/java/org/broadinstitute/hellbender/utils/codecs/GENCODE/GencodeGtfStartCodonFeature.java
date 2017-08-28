@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A Gencode GTF Feature representing a start codon.
  *
@@ -12,14 +9,13 @@ import java.util.List;
  *
  * Created by jonn on 7/25/17.
  */
-// {gene,transcript,exon,CDS,UTR,start_codon,stop_codon,Selenocysteine}`
 final public class GencodeGtfStartCodonFeature extends GencodeGtfFeature {
 
-    private GencodeGtfStartCodonFeature(String[] gtfFields) {
+    private GencodeGtfStartCodonFeature(final String[] gtfFields) {
         super(gtfFields);
     }
 
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
         return new GencodeGtfStartCodonFeature(gtfFields);
     }
 

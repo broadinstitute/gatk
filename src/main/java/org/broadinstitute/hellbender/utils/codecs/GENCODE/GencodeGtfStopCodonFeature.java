@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A Gencode GTF Feature representing a stop codon.
  *
@@ -14,11 +11,11 @@ import java.util.List;
  */
 final public class GencodeGtfStopCodonFeature extends GencodeGtfFeature {
 
-    private GencodeGtfStopCodonFeature(String[] gtfFields) {
+    private GencodeGtfStopCodonFeature(final String[] gtfFields) {
         super(gtfFields);
     }
 
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
         return new GencodeGtfStopCodonFeature(gtfFields);
     }
 

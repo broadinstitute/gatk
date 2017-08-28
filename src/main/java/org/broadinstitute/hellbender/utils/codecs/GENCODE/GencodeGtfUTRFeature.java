@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A Gencode GTF Feature representing an untranslated region.
  *
@@ -14,11 +11,11 @@ import java.util.List;
  */
 final public class GencodeGtfUTRFeature extends GencodeGtfFeature {
 
-    private GencodeGtfUTRFeature(String[] gtfFields) {
+    private GencodeGtfUTRFeature(final String[] gtfFields) {
         super(gtfFields);
     }
 
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
         return new GencodeGtfUTRFeature(gtfFields);
     }
 

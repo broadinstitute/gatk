@@ -17,11 +17,11 @@ import java.util.stream.Collectors;
  */
 final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
 
-    private GencodeGtfTranscriptFeature(String[] gtfFields) {
+    private GencodeGtfTranscriptFeature(final String[] gtfFields) {
         super(gtfFields);
     }
 
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
         return new GencodeGtfTranscriptFeature(gtfFields);
     }
 
@@ -35,9 +35,9 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
 
     // ================================================================================================
 
-    private List<GencodeGtfExonFeature>            exons = new ArrayList<>();
-    private List<GencodeGtfSelenocysteineFeature>  selenocysteines = new ArrayList<>();
-    private List<GencodeGtfUTRFeature>             utrs = new ArrayList<>();
+    private final List<GencodeGtfExonFeature>            exons = new ArrayList<>();
+    private final List<GencodeGtfSelenocysteineFeature>  selenocysteines = new ArrayList<>();
+    private final List<GencodeGtfUTRFeature>             utrs = new ArrayList<>();
 
     // ================================================================================================
 
@@ -45,7 +45,7 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         return exons;
     }
 
-    public void addExon( GencodeGtfExonFeature exon ) {
+    public void addExon( final GencodeGtfExonFeature exon ) {
         exons.add(exon);
     }
 
@@ -53,7 +53,7 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         return selenocysteines;
     }
 
-    public void addSelenocysteine( GencodeGtfSelenocysteineFeature selenocysteine ) {
+    public void addSelenocysteine( final GencodeGtfSelenocysteineFeature selenocysteine ) {
         selenocysteines.add(selenocysteine);
     }
 
@@ -61,22 +61,22 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         return utrs;
     }
 
-    public void addUtr( GencodeGtfUTRFeature utr ) { utrs.add(utr); }
+    public void addUtr( final GencodeGtfUTRFeature utr ) { utrs.add(utr); }
 
     @Override
     protected List<GencodeGtfFeature> getAllFeatures() {
-        ArrayList<GencodeGtfFeature> list = new ArrayList<>();
+        final ArrayList<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
 
-        for ( GencodeGtfExonFeature feature : exons ) {
+        for ( final GencodeGtfExonFeature feature : exons ) {
             list.addAll(feature.getAllFeatures());
         }
 
-        for ( GencodeGtfSelenocysteineFeature feature : selenocysteines ) {
+        for ( final GencodeGtfSelenocysteineFeature feature : selenocysteines ) {
             list.addAll(feature.getAllFeatures());
         }
 
-        for ( GencodeGtfUTRFeature feature : utrs ) {
+        for ( final GencodeGtfUTRFeature feature : utrs ) {
             list.addAll(feature.getAllFeatures());
         }
 
@@ -84,7 +84,7 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
     }
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(final Object other) {
         if (other == null) {
             return false;
         }
@@ -96,7 +96,7 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
             return false;
         }
 
-        GencodeGtfTranscriptFeature otherTranscript = (GencodeGtfTranscriptFeature) other;
+        final GencodeGtfTranscriptFeature otherTranscript = (GencodeGtfTranscriptFeature) other;
 
         if ( !super.equals(otherTranscript) ) {
             return false;

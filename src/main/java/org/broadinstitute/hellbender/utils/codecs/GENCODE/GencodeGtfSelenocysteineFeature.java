@@ -14,11 +14,11 @@ import java.util.List;
  */
 final public class GencodeGtfSelenocysteineFeature extends GencodeGtfFeature {
 
-    private GencodeGtfSelenocysteineFeature(String[] gtfFields) {
+    private GencodeGtfSelenocysteineFeature(final String[] gtfFields) {
         super(gtfFields);
     }
 
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
         return new GencodeGtfSelenocysteineFeature(gtfFields);
     }
 

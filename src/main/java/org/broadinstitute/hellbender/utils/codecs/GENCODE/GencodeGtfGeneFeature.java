@@ -15,11 +15,11 @@ import java.util.Objects;
  */
 final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
 
-    private GencodeGtfGeneFeature(String[] gtfFields) {
+    private GencodeGtfGeneFeature(final String[] gtfFields) {
         super(gtfFields);
     }
 
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
         return new GencodeGtfGeneFeature(gtfFields);
     }
 
@@ -33,11 +33,11 @@ final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
 
     // ================================================================================================
 
-    private List<GencodeGtfTranscriptFeature> transcripts = new ArrayList<>();
+    private final List<GencodeGtfTranscriptFeature> transcripts = new ArrayList<>();
 
     // ================================================================================================
 
-    public void addTranscript(GencodeGtfTranscriptFeature transcript) { transcripts.add(transcript); }
+    public void addTranscript(final GencodeGtfTranscriptFeature transcript) { transcripts.add(transcript); }
 
     public List<GencodeGtfTranscriptFeature> getTranscripts() {
         return transcripts;
@@ -45,10 +45,10 @@ final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
 
     @Override
     protected List<GencodeGtfFeature> getAllFeatures() {
-        ArrayList<GencodeGtfFeature> list = new ArrayList<>();
+        final ArrayList<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
 
-        for ( GencodeGtfTranscriptFeature transcript : transcripts ) {
+        for (final GencodeGtfTranscriptFeature transcript : transcripts ) {
             list.addAll(transcript.getAllFeatures());
         }
 
@@ -56,7 +56,7 @@ final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
     }
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(final Object other) {
 
         if (other == null) {
             return false;
@@ -69,7 +69,7 @@ final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
             return false;
         }
 
-        GencodeGtfGeneFeature otherGene = (GencodeGtfGeneFeature) other;
+        final GencodeGtfGeneFeature otherGene = (GencodeGtfGeneFeature) other;
 
         if ( (!super.equals(otherGene)) ) {
             return false;

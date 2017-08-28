@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * A Gencode GTF Feature representing an exon.
@@ -17,11 +15,11 @@ import java.util.stream.Collectors;
  */
 final public class GencodeGtfExonFeature extends GencodeGtfFeature {
 
-    private GencodeGtfExonFeature(String[] gtfFields) {
+    private GencodeGtfExonFeature(final String[] gtfFields) {
         super(gtfFields);
     }
 
-    public static GencodeGtfFeature create(String[] gtfFields) {
+    public static GencodeGtfFeature create(final String[] gtfFields) {
         return new GencodeGtfExonFeature(gtfFields);
     }
 
@@ -56,23 +54,23 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
 
     // ============================================================================================================
 
-    public void setCds(GencodeGtfCDSFeature cds) {
+    public void setCds(final GencodeGtfCDSFeature cds) {
         if (this.cds != null) {
-            throw new RuntimeException("Attempting to set cds, but it already contains a value!");
+            throw new IllegalArgumentException("Attempting to set cds, but it already contains a value!");
         }
         this.cds = cds;
     }
 
-    public void setStartCodon(GencodeGtfStartCodonFeature startCodon) {
+    public void setStartCodon(final GencodeGtfStartCodonFeature startCodon) {
         if (this.startCodon != null) {
-            throw new RuntimeException("Attempting to set cds, but it already contains a value!");
+            throw new IllegalArgumentException("Attempting to set cds, but it already contains a value!");
         }
         this.startCodon = startCodon;
     }
 
-    public void setStopCodon(GencodeGtfStopCodonFeature stopCodon) {
+    public void setStopCodon(final GencodeGtfStopCodonFeature stopCodon) {
         if (this.stopCodon != null) {
-            throw new RuntimeException("Attempting to set cds, but it already contains a value!");
+            throw new IllegalArgumentException("Attempting to set cds, but it already contains a value!");
         }
         this.stopCodon = stopCodon;
     }
@@ -80,7 +78,7 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
 
     @Override
     protected List<GencodeGtfFeature> getAllFeatures() {
-        ArrayList<GencodeGtfFeature> list = new ArrayList<>();
+        final ArrayList<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
 
         if ( cds != null ) { list.add(cds) ; }
@@ -91,7 +89,7 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
     }
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(final Object other) {
         if (other == null) {
             return false;
         }
@@ -103,7 +101,7 @@ final public class GencodeGtfExonFeature extends GencodeGtfFeature {
             return false;
         }
 
-        GencodeGtfExonFeature otherExon = (GencodeGtfExonFeature) other;
+        final GencodeGtfExonFeature otherExon = (GencodeGtfExonFeature) other;
 
         if ( !super.equals(otherExon) ) {
             return false;

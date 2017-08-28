@@ -4,6 +4,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -51,6 +52,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     public static final int NO_FEATURE_ORDER                    = -1;
     public static final int NO_EXON_NUMBER                      = -1;
 
+    private static final int NUM_FIELDS                         = 9;
+
     private static final int CHROMOSOME_NAME_INDEX              = 0;
     private static final int ANNOTATION_SOURCE_INDEX            = 1;
     private static final int FEATURE_TYPE_INDEX                 = 2;
@@ -75,15 +78,22 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     /**
      * Populate this GencodeGtfFeature with the given data.
      */
-    protected GencodeGtfFeature(String[] gtfFields) {
+    protected GencodeGtfFeature(final String[] gtfFields) {
+
+        Utils.validateArg(gtfFields.length == NUM_FIELDS, "Unexpected number of fields: " + gtfFields.length + " != " + NUM_FIELDS);
 
         baseData = new GencodeGtfFeatureBaseData();
 
-        baseData.genomicPosition = new SimpleInterval (
-                gtfFields[CHROMOSOME_NAME_INDEX],
-                Integer.valueOf( gtfFields[START_LOCATION_INDEX] ),
-                Integer.valueOf( gtfFields[END_LOCATION_INDEX] )
-        );
+        try {
+            baseData.genomicPosition = new SimpleInterval(
+                    gtfFields[CHROMOSOME_NAME_INDEX],
+                    Integer.valueOf(gtfFields[START_LOCATION_INDEX]),
+                    Integer.valueOf(gtfFields[END_LOCATION_INDEX])
+            );
+        }
+        catch (final NumberFormatException ex) {
+            throw new UserException.MalformedFile("Cannot read integer value for start/end position!");
+        }
 
         baseData.annotationSource        = AnnotationSource.valueOf( gtfFields[ANNOTATION_SOURCE_INDEX] );
         baseData.featureType             = GencodeGtfFeature.FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX].toLowerCase() );
@@ -91,15 +101,15 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         baseData.genomicPhase            = GenomicPhase.getEnum( gtfFields[GENOMIC_PHASE_INDEX] );
 
         // Get the extra fields from the last column:
-        String[] extraFields    = gtfFields[EXTRA_FIELDS_INDEX].split(EXTRA_FIELD_DELIMITER, -1);
+        final String[] extraFields    = gtfFields[EXTRA_FIELDS_INDEX].split(EXTRA_FIELD_DELIMITER, -1);
 
-        StringBuilder anonymousOptionalFieldBuilder = new StringBuilder();
+        final StringBuilder anonymousOptionalFieldBuilder = new StringBuilder();
 
         // Now there are "optional" fields to go through (some actually required, some actually optional),
         // But we need to match up the field names to the fields themselves:
-        for ( String extraField : extraFields ) {
+        for ( final String extraField : extraFields ) {
 
-            String[] fieldParts = extraField.trim().split(EXTRA_FIELD_KEY_VALUE_SPLITTER);
+            final String[] fieldParts = extraField.trim().split(EXTRA_FIELD_KEY_VALUE_SPLITTER);
 
             if ( fieldParts.length == 1 ){
                 if ( fieldParts[EXTRA_FIELD_KEY_INDEX].isEmpty() ){
@@ -111,11 +121,11 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             }
 
             // Each optional field is in a key/value pair:
-            String fieldName = fieldParts[EXTRA_FIELD_KEY_INDEX].trim();
+            final String fieldName = fieldParts[EXTRA_FIELD_KEY_INDEX].trim();
 
             // The value of the field may be between two quotes.
             // We remove them here.
-            String fieldValue = fieldParts[EXTRA_FIELD_VALUE_INDEX].trim().replaceAll("\"", "");
+            final String fieldValue = fieldParts[EXTRA_FIELD_VALUE_INDEX].trim().replaceAll("\"", "");
 
             OptionalField<?> optionalField = null;
 
@@ -146,7 +156,12 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     baseData.transcriptName = fieldValue;
                     break;
                 case "exon_number":
-                    baseData.exonNumber = Integer.valueOf(fieldValue);
+                    try {
+                        baseData.exonNumber = Integer.valueOf(fieldValue);
+                    }
+                    catch (final NumberFormatException ex) {
+                        throw new UserException.MalformedFile("Could not convert field value into integer: " + fieldValue);
+                    }
                     break;
                 case "exon_id":
                     baseData.exonId = fieldValue;
@@ -194,7 +209,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 default:
-                    anonymousOptionalFieldBuilder.append(extraField + EXTRA_FIELD_DELIMITER);
+                    anonymousOptionalFieldBuilder.append(extraField);
+                    anonymousOptionalFieldBuilder.append(EXTRA_FIELD_DELIMITER);
+                    break;
             }
 
             // If the optional field was good, we add it:
@@ -227,9 +244,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         Utils.nonNull(baseData);
 
         // Create our feature:
-        GencodeGtfFeature feature = baseData.featureType.create(baseData);
-
-        return feature;
+        return baseData.featureType.create(baseData);
     }
 
     /**
@@ -237,7 +252,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @param gtfLine A line from a Gencode GTF File to convert into a {@link GencodeGtfFeature} object.
      * @return The {@link GencodeGtfFeature} representing the information in {@code gtfLine}
      */
-    public static GencodeGtfFeature create(String gtfLine) {
+    public static GencodeGtfFeature create(final String gtfLine) {
         Utils.nonNull(gtfLine);
         return create(gtfLine.split(FIELD_DELIMITER));
     }
@@ -258,12 +273,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
 
 
-        FeatureType featureType = FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX] );
+        final FeatureType featureType = FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX] );
 
-        // Create our feature:
-        GencodeGtfFeature feature = featureType.create(gtfFields);
-
-        return feature;
+        // Return our feature:
+        return featureType.create(gtfFields);
     }
 
     // ================================================================================================
@@ -291,7 +304,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @return A {@link List} of the features represented in this {@link GencodeGtfFeature}.
      */
     protected List<GencodeGtfFeature> getAllFeatures() {
-        List<GencodeGtfFeature> list = new ArrayList<>();
+        final List<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
         return list;
     }
@@ -302,7 +315,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      */
     private String serializeToStringHelper() {
 
-        StringBuilder stringBuilder = new StringBuilder();
+        final StringBuilder stringBuilder = new StringBuilder();
 
         stringBuilder.append( baseData.genomicPosition.getContig() );
         stringBuilder.append( '\t' );
@@ -395,12 +408,12 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @return a {@link String} representing this {@link GencodeGtfFeature}
      */
     public String serializeToString() {
-        StringBuilder stringBuilder = new StringBuilder();
+        final StringBuilder stringBuilder = new StringBuilder();
 
-        List<GencodeGtfFeature> features = getAllFeatures();
+        final List<GencodeGtfFeature> features = getAllFeatures();
         Collections.sort( features );
 
-        for ( GencodeGtfFeature feature : features ) {
+        for ( final GencodeGtfFeature feature : features ) {
             stringBuilder.append( feature.serializeToStringHelper() );
             stringBuilder.append("\n");
         }
@@ -499,8 +512,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.anonymousOptionalFields;
     }
 
-    public OptionalField<?> getOptionalField(String key) {
-        for (OptionalField<?> optionalField : baseData.optionalFields) {
+    public OptionalField<?> getOptionalField(final String key) {
+        for (final OptionalField<?> optionalField : baseData.optionalFields) {
             if ( optionalField.getName().equals(key) ) {
                 return optionalField;
             }
@@ -517,13 +530,13 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @return -1 if this < other; 0 if this == other; 1 if this > other
      */
     @Override
-    public int compareTo(GencodeGtfFeature other) {
+    public int compareTo(final GencodeGtfFeature other) {
         Utils.nonNull(other);
         return (baseData.featureOrderNumber - other.baseData.featureOrderNumber);
     }
 
     @Override
-    public boolean equals(Object that) {
+    public boolean equals(final Object that) {
         if (that == null) {
             return false;
         }
@@ -533,8 +546,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         boolean isEqual = that instanceof GencodeGtfFeature;
         if (isEqual) {
-            GencodeGtfFeature thatFeature = (GencodeGtfFeature) that;
-            Objects.equals(baseData, thatFeature.baseData);
+            final GencodeGtfFeature thatFeature = (GencodeGtfFeature) that;
+            isEqual = Objects.equals(baseData, thatFeature.baseData);
         }
 
         return isEqual;
@@ -551,12 +564,12 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @param other {@link GencodeGtfFeature} of which to check the bounds.
      * @return true if {@code other} is contained within the bounds of this {@link GencodeGtfFeature}, false otherwise.
      */
-    public boolean contains(GencodeGtfFeature other) {
+    public boolean contains(final GencodeGtfFeature other) {
         Utils.nonNull(other);
         return baseData.genomicPosition.contains(other.baseData.genomicPosition);
     }
 
-    public void setFeatureOrderNumber(int featureOrderNumber) {
+    public void setFeatureOrderNumber(final int featureOrderNumber) {
         this.baseData.featureOrderNumber = featureOrderNumber;
     }
 
@@ -567,7 +580,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         private String name;
         private T value;
 
-        public OptionalField(String name, T value) {
+        public OptionalField(final String name, final T value) {
             this.name = name;
             this.value = value;
         }
@@ -576,7 +589,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return name;
         }
 
-        public void setName(String name) {
+        public void setName(final String name) {
             this.name = name;
         }
 
@@ -584,20 +597,20 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return value;
         }
 
-        public void setValue(T value) {
+        public void setValue(final T value) {
             this.value = value;
         }
 
         @Override
         public String toString() {
 
-            StringBuilder sb = new StringBuilder();
+            final StringBuilder sb = new StringBuilder();
 
             sb.append(name);
             sb.append(" ");
 
             // We need to do some formatting for the numbers / non-numbers in the field:
-            String valueString = value.toString();
+            final String valueString = value.toString();
             if ( NUMBER_PATTERN.matcher(valueString).matches() ) {
                 sb.append(valueString);
                 sb.append(";");
@@ -613,11 +626,13 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         @Override
         public int hashCode() {
-            return this.toString().hashCode();
+            int result = name != null ? name.hashCode() : 0;
+            result = 31 * result + (value != null ? value.hashCode() : 0);
+            return result;
         }
 
         @Override
-        public boolean equals(Object other) {
+        public boolean equals(final Object other) {
 
             if (other == null) {
                 return false;
@@ -630,7 +645,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                 return false;
             }
 
-            OptionalField<?> otherOptionalField = (OptionalField<?>) other;
+            final OptionalField<?> otherOptionalField = (OptionalField<?>) other;
 
             return (name.equals(otherOptionalField.name)) &&
                     (value.equals(otherOptionalField.value));
@@ -727,13 +742,13 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         private String serialized;
 
-        FeatureType(String serializedValue) { serialized = serializedValue; }
+        FeatureType(final String serializedValue) { serialized = serializedValue; }
 
         @Override
         public String toString() { return serialized; }
 
-        public static FeatureType getEnum(String s) {
-            for( FeatureType val : values() ) {
+        public static FeatureType getEnum(final String s) {
+            for( final FeatureType val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -767,9 +782,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         FORWARD("+"),
         BACKWARD("-");
 
-        private String serialized;
+        private final String serialized;
 
-        GenomicStrand(String serializedValue) {
+        GenomicStrand(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -778,8 +793,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
-        public static GenomicStrand getEnum(String s) {
-            for( GenomicStrand val : values() ) {
+        public static GenomicStrand getEnum(final String s) {
+            for( final GenomicStrand val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -802,9 +817,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         TWO ("2"),
         DOT (".");
 
-        private String serialized;
+        private final String serialized;
 
-        GenomicPhase(String serializedValue) {
+        GenomicPhase(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -813,8 +828,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
-        public static GenomicPhase getEnum(String s) {
-            for( GenomicPhase val : values() ) {
+        public static GenomicPhase getEnum(final String s) {
+            for( final GenomicPhase val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -957,9 +972,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // A non-coding locus that originates from within the promoter region of a protein-coding gene, with transcription proceeding in the opposite direction on the other strand.
         BIDIRECTIONAL_PROMOTER_LNCRNA("bidirectional_promoter_lncRNA");
 
-        private String serialized;
+        private final String serialized;
 
-        GeneTranscriptType(String serializedValue) {
+        GeneTranscriptType(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -968,8 +983,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
-        public static GeneTranscriptType getEnum(String s) {
-            for( GeneTranscriptType val : values() ) {
+        public static GeneTranscriptType getEnum(final String s) {
+            for( final GeneTranscriptType val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1015,9 +1030,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** Automatically annotated locus */
         AUTOMATICALLY_ANNOTATED("3");
 
-        private String serialized;
+        private final String serialized;
 
-        LocusLevel(String serializedValue) {
+        LocusLevel(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -1026,8 +1041,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
-        public static LocusLevel getEnum(String s) {
-            for( LocusLevel val : values() ) {
+        public static LocusLevel getEnum(final String s) {
+            for( final LocusLevel val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1254,9 +1269,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high */
         UPSTREAM_UORF("upstream_uORF");
 
-        private String serialized;
+        private final String serialized;
 
-        FeatureTag(String serializedValue) {
+        FeatureTag(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -1265,8 +1280,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
-        public static FeatureTag getEnum(String s) {
-            for( FeatureTag val : values() ) {
+        public static FeatureTag getEnum(final String s) {
+            for( final FeatureTag val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1301,9 +1316,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** the transcript was not analyzed */
         NA("NA");
 
-        private String serialized;
+        private final String serialized;
 
-        TranscriptSupportLevel(String serializedValue) {
+        TranscriptSupportLevel(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -1312,8 +1327,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
-        public static TranscriptSupportLevel getEnum(String s) {
-            for( TranscriptSupportLevel val : values() ) {
+        public static TranscriptSupportLevel getEnum(final String s) {
+            for( final TranscriptSupportLevel val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1381,17 +1396,17 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
          */
         PSEUDOGENE("pseudogene");
 
-        private String serialized;
+        private final String serialized;
 
-        RemapStatus(String serializedValue) { serialized = serializedValue; }
+        RemapStatus(final String serializedValue) { serialized = serializedValue; }
 
         @Override
         public String toString() {
             return serialized;
         }
 
-        public static RemapStatus getEnum(String s) {
-            for( RemapStatus val : values() ) {
+        public static RemapStatus getEnum(final String s) {
+            for( final RemapStatus val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1430,9 +1445,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
          */
         NONOVERLAP("nonOverlap");
 
-        private String serialized;
+        private final String serialized;
 
-        RemapTargetStatus(String serializedValue) {
+        RemapTargetStatus(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -1441,8 +1456,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             return serialized;
         }
 
-        public static RemapTargetStatus getEnum(String s) {
-            for( RemapTargetStatus val : values() ) {
+        public static RemapTargetStatus getEnum(final String s) {
+            for( final RemapTargetStatus val : values() ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
