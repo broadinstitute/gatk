@@ -88,11 +88,6 @@ public final class PSFilterArgumentCollection implements Serializable {
             fullName = "dustTScore",
             optional = true)
     public double dustT = 20.0;
-    @Argument(doc = "Host alignment coverage score threshold, in bp",
-            fullName = "filterMinCoverage",
-            minValue = 1,
-            optional = true)
-    public int minCoverage = 31;
     @Argument(doc = "Host alignment identity score threshold, in bp",
             fullName = "filterMinIdentity",
             minValue = 1,

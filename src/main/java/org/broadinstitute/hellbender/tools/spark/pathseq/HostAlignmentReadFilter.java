@@ -9,17 +9,15 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.List;
 
 /**
- * Filters out reads above a threshold coverage (number of matches, mismatches, and insertions) and identity
- *   (number of matches less deletions), each given in bases.
+ * Filters out reads above a threshold identity (number of matches less deletions), given in bases.
  */
 public final class HostAlignmentReadFilter extends ReadFilter {
 
     private static final long serialVersionUID = 1L;
 
-    private final int minCoverage, minIdentity;
+    private final int minIdentity;
 
-    public HostAlignmentReadFilter(final int minCov, final int minIdent) {
-        this.minCoverage = minCov;
+    public HostAlignmentReadFilter(final int minIdent) {
         this.minIdentity = minIdent;
     }
 
@@ -32,20 +30,20 @@ public final class HostAlignmentReadFilter extends ReadFilter {
     }
 
     public boolean test(final Cigar cigar, final int numMismatches) {
+        return getMatchesLessDeletions(cigar, numMismatches) < minIdentity;
+    }
+
+    static int getMatchesLessDeletions(final Cigar cigar, final int numMismatches) {
         int numMatches = -numMismatches;
-        int numCov = 0;
         final List<CigarElement> cigarElements = cigar.getCigarElements();
         for (final CigarElement e : cigarElements) {
             if (e.getOperator().equals(CigarOperator.MATCH_OR_MISMATCH)) {
                 numMatches += e.getLength();
-                numCov += e.getLength();
-            } else if (e.getOperator().equals(CigarOperator.INSERTION)) {
-                numCov += e.getLength();
             } else if (e.getOperator().equals(CigarOperator.DELETION)) {
                 numMatches -= e.getLength();
             }
         }
-        return numCov < minCoverage || numMatches < minIdentity;
+        return numMatches;
     }
 
 }

@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
 
-    final static int SCORE_TABLE_COLUMNS = 9;
+    final static int SCORE_TABLE_COLUMNS = 10;
     final static double SCORE_ABSOLUTE_ERROR_TOLERANCE = 1e-6;
 
     @Override
@@ -22,6 +22,7 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
     }
 
     private static boolean testPathogenTaxonScores(final PSPathogenTaxonScore a, final PSPathogenTaxonScore b) {
+        if (!a.kingdomTaxonId.equals(b.kingdomTaxonId)) return false;
         if (!PathSeqTestUtils.equalWithinTolerance(a.descendentScore,b.descendentScore, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
         if (!PathSeqTestUtils.equalWithinTolerance(a.totalReads,b.totalReads, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
         if (!PathSeqTestUtils.equalWithinTolerance(a.referenceLength,b.referenceLength, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
@@ -38,11 +39,12 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
             Assert.assertTrue(tok.length == SCORE_TABLE_COLUMNS, "Expected " + SCORE_TABLE_COLUMNS + " columns, but found " + tok.length);
             final PSPathogenTaxonScore score = new PSPathogenTaxonScore();
             final String taxonId = tok[0];
-            score.selfScore = new Double(tok[4]);
-            score.scoreNormalized = new Double(tok[5]);
-            score.totalReads = new Integer(tok[6]);
-            score.unambiguousReads = new Integer(tok[7]);
-            score.referenceLength = new Long(tok[8]);
+            score.kingdomTaxonId = tok[4];
+            score.selfScore = new Double(tok[5]);
+            score.scoreNormalized = new Double(tok[6]);
+            score.totalReads = new Integer(tok[7]);
+            score.unambiguousReads = new Integer(tok[8]);
+            score.referenceLength = new Long(tok[9]);
             Assert.assertFalse(scores.containsKey(taxonId), "Found more than one entry for taxon ID " + taxonId);
             scores.put(taxonId, score);
         }
@@ -58,8 +60,13 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
         final Map<String, PSPathogenTaxonScore> expectedScores = getScores(expectedLines);
         final Map<String, PSPathogenTaxonScore> testScores = getScores(testLines);
 
+        for (final String taxonId : testScores.keySet()) {
+            Assert.assertTrue(expectedScores.containsKey(taxonId), "Did not expect the taxon ID: " + taxonId);
+        }
         for (final String taxonId : expectedScores.keySet()) {
-            Assert.assertTrue(testScores.containsKey(taxonId), "Did not find taxon ID: " + taxonId);
+            Assert.assertTrue(testScores.containsKey(taxonId), "Did not find the expected taxon ID: " + taxonId);
+        }
+        for (final String taxonId : expectedScores.keySet()) {
             Assert.assertTrue(testPathogenTaxonScores(testScores.get(taxonId), expectedScores.get(taxonId)), "Scores for taxon ID " + taxonId + " did not match.");
         }
     }
@@ -101,6 +108,52 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
         args.addFileArgument("taxonomicDatabasePath", taxFile);
         args.addFileArgument("scoresOutputPath", output);
         args.addFileArgument("scoreWarningsFile",warnings);
+        this.runCommandLine(args.getArgsArray());
+
+        final String input_expected = FileUtils.readFileToString(expectedFile);
+        final String input_test = FileUtils.readFileToString(output);
+        compareScoreTables(input_expected, input_test);
+    }
+
+    @Test(groups = "spark")
+    public void testDivideByGenomeLength() throws IOException {
+        final File expectedFile = getTestFile("expected_paired_genome_length.txt");
+        final File inputFile = getTestFile("alignment_paired.bam");
+        final File taxFile = getTestFile("tax.db");
+        final File output = createTempFile("test", ".txt");
+        final File bamOut = createTempFile("output", ".bam");
+        if (!output.delete() || !bamOut.delete()) {
+            Assert.fail();
+        }
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("pairedInput", inputFile.getAbsolutePath());
+        args.addOutput(bamOut);
+        args.addFileArgument("taxonomicDatabasePath", taxFile);
+        args.addFileArgument("scoresOutputPath", output);
+        args.addBooleanArgument("divideByGenomeLength", true);
+        this.runCommandLine(args.getArgsArray());
+
+        final String input_expected = FileUtils.readFileToString(expectedFile);
+        final String input_test = FileUtils.readFileToString(output);
+        compareScoreTables(input_expected, input_test);
+    }
+
+    @Test(groups = "spark")
+    public void testKingdomNormalizationFalse() throws IOException {
+        final File expectedFile = getTestFile("expected_paired_kingdom_false.txt");
+        final File inputFile = getTestFile("alignment_paired.bam");
+        final File taxFile = getTestFile("tax.db");
+        final File output = createTempFile("test", ".txt");
+        final File bamOut = createTempFile("output", ".bam");
+        if (!output.delete() || !bamOut.delete()) {
+            Assert.fail();
+        }
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("pairedInput", inputFile.getAbsolutePath());
+        args.addOutput(bamOut);
+        args.addFileArgument("taxonomicDatabasePath", taxFile);
+        args.addFileArgument("scoresOutputPath", output);
+        args.addBooleanArgument("normalizeByKingdom", false);
         this.runCommandLine(args.getArgsArray());
 
         final String input_expected = FileUtils.readFileToString(expectedFile);

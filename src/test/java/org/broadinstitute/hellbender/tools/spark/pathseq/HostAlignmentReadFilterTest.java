@@ -12,15 +12,14 @@ import java.util.Arrays;
 
 public final class HostAlignmentReadFilterTest {
 
-    private static final int MIN_COVERAGE = 80;
     private static final int MIN_IDENTITY = 70;
 
     @DataProvider(name = "alignmentData")
     public Object[][] getAlignmentData() {
         return new Object[][]{
                 {"100M", 0, Boolean.FALSE},
-                {"80M20S", 0, Boolean.FALSE},
-                {"79M21S", 0, Boolean.TRUE},
+                {"70M20S", 0, Boolean.FALSE},
+                {"69M21S", 0, Boolean.TRUE},
                 {"100M", 30, Boolean.FALSE},
                 {"100M", 31, Boolean.TRUE},
                 {"80M20S", 10, Boolean.FALSE},
@@ -35,7 +34,7 @@ public final class HostAlignmentReadFilterTest {
 
     @Test(dataProvider = "alignmentData")
     public void testMappedRead(final String cigarString, final int NM, final boolean test_out) {
-        final HostAlignmentReadFilter filter = new HostAlignmentReadFilter(MIN_COVERAGE, MIN_IDENTITY);
+        final HostAlignmentReadFilter filter = new HostAlignmentReadFilter(MIN_IDENTITY);
         final Cigar cigar = TextCigarCodec.decode(cigarString);
         final GATKRead read_in = ArtificialReadUtils.createArtificialRead(cigar);
         read_in.setAttribute("NM", NM);
@@ -47,7 +46,7 @@ public final class HostAlignmentReadFilterTest {
 
     @Test
     public void testUnmappedRead() {
-        final HostAlignmentReadFilter filter = new HostAlignmentReadFilter(MIN_COVERAGE, MIN_IDENTITY);
+        final HostAlignmentReadFilter filter = new HostAlignmentReadFilter(MIN_IDENTITY);
         final byte[] bases = new byte[100];
         final byte[] qual = new byte[100];
         Arrays.fill(bases, (byte) 'A');
@@ -61,7 +60,7 @@ public final class HostAlignmentReadFilterTest {
     @Test
     public void testMappedReadWithoutNMTag() {
         final String cigarString = "100M";
-        final HostAlignmentReadFilter filter = new HostAlignmentReadFilter(MIN_COVERAGE, MIN_IDENTITY);
+        final HostAlignmentReadFilter filter = new HostAlignmentReadFilter(MIN_IDENTITY);
         final Cigar cigar = TextCigarCodec.decode(cigarString);
         final GATKRead read_in = ArtificialReadUtils.createArtificialRead(cigar);
         read_in.setPosition("test_contig", 1);

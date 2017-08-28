@@ -25,6 +25,8 @@ import java.util.stream.Stream;
 public final class PSScorer {
 
     public static final String HITS_TAG = "YP";
+    final static String KINGDOM_RANK_NAME = "kingdom";
+    final static String SUPERKINGDOM_RANK_NAME = "superkingdom";
     //Convert scores to per million reference base pairs
     public static final double SCORE_GENOME_LENGTH_UNITS = 1e6;
     private static final Logger logger = LogManager.getLogger(PSScorer.class);
@@ -56,18 +58,20 @@ public final class PSScorer {
         //Determine which alignments are valid hits and return their tax IDs in PSPathogenAlignmentHit
         //Also adds pathseq tags containing the hit IDs to the reads
         final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> readHits = mapGroupedReadsToTax(groupedReads,
-                scoreArgs.minCoverage, scoreArgs.minIdentity, taxonomyDatabaseBroadcast);
+                scoreArgs.minIdentity, scoreArgs.identityMargin, taxonomyDatabaseBroadcast);
 
         //Get the original reads, now with their pathseq hit tags set
         final JavaRDD<GATKRead> readsFinal = flattenIterableKeys(readHits);
 
         //Compute taxonomic scores from the alignment hits
         final JavaRDD<PSPathogenAlignmentHit> alignmentHits = readHits.map(Tuple2::_2);
-        final JavaPairRDD<String, PSPathogenTaxonScore> taxScoresRdd = alignmentHits.mapPartitionsToPair(iter -> computeTaxScores(iter, taxonomyDatabaseBroadcast.value()));
+        final boolean divideByGenomeLength = scoreArgs.divideByGenomeLength; //To prevent serialization of PSScorer
+        final JavaPairRDD<String, PSPathogenTaxonScore> taxScoresRdd = alignmentHits
+                .mapPartitionsToPair(iter -> computeTaxScores(iter, taxonomyDatabaseBroadcast.value(), divideByGenomeLength));
 
         //Reduce scores by taxon and compute normalized scores
         Map<String, PSPathogenTaxonScore> taxScoresMap = new HashMap<>(taxScoresRdd.reduceByKey(PSPathogenTaxonScore::add).collectAsMap());
-        taxScoresMap = computeNormalizedScores(taxScoresMap, taxDB.tree);
+        taxScoresMap = computeNormalizedScores(taxScoresMap, taxDB.tree, scoreArgs.normalizeByKingdom);
 
         //Write scores to file
         writeScoresFile(taxScoresMap, taxDB.tree, scoreArgs.scoresPath);
@@ -163,8 +167,8 @@ public final class PSScorer {
      * intersection of their hits. Also sets read tag HITS_TAG to a comma-separated list of the IDs.
      */
     static JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> mapGroupedReadsToTax(final JavaRDD<Iterable<GATKRead>> pairs,
-                                                                                            final double minCoverage,
                                                                                             final double minIdentity,
+                                                                                            final double identityMargin,
                                                                                             final Broadcast<PSTaxonomyDatabase> taxonomyDatabaseBroadcast) {
         return pairs.map(readIter -> {
 
@@ -173,7 +177,7 @@ public final class PSScorer {
 
             //Get tax IDs of all alignments in all reads that meet the coverage/identity criteria.
             final Stream<String> taxIds = Utils.stream(readIter)
-                    .flatMap(read -> getValidHits(read, taxonomyDatabaseBroadcast.value(), minCoverage, minIdentity).stream());
+                    .flatMap(read -> getValidHits(read, taxonomyDatabaseBroadcast.value(), minIdentity, identityMargin).stream());
 
             //Get list of tax IDs that are hits in all reads
             final List<String> hitTaxIds;
@@ -208,9 +212,9 @@ public final class PSScorer {
      * Gets set of sufficiently well-mapped hits
      */
     private static Set<String> getValidHits(final GATKRead read,
-                                            PSTaxonomyDatabase taxonomyDatabase,
-                                            final double minCoverage,
-                                            final double minIdentity) {
+                                            final PSTaxonomyDatabase taxonomyDatabase,
+                                            final double minIdentity,
+                                            final double identityMargin) {
 
         //Short circuit if read isn't mapped
         if (read.isUnmapped()) return Collections.emptySet();
@@ -221,16 +225,27 @@ public final class PSScorer {
         }
 
         //Find and return all alignments meeting the coverage/identity criteria
-        final Collection<String> hits = new ArrayList<>();
-        if (isValidAlignment(read.getCigar(), read.getAttributeAsInteger("NM"), minCoverage, minIdentity)) {
-            hits.add(SAMSequenceRecord.truncateSequenceName(read.getAssignedContig()));
+        final ArrayList<PSPathogenHitAlignment> hits = new ArrayList<>();
+        final double minIdentityBases = minIdentity * read.getLength();
+        final int numMismatches = read.getAttributeAsInteger("NM");
+        final int numMatches = HostAlignmentReadFilter.getMatchesLessDeletions(read.getCigar(), numMismatches);
+        if (numMatches >= minIdentityBases) {
+            final String recordName = SAMSequenceRecord.truncateSequenceName(read.getAssignedContig());
+            hits.add(new PSPathogenHitAlignment(numMatches, recordName, read.getCigar()));
         }
-        hits.addAll(getValidAlternateHits(read, "XA", 0, 2, 3, minCoverage, minIdentity));
-        hits.addAll(getValidAlternateHits(read, "SA", 0, 3, 5, minCoverage, minIdentity));
+        hits.addAll(getValidAlternateHits(read, "XA", 0, 2, 3, minIdentityBases));
+        hits.addAll(getValidAlternateHits(read, "SA", 0, 3, 5, minIdentityBases));
+
+        if (hits.isEmpty()) return Collections.emptySet();
+
+        //Throw out reads below the identity margin
+        final int maxMatches = hits.stream().mapToInt(PSPathogenHitAlignment::getNumMatches).max().getAsInt();
+        final double minIdentityBasesMargin = (1. - identityMargin) * maxMatches;
+        final List<PSPathogenHitAlignment> bestHits = hits.stream().filter(hit -> hit.getNumMatches() >= minIdentityBasesMargin).collect(Collectors.toList());
 
         //Throw out duplicates and accessions not in the taxonomic database so it returns a list of unique tax ID's
         // for each read in the pair
-        return hits.stream().map(contig -> taxonomyDatabase.accessionToTaxId.containsKey(contig) ? taxonomyDatabase.accessionToTaxId.get(contig) : null)
+        return bestHits.stream().map(hit -> taxonomyDatabase.accessionToTaxId.containsKey(hit.getAccession()) ? taxonomyDatabase.accessionToTaxId.get(hit.getAccession()) : null)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
@@ -239,10 +254,10 @@ public final class PSScorer {
      * Each alignment is delimited by a semicolon (";") and is represented as a sub-list of values containing the
      * accession, cigar, and number of mismatches, which are delimited by commas (",") and expected at the given indices.
      */
-    private static Collection<String> getValidAlternateHits(final GATKRead read, final String tag, final int contigIndex,
-                                                            final int cigarIndex, final int numMismatchesIndex, final double minCoverage,
-                                                            final double minIdentity) {
-        final Collection<String> alternateHits = new ArrayList<>();
+    private static List<PSPathogenHitAlignment> getValidAlternateHits(final GATKRead read, final String tag, final int contigIndex,
+                                                                      final int cigarIndex, final int numMismatchesIndex,
+                                                                      final double minIdentityBases) {
+        final ArrayList<PSPathogenHitAlignment> alternateHits = new ArrayList<>();
         if (read.hasAttribute(tag)) {
             final int expectedTokens = Math.max(contigIndex, Math.max(cigarIndex, numMismatchesIndex)) + 1;
             final String tagValue = read.getAttributeAsString(tag);
@@ -252,45 +267,30 @@ public final class PSScorer {
                 if (subtokens.length < expectedTokens) {
                     throw new UserException.BadInput("Error parsing " + tag + " tag: expected at least " + expectedTokens + " values per alignment but found " + subtokens.length);
                 }
-                final String recordName = SAMSequenceRecord.truncateSequenceName(subtokens[contigIndex]);
-                final Cigar cigar = TextCigarCodec.decode(subtokens[cigarIndex]);
                 final int numMismatches = Integer.valueOf(subtokens[numMismatchesIndex]);
-                if (isValidAlignment(cigar, numMismatches, minCoverage, minIdentity)) {
-                    alternateHits.add(recordName);
+                final Cigar cigar = TextCigarCodec.decode(subtokens[cigarIndex]);
+                final int numMatches = HostAlignmentReadFilter.getMatchesLessDeletions(cigar, numMismatches);
+                if (numMatches >= minIdentityBases) {
+                    final String recordName = SAMSequenceRecord.truncateSequenceName(subtokens[contigIndex]);
+                    alternateHits.add(new PSPathogenHitAlignment(numMatches, recordName, cigar));
                 }
             }
         }
         return alternateHits;
     }
 
-
-    /**
-     * Returns true if the candidate alignment of the read meets coverage and identity criteria
-     */
-    public static boolean isValidAlignment(final Cigar cigar, final int numMismatches, final double minCoverage, final double minIdentity) {
-        final int minCoveredBases = (int) Math.ceil(minCoverage * cigar.getReadLength());
-        int numCoveredBases = 0;
-        final List<CigarElement> cigarElements = cigar.getCigarElements();
-        for (final CigarElement cigarElement : cigarElements) {
-            if (cigarElement.getOperator().equals(CigarOperator.MATCH_OR_MISMATCH) || cigarElement.getOperator().equals(CigarOperator.INSERTION)) {
-                numCoveredBases += cigarElement.getLength();
-            }
-        }
-        final int minIdentityBases = (int) Math.ceil(minIdentity * numCoveredBases);
-        return !(new HostAlignmentReadFilter(minCoveredBases, minIdentityBases)).test(cigar, numMismatches);
-    }
-
     /**
      * Computes abundance scores and returns key-values of taxonomic id and scores
      */
     public static Iterator<Tuple2<String, PSPathogenTaxonScore>> computeTaxScores(final Iterator<PSPathogenAlignmentHit> taxonHits,
-                                                                                  final PSTaxonomyDatabase taxonomyDatabase) {
+                                                                                  final PSTaxonomyDatabase taxonomyDatabase,
+                                                                                  final boolean divideByGenomeLength) {
         final PSTree tree = taxonomyDatabase.tree;
         final Map<String, PSPathogenTaxonScore> taxIdsToScores = new HashMap<>();
         final Set<String> invalidIds = new HashSet<>();
         while (taxonHits.hasNext()) {
             final PSPathogenAlignmentHit hit = taxonHits.next();
-            final Collection<String> hitTaxIds = new ArrayList<>(hit.taxIDs);
+            final Set<String> hitTaxIds = new HashSet<>(hit.taxIDs);
             final Set<String> hitInvalidTaxIds = new HashSet<>(SVUtils.hashMapCapacity(hitTaxIds.size()));
             for (final String taxId : hitTaxIds) {
                 if (!tree.hasNode(taxId) || tree.getLengthOf(taxId) == 0) hitInvalidTaxIds.add(taxId);
@@ -312,11 +312,8 @@ public final class PSScorer {
             //Scores normalized by genome length and degree of ambiguity (number of hits)
             final Set<String> hitPathNodes = new HashSet<>(); //Set of all unique hits and ancestors
             for (final String taxId : hitTaxIds) {
-                if (!tree.hasNode(taxId) || tree.getLengthOf(taxId) == 0) {
-                    invalidIds.add(taxId);
-                    continue;
-                }
-                final Double score = SCORE_GENOME_LENGTH_UNITS * hit.numMates / (numHits * tree.getLengthOf(taxId));
+                Double score = hit.numMates / (double) numHits;
+                if (divideByGenomeLength) score *= SCORE_GENOME_LENGTH_UNITS / tree.getLengthOf(taxId);
                 //Get list containing this node and its ancestors
                 final List<String> path = tree.getPathOf(taxId);
                 hitPathNodes.addAll(path);
@@ -344,25 +341,26 @@ public final class PSScorer {
 
     /**
      * Assigns scores normalized to 100%. For each taxon, its normalized score is own score divided by the sum
-     * over all scores, plus the sum of its childrens' normalized scores.
+     * over all scores, plus the sum of its childrens' normalized scores. If normalizeByKingdom is true,
+     * each taxon score is normalized by only the scores in its kingdom if it has one, otherwise superkingdom.
      */
     final static Map<String, PSPathogenTaxonScore> computeNormalizedScores(final Map<String, PSPathogenTaxonScore> taxIdsToScores,
-                                                                           final PSTree tree) {
-        //Get sum of all scores that were assigned directly to each taxa (as opposed to being propagated up from descendents)
-        double sum = 0.;
-        for (final PSPathogenTaxonScore score : taxIdsToScores.values()) {
-            sum += score.selfScore;
-        }
+                                                                           final PSTree tree, boolean normalizeByKingdom) {
+        //Get sum of all scores assigned under each superkingdom or the root node
+        final Map<String, Double> normalizationSums = new HashMap<>();
+        assignKingdoms(taxIdsToScores, normalizationSums, tree, normalizeByKingdom);
 
         //Gets normalized selfScores and adds it to all ancestors
         for (final Map.Entry<String, PSPathogenTaxonScore> entry : taxIdsToScores.entrySet()) {
             final String taxId = entry.getKey();
             final double selfScore = entry.getValue().selfScore;
+            final String kingdomTaxonId = entry.getValue().kingdomTaxonId;
+            final double kingdomSum = normalizationSums.get(kingdomTaxonId);
             final double normalizedScore;
-            if (sum == 0) {
+            if (kingdomSum == 0) {
                 normalizedScore = 0;
             } else {
-                normalizedScore = 100.0 * selfScore / sum;
+                normalizedScore = 100.0 * selfScore / kingdomSum;
             }
             final List<String> path = tree.getPathOf(taxId);
             for (final String pathTaxId : path) {
@@ -370,6 +368,36 @@ public final class PSScorer {
             }
         }
         return taxIdsToScores;
+    }
+
+    /**
+     * Adds each node's score to its (super)kingdom's total in normalizationSums and assigns the node's PSPathogenTaxonScore
+     *  kingdom in taxIdsToScores. If the node does not have a kingdom, it is assigned to the root by default, which
+     *  is tallied as its own kingdom.
+     */
+    private static void assignKingdoms(final Map<String, PSPathogenTaxonScore> taxIdsToScores,
+                                      final Map<String, Double> normalizationSums,
+                                      final PSTree tree, final boolean normalizeByKingdom) {
+        for (final Map.Entry<String, PSPathogenTaxonScore> entry : taxIdsToScores.entrySet()) {
+            final String taxonId = entry.getKey();
+            final PSPathogenTaxonScore score = entry.getValue();
+            if (normalizeByKingdom) {
+                final List<String> path = tree.getPathOf(taxonId);
+                for (final String nodeId : path) {
+                    if (tree.getRankOf(nodeId).equals(KINGDOM_RANK_NAME) || tree.getRankOf(nodeId).equals(SUPERKINGDOM_RANK_NAME)
+                            || nodeId.equals(PSBuildReferenceTaxonomyUtils.ROOT_ID)) {
+                        normalizationSums.putIfAbsent(nodeId, 0.);
+                        normalizationSums.put(nodeId, normalizationSums.get(nodeId) + score.selfScore);
+                        score.kingdomTaxonId = nodeId;
+                        break;
+                    }
+                }
+            } else {
+                normalizationSums.putIfAbsent(PSBuildReferenceTaxonomyUtils.ROOT_ID, 0.);
+                normalizationSums.put(PSBuildReferenceTaxonomyUtils.ROOT_ID, normalizationSums.get(PSBuildReferenceTaxonomyUtils.ROOT_ID) + score.selfScore);
+                score.kingdomTaxonId = PSBuildReferenceTaxonomyUtils.ROOT_ID;
+            }
+        }
     }
 
     /**
@@ -416,13 +444,33 @@ public final class PSScorer {
                 final List<String> path = tree.getPathOf(key).stream().map(tree::getNameOf).collect(Collectors.toList());
                 Collections.reverse(path);
                 final String taxonomy = String.join("|", path);
-                final String line = key + "\t" + taxonomy + "\t" + rank + "\t" + name + "\t" + scores.get(key);
+                final String line = key + "\t" + taxonomy + "\t" + rank + "\t" + name + "\t" + scores.get(key).toString(tree);
                 printStream.println(line.replace(" ", "_"));
             }
             if (printStream.checkError()) {
                 throw new UserException.CouldNotCreateOutputFile(filePath, new IOException());
             }
         }
+    }
+
+
+    /**
+     * Helper class for storing alignment hit information
+     */
+    private static final class PSPathogenHitAlignment {
+        private final int numMatches;
+        private final String accession;
+        private final Cigar cigar;
+
+        public PSPathogenHitAlignment(final int numMatches, final String accession, final Cigar cigar) {
+            this.numMatches = numMatches;
+            this.accession = accession;
+            this.cigar = cigar;
+        }
+
+        public int getNumMatches() { return numMatches; }
+        public String getAccession() { return accession; }
+        public Cigar getCigar() { return cigar; }
     }
 
 }

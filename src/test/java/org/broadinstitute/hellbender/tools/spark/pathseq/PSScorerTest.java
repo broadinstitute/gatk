@@ -29,8 +29,8 @@ import java.util.stream.StreamSupport;
 
 public class PSScorerTest extends CommandLineProgramTest {
 
-    final static double MIN_COV = 0.90;
-    final static double MIN_IDENT = 0.90;
+    final static double MIN_IDENT = 0.80;
+    final static double IDENT_MARGIN = 0.05;
     final static double SCORE_ABSOLUTE_ERROR_TOLERANCE = 1e-6;
     PSTaxonomyDatabase taxonomyDatabase;
     Map<String, String> refNameToTax;
@@ -162,23 +162,23 @@ public class PSScorerTest extends CommandLineProgramTest {
                         Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("recordA"), Arrays.asList("1")},
 
-                //First read sub-threshold mismatches
-                {101, Arrays.asList(10), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
+                //First read too few mismatches
+                {101, Arrays.asList(20), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("recordA"), Arrays.asList("1")},
 
                 //First read too many mismatches
-                {101, Arrays.asList(11), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
+                {101, Arrays.asList(21), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("recordA"), Arrays.asList()},
 
-                //Second read sub-threshold mismatches
-                {101, Arrays.asList(0), Arrays.asList(10), Arrays.asList(0), Arrays.asList(0),
+                //Second read too few mismatches
+                {101, Arrays.asList(0), Arrays.asList(20), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("recordA"), Arrays.asList("1")},
 
                 //Second read too many mismatches
-                {101, Arrays.asList(0), Arrays.asList(11), Arrays.asList(0), Arrays.asList(0),
+                {101, Arrays.asList(0), Arrays.asList(21), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("recordA"), Arrays.asList()},
 
@@ -203,12 +203,12 @@ public class PSScorerTest extends CommandLineProgramTest {
                         Arrays.asList("recordA 1", "recordB 2"), Arrays.asList("recordA 1", "recordB 2"), Arrays.asList("1", "2")},
 
                 //Second hit has too many mismatches
-                {101, Arrays.asList(0, 11), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
+                {101, Arrays.asList(0, 21), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
                         Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
                         Arrays.asList("recordA", "recordB"), Arrays.asList("recordA", "recordB"), Arrays.asList("1")},
 
                 //Alternate alignment better than primary alignment
-                {101, Arrays.asList(11, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
+                {101, Arrays.asList(21, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
                         Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
                         Arrays.asList("recordA", "recordB"), Arrays.asList("recordA", "recordB"), Arrays.asList("2")}
         };
@@ -234,7 +234,8 @@ public class PSScorerTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListXA = new ArrayList<>();
         readListXA.add(generateReadPair(readLength, NM1, NM2, clip1, clip2, insert1, insert2, delete1, delete2, contig1, contig2, "XA"));
         final JavaRDD<Iterable<GATKRead>> pairsXA = ctx.parallelize(readListXA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA,
+                MIN_IDENT, IDENT_MARGIN, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoXA = resultXA.first()._2;
 
         Assert.assertNotNull(infoXA);
@@ -246,7 +247,8 @@ public class PSScorerTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListSA = new ArrayList<>();
         readListSA.add(generateReadPair(readLength, NM1, NM2, clip1, clip2, insert1, insert2, delete1, delete2, contig1, contig2, "SA"));
         final JavaRDD<Iterable<GATKRead>> pairsSA = ctx.parallelize(readListSA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA,
+                MIN_IDENT, IDENT_MARGIN, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoSA = resultSA.first()._2;
 
         Assert.assertNotNull(infoSA);
@@ -260,72 +262,52 @@ public class PSScorerTest extends CommandLineProgramTest {
         return new Object[][]{
 
                 //Perfect match
-                {101, Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
+               {100, Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("1")},
 
-                //Sub-threshold mismatches
-                {101, Arrays.asList(10), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
+                //Suprathreshold mismatches
+                {100, Arrays.asList(20), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("1")},
 
-                //Too many mismatches
-                {101, Arrays.asList(11), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
+                //Subthreshold mismatches
+                {100, Arrays.asList(21), Arrays.asList(0), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList()},
 
-                //Sub-threshold clip
-                {101, Arrays.asList(0), Arrays.asList(10), Arrays.asList(0), Arrays.asList(0),
+                //Suprathreshold clip
+                {100, Arrays.asList(0), Arrays.asList(20), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("1")},
 
-                //Too much clip
-                {101, Arrays.asList(0), Arrays.asList(11), Arrays.asList(0), Arrays.asList(0),
+                //Subthreshold clip + mismatches
+                {100, Arrays.asList(1), Arrays.asList(20), Arrays.asList(0), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList()},
 
-                //Sub-threshold insertions
-                {101, Arrays.asList(0), Arrays.asList(0), Arrays.asList(10), Arrays.asList(0),
+                //Suprathreshold insertions
+                {100, Arrays.asList(0), Arrays.asList(0), Arrays.asList(20), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList("1")},
 
-                //Too many insertions
-                {101, Arrays.asList(0), Arrays.asList(0), Arrays.asList(11), Arrays.asList(0),
+                //Subthreshold insertions + mismatches
+                {100, Arrays.asList(1), Arrays.asList(0), Arrays.asList(20), Arrays.asList(0),
                         Arrays.asList("recordA"), Arrays.asList()},
 
-                //Sub-threshold deletions
-                {101, Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(10),
+                //Suprathreshold deletions
+                {100, Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(20),
                         Arrays.asList("recordA"), Arrays.asList("1")},
 
-                //Too many deletions
-                {101, Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(11),
+                //Subthreshold deletions
+                {100, Arrays.asList(0), Arrays.asList(0), Arrays.asList(0), Arrays.asList(21),
                         Arrays.asList("recordA"), Arrays.asList()},
 
-                //Sub-threshold errors
-                {101, Arrays.asList(3), Arrays.asList(0), Arrays.asList(3), Arrays.asList(4),
-                        Arrays.asList("recordA"), Arrays.asList("1")},
-
-                //Too many errors
-                {101, Arrays.asList(4), Arrays.asList(0), Arrays.asList(3), Arrays.asList(4),
-                        Arrays.asList("recordA"), Arrays.asList()},
-
-                //Sub-threshold NM with large clip
-                {101, Arrays.asList(9), Arrays.asList(10), Arrays.asList(0), Arrays.asList(0),
-                        Arrays.asList("recordA"), Arrays.asList("1")},
-
-                //Critical NM with large clip
-                {101, Arrays.asList(10), Arrays.asList(10), Arrays.asList(0), Arrays.asList(0),
-                        Arrays.asList("recordA"), Arrays.asList()},
-
-                //Sub-threshold with large clip
-                {104, Arrays.asList(3), Arrays.asList(10), Arrays.asList(3), Arrays.asList(3),
-                        Arrays.asList("recordA"), Arrays.asList("1")},
-
-                //Critical with large clip
-                {101, Arrays.asList(8), Arrays.asList(10), Arrays.asList(3), Arrays.asList(4),
-                        Arrays.asList("recordA"), Arrays.asList()},
-
-                //Distinct hits
-                {101, Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
+                //Two taxa
+                {100, Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
                         Arrays.asList("recordA", "recordB"), Arrays.asList("1", "2")},
 
-                //Indistinct hits
-                {101, Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
-                        Arrays.asList("recordA", "recordA"), Arrays.asList("1")},
+                //Two taxa, one with mismatches within the margin
+                {100, Arrays.asList(5, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
+                        Arrays.asList("recordA", "recordB"), Arrays.asList("1", "2")},
+
+                //Two taxa, one with mismatches below the margin
+                {100, Arrays.asList(6, 0), Arrays.asList(0, 0), Arrays.asList(0, 0), Arrays.asList(0, 0),
+                        Arrays.asList("recordA", "recordB"), Arrays.asList("2")},
         };
     }
 
@@ -345,7 +327,8 @@ public class PSScorerTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListXA = new ArrayList<>();
         readListXA.add(generateUnpairedRead(readLength, NM, clip, insert, delete, contig, "XA"));
         final JavaRDD<Iterable<GATKRead>> pairsXA = ctx.parallelize(readListXA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultXA = PSScorer.mapGroupedReadsToTax(pairsXA,
+                MIN_IDENT, IDENT_MARGIN, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoXA = resultXA.first()._2;
 
         Assert.assertNotNull(infoXA);
@@ -357,7 +340,8 @@ public class PSScorerTest extends CommandLineProgramTest {
         final List<Iterable<GATKRead>> readListSA = new ArrayList<>();
         readListSA.add(generateUnpairedRead(readLength, NM, clip, insert, delete, contig, "SA"));
         final JavaRDD<Iterable<GATKRead>> pairsSA = ctx.parallelize(readListSA);
-        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA, MIN_COV, MIN_IDENT, taxonomyDatabaseBroadcast);
+        final JavaRDD<Tuple2<Iterable<GATKRead>, PSPathogenAlignmentHit>> resultSA = PSScorer.mapGroupedReadsToTax(pairsSA,
+                MIN_IDENT, IDENT_MARGIN, taxonomyDatabaseBroadcast);
         final PSPathogenAlignmentHit infoSA = resultSA.first()._2;
 
         Assert.assertNotNull(infoSA);
@@ -378,21 +362,23 @@ public class PSScorerTest extends CommandLineProgramTest {
         PSTree tree = new PSTree("1");
         List<PSPathogenAlignmentHit> readTaxHits = new ArrayList<>(1);
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("4"), 2));
+        boolean divideByGenomeLength = true;
+        boolean normalizeByKingdom = false;
         final PSTaxonomyDatabase testDatabase = new PSTaxonomyDatabase(tree, null);
         try {
-            final Iterator<Tuple2<String, PSPathogenTaxonScore>> resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase);
-            Map<String,PSPathogenTaxonScore> resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), testDatabase.tree);
+            final Iterator<Tuple2<String, PSPathogenTaxonScore>> resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase, divideByGenomeLength);
+            Map<String,PSPathogenTaxonScore> resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), testDatabase.tree, normalizeByKingdom);
             Assert.assertTrue(resultMap.isEmpty(), "Result should be empty since the hit does not exist in the tree");
         } catch (Exception e) {
             Assert.fail("Threw an exception when a HitInfo references a tax ID not in the tree, or vice versa", e);
         }
 
-        tree.addNode("2", "n2", "1", 0, "genus");
+        tree.addNode("2", "n2", "1", 0, PSScorer.KINGDOM_RANK_NAME);
         tree.addNode("3", "n3", "2", 100, "species");
         readTaxHits.clear();
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("3"), 2));
-        Iterator<Tuple2<String, PSPathogenTaxonScore>> resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase);
-        Map<String,PSPathogenTaxonScore> resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), testDatabase.tree);
+        Iterator<Tuple2<String, PSPathogenTaxonScore>> resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase, divideByGenomeLength);
+        Map<String,PSPathogenTaxonScore> resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), testDatabase.tree, normalizeByKingdom);
         Assert.assertEquals(resultMap.size(), 3);
         Assert.assertEquals(resultMap.get("1").selfScore, resultMap.get("2").selfScore);
         Assert.assertEquals(resultMap.get("1").descendentScore, resultMap.get("2").descendentScore);
@@ -404,8 +390,9 @@ public class PSScorerTest extends CommandLineProgramTest {
         Assert.assertEquals(resultMap.get("3").totalReads, 2);
         Assert.assertEquals(resultMap.get("3").unambiguousReads, 2);
         Assert.assertEquals(resultMap.get("3").referenceLength, 100);
+        Assert.assertEquals(resultMap.get("3").kingdomTaxonId, "1");
 
-        tree.addNode("4", "n4", "1", 0, "genus");
+        tree.addNode("4", "n4", "1", 0, PSScorer.SUPERKINGDOM_RANK_NAME);
         tree.addNode("5", "n5", "2", 100, "species");
         tree.addNode("6", "n6", "4", 100, "species");
         tree.addNode("7", "n7", "4", 100, "species");
@@ -416,12 +403,28 @@ public class PSScorerTest extends CommandLineProgramTest {
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("5"), 2));
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("6"), 1));
         readTaxHits.add(new PSPathogenAlignmentHit(Arrays.asList("8"), 2)); //Invalid hit, not in tree
-        resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase);
-        resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), tree);
+        resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase, divideByGenomeLength);
+        resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), tree, normalizeByKingdom);
+        checkComputedScores(resultMap, divideByGenomeLength, normalizeByKingdom);
 
-        final double score3 = PSScorer.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 2.0) / 100;
-        final double score5 = PSScorer.SCORE_GENOME_LENGTH_UNITS * 2.0 / 100;
-        final double score6 = PSScorer.SCORE_GENOME_LENGTH_UNITS * (0.5 * 2.0 + 1.0) / 100;
+        //Test after switching genome length and kingdom normalization
+        divideByGenomeLength = false;
+        normalizeByKingdom = true;
+        resultIter = PSScorer.computeTaxScores(readTaxHits.iterator(), testDatabase, divideByGenomeLength);
+        resultMap = PSScorer.computeNormalizedScores(scoreIteratorToMap(resultIter), tree, normalizeByKingdom);
+        checkComputedScores(resultMap, divideByGenomeLength, normalizeByKingdom);
+    }
+
+    private static void checkComputedScores(final Map<String,PSPathogenTaxonScore> resultMap, final boolean divideByGenomeLength,
+                                           final boolean normalizeByKingdom) {
+        double score3 = 0.5 * 2.0 + 2.0;
+        double score5 = 2.0;
+        double score6 = 0.5 * 2.0 + 1.0;
+        if (divideByGenomeLength) {
+            score3 *= PSScorer.SCORE_GENOME_LENGTH_UNITS / 100.;
+            score5 *= PSScorer.SCORE_GENOME_LENGTH_UNITS / 100.;
+            score6 *= PSScorer.SCORE_GENOME_LENGTH_UNITS / 100.;
+        }
         final double score2 = score3 + score5;
         final double score4 = score6;
         final double score1 = score2 + score4;
@@ -449,12 +452,15 @@ public class PSScorerTest extends CommandLineProgramTest {
         Assert.assertEquals(resultMap.get("5").selfScore + resultMap.get("5").descendentScore, score5);
         Assert.assertEquals(resultMap.get("6").selfScore + resultMap.get("6").descendentScore, score6);
 
-        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("1").scoreNormalized, 100.0 * score1 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
-        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("2").scoreNormalized, 100.0 * score2 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
-        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("3").scoreNormalized, 100.0 * score3 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
-        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("4").scoreNormalized, 100.0 * score4 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
-        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("5").scoreNormalized, 100.0 * score5 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
-        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("6").scoreNormalized, 100.0 * score6 / score1, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        final double denominator2 = normalizeByKingdom ? score2 : score1;
+        final double denominator4 = normalizeByKingdom ? score4 : score1;
+        final int numKingdoms = normalizeByKingdom ? 2 : 1;
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("1").scoreNormalized, 100.0 * numKingdoms, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("2").scoreNormalized, 100.0 * score2 / denominator2, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("3").scoreNormalized, 100.0 * score3 / denominator2, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("4").scoreNormalized, 100.0 * score4 / denominator4, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("5").scoreNormalized, 100.0 * score5 / denominator2, SCORE_ABSOLUTE_ERROR_TOLERANCE));
+        Assert.assertTrue(PathSeqTestUtils.equalWithinTolerance(resultMap.get("6").scoreNormalized, 100.0 * score6 / denominator4, SCORE_ABSOLUTE_ERROR_TOLERANCE));
 
         Assert.assertEquals(resultMap.get("1").totalReads, reads1);
         Assert.assertEquals(resultMap.get("2").totalReads, reads2);
@@ -474,6 +480,21 @@ public class PSScorerTest extends CommandLineProgramTest {
         Assert.assertEquals(resultMap.get("3").referenceLength, 100);
         Assert.assertEquals(resultMap.get("4").referenceLength, 0);
 
+        if (normalizeByKingdom) {
+            Assert.assertEquals(resultMap.get("1").kingdomTaxonId, "1");
+            Assert.assertEquals(resultMap.get("2").kingdomTaxonId, "2");
+            Assert.assertEquals(resultMap.get("3").kingdomTaxonId, "2");
+            Assert.assertEquals(resultMap.get("4").kingdomTaxonId, "4");
+            Assert.assertEquals(resultMap.get("5").kingdomTaxonId, "2");
+            Assert.assertEquals(resultMap.get("6").kingdomTaxonId, "4");
+        } else {
+            Assert.assertEquals(resultMap.get("1").kingdomTaxonId, "1");
+            Assert.assertEquals(resultMap.get("2").kingdomTaxonId, "1");
+            Assert.assertEquals(resultMap.get("3").kingdomTaxonId, "1");
+            Assert.assertEquals(resultMap.get("4").kingdomTaxonId, "1");
+            Assert.assertEquals(resultMap.get("5").kingdomTaxonId, "1");
+            Assert.assertEquals(resultMap.get("6").kingdomTaxonId, "1");
+        }
     }
 
     @DataProvider(name = "tupleSecond")

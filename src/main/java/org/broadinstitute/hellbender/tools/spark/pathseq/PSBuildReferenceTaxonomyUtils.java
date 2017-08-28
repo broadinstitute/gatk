@@ -18,7 +18,7 @@ import java.util.zip.GZIPInputStream;
 public final class PSBuildReferenceTaxonomyUtils {
 
     protected final static Logger logger = LogManager.getLogger(PSBuildReferenceTaxonomyUtils.class);
-    private final static String ROOT_ID = "1"; //NCBI root node taxonomic id
+    final static String ROOT_ID = "1"; //NCBI root node taxonomic id
     final static String VIRUS_ID = "10239";
 
     /**
