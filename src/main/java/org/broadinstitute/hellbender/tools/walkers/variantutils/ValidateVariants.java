@@ -193,10 +193,6 @@ public final class ValidateVariants extends VariantWalker {
         final Allele reportedRefAllele = vc.getReference();
         final int refLength = reportedRefAllele.length();
 
-        if (vc.getStart() > 10436908) {
-            int i = 214123;
-        }
-
         final Allele observedRefAllele = hasReference() ? Allele.create(Arrays.copyOf(ref.getBases(), refLength)) : null;
 
         final Set<String> rsIDs = getRSIDs(featureContext);
