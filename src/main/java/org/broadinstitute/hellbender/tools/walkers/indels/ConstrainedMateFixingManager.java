@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.indels;
 
-import htsjdk.samtools.SamPairUtil;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordComparator;
-import htsjdk.samtools.SAMRecordCoordinateComparator;
+import htsjdk.samtools.*;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.read.*;
 
 import java.util.*;
 
@@ -70,11 +67,13 @@ public class ConstrainedMateFixingManager {
      */
     final int MAX_RECORDS_IN_MEMORY;
 
+    // header for the comparator and for access information about the read
+    private final SAMFileHeader header;
     /** how we order our SAM records */
-    private final SAMRecordComparator comparer = new SAMRecordCoordinateComparator();
+    private final ReadCoordinateComparator comparer;
 
     /** The place where we ultimately write out our records */
-    final SAMFileWriter writer;
+    final GATKReadWriter writer;
 
     /**
      * what is the maximum isize of a pair of reads that can move?  Reads with isize > this value
@@ -89,21 +88,21 @@ public class ConstrainedMateFixingManager {
     int counter = 0;
 
     /** read.name -> records */
-    HashMap<String, SAMRecordHashObject> forMateMatching = new HashMap<String, SAMRecordHashObject>();
-    PriorityQueue<SAMRecord> waitingReads = new PriorityQueue<SAMRecord>(initialCapacity, comparer);
+    HashMap<String, GATKReadHashObject> forMateMatching = new HashMap<String, GATKReadHashObject>();
+    PriorityQueue<GATKRead> waitingReads;
 
-    private SAMRecord remove(PriorityQueue<SAMRecord> queue) {
-        SAMRecord first = queue.poll();
+    private GATKRead remove(PriorityQueue<GATKRead> queue) {
+        GATKRead first = queue.poll();
         if (first == null)
             throw new UserException("Error caching SAM record -- priority queue is empty, and yet there was an attempt to poll it -- which is usually caused by malformed SAM/BAM files in which multiple identical copies of a read are present.");
         return first;
     }
 
-    private static class SAMRecordHashObject {
-        public SAMRecord record;
+    private static class GATKReadHashObject {
+        public GATKRead record;
         public boolean wasModified;
 
-        public SAMRecordHashObject(SAMRecord record, boolean wasModified) {
+        public GATKReadHashObject(GATKRead record, boolean wasModified) {
             this.record = record;
             this.wasModified = wasModified;
         }
@@ -118,21 +117,26 @@ public class ConstrainedMateFixingManager {
     /**
      *
      * @param writer                                 actual writer
-     * @param genomeLocParser                        the GenomeLocParser object
+     * @param header                                 the header object
      * @param maxInsertSizeForMovingReadPairs        max insert size allowed for moving pairs
      * @param maxMoveAllowed                         max positional move allowed for any read
      * @param maxRecordsInMemory                     max records to keep in memory
      */
-    public ConstrainedMateFixingManager(final SAMFileWriter writer,
-                                        final GenomeLocParser genomeLocParser,
+    public ConstrainedMateFixingManager(final GATKReadWriter writer,
+                                        final SAMFileHeader header,
                                         final int maxInsertSizeForMovingReadPairs,
                                         final int maxMoveAllowed,
                                         final int maxRecordsInMemory) {
         this.writer = writer;
-        this.genomeLocParser = genomeLocParser;
+        this.header = header;
+        this.genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
         this.maxInsertSizeForMovingReadPairs = maxInsertSizeForMovingReadPairs;
         this.MAX_POS_MOVE_ALLOWED = maxMoveAllowed;
         this.MAX_RECORDS_IN_MEMORY = maxRecordsInMemory;
+
+        // initialize comparer
+        this.comparer = new ReadCoordinateComparator(this.header);
+        this.waitingReads = new PriorityQueue<>(initialCapacity, comparer);
 
         //timer.start();
         //lastProgressPrintTime = timer.currentTime();
@@ -145,8 +149,8 @@ public class ConstrainedMateFixingManager {
      *
      * @return the list of reads currently in the queue
      */
-    protected List<SAMRecord> getReadsInQueueForTesting() {
-        return new ArrayList<SAMRecord>(waitingReads);
+    protected List<GATKRead> getReadsInQueueForTesting() {
+        return new ArrayList<>(waitingReads);
     }
 
     public boolean canMoveReads(GenomeLoc earliestPosition) {
@@ -157,21 +161,21 @@ public class ConstrainedMateFixingManager {
                 lastLocFlushed.distance(earliestPosition) > maxInsertSizeForMovingReadPairs;
     }
 
-    private boolean noReadCanMoveBefore(int pos, SAMRecord addedRead) {
-        return pos + 2 * MAX_POS_MOVE_ALLOWED < addedRead.getAlignmentStart();
+    private boolean noReadCanMoveBefore(int pos, GATKRead addedRead) {
+        return pos + 2 * MAX_POS_MOVE_ALLOWED < addedRead.getAssignedStart();
     }
 
-    public void addRead(SAMRecord newRead, boolean readWasModified) {
+    public void addRead(GATKRead newRead, boolean readWasModified) {
         addRead(newRead, readWasModified, true);
     }
 
-    public void addReads(List<SAMRecord> newReads, Set<SAMRecord> modifiedReads) {
-        for ( SAMRecord newRead : newReads )
+    public void addReads(List<GATKRead> newReads, Set<GATKRead> modifiedReads) {
+        for ( GATKRead newRead : newReads )
             addRead(newRead, modifiedReads.contains(newRead), false);
     }
 
-    protected void addRead(SAMRecord newRead, boolean readWasModified, boolean canFlush) {
-        if ( DEBUG ) logger.info("New read pos " + newRead.getAlignmentStart() + " OP = " + newRead.getAttribute("OP") + " " + readWasModified);
+    protected void addRead(GATKRead newRead, boolean readWasModified, boolean canFlush) {
+        if ( DEBUG ) logger.info("New read pos " + newRead.getAssignedStart() + " OP = " + newRead.getAttributeAsString("OP") + " " + readWasModified);
 
         //final long curTime = timer.currentTime();
         //if ( curTime - lastProgressPrintTime > PROGRESS_PRINT_FREQUENCY ) {
@@ -181,16 +185,16 @@ public class ConstrainedMateFixingManager {
 
         // if the new read is on a different contig or we have too many reads, then we need to flush the queue and clear the map
         boolean tooManyReads = getNReadsInQueue() >= MAX_RECORDS_IN_MEMORY;
-        if ( (canFlush && tooManyReads) || (getNReadsInQueue() > 0 && !waitingReads.peek().getReferenceIndex().equals(newRead.getReferenceIndex())) ) {
-            if ( DEBUG ) logger.warn("Flushing queue on " + (tooManyReads ? "too many reads" : ("move to new contig: " + newRead.getReferenceName() + " from " + waitingReads.peek().getReferenceName())) + " at " + newRead.getAlignmentStart());
+        if ( (canFlush && tooManyReads) || (getNReadsInQueue() > 0 && ReadUtils.getAssignedReferenceIndex(waitingReads.peek(), header) != ReadUtils.getAssignedReferenceIndex(newRead, header)) ) {
+            if ( DEBUG ) logger.warn("Flushing queue on " + (tooManyReads ? "too many reads" : ("move to new contig: " + newRead.getAssignedContig() + " from " + waitingReads.peek().getAssignedContig())) + " at " + newRead.getAssignedStart());
 
             while ( getNReadsInQueue() > 1 ) {
                 // emit to disk
                 writeRead(remove(waitingReads));
             }
 
-            SAMRecord lastRead = remove(waitingReads);
-            lastLocFlushed = (lastRead.getReferenceIndex() == -1) ? null : genomeLocParser.createGenomeLoc(lastRead);
+            GATKRead lastRead = remove(waitingReads);
+            lastLocFlushed = ReadUtils.getAssignedReferenceIndex(lastRead, header) == -1 ? null : genomeLocParser.createGenomeLoc(lastRead);
             writeRead(lastRead);
 
             if ( !tooManyReads )
@@ -203,7 +207,7 @@ public class ConstrainedMateFixingManager {
         // Since setMateInfo can move reads, we potentially need to remove the mate, and requeue
         // it to ensure proper sorting
         if ( isMateFixableRead(newRead) ) {
-            SAMRecordHashObject mate = forMateMatching.get(newRead.getReadName());
+            GATKReadHashObject mate = forMateMatching.get(newRead.getName());
             if ( mate != null ) {
                 // 1. Frustratingly, Picard's setMateInfo() method unaligns (by setting the reference contig
                 // to '*') read pairs when both of their flags have the unmapped bit set.  This is problematic
@@ -217,10 +221,10 @@ public class ConstrainedMateFixingManager {
                 // arbitrarily far away).  However, we do still want to move legitimately unmapped reads whose
                 // mates are mapped, so the compromise will be that if the mate is still in the queue then we'll
                 // move the read and otherwise we won't.
-                boolean doNotFixMates = newRead.getReadUnmappedFlag() && (mate.record.getReadUnmappedFlag() || !waitingReads.contains(mate.record));
+                boolean doNotFixMates = newRead.isUnmapped() && (mate.record.isUnmapped() || !waitingReads.contains(mate.record));
                 if ( !doNotFixMates ) {
 
-                    boolean reQueueMate = mate.record.getReadUnmappedFlag() && ! newRead.getReadUnmappedFlag();
+                    boolean reQueueMate = mate.record.isUnmapped() && ! newRead.isUnmapped();
                     if ( reQueueMate ) {
                         // the mate was unmapped, but newRead was mapped, so the mate may have been moved
                         // to be next-to newRead, so needs to be reinserted into the waitingReads queue
@@ -232,13 +236,13 @@ public class ConstrainedMateFixingManager {
 
                     // we've already seen our mate -- set the mate info and remove it from the map;
                     // add/update the mate cigar if appropriate
-                    SamPairUtil.setMateInfo(mate.record, newRead, true);
+                    setMateInfo(mate.record, newRead, true);
                     if ( reQueueMate ) waitingReads.add(mate.record);
                 }
 
-                forMateMatching.remove(newRead.getReadName());
+                forMateMatching.remove(newRead.getName());
             } else if ( pairedReadIsMovable(newRead) ) {
-                forMateMatching.put(newRead.getReadName(), new SAMRecordHashObject(newRead, readWasModified));
+                forMateMatching.put(newRead.getName(), new GATKReadHashObject(newRead, readWasModified));
             }
         }
 
@@ -246,38 +250,38 @@ public class ConstrainedMateFixingManager {
 
         if ( ++counter % EMIT_FREQUENCY == 0 ) {
             while ( ! waitingReads.isEmpty() ) { // there's something in the queue
-                SAMRecord read = waitingReads.peek();
+                GATKRead read = waitingReads.peek();
 
-                if ( noReadCanMoveBefore(read.getAlignmentStart(), newRead) &&
+                if ( noReadCanMoveBefore(read.getAssignedStart(), newRead) &&
                         (!pairedReadIsMovable(read)                               // we won't try to move such a read
-                                || noReadCanMoveBefore(read.getMateAlignmentStart(), newRead ) ) ) { // we're already past where the mate started
+                                || noReadCanMoveBefore(read.getMateStart(), newRead ) ) ) { // we're already past where the mate started
 
                     // remove reads from the map that we have emitted -- useful for case where the mate never showed up
-                    if ( !read.getNotPrimaryAlignmentFlag() )
-                        forMateMatching.remove(read.getReadName());
+                    if ( !read.isSecondaryAlignment() )
+                        forMateMatching.remove(read.getName());
 
                     if ( DEBUG )
                         logger.warn(String.format("EMIT!  At %d: read %s at %d with isize %d, mate start %d, op = %s",
-                                newRead.getAlignmentStart(), read.getReadName(), read.getAlignmentStart(),
-                                read.getInferredInsertSize(), read.getMateAlignmentStart(), read.getAttribute("OP")));
+                                newRead.getAssignedStart(), read.getName(), read.getAssignedStart(),
+                                read.getFragmentLength(), read.getMateStart(), read.getAttributeAsString("OP")));
                     // emit to disk
                     writeRead(remove(waitingReads));
                 } else {
                     if ( DEBUG )
                         logger.warn(String.format("At %d: read %s at %d with isize %d couldn't be emited, mate start %d",
-                                newRead.getAlignmentStart(), read.getReadName(), read.getAlignmentStart(), read.getInferredInsertSize(), read.getMateAlignmentStart()));
+                                newRead.getAssignedStart(), read.getName(), read.getAssignedStart(), read.getFragmentLength(), read.getMateStart()));
                     break;
                 }
             }
 
-            if ( DEBUG ) logger.warn(String.format("At %d: Done with emit cycle", newRead.getAlignmentStart()));
+            if ( DEBUG ) logger.warn(String.format("At %d: Done with emit cycle", newRead.getAssignedStart()));
         }
     }
 
-    private void writeRead(SAMRecord read) {
+    private void writeRead(GATKRead read) {
         try {
             if ( writer != null )
-                writer.addAlignment(read);
+                writer.addRead(read);
         } catch (IllegalArgumentException e) {
             throw new UserException("If the maximum allowable reads in memory is too small, it may cause reads to be written out of order when trying to write the BAM; please see the --maxReadsInMemory argument for details.  " + e.getMessage(), e);
         }
@@ -289,26 +293,26 @@ public class ConstrainedMateFixingManager {
      * @param read  the read
      * @return true if we could fix its mate, false otherwise
      */
-    protected boolean isMateFixableRead(final SAMRecord read) {
-        return read.getReadPairedFlag() && !read.isSecondaryOrSupplementary();
+    protected boolean isMateFixableRead(final GATKRead read) {
+        return read.isPaired() && !(read.isSecondaryAlignment() || read.isSupplementaryAlignment());
     }
 
     /**
      * @param read  the read
      * @return true if the read shouldn't be moved given the constraints of this SAMFileWriter
      */
-    public boolean iSizeTooBigToMove(SAMRecord read) {
+    public boolean iSizeTooBigToMove(GATKRead read) {
         return iSizeTooBigToMove(read, maxInsertSizeForMovingReadPairs);               // we won't try to move such a read
     }
 
-    public static boolean iSizeTooBigToMove(SAMRecord read, int maxInsertSizeForMovingReadPairs) {
-        return ( read.getReadPairedFlag() && ! read.getMateUnmappedFlag() && !read.getReferenceName().equals(read.getMateReferenceName()) ) // maps to different chromosomes
-                || Math.abs(read.getInferredInsertSize()) > maxInsertSizeForMovingReadPairs;     // we won't try to move such a read
+    public static boolean iSizeTooBigToMove(GATKRead read, int maxInsertSizeForMovingReadPairs) {
+        return ( read.isPaired() && ! read.mateIsUnmapped() && !read.getAssignedContig().equals(read.getMateContig()) ) // maps to different chromosomes
+                || Math.abs(read.getFragmentLength()) > maxInsertSizeForMovingReadPairs;     // we won't try to move such a read
     }
 
     private void purgeUnmodifiedMates() {
-        HashMap<String, SAMRecordHashObject> forMateMatchingCleaned = new HashMap<String, SAMRecordHashObject>();
-        for ( Map.Entry<String, SAMRecordHashObject> entry : forMateMatching.entrySet() ) {
+        HashMap<String, GATKReadHashObject> forMateMatchingCleaned = new HashMap<String, GATKReadHashObject>();
+        for ( Map.Entry<String, GATKReadHashObject> entry : forMateMatching.entrySet() ) {
             if ( entry.getValue().wasModified )
                 forMateMatchingCleaned.put(entry.getKey(), entry.getValue());
         }
@@ -317,9 +321,9 @@ public class ConstrainedMateFixingManager {
         forMateMatching = forMateMatchingCleaned;
     }
 
-    private boolean pairedReadIsMovable(SAMRecord read) {
-        return read.getReadPairedFlag()                                          // we're a paired read
-                && (!read.getReadUnmappedFlag() || !read.getMateUnmappedFlag())  // at least one read is mapped
+    private boolean pairedReadIsMovable(GATKRead read) {
+        return read.isPaired()                                          // we're a paired read
+                && (!read.isUnmapped() || !read.mateIsUnmapped())  // at least one read is mapped
                 && !iSizeTooBigToMove(read);                                     // insert size isn't too big
 
     }
@@ -330,4 +334,92 @@ public class ConstrainedMateFixingManager {
             writeRead(remove(waitingReads));
         }
     }
+
+
+    // TODO: this is copied from HTSJDK: SamPairUtil.setMateInfo
+    // TODO: maybe move to ReadUtils
+    public static void setMateInfo(final GATKRead rec1, final GATKRead rec2, final boolean setMateCigar) {
+        // If neither read is unmapped just set their mate info
+        if (!rec1.isUnmapped() && !rec2.isUnmapped()) {
+            rec1.setMatePosition(rec2);
+            rec1.setMateIsReverseStrand(rec2.isReverseStrand());
+            rec1.setAttribute(SAMTag.MQ.name(), rec2.getMappingQuality());
+
+            rec2.setMatePosition(rec1);
+            rec2.setMateIsReverseStrand(rec1.isReverseStrand());
+            rec2.setAttribute(SAMTag.MQ.name(), rec1.getMappingQuality());
+
+            if (setMateCigar) {
+                rec1.setAttribute(SAMTag.MC.name(), TextCigarCodec.encode(rec2.getCigar()));
+                rec2.setAttribute(SAMTag.MC.name(), TextCigarCodec.encode(rec1.getCigar()));
+            }
+            else {
+                rec1.clearAttribute(SAMTag.MC.name());
+                rec2.clearAttribute(SAMTag.MC.name());
+            }
+        }
+        // Else if they're both unmapped set that straight
+        else if (rec1.isUnmapped() && rec2.isUnmapped()) {
+            rec1.setPosition(ReadConstants.UNSET_CONTIG, ReadConstants.UNSET_POSITION);
+            rec1.setMatePosition(ReadConstants.UNSET_CONTIG, ReadConstants.UNSET_POSITION);
+            rec1.setMateIsReverseStrand(rec2.isReverseStrand());
+            rec1.setIsUnmapped();
+            rec1.setMateIsUnmapped();
+            rec1.clearAttribute(SAMTag.MQ.name());
+            rec1.clearAttribute(SAMTag.MC.name());
+            rec1.setFragmentLength(0);
+
+            rec2.setPosition(ReadConstants.UNSET_CONTIG, ReadConstants.UNSET_POSITION);
+            rec2.setMatePosition(ReadConstants.UNSET_CONTIG, ReadConstants.UNSET_POSITION);
+            rec2.setMateIsReverseStrand(rec1.isReverseStrand());
+            rec2.setIsUnmapped();
+            rec2.setMateIsUnmapped();
+            rec2.clearAttribute(SAMTag.MQ.name());
+            rec2.clearAttribute(SAMTag.MC.name());
+            rec2.setFragmentLength(0);
+        }
+        // And if only one is mapped copy it's coordinate information to the mate
+        else {
+            final GATKRead mapped   = rec1.isUnmapped() ? rec2 : rec1;
+            final GATKRead unmapped = rec1.isUnmapped() ? rec1 : rec2;
+            unmapped.setPosition(mapped);
+
+            mapped.setMatePosition(unmapped);
+            mapped.setMateIsReverseStrand(unmapped.isReverseStrand());
+            mapped.setMateIsUnmapped();
+            mapped.clearAttribute(SAMTag.MQ.name());
+            mapped.clearAttribute(SAMTag.MC.name());
+            mapped.setFragmentLength(0);
+
+            unmapped.setMatePosition(mapped);
+            unmapped.setMateIsReverseStrand(mapped.isReverseStrand());
+            unmapped.setAttribute(SAMTag.MQ.name(), mapped.getMappingQuality());
+            // For the unmapped read, set mateCigar to the mate's Cigar, since the mate must be mapped
+            if (setMateCigar) unmapped.setAttribute(SAMTag.MC.name(), TextCigarCodec.encode(mapped.getCigar()));
+            else unmapped.clearAttribute(SAMTag.MC.name());
+            unmapped.setFragmentLength(0);
+        }
+
+        final int insertSize = computeInsertSize(rec1, rec2);
+        rec1.setFragmentLength(insertSize);
+        rec2.setFragmentLength(-insertSize);
+    }
+
+    // TODO: this is copied from HTSJDK: SamPairUtil.computeInsertSize
+    // TODO: maybe move to ReadUtils
+    public static int computeInsertSize(final GATKRead firstEnd, final GATKRead secondEnd) {
+        if (firstEnd.isUnmapped() || secondEnd.isUnmapped()) {
+            return 0;
+        }
+        if (!firstEnd.getAssignedContig().equals(secondEnd.getAssignedContig())) {
+            return 0;
+        }
+
+        final int firstEnd5PrimePosition = firstEnd.isReverseStrand()? firstEnd.getEnd(): firstEnd.getAssignedStart();
+        final int secondEnd5PrimePosition = secondEnd.isReverseStrand()? secondEnd.getEnd(): secondEnd.getAssignedStart();
+
+        final int adjustment = (secondEnd5PrimePosition >= firstEnd5PrimePosition) ? +1 : -1;
+        return secondEnd5PrimePosition - firstEnd5PrimePosition + adjustment;
+    }
+
 }

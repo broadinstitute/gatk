@@ -3,10 +3,13 @@ package org.broadinstitute.hellbender.tools.walkers.indels;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMValidationError;
 import htsjdk.samtools.util.ProgressLoggerInterface;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -19,12 +22,10 @@ import java.util.List;
 public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
 
     private static SAMFileHeader header;
-    private static GenomeLocParser genomeLocParser;
 
     @BeforeClass
     public void beforeClass() {
         header = ArtificialReadUtils.createArtificialSamHeader(3, 1, 10000);
-        genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
     }
 
     @Test
@@ -42,14 +43,15 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
         final SAMRecord read2NonPrimary = read2Primary.deepCopy();
         read2NonPrimary.setFlags(393);   // second in proper pair, on reverse strand
 
-        final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(null, genomeLocParser, 1000, 1000, 1000);
-        manager.addRead(read1, true, false);
-        manager.addRead(read2NonPrimary, false, false);
-        manager.addRead(read2Primary, false, false);
+        final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(null, header, 1000, 1000, 1000);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read1), true, false);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read2NonPrimary), false, false);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read2Primary), false, false);
 
         Assert.assertEquals(manager.getNReadsInQueue(), 3);
 
-        for ( final SAMRecord read : manager.getReadsInQueueForTesting() ) {
+        for ( final GATKRead gatkRead : manager.getReadsInQueueForTesting() ) {
+            final SAMRecord read = gatkRead.convertToSAMRecord(header);
             if ( read.getFirstOfPairFlag() ) {
                 Assert.assertEquals(read.getFlags(), 99);
                 Assert.assertEquals(read.getInferredInsertSize(), 23);
@@ -79,12 +81,12 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
         read2NonPrimary.setAlignmentStart(451);
         read2NonPrimary.setMateAlignmentStart(451);
 
-        final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(null, genomeLocParser, 10000, 200, 10000);
-        manager.addRead(read2NonPrimary, false, false);
-        manager.addRead(read1, false, false);
+        final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(null, header, 10000, 200, 10000);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read2NonPrimary), false, false);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read1), false, false);
 
         for ( int i = 0; i < ConstrainedMateFixingManager.EMIT_FREQUENCY; i++ )
-            manager.addRead(ArtificialReadUtils.createArtificialRead(header, "foo" + i, 0, 1500, 10).convertToSAMRecord(header), false, false);
+            manager.addRead(ArtificialReadUtils.createArtificialRead(header, "foo" + i, 0, 1500, 10), false, false);
 
         Assert.assertTrue(manager.forMateMatching.containsKey("foo"));
     }
@@ -105,14 +107,15 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
         read2Supp.setMateAlignmentStart(1000);
 
         final DummyWriter writer = new DummyWriter();
-        final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(writer, genomeLocParser, 10000, 200, 10000);
-        manager.addRead(read2Supp, false, false);
-        manager.addRead(read1, false, false);
-        manager.addRead(read2, false, false);
+        final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(writer, header, 10000, 200, 10000);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read2Supp), false, false);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read1), false, false);
+        manager.addRead(new SAMRecordToGATKReadAdapter(read2), false, false);
         manager.close(); // "write" the reads to our dummy writer
 
         // check to make sure that none of the mate locations were changed, which is the problem brought to us by a user
-        for ( final SAMRecord read : writer.reads ) {
+        for ( final GATKRead gatkRead : writer.reads ) {
+            final SAMRecord read = gatkRead.convertToSAMRecord(header);
             final int start = read.getAlignmentStart();
             switch (start) {
                 case 100:
@@ -130,17 +133,13 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
         }
     }
 
-    private class DummyWriter implements SAMFileWriter {
+    private class DummyWriter implements GATKReadWriter {
 
-        public List<SAMRecord> reads;
+        public List<GATKRead> reads;
 
         public DummyWriter() { reads = new ArrayList<>(10); }
 
-        public void addAlignment(final SAMRecord alignment) { reads.add(alignment);}
-
-        public SAMFileHeader getFileHeader() { return null; }
-
-        public void setProgressLogger(final ProgressLoggerInterface progress) {}
+        public void addRead(final GATKRead alignment) { reads.add(alignment);}
 
         public void close() {}
     }
