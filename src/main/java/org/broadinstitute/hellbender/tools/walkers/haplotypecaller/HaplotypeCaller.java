@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ShardingArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -139,7 +140,7 @@ import java.util.List;
 @BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
-    public static final int DEFAULT_READSHARD_SIZE = NO_INTERVAL_SHARDING;
+    public static final int DEFAULT_READSHARD_SIZE = ShardingArgumentCollection.NO_INTERVAL_SHARDING;
     public static final int DEFAULT_READSHARD_PADDING = 100;
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
