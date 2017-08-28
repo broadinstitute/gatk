@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.filters;
+package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
@@ -7,9 +7,10 @@ import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,7 +24,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 
-public class ReadFilterPluginUnitTest {
+public class GATKReadFilterPluginDescriptorTest extends BaseTest {
 
     // null print stream for the tests
     private static final PrintStream nullMessageStream = new PrintStream(new NullOutputStream());
