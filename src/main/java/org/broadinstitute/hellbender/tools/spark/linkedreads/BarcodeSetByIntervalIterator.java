@@ -69,11 +69,6 @@ class BarcodeSetByIntervalIterator implements Iterator<Tuple2<SVInterval, Set<St
             prevBoundary = starts.get(startIdx)._1;
             startIdx++;
 
-            while (startIdx < starts.size() && starts.get(startIdx)._1() == prevBoundary) {
-                currentBarcodes.addAll(starts.get(startIdx)._2);
-                startIdx++;
-            }
-
         } else {
             // process a stop
             //System.out.println("Process a stop at " + nextStop + ": " + stops.get(stopIdx)._2);
@@ -85,11 +80,18 @@ class BarcodeSetByIntervalIterator implements Iterator<Tuple2<SVInterval, Set<St
             prevBoundary = stops.get(stopIdx)._1;
             stopIdx++;
 
-            while(stopIdx < stops.size() && stops.get(stopIdx)._1() == prevBoundary) {
-                currentBarcodes.removeAll(stops.get(stopIdx)._2);
-                stopIdx++;
-            }
         }
+
+        while (startIdx < starts.size() && starts.get(startIdx)._1() == prevBoundary) {
+            currentBarcodes.addAll(starts.get(startIdx)._2);
+            startIdx++;
+        }
+
+        while(stopIdx < stops.size() && stops.get(stopIdx)._1() == prevBoundary) {
+            currentBarcodes.removeAll(stops.get(stopIdx)._2);
+            stopIdx++;
+        }
+
         return result;
     }
 }

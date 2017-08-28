@@ -63,6 +63,14 @@ public class BarcodeSetByIntervalIteratorTest extends BaseTest {
         expectedList5.add(new Tuple2<>(new SVInterval(1, 100, 200), new HashSet<>(Arrays.asList("ACTG", "GCTA"))));
         tests.add(new Object[] { 1, intervalTree5, expectedList5 });
 
+        final SVIntervalTree<List<String>> intervalTree6 = new SVIntervalTree<>();
+        intervalTree6.put(new SVInterval(1, 100, 200), Arrays.asList("ACTG"));
+        intervalTree6.put(new SVInterval(1, 200, 300), Arrays.asList("GCTA"));
+        final List<Tuple2<SVInterval, Set<String>>> expectedList6 = new ArrayList<>();
+        expectedList6.add(new Tuple2<>(new SVInterval(1, 100, 200), new HashSet<>(Arrays.asList("ACTG"))));
+        expectedList6.add(new Tuple2<>(new SVInterval(1, 200, 300), new HashSet<>(Arrays.asList("GCTA"))));
+        tests.add(new Object[] { 1, intervalTree6, expectedList6 });
+
         return tests.toArray(new Object[][]{});
 
     }

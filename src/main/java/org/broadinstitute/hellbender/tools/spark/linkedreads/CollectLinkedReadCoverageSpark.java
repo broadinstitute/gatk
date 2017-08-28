@@ -183,7 +183,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 final int contig = e.getInterval().getContig();
                 final SVInterval interval = e.getInterval();
                 if (!intervalsByChrom.containsKey(contig)) intervalsByChrom.put(contig, new SVIntervalTree<>());
-                if (intervalsByChrom.get(contig).find(interval) != null) {
+                if (intervalsByChrom.get(contig).find(interval) == null) {
                     intervalsByChrom.get(contig).put(interval, new ArrayList<>());
                 }
                 intervalsByChrom.get(contig).find(interval).getValue().add(barcode);
