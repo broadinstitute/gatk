@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.indels;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.Locatable;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -153,12 +154,12 @@ public class ConstrainedMateFixingManager {
         return new ArrayList<>(waitingReads);
     }
 
-    public boolean canMoveReads(GenomeLoc earliestPosition) {
+    public boolean canMoveReads(Locatable earliestPosition) {
         if ( DEBUG ) logger.info("Refusing to realign? " + earliestPosition + " vs. " + lastLocFlushed);
 
         return lastLocFlushed == null ||
-                lastLocFlushed.compareContigs(earliestPosition) != 0 ||
-                lastLocFlushed.distance(earliestPosition) > maxInsertSizeForMovingReadPairs;
+                lastLocFlushed.compareContigs(genomeLocParser.createGenomeLoc(earliestPosition)) != 0 ||
+                lastLocFlushed.distance(genomeLocParser.createGenomeLoc(earliestPosition)) > maxInsertSizeForMovingReadPairs;
     }
 
     private boolean noReadCanMoveBefore(int pos, GATKRead addedRead) {

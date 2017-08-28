@@ -4,8 +4,11 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMValidationError;
+import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLoggerInterface;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
@@ -26,6 +29,31 @@ public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
     @BeforeClass
     public void beforeClass() {
         header = ArtificialReadUtils.createArtificialSamHeader(3, 1, 10000);
+    }
+
+    @Test
+    public void testCanMoveReads() {
+        final int maxInsertSize = 1000;
+        final ConstrainedMateFixingManager manager = new ConstrainedMateFixingManager(null, header, maxInsertSize, 1000, 1000);
+        final GATKRead readChr0 = ArtificialReadUtils.createArtificialRead(header, "foo", 0, 1, new byte[]{'A'}, new byte[]{'!'}, "1M");
+        final GATKRead readChr1 = ArtificialReadUtils.createArtificialRead(header, "foo", 1, 1, 1);
+
+        // before adding/flushig, returns always true
+        Assert.assertTrue(manager.canMoveReads(readChr0));
+        manager.addRead(readChr0.deepCopy(), false);
+        Assert.assertTrue(manager.canMoveReads(readChr1));
+
+        // force to flush
+        manager.addRead(readChr1.deepCopy(), false);
+        Assert.assertFalse(manager.canMoveReads(readChr0));
+        Assert.assertTrue(manager.canMoveReads(readChr1));
+
+        // shift the coordinate to be maxInsertSize apart
+        readChr0.setPosition(readChr0.getContig(), readChr0.getStart() + maxInsertSize);
+        Assert.assertFalse(manager.canMoveReads(readChr0));
+        // shift the coordinate to be maxInsertSize + 1 apart
+        readChr0.setPosition(readChr0.getContig(), readChr0.getStart() + 1);
+        Assert.assertTrue(manager.canMoveReads(readChr0));
     }
 
     @Test
