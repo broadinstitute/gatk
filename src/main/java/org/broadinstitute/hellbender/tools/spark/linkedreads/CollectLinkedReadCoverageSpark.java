@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -502,11 +503,64 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     private static JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> getBarcodeIntervals(final int finalClusterSize, final JavaRDD<GATKRead> mappedReads, final Broadcast<ReadMetadata> broadcastMetadata, final int minReadCountPerMol, final int minMaxMapq, final int edgeReadMapqThreshold) {
         final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> readsClusteredByBC = getClusteredReadIntervalsByTag(finalClusterSize, mappedReads, broadcastMetadata, "BX");
-        final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> edgefilteredClusteredReads = edgeFilterFragments(readsClusteredByBC, edgeReadMapqThreshold);
+        final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> overlappersRemovedClusteredReads = overlapperFilter(readsClusteredByBC, finalClusterSize);
+        final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> edgefilteredClusteredReads = edgeFilterFragments(overlappersRemovedClusteredReads, edgeReadMapqThreshold);
         final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> minMoleculeCountFragments = minMoleculeCountFilterFragments(edgefilteredClusteredReads, minReadCountPerMol);
         final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> maxMapqFilteredFragments = minMaxMapqFilterFragments(minMoleculeCountFragments, minMaxMapq);
         return maxMapqFilteredFragments
                 .cache();
+    }
+
+    private static JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> overlapperFilter(final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> readsClusteredByBC,
+                                                                                        final int finalClusterSize) {
+        // todo: split up edge cases where this filtering has created a gap greater than allowed by clustersize
+        return readsClusteredByBC.mapValues(CollectLinkedReadCoverageSpark::cleanOverlappingTreeEntries);
+    }
+
+    @VisibleForTesting
+    static SVIntervalTree<List<ReadInfo>> cleanOverlappingTreeEntries(final SVIntervalTree<List<ReadInfo>> tree) {
+        final List<Tuple2<SVInterval, List<ReadInfo>>> newEntries = new ArrayList<>(tree.size());
+        final Iterator<SVIntervalTree.Entry<List<ReadInfo>>> iterator = tree.iterator();
+
+        while (iterator.hasNext()) {
+            SVIntervalTree.Entry<List<ReadInfo>> entry = iterator.next();
+            List<ReadInfo> reads = entry.getValue();
+            List<ReadInfo> newList = new ArrayList<>(reads.size());
+            Collections.sort(reads, Comparator.comparingInt(ReadInfo::getStart));
+
+            int currentEnd = -1;
+            int bestOverlapperMapqIdx = -1;
+            final List<ReadInfo> overlappers = new ArrayList<>();
+            for (ReadInfo readInfo : reads) {
+                if (overlappers.isEmpty() || readInfo.getStart() < currentEnd) {
+                    overlappers.add(readInfo);
+                    if (bestOverlapperMapqIdx == -1 || readInfo.getMapq() > overlappers.get(bestOverlapperMapqIdx).getMapq()) {
+                        bestOverlapperMapqIdx = overlappers.size() - 1;
+                    }
+                    currentEnd = readInfo.getEnd();
+                } else {
+                    if (! overlappers.isEmpty()) {
+                        final ReadInfo bestOverlapper = overlappers.get(bestOverlapperMapqIdx);
+                        overlappers.clear();
+                        bestOverlapperMapqIdx = -1;
+                        newList.add(bestOverlapper);
+                    }
+                    newList.add(readInfo);
+                    currentEnd = readInfo.getEnd();
+                }
+            }
+
+            if (! overlappers.isEmpty()) {
+                final ReadInfo bestOverlapper = overlappers.get(bestOverlapperMapqIdx);
+                newList.add(bestOverlapper);
+            }
+
+            newEntries.add(new Tuple2<>(entry.getInterval(), newList));
+            iterator.remove();
+        }
+
+        newEntries.forEach(p -> tree.put(p._1(), p._2()));
+        return tree;
     }
 
     private static JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> minMoleculeCountFilterFragments(final JavaPairRDD<String, SVIntervalTree<List<ReadInfo>>> clusteredReads, final int minReadCountPerMol) {
@@ -778,6 +832,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         return readMetadata.getContigName(contig);
     }
 
+    /**
+     * A lightweight object to summarize reads for the purposes of collecting linked read information
+     */
     @DefaultSerializer(ReadInfo.Serializer.class)
     static class ReadInfo {
         ReadInfo(final ReadMetadata readMetadata, final GATKRead gatkRead) {
@@ -850,6 +907,40 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             output.writeInt(mapq);
         }
 
+        @Override
+        public String toString() {
+            return "ReadInfo{" +
+                    "contig=" + contig +
+                    ", start=" + start +
+                    ", end=" + end +
+                    ", forward=" + forward +
+                    ", mapq=" + mapq +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final ReadInfo readInfo = (ReadInfo) o;
+
+            if (contig != readInfo.contig) return false;
+            if (start != readInfo.start) return false;
+            if (end != readInfo.end) return false;
+            if (forward != readInfo.forward) return false;
+            return mapq == readInfo.mapq;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = contig;
+            result = 31 * result + start;
+            result = 31 * result + end;
+            result = 31 * result + (forward ? 1 : 0);
+            result = 31 * result + mapq;
+            return result;
+        }
     }
 
     private class IntervalDepthIterator implements Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, Integer>> {

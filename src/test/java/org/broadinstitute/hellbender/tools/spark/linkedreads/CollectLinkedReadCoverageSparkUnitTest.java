@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.tools.spark.linkedreads.CollectLinkedReadCoverageSpark.ReadInfo;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -179,4 +180,20 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(listEntry.getValue().size(), 5);
     }
 
+    @Test
+    public void testCleanOverlappingTreeEntries() {
+        final SVIntervalTree<List<ReadInfo>> tree = new SVIntervalTree<>();
+        final List<ReadInfo> reads = new ArrayList<>();
+        reads.add(new ReadInfo(1, 100, 200, true, 50));
+        reads.add(new ReadInfo(1, 150, 250, true, 55));
+        reads.add(new ReadInfo(1, 175, 275, true, 60));
+        tree.put(new SVInterval(1, 100, 275), reads);
+        final SVIntervalTree<List<ReadInfo>> cleanedTree = CollectLinkedReadCoverageSpark.cleanOverlappingTreeEntries(tree);
+        Assert.assertEquals(1, cleanedTree.size());
+        final SVIntervalTree.Entry<List<ReadInfo>> listEntry = cleanedTree.find(new SVInterval(1, 100, 275));
+        Assert.assertNotNull(listEntry);
+        Assert.assertEquals(listEntry.getValue().size(), 1);
+        Assert.assertEquals(listEntry.getValue().size(), 1);
+        Assert.assertEquals(listEntry.getValue().get(0), new ReadInfo(1, 175, 275, true, 60));
+    }
 }
