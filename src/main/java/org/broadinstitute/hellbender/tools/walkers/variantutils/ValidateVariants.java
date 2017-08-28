@@ -193,6 +193,10 @@ public final class ValidateVariants extends VariantWalker {
         final Allele reportedRefAllele = vc.getReference();
         final int refLength = reportedRefAllele.length();
 
+        if (vc.getStart() > 10436908) {
+            int i = 214123;
+        }
+
         final Allele observedRefAllele = hasReference() ? Allele.create(Arrays.copyOf(ref.getBases(), refLength)) : null;
 
         final Set<String> rsIDs = getRSIDs(featureContext);
@@ -205,10 +209,13 @@ public final class ValidateVariants extends VariantWalker {
             // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
             // small as possible while still containing the same bases.
             final int start = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
-                    previousInterval.getEnd() : refInterval.getStart();
-            genomeLocSortedSet.add(genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), start, vc.getEnd()), true);
+                    Math.min(previousInterval.getStart(), refInterval.getStart()) : refInterval.getStart();
+            final int end = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
+                    Math.max(previousInterval.getEnd(), vc.getEnd()) : vc.getEnd();
+            final GenomeLoc possiblyMergedGenomeLoc = genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), start, end);
+            genomeLocSortedSet.add(possiblyMergedGenomeLoc, true);
 
-            previousInterval = refInterval;
+            previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
             validateGVCFVariant(vc);
         }
 
@@ -283,12 +290,12 @@ public final class ValidateVariants extends VariantWalker {
             }
             return Collections.emptyList();
         } else {
-           final Set<ValidationType> result = new LinkedHashSet<>(ValidationType.CONCRETE_TYPES);
-           result.removeAll(excludeTypeSet);
+            final Set<ValidationType> result = new LinkedHashSet<>(ValidationType.CONCRETE_TYPES);
+            result.removeAll(excludeTypeSet);
             if (result.contains(ValidationType.REF) && !hasReference()) {
                 throw new UserException.MissingReference("Validation type " + ValidationType.REF.name() + " was selected but no reference was provided.");
             }
-           return result;
+            return result;
         }
     }
 
