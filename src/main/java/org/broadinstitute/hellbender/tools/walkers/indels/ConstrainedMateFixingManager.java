@@ -6,6 +6,7 @@ import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.*;
 
 import java.util.*;
@@ -83,8 +84,7 @@ public class ConstrainedMateFixingManager {
     final int maxInsertSizeForMovingReadPairs;
     final int initialCapacity = 5000;
 
-    final GenomeLocParser genomeLocParser;
-    private GenomeLoc lastLocFlushed = null;
+    private SimpleInterval lastLocFlushed = null;
 
     int counter = 0;
 
@@ -130,7 +130,6 @@ public class ConstrainedMateFixingManager {
                                         final int maxRecordsInMemory) {
         this.writer = writer;
         this.header = header;
-        this.genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
         this.maxInsertSizeForMovingReadPairs = maxInsertSizeForMovingReadPairs;
         this.MAX_POS_MOVE_ALLOWED = maxMoveAllowed;
         this.MAX_RECORDS_IN_MEMORY = maxRecordsInMemory;
@@ -158,8 +157,8 @@ public class ConstrainedMateFixingManager {
         if ( DEBUG ) logger.info("Refusing to realign? " + earliestPosition + " vs. " + lastLocFlushed);
 
         return lastLocFlushed == null ||
-                lastLocFlushed.compareContigs(genomeLocParser.createGenomeLoc(earliestPosition)) != 0 ||
-                lastLocFlushed.distance(genomeLocParser.createGenomeLoc(earliestPosition)) > maxInsertSizeForMovingReadPairs;
+                ! lastLocFlushed.getContig().equals(earliestPosition.getContig()) ||
+                ! lastLocFlushed.overlapsWithMargin(earliestPosition, maxInsertSizeForMovingReadPairs);
     }
 
     private boolean noReadCanMoveBefore(int pos, GATKRead addedRead) {
@@ -195,7 +194,7 @@ public class ConstrainedMateFixingManager {
             }
 
             GATKRead lastRead = remove(waitingReads);
-            lastLocFlushed = ReadUtils.getAssignedReferenceIndex(lastRead, header) == -1 ? null : genomeLocParser.createGenomeLoc(lastRead);
+            lastLocFlushed = ReadUtils.getAssignedReferenceIndex(lastRead, header) == -1 ? null : new SimpleInterval(lastRead);
             writeRead(lastRead);
 
             if ( !tooManyReads )
