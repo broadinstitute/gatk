@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.broadinstitute.hellbender.BwaMemTestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -24,15 +27,16 @@ public class BwaMemIndexImageCreatorIntegrationTest extends CommandLineProgramTe
 
         final File tempImage = BaseTest.createTempFile("tempBwaMemIndexImage", ".img");
         final List<String> args = new ArrayList<>(Arrays.asList(
-                "--input", testReferenceFasta.getAbsolutePath(),
-                "--output", tempImage.getAbsolutePath()));
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, testReferenceFasta.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempImage.getAbsolutePath()));
         runCommandLine(args);
 
         // piggy-backing on the existing integration test
         try( final BwaMemIndex index = new BwaMemIndex(tempImage.getAbsolutePath()) ){
             BwaMemTestUtils.assertCorrectSingleReadAlignment(index);
             BwaMemTestUtils.assertCorrectChimericContigAlignment(index);
+        } finally {
+            try { tempImage.delete(); } catch (final Throwable t) {};
         }
     }
-
 }
