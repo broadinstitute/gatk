@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
+import javafx.collections.transformation.SortedList;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -20,8 +21,11 @@ import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
@@ -31,12 +35,81 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.utils.IntervalUtils.convertSimpleIntervalToQueryInterval;
 import static org.broadinstitute.hellbender.utils.IntervalUtils.overlaps;
 
 /**
  * Utility methods for sharding {@link Locatable} objects (such as reads) for given intervals, without using a shuffle.
  */
 public class SparkSharder {
+
+    private final JavaSparkContext ctx;
+    private final SAMSequenceDictionary sequenceDictionary;
+    private final IntervalsSkipList<ShardBoundary> shards;
+    private final List<ShardBoundary> shardList;
+    private final int maxLocatableLength;
+
+    /**
+     * Creates an {@link SparkSharder} instance.
+     * <p>
+     *     Subsequent class to instance methods will use the common parameter passed to the constructor:
+     *     the {@link JavaSparkContext spark-context}, {@link SAMSequenceDictionary sequence-dictionary},
+     *     {@link List<ShardBoundary> shard-intervals} and maximum locatable length.
+     * </p>
+     *
+     * @param ctx the underlying {@link JavaSparkContext}.
+     * @param sequenceDictionary dictionary.
+     * @param intervals
+     * @param maxLocatableLength
+     */
+    public SparkSharder(final JavaSparkContext ctx, final SAMSequenceDictionary sequenceDictionary,
+                        final Collection<ShardBoundary> intervals, final int maxLocatableLength) {
+        this.ctx = Utils.nonNull(ctx);
+        this.sequenceDictionary = Utils.nonNull(sequenceDictionary);
+        this.shards = new IntervalsSkipList<>(Utils.nonNull(intervals, "the input shard intervals list must be greater than 0"));
+        this.maxLocatableLength = ParamUtils.isPositive(maxLocatableLength, "the maximum locatable length must be greater than 0");
+        this.shardList = Utils.stream(shards).collect(Collectors.toList());
+        assertShardAndDictionaryMatch(sequenceDictionary, shards);
+    }
+
+   // public SparkSharder(final JavaSparkContext ctx, final SAMSequenceDictionary sequenceDictionary,
+   //                     final List<SimpleInterval> intervals,
+   //                     final int shardSize, final int shardPadding, final int maxLocatableLength) {
+   //     this(ctx, sequenceDictionary, divideIntoShards(sequenceDictionary, shardSize, shardPadding), maxLocatableLength);
+   // }
+
+    private static Collection<ShardBoundary> divideIntoShards(final SAMSequenceDictionary sequenceDictionary, final List<SimpleInterval> intervals, final int shardSize, final int shardPadding) {
+        Utils.nonNull(sequenceDictionary);
+        ParamUtils.isPositive(shardSize, "the shard size must be positive");
+        ParamUtils.isPositive(shardPadding, "the shard padding must be positive");
+        return null;
+     //   return IntervalUtils.mergeIntervalLocations() sequenceDictionary.getSequences().stream()
+     //           .map(seq -> new SimpleInterval(seq.getSequenceName(), 1, seq.getSequenceLength()))
+     //           .flatMap(ivl -> Shard.divideIntervalIntoShards(ivl, shardSize, shardPadding, sequenceDictionary).stream())
+     //           .collect(Collectors.toList());
+    }
+
+    /**
+     * Create an RDD of {@link Shard} from an RDD of coordinate sorted {@link Locatable} <i>without using a shuffle</i>.
+     * Each shard contains the {@link Locatable} objects that overlap it (including overlapping only padding).
+     * @param locatables the RDD of {@link Locatable}, must be coordinate sorted
+     * @param locatableClass the class of the {@link Locatable} objects in the RDD
+     * @param <L> the {@link Locatable} type
+     * @return an RDD of {@link Shard} of overlapping {@link Locatable} objects (including overlapping only padding)
+     */
+    public <L extends Locatable> JavaRDD<Shard<L>> shard(final JavaRDD<L> locatables, final Class<L> locatableClass) {
+        return shard(ctx, locatables, locatableClass, sequenceDictionary, shardList, maxLocatableLength, false);
+    }
+
+    private static void assertShardAndDictionaryMatch(final SAMSequenceDictionary sequenceDictionary, final IntervalsSkipList<ShardBoundary> shards) {
+        for (final ShardBoundary shard : shards) {
+            if (!IntervalUtils.intervalIsOnDictionaryContig(shard.getPaddedInterval(), sequenceDictionary)) {
+                throw new IllegalArgumentException("the shard-boundary collection contains elements that either make " +
+                        "reference to a unknown contig or are beyond the enclosing contig length: " + shard);
+            }
+        }
+    }
+
     /**
      * Create an RDD of {@link Shard} from an RDD of coordinate sorted {@link Locatable} <i>without using a shuffle</i>.
      * Each shard contains the {@link Locatable} objects that overlap it (including overlapping only padding).

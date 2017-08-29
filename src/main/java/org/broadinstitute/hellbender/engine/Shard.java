@@ -51,6 +51,8 @@ public interface Shard<T> extends Iterable<T>, Locatable {
         return getInterval().getContig();
     }
 
+
+
     /**
      * Divide an interval into ShardBoundaries. Each shard will cover up to shardSize bases, include shardPadding
      * bases of extra padding on either side, and begin shardSize bases after the previous shard (ie., shards will

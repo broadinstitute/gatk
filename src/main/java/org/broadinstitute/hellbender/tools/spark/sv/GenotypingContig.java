@@ -12,12 +12,12 @@ import java.util.Map;
  */
 public class GenotypingContig {
 
-    public final Map<Haplotype, AlignedContig> haplotypeAlignments;
+  //  public final Map<Haplotype, AlignedContig> haplotypeAlignments;
 
-    public final Map<Haplotype, AlignedContigScore> haplotypeScores;
+   // public final Map<Haplotype, AlignedContigScore> haplotypeScores;
 
-    public final Haplotype call;
+    //public final Haplotype call;
 
-    public final int qual;
+    //public final int qual;
 
 }
