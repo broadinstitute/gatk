@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -225,29 +224,6 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             return new IntervalDepthIterator(interval, sharedBarcodeIntervals);
 
         });
-
-        allIntervalPairOverlaps.mapPartitions(iter -> {
-            SVInterval currentInterval = null;
-            SVIntervalTree<Integer> trackedTargets = new SVIntervalTree<>();
-            while (iter.hasNext()) {
-                Tuple2<Tuple2<SVInterval, SVInterval>, Integer> next = iter.next();
-                if (currentInterval == null) {
-                    currentInterval = next._1()._1();
-                    trackedTargets.put(next._1()._2(), next._2());
-                } else {
-                    final SVInterval newSource = next._1()._1();
-                    if (currentInterval.gapLen(newSource) == 1) {
-                        currentInterval = currentInterval.join(newSource);
-
-
-                        trackedTargets.overlappers()
-
-                    } else {
-
-                    }
-                }
-            }
-        })
 
         JavaPairRDD<Tuple2<SVInterval, SVInterval>, Integer> filteredPairedOverlaps = allIntervalPairOverlaps.filter(kv -> kv._2() > 1);
         filteredPairedOverlaps.repartition(1).saveAsTextFile("foobar");
@@ -966,7 +942,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         }
     }
 
-    private class IntervalDepthIterator implements Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, Integer>> {
+    @VisibleForTesting
+    static class IntervalDepthIterator implements Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, Integer>> {
         private final SVInterval interval;
         private final Iterator<Integer> contigIterator;
         private int currentDepth;
@@ -1063,5 +1040,130 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         }
     }
 
+    @VisibleForTesting
+    static class PairedRegionCollapsingIterator implements Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap>> {
+        private final Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, Integer>> intervalDepthIterator;
+        private final int minDepth;
+
+        private SVInterval source = null;
+        private SVIntervalTree<BarcodeOverlap> targets = new SVIntervalTree<>();
+
+        private Tuple2<Tuple2<SVInterval, SVInterval>, Integer> nextInput = null;
+        private SVIntervalTree<Integer> nextChunk = new SVIntervalTree<>();
+        private SVInterval nextChunkSource = null;
+        private Queue<Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap>> nextOutputs = new ArrayDeque<>();
+
+        public PairedRegionCollapsingIterator(final Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, Integer>> intervalDepthIterator, final int minDepth) {
+            this.intervalDepthIterator = intervalDepthIterator;
+            this.minDepth = minDepth;
+
+            readFirstChunk();
+            while(nextOutputs.isEmpty() && nextChunkSource != null) {
+                advance();
+            }
+        }
+
+        private void readFirstChunk() {
+            boolean first = true;
+            while (intervalDepthIterator.hasNext()) {
+                nextInput = intervalDepthIterator.next();
+                if (first) {
+                    source = nextInput._1._1;
+                    first = false;
+                }
+                if (nextInput._1()._1().equals(source)) {
+                    targets.put(nextInput._1._2, new BarcodeOverlap(nextInput._1._2, nextInput._2));
+                } else {
+                    nextChunkSource = nextInput._1._1;
+                    break;
+                }
+            }
+            if (nextChunkSource == null) {
+                targets.forEach(e -> nextOutputs.add(new Tuple2<>(new Tuple2<>(source, e.getInterval()), e.getValue())));
+            }
+        }
+
+        private void advance() {
+            readInputChunk();
+            joinChunk();
+        }
+
+        private void readInputChunk() {
+            nextChunk.clear();
+            nextChunk.put(nextInput._1()._2(), nextInput._2());
+            nextInput = null;
+            while (intervalDepthIterator.hasNext()) {
+                nextInput = intervalDepthIterator.next();
+                if (nextInput._1()._1().equals(nextChunkSource)) {
+                    nextChunk.put(nextInput._1()._2(), nextInput._2());
+                } else {
+                    break;
+                }
+            }
+        }
+
+        private void joinChunk() {
+            if (nextChunkSource != null && source.gapLen(nextChunkSource) == 0) {
+                final List<Tuple2<SVInterval, BarcodeOverlap>> unmatchedTargets = new ArrayList<>();
+                final List<Tuple2<SVInterval, BarcodeOverlap>> matchedAndExtendedTargets = new ArrayList<>();
+                Iterator<SVIntervalTree.Entry<BarcodeOverlap>> targetIterator = targets.iterator();
+                while (targetIterator.hasNext()) {
+                    final SVIntervalTree.Entry<BarcodeOverlap> nextTarget = targetIterator.next();
+                    final SVInterval interval = nextTarget.getInterval();
+                    final Iterator<SVIntervalTree.Entry<Integer>> chunkOverlappers =
+                            nextChunk.overlappers(new SVInterval(interval.getContig(), interval.getStart(), interval.getEnd() + 1));
+                    if (chunkOverlappers.hasNext()) {
+                        SVIntervalTree.Entry<Integer> chunkOverlapper = chunkOverlappers.next();
+                        final SVInterval newTargetInterval = interval.join(chunkOverlapper.getInterval());
+                        BarcodeOverlap value = nextTarget.getValue();
+                        value.values.add(new Tuple2<>(chunkOverlapper.getInterval(), chunkOverlapper.getValue()));
+                        matchedAndExtendedTargets.add(new Tuple2<>(newTargetInterval, value));
+                        chunkOverlappers.remove();
+                    } else {
+                        unmatchedTargets.add(new Tuple2<>(nextTarget.getInterval(), nextTarget.getValue()));
+                    }
+                    targetIterator.remove();
+                }
+                //Utils.validate(targets.size() == 0, "Unmatched targets");
+                nextChunk.forEach(e -> targets.put(e.getInterval(), new BarcodeOverlap(e.getInterval(), e.getValue())));
+                unmatchedTargets.forEach(e -> nextOutputs.add(new Tuple2<>(new Tuple2<>(source, e._1), e._2)));
+                matchedAndExtendedTargets.forEach(e -> targets.put(e._1(), e._2()));
+                source = source.join(nextChunkSource);
+            } else {
+                targets.forEach(e -> nextOutputs.add(new Tuple2<>(new Tuple2<>(source, e.getInterval()), e.getValue())));
+                targets.clear();
+                source = nextChunkSource;
+            }
+            if (nextInput != null) {
+                nextChunkSource = nextInput._1._1;
+            } else {
+                targets.forEach(e -> nextOutputs.add(new Tuple2<>(new Tuple2<>(source, e.getInterval()), e.getValue())));
+            }
+        }
+
+        @Override
+        public boolean hasNext() {
+            return ! nextOutputs.isEmpty();
+        }
+
+        @Override
+        public Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap> next() {
+            Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap> next = nextOutputs.poll();
+            if (nextOutputs.isEmpty()) {
+                while (nextOutputs.isEmpty() && intervalDepthIterator.hasNext()) {
+                    advance();
+                }
+            }
+            return next;
+        }
+    }
+
+    static class BarcodeOverlap {
+        final List<Tuple2<SVInterval, Integer>> values = new ArrayList<>();
+
+        public BarcodeOverlap(final SVInterval target, final Integer value) {
+            values.add(new Tuple2<>(target, value));
+        }
+    }
 }
 
