@@ -226,6 +226,29 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         });
 
+        allIntervalPairOverlaps.mapPartitions(iter -> {
+            SVInterval currentInterval = null;
+            SVIntervalTree<Integer> trackedTargets = new SVIntervalTree<>();
+            while (iter.hasNext()) {
+                Tuple2<Tuple2<SVInterval, SVInterval>, Integer> next = iter.next();
+                if (currentInterval == null) {
+                    currentInterval = next._1()._1();
+                    trackedTargets.put(next._1()._2(), next._2());
+                } else {
+                    final SVInterval newSource = next._1()._1();
+                    if (currentInterval.gapLen(newSource) == 1) {
+                        currentInterval = currentInterval.join(newSource);
+
+
+                        trackedTargets.overlappers()
+
+                    } else {
+
+                    }
+                }
+            }
+        })
+
         JavaPairRDD<Tuple2<SVInterval, SVInterval>, Integer> filteredPairedOverlaps = allIntervalPairOverlaps.filter(kv -> kv._2() > 1);
         filteredPairedOverlaps.repartition(1).saveAsTextFile("foobar");
 
