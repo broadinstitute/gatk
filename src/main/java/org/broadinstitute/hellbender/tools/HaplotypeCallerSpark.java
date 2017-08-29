@@ -121,17 +121,52 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        // Reads must be coordinate sorted to use the overlaps partitioner
-        final SAMFileHeader readsHeader = getHeaderForReads().clone();
-        readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        final JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.coordinateSortReads(getReads(), readsHeader, numReducers);
+        final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
+        callVariantsWithHaplotypeCallerAndWriteOutput(getAuthHolder(), ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output);
+    }
 
-        final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
-        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
-        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(getAuthHolder(), ctx, coordinateSortedReads, readsHeader, getReference(), intervals, hcArgs, shardingArgs);
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        return HaplotypeCallerEngine.makeStandardHCReadFilters();
+    }
+
+    /**
+     * Call Variants using HaplotypeCaller on Spark and write out a VCF file.
+     *
+     * This may be called from any spark pipeline in order to call variants from an RDD of GATKRead
+     *
+     * @param authHolder authorization needed for the reading the reference
+     * @param ctx the spark context
+     * @param reads the reads variants should be called from
+     * @param header the header that goes with the reads
+     * @param reference the reference to use when calling
+     * @param intervals the intervals to restrict calling to
+     * @param hcArgs haplotype caller arguments
+     * @param shardingArgs arguments to control how the assembly regions are sharded
+     * @param numReducers the number of reducers to use when sorting
+     * @param output the output path for the VCF
+     */
+    public static void callVariantsWithHaplotypeCallerAndWriteOutput(
+            final AuthHolder authHolder,
+            final JavaSparkContext ctx,
+            final JavaRDD<GATKRead> reads,
+            final SAMFileHeader header,
+            final ReferenceMultiSource reference,
+            final List<SimpleInterval> intervals,
+            final HaplotypeCallerArgumentCollection hcArgs,
+            final ShardingArgumentCollection shardingArgs,
+            final int numReducers,
+            final String output) {
+        // Reads must be coordinate sorted to use the overlaps partitioner
+        final SAMFileHeader readsHeader = header.clone();
+        readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        final JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.coordinateSortReads(reads, readsHeader, numReducers);
+
+        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference, authHolder));
+        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(authHolder, ctx, coordinateSortedReads, readsHeader, reference, intervals, hcArgs, shardingArgs);
         if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF) {
             // VariantsSparkSink/Hadoop-BAM VCFOutputFormat do not support writing GVCF, see https://github.com/broadinstitute/gatk/issues/2738
-            writeVariants(variants, hcEngine);
+            writeVariants(output, variants, hcEngine, readsHeader.getSequenceDictionary());
         } else {
             variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
             try {
@@ -140,11 +175,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
                 throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
             }
         }
-    }
-
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        return HaplotypeCallerEngine.makeStandardHCReadFilters();
     }
 
     /**
@@ -236,30 +266,17 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      *
      * This will be replaced by a parallel writer similar to what's done with {@link org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink}
      */
-    private void writeVariants(JavaRDD<VariantContext> variants, HaplotypeCallerEngine hcEngine) {
+    private static void writeVariants(String outputFile, JavaRDD<VariantContext> variants, HaplotypeCallerEngine hcEngine, SAMSequenceDictionary sequenceDictionary) {
         final List<VariantContext> collectedVariants = variants.collect();
-        final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
 
         final List<VariantContext> sortedVariants = collectedVariants.stream()
-            .sorted((o1, o2) -> IntervalUtils.compareLocatables(o1, o2, referenceDictionary))
+            .sorted((o1, o2) -> IntervalUtils.compareLocatables(o1, o2, sequenceDictionary))
             .collect(Collectors.toList());
 
-        try(final VariantContextWriter writer = hcEngine.makeVCFWriter(output, getBestAvailableSequenceDictionary())) {
-            hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary(), new HashSet<>());
+        try(final VariantContextWriter writer = hcEngine.makeVCFWriter(outputFile, sequenceDictionary)) {
+            hcEngine.writeHeader(writer, sequenceDictionary, new HashSet<>());
             sortedVariants.forEach(writer::add);
         }
-    }
-
-    /**
-     * @return an {@link OverlapDetector} loaded with {@link ShardBoundary}
-     * based on the -L intervals
-     */
-    private static OverlapDetector<ShardBoundary> getShardBoundaryOverlapDetector(final SAMFileHeader header, final List<SimpleInterval> intervals, final int readShardSize, final int readShardPadding) {
-        final OverlapDetector<ShardBoundary> shardBoundaryOverlapDetector = new OverlapDetector<>(0, 0);
-        intervals.stream()
-                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, header.getSequenceDictionary()).stream())
-                .forEach(boundary -> shardBoundaryOverlapDetector.addLhs(boundary, boundary.getPaddedInterval()));
-        return shardBoundaryOverlapDetector;
     }
 
     /**
