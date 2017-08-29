@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.spark.api.java.JavaRDD;
@@ -320,21 +319,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             ReferenceMultiSourceAdapter referenceSource,
             HaplotypeCallerEngine evaluator) {
         return shard -> {
-            final ReferenceContext refContext = new ReferenceContext(referenceSource, shard.getPaddedInterval());
-
             //TODO load features as a side input
-            final FeatureContext features = new FeatureContext();
+            final FeatureManager featureManager = null;
 
-            // TODO: this should use the new AssemblyRegionIterator instead of AssemblyRegion.createFromReadShard(),
-            // TODO: since AssemblyRegion.createFromReadShard() slurps all reads in the shard into memory at once,
-            // TODO: whereas AssemblyRegionIterator loads the reads from the shard as lazily as possible.
-            final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(
-                    shard, header, refContext, features, evaluator,
-                    assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize,
-                    assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold,
-                    assemblyArgs.maxProbPropagationDistance);
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance);
 
-            return StreamSupport.stream(assemblyRegions.spliterator(), false)
+            return iteratorToStream(assemblyRegionIter)
                     .map(a -> new Tuple2<>(a, shard.getInterval()));
         };
     }
