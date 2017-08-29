@@ -231,9 +231,9 @@ public class UserException extends RuntimeException {
         }
 
         public MissingReferenceDictFile( final String fastaFile ) {
-            String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
+            super(String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
                     fastaFile,
-                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference"));
+                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
     }
 
