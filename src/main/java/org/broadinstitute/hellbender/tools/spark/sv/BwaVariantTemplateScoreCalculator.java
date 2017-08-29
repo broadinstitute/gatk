@@ -93,7 +93,7 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
             final File referenceImage = composeReference(table.haplotypes().get(i));
             final BwaSparkEngine bwa = prepareBwaEngine(referenceImage, samHeader, referenceDictionary);
             final JavaRDD<GATKRead> bwaInputReads = unmappedReads.partitionBy(new HashPartitioner(1)).values().sortBy(r -> r.getName(), true, 1);
-            final JavaRDD<GATKRead> mappedReads = bwa.align(bwaInputReads).filter(r -> !r.isSecondaryAlignment() && !r.isSupplementaryAlignment());
+            final JavaRDD<GATKRead> mappedReads = bwa.alignPaired(bwaInputReads).filter(r -> !r.isSecondaryAlignment() && !r.isSupplementaryAlignment());
             //final Set<String> withSupplementary = mappedReads.filter(GATKRead::isSupplementaryAlignment).map(GATKRead::getName).collect().stream()
             //        .collect(Collectors.toSet());
             //final Broadcast<Set<String>> withSupplementaryBC = ctx.broadcast(withSupplementary);
@@ -366,7 +366,7 @@ public class BwaVariantTemplateScoreCalculator implements StructuralVariantTempl
                     // nothing to do here, just loop again.
                 }
             }
-            BwaMemIndex.createIndexImage(fasta.getAbsolutePath(), img.getAbsolutePath());
+            BwaMemIndex.createIndexImageFromFastaFile(fasta.getAbsolutePath(), img.getAbsolutePath());
             FileUtils.deleteDirectory(dir);
             return img;
         } catch (final IOException ex) {

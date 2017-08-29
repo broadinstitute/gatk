@@ -12,13 +12,13 @@ import java.util.List;
  */
 public class StructuralVariantGenotypingContext implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+   // private static final long serialVersionUID = 1L;
 
-    public final StructuralVariantContext variant;
+   // public final StructuralVariantContext variant;
 
-    public final List<Tuple2<GATKRead, GATKRead>> readPairs;
+   // public final List<Tuple2<GATKRead, GATKRead>> readPairs;
 
-    public final List<Haplotype> haplotypes;
+   // public final List<Haplotype> haplotypes;
 
-    public final List<GenotypingContig> contigs;
+   // public final List<GenotypingContig> contigs;
 }

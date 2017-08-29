@@ -18,14 +18,12 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariant
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.utils.ShardedPairRDD;
-import org.broadinstitute.hellbender.tools.spark.utils.ShardedRDD;
-import org.broadinstitute.hellbender.tools.spark.utils.SparkSharder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
@@ -116,15 +114,15 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .map(StructuralVariantContext::new);
 
-        final SparkSharder sharder = new SparkSharder(ctx, getReference(), getIntervals(), shardSize, paddingSize);
+//        final SparkSharder sharder = new SparkSharder(ctx, getReference(), getIntervals(), 10000);
 
-        final ShardedRDD<GATKRead> sharedReads = sharder.shard(haplotypeAndContigs, null);
-        final ShardedRDD<StructuralVariantContext> sharedVCs = sharder.shard(variants, null);
-        final ShardedPairRDD<StructuralVariantContext, GATKRead> variantsAndHaplotypes = sharder.join(sharedVCs, sharedReads);
-        final JavaPairRDD<StructuralVariantContext, List<GATKRead>> matchedVariantsAndHaplotypes = variantsAndHaplotypes.matchLeft(
-                (a, r) -> { r.hasAttribute("VC") && r.getAttributeAsString("VC").equals(a.getUniqueID())}
-        final JavaPairRDD<StructuralVariantGenotypingContext, Tuple2<List<GenotypingContig> contigs>
-        final JavaPairRDD<StructuralVariantContext, List<GATKRead>> sharedReads.groupByRight((r,l) -> r.overlaps(l), );
+//        final SparkSharder.ShardedRDD<GATKRead> sharedReads = sharder.shard(haplotypeAndContigs, null);
+//        final SparkSharder.ShardedRDD<StructuralVariantContext> sharedVCs = sharder.shard(variants, null);
+//        final ShardedPairRDD<StructuralVariantContext, GATKRead> variantsAndHaplotypes = sharder.join(sharedVCs, sharedReads);
+//        final JavaPairRDD<StructuralVariantContext, List<GATKRead>> matchedVariantsAndHaplotypes = variantsAndHaplotypes.matchLeft(
+//                (a, r) -> { r.hasAttribute("VC") && r.getAttributeAsString("VC").equals(a.getUniqueID())}
+//        final JavaPairRDD<StructuralVariantGenotypingContext, Tuple2<List<GenotypingContig> contigs>
+  ///      final JavaPairRDD<StructuralVariantContext, List<GATKRead>> sharedReads.groupByRight((r,l) -> r.overlaps(l), );
 
         final JavaPairRDD<SimpleInterval, GATKRead> readsPerShard;
         final JavaPairRDD<SimpleInterval, StructuralVariantContext> variantsPerShard;
