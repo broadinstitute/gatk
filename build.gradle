@@ -52,12 +52,16 @@ repositories {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
 
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots" //for Hadoop-BAM snapshots
+    }
+
     mavenLocal()
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.11.0-4-g958dc6e-SNAPSHOT')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
-final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.0')
+final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.1-SNAPSHOT')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.6.4-proto-3.0.0-beta-1')
 final testNGVersion = '6.11'
 
