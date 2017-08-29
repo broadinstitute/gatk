@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -169,13 +170,12 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             ReferenceDataSource reference = bReferenceSource == null ? null :
                     new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(assemblyRegionPaddedInterval), sequenceDictionary);
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
-            ReferenceContext referenceContext = new ReferenceContext(reference, paddedInterval);
-            FeatureContext featureContext = new FeatureContext(features, paddedInterval);
 
-            final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shardedRead,
-                    header, referenceContext, featureContext, evaluator,
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shardedRead,
+                    header, reference, features, evaluator,
                     minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
                     maxProbPropagationDistance);
+            Iterable<AssemblyRegion> assemblyRegions = () -> assemblyRegionIter;
             return StreamSupport.stream(assemblyRegions.spliterator(), false).map(assemblyRegion ->
                     new AssemblyRegionWalkerContext(assemblyRegion,
                         new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),

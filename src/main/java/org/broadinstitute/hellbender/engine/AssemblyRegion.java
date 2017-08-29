@@ -4,20 +4,13 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.PeekableIterator;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
-import org.broadinstitute.hellbender.utils.activityprofile.BandPassActivityProfile;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
-import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
-import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -500,151 +493,4 @@ public final class AssemblyRegion implements Locatable {
         return hasBeenFinalized;
     }
 
-    /**
-     * Divide a read shard up into one or more AssemblyRegions using the provided AssemblyRegionEvaluator to find
-     * the borders between "active" and "inactive" regions within the shard.
-     *
-     * DEPRECATED: Use the new AssemblyRegionIterator instead of AssemblyRegion.createFromReadShard(),
-     *             since AssemblyRegion.createFromReadShard() slurps all reads in the shard into memory at once,
-     *             whereas AssemblyRegionIterator loads the reads from the shard as lazily as possible.
-     *
-     * @param shard Shard to divide into assembly regions
-     * @param readsHeader header for the reads
-     * @param referenceContext reference data overlapping the shard's extended span (including padding)
-     * @param features features overlapping the shard's extended span (including padding)
-     * @param evaluator AssemblyRegionEvaluator used to label each locus as either active or inactive
-     * @param minRegionSize minimum size for each assembly region
-     * @param maxRegionSize maximum size for each assembly region
-     * @param assemblyRegionPadding each assembly region will be padded by this amount on each side
-     * @param activeProbThreshold minimum probability for a site to be considered active, as reported by the provided evaluator
-     * @param maxProbPropagationDistance maximum number of bases probabilities can propagate in each direction when finding region boundaries
-     * @return a Iterable over one or more AssemblyRegions, each marked as either "active" or "inactive", spanning
-     *         part of the provided Shard, and filled with all reads that overlap the region.
-     */
-    public static Iterable<AssemblyRegion> createFromReadShard( final Shard<GATKRead> shard,
-                                                                final SAMFileHeader readsHeader,
-                                                                final ReferenceContext referenceContext,
-                                                                final FeatureContext features,
-                                                                final AssemblyRegionEvaluator evaluator,
-                                                                final int minRegionSize,
-                                                                final int maxRegionSize,
-                                                                final int assemblyRegionPadding,
-                                                                final double activeProbThreshold,
-                                                                final int maxProbPropagationDistance ) {
-        Utils.nonNull(shard);
-        Utils.nonNull(readsHeader);
-        Utils.nonNull(referenceContext);
-        Utils.nonNull(features);
-        Utils.nonNull(evaluator);
-        Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
-        Utils.validateArg(maxRegionSize >= 1, "maxRegionSize must be >= 1");
-        Utils.validateArg(minRegionSize <= maxRegionSize, "minRegionSize must be <= maxRegionSize");
-        Utils.validateArg(assemblyRegionPadding >= 0, "assemblyRegionPadding must be >= 0");
-        Utils.validateArg(activeProbThreshold >= 0.0, "activeProbThreshold must be >= 0.0");
-        Utils.validateArg(maxProbPropagationDistance >= 0, "maxProbPropagationDistance must be >= 0");
-
-        // TODO: refactor this method so that we don't need to load all reads from the shard into memory at once!
-        final List<GATKRead> windowReads = new ArrayList<>();
-        for ( final GATKRead read : shard ) {
-            windowReads.add(read);
-        }
-
-        final LocusIteratorByState locusIterator = new LocusIteratorByState(windowReads.iterator(), DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(readsHeader), readsHeader, false);
-        final ActivityProfile activityProfile = new BandPassActivityProfile(null, maxProbPropagationDistance, activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readsHeader);
-
-        // First, use our activity profile to determine the bounds of each assembly region:
-        List<AssemblyRegion> assemblyRegions = determineAssemblyRegionBounds(shard, locusIterator, activityProfile, readsHeader, referenceContext, features, evaluator, minRegionSize, maxRegionSize, assemblyRegionPadding);
-
-        // Then, fill the assembly regions with overlapping reads from the shard:
-        final PeekableIterator<GATKRead> reads = new PeekableIterator<>(windowReads.iterator());
-        fillAssemblyRegionsWithReads(assemblyRegions, reads);
-
-        return assemblyRegions;
-    }
-
-    /**
-     * Helper method for {@link #createFromReadShard} that uses the provided activity profile and locus iterator
-     * to generate a set of assembly regions covering the fully-padded span of the provided Shard. The returned
-     * assembly regions will not contain any reads.
-     *
-     * @param shard Shard to divide into assembly regions
-     * @param locusIterator Iterator over pileups to be fed to the AssemblyRegionEvaluator
-     * @param activityProfile Activity profile to generate the assembly regions
-     * @param readsHeader header for the reads
-     * @param referenceContext reference data overlapping the shard's extended span (including padding)
-     * @param features features overlapping the shard's extended span (including padding)
-     * @param evaluator AssemblyRegionEvaluator used to label each locus as either active or inactive
-     * @param minRegionSize minimum size for each assembly region
-     * @param maxRegionSize maximum size for each assembly region
-     * @param assemblyRegionPadding each assembly region will be padded by this amount on each side
-     * @return A list of AssemblyRegions covering
-     */
-    private static List<AssemblyRegion> determineAssemblyRegionBounds( final Shard<GATKRead> shard,
-                                                                       final LocusIteratorByState locusIterator,
-                                                                       final ActivityProfile activityProfile,
-                                                                       final SAMFileHeader readsHeader,
-                                                                       final ReferenceContext referenceContext,
-                                                                       final FeatureContext features,
-                                                                       final AssemblyRegionEvaluator evaluator,
-                                                                       final int minRegionSize,
-                                                                       final int maxRegionSize,
-                                                                       final int assemblyRegionPadding ) {
-
-        // Use the provided activity profile to determine the bounds of each assembly region:
-        List<AssemblyRegion> assemblyRegions = new ArrayList<>();
-        locusIterator.forEachRemaining(pileup -> {
-            if ( ! activityProfile.isEmpty() ) {
-                final boolean forceConversion = pileup.getLocation().getStart() != activityProfile.getEnd() + 1;
-                assemblyRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionPadding, minRegionSize, maxRegionSize, forceConversion));
-            }
-
-            if ( shard.getPaddedInterval().contains(pileup.getLocation()) ) {
-                final SimpleInterval pileupInterval = new SimpleInterval(pileup.getLocation());
-                final ReferenceBases refBase = new ReferenceBases(new byte[]{referenceContext.getBases()[pileup.getLocation().getStart() - referenceContext.getWindow().getStart()]}, pileupInterval);
-                final ReferenceContext pileupRefContext = new ReferenceContext(new ReferenceMemorySource(refBase, readsHeader.getSequenceDictionary()), pileupInterval);
-
-                final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, features);
-                activityProfile.add(profile);
-            }
-        });
-
-        assemblyRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionPadding, minRegionSize, maxRegionSize, true));
-
-        return assemblyRegions;
-    }
-
-    /**
-     * Helper method for {@link #createFromReadShard} that fills the given AssemblyRegions with overlapping reads from the
-     * provided iterator. The AssemblyRegions and the reads must both be sorted in order of ascending location.
-     *
-     * @param assemblyRegions List of AssemblyRegions to fill with reads. Must be sorted in order of ascending location.
-     * @param reads Peekable iterator over reads. Must be sorted in order of ascending location.
-     */
-    private static void fillAssemblyRegionsWithReads( final List<AssemblyRegion> assemblyRegions, final PeekableIterator<GATKRead> reads ) {
-        AssemblyRegion previousRegion = null;
-        for ( final AssemblyRegion region : assemblyRegions ) {
-            // Before examining new reads, check the previous region to see if any of its reads overlap the current region
-            if ( previousRegion != null ) {
-                for ( final GATKRead previousRegionRead : previousRegion.getReads() ) {
-                    if ( region.getExtendedSpan().overlaps(previousRegionRead) ) {
-                        region.add(previousRegionRead);
-                    }
-                }
-            }
-
-            // Then pull new reads from our iterator and add them to the current region until we advance past the
-            // extended span of the current region
-            while ( reads.hasNext() ) {
-                final GATKRead read = reads.peek();
-                if ( region.getExtendedSpan().overlaps(read) ) {
-                    region.add(reads.next());
-                }
-                else {
-                    break;
-                }
-            }
-
-            previousRegion = region;
-        }
-    }
 }
