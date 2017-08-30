@@ -171,14 +171,8 @@ public final class AlignedAssemblyOrExcuse {
         intervalDispositions.forEach(alignedAssemblyOrExcuse ->
                 resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
 
-<<<<<<< HEAD
-
         try ( final OutputStreamWriter writer =
                       new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile))) ) {
-=======
-        try (final OutputStreamWriter writer =
-                     new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile)))) {
->>>>>>> 2114136... asm
             final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
             final int nIntervals = intervals.size();
             for (int intervalId = 0; intervalId != nIntervals; ++intervalId) {

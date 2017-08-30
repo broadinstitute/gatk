@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import htsjdk.samtools.*;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.hadoop.io.MD5Hash;
 import org.bdgenomics.formats.avro.StructuralVariant;
 import org.bdgenomics.formats.avro.StructuralVariantType;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -30,6 +31,9 @@ import java.util.stream.Collectors;
 public class StructuralVariantContext extends VariantContext {
 
     private static final long serialVersionUID = 1L;
+
+
+    private String uid;
 
     protected StructuralVariantContext(final VariantContext other) {
         super(other);
@@ -92,7 +96,6 @@ public class StructuralVariantContext extends VariantContext {
                     return composeDeletionHaplotype(bases);
                 default: // not jet supported.
                     throw new UnsupportedOperationException("not supported yet");
-
             }
         }
     }
@@ -159,6 +162,24 @@ public class StructuralVariantContext extends VariantContext {
             return getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
         } else {
             throw new IllegalStateException("missing insertion length");
+        }
+    }
+
+    public String getUniqueID() {
+        if (uid == null) {
+            uid = "sv/" + contig + ":" + start + "/" + getStructuralVariantType().name() + "/" + getTypeSpecificUniqueIDPart();
+        }
+        return uid;
+    }
+
+    public String getTypeSpecificUniqueIDPart() {
+        switch (getStructuralVariantType()) {
+            case DEL:
+                return "len:" + getStructuralVariantLength();
+            case INS:
+                return "md5:" + MD5Hash.digest(getInsertedSequence()).halfDigest();
+            default:
+                throw new UnsupportedOperationException("only DEL and INS are currently supported");
         }
     }
 }
