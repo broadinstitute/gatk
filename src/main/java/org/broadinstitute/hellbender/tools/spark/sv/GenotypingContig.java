@@ -1,23 +1,82 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
-import java.util.Map;
+import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+
+import java.util.List;
 
 /**
  * Created by valentin on 8/25/17.
  */
-public class GenotypingContig {
+class GenotypingContig {
 
-  //  public final Map<Haplotype, AlignedContig> haplotypeAlignments;
+    class HaplotypeAlignment {
+        public final int score;
+        public final List<AlignmentInterval> intervals;
+        public final int numberOfMatches;
+        public final int numberOfMismatches;
+        public final int numberOfIndels;
+        public final int numberOfReversals;
+        public final int numberOfIndelBases;
 
-   // public final Map<Haplotype, AlignedContigScore> haplotypeScores;
+        public HaplotypeAlignmentScore(final String scoreString, final String alingmentString) {
+            final String[] parts = scoreString.split(",");
+            int nextIndex = 0;
+            score = Integer.parseInt(parts[nextIndex++]);
+            numberOfMatches = Integer.parseInt(parts[nextIndex++]);
+            numberOfMismatches = Integer.parseInt(parts[nextIndex++]);
+            numberOfIndels = Integer.parseInt(parts[nextIndex++]);
+            numberOfIndelBases = Integer.parseInt(parts[nextIndex++]);
+            numberOfReversals = Integer.parseInt(parts[nextIndex]);
+            intervals = parseAlignmentString(alingmentString);
+        }
 
-    //public final Haplotype call;
+        private List<AlignmentInterval> parseAlignmentString(final String alingmentString) {
+            final String[] alignments = alingmentString.replaceAll(";$","").split(";");
+        }
+    }
 
-    //public final int qual;
+    private final byte[] bases;
 
+    private final HaplotypeAlignment[] alignments;
+
+    public GenotypingContig(final GATKRead read) {
+        assertRecordIsValid(read);
+        this.bases = read.getBases();
+        final String refScore = getMantarodyAttributeAsString(read, "RS");
+        final String altScore = getMantarodyAttributeAsString(read, "XS");
+        final String refAlign = getMantarodyAttributeAsString(read, "RA");
+        final String altAlign = getMantarodyAttributeAsString(read, "AA");
+        alignments = new HaplotypeAlignment[] { new HaplotypeAlignment(refScore, refAlign), new HaplotypeAlignment(altScore, altAlign)};
+    }
+
+    public HaplotypeAlignment getHaplotypeAlignment(final int index) {
+        ParamUtils.inRange(index, 0, 1, "input index is out of range");
+        return alignments[index];
+    }
+
+    public byte[] getBases() {
+        return bases.clone();
+    }
+
+    private static GATKRead assertRecordIsValid(final GATKRead read) {
+        Utils.nonNull(read);
+        if (!read.isUnmapped() || read.isReverseStrand() || !read.getCigar().containsOperator(CigarOperator.H)) {
+            throw new IllegalArgumentException("the input read does is not a genotyping-contig record");
+        }
+        return read;
+    }
+
+    private static String getMantarodyAttributeAsString(final GATKRead read, final String name) {
+        final String result = read.getAttributeAsString(name);
+        if (result == null) {
+            throw new GATKException.MissingReadField(name, read);
+        }
+        return result;
+    }
 }

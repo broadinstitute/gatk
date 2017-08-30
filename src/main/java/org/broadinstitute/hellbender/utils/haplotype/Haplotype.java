@@ -11,6 +11,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.Arrays;
@@ -316,5 +317,22 @@ public final class Haplotype extends Allele {
             }
             return builder.toString();
         }
+    }
+
+    /**
+     * Transforms an {@link GATKRead} instance into a {@code Haplotype}.
+     * @param record the input record.
+     * @param isRef whether the result haplotype is considered reference ({@code true}) or an alternative haplotype ({@code false}).
+     * @throws IllegalArgumentException if {@code record} is {@code null}.
+     * @return never {@code null}
+     */
+    public static Haplotype fromGATKRead(final GATKRead record, final boolean isRef) {
+        Utils.nonNull(record);
+        final Haplotype result = new Haplotype(record.getBases(), isRef);
+        if (!record.isUnmapped()) {
+            result.setCigar(record.getCigar());
+            result.setGenomeLocation(new SimpleInterval(record.getContig(), record.getStart(), record.getEnd()));
+        }
+        return result;
     }
 }
