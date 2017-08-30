@@ -3,21 +3,13 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.tools.spark.linkedreads.CollectLinkedReadCoverageSpark.ReadInfo;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.LibraryStatistics;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.PartitionCrossingChecker;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.SVReadFilter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
@@ -25,7 +17,6 @@ import scala.Tuple2;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
@@ -212,9 +203,8 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(next._1._1, new SVInterval(1, 100, 200));
         Assert.assertEquals(next._1._2, new SVInterval(2, 200, 300));
         CollectLinkedReadCoverageSpark.BarcodeOverlap barcodeOverlap = next._2;
-        Assert.assertEquals(barcodeOverlap.values.size(), 1);
-        Assert.assertEquals(barcodeOverlap.values.get(0)._1, new SVInterval(2, 200, 300));
-        Assert.assertEquals(barcodeOverlap.values.get(0)._2.intValue(), 5);
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 1);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 200, 300)), 5);
 
         pairedInterval = new Tuple2<>(new SVInterval(1, 200, 300), new SVInterval(2, 300, 400));
         inputs.add(new Tuple2<>(pairedInterval, 6));
@@ -226,12 +216,8 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(next._1._1, new SVInterval(1, 100, 300));
         Assert.assertEquals(next._1._2, new SVInterval(2, 200, 400));
         barcodeOverlap = next._2;
-        Assert.assertEquals(barcodeOverlap.values.size(), 2);
-        Assert.assertEquals(barcodeOverlap.values.get(0)._1, new SVInterval(2, 200, 300));
-        Assert.assertEquals(barcodeOverlap.values.get(0)._2.intValue(), 5);
-
-        Assert.assertEquals(barcodeOverlap.values.get(1)._1, new SVInterval(2, 300, 400));
-        Assert.assertEquals(barcodeOverlap.values.get(1)._2.intValue(), 6);
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 1);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 200, 300)), 6);
 
         inputs.clear();
         inputs.add(new Tuple2<>(new Tuple2<>(new SVInterval(1, 100, 200), new SVInterval(2, 200, 300)), 5));
@@ -249,12 +235,8 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(next._1._2, new SVInterval(2, 200, 400));
 
         barcodeOverlap = next._2;
-        Assert.assertEquals(barcodeOverlap.values.size(), 2);
-        Assert.assertEquals(barcodeOverlap.values.get(0)._1, new SVInterval(2, 200, 300));
-        Assert.assertEquals(barcodeOverlap.values.get(0)._2.intValue(), 5);
-
-        Assert.assertEquals(barcodeOverlap.values.get(1)._1, new SVInterval(2, 300, 400));
-        Assert.assertEquals(barcodeOverlap.values.get(1)._2.intValue(), 6);
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 1);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 200, 300)), 6);
 
         Assert.assertTrue(iterator.hasNext());
         next = iterator.next();
@@ -262,17 +244,146 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(next._1._2, new SVInterval(4, 500, 800));
 
         barcodeOverlap = next._2;
-        Assert.assertEquals(barcodeOverlap.values.size(), 3);
-        Assert.assertEquals(barcodeOverlap.values.get(0)._1, new SVInterval(4, 500, 600));
-        Assert.assertEquals(barcodeOverlap.values.get(0)._2.intValue(), 12);
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 3);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(4, 500, 600)), 12);
 
-        Assert.assertEquals(barcodeOverlap.values.get(1)._1, new SVInterval(4, 600, 700));
-        Assert.assertEquals(barcodeOverlap.values.get(1)._2.intValue(), 13);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(4, 600, 700)), 13);
 
-        Assert.assertEquals(barcodeOverlap.values.get(2)._1, new SVInterval(4, 700, 800));
-        Assert.assertEquals(barcodeOverlap.values.get(2)._2.intValue(), 14);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(4, 700, 800)), 14);
 
         Assert.assertFalse(iterator.hasNext());
+    }
+
+    @Test
+    public void testPairedRegionCollapser2() {
+        final ArrayList<Tuple2<Tuple2<SVInterval, SVInterval>, CollectLinkedReadCoverageSpark.BarcodeOverlap>> inputs = new ArrayList<>();
+        Tuple2<SVInterval, SVInterval> pairedInterval = new Tuple2<>(new SVInterval(1, 100, 200), new SVInterval(2, 200, 300));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(null, null, new SVInterval(2, 200, 300), 5)));
+
+        CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2 iterator =
+                new CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2(inputs.iterator(), true);
+        Assert.assertTrue(iterator.hasNext());
+        Tuple2<Tuple2<SVInterval, SVInterval>, CollectLinkedReadCoverageSpark.BarcodeOverlap> next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(1, 100, 200));
+        Assert.assertEquals(next._1._2, new SVInterval(2, 200, 300));
+        CollectLinkedReadCoverageSpark.BarcodeOverlap barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 1);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 200, 300)).getValue().intValue(), 5);
+        Assert.assertFalse(iterator.hasNext());
+
+        pairedInterval = new Tuple2<>(new SVInterval(1, 100, 200), new SVInterval(2, 300, 400));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(null, null, new SVInterval(2, 300, 400), 6)));
+        iterator =
+                new CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2(inputs.iterator(), true);
+
+        Assert.assertTrue(iterator.hasNext());
+        next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(1, 100, 200));
+        Assert.assertEquals(next._1._2, new SVInterval(2, 200, 400));
+        barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 2);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 200, 300)).getValue().intValue(), 5);
+
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 300, 400)).getValue().intValue(), 6);
+        Assert.assertFalse(iterator.hasNext());
+
+        pairedInterval = new Tuple2<>(new SVInterval(1, 200, 300), new SVInterval(2, 200, 300));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(null, null, new SVInterval(2, 200, 300), 7)));
+
+        iterator =
+                new CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2(inputs.iterator(), true);
+
+        Assert.assertTrue(iterator.hasNext());
+        next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(1, 100, 200));
+        Assert.assertEquals(next._1._2, new SVInterval(2, 200, 400));
+        barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 2);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 200, 300)).getValue().intValue(), 5);
+
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 300, 400)).getValue().intValue(), 6);
+        Assert.assertTrue(iterator.hasNext());
+
+        next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(1, 200, 300));
+        Assert.assertEquals(next._1._2, new SVInterval(2, 200, 300));
+        barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.targetRegions.size(), 1);
+        Assert.assertEquals(barcodeOverlap.targetRegions.find(new SVInterval(2, 200, 300)).getValue().intValue(), 7);
+
+        Assert.assertFalse(iterator.hasNext());
+
+    }
+
+    @Test
+    public void testPairedRegionCollapser2_onTarget() {
+        final ArrayList<Tuple2<Tuple2<SVInterval, SVInterval>, CollectLinkedReadCoverageSpark.BarcodeOverlap>> inputs = new ArrayList<>();
+        Tuple2<SVInterval, SVInterval> pairedInterval = new Tuple2<>(new SVInterval(2, 200, 300), new SVInterval(1, 100, 200));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(new SVInterval(2, 200, 300), 5, null, null)));
+
+        CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2 iterator =
+                new CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2(inputs.iterator(), false);
+        Assert.assertTrue(iterator.hasNext());
+        Tuple2<Tuple2<SVInterval, SVInterval>, CollectLinkedReadCoverageSpark.BarcodeOverlap> next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(2, 200, 300));
+        Assert.assertEquals(next._1._2, new SVInterval(1, 100, 200));
+        CollectLinkedReadCoverageSpark.BarcodeOverlap barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.sourceRegions.size(), 1);
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(2, 200, 300)).getValue().intValue(), 5);
+        Assert.assertFalse(iterator.hasNext());
+
+        pairedInterval = new Tuple2<>(new SVInterval(2, 300, 400), new SVInterval(1, 100, 200));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(new SVInterval(2, 300, 400), 6, null, null)));
+        iterator =
+                new CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2(inputs.iterator(), false);
+
+        Assert.assertTrue(iterator.hasNext());
+        next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(2, 200, 400));
+        Assert.assertEquals(next._1._2, new SVInterval(1, 100, 200));
+        barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.sourceRegions.size(), 2);
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(2, 200, 300)).getValue().intValue(), 5);
+
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(2, 300, 400)).getValue().intValue(), 6);
+        Assert.assertFalse(iterator.hasNext());
+
+        pairedInterval = new Tuple2<>(new SVInterval(2, 400, 500), new SVInterval(1, 100, 200));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(new SVInterval(2, 400, 500), 7,null, null)));
+
+
+        pairedInterval = new Tuple2<>(new SVInterval(3, 800, 900), new SVInterval(1, 200, 300));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(new SVInterval(3, 800, 900), 9,null, null)));
+
+        pairedInterval = new Tuple2<>(new SVInterval(3, 900, 1000), new SVInterval(1, 200, 300));
+        inputs.add(new Tuple2<>(pairedInterval, new CollectLinkedReadCoverageSpark.BarcodeOverlap(new SVInterval(3, 900, 1000), 10,null, null)));
+
+        iterator =
+                new CollectLinkedReadCoverageSpark.PairedRegionCollapsingIterator2(inputs.iterator(), false);
+
+        Assert.assertTrue(iterator.hasNext());
+        next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(2, 200, 500));
+        Assert.assertEquals(next._1._2, new SVInterval(1, 100, 200));
+        barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.sourceRegions.size(), 3);
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(2, 200, 300)).getValue().intValue(), 5);
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(2, 300, 400)).getValue().intValue(), 6);
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(2, 400, 500)).getValue().intValue(), 7);
+        Assert.assertTrue(iterator.hasNext());
+
+
+        next = iterator.next();
+        Assert.assertEquals(next._1._1, new SVInterval(3, 800, 1000));
+        Assert.assertEquals(next._1._2, new SVInterval(1, 200, 300));
+
+        barcodeOverlap = next._2;
+        Assert.assertEquals(barcodeOverlap.sourceRegions.size(), 2);
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(3, 800, 900)).getValue().intValue(), 9);
+        Assert.assertEquals(barcodeOverlap.sourceRegions.find(new SVInterval(3, 900, 1000)).getValue().intValue(), 10);
+
+        Assert.assertFalse(iterator.hasNext());
+
     }
 
 }
