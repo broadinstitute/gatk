@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -16,7 +17,8 @@ import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         oneLineSummary = "(EXPERIMENTAL) Emit a single sample name from the bam header into an output file.",
-        summary = "If the bam has more than one sample or zero samples, this tool will error, by design.  This tool has not been tested extensively.  Most options supported by the GATK are irrelevant for this tool.",
+        summary = "If the bam has zero or more than one sample names in the header, this tool will error, by design.\n" +
+                "  This tool has not been tested extensively.  Most options supported by the GATK are irrelevant for this tool.",
         programGroup = QCProgramGroup.class
 )
 @BetaFeature
@@ -46,12 +48,13 @@ final public class GetSampleName extends GATKTool{
         }
 
         final List<String> sampleNames = getHeaderForReads().getReadGroups().stream().map(s -> s.getSample()).distinct().collect(Collectors.toList());
+        final String sampleNamesAsString = StringUtils.join(sampleNames, "___");
         if (sampleNames.size() > 1) {
-            throw new UserException.BadInput("The given input has more than one unique sample name.");
+            throw new UserException.BadInput("The given input has more than one unique sample name: " + StringUtils.join(sampleNames, ", "));
         }
 
         try (final FileWriter fileWriter = new FileWriter(outputSampleNameFile, false)) {
-            fileWriter.write(sampleNames.get(0));
+            fileWriter.write(sampleNamesAsString);
         } catch (final IOException ioe) {
             throw new UserException("Could not write file.", ioe);
         }
