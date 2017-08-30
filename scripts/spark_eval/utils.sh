@@ -1,3 +1,10 @@
+if [ -n "$GCS_CLUSTER" ]; then
+  HDFS_HOST_PORT="${GCS_CLUSTER}-m:8020"
+else
+  # leave empty and pick up from local Hadoop configuration
+  HDFS_HOST_PORT=""
+fi
+
 time_gatk() {
   GATK_ARGS=$1
   NUM_EXECUTORS=$2
@@ -12,7 +19,7 @@ time_gatk() {
     SPARK_RUNNER_ARGS="--sparkRunner SPARK --sparkMaster yarn-client --sparkSubmitCommand spark2-submit"
   fi
   COMMAND=$(echo $GATK_ARGS | awk '{print $1}')
-  RESULTS_CSV=results/$(basename "$0" .sh).csv
+  RESULTS_CSV=results/$(basename "${SCRIPT_NAME:-$0}" .sh).csv
   mkdir -p results
   LOG=logs/${COMMAND}_$(date +%Y%m%d_%H%M%S).log
   mkdir -p logs
