@@ -79,6 +79,7 @@ workflow Mutect2_Multi {
     String? sequencing_center
     String? sequence_source
     File? default_config_file
+    Boolean? is_bamOut
 
 	scatter( row in pairs ) {
 	    #      If the condition is true, variables inside the 'if' block retain their values outside the block.
@@ -123,7 +124,8 @@ workflow Mutect2_Multi {
                     m2_extra_filtering_args = m2_extra_filtering_args,
                     sequencing_center = sequencing_center,
                     sequence_source = sequence_source,
-                    default_config_file = default_config_file
+                    default_config_file = default_config_file,
+                    is_bamOut = select_first([is_bamOut, false])
             }
     }
 
@@ -152,5 +154,7 @@ workflow Mutect2_Multi {
         Array[File] contamination_tables = Mutect2.contamination_table
 
         Array[File?] oncotated_m2_mafs = Mutect2.oncotated_m2_maf
+        Array[File?] m2_merged_bam_out = Mutect2.merged_bam_out
+        Array[File?] m2_merged_bai_out = Mutect2.merged_bam_out_index
     }
 }
