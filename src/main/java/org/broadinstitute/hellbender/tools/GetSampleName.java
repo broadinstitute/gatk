@@ -44,17 +44,20 @@ final public class GetSampleName extends GATKTool{
 
         // Grab the header info
         if ((getHeaderForReads() == null) || (getHeaderForReads().getReadGroups() == null)) {
-            throw new UserException.BadInput("The given input has no header or no read groups.  Cannot determine a sample name.");
+            throw new UserException.BadInput("The given input bam has no header or no read groups.  Cannot determine a sample name.");
         }
 
         final List<String> sampleNames = getHeaderForReads().getReadGroups().stream().map(s -> s.getSample()).distinct().collect(Collectors.toList());
-        final String sampleNamesAsString = StringUtils.join(sampleNames, "___");
         if (sampleNames.size() > 1) {
-            throw new UserException.BadInput("The given input has more than one unique sample name: " + StringUtils.join(sampleNames, ", "));
+            throw new UserException.BadInput("The given input bam has more than one unique sample name: " + StringUtils.join(sampleNames, ", "));
+        }
+
+        if (sampleNames.size() == 0) {
+            throw new UserException.BadInput("The given bam input has no sample names.");
         }
 
         try (final FileWriter fileWriter = new FileWriter(outputSampleNameFile, false)) {
-            fileWriter.write(sampleNamesAsString);
+            fileWriter.write(sampleNames.get(0));
         } catch (final IOException ioe) {
             throw new UserException("Could not write file.", ioe);
         }
