@@ -9,6 +9,8 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by valentin on 8/25/17.
@@ -24,7 +26,7 @@ class GenotypingContig {
         public final int numberOfReversals;
         public final int numberOfIndelBases;
 
-        public HaplotypeAlignmentScore(final String scoreString, final String alingmentString) {
+        public HaplotypeAlignment(final String scoreString, final String alingmentString) {
             final String[] parts = scoreString.split(",");
             int nextIndex = 0;
             score = Integer.parseInt(parts[nextIndex++]);
@@ -38,6 +40,8 @@ class GenotypingContig {
 
         private List<AlignmentInterval> parseAlignmentString(final String alingmentString) {
             final String[] alignments = alingmentString.replaceAll(";$","").split(";");
+            // TODO AI(null) -> AI(s);
+            return Stream.of(alignments).map(s -> new AlignmentInterval(null)).collect(Collectors.toList());
         }
     }
 
