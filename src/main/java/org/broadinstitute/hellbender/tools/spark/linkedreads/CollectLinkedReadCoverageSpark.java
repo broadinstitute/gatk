@@ -110,6 +110,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Argument(fullName = "minMaxMapq", shortName = "minMaxMapq", doc="Minimum highest mapq read to create a fragment", optional=true)
     public int minMaxMapq = 30;
 
+    @Argument(fullName = "minBarcodeOverlapDepth", shortName = "minBarcodeOverlapDepth", doc="Minimum number of overlapping barcodes to consider", optional=true)
+    public int minBarcodeOverlapDepth = 2;
+
     @Argument(fullName = "molSizeDeviationFile", shortName = "molSizeDeviationFile", doc="file containing estiamtes of molecule size deviations across the genome", optional=true)
     public String molSizeDeviationFile;
 
@@ -205,9 +208,16 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         });
 
+        //barcodeSetsByIntervals.saveAsTextFile("bar");
+
+        final int minBarcodeOverlapDepthFinal = minBarcodeOverlapDepth;
         JavaPairRDD<Tuple2<SVInterval, SVInterval>, BarcodeOverlap> barcodeOverlaps = barcodeSetsByIntervals.flatMapToPair(kv -> {
             final SVInterval interval = kv._1();
             final Set<String> barcodes = kv._2();
+
+            if (interval.getEnd() == 49811342) {
+                System.err.println("here");
+            }
 
             if (barcodes.size() > 1000) {
                 return Collections.emptyIterator();
@@ -223,25 +233,35 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
             Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap>> iterator =
                     Utils.stream(new IntervalDepthIterator(interval, sharedBarcodeIntervals))
-                            .filter(p -> p._2 > 4)
+                            .filter(p -> p._2 > minBarcodeOverlapDepthFinal)
                             .map(p -> new Tuple2<>(p._1, new BarcodeOverlap(null, -1, p._1()._2, p._2)))
                             .iterator();
 
             return iterator;
         });
 
-
-        JavaRDD<Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap>> flattenedOverlaps = barcodeOverlaps.mapPartitions(iter -> {
-            return new PairedRegionCollapsingIterator2(
-                    new PairedRegionCollapsingIterator2(iter, true),
-                    false);
-
+        barcodeOverlaps.map(kv -> {
+            Tuple2<SVInterval, SVInterval> svIntervalSVIntervalTuple2 = kv._1;
+            SVInterval source = svIntervalSVIntervalTuple2._1;
+            SVInterval target = svIntervalSVIntervalTuple2._2;
+            return source.getContig() + "\t" + source.getStart() + "\t" + source.getEnd() + "\t" + target.getContig() + "\t" + target.getStart() + "\t" + target.getEnd() + "\t" + kv._2.toString();
         });
+
+        JavaPairRDD<Tuple2<SVInterval, SVInterval>, BarcodeOverlap> flattenedOverlaps = barcodeOverlaps.mapPartitionsToPair(iter -> new PairedRegionCollapsingIterator2(iter, true));
+        flattenedOverlaps = flattenedOverlaps.mapPartitionsToPair(iter ->
+            Utils.stream(iter).sorted(new SerializablePairedIntervalComparator(false)).iterator()
+        );
+        flattenedOverlaps = flattenedOverlaps.mapPartitionsToPair(iter -> new PairedRegionCollapsingIterator2(iter, false));
 //            return new PairedRegionCollapsingIterator2(iterator, true);
 
 
         //JavaPairRDD<Tuple2<SVInterval, SVInterval>, Integer> filteredPairedOverlaps = allIntervalPairOverlaps.filter(kv -> kv._2() > 1);
-        flattenedOverlaps.saveAsTextFile("foobar");
+        flattenedOverlaps.map(kv -> {
+            Tuple2<SVInterval, SVInterval> svIntervalSVIntervalTuple2 = kv._1;
+            SVInterval source = svIntervalSVIntervalTuple2._1;
+            SVInterval target = svIntervalSVIntervalTuple2._2;
+            return source.getContig() + "\t" + source.getStart() + "\t" + source.getEnd() + "\t" + target.getContig() + "\t" + target.getStart() + "\t" + target.getEnd() + "\t" + kv._2.toString();
+        }).saveAsTextFile("foobar");
 
 //        final SVIntervalTree<String> allIntervals = new SVIntervalTree<>();
 //        localBarcodeIntervals.forEach((barcode, value) -> {
@@ -1034,14 +1054,19 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 result = new Tuple2<>(new Tuple2<>(interval, newInterval), currentDepth);
 
                 currentDepth++;
+
                 prevBoundary = starts.get(currentContig).get(startIdx);
                 startIdx++;
+
+                while (startIdx < starts.get(currentContig).size() && starts.get(currentContig).get(startIdx) == prevBoundary) {
+                    currentDepth++;
+                    startIdx++;
+                }
 
             } else {
                 // process a stop
                 //System.out.println("Process a stop at " + nextStop + ": " + stops.get(stopIdx));
 
-                currentDepth--;
                 final SVInterval newInterval = new SVInterval(currentContig, prevBoundary, nextStop);
                 result = new Tuple2<>(new Tuple2<>(interval, newInterval), currentDepth);
 
@@ -1049,6 +1074,12 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 currentDepth--;
                 prevBoundary = stops.get(currentContig).get(stopIdx);
                 stopIdx++;
+
+                while (stopIdx < stops.get(currentContig).size() && stops.get(currentContig).get(stopIdx) == prevBoundary) {
+                    currentDepth--;
+                    stopIdx++;
+                }
+
             }
 
             return result;
@@ -1215,7 +1246,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             while (intervalDepthIterator.hasNext()) {
                 nextInput = intervalDepthIterator.next();
                 if (this.onSource) {
-                    if (source.equals(nextInput._1._1) && target.gapLen(nextInput._1._2) == 0) {
+                    if (source.overlaps(nextInput._1._1) && target.gapLen(nextInput._1._2) == 0) {
+                        source = source.join(nextInput._1._1);
                         target = target.join(nextInput._1._2);
                         nextInput._2.targetRegions.forEach(e -> barcodeOverlap.targetRegions.put(e.getInterval(), e.getValue()));
                         nextInput = null;
@@ -1223,7 +1255,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         break;
                     }
                 } else {
-                    if (target.equals(nextInput._1._2) && source.gapLen(nextInput._1._1) == 0) {
+                    if (target.overlaps(nextInput._1._2) && source.gapLen(nextInput._1._1) == 0) {
+                        target = target.join(nextInput._1._2);
                         source = source.join(nextInput._1._1);
                         nextInput._2.sourceRegions.forEach(e -> barcodeOverlap.sourceRegions.put(e.getInterval(), e.getValue()));
                         nextInput = null;
@@ -1256,7 +1289,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 while (intervalDepthIterator.hasNext()) {
                     nextInput = intervalDepthIterator.next();
                     if (onSource) {
-                        if (source.equals(nextInput._1._1) && target.gapLen(nextInput._1._2) == 0) {
+                        if (source.overlaps(nextInput._1._1) && target.gapLen(nextInput._1._2) == 0) {
+                            source = source.join(nextInput._1._1);
                             target = target.join(nextInput._1._2);
                             nextInput._2.targetRegions.forEach(e -> barcodeOverlap.targetRegions.put(e.getInterval(), e.getValue()));
                             nextInput = null;
@@ -1264,7 +1298,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                             break;
                         }
                     } else {
-                        if (target.equals(nextInput._1._2) && source.gapLen(nextInput._1._1) == 0) {
+                        if (target.overlaps( nextInput._1._2) && source.gapLen(nextInput._1._1) == 0) {
+                            target = target.join(nextInput._1._2);
                             source = source.join(nextInput._1._1);
                             nextInput._2.sourceRegions.forEach(e -> barcodeOverlap.sourceRegions.put(e.getInterval(), e.getValue()));
                             nextInput = null;
@@ -1301,6 +1336,35 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             return Utils.stream(sourceRegions).map(e -> e.getInterval().toString() + "|" + e.getValue()).collect(Collectors.joining("\t")) +
                     Utils.stream(targetRegions).map(e -> e.getInterval().toString() + "|" + e.getValue()).collect(Collectors.joining("\t"));
         }
+    }
+
+
+    private class SerializablePairedIntervalComparator implements Comparator<Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap>>, Serializable {
+        private static final long serialVersionUID = 1L;
+        private final boolean sourceFirst;
+
+        public SerializablePairedIntervalComparator(final boolean sourceFirst) {
+            this.sourceFirst = sourceFirst;
+        }
+
+        @Override
+        public int compare(final Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap> o1, final Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap> o2) {
+            if (sourceFirst) {
+                if (o1._1._1.compareTo(o2._1._1) != 0) {
+                    return o1._1._1.compareTo(o2._1._1);
+                } else {
+                    return o1._1._2.compareTo(o2._1._2);
+                }
+            } else {
+                if (o1._1._2.compareTo(o2._1._2) != 0) {
+                    return o1._1._2.compareTo(o2._1._2);
+                } else {
+                    return o1._1._1.compareTo(o2._1._1);
+                }
+            }
+
+        }
+
     }
 }
 
