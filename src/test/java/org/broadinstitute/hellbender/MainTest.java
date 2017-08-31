@@ -44,22 +44,25 @@ public final class MainTest extends CommandLineProgramTest {
             summary = "OmitFromCommanLine test",
             oneLineSummary = "OmitFromCommanLine test",
             omitFromCommandLine = true)
-    public static final class OmitFromCommanLineCLP extends CommandLineProgram {
+    public static final class OmitFromCommandLineCLP extends CommandLineProgram {
+
+        public static final int RETURN_VALUE = 1;
 
         @Override
         protected Object doWork() {
-            return 1;
+            return RETURN_VALUE;
         }
     }
 
     @Test
     public void testClpOmitFromCommandLine() {
-        final SingleClpMain main = new SingleClpMain(OmitFromCommanLineCLP.class);
+        final SingleClpMain main = new SingleClpMain(OmitFromCommandLineCLP.class);
+        final String clpName = "OmitFromCommandLineCLP";
         // test that the tool can be run from main correctly (returns non-null)
-        Assert.assertNotNull(main.instanceMain(new String[]{"OmitFromCommanLineCLP"}));
+        Assert.assertEquals(main.instanceMain(new String[]{clpName}), OmitFromCommandLineCLP.RETURN_VALUE);
         // test that the usage is not shown if help is printed
         final String usage = captureStderr(() -> main.instanceMain(new String[]{"-h"}));
-        Assert.assertFalse(usage.contains("OmitFromCommanLineCLP"));
+        Assert.assertFalse(usage.contains(clpName));
     }
 
 }
