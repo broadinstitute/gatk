@@ -233,6 +233,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
             Iterator<Tuple2<Tuple2<SVInterval, SVInterval>, BarcodeOverlap>> iterator =
                     Utils.stream(new IntervalDepthIterator(interval, sharedBarcodeIntervals))
+                            .filter(p -> p._1._1.isUpstreamOf(p._1._2))
                             .filter(p -> p._2 > minBarcodeOverlapDepthFinal)
                             .map(p -> new Tuple2<>(p._1, new BarcodeOverlap(null, -1, p._1()._2, p._2)))
                             .iterator();
@@ -1333,8 +1334,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         @Override
         public String toString() {
-            return Utils.stream(sourceRegions).map(e -> e.getInterval().toString() + "|" + e.getValue()).collect(Collectors.joining("\t")) +
-                    Utils.stream(targetRegions).map(e -> e.getInterval().toString() + "|" + e.getValue()).collect(Collectors.joining("\t"));
+            final int maxOverlap = Math.max(Utils.stream(sourceRegions).map(SVIntervalTree.Entry::getValue).mapToInt(Integer::intValue).max().orElse(0),
+                    Utils.stream(targetRegions).map(SVIntervalTree.Entry::getValue).mapToInt(Integer::intValue).max().orElse(0));
+            return maxOverlap + "\t" +
+                    "Sources:" + Utils.stream(sourceRegions).map(e -> e.getInterval().toString() + "|" + e.getValue()).collect(Collectors.joining(";")) + "\t" +
+                    "Targets:" + Utils.stream(targetRegions).map(e -> e.getInterval().toString() + "|" + e.getValue()).collect(Collectors.joining(";"));
         }
     }
 
