@@ -292,6 +292,9 @@ public final class BucketUtils {
             // GCS case (would work with local too)
             if (isCloudStorageUrl(path)) {
                 java.nio.file.Path p = getPathOnGcs(path);
+                if (Files.isRegularFile(p)) {
+                    return Files.size(p);
+                }
                 return Files.list(p).mapToLong(
                     q -> {
                         try {
