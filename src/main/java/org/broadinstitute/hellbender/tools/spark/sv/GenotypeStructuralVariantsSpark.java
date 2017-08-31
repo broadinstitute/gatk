@@ -7,9 +7,11 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.bdgenomics.adam.rdd.GenomicPositionPartitioner;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -28,6 +30,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.utils.ShardedPairRDD;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -183,7 +186,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     private static StructuralVariantContext processVariant(final StructuralVariantContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {
         Haplotype refHaplotype = null;
         Haplotype altHaplotype = null;
-        final List<AlignedContig> alignedContigs = new ArrayList<>();
+        final List<GenotypingContig> alignedContigs = new ArrayList<>();
         for (final GATKRead haplotypeOrContig : haplotypesAndContigs) {
             final String call = haplotypeOrContig.getAttributeAsString("HP");
             if (call == null) {
@@ -199,12 +202,13 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 } else {
                     throw new IllegalArgumentException("illegal call string: " + call);
                 }
-                if (haplotypeOrContig.getAttributeAsString("HP","."))
             } else if (haplotypeOrContig.getReadGroup().equals("CTG")) {
-                final AlignedContig alignedContig = new AlignedContig();
+                final GenotypingContig genotypingContig = new GenotypingContig(haplotypeOrContig);
+                alignedContigs.add(genotypingContig);
             }
 
         }
+        final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator();
 
         final List<GATKRead>
         input.collect().forEach(vt -> {
