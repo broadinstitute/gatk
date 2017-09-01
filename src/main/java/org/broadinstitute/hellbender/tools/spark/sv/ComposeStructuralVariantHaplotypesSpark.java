@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.StructuralVariantContext;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -36,7 +37,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 import scala.Tuple2;
 
 import java.io.*;
@@ -511,7 +511,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 final Map<String, GATKRead> contigsByName = contigs.stream()
                         .collect(Collectors.toMap(contig -> contig.contigName, contig -> convertToUnmappedGATKRead(contig, alignmentHeader)));
                 final BwaSparkEngine bwa = new BwaSparkEngine(ctx, imageFile.getPath(), alignmentHeader, alignmentHeader.getSequenceDictionary());
-                alignedContigSegments = bwa.alignSingletons(ctx.parallelize(new ArrayList<>(contigsByName.values())))
+                alignedContigSegments = bwa.alignUnpaired(ctx.parallelize(new ArrayList<>(contigsByName.values())))
                         .mapToPair(r -> new Tuple2<>(r.getName(), r))
                         .groupByKey()
                         .map(t -> Utils.stream(t._2()).collect(Collectors.toList()))
@@ -533,7 +533,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                                 .filter(bwa -> SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwa.getSamFlag())) // ignore secondary alignments.
                                 .map(bma -> new AlignmentInterval(Utils.nonNull(bma), refNames, t._1().contigSequence.length))
                                 .collect(Collectors.toList())))
-                        .map(t -> new AlignedContig(t._1().contigName, t._1().contigSequence, t._2()));
+                        .map(t -> new AlignedContig(t._1().contigName, t._1().contigSequence, t._2(), false));
             }
             return alignedContigSegments.collect(Collectors.toMap(a ->a.contigName, a -> a));
                    // .map(a -> {
@@ -633,9 +633,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
     private static AlignedContig convertToAlignedContig(final GATKRead read) {
         if (read.isUnmapped()) {
-            return new AlignedContig(read.getName(), read.getBases(), Collections.emptyList());
+            return new AlignedContig(read.getName(), read.getBases(), Collections.emptyList(), false);
         } else {
-            final int contigLength = CigarUtils.readLength(read.getCigar());
+            final int contigLength = CigarUtils.countUnclippedReadBases(read.getCigar());
             final byte[] contigBases = new byte[contigLength];
             final byte[] readBases = read.getBases();
             if (read.isReverseStrand()) {
@@ -657,7 +657,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                     : Stream.concat(Stream.of(new AlignmentInterval(read)), Stream.of(supplementaryAlignmentStrings)
                         .filter(s -> !s.trim().isEmpty())
                         .map(AlignmentInterval::new)).collect(Collectors.toList());
-            return new AlignedContig(read.getName(), contigBases, intervals);
+            return new AlignedContig(read.getName(), contigBases, intervals, false);
         }
     }
 
@@ -699,7 +699,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         return new AlignedContig(a.contigName, cBases,
                 Stream.concat(a.alignmentIntervals.stream(), b.alignmentIntervals.stream())
                       .sorted(Comparator.comparing(ai -> ai.startInAssembledContig))
-                      .collect(Collectors.toList()));
+                      .collect(Collectors.toList()), false);
     }
 }
 
