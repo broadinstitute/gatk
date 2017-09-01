@@ -4,7 +4,6 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
@@ -16,27 +15,6 @@ public final class MainTest extends CommandLineProgramTest {
     @Test(expectedExceptions = UserException.class)
     public void testCommandNotFoundThrows(){
         this.runCommandLine(new String[]{"Brain"});
-    }
-
-
-    /** Main class for testing a single CLP */
-    private static final class SingleClpMain extends Main {
-
-        private Class<? extends CommandLineProgram> clazz;
-
-        private SingleClpMain(final Class<? extends CommandLineProgram> clazz) {
-            this.clazz = clazz;
-        }
-
-        @Override
-        protected List<String> getPackageList() {
-            return Collections.emptyList();
-        }
-
-        @Override
-        protected List<Class<? extends CommandLineProgram>> getClassList() {
-            return Collections.singletonList(clazz);
-        }
     }
 
     @CommandLineProgramProperties(
@@ -54,9 +32,16 @@ public final class MainTest extends CommandLineProgramTest {
         }
     }
 
+    private static final class OmitFromCommandLineMain extends Main {
+        @Override
+        protected List<Class<? extends CommandLineProgram>> getClassList() {
+            return Collections.singletonList(OmitFromCommandLineCLP.class);
+        }
+    }
+
     @Test
     public void testClpOmitFromCommandLine() {
-        final SingleClpMain main = new SingleClpMain(OmitFromCommandLineCLP.class);
+        final OmitFromCommandLineMain main = new OmitFromCommandLineMain();
         final String clpName = "OmitFromCommandLineCLP";
         // test that the tool can be run from main correctly (returns non-null)
         Assert.assertEquals(main.instanceMain(new String[]{clpName}), OmitFromCommandLineCLP.RETURN_VALUE);
