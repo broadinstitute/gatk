@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -460,19 +461,7 @@ public final class CigarUtilsUnitTest {
         }
     }
 
-    @Test(dataProvider = "randomValidCigars")
-    public void testSoftClip(final Cigar cigar) {
-        final Cigar actual = CigarUtils.softReclip(cigar);
-        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
-                cigar.getCigarElements().stream()
-                        .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.SOFT_CLIP) : ce)
-                        .collect(Collectors.toList())
-        ));
-
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "randomValidCigars")
+        @Test(dataProvider = "randomValidCigars")
     public void testReadLength(final Cigar cigar) {
         final int actual = CigarUtils.countUnclippedReadBases(cigar);
         final int expected = cigar.getCigarElements().stream()
@@ -480,18 +469,6 @@ public final class CigarUtilsUnitTest {
                 .mapToInt(CigarElement::getLength).sum();
         Assert.assertEquals(actual, expected);
     }
-
-    @Test(dataProvider = "randomValidCigars")
-    public void testHardClip(final Cigar cigar) {
-        final Cigar actual = CigarUtils.hardReclip(cigar);
-        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
-                cigar.getCigarElements().stream()
-                        .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.HARD_CLIP) : ce)
-                        .collect(Collectors.toList())
-        ));
-        Assert.assertEquals(actual, expected);
-    }
-
 
     @DataProvider(name = "allClipFunkyCigars")
     public Object[][] allClipFunkyCigars() {

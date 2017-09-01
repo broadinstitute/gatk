@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtilsUnitTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -266,16 +267,44 @@ public class AlignmentIntervalUnitTest extends BaseTest {
         Assert.assertEquals(fullInterval.mismatches, nm);
         Assert.assertEquals(fullInterval.alnScore, as);
 
-        final String basicStr = String.join(",", contig, "" + start, strand == SVFastqUtils.Strand.NEGATIVE ? "-" : "+", cigarString);
+        final String basicStr = String.join(",", contig, "" + start, strand == SVFastqUtils.Strand.NEGATIVE ? "-" : "+", cigarString, "" + mq);
         final AlignmentInterval basicInterval = new AlignmentInterval(basicStr);
         Assert.assertEquals(basicInterval.referenceSpan.getContig(), contig);
         Assert.assertEquals(basicInterval.referenceSpan.getStart(), start);
         Assert.assertEquals(basicInterval.forwardStrand, strand == SVFastqUtils.Strand.POSITIVE);
         Assert.assertEquals(basicInterval.cigarAlong5to3DirectionOfContig,
                 basicInterval.forwardStrand ? TextCigarCodec.decode(cigarString) : CigarUtils.invertCigar(TextCigarCodec.decode(cigarString)));
-        Assert.assertEquals(basicInterval.mapQual, 0);
+        Assert.assertEquals(basicInterval.mapQual, mq);
         Assert.assertEquals(basicInterval.mismatches, AlignmentInterval.NO_NM);
         Assert.assertEquals(basicInterval.alnScore, AlignmentInterval.NO_AS);
 
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testSoftClip(final Cigar cigar) {
+        final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.S);
+        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
+                cigar.getCigarElements().stream()
+                        .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.SOFT_CLIP) : ce)
+                        .collect(Collectors.toList())
+        ));
+
+        Assert.assertEquals(actual, expected);
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testHardClip(final Cigar cigar) {
+        final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.H);
+        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
+                cigar.getCigarElements().stream()
+                        .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.HARD_CLIP) : ce)
+                        .collect(Collectors.toList())
+        ));
+        Assert.assertEquals(actual, expected);
+    }
+
+    @DataProvider(name = "randomValidCigars")
+    public static Object[][] randomValidCigars() {
+        return CigarUtilsUnitTest.randomValidCigars();
     }
 }

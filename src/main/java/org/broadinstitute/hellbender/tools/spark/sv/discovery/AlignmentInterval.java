@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -410,7 +411,7 @@ public final class AlignmentInterval {
         final Cigar cigar = forwardStrand ? this.cigarAlong5to3DirectionOfContig :
                 CigarUtils.invertCigar(this.cigarAlong5to3DirectionOfContig);
 
-        result.setCigar(hardClip ? CigarUtils.hardReclip(cigar) : CigarUtils.softReclip(cigar));
+        result.setCigar(softOrHardReclip(cigar, hardClip ? CigarOperator.H : CigarOperator.S));
 
         result.setReferenceName(referenceSpan.getContig());
         result.setAlignmentStart(referenceSpan.getStart());
@@ -430,5 +431,50 @@ public final class AlignmentInterval {
             result.setAttribute(SAMTag.AS.name(), alnScore);
         }
         return result;
+    }
+
+    /**
+     * Returns a cigar where all clips are transformed into either soft or hard clips.
+     *
+     * <p>
+     *     After such transformation, any resulting adjacent clips are folded into a single element.
+     * </p>
+     * @param cigar the input cigar.
+     * @param clipOperator the output cigar unified clipping operator (must be either {@link CigarOperator#S} or {@link CigarOperator#H}.
+     *
+     * @throws IllegalArgumentException if the input cigar cannot be {@code null}, or if it is invalid.
+     * @return the output cigar after the transformation.
+     */
+    @VisibleForTesting
+    static Cigar softOrHardReclip(final Cigar cigar, final CigarOperator clipOperator) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        final List<CigarElement> elements = cigar.getCigarElements();
+        final int elementsSize = elements.size();
+        if (elementsSize < 1) { // the only operand cannot be a clip.
+            return new Cigar();
+        } else if (elements.get(0).getOperator().isClipping() || elements.get(elementsSize - 1).getOperator().isClipping()) {
+            final List<CigarElement> resultElements = new ArrayList<>(elements.size());
+            // Stack-like construction of the result-elements list
+            // where we fold-left the clips elements that we encounter
+            CigarElement lastElement = null; // caches the last cigar element added.
+            for (final CigarElement element : elements) {
+                final CigarOperator operator = element.getOperator();
+                if (operator.isClipping()) {
+                    if (lastElement != null && lastElement.getOperator().isClipping()) { // fold-left merging clipping operations.
+                        final int newLength = element.getLength() + lastElement.getLength();
+                        resultElements.set(resultElements.size() - 1, lastElement = new CigarElement(newLength, clipOperator));
+                    } else if (operator != clipOperator) { // cannot reuse the element instance as it has the "wrong" operator.
+                        resultElements.add(lastElement = new CigarElement(element.getLength(), clipOperator));
+                    } else { // has the right clip-operator and is the first in the run of clipping operations if any.
+                        resultElements.add(lastElement = element);
+                    }
+                } else { // is not a clipping, just add it as it is.
+                    resultElements.add(lastElement = element);
+                }
+            }
+            return new Cigar(resultElements);
+        } else {
+            return new Cigar(elements);
+        }
     }
 }
