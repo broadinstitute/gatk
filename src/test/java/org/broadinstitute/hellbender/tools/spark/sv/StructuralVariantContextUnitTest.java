@@ -13,6 +13,7 @@ import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.StructuralVariantContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.SimpleIntervalUnitTest;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -191,13 +192,13 @@ public class StructuralVariantContextUnitTest extends BaseTest {
     }
 
     /**
-     * Tests {@link StructuralVariantContext#getContigNames()}.
+     * Tests {@link StructuralVariantContext#getSupportingContigIds()}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
-    public void testContigNames(final VariantContext vc) {
+    public void testContigNames(final StructuralVariantContext vc) {
         final StructuralVariantContext svc = StructuralVariantContext.create(vc);
-        final List<String> actual = svc.getContigNames();
+        final List<String> actual = svc.getSupportingContigIds();
         final List<String> expected = vc.getAttributeAsStringList(GATKSVVCFConstants.CONTIG_NAMES, null);
         Assert.assertEquals(actual, expected);
     }
