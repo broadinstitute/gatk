@@ -33,13 +33,15 @@ public class ComposeStructuralVariantHaplotypesSparkIntegrationTest extends Comm
 
     @Test
     public void testComposeSVContigs() throws IOException {
-        final File outputBamFile = createTempFile("test-output", ".bam");
-        outputBamFile.deleteOnExit();
-        final IntegrationTestSpec spec = new IntegrationTestSpec(String.format("-%s %s -%s %s -%s %s -%s %s",
+        final File outputBamFile = File.createTempFile("test-output", ".bam");
+        final File alignedOutputBamFile = File.createTempFile("test-output-aln", ".bam");
+        //final File outputBamFile = createTempFile("test-output", ".bam");
+        final IntegrationTestSpec spec = new IntegrationTestSpec(String.format("-%s %s -%s %s -%s %s -%s %s -%s %s",
                 StandardArgumentDefinitions.REFERENCE_SHORT_NAME, b38_reference_20_21,
                 StandardArgumentDefinitions.VARIANT_SHORT_NAME, INPUT_VCF,
                 ComposeStructuralVariantHaplotypesSpark.CONTIGS_FILE_SHORT_NAME, INPUT_BAM,
-                StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputBamFile), Collections.emptyList());
+                StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputBamFile,
+                ComposeStructuralVariantHaplotypesSpark.ALIGNED_OUTPUT_SHORT_NAME, alignedOutputBamFile), Collections.emptyList());
         spec.executeTest("testComposeSVContigs", this);
         final ReadsDataSource expected = new ReadsDataSource(new File(EXPECTED_OUTPUT_BAM).toPath());
         final ReadsDataSource actual = new ReadsDataSource(outputBamFile.toPath());
@@ -53,7 +55,8 @@ public class ComposeStructuralVariantHaplotypesSparkIntegrationTest extends Comm
         Assert.assertEquals(actualReads.hasNext(), expectedReads.hasNext());
         expected.close();
         actual.close();
-        Assert.assertTrue(outputBamFile.delete());
+        //Assert.assertTrue(alignedOutputBamFile.delete());
+        //Assert.assertTrue(outputBamFile.delete());
     }
 
     private void assertReadsAreEqual(final GATKRead expectedRead, final GATKRead actualRead) {
