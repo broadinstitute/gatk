@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
@@ -99,6 +100,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     public static final String SHARD_SIZE_FULL_NAME = "shardSize";
     public static final String PADDING_SIZE_SHORT_NAME = "pd";
     public static final String PADDING_SIZE_FULL_NAME = "paddingSize";
+    public static final String ALIGNED_OUTPUT_SHORT_NAME = "alnOut";
+    public static final String ALIGNED_OUTPUT_FULL_NAME = "alignedOutput";
 
     public static final int DEFAULT_SHARD_SIZE = 10_000;
     public static final int DEFAULT_PADDING_SIZE = 50;
@@ -109,10 +112,11 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     public static final String HAPLOTYPE_CALL_TAG = "HP";
     public static final String HAPLOTYPE_QUAL_TAG = "HQ";
     public static final String REFERENCE_SCORE_TAG = "RS";
+    public static final String REFERENCE_ALIGNMENT_TAG = "RA";
     public static final String ALTERNATIVE_SCORE_TAG = "XS";
+    public static final String ALTERNATIVE_ALIGNMENT_TAG = "XA";
     public static final String VARIANT_CONTEXT_TAG = "VC";
     public static final String ALIGNMENT_SEQ_NAME = "seq";
-
 
     @Argument(doc = "shard size",
               shortName = SHARD_SIZE_SHORT_NAME,
@@ -142,6 +146,13 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
               shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private String outputFileName = null;
+
+    @Argument(doc = "aligned output bam file with haplotypes and contigs aligned against the reference",
+            fullName = ALIGNED_OUTPUT_FULL_NAME,
+            shortName = ALIGNED_OUTPUT_SHORT_NAME,
+            optional = true
+    )
+    private String alignedOutputFileName = null;
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
@@ -268,6 +279,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         outputHeader.addReadGroup(new SAMReadGroupRecord(HAPLOTYPE_READ_GROUP));
         outputHeader.addReadGroup(new SAMReadGroupRecord(CONTIG_READ_GROUP));
         final SAMFileWriter outputWriter = BamBucketIoUtils.makeWriter(outputFileName, outputHeader, false);
+        final SAMFileWriter alignedOutputWriter = alignedOutputFileName == null ? null : BamBucketIoUtils.makeWriter(alignedOutputFileName, outputHeader, false);
 
         final JavaPairRDD<StructuralVariantContext, List<AlignedContig>> variantsAndOverlappingUniqueContigs
                 = variantsAndOverlappingContigRecords
@@ -289,8 +301,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                     //referenceHaplotype.setGenomeLocation(null);
                     final Haplotype alternativeHaplotype = vc.composeHaplotypeBasedOnReference(1, maxLength * 2, getReference());
                     //alternativeHaplotype.setGenomeLocation(null);
-                    final String idPrefix = String.format("var_%s_%d", vc.getContig(), vc.getStart());
-                    outputHaplotypesAsSAMRecords(outputHeader, outputWriter, referenceHaplotype, alternativeHaplotype, idPrefix);
+                    outputHaplotypesAsSAMRecords(outputHeader, outputWriter, alignedOutputWriter, referenceHaplotype, alternativeHaplotype, vc);
                     final Map<String, AlignedContig> referenceAlignedContigs = alignContigsAgainstHaplotype(ctx, referenceHaplotype, contigs);
                     final Map<String, AlignedContig> alternativeAlignedContigs = alignContigsAgainstHaplotype(ctx, alternativeHaplotype, contigs);
                     contigs.forEach(contig -> {
@@ -300,28 +311,30 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                         final AlignedContigScore alternativeScore = calculateAlignedContigScore(alternativeAlignment);
                         final String hpTagValue = calculateHPTag(referenceScore.getValue(), alternativeScore.getValue());
                         final double hpQualTagValue = calculateHPQualTag(referenceScore.getValue(), alternativeScore.getValue());
-                        if (!referenceAlignment.alignmentIntervals.isEmpty()) {
-                            final List<SAMRecord> records = convertToSAMRecords(referenceAlignment, outputHeader, t._1().getContig(), referenceHaplotype.getGenomeLocation().getStart(), idPrefix, hpTagValue, hpQualTagValue, referenceScore, alternativeScore, t._1().getStart());
-                            records.forEach(outputWriter::addAlignment);
-                        } else {
-                            final SAMRecord outputRecord = convertToUnmappedSAMRecord(outputHeader, t._1().getContig(), t._1().getStart(), idPrefix, contig, referenceScore, alternativeScore, hpTagValue, hpQualTagValue);
-                            outputWriter.addAlignment(outputRecord);
+                        final SAMRecord outputRecord = convertToUnmappedSAMRecord(outputHeader, vc, contig, referenceScore, alternativeScore, referenceAlignment, alternativeAlignment, hpTagValue, hpQualTagValue);
+                        outputWriter.addAlignment(outputRecord);
+                        if (alignedOutputWriter != null && !referenceAlignment.alignmentIntervals.isEmpty()) {
+                            final List<SAMRecord> records = convertToSAMRecords(referenceAlignment, outputHeader, vc, referenceHaplotype.getGenomeLocation().getStart(), hpTagValue, hpQualTagValue, referenceScore, alternativeScore, t._1().getStart());
+                            records.forEach(alignedOutputWriter::addAlignment);
                         }
                     });
                 });
         outputWriter.close();
+        if (alignedOutputWriter != null) alignedOutputWriter.close();
     }
 
-    private SAMRecord convertToUnmappedSAMRecord(SAMFileHeader outputHeader, final String referenceContig
-            , final int start, String idPrefix, AlignedContig originalContig, AlignedContigScore referenceScore, AlignedContigScore alternativeScore, String hpTagValue, double hpQualTagValue) {
+    private SAMRecord convertToUnmappedSAMRecord(SAMFileHeader outputHeader, final StructuralVariantContext vc, final AlignedContig originalContig, final AlignedContigScore referenceScore, final AlignedContigScore alternativeScore,
+                                                 final AlignedContig referenceAlignment, final AlignedContig alternativeAlignment, final String hpTagValue, double hpQualTagValue) {
         final SAMRecord outputRecord = new SAMRecord(outputHeader);
         outputRecord.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
         outputRecord.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue);
         outputRecord.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue);
         outputRecord.setAttribute(REFERENCE_SCORE_TAG, "" + referenceScore);
         outputRecord.setAttribute(ALTERNATIVE_SCORE_TAG, "" + alternativeScore);
-        outputRecord.setAttribute(VARIANT_CONTEXT_TAG, "" + referenceContig + ":" + start);
-        outputRecord.setReadName(idPrefix + ":" + originalContig.contigName);
+        outputRecord.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignment, "ref"));
+        outputRecord.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignment, "alt"));
+        outputRecord.setAttribute(VARIANT_CONTEXT_TAG, vc.getUniqueID());
+        outputRecord.setReadName(vc.getUniqueID() + "/" + originalContig.contigName);
         outputRecord.setReadPairedFlag(false);
         outputRecord.setDuplicateReadFlag(false);
         outputRecord.setSecondOfPairFlag(false);
@@ -329,29 +342,50 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         outputRecord.setReadNegativeStrandFlag(false);
         final byte[] bases = originalContig.contigSequence;
         outputRecord.setReadBases(bases);
-        outputRecord.setReferenceName(referenceContig);
-        outputRecord.setAlignmentStart(start);
+        outputRecord.setReferenceName(vc.getContig());
+        outputRecord.setAlignmentStart(vc.getStart());
         outputRecord.setMappingQuality(SAMRecord.NO_MAPPING_QUALITY);
         outputRecord.setReadUnmappedFlag(true);
         return outputRecord;
     }
 
-    private static List<SAMRecord> convertToSAMRecords(final AlignedContig alignment, final SAMFileHeader header, final String referenceContig, final int contigStart, final String idPrefix, final String hpTagValue, final double hpQualTagValue, final AlignedContigScore referenceScore, final AlignedContigScore alternativeScore, final int variantStart) {
+    private String composeSupplementaryLikeString(final AlignedContig referenceAlignment, final String ctgName) {
+        if (referenceAlignment.alignmentIntervals.isEmpty()) {
+            return new Cigar().toString();
+        } else {
+            final StringBuilder builder = new StringBuilder(50 * referenceAlignment.alignmentIntervals.size());
+            for (final AlignmentInterval interval : referenceAlignment.alignmentIntervals) {
+                builder.append(ctgName).append(',');
+                builder.append(interval.referenceSpan.getStart()).append(',');
+                builder.append(interval.forwardStrand ? '+' : '-').append(',');
+                builder.append(interval.forwardStrand ? interval.cigarAlong5to3DirectionOfContig : CigarUtils.invertCigar(interval.cigarAlong5to3DirectionOfContig)).append(',');
+                builder.append(interval.mapQual).append(';');
+            }
+            return builder.toString();
+        }
+    }
+
+    private String composeSupplementaryLikeString(final AlignmentInterval interval, final String ctgName) {
+        final StringBuilder builder = new StringBuilder();
+        return builder.toString();
+    }
+
+    private static List<SAMRecord> convertToSAMRecords(final AlignedContig alignment, final SAMFileHeader header, final StructuralVariantContext vc, final int referenceHaplotypeStart, final String hpTagValue, final double hpQualTagValue, final AlignedContigScore referenceScore, final AlignedContigScore alternativeScore, final int variantStart) {
         final List<SAMRecord> result = new ArrayList<>(alignment.alignmentIntervals.size());
         result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment, false));
         for (int i = 1; i < alignment.alignmentIntervals.size(); i++) {
             result.add(alignment.alignmentIntervals.get(i).toSAMRecord(header, alignment, true));
         }
         for (final SAMRecord record : result) {
-            record.setReadName(idPrefix + ":" + alignment.contigName);
-            record.setReferenceName(referenceContig);
-            record.setAlignmentStart(record.getAlignmentStart() + contigStart - 1);
+            record.setReadName(vc.getUniqueID() + '/' + alignment.contigName);
+            record.setReferenceName(vc.getContig());
+            record.setAlignmentStart(record.getAlignmentStart() + referenceHaplotypeStart - 1);
             record.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
             record.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue);
             record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue);
             record.setAttribute(REFERENCE_SCORE_TAG, "" + referenceScore);
             record.setAttribute(ALTERNATIVE_SCORE_TAG, "" + alternativeScore);
-            record.setAttribute(VARIANT_CONTEXT_TAG, "" + referenceContig + ":" + variantStart);
+            record.setAttribute(VARIANT_CONTEXT_TAG, vc.getUniqueID());
         }
         final List<String> saTagValues = result.stream()
                 .map(record ->
@@ -585,20 +619,59 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
     private void outputHaplotypesAsSAMRecords(final SAMFileHeader outputHeader,
                                               final SAMFileWriter outputWriter,
+                                              final SAMFileWriter alignedOutputWriter,
                                               final Haplotype referenceHaplotype,
                                               final Haplotype alternativeHaplotype,
-                                              final String idPrefix) {
+                                              final StructuralVariantContext svc) {
         final Consumer<SAMRecord> haplotypeExtraSetup = r -> {
-            //r.setReferenceName(t._1().getContig());
-            //
-            // r.setAlignmentStart(t._1().getStart());
             r.setAttribute(SAMTag.RG.name(), HAPLOTYPE_READ_GROUP);
             r.setMappingQuality(60);
+            r.setAttribute(VARIANT_CONTEXT_TAG, svc.getUniqueID());
+            r.setAttribute(REFERENCE_ALIGNMENT_TAG, supplementaryAlignmentLikeString(r));
         };
-        outputWriter.addAlignment(referenceHaplotype.toSAMRecord(outputHeader, idPrefix + ":ref",
-                haplotypeExtraSetup));
-        outputWriter.addAlignment(alternativeHaplotype.toSAMRecord(outputHeader, idPrefix + ":alt",
-                haplotypeExtraSetup));
+        final SAMRecord referenceRecord = referenceHaplotype.toSAMRecord(outputHeader, svc.getUniqueID() + "/ref",
+                haplotypeExtraSetup);
+        final SAMRecord alternativeRecord = alternativeHaplotype.toSAMRecord(outputHeader, svc.getUniqueID() + "/alt",
+                haplotypeExtraSetup);
+        if (alignedOutputWriter != null) {
+            alignedOutputWriter.addAlignment(referenceRecord);
+            alignedOutputWriter.addAlignment(alternativeRecord);
+        }
+        final SAMRecord unmappedReferenceRecord  = unmapAndPointToVariant(referenceRecord.deepCopy(), svc);
+        final SAMRecord unmappedAlternativeRecord = unmapAndPointToVariant(alternativeRecord.deepCopy(), svc);
+        outputWriter.addAlignment(unmappedReferenceRecord);
+        outputWriter.addAlignment(unmappedAlternativeRecord);
+    }
+
+    private String supplementaryAlignmentLikeString(final SAMRecord record) {
+        if (record.getReadUnmappedFlag()) {
+            return new Cigar().toString();
+        } else {
+            return Utils.join(",", record.getReferenceName(), record.getStart(), record.getReadNegativeStrandFlag() ? "-" : "+",
+                                             record.getCigar().toString(), record.getMappingQuality()) + ";";
+        }
+    }
+
+    private SAMRecord unmapAndPointToVariant(final SAMRecord input, final StructuralVariantContext svc) {
+        final SAMRecord record = input.deepCopy();
+        if (record.getReadNegativeStrandFlag()) {
+            record.setReadNegativeStrandFlag(false);
+            final byte[] bases = record.getReadBases();
+            if (bases != null) {
+                SequenceUtil.reverseComplement(bases);
+                record.setReadBases(bases);
+            }
+            final byte[] quals = record.getBaseQualities();
+            if (quals != null) {
+                SequenceUtil.reverseQualities(quals);
+                record.setBaseQualities(quals);
+            }
+        }
+        record.setReadUnmappedFlag(true);
+        record.setReferenceName(svc.getContig());
+        record.setAlignmentStart(svc.getStart());
+        record.setCigar(new Cigar());
+        return record;
     }
 
     private <V extends VariantContext> Tuple2<V, List<AlignedContig>> resolvePendingContigs(final Tuple2<V, List<AlignedContig>> vc, final ReadsSparkSource s) {
