@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.utils;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -67,5 +68,9 @@ public class FlatMapGluer<I,O> implements Iterator<O> {
                                                  final Iterator<? extends I> inputIterator,
                                                  final I sentinel ) {
         return new FlatMapGluer<>(flatMapFunc,inputIterator,sentinel);
+    }
+
+    public static <T> Iterator<T> concatIterators( final Iterator<Iterator<T>> itrItr ) {
+        return new FlatMapGluer<>(itr -> itr, itrItr);
     }
 }

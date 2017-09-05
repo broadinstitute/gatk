@@ -40,6 +40,7 @@ public final class SVInterval implements Comparable<SVInterval> {
     public int getStart() { return start; }
     public int getEnd() { return end; }
     public int getLength() { return end-start; }
+    public SVLocation getStartLocation() { return new SVLocation(contig, start); }
 
     /** This definition is appropriate for half-open intervals.
      *  If you're building your intervals as closed, you're going to have trouble.

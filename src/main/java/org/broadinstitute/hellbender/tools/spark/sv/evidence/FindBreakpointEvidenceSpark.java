@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.HashPartitioner;
@@ -15,6 +16,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -40,6 +42,7 @@ import java.util.stream.IntStream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
+import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ExternalEvidence;
 
 /**
  * Tool to discover reads that support a hypothesis of a genomic breakpoint.
@@ -171,7 +174,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         log("Metadata retrieved.", logger);
 
         final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
-        List<SVInterval> intervals = getIntervals(params, broadcastMetadata, header, unfilteredReads, filter);
+        final List<List<BreakpointEvidence>> externalEvidence =
+                readExternalEvidence(params.externalEvidenceFile, readMetadata,
+                                        params.externalEvidenceWeight, params.externalEvidenceUncertainty);
+        log("External evidence retrieved.", logger);
+        final Broadcast<List<List<BreakpointEvidence>>> broadcastExternalEvidence = ctx.broadcast(externalEvidence);
+        List<SVInterval> intervals =
+                getIntervals(params, broadcastMetadata, broadcastExternalEvidence, header, unfilteredReads, filter);
+        broadcastExternalEvidence.destroy();
 
         final int nIntervals = intervals.size();
         log("Discovered " + nIntervals + " intervals.", logger);
@@ -217,6 +227,81 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             throw new UserException("Can't read crossContigToIgnore file "+crossContigsToIgnoreFile, ioe);
         }
         return ignoreSet;
+    }
+
+    @VisibleForTesting
+    static List<List<BreakpointEvidence>> readExternalEvidence( final String path,
+                                                                final ReadMetadata readMetadata,
+                                                                final int externalEvidenceWeight,
+                                                                final int externalEvidenceUncertainty ) {
+        final int nPartitions = readMetadata.getNPartitions();
+        final List<List<BreakpointEvidence>> evidenceByPartition = new ArrayList<>(nPartitions);
+        for ( int idx = 0; idx != nPartitions; ++idx ) {
+            evidenceByPartition.add(new ArrayList<>());
+        }
+
+        if ( path == null ) {
+            return evidenceByPartition;
+        }
+
+        final SVLocation[] partitionBoundaries = new SVLocation[nPartitions+1];
+        for ( int idx = 0; idx != nPartitions; ++idx ) {
+            final ReadMetadata.PartitionBounds bounds = readMetadata.getPartitionBounds(idx);
+            partitionBoundaries[idx] = new SVLocation(bounds.getFirstContigID(), bounds.getFirstStart());
+        }
+        partitionBoundaries[nPartitions] = new SVLocation(Integer.MAX_VALUE, Integer.MAX_VALUE);
+        for ( int idx = 0; idx != nPartitions; ++idx ) {
+            if ( partitionBoundaries[idx].compareTo(partitionBoundaries[idx+1]) > 0 ) {
+                throw new GATKException("Partition boundaries are not coordinate sorted.");
+            }
+        }
+
+        final Map<String, Integer> contigNameMap = readMetadata.getContigNameMap();
+
+        SVLocation prevLocation = new SVLocation(0, 0);
+        int partitionIdx = 0;
+        try ( final FeatureDataSource<Feature> dataSource = new FeatureDataSource<>(path, null, 0, null) ) {
+            for ( final Feature feature : dataSource ) {
+                final Integer contigID = contigNameMap.get(feature.getContig());
+                if ( contigID == null ) {
+                    throw new UserException(path + " contains a contig name not present in the BAM header: " + feature.getContig());
+                }
+                final int featureStart = feature.getStart();
+                final SVLocation featureLocation = new SVLocation(contigID, featureStart);
+                if ( prevLocation.compareTo(featureLocation) > 0 ) {
+                    throw new UserException("Features in " + path + " are not coordinate sorted.");
+                }
+                prevLocation = featureLocation;
+                while ( featureLocation.compareTo(partitionBoundaries[partitionIdx+1]) >= 0 ) {
+                    partitionIdx += 1;
+                }
+                final List<BreakpointEvidence> partitionEvidence = evidenceByPartition.get(partitionIdx);
+                final int featureEnd = feature.getEnd();
+                if ( featureEnd - featureStart <= 2*externalEvidenceUncertainty ) {
+                    partitionEvidence.add(new ExternalEvidence(contigID, featureStart, featureEnd, externalEvidenceWeight));
+                } else {
+                    final SVInterval interval1 =
+                            BreakpointEvidence.fixedWidthInterval(contigID, featureStart, externalEvidenceUncertainty);
+                    partitionEvidence.add(new ExternalEvidence(interval1, externalEvidenceWeight));
+                    final SVInterval interval2 =
+                            BreakpointEvidence.fixedWidthInterval(contigID, featureEnd, externalEvidenceUncertainty);
+                    final SVLocation startLocation2 = interval2.getStartLocation();
+                    int partitionIdx2 = partitionIdx;
+                    if ( startLocation2.compareTo(partitionBoundaries[partitionIdx+1]) >= 0 ) {
+                        partitionIdx2 = Arrays.binarySearch(partitionBoundaries, interval2.getStartLocation());
+                        // Binary search returns the complement of the insert position when the exact key is not found.
+                        // I.e., ~partitionIdx2 will point to the smallest entry larger than the sought key.
+                        // We want the partition before that one, if it exists.
+                        if ( partitionIdx2 < 0 ) {
+                            partitionIdx2 = ~partitionIdx2;
+                            if ( partitionIdx2 > 0 ) partitionIdx2 -= 1;
+                        }
+                    }
+                    evidenceByPartition.get(partitionIdx2).add(new ExternalEvidence(interval2, externalEvidenceWeight));
+                }
+            }
+        }
+        return evidenceByPartition;
     }
 
     /**
@@ -597,6 +682,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @VisibleForTesting static List<SVInterval> getIntervals(
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final Broadcast<ReadMetadata> broadcastMetadata,
+            final Broadcast<List<List<BreakpointEvidence>>> broadcastExternalEvidenceByPartition,
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter ) {
@@ -618,11 +704,18 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                 new ReadClassifier(broadcastMetadata.value(),sentinel,allowedOverhang,filter),
                                 readItr,sentinel);
                         }, true)
-                    .mapPartitionsWithIndex( (idx, evidenceItr) -> {
+                    .mapPartitionsWithIndex( (idx, evidenceItr1) -> {
                             final ReadMetadata readMetadata = broadcastMetadata.value();
                             final PartitionCrossingChecker xChecker =
                                     new PartitionCrossingChecker(idx, readMetadata,
                                                                  readMetadata.getMaxMedianFragmentSize());
+                            final Iterator<BreakpointEvidence> evidenceItr2 =
+                                    broadcastExternalEvidenceByPartition.value().get(idx).iterator();
+                            final List<Iterator<BreakpointEvidence>> evidenceItrList = new ArrayList<>(2);
+                            evidenceItrList.add(evidenceItr1);
+                            evidenceItrList.add(evidenceItr2);
+                            final Iterator<BreakpointEvidence> evidenceItr =
+                                    FlatMapGluer.concatIterators(evidenceItrList.iterator());
                             return new BreakpointDensityFilter(evidenceItr,readMetadata,
                                                                minEvidenceWeight,minCoherentEvidenceWeight,xChecker);
                         }, true);

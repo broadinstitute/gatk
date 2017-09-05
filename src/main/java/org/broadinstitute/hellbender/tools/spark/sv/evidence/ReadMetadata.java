@@ -320,6 +320,13 @@ public class ReadMetadata {
                                 "+" + stats.getPositiveMAD() + "\t" + stats.getCoverage() + "\t" +
                                 stats.getNReads() + "\t" + stats.getReadStartFrequency() + "\n");
             }
+            final PartitionBounds[] partitionBounds = readMetadata.partitionBounds;
+            writer.write("\nPartition Boundaries\n");
+            for ( int idx = 0; idx != partitionBounds.length; ++idx ) {
+                final PartitionBounds bounds = partitionBounds[idx];
+                writer.write(idx + "\t" + bounds.firstContigID + "\t" + bounds.getFirstStart() + "\t" +
+                        bounds.getLastContigID() + "\t" + bounds.getLastStart() + "\n");
+            }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write metadata file.", ioe);
         }
@@ -501,7 +508,7 @@ public class ReadMetadata {
         private final int firstStart;
         private final int lastContigID;
         private final int lastStart;
-        public final static int UNMAPPED = -1;
+        public final static int UNMAPPED = Integer.MAX_VALUE;
 
         public PartitionBounds( final int firstContigID, final int firstStart,
                                 final int lastContigID, final int lastStart ) {

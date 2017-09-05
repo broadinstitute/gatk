@@ -101,7 +101,7 @@ public final class SVUtils {
                 final String[] tokens = line.split("\t");
                 if ( tokens.length != 3 ) {
                     throw new GATKException("Interval file "+intervalsFile+" line "+
-                                            lineNo+" did not contain 3 columns: "+line);
+                            lineNo+" did not contain 3 columns: "+line);
                 }
                 try {
                     final Integer contigId = contigNameMap.get(tokens[0]);
@@ -240,6 +240,7 @@ public final class SVUtils {
      * 64-bit FNV-1a hash for byte arrays
      */
     public static long fnvByteArray64(final byte[] toHash) {
+        // TODO: this is a mistake:  the constant should be the FNV64_DEFAULT_SEED, but it's the multiplier instead.
         return fnvByteArray64(1099511628211L, toHash);
     }
 
@@ -265,12 +266,12 @@ public final class SVUtils {
      * independently.
      */
     public static JavaRDD<byte[]> getRefRDD(final JavaSparkContext ctx,
-                                             final int kSize,
-                                             final ReferenceMultiSource ref,
-                                             final PipelineOptions options,
-                                             final SAMSequenceDictionary readsDict,
-                                             final int ref_record_len,
-                                             final int ref_records_per_partition) {
+                                            final int kSize,
+                                            final ReferenceMultiSource ref,
+                                            final PipelineOptions options,
+                                            final SAMSequenceDictionary readsDict,
+                                            final int ref_record_len,
+                                            final int ref_records_per_partition) {
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(readsDict);
         if ( dict == null ) throw new GATKException("No reference dictionary available");
 
