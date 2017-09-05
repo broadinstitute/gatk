@@ -217,7 +217,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Tuple2<List<SVInterval>, List<EvidenceTargetLink>> intervalsAndEvidenceTargetLinks =
                 getIntervalsAndEvidenceTargetLinks(params, broadcastMetadata, broadcastExternalEvidence, header, unfilteredReads, filter);
         List<SVInterval> intervals = intervalsAndEvidenceTargetLinks._1();
-
         SparkUtils.destroyBroadcast(broadcastExternalEvidence, "external evidence");
 
         final int nIntervals = intervals.size();
