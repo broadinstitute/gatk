@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
-import javafx.collections.transformation.SortedList;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -20,29 +19,23 @@ import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariantContext;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Option;
-import scala.Serializable;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
 import javax.annotation.Nullable;
 import java.util.*;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.utils.IntervalUtils.convertSimpleIntervalToQueryInterval;
 import static org.broadinstitute.hellbender.utils.IntervalUtils.overlaps;
 
 /**
@@ -439,6 +432,18 @@ public class SparkSharder {
         return extents;
     }
 
+    /**
+     * Returns a partitioner that would split the input in a number of roughly equaly sized shards.
+     * @param numberOfPartitions
+     * @param <L>
+     * @return
+     */
+    public <L extends Locatable> Partitioner partitioner(final int numberOfPartitions) {
+        return new ShardPartitioner(shards, numberOfPartitions);
+
+
+    }
+
     private static void addPartitionReadExtent(List<PartitionLocatable<SimpleInterval>> extents, int partitionIndex, String contig, int start, int end) {
         SimpleInterval extent = new SimpleInterval(contig, start, end);
         extents.add(new PartitionLocatable<>(partitionIndex, extent));
@@ -479,7 +484,6 @@ public class SparkSharder {
 
         private final int partitionIndex;
         private final L interval;
-
 
         public PartitionLocatable(int partitionIndex, L interval) {
             this.partitionIndex = partitionIndex;

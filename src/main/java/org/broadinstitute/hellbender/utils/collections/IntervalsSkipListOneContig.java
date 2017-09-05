@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.utils.collections;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
+import com.google.common.collect.UnmodifiableListIterator;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
 import java.util.*;
@@ -168,18 +170,61 @@ public final class IntervalsSkipListOneContig<T extends Locatable> implements Se
 
     @Override
     public Iterator<T> iterator() {
-        final Iterator<T> mutableIterator = vs.iterator();
-        return new Iterator<T>() {
+        return new MyIterator();
+    }
 
-            @Override
-            public boolean hasNext() {
-                return mutableIterator.hasNext();
-            }
+    public ListIterator<T> listIterator() {
+        return new MyIterator();
+    }
 
-            @Override
-            public T next() {
-                return mutableIterator.next();
+    private class MyIterator extends UnmodifiableListIterator<T> {
+
+        private int nextIndex = 0;
+
+        private MyIterator() {
+            this(0);
+        }
+
+        private MyIterator(final int nextIndex) {
+            this.nextIndex = ParamUtils.inRange(nextIndex, 0, vs.size(), "start next index");
+        }
+
+        @Override
+        public boolean hasNext() {
+            return nextIndex < vs.size();
+        }
+
+        @Override
+        public T next() {
+            if (hasNext()) {
+                return vs.get(nextIndex++);
+            } else {
+                throw new NoSuchElementException("reached beyond the end of the list");
             }
-        };
+        }
+
+        @Override
+        public boolean hasPrevious() {
+            return nextIndex > 0;
+        }
+
+        @Override
+        public T previous() {
+            if (hasPrevious()) {
+                return vs.get(--nextIndex);
+            } else {
+                throw new NoSuchElementException("reached beyond the start of the list");
+            }
+        }
+
+        @Override
+        public int nextIndex() {
+            return nextIndex;
+        }
+
+        @Override
+        public int previousIndex() {
+            return nextIndex - 1;
+        }
     }
 }

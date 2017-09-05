@@ -41,7 +41,7 @@ class GenotypingContig {
         private List<AlignmentInterval> parseAlignmentString(final String alingmentString) {
             final String[] alignments = alingmentString.replaceAll(";$","").split(";");
             // TODO AI(null) -> AI(s);
-            return Stream.of(alignments).map(s -> new AlignmentInterval(null)).collect(Collectors.toList());
+            return Stream.of(alignments).map(AlignmentInterval::new).collect(Collectors.toList());
         }
     }
 

@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.spark.Partitioner;
+import org.apache.spark.RangePartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -119,7 +120,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> haplotypeAndContigs = haplotypesAndContigsSource.getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), getIntervals(), 0);
         final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
-                .map(StructuralVariantContext::new).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported)
+                .map(StructuralVariantContext::new).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
         final SparkSharder sharder = new SparkSharder(ctx, getReferenceSequenceDictionary(), getIntervals(), shardSize, 0, 10000);
         final JavaRDD<Shard<StructuralVariantContext>> variantSharded = sharder.shard(variants, StructuralVariantContext.class);
         final JavaRDD<Shard<GATKRead>> haplotypesSharded = sharder.shard(haplotypeAndContigs, GATKRead.class);
@@ -128,7 +129,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 StructuralVariantContext::getUniqueID,
                 r -> r.getAttributeAsString("VC"));
         final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndFragments = joinFragments(variantAndHaplotypes);
-        processVariants(variantHaplotypesAndFragments)
+   //     processVariants(variantHaplotypesAndFragments)
 //        final SparkSharder sharder = new SparkSharder(ctx, getReference(), getIntervals(), 10000);
 
 //        final SparkSharder.ShardedRDD<GATKRead> sharedReads = sharder.shard(haplotypeAndContigs, null);
@@ -143,7 +144,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<SimpleInterval, StructuralVariantContext> variantsPerShard;
         final JavaPairRDD<SimpleInterval, Tuple2<List<StructuralVariantContext>, List<GATKRead>>> variantsHaplotypesAndContigsPerShard;
         final JavaPairRDD<StructuralVariantContext, List<GATKRead>> variantsHaplotypeAndContigs;
-        final JavaRDD<StructuralVariantContext> outputVariants = processVariants(variants, ctx);
+        final JavaRDD<StructuralVariantContext> outputVariants = null;//processVariants(variants, ctx);
         final VCFHeader header = composeOutputHeader();
         SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
                 referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants, header, logger);
@@ -180,7 +181,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     private JavaRDD<StructuralVariantContext> processVariants(final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> input, final JavaSparkContext ctx) {
         final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator(ctx, dist);
         final ReferenceMultiSource reference = getReference();
-        return input.map(t -> processVariant(t._1(), t._2()._1(), t._2()._2()));
+        return null;// input
+                //.partitionBy(new );
+                //map(t -> processVariant(t._1(), t._2()._1(), t._2()._2()));
     }
 
     private static StructuralVariantContext processVariant(final StructuralVariantContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {
@@ -208,10 +211,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             }
 
         }
-        final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator();
+        //final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator();
 
-        final List<GATKRead>
-        input.collect().forEach(vt -> {
+     /*   input.collect().forEach(vt -> {
             logger.debug("Doing  " + vt._1().getContig() + ":" + vt._1().getStart());
             if (structuralVariantAlleleIsSupported(vt._1().getStructuralVariantAllele())) {
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates ");
@@ -230,7 +232,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " not supported ");
             }
         });
-        return variants;
+        return variants;*/
+       return null;
     }
 
     private static final List<SVFastqUtils.FastqRead> removeRepeatedReads(final List<SVFastqUtils.FastqRead> in) {
