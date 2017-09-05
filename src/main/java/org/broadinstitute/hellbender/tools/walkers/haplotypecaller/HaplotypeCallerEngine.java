@@ -36,6 +36,8 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -90,6 +92,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private SampleList samplesList;
 
     private byte minTailQuality;
+
+    private SmithWatermanAligner aligner;
+
     public static final byte MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION = 6;
 
     /**
@@ -150,7 +155,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         this.readsHeader = Utils.nonNull(readsHeader);
         this.referenceReader = Utils.nonNull(referenceReader);
         this.annotationEngine = annotationEngine;
-
+        this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
         initialize(createBamOutIndex, createBamOutMD5);
     }
 
@@ -459,7 +464,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param features Features overlapping the assembly region
      * @return List of variants discovered in the region (may be empty)
      */
-    public List<VariantContext> callRegion( final AssemblyRegion region, final FeatureContext features ) {
+    public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features) {
         if ( hcArgs.justDetermineActiveRegions ) {
             // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
             return NO_CALLS;
@@ -488,7 +493,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine);
+        aligner = SmithWatermanJavaAligner.getInstance();
+        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner);
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         // TODO - line bellow might be unnecessary : it might be that assemblyResult will always have those alleles anyway
@@ -540,7 +546,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads);
 
         // Realign reads to their best haplotype.
-        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc());
+        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
         readLikelihoods.changeReads(readRealignments);
 
         // Note: we used to subset down at this point to only the "best" haplotypes in all samples for genotyping, but there
@@ -659,10 +665,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public void shutdown() {
         likelihoodCalculationEngine.close();
-
+        aligner.close();
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
         }
+
+
     }
 
     private void finalizeRegion(final AssemblyRegion region) {

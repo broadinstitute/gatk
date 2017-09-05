@@ -4,6 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
@@ -14,50 +16,26 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Pairwise discrete smith-waterman alignment
+ * Pairwise discrete smith-waterman alignment implemented in pure java
  *
  * ************************************************************************
  * ****                    IMPORTANT NOTE:                             ****
  * ****  This class assumes that all bytes come from UPPERCASED chars! ****
  * ************************************************************************
  */
-public final class SWPairwiseAlignment {
+public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
+    private static final SmithWatermanJavaAligner ALIGNER = new SmithWatermanJavaAligner();
 
     /**
-     * Holds the core Smith-Waterman alignment parameters of
-     *
-     * match value, and mismatch, gap open and gap extension penalties
+     * return the stateless singleton instance of SmithWatermanAligner
      */
-    public static final class Parameters {
-        public final int w_match;
-        public final int w_mismatch;
-        public final int w_open;
-        public final int w_extend;
-
-        /**
-         * Create a new set of SW parameters
-         * @param w_match the match score
-         * @param w_mismatch the mismatch penalty
-         * @param w_open the gap open penalty
-         * @param w_extend the gap extension penalty
-
-         */
-        public Parameters(final int w_match, final int w_mismatch, final int w_open, final int w_extend) {
-            Utils.validateArg( w_mismatch <= 0, () -> "w_mismatch must be <= 0 but got " + w_mismatch);
-            Utils.validateArg( w_open <= 0, () -> "w_open must be <= 0 but got " + w_open);
-            Utils.validateArg(w_extend <= 0, () -> "w_extend must be <= 0 but got " + w_extend);
-
-            this.w_match = w_match;
-            this.w_mismatch = w_mismatch;
-            this.w_open = w_open;
-            this.w_extend = w_extend;
-        }
+    public static SmithWatermanJavaAligner getInstance() {
+        return ALIGNER;
     }
 
     // match=1, mismatch = -1/3, gap=-(1+k/3)
-    public static final Parameters ORIGINAL_DEFAULT = new Parameters(3,-1,-4,-3);
-
-    public static final Parameters STANDARD_NGS = new Parameters(25, -50, -110, -6);
+    public static final SWParameters ORIGINAL_DEFAULT = new SWParameters(3, -1, -4, -3);
+    public static final SWParameters STANDARD_NGS = new SWParameters(25, -50, -110, -6);
 
     /**
      * The state of a trace step through the matrix
@@ -69,99 +47,13 @@ public final class SWPairwiseAlignment {
         CLIP
     }
 
-    /**
-     * What strategy should we use when the best path does not start/end at the corners of the matrix?
-     */
-    public enum OverhangStrategy {
-        /*
-         * Add softclips for the overhangs
-         */
-        SOFTCLIP,
-
-        /*
-         * Treat the overhangs as proper insertions/deletions
-         */
-        INDEL,
-
-        /*
-         * Treat the overhangs as proper insertions/deletions for leading (but not trailing) overhangs.
-         * This is useful e.g. when we want to merge dangling tails in an assembly graph: because we don't
-         * expect the dangling tail to reach the end of the reference path we are okay ignoring trailing
-         * deletions - but leading indels are still very much relevant.
-         */
-        LEADING_INDEL,
-
-        /*
-         * Just ignore the overhangs
-         */
-        IGNORE
-    }
-
-    private SWPairwiseAlignmentResult alignmentResult;
-
-    private final Parameters parameters;
-
     private static final boolean cutoff = false;
 
-    private OverhangStrategy overhangStrategy = OverhangStrategy.SOFTCLIP;
-
     /**
-     * The SW scoring matrix, stored for debugging purposes if keepScoringMatrix is true
+     * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
+     * accessible via {@link #getInstance}
      */
-    private int[][] SW = null;
-
-    /**
-     * Only for testing purposes in the SWPairwiseAlignmentMain function
-     * set to true to keep SW scoring matrix after align call
-     */
-    private static final boolean keepScoringMatrix = false;
-
-    /**
-     * Create a new SW pairwise aligner
-     *
-     * After creating the object the two sequences are aligned with an internal call to align(seq1, seq2)
-     *
-     * @param seq1 the first sequence we want to align
-     * @param seq2 the second sequence we want to align
-     * @param parameters the SW parameters to use
-     */
-    public SWPairwiseAlignment(final byte[] seq1, final byte[] seq2, final Parameters parameters) {
-        this(parameters);
-        align(seq1,seq2);
-    }
-
-    /**
-     * Create a new SW pairwise aligner
-     *
-     * After creating the object the two sequences are aligned with an internal call to align(seq1, seq2)
-     *
-     * @param seq1 the first sequence we want to align
-     * @param seq2 the second sequence we want to align
-     * @param parameters the SW parameters to use
-     * @param strategy   the overhang strategy to use
-     */
-    public SWPairwiseAlignment(final byte[] seq1, final byte[] seq2, final Parameters parameters, final OverhangStrategy strategy) {
-        this(parameters);
-        overhangStrategy = strategy;
-        align(seq1, seq2);
-    }
-
-    /**
-     * Create a new SW pairwise aligner, without actually doing any alignment yet
-     *
-     * @param parameters the SW parameters to use
-     */
-    private SWPairwiseAlignment(final Parameters parameters) {
-        this.parameters = parameters;
-    }
-
-    public SWPairwiseAlignment(final byte[] seq1, final byte[] seq2) {
-        this(seq1,seq2,ORIGINAL_DEFAULT);
-    }
-
-    public Cigar getCigar() { return alignmentResult.cigar ; }
-
-    public int getAlignmentStart2wrt1() { return alignmentResult.alignment_offset; }
+    private SmithWatermanJavaAligner(){}
 
     /**
      * Aligns the alternate sequence to the reference sequence
@@ -169,13 +61,21 @@ public final class SWPairwiseAlignment {
      * @param reference  ref sequence
      * @param alternate  alt sequence
      */
-    private void align(final byte[] reference, final byte[] alternate) {
-        if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 )
+    @Override
+    public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
+        return alignUsingSmithWaterman(reference, alternate, parameters, overhangStrategy);
+    }
+
+    public static SmithWatermanAlignment alignUsingSmithWaterman(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
+        if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 ) {
             throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
+        }
+        Utils.nonNull(parameters);
+        Utils.nonNull(overhangStrategy);
 
         // avoid running full Smith-Waterman if there is an exact match of alternate in reference
         int matchIndex = -1;
-        if (overhangStrategy == OverhangStrategy.SOFTCLIP || overhangStrategy == OverhangStrategy.IGNORE) {
+        if (overhangStrategy == SWOverhangStrategy.SOFTCLIP || overhangStrategy == SWOverhangStrategy.IGNORE) {
             // Use a substring search to find an exact match of the alternate in the reference
             // NOTE: This approach only works for SOFTCLIP and IGNORE overhang strategies
             matchIndex = Utils.lastIndexOf(reference, alternate);
@@ -185,47 +85,34 @@ public final class SWPairwiseAlignment {
             // generate the alignment result when the substring search was successful
             final List<CigarElement> lce = new ArrayList<>(alternate.length);
             lce.add(makeElement(State.MATCH, alternate.length));
-            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+            return  new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
         }
         else {
             // run full Smith-Waterman
             final int n = reference.length+1;
             final int m = alternate.length+1;
             final int[][] sw = new int[n][m];
-            if ( keepScoringMatrix ) {
-                SW = sw;
-            }
             final int[][] btrack=new int[n][m];
 
-            calculateMatrix(reference, alternate, sw, btrack);
-            alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+            return calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
         }
     }
 
     /**
      * Calculates the SW matrices for the given sequences
-     *
-     * @param reference  ref sequence
-     * @param alternate  alt sequence
-     * @param sw         the Smith-Waterman matrix to populate
-     * @param btrack     the back track matrix to populate
-     */
-    private void calculateMatrix(final byte[] reference, final byte[] alternate, final int[][] sw, final int[][] btrack) {
-        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy);
-    }
-
-    /**
-     * Calculates the SW matrices for the given sequences
-     *
-     * @param reference  ref sequence
+     *  @param reference  ref sequence
      * @param alternate  alt sequence
      * @param sw         the Smith-Waterman matrix to populate
      * @param btrack     the back track matrix to populate
      * @param overhangStrategy    the strategy to use for dealing with overhangs
+     * @param parameters
      */
-    private void calculateMatrix(final byte[] reference, final byte[] alternate, final int[][] sw, final int[][] btrack, final OverhangStrategy overhangStrategy) {
-        if ( reference.length == 0 || alternate.length == 0 )
+    private static void calculateMatrix(final byte[] reference, final byte[] alternate, final int[][] sw, final int[][] btrack,
+                                        final SWOverhangStrategy overhangStrategy, final SWParameters parameters) {
+        if ( reference.length == 0 || alternate.length == 0 ) {
             throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
+        }
 
         final int ncol = sw[0].length;//alternate.length+1; formerly m
         final int nrow = sw.length;// reference.length+1; formerly n
@@ -246,31 +133,31 @@ public final class SWPairwiseAlignment {
         final int[] gap_size_h = new int[nrow+1];
 
         // we need to initialize the SW matrix with gap penalties if we want to keep track of indels at the edges of alignments
-        if ( overhangStrategy == OverhangStrategy.INDEL || overhangStrategy == OverhangStrategy.LEADING_INDEL ) {
+        if ( overhangStrategy == SWOverhangStrategy.INDEL || overhangStrategy == SWOverhangStrategy.LEADING_INDEL ) {
             // initialize the first row
             final int[] topRow=sw[0];
-            topRow[1]=parameters.w_open;
-            int currentValue = parameters.w_open;
+            topRow[1]= parameters.getGapOpenPenalty();
+            int currentValue = parameters.getGapOpenPenalty();
             for ( int i = 2; i < topRow.length; i++ ) {
-                currentValue += parameters.w_extend;
+                currentValue += parameters.getGapExtendPenalty();
                 topRow[i]=currentValue;
             }
             // initialize the first column
-            sw[1][0]=parameters.w_open;
-            currentValue = parameters.w_open;
+            sw[1][0]= parameters.getGapOpenPenalty();
+            currentValue = parameters.getGapOpenPenalty();
             for ( int i = 2; i < sw.length; i++ ) {
-                currentValue += parameters.w_extend;
+                currentValue += parameters.getGapExtendPenalty();
                 sw[i][0]=currentValue;
             }
         }
         // build smith-waterman matrix and keep backtrack info:
         int[] curRow=sw[0];
 
-        //field access is pricey if done enough times so we extract those out
-        final int w_open = parameters.w_open;
-        final int w_extend = parameters.w_extend;
-        final int w_match = parameters.w_match;
-        final int w_mismatch = parameters.w_mismatch;
+        //access is pricey if done enough times so we extract those out
+        final int w_open = parameters.getGapOpenPenalty();
+        final int w_extend = parameters.getGapExtendPenalty();
+        final int w_match = parameters.getMatchValue();
+        final int w_mismatch = parameters.getMismatchPenalty();
 
         //array length checks are expensive in tight loops so extract the length out
         for ( int i = 1, sw_length = sw.length; i < sw_length ; i++ ) {
@@ -350,12 +237,23 @@ public final class SWPairwiseAlignment {
     /*
      * Class to store the result of calculating the CIGAR from the back track matrix
      */
-    private static final class SWPairwiseAlignmentResult {
-        public final Cigar cigar;
-        public final int alignment_offset;
-        SWPairwiseAlignmentResult(final Cigar cigar, final int alignment_offset) {
+    private static final class SWPairwiseAlignmentResult implements SmithWatermanAlignment {
+        private final Cigar cigar;
+        private final int alignmentOffset;
+
+        SWPairwiseAlignmentResult(final Cigar cigar, final int alignmentOffset) {
             this.cigar = cigar;
-            this.alignment_offset = alignment_offset;
+            this.alignmentOffset = alignmentOffset;
+        }
+
+        @Override
+        public Cigar getCigar() {
+            return cigar;
+        }
+
+        @Override
+        public int getAlignmentOffset() {
+            return alignmentOffset;
         }
     }
 
@@ -367,7 +265,7 @@ public final class SWPairwiseAlignment {
      * @param overhangStrategy    the strategy to use for dealing with overhangs
      * @return non-null SWPairwiseAlignmentResult object
      */
-    private SWPairwiseAlignmentResult calculateCigar(final int[][] sw, final int[][] btrack, final OverhangStrategy overhangStrategy) {
+    private static SWPairwiseAlignmentResult calculateCigar(final int[][] sw, final int[][] btrack, final SWOverhangStrategy overhangStrategy) {
         // p holds the position we start backtracking from; we will be assembling a cigar in the backwards order
         int p1 = 0, p2 = 0;
 
@@ -378,7 +276,7 @@ public final class SWPairwiseAlignment {
         int segment_length = 0; // length of the segment (continuous matches, insertions or deletions)
 
         // if we want to consider overhangs as legitimate operators, then just start from the corner of the matrix
-        if ( overhangStrategy == OverhangStrategy.INDEL ) {
+        if ( overhangStrategy == SWOverhangStrategy.INDEL ) {
             p1 = refLength;
             p2 = altLength;
         } else {
@@ -396,7 +294,7 @@ public final class SWPairwiseAlignment {
                }
             }
             // now look for a larger score on the bottom-most row
-            if ( overhangStrategy != OverhangStrategy.LEADING_INDEL ) {
+            if ( overhangStrategy != SWOverhangStrategy.LEADING_INDEL ) {
                 final int[] bottomRow=sw[refLength];
                 for ( int j = 1 ; j < bottomRow.length; j++) {
                     final int curScore=bottomRow[j];
@@ -412,7 +310,7 @@ public final class SWPairwiseAlignment {
             }
         }
         final List<CigarElement> lce = new ArrayList<>(5);
-        if ( segment_length > 0 && overhangStrategy == OverhangStrategy.SOFTCLIP ) {
+        if ( segment_length > 0 && overhangStrategy == SWOverhangStrategy.SOFTCLIP ) {
             lce.add(makeElement(State.CLIP, segment_length));
             segment_length = 0;
         }
@@ -460,11 +358,11 @@ public final class SWPairwiseAlignment {
         // DO_SOFTCLIP is false or 2S3M if DO_SOFTCLIP is true.
         // The consumers need to check for the alignment offset and deal with it properly.
         final int alignment_offset;
-        if ( overhangStrategy == OverhangStrategy.SOFTCLIP ) {
+        if ( overhangStrategy == SWOverhangStrategy.SOFTCLIP ) {
             lce.add(makeElement(state, segment_length));
             if ( p2 > 0 ) lce.add(makeElement(State.CLIP, p2));
             alignment_offset = p1;
-        } else if ( overhangStrategy == OverhangStrategy.IGNORE ) {
+        } else if ( overhangStrategy == SWOverhangStrategy.IGNORE ) {
             lce.add(makeElement(state, segment_length + p2));
             alignment_offset = p1 - p2;
         } else {  // overhangStrategy == OverhangStrategy.INDEL || overhangStrategy == OverhangStrategy.LEADING_INDEL
@@ -497,120 +395,4 @@ public final class SWPairwiseAlignment {
         return new CigarElement(length, op);
     }
 
-    private int wd(final byte x, final byte y) {
-        return (x == y ? parameters.w_match : parameters.w_mismatch);
-    }
-
-    @VisibleForTesting
-    void printAlignment(final byte[] ref, final byte[] read) {
-        printAlignment(ref,read,100);
-    }
-
-    public void printAlignment(final byte[] ref, final byte[] read, final int width) {
-        final StringBuilder bread = new StringBuilder();
-        final StringBuilder bref = new StringBuilder();
-        final StringBuilder match = new StringBuilder();
-
-        int i = 0;
-        int j = 0;
-
-        final int offset = getAlignmentStart2wrt1();
-
-        Cigar cigar = getCigar();
-
-        if ( overhangStrategy != OverhangStrategy.SOFTCLIP ) {
-
-            // we need to go through all the hassle below only if we do not do softclipping;
-            // otherwise offset is never negative
-            if ( offset < 0 ) {
-                for (  ; j < (-offset) ; j++ ) {
-                    bread.append((char)read[j]);
-                    bref.append(' ');
-                    match.append(' ');
-                }
-                // at negative offsets, our cigar's first element carries overhanging bases
-                // that we have just printed above. Tweak the first element to
-                // exclude those bases. Here we create a new list of cigar elements, so the original
-                // list/original cigar are unchanged (they are unmodifiable anyway!)
-
-                final List<CigarElement> tweaked = new ArrayList<>();
-                tweaked.addAll(cigar.getCigarElements());
-                tweaked.set(0,new CigarElement(cigar.getCigarElement(0).getLength()+offset,
-                        cigar.getCigarElement(0).getOperator()));
-                cigar = new Cigar(tweaked);
-            }
-        }
-
-        if ( offset > 0 ) { // note: the way this implementation works, cigar will ever start from S *only* if read starts before the ref, i.e. offset = 0
-            for (  ; i < getAlignmentStart2wrt1() ; i++ ) {
-                bref.append((char)ref[i]);
-                bread.append(' ');
-                match.append(' ');
-            }
-        }
-        
-        for ( final CigarElement e : cigar.getCigarElements() ) {
-            switch (e.getOperator()) {
-                case M :
-                    for ( int z = 0 ; z < e.getLength() ; z++, i++, j++  ) {
-                        bref.append((i<ref.length)?(char)ref[i]:' ');
-                        bread.append((j < read.length)?(char)read[j]:' ');
-                        match.append( ( i<ref.length && j < read.length ) ? (ref[i] == read[j] ? '.':'*' ) : ' ' );
-                    }
-                    break;
-                case I :
-                    for ( int z = 0 ; z < e.getLength(); z++, j++ ) {
-                        bref.append('-');
-                        bread.append((char)read[j]);
-                        match.append('I');
-                    }
-                    break;
-                case S :
-                    for ( int z = 0 ; z < e.getLength(); z++, j++ ) {
-                        bref.append(' ');
-                        bread.append((char)read[j]);
-                        match.append('S');
-                    }
-                    break;
-                case D:
-                    for ( int z = 0 ; z < e.getLength(); z++ , i++ ) {
-                        bref.append((char)ref[i]);
-                        bread.append('-');
-                        match.append('D');
-                    }
-                    break;
-                default:
-                    throw new GATKException("Unexpected Cigar element:" + e.getOperator());
-            }
-        }
-        for ( ; i < ref.length; i++ ) bref.append((char)ref[i]);
-        for ( ; j < read.length; j++ ) bread.append((char)read[j]);
-
-        int pos = 0 ;
-        final int maxlength = Math.max(match.length(), Math.max(bread.length(), bref.length()));
-        while ( pos < maxlength ) {
-            print_cautiously(match,pos,width);
-            print_cautiously(bread,pos,width);
-            print_cautiously(bref,pos,width);
-            System.out.println();
-            pos += width;
-        }
-    }
-
-    /** String builder's substring is extremely stupid: instead of trimming and/or returning an empty
-     * string when one end/both ends of the interval are out of range, it crashes with an
-     * exception. This utility function simply prints the substring if the interval is within the index range
-     * or trims accordingly if it is not.
-     * @param s
-     * @param start
-     * @param width
-     */
-    private static void print_cautiously(final StringBuilder s, final int start, final int width) {
-        if ( start >= s.length() ) {
-            System.out.println();
-            return;
-        }
-        final int end = Math.min(start + width, s.length());
-        System.out.println(s.substring(start,end));
-    }
 }

@@ -19,10 +19,8 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -33,7 +31,7 @@ import java.util.stream.Collectors;
 /**
  * Created by davidben on 9/8/16.
  */
-public class AssemblyBasedCallerUtils {
+public final class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
 
@@ -44,7 +42,7 @@ public class AssemblyBasedCallerUtils {
      * </p>
      * @return never {@code null}
      */
-    public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc) {
+    public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
         final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAlleles();
         final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
 
@@ -52,7 +50,7 @@ public class AssemblyBasedCallerUtils {
             final GATKRead originalRead = bestAllele.read;
             final Haplotype bestHaplotype = bestAllele.allele;
             final boolean isInformative = bestAllele.isInformative();
-            final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative);
+            final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative, aligner);
             result.put(originalRead, realignedRead);
         }
         return result;
@@ -239,7 +237,8 @@ public class AssemblyBasedCallerUtils {
                                                   final SampleList sampleList,
                                                   final Logger logger,
                                                   final ReferenceSequenceFile referenceReader,
-                                                  final ReadThreadingAssembler assemblyEngine){
+                                                  final ReadThreadingAssembler assemblyEngine,
+                                                  final SmithWatermanAligner aligner){
         finalizeRegion(region, argumentCollection.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList);
         if( argumentCollection.debug) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
@@ -259,7 +258,8 @@ public class AssemblyBasedCallerUtils {
 
         try {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, referenceHaplotype, fullReferenceWithPadding,
-                    paddedReferenceLoc, givenAlleles, readErrorCorrector, header);
+                                                                                        paddedReferenceLoc, givenAlleles, readErrorCorrector, header,
+                                                                                        aligner);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
         } catch (final Exception e){
