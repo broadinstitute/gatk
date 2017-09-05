@@ -18,7 +18,12 @@ public final class RScriptExecutorUnitTest extends BaseTest {
 
     @Test(groups = {"R"})
     public void testRscriptExists() {
-        Assert.assertTrue(new RScriptExecutor().getExternalExecutorExists(), "Rscript not found in environment ${PATH}");
+        Assert.assertTrue(new RScriptExecutor().externalExecutableExists(), "Rscript not found in environment ${PATH}");
+    }
+
+    @Test(groups = {"R"})
+    public void testRscriptEnsureExists() {
+        Assert.assertNotNull(new RScriptExecutor(true), "Rscript not found in environment ${PATH}");
     }
 
     @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")

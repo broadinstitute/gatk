@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.utils.python;
 
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -17,15 +15,15 @@ import java.util.List;
 public class PythonScriptExecutorUnitTest extends BaseTest {
     final String HELLO_WORLD_SCRIPT = "print \"hello, world\"";
 
-    @Test(groups = {"Python"})
+    @Test(groups = {"PYTHON"})
     public void testPythonExists() {
         Assert.assertTrue(
-                new PythonScriptExecutor(true).getExternalExecutorExists(),
+                new PythonScriptExecutor(true).externalExecutableExists(),
                 "python not found in environment ${PATH}"
         );
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsCommand() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final boolean ret = pythonExecutor.executeCommand(HELLO_WORLD_SCRIPT, null, null);
@@ -33,7 +31,7 @@ public class PythonScriptExecutorUnitTest extends BaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsModule() {
         // use builtin module "random"
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
@@ -42,9 +40,9 @@ public class PythonScriptExecutorUnitTest extends BaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsScript() {
-        final File scriptFile = writeTemporaryScriptFile(HELLO_WORLD_SCRIPT, PythonScriptExecutor.pyExtension);
+        final File scriptFile = writeTemporaryScriptFile(HELLO_WORLD_SCRIPT, PythonScriptExecutor.PYTHON_EXTENSION);
 
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final boolean ret = executor.executeScript(scriptFile.getAbsolutePath(), null, null);
@@ -52,7 +50,7 @@ public class PythonScriptExecutorUnitTest extends BaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsRawArgs() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final boolean ret = pythonExecutor.executeArgs(new ArrayList<String>(Arrays.asList("-c", HELLO_WORLD_SCRIPT)));
@@ -60,7 +58,7 @@ public class PythonScriptExecutorUnitTest extends BaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsRawArgsSerial() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final List<String> args = new ArrayList<>(Arrays.asList("-c", HELLO_WORLD_SCRIPT));
@@ -69,7 +67,7 @@ public class PythonScriptExecutorUnitTest extends BaseTest {
         Assert.assertTrue(pythonExecutor.executeArgs(args), "Second Python exec failed");
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsRawArgsWithPythonArguments() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final boolean ret = pythonExecutor.executeArgs(new ArrayList<>(Arrays.asList("-v", "-c", HELLO_WORLD_SCRIPT )));
@@ -77,13 +75,13 @@ public class PythonScriptExecutorUnitTest extends BaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsScriptWithScriptArguments() {
         final String SCRIPT_WITH_ARGUMENTS =
                 "import fileinput\n" +
                 "for line in fileinput.input():\n" +
                 "    print(line)\n";
-        final File scriptFile = writeTemporaryScriptFile(SCRIPT_WITH_ARGUMENTS, PythonScriptExecutor.pyExtension);
+        final File scriptFile = writeTemporaryScriptFile(SCRIPT_WITH_ARGUMENTS, PythonScriptExecutor.PYTHON_EXTENSION);
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final boolean ret = executor.executeScript(
                 scriptFile.getAbsolutePath(),
@@ -93,22 +91,22 @@ public class PythonScriptExecutorUnitTest extends BaseTest {
        Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists", expectedExceptions = PythonScriptExecutorException.class)
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists", expectedExceptions = PythonScriptExecutorException.class)
     public void testNonExistentScriptException() throws IOException {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         executor.executeScript(
-                BaseTest.getSafeNonExistentFile("Nonexistent" + PythonScriptExecutor.pyExtension).getAbsolutePath(),
+                BaseTest.getSafeNonExistentFile("Nonexistent" + PythonScriptExecutor.PYTHON_EXTENSION).getAbsolutePath(),
                 null,
                 null);
     }
 
-    @Test(groups = {"Python"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
     public void testNonExistentScriptNoException() {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         executor.setIgnoreExceptions(true);
         Assert.assertFalse(
                 executor.executeScript(
-                        BaseTest.getSafeNonExistentFile("Nonexistent" + PythonScriptExecutor.pyExtension).getAbsolutePath(),
+                        BaseTest.getSafeNonExistentFile("Nonexistent" + PythonScriptExecutor.PYTHON_EXTENSION).getAbsolutePath(),
                         null,
                         null
                 ),

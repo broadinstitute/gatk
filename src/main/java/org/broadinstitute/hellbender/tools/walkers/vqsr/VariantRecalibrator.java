@@ -408,7 +408,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
         if (RSCRIPT_FILE != null) {
             rScriptExecutor = new RScriptExecutor();
-            if(!rScriptExecutor.getExternalExecutorExists()) {
+            if(!rScriptExecutor.externalExecutableExists()) {
                 Utils.warnUser(logger, String.format(
                         "Rscript not found in environment path. %s will be generated but PDF plots will not.",
                         RSCRIPT_FILE));

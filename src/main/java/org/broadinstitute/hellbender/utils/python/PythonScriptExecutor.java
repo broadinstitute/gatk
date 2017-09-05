@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.runtime.ScriptExecutor;
+import org.broadinstitute.hellbender.utils.runtime.ScriptExecutorException;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -35,33 +36,48 @@ import java.util.stream.Collectors;
  * between command/script/module execution. Using -i doesn't buy you anything (for this version of the executor, at
  * least) since the process is terminated after each command completes.
  */
-public class PythonScriptExecutor extends ScriptExecutor<PythonScriptExecutorException> {
+public class PythonScriptExecutor extends ScriptExecutor {
     private static final Logger logger = LogManager.getLogger(PythonScriptExecutor.class);
 
-    private static String python = "python";    // default executor name
-    private static String python3 = "python3";
-    public static String pyExtension = ".py";
+    /**
+     * Enum of possible executables that can be launched by this executor.
+     */
+    public enum PythonExecutableName {
+
+        PYTHON("python"),
+        PYTHON3("python3");
+
+        private final String executableName;
+
+        PythonExecutableName (final String executableName) {
+            this.executableName = executableName;
+        }
+
+        public String getExecutableName() {
+            return executableName;
+        }
+    }
+
+    // File extension used for python scripts
+    public static final String PYTHON_EXTENSION = ".py";
 
     private final List<String> curatedCommandLineArgs = new ArrayList<>();
 
     /**
-     * @param ensureExists throw if the python executor cannot be located
+     * @param ensureExecutableExists throw if the python executable cannot be located
      */
-    public PythonScriptExecutor(boolean ensureExists) {
-        this(python, ensureExists);
+    public PythonScriptExecutor(boolean ensureExecutableExists) {
+        this(PythonExecutableName.PYTHON, ensureExecutableExists);
     }
 
     /**
-     * @param pythonExecutorName name of the python executable to start
-     * @param ensureScriptEngineExists throw if the python executor cannot be found
+     * @param pythonExecutableName name of the python executable to start
+     * @param ensureExecutableExists throw if the python executable cannot be found
      */
-    public PythonScriptExecutor(final String pythonExecutorName, final boolean ensureScriptEngineExists) {
-        super(pythonExecutorName);
-        if (!pythonExecutorName.equals(python) && !pythonExecutorName.equals(python3)) {
-            throw new IllegalArgumentException("python executable name must be either 'python' or 'python3'");
-        }
-        if (ensureScriptEngineExists && !getExternalExecutorExists()) {
-            executorMissing();
+    public PythonScriptExecutor(final PythonExecutableName pythonExecutableName, final boolean ensureExecutableExists) {
+        super(pythonExecutableName.getExecutableName());
+        if (ensureExecutableExists && !externalExecutableExists()) {
+            executableMissing();
         }
     }
 
@@ -98,8 +114,8 @@ public class PythonScriptExecutor extends ScriptExecutor<PythonScriptExecutorExc
      */
     public boolean executeModule(final String moduleName, final List<String> pythonProcessArgs, final List<String> scriptArgs) {
         Utils.nonNull(moduleName, "module name cannot be null");
-        if (moduleName.endsWith(pyExtension)) {
-            throw new IllegalArgumentException(String.format("\"%s\" suffix should not be included to run a Python module", pyExtension));
+        if (moduleName.endsWith(PYTHON_EXTENSION)) {
+            throw new IllegalArgumentException(String.format("\"%s\" suffix should not be included to run a Python module", PYTHON_EXTENSION));
         }
 
         final List<String> args = new ArrayList<>();
@@ -143,10 +159,10 @@ public class PythonScriptExecutor extends ScriptExecutor<PythonScriptExecutorExc
      */
     public boolean executeScript(final String scriptName, final List<String> pythonProcessArgs, final List<String> scriptArgs) {
         Utils.nonNull(scriptName, "script name cannot be null");
-        if (!scriptName.endsWith(pyExtension)) {
+        if (!scriptName.endsWith(PYTHON_EXTENSION)) {
             throw new IllegalArgumentException(String.format("Python script name (%s) must end with \"%s\"",
                     scriptName,
-                    pyExtension));
+                    PYTHON_EXTENSION));
         }
 
         final List<String> args = new ArrayList<>();
@@ -171,8 +187,8 @@ public class PythonScriptExecutor extends ScriptExecutor<PythonScriptExecutorExc
 
         // executor name first, followed by rawArgs
         curatedCommandLineArgs.clear();
-        curatedCommandLineArgs.add(externalScriptExecutorName);
-        rawArgs.forEach(curatedCommandLineArgs::add);
+        curatedCommandLineArgs.add(externalScriptExecutableName);
+        curatedCommandLineArgs.addAll(rawArgs);
 
         try {
             // actually run the script
@@ -192,7 +208,7 @@ public class PythonScriptExecutor extends ScriptExecutor<PythonScriptExecutorExc
      * @param message
      */
     @Override
-    public PythonScriptExecutorException getScriptException(final String message) {
+    public ScriptExecutorException getScriptException(final String message) {
         return new PythonScriptExecutorException(message.toString());
     }
 

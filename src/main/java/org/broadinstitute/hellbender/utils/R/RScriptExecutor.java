@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * Generic service for executing RScripts
  */
-public final class RScriptExecutor extends ScriptExecutor<RScriptExecutorException> {
+public final class RScriptExecutor extends ScriptExecutor {
     private static final Logger logger = LogManager.getLogger(RScriptExecutor.class);
     private final List<RScriptLibrary> libraries = new ArrayList<>();
     private final List<Resource> scriptResources = new ArrayList<>();
@@ -24,7 +24,17 @@ public final class RScriptExecutor extends ScriptExecutor<RScriptExecutorExcepti
     private final List<String> args = new ArrayList<>();
 
     public RScriptExecutor() {
+        this(false);
+    }
+
+    /**
+     * @param ensureExecutableExists throw if the RScript executable cannot be located
+     */
+    public RScriptExecutor(boolean ensureExecutableExists) {
         super("Rscript");
+        if (ensureExecutableExists && !externalExecutableExists()) {
+            executableMissing();
+        }
     }
 
     public void addLibrary(RScriptLibrary library) {
@@ -111,7 +121,7 @@ public final class RScriptExecutor extends ScriptExecutor<RScriptExecutorExcepti
 
             String[] cmd = new String[this.args.size() + 3];
             int i = 0;
-            cmd[i++] = externalScriptExecutorName;
+            cmd[i++] = externalScriptExecutableName;
             cmd[i++] = "-e";
             cmd[i++] = expression.toString();
             for (String arg: this.args)

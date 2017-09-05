@@ -7,8 +7,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Base class for executors that find and run scripts in an external script engine process (R, Python, etc).
@@ -18,28 +16,28 @@ import java.util.List;
  *   {@link #getApproximateCommandLine}
  *   {@link #getScriptException}
  */
-public abstract class ScriptExecutor<T extends ScriptExecutorException> {
+public abstract class ScriptExecutor {
     private static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.utils.runtime.ScriptExecutor.class);
 
-    protected final String externalScriptExecutorName;    // external program to run; e.g. "RScript" or "python"
+    protected final String externalScriptExecutableName;    // external program to run; e.g. "RScript" or "python"
     protected boolean ignoreExceptions = false;
 
-    private final File externalScriptExecutorPath;        // File for path to externalScriptExecutor
+    private final File externalScriptExecutablePath;        // File for path to externalScriptExecutable
 
     /**
-     * @param externalScriptExecutorName Name of the script engine to run (i.e. "RScript" or "python")
+     * @param externalScriptExecutableName Name of the script engine to run (i.e. "RScript" or "python")
      */
-    public ScriptExecutor(final String externalScriptExecutorName) {
-        Utils.nonNull(externalScriptExecutorName);
-        this.externalScriptExecutorName = externalScriptExecutorName;
-        this.externalScriptExecutorPath = RuntimeUtils.which(externalScriptExecutorName);
+    public ScriptExecutor(final String externalScriptExecutableName) {
+        Utils.nonNull(externalScriptExecutableName);
+        this.externalScriptExecutableName = externalScriptExecutableName;
+        this.externalScriptExecutablePath = RuntimeUtils.which(externalScriptExecutableName);
     }
 
     /**
-     * @return true if the executor exists and can be found on the path
+     * @return true if the executable exists and can be found on the path
      */
-    public boolean getExternalExecutorExists() {
-        return externalScriptExecutorPath != null;
+    public boolean externalExecutableExists() {
+        return externalScriptExecutablePath != null;
     }
 
     /**
@@ -58,10 +56,10 @@ public abstract class ScriptExecutor<T extends ScriptExecutorException> {
      */
     public abstract String getApproximateCommandLine();
 
-    protected void executorMissing() {
+    protected void executableMissing() {
         throw new UserException.CannotExecuteScript(
-                externalScriptExecutorName,
-                String.format("Please add the %s directory to your environment ${PATH}", externalScriptExecutorName));
+                externalScriptExecutableName,
+                String.format("Please add the %s directory to your environment ${PATH}", externalScriptExecutableName));
     }
 
     /**
@@ -71,7 +69,7 @@ public abstract class ScriptExecutor<T extends ScriptExecutorException> {
      * @param message String with the cause of the exception.
      * @return a {#ScriptExecutorException}-derived exception object
      */
-    public abstract T getScriptException(final String message);
+    public abstract ScriptExecutorException getScriptException(final String message);
 
     /**
      * Execute the script represented by the arguments in {@code commandLineArguments}.
@@ -80,9 +78,9 @@ public abstract class ScriptExecutor<T extends ScriptExecutorException> {
      * @return true if the command executed successfully, otherwise false
      */
     protected boolean executeCuratedArgs(final String[] commandLineArguments) {
-        if (!getExternalExecutorExists()) {
+        if (!externalExecutableExists()) {
             if (!ignoreExceptions) {
-                executorMissing();
+                executableMissing();
             } else {
                 logger.warn("Skipping: " + getApproximateCommandLine());
                 return false;
@@ -116,7 +114,7 @@ public abstract class ScriptExecutor<T extends ScriptExecutorException> {
                 final StringBuilder message = new StringBuilder();
                 message.append(
                         String.format("\n%s exited with %d\nCommand Line: %s",
-                                externalScriptExecutorName,
+                                externalScriptExecutableName,
                                 exitValue,
                                 String.join(" ", commandLineArguments)));
                 //if debug was enabled the stdout/error were already output somewhere
