@@ -56,6 +56,13 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
             minValue = 100)
     public int readsPerPartition = 5000;
 
+    @Argument(doc = "Number of reads per partition for output.",
+            fullName = "readsPerPartitionOutput",
+            optional = true,
+            minValue = 100,
+            minRecommendedValue = 100000)
+    public int readsPerPartitionOutput = 1000000;
+
     /**
      * Reduces number of partitions of paired reads, keeping pairs together.
      */
@@ -139,9 +146,12 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         //Write reads to BAM, if specified
         if (outputPath != null) {
             try {
-                final int numReducers = Math.max(1, (int) (numTotalReads / 1000000));
-                ReadsSparkSink.writeReads(ctx, outputPath, null, readsFinal, header,
-                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, numReducers);
+                //Reduce number of partitions since we previously went to ~5K reads per partition, which
+                // is far too small for sharded output.
+                final int numPartitions = Math.max(1, (int) (numTotalReads / readsPerPartitionOutput));
+                final JavaRDD<GATKRead> readsFinalRepartitioned = readsFinal.coalesce(numPartitions, false);
+                ReadsSparkSink.writeReads(ctx, outputPath, null, readsFinalRepartitioned, header,
+                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, numPartitions);
             } catch (final IOException e) {
                 throw new UserException.CouldNotCreateOutputFile(outputPath, "writing failed", e);
             }
