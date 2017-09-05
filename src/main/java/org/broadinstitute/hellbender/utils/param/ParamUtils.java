@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.param;
 
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
@@ -7,9 +8,10 @@ import org.apache.commons.math3.util.MathUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 
 import java.io.*;
-import java.util.List;
+import java.util.Collection;
 
 /**
  * This class should eventually be merged into Utils, which is in hellbender, and then this class should be deleted.
@@ -334,4 +336,27 @@ public class ParamUtils {
     public static <E extends Iterable<?>> E doesNotContainNulls(final E input) {
         return doesNotContainNulls(input, null);
     }
+
+    /**
+     * Asserts that a collection is not empty.
+     * @param arg the collection to check.
+     * @param role name that identifies the collection amongst the parameters of the invoking method.
+     * @param <C> type of the input collection.
+     * @throws IllegalArgumentException if the input collection is {@code null} or it is empty.
+     * @return never {@code null}, the passed input collection reference.
+     */
+    public static <C extends Collection<?>> C isNotEmpty(final C arg, final String role) {
+        if (arg == null) {
+            throw new IllegalArgumentException(role + " must not be null");
+        } else if (arg.isEmpty()) {
+            throw new IllegalArgumentException(role + " must not be empty");
+        } else {
+            return arg;
+        }
+    }
+
+    public static <C extends Collection<?>> C isNotEmpty(final C arg) {
+        return isNotEmpty(arg, "input collection");
+    }
+
 }

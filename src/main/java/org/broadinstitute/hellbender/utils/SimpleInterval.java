@@ -72,6 +72,21 @@ public final class SimpleInterval implements Locatable, Serializable {
      }
 
      /**
+      * Returns a {@link SimpleInterval} that represent the interval that a locatable extends.
+      * @param locatable the input locatable.
+      * @throws IllegalArgumentException if {@code locatable} is not valid as described in {@link #SimpleInterval(Locatable)}
+      * @return never {@code null}.
+      */
+     public static SimpleInterval valueOf(final Locatable locatable) {
+         Utils.nonNull(locatable);
+         if (locatable instanceof SimpleInterval) {
+             return (SimpleInterval) locatable;
+         } else {
+             return new SimpleInterval(locatable);
+         }
+     }
+
+     /**
      * Makes an interval by parsing the string.
      *
      * @warning this method does not fill in the true contig end values
