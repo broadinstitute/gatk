@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -18,7 +18,7 @@ public final class GeneralPloidyAFCalculationModelUnitTest extends BaseTest {
     static final int numSamples = 4;
     static final int samplePloidy = 4;   // = 2*samplesPerPool
 
-    @BeforeSuite
+    @BeforeClass
     public void before() {
         // legacy diploid cases
         AA1 = new double[]{-5.0, -20.0, -20.0};

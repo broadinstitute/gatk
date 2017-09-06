@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -14,7 +14,7 @@ public final class GenotypeLikelihoodCalculatorsUnitTest extends BaseTest {
 
     GenotypeLikelihoodCalculators calcs;
 
-    @BeforeSuite
+    @BeforeClass
     public void init(){
         calcs = new GenotypeLikelihoodCalculators();
     }

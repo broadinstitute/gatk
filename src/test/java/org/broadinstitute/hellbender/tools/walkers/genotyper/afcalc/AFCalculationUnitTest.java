@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -44,7 +44,7 @@ public final class AFCalculationUnitTest extends BaseTest {
         return AFCalculators;
     }
 
-    @BeforeSuite
+    @BeforeClass
     public void before() {
         AA1 = makePL(Arrays.asList(A, A), 0, 20, 20);
         AB1 = makePL(Arrays.asList(A, C), 20, 0, 20);
