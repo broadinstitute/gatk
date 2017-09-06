@@ -41,13 +41,22 @@ import java.util.*;
  *     at every invokation.
  * </p>
  */
-public final class ShardPartitioner extends Partitioner {
+public abstract class ShardPartitioner<T> extends Partitioner {
 
-    private static final long serialVersionUID = 1L;
-
+    private final Class<T> clazz;
     private final int numberOfPartitions;
     private final Map<String, Integer> contigToIndex = new HashMap<>();
     private final SVIntervalTree<Integer> partitions = new SVIntervalTree<>();
+
+    private <T extends Locatable, L extends Locatable> ShardPartitioner<T> forLocatables(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
+        return new ShardPartitioner<T>(clazz, shards, numberOfPartitions) {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public Locatable getLocatable(T key) {
+                return key;
+            }
+        };
+    }
 
     @Override
     public int numPartitions() {
@@ -59,17 +68,15 @@ public final class ShardPartitioner extends Partitioner {
      */
     @Override
     public int getPartition(final Object key) {
-        if (key instanceof Locatable) {
+
+        if (key == null || clazz.isAssignableFrom(key.getClass())) {
             return getPartition((Locatable) key);
         } else {
-            return key.hashCode() % numberOfPartitions;
+            throw new IllegalArgumentException("it must be a locatable")
         }
     }
 
-    public int getPartition(final Locatable key) {
-        Utils.nonNull(key, "unexpected null key");
-        return getPartition(key.getContig(), key.getStart());
-    }
+    public abstract Locatable getLocatable(final T key);
 
     public int getPartition(final String contig, final int position) {
         final Integer contigIndex = contigToIndex.get(contig);
@@ -89,8 +96,10 @@ public final class ShardPartitioner extends Partitioner {
      * @param numberOfPartitions number of partitions for this partitioner.
      * @param <L> the shard type.
      */
-    public <L extends Locatable> ShardPartitioner(final Collection<L> shards, final int numberOfPartitions) {
+    public <L extends Locatable> ShardPartitioner(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
+        Utils.nonNull(clazz);
         Utils.nonNull(shards);
+        this.clazz = clazz;
         ParamUtils.isNotEmpty(shards, "shard list");
         ParamUtils.isPositive(numberOfPartitions, "the number of input partitions must be 1 or greater");
 
