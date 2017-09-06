@@ -18,6 +18,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -322,6 +324,64 @@ public final class ReadUtils {
              ! Character.isLetterOrDigit(attributeName.charAt(1)) ) {
 
             throw new IllegalArgumentException("Read attribute " + attributeName + " invalid: attribute names must be non-null two-character Strings matching the pattern /[A-Za-z][A-Za-z0-9]/");
+        }
+    }
+
+    /**
+     * Encapsulates a integer attribute into an {@link OptionalInt} instance.
+     * @param read the input read.
+     * @param tag the attribute tag name.
+     * @throws IllegalArgumentException if {@code read} or {@code tag} are {@code null}.
+     * @throws GATKException.ReadAttributeTypeMismatch if the value provided for that attribute is not an integer.
+     * @return never {@code null}, but perhaps empty indicating that no value was provided for this attribute.
+     */
+    public static OptionalInt getOptionalIntAttribute(final SAMRecord read, final String tag) {
+        Utils.nonNull(read);
+        Utils.nonNull(tag);
+        final Object obj = read.getAttribute(tag);
+        if (obj == null) {
+            return OptionalInt.empty();
+        } else if (obj instanceof Number) {
+            final Number num = (Number) obj;
+            if (num.intValue() == num.doubleValue()) {
+                return OptionalInt.of(num.intValue());
+            } else {
+                throw new GATKException.ReadAttributeTypeMismatch(String.format("no an integer value for record %s @ %s and tag %s: %s",
+                        read.getReadName(), locationString(read), tag, obj));
+            }
+        } else {
+            final String str = "" + obj;
+            try {
+                return OptionalInt.of(Integer.parseInt(str));
+            } catch (final NumberFormatException ex) {
+                throw new GATKException.ReadAttributeTypeMismatch(String.format("no an integer value for record %s @ %s and tag %s: %s",
+                        read.getReadName(), locationString(read), tag, obj), ex);
+            }
+        }
+    }
+
+    /**
+     * Encapsulates a integer attribute into an {@link OptionalInt} instance.
+     * @param read the input read.
+     * @param tag the attribute tag name.
+     * @throws IllegalArgumentException if {@code read} or {@code tag} are {@code null}.
+     * @throws GATKException.ReadAttributeTypeMismatch if the value provided for that attribute is not an integer.
+     * @return never {@code null}, but perhaps empty indicating that no value was provided for this attribute.
+     */
+    public static OptionalInt getOptionalIntAttribute(final GATKRead read, final String tag) {
+        Utils.nonNull(read);
+        Utils.nonNull(tag);
+        final Integer obj = read.getAttributeAsInteger(tag);
+        return obj == null ? OptionalInt.empty() : OptionalInt.of(obj);
+    }
+
+    private static String locationString(final SAMRecord read) {
+        final String refName = read.getReferenceName();
+        if (refName == null || SAMRecord.NO_ALIGNMENT_REFERENCE_NAME.equals(refName)) {
+            return SAMRecord.NO_ALIGNMENT_REFERENCE_NAME;
+        } else {
+            final int start = read.getAlignmentStart();
+            return refName + ":" + start;
         }
     }
 
@@ -1118,5 +1178,139 @@ public final class ReadUtils {
         }
 
         return isValid;
+    }
+
+    /**
+     * Returns the offset (0-based index) of the first base in the read that is aligned against the reference.
+     * <p>
+     *     In most cases for mapped reads, this is typically equal to the sum of the size of soft-clipping at the
+     *     beginning of the alignment.
+     * </p>
+     * <p>
+     *     It returns {@code -1} when there is no base against the reference (e.g. the read is unmapped or is all in
+     *     an insertion). This method will also return {@code -1} if the read does not contain a CIGAR.
+     * </p>
+     * <p>
+     *     Notice that this index makes reference to the offset of that first base in the array returned by {@link #getBases()}, If you
+     *     are after the first base in the original unclipped and not reverse-complemented read, you must use
+     *     {@link #getFirstAlignedReadPosition} instead.
+     * </p>
+     *
+     * @return a number between {@code -1} and the read length-1.
+     */
+    public static int getFirstAlignedBaseOffset(final GATKRead read) {
+        Utils.nonNull(read, "the input read cannot be null");
+        if (read.isUnmapped()) {
+            return -1;
+        } else {
+            int result = 0;
+            for (final CigarElement ce : read.getCigarElements()) {
+                final int length = ce.getLength();
+                if (length != 0) { // paranoia test.
+                    final CigarOperator co = ce.getOperator();
+                    if (co.isAlignment()) {
+                        return result;
+                    } else if (co.consumesReadBases()) {
+                        result += length;
+                    }
+                }
+            }
+            return -1;
+        }
+    }
+
+    /**
+     * Returns the first position (1-based) on the original read in 5to3 prime orientation that is aligned
+     * against a base on the reference.
+     * <p>
+     *     It will return {@code -1} to indicate that there is no base aligned against the reference (e.g.
+     *     the read is unmapped or it totally included in and insertion and or clips. This is also the case if
+     *     the read has an empty cigar for whatever reason.
+     * </p>
+     * <p>
+     *     If what you are after is the offset of the first aligned base in the array returned by {@link #getBases()}
+     *     then you should be looking into {@link #getFirstAlignedBaseOffset(GATKRead)}.
+     * </p>
+     * @return {@code -1} or a number between {@code 1} and the length of the original read. Never {@code 0}.
+     */
+    public static int getFirstAlignedReadPosition(final GATKRead read) {
+        Utils.nonNull(read, "the input read cannot be null");
+        if (read.isUnmapped()) {
+            return -1;
+        } else {
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.size() < 1) {
+                return -1;
+            } else if (!read.isReverseStrand()) {
+                final int offset = getFirstAlignedBaseOffset(read);
+                return offset == -1 ? -1 : offset + 1 + CigarUtils.countLeftHardClippedBases(read.getCigar());
+            } else { // isReverseStrand() == true
+                final int offset = getAfterLastAlignmentBaseOffset(read);
+                return offset == -1 ? -1 : read.getLength() - offset + 1 + CigarUtils.countRightHardClippedBases(read.getCigar());
+            }
+        }
+    }
+
+    /**
+     * Returns the offset (0-based) after the last base in the record that is aligned against the reference.
+     *
+     * <p>
+     *     It returns {@code -1} if there is not such a base (e.g. the record is unmapped or is totally enclosed in an
+     *      insertion or clip). Also it will return {@code -1} if it has an empty cigar.
+     * </p>
+     * <p>
+     *     Notice that this does not take in consideration whether the record is mapped against the forward and backward
+     *     strand. If what you want to find out is the last base position on the original unclipped and non-reverve complemented read sequence that is mapped
+     *     against the reference the use {@link #getLastAlignedReadPosition(GATKRead)} instead.
+     * </p>
+     *
+     * @return a number between {@code -1} and the read's length inclusive.
+     */
+    public static int getAfterLastAlignmentBaseOffset(final GATKRead read) {
+        if (read.isUnmapped()) {
+            return -1;
+        } else {
+            int result = read.getLength();
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            final ListIterator<CigarElement> cigarElementIterator = cigarElements.listIterator(cigarElements.size());
+            while (cigarElementIterator.hasPrevious()) {
+                final CigarElement ce = cigarElementIterator.previous();
+                final int length = ce.getLength();
+                if (length != 0) { // paranohic test.
+                    final CigarOperator co = ce.getOperator();
+                    if (co.isAlignment()) {
+                        return result;
+                    } else if (co.consumesReadBases()) {
+                        result -= length;
+                    }
+                }
+            }
+            return -1;
+        }
+    }
+
+    /**
+     * Returns the last position (1-based) on the original unclipped nor reverse-complemented read that is mapped against the reference.
+     * <p>
+     *     It will return {@code -1} if no position in the read is aligned against the reference (e.g. unmapped).
+     * </p>
+     *
+     * @return {@code -1} or any number between 1 and the length of the original read (including hard-clips). Never {@code 0}.
+     */
+    public static int getLastAlignedReadPosition(final GATKRead read) {
+        if (read.isUnmapped()) {
+            return -1;
+        } else {
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.isEmpty()) {
+                return -1;
+            } else if (!read.isReverseStrand()) {
+                final int offset = getAfterLastAlignmentBaseOffset(read);
+                return offset == -1 ? -1 : offset + CigarUtils.countLeftHardClippedBases(read.getCigar());
+            } else { // isReverseStrand
+                final int offset = getFirstAlignedBaseOffset(read);
+                return offset == -1 ? -1 : read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
+            }
+        }
     }
 }

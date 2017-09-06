@@ -364,7 +364,219 @@ public final class CigarUtils {
         }
 
         final Cigar result = AlignmentUtils.consolidateCigar(cigarToReturn);
-        Utils.validate(result.getReferenceLength() == cigar.getReferenceLength(), () -> "leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
+        Utils.validate(result.getReferenceLength() == cigar.getReferenceLength(),
+                () -> "leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
         return result;
+    }
+
+    /**
+     * Returns a new cigar where any existing soft-clips are transformed into
+     * hard-clips.
+     * <p>
+     *     If the input cigar have a combination of hard and soft-clips then these are
+     *     combined into single hard-clip elements on either side (left and right).
+     * </p>
+     * <p>
+     *     The input cigar must be valid (see {@link Cigar#isValid}).
+     * </p>
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if the input {@code cigar} is {@code null} or non-valid.
+     * @return never {@code null}.
+     */
+    public static Cigar hardReclip(final Cigar cigar) {
+        return softOrHardReclip(cigar, CigarOperator.H);
+    }
+
+    /**
+     * Returns a new cigar where any existing hard-clips are transformed into
+     * soft-clips.
+     * <p>
+     *     If the input cigar have a combination of hard and soft-clips then these are
+     *     combined into single soft-clip elements on either side (left and right).
+     * </p>
+     * <p>
+     *     The input cigar must be valid (see {@link Cigar#isValid}).
+     * </p>
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if the input {@code cigar} is {@code null} or non-valid.
+     * @return never {@code null}.
+     */
+    public static Cigar softReclip(final Cigar cigar) {
+        return softOrHardReclip(cigar, CigarOperator.S);
+    }
+
+    /**
+     * Returns a cigar where all clips are transformed into either soft or hard clips.
+     *
+     * <p>
+     *     After such transformation, any resulting adjacent clips are folded into a single element.
+     * </p>
+     * @param cigar the input cigar.
+     * @param clipOperator the output cigar unified clipping operator (must be either {@link CigarOperator#S} or {@link CigarOperator#H}.
+     *
+     * @throws IllegalArgumentException if the input cigar cannot be {@code null}, or if it is invalid.
+     * @return the output cigar after the transformation.
+     */
+    private static Cigar softOrHardReclip(final Cigar cigar, final CigarOperator clipOperator) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        final List<CigarElement> elements = cigar.getCigarElements();
+        if (elements.isEmpty()) {
+            return new Cigar();
+        } else {
+            final List<CigarElement> resultElements = new ArrayList<>(elements.size());
+            // Stack-like construction of the result-elements list
+            // where we fold-left the clips elements that we encounter
+            CigarElement lastElement = null; // caches the last cigar element added.
+            for (final CigarElement element : elements) {
+                final CigarOperator operator = element.getOperator();
+                if (operator.isClipping()) {
+                    if (lastElement != null && lastElement.getOperator().isClipping()) { // fold-left merging clipping operations.
+                        final int newLength = element.getLength() + lastElement.getLength();
+                        resultElements.set(resultElements.size() - 1, lastElement = new CigarElement(newLength, clipOperator));
+                    } else if (operator != clipOperator) { // cannot reuse the element instance as it has the "wrong" operator.
+                        resultElements.add(lastElement = new CigarElement(element.getLength(), clipOperator));
+                    } else { // has the right clip-operator and is the first in the run of clipping operations if any.
+                        resultElements.add(lastElement = element);
+                    }
+                } else { // is not a clipping, just add it as it is.
+                    resultElements.add(lastElement = element);
+                }
+            }
+            return new Cigar(resultElements);
+        }
+    }
+
+    /**
+     * Returns the length of the original read considering all clippings based on this cigar.
+     * <p>
+     *     The result of applying this method on a empty cigar is zero.
+     * </p>
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if the input {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countUnclippedReadBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        return cigar.getCigarElements().stream()
+                .filter(ce -> {
+                    final CigarOperator operator = ce.getOperator();
+                    return operator.isClipping() || operator.consumesReadBases();
+                })
+                .mapToInt(CigarElement::getLength)
+                .sum();
+    }
+
+    /**
+     * Calculates the total number of reference bases consumed by a cigar.
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countReferenceBasesConsumed(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        return cigar.getCigarElements().stream()
+                .filter(ce -> ce.getOperator().consumesReferenceBases())
+                .mapToInt(CigarElement::getLength)
+                .sum();
+    }
+
+    /**
+     * Total number of bases clipped on the left/head side of the cigar.
+     *
+     * <p>
+     *     In a degenerated cigar with all clipping elements, these are all considered to be part of the left clip,
+     *     so the total number of base in the hypothetical read is returned.
+     * </p>
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countLeftClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot not be null");
+        int result = 0;
+        for (final CigarElement e : cigar) {
+            if (!e.getOperator().isClipping()) {
+                break;
+            }
+            result += e.getLength();
+        }
+        return result;
+    }
+
+    /**
+     * Returns the number of based hard-clipped to the left/head of the cigar.
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countLeftHardClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot not be null");
+        if (cigar.isEmpty()) {
+            return 0;
+        } else if (cigar.getCigarElement(0).getOperator() != CigarOperator.H) {
+            return 0;
+        } else {
+            return cigar.getCigarElement(0).getLength();
+        }
+    }
+
+    /**
+     * Returns the number of based hard-clipped to the right/tail of the cigar.
+     * <p>
+     *     In the case of a degenerated cigar that is only composed of hard-clips, those
+     *     are considered left-clipping and this method return 0.
+     * </p>
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countRightHardClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot not be null");
+        final List<CigarElement> elements = cigar.getCigarElements();
+        int lastElementIndex;
+        if (elements.size() < 2 || elements.get(lastElementIndex = elements.size() - 1).getOperator() != CigarOperator.H) {
+            return 0;
+        } else {
+            return elements.get(lastElementIndex).getLength();
+        }
+    }
+
+    /**
+     * Total number of bases clipped (soft or hard) on the right/tail side of the cigar.
+     *
+     * <p>
+     *     In a degenerated cigar with all clipping elements, these are considered part of the left-clip thus this method
+     *     returns 0.
+     * </p>
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}
+     * @return 0 or greater.
+     */
+    public static int countRightClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        final List<CigarElement> elements = cigar.getCigarElements();
+        final int elementsCount = elements.size();
+        if (elementsCount < 2) {  // a single clipped element (that is already an "invalid" CIGAR) would be considered
+            return 0;        // a left-clip so it must have at least two elements before right clipping can be larger than 0.
+        } else {
+            int result = 0;
+            int i;
+            for (i = elementsCount - 1; i >= 0; --i) {
+                final CigarElement ce = elements.get(i);
+                if (!ce.getOperator().isClipping()) {
+                    break;
+                } else {
+                    result += ce.getLength();
+                }
+            }
+            // in the unlikely event that the cigar is a sequence of clips,
+            // all goes to the left-clipping count and not the right:
+            // so we return 0 if i == -1.
+            return i < 0 ? 0 : result;
+        }
     }
 }
