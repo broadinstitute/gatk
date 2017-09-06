@@ -364,7 +364,119 @@ public final class CigarUtils {
         }
 
         final Cigar result = AlignmentUtils.consolidateCigar(cigarToReturn);
-        Utils.validate(result.getReferenceLength() == cigar.getReferenceLength(), () -> "leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
+        Utils.validate(result.getReferenceLength() == cigar.getReferenceLength(),
+                () -> "leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
         return result;
+    }
+
+    /**
+     * Returns the length of the original read considering all clippings based on this cigar.
+     * <p>
+     *     The result of applying this method on a empty cigar is zero.
+     * </p>
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if the input {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countUnclippedReadBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        return cigar.getCigarElements().stream()
+                .filter(ce -> {
+                    final CigarOperator operator = ce.getOperator();
+                    return operator.isClipping() || operator.consumesReadBases();
+                })
+                .mapToInt(CigarElement::getLength)
+                .sum();
+    }
+
+    /**
+     * Total number of bases clipped on the left/head side of the cigar.
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countLeftClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot not be null");
+        if (cigar.numCigarElements() < 2) {
+            return 0;
+        } else {
+            int result = 0;
+            for (final CigarElement e : cigar) {
+                if (!e.getOperator().isClipping()) {
+                    return result;
+                }
+                result += e.getLength();
+            }
+            throw new IllegalArgumentException("the input cigar only contains clips!");
+        }
+    }
+
+    /**
+     * Returns the number of based hard-clipped to the left/head of the cigar.
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countLeftHardClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot not be null");
+        if (cigar.numCigarElements() < 2) {
+            return 0;
+        } else if (cigar.getCigarElement(0).getOperator() != CigarOperator.H) {
+            return 0;
+        } else {
+            return cigar.getCigarElement(0).getLength();
+        }
+    }
+
+    /**
+     * Returns the number of based hard-clipped to the right/tail of the cigar.
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}.
+     * @return 0 or greater.
+     */
+    public static int countRightHardClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot not be null");
+        if (cigar.numCigarElements() < 2) {
+            return 0;
+        } else {
+            final List<CigarElement> elements = cigar.getCigarElements();
+            int lastElementIndex;
+            if (elements.get(lastElementIndex = elements.size() - 1).getOperator() != CigarOperator.H) {
+                return 0;
+            } else {
+                return elements.get(lastElementIndex).getLength();
+            }
+        }
+    }
+
+    /**
+     * Total number of bases clipped (soft or hard) on the right/tail side of the cigar.
+     *
+     * @param cigar the input cigar.
+     * @throws IllegalArgumentException if {@code cigar} is {@code null}
+     * @return 0 or greater.
+     */
+    public static int countRightClippedBases(final Cigar cigar) {
+        Utils.nonNull(cigar, "the input cigar cannot be null");
+        final List<CigarElement> elements = cigar.getCigarElements();
+        final int elementsCount = elements.size();
+        if (elementsCount < 2) {  // a single clipped element (that is already an "invalid" CIGAR) would be considered
+            return 0;        // a left-clip so it must have at least two elements before right clipping can be larger than 0.
+        } else {
+            int result = 0;
+            int i;
+            for (i = elementsCount - 1; i >= 0; --i) {
+                final CigarElement ce = elements.get(i);
+                if (!ce.getOperator().isClipping()) {
+                    return result;
+                } else {
+                    result += ce.getLength();
+                }
+            }
+            throw new IllegalArgumentException("the input cigar only have clipping operations");
+        }
     }
 }

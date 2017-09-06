@@ -1,17 +1,21 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class CigarUtilsUnitTest {
 
@@ -336,5 +340,141 @@ public final class CigarUtilsUnitTest {
         final Cigar actualCigar = CigarUtils.calculateCigar(s1.getBytes(), s2.getBytes());
         final Cigar decode = TextCigarCodec.decode(expectedCigar);
         Assert.assertEquals(actualCigar, decode);
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testLeftClip(final Cigar cigar) {
+        final int actual = CigarUtils.countLeftClippedBases(cigar);
+        int expected = 0;
+        for (final CigarElement element : cigar.getCigarElements()) {
+            if (!element.getOperator().isClipping()) {
+                break;
+            }
+            expected += element.getLength();
+        }
+        Assert.assertEquals(actual, expected);
+    }
+
+    @Test(dataProvider = "allClipFunkyCigars", expectedExceptions = IllegalArgumentException.class)
+    public void testLeftClipFunkly(final Cigar cigar) {
+        CigarUtils.countLeftClippedBases(cigar);
+    }
+
+    @Test
+    public void testLeftClipByHand() {
+        final List<Pair<Cigar, Integer>> tests =  Stream.of(
+                "13H3M35D13M2I45S30H, 13",
+                "1H3S67M13S, 4",
+                "13M30S, 0",
+                "113S4M12S, 113")
+                .map(s -> s.split(",\\s*"))
+                .map(ss -> new ImmutablePair<>(TextCigarCodec.decode(ss[0]), Integer.parseInt(ss[1]) ))
+                .collect(Collectors.toList());
+        for (final Pair<Cigar, Integer> test : tests) {
+            Assert.assertEquals(CigarUtils.countLeftClippedBases(test.getLeft()), test.getRight().intValue(), "" + test.getLeft());
+        }
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testLeftHardClip(final Cigar cigar) {
+        final int actual = CigarUtils.countLeftHardClippedBases(cigar);
+        int expected = 0;
+        for (final CigarElement element : cigar.getCigarElements()) {
+            if (element.getOperator() != CigarOperator.H) {
+                break;
+            }
+            expected += element.getLength();
+        }
+        Assert.assertEquals(actual, expected);
+    }
+
+    @Test
+    public void testLeftHardClipByHand() {
+        final List<Pair<Cigar, Integer>> tests =  Stream.of(
+                "13H3M35D13M2I45S30H, 13",
+                "1H3S67M13S, 1",
+                "13M30S, 0",
+                "113S4M12S, 0")
+                .map(s -> s.split(",\\s*"))
+                .map(ss -> new ImmutablePair<>(TextCigarCodec.decode(ss[0]), Integer.parseInt(ss[1]) ))
+                .collect(Collectors.toList());
+        for (final Pair<Cigar, Integer> test : tests) {
+            Assert.assertEquals(CigarUtils.countLeftHardClippedBases(test.getLeft()), test.getRight().intValue(), "" + test.getLeft());
+        }
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testRightClip(final Cigar cigar) {
+        final int actual = CigarUtils.countRightClippedBases(cigar);
+        int expected = 0;
+        boolean nonClippingFound = false;
+        for (final CigarElement element : CigarUtils.invertCigar(cigar).getCigarElements()) {
+            if (!element.getOperator().isClipping()) {
+                nonClippingFound = true;
+                break;
+            }
+            expected += element.getLength();
+        }
+        Assert.assertEquals(actual, nonClippingFound ? expected : 0);
+    }
+
+    @Test(dataProvider = "allClipFunkyCigars", expectedExceptions = IllegalArgumentException.class)
+    public void testRightClipFunkly(final Cigar cigar) {
+        CigarUtils.countRightClippedBases(cigar);
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testRightHardClip(final Cigar cigar) {
+        final int actual = CigarUtils.countRightHardClippedBases(cigar);
+        int expected = 0;
+        for (final CigarElement element : CigarUtils.invertCigar(cigar).getCigarElements()) {
+            if (element.getOperator() != CigarOperator.H) {
+                break;
+            }
+            expected += element.getLength();
+        }
+        Assert.assertEquals(actual, expected);
+    }
+
+    @Test
+    public void testRightHardClipByHand() {
+        final List<Pair<Cigar, Integer>> tests =  Stream.of(
+                "13H3M35D13M2I45S30H, 30",
+                "1H3S67M13S, 0",
+                "13M30S10S1H, 1",
+                "113S4M, 0")
+                .map(s -> s.split(",\\s*"))
+                .map(ss -> new ImmutablePair<>(TextCigarCodec.decode(ss[0]), Integer.parseInt(ss[1]) ))
+                .collect(Collectors.toList());
+        for (final Pair<Cigar, Integer> test : tests) {
+            Assert.assertEquals(CigarUtils.countRightHardClippedBases(test.getLeft()), test.getRight().intValue(), "" + test.getLeft());
+        }
+    }
+
+        @Test(dataProvider = "randomValidCigars")
+    public void testReadLength(final Cigar cigar) {
+        final int actual = CigarUtils.countUnclippedReadBases(cigar);
+        final int expected = cigar.getCigarElements().stream()
+                .filter(ce -> ce.getOperator().consumesReadBases() || ce.getOperator().isClipping())
+                .mapToInt(CigarElement::getLength).sum();
+        Assert.assertEquals(actual, expected);
+    }
+
+    @DataProvider(name = "allClipFunkyCigars")
+    public Object[][] allClipFunkyCigars() {
+        final Object[][] randomValidCigars = randomValidCigars();
+        final List<Object[]> result = new ArrayList<>(randomValidCigars.length + 10);
+        result.add(new Object[] {TextCigarCodec.decode("10S20S30S")}); // all softclips.
+        result.add(new Object[] {TextCigarCodec.decode("10H10S")}); // H and S.
+        result.add(new Object[] {TextCigarCodec.decode("10H10S30H")}); // H, S and H.
+        result.add(new Object[] {TextCigarCodec.decode("10S30H")}); // S and H.
+        return result.toArray(new Object[result.size()][]);
+    }
+
+    @DataProvider(name = "randomValidCigars")
+    public static Object[][] randomValidCigars() {
+        return CigarTestUtils.randomValidCigars(new Random(13), 1_000,
+                10, 100, new Cigar()).stream()
+                .map(x -> new Object[] { x }).toArray(Object[][]::new);
     }
 }

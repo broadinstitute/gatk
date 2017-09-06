@@ -1,13 +1,16 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.SAMFlag;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
+import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.CigarTestUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtilsUnitTest;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -17,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 public class AlignmentIntervalUnitTest extends BaseTest {
     private static final String dummyRefName = "1";
@@ -127,7 +132,10 @@ public class AlignmentIntervalUnitTest extends BaseTest {
 
         final Object[][] data = new Object[cigars.length][];
         for(int i=0; i<cigars.length; ++i) {
-            final BwaMemAlignment bwaMemAlignment = new BwaMemAlignment(strandedness[i] ? 0 : SAMFlag.READ_REVERSE_STRAND.intValue(),
+           int samFlag = 0;
+           if ( !strandedness[i] ) samFlag = SAMFlag.READ_REVERSE_STRAND.intValue();
+           if ( cigarStrings[i].indexOf('H') != -1 ) samFlag |= SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue();
+           final BwaMemAlignment bwaMemAlignment = new BwaMemAlignment(samFlag,
                     0, alignmentStartsOnRef_0Based[i], alignmentStartsOnRef_0Based[i]+cigars[i].getReferenceLength(),
                     strandedness[i] ? alignmentStartsOnTig_0BasedInclusive[i] : seqLen[i]-alignmentEndsOnTig_0BasedExclusive[i],
                     strandedness[i] ? alignmentEndsOnTig_0BasedExclusive[i] : seqLen[i]-alignmentStartsOnTig_0BasedInclusive[i],
@@ -172,5 +180,134 @@ public class AlignmentIntervalUnitTest extends BaseTest {
         Assert.assertEquals(alignmentInterval.endInAssembledContig, expectedEndOnContig_1BasedInclusive);
         Assert.assertEquals(alignmentInterval.mapQual, Math.max(SAMRecord.NO_MAPPING_QUALITY,expectedMapQualInBwaMemAlignment));
         Assert.assertEquals(alignmentInterval, expectedAlignmentInterval);
+    }
+
+    @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
+    public void testConstructionFromStr(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
+                                              final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
+                                              final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
+
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final StringBuilder strBuilder = new StringBuilder(String.join(",", samRecord.getContig(),
+                "" + samRecord.getStart(), samRecord.getReadNegativeStrandFlag() ? "-" : "+", samRecord.getCigarString(), "" + samRecord.getMappingQuality()));
+        if (samRecord.getAttribute(SAMTag.NM.name()) != null || samRecord.getAttribute(SAMTag.AS.name()) != null) {
+            strBuilder.append("," + samRecord.getIntegerAttribute(SAMTag.NM.name()));
+            if (samRecord.getAttribute(SAMTag.AS.name()) != null) {
+                strBuilder.append("," + samRecord.getIntegerAttribute(SAMTag.AS.name()));
+            }
+        }
+        AlignmentInterval alignmentInterval = new AlignmentInterval(strBuilder.toString());
+        Assert.assertEquals(alignmentInterval.referenceSpan, expectedReferenceInterval);
+        Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);
+        Assert.assertEquals(alignmentInterval.forwardStrand, expectedIsPositiveStrand);
+        Assert.assertEquals(alignmentInterval.startInAssembledContig, expectedStartOnContig_1BasedInclusive);
+        Assert.assertEquals(alignmentInterval.endInAssembledContig, expectedEndOnContig_1BasedInclusive, bwaMemAlignment.getCigar());
+        Assert.assertEquals(alignmentInterval.mapQual, Math.max(SAMRecord.NO_MAPPING_QUALITY,expectedMapQualInBwaMemAlignment));
+        Assert.assertEquals(alignmentInterval, expectedAlignmentInterval);
+    }
+
+    @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
+    public void testConstructionFromGATKRead(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
+                                              final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
+                                              final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
+
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final GATKRead read = new SAMRecordToGATKReadAdapter(samRecord);
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(read);
+        Assert.assertEquals(alignmentInterval.referenceSpan, expectedReferenceInterval);
+        Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);
+        Assert.assertEquals(alignmentInterval.forwardStrand, expectedIsPositiveStrand);
+        Assert.assertEquals(alignmentInterval.startInAssembledContig, expectedStartOnContig_1BasedInclusive);
+        Assert.assertEquals(alignmentInterval.endInAssembledContig, expectedEndOnContig_1BasedInclusive);
+        Assert.assertEquals(alignmentInterval.mapQual, Math.max(SAMRecord.NO_MAPPING_QUALITY,expectedMapQualInBwaMemAlignment));
+        Assert.assertEquals(alignmentInterval, expectedAlignmentInterval);
+    }
+
+    @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
+    public void testToSAMRecord(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
+                                             final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
+                                             final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
+
+        final byte[] randomContigBases = new RandomDNA(13).nextBases(expectedContigLength);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", randomContigBases, null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(samRecord);
+        final SAMRecord backSamRecord = alignmentInterval.toSAMRecord(samRecord.getHeader(), samRecord.getReadName(), randomContigBases, samRecord.getCigar().containsOperator(CigarOperator.H), samRecord.getFlags() , samRecord.getAttributes());
+        Assert.assertEquals(backSamRecord.getReadName(), samRecord.getReadName());
+        Assert.assertEquals(backSamRecord.getFlags(), samRecord.getFlags());
+        Assert.assertEquals(backSamRecord.getAttributes().stream().collect(Collectors.toMap(x -> x.tag, x -> x.value)), samRecord.getAttributes().stream().collect(Collectors.toMap(x -> x.tag, x -> x.value)));
+        // currently toSAMRecord does not have an option to keep a cigar with a combo of H and S operators.
+        // so in case this is added.
+        if (samRecord.getCigar().containsOperator(CigarOperator.H) &&
+                 samRecord.getCigar().containsOperator(CigarOperator.S)) {
+            Assert.fail("test case with a combo of H and S operators, either you should silence this error or enhance toSAMRecord to handle such scenario");
+        } else {
+            Assert.assertEquals(backSamRecord.getCigar(), samRecord.getCigar());
+            Assert.assertEquals(backSamRecord.getReadBases(), samRecord.getReadBases());
+            Assert.assertEquals(backSamRecord.getBaseQualities(), samRecord.getBaseQualities());
+        }
+    }
+
+    @DataProvider(name = "alignmentIntervalStrings")
+    public Object[][] alignmentIntervalStrings() {
+        final List<Object[]> result = new ArrayList<>();
+        result.add(new Object[]{ "chr1", 10, SVFastqUtils.Strand.NEGATIVE, "10M1I30M100H", 10, 3, 2 });
+        result.add(new Object[]{ "chrX", 10_000_000, SVFastqUtils.Strand.POSITIVE, "31H10S10M1I30M230N4M100H", 34, 31, 0 });
+        result.add(new Object[]{ "chr20", 3456, SVFastqUtils.Strand.POSITIVE, "31M", 3, 310, 5 });
+        return result.toArray(new Object[result.size()][]);
+    }
+
+    @Test(dataProvider = "alignmentIntervalStrings", groups = "sv")
+    public void testAlignmentIntervalStrings(final String contig, final int start, final SVFastqUtils.Strand strand, final String cigarString, final int mq, final int nm, final int as) {
+        final String fullStr = String.join(",", contig, "" + start, strand == SVFastqUtils.Strand.NEGATIVE ? "-" : "+", cigarString, "" + mq, "" + nm, "" + as);
+        final AlignmentInterval fullInterval = new AlignmentInterval(fullStr);
+        Assert.assertEquals(fullInterval.referenceSpan.getContig(), contig);
+        Assert.assertEquals(fullInterval.referenceSpan.getStart(), start);
+        Assert.assertEquals(fullInterval.forwardStrand, strand == SVFastqUtils.Strand.POSITIVE);
+        Assert.assertEquals(fullInterval.cigarAlong5to3DirectionOfContig,
+                fullInterval.forwardStrand ? TextCigarCodec.decode(cigarString) : CigarUtils.invertCigar(TextCigarCodec.decode(cigarString)));
+        Assert.assertEquals(fullInterval.mapQual, mq);
+        Assert.assertEquals(fullInterval.mismatches, nm);
+        Assert.assertEquals(fullInterval.alnScore, as);
+
+        final String basicStr = String.join(",", contig, "" + start, strand == SVFastqUtils.Strand.NEGATIVE ? "-" : "+", cigarString, "" + mq);
+        final AlignmentInterval basicInterval = new AlignmentInterval(basicStr);
+        Assert.assertEquals(basicInterval.referenceSpan.getContig(), contig);
+        Assert.assertEquals(basicInterval.referenceSpan.getStart(), start);
+        Assert.assertEquals(basicInterval.forwardStrand, strand == SVFastqUtils.Strand.POSITIVE);
+        Assert.assertEquals(basicInterval.cigarAlong5to3DirectionOfContig,
+                basicInterval.forwardStrand ? TextCigarCodec.decode(cigarString) : CigarUtils.invertCigar(TextCigarCodec.decode(cigarString)));
+        Assert.assertEquals(basicInterval.mapQual, mq);
+        Assert.assertEquals(basicInterval.mismatches, AlignmentInterval.NO_NM);
+        Assert.assertEquals(basicInterval.alnScore, AlignmentInterval.NO_AS);
+
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testSoftClip(final Cigar cigar) {
+        final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.S);
+        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
+                cigar.getCigarElements().stream()
+                        .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.SOFT_CLIP) : ce)
+                        .collect(Collectors.toList())
+        ));
+
+        Assert.assertEquals(actual, expected);
+    }
+
+    @Test(dataProvider = "randomValidCigars")
+    public void testHardClip(final Cigar cigar) {
+        final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.H);
+        final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
+                cigar.getCigarElements().stream()
+                        .map(ce -> ce.getOperator().isClipping() ? new CigarElement(ce.getLength(), CigarOperator.HARD_CLIP) : ce)
+                        .collect(Collectors.toList())
+        ));
+        Assert.assertEquals(actual, expected);
+    }
+
+    @DataProvider(name = "randomValidCigars")
+    public static Object[][] randomValidCigars() {
+        final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, new Cigar());
+        return cigars.stream().map(x -> new Object[] { x }).toArray(Object[][]::new);
     }
 }
