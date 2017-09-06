@@ -61,7 +61,7 @@ public final class AllelicCountCollector {
         final int totalBaseCount = BASES.stream().mapToInt(b -> (int) nucleotideCounter.get(b)).sum(); //only include total ACGT counts in binomial test (exclude N, etc.)
         final int refReadCount = (int) nucleotideCounter.get(refBase);
         final int altReadCount = totalBaseCount - refReadCount;                                 //we take alt = total - ref instead of the actual alt count
-        final Nucleotide altBase = inferAltFromPileupBaseCounts(nucleotideCounter, refBase);
+        final Nucleotide altBase = altReadCount == 0 ? Nucleotide.N : inferAltFromPileupBaseCounts(nucleotideCounter, refBase);
 
         allelicCounts.add(new AllelicCount(
                 new SimpleInterval(locus.getContig(), locus.getStart(), locus.getEnd()),
@@ -85,7 +85,7 @@ public final class AllelicCountCollector {
                                                            final Nucleotide refNucleotide) {
         return BASES.stream()
                 .filter(b -> b != refNucleotide)
-                .sorted((b1, b2) -> Long.compare(baseCounts.get(b1), baseCounts.get(b2)))
+                .sorted((b1, b2) -> Long.compare(baseCounts.get(b2), baseCounts.get(b1)))
                 .findFirst().get();
     }
 }
