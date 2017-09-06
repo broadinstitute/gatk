@@ -19,8 +19,8 @@ public final class MainTest extends CommandLineProgramTest {
 
     @CommandLineProgramProperties(
             programGroup = TestProgramGroup.class,
-            summary = "OmitFromCommanLine test",
-            oneLineSummary = "OmitFromCommanLine test",
+            summary = "OmitFromCommandLine test",
+            oneLineSummary = "OmitFromCommandLine test",
             omitFromCommandLine = true)
     public static final class OmitFromCommandLineCLP extends CommandLineProgram {
 
