@@ -139,7 +139,8 @@ public final class BucketUtilsTest extends BaseTest {
     @Test(groups={"bucket"})
     public void testDirSizeGCS() throws IOException, GeneralSecurityException {
         final String src = publicTestDir + "empty.vcf";
-        final String intermediate = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir/test-copy-empty", ".vcf");
+        final String gcsSubDir = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
+        final String intermediate = BucketUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
         BucketUtils.copyFile(src, intermediate);
         Assert.assertTrue(BucketUtils.fileExists(intermediate));
 
@@ -149,7 +150,7 @@ public final class BucketUtilsTest extends BaseTest {
         Assert.assertEquals(intermediateFileSize, srcFileSize);
         long intermediateDirSize = BucketUtils.dirSize(intermediate);
         Assert.assertEquals(intermediateDirSize, srcFileSize);
-        long intermediateParentDirSize = BucketUtils.dirSize(BucketUtils.getPathOnGcs(intermediate).getParent().toUri().toString());
+        long intermediateParentDirSize = BucketUtils.dirSize(gcsSubDir);
         Assert.assertEquals(intermediateParentDirSize, srcFileSize);
 
         BucketUtils.deleteFile(intermediate);
