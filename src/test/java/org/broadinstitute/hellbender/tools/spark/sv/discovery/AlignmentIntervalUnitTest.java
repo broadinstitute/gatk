@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.CigarTestUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtilsUnitTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 public class AlignmentIntervalUnitTest extends BaseTest {
@@ -229,7 +231,7 @@ public class AlignmentIntervalUnitTest extends BaseTest {
         final byte[] randomContigBases = new RandomDNA(13).nextBases(expectedContigLength);
         final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", randomContigBases, null, null, bwaMemAlignment, refNames, hg19Header, false, false);
         final AlignmentInterval alignmentInterval = new AlignmentInterval(samRecord);
-        final SAMRecord backSamRecord = alignmentInterval.toSAMRecord(samRecord.getHeader(), samRecord.getReadName(), randomContigBases, samRecord.getCigar().containsOperator(CigarOperator.H), samRecord.getFlags(), samRecord.getAttributes());
+        final SAMRecord backSamRecord = alignmentInterval.toSAMRecord(samRecord.getHeader(), samRecord.getReadName(), randomContigBases, samRecord.getCigar().containsOperator(CigarOperator.H), samRecord.getFlags() , samRecord.getAttributes());
         Assert.assertEquals(backSamRecord.getReadName(), samRecord.getReadName());
         Assert.assertEquals(backSamRecord.getFlags(), samRecord.getFlags());
         Assert.assertEquals(backSamRecord.getAttributes().stream().collect(Collectors.toMap(x -> x.tag, x -> x.value)), samRecord.getAttributes().stream().collect(Collectors.toMap(x -> x.tag, x -> x.value)));
@@ -305,6 +307,7 @@ public class AlignmentIntervalUnitTest extends BaseTest {
 
     @DataProvider(name = "randomValidCigars")
     public static Object[][] randomValidCigars() {
-        return CigarUtilsUnitTest.randomValidCigars();
+        final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, new Cigar());
+        return cigars.stream().map(x -> new Object[] { x }).toArray(Object[][]::new);
     }
 }

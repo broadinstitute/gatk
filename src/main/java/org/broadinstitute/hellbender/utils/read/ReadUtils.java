@@ -339,20 +339,18 @@ public final class ReadUtils {
         final Object obj = read.getAttribute(tag);
         if (obj == null) {
             return OptionalInt.empty();
-        } else if (obj instanceof Number) {
+        } else if (obj instanceof Integer || obj instanceof Short) {
             final Number num = (Number) obj;
-            if (num.intValue() == num.doubleValue()) {
-                return OptionalInt.of(num.intValue());
-            } else {
-                throw new GATKException.ReadAttributeTypeMismatch(read, tag, "integer");
-            }
-        } else {
+            return OptionalInt.of(num.intValue());
+        } else if (obj instanceof CharSequence) {
             final String str = "" + obj;
             try {
                 return OptionalInt.of(Integer.parseInt(str));
             } catch (final NumberFormatException ex) {
                 throw new GATKException.ReadAttributeTypeMismatch(read, tag, "integer", ex);
             }
+        } else {
+            throw new GATKException.ReadAttributeTypeMismatch(read, tag, "integer", obj);
         }
     }
 
@@ -1173,68 +1171,90 @@ public final class ReadUtils {
      *     beginning of the alignment.
      * </p>
      * <p>
-     *     It returns {@code -1} when there is no base against the reference (e.g. the read is unmapped or is all in
-     *     an insertion). This method will also return {@code -1} if the read does not contain a CIGAR.
-     * </p>
-     * <p>
-     *     Notice that this index makes reference to the offset of that first base in the array returned by {@link #getBases()}, If you
+     *     Notice that this index makes reference to the offset of that first base in the array returned by {@link GATKRead#getBases()}, If you
      *     are after the first base in the original unclipped and not reverse-complemented read, you must use
      *     {@link #getFirstAlignedReadPosition} instead.
      * </p>
      *
-     * @return a number between {@code -1} and the read length-1.
+     * @throws IllegalArgumentException if the input {@code read} is {@code null} or does not have any base aligned
+     *  against the reference (e.g. is unmapped). You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return a number between 0 and the read length-1.
      */
     public static int getFirstAlignedBaseOffset(final GATKRead read) {
         Utils.nonNull(read, "the input read cannot be null");
         if (read.isUnmapped()) {
-            return -1;
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
         } else {
             final List<CigarElement> cigarElements = read.getCigarElements();
             if (cigarElements.isEmpty()) {
-                throw new IllegalArgumentException("the input read is mapped yet contains no cigar-elements");
+                throw new IllegalArgumentException("the input read is mapped yet contains no cigar-elements: " + read.commonToString());
             }
             int result = 0;
             for (final CigarElement ce : cigarElements) {
                 final int length = ce.getLength();
                 final CigarOperator co = ce.getOperator();
-                if (co.isAlignment()) {
+                if (length > 0 && co.isAlignment()) {
                     return result;
                 } else if (co.consumesReadBases()) {
                     result += length;
                 }
             }
-            return -1;
+            throw new IllegalArgumentException("the input read cigar does not contain any alignment element");
         }
     }
+
+    /**
+     * Checks whether the input read has some base aligned against the reference.
+     * @param read the input read.
+     * @return {@code true} iff there is some base aligned against the reference.
+     */
+    public static boolean hasBasesAlignedAgainstTheReference(final GATKRead read) {
+        Utils.nonNull(read, "the input read cannot be null");
+        if (read.isUnmapped()) {
+            return false;
+        } else {
+            final Cigar cigar = read.getCigar();
+            if (cigar.isEmpty()) {
+                throw new IllegalArgumentException("the input read is not unmapped but its cigar is empty");
+            }
+            for (final CigarElement el : cigar.getCigarElements()) {
+                if (el.getOperator().isAlignment() && el.getLength() > 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+     }
 
     /**
      * Returns the first position (1-based) on the original read in 5to3 prime orientation that is aligned
      * against a base on the reference.
      * <p>
-     *     It will return {@code -1} to indicate that there is no base aligned against the reference (e.g.
-     *     the read is unmapped or it totally included in and insertion and or clips. This is also the case if
-     *     the read has an empty cigar for whatever reason.
-     * </p>
-     * <p>
      *     If what you are after is the offset of the first aligned base in the array returned by {@link GATKRead#getBases()}
      *     then you should be looking into {@link #getFirstAlignedBaseOffset(GATKRead)}.
      * </p>
-     * @return {@code -1} or a number between {@code 1} and the length of the original read. Never {@code 0}.
+     *
+     * @param read the query read.
+     * @throws IllegalArgumentException if {@code read} is {@code null} or it does not have any base aligned against
+     *  the reference (e.g. is unmapped). You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return a value between 1 and the length of the original read. Never {@code 0} nor a negative value.
      */
     public static int getFirstAlignedReadPosition(final GATKRead read) {
         Utils.nonNull(read, "the input read cannot be null");
         if (read.isUnmapped()) {
-            return -1;
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
         } else {
             final List<CigarElement> cigarElements = read.getCigarElements();
             if (cigarElements.isEmpty()) {
                 throw new IllegalArgumentException("the input read is mapped yet has an empty cigar");
             } else if (!read.isReverseStrand()) {
-                final int offset = getFirstAlignedBaseOffset(read);
-                return offset == -1 ? -1 : offset + 1 + CigarUtils.countLeftHardClippedBases(read.getCigar());
+                return getFirstAlignedBaseOffset(read) + 1 + CigarUtils.countLeftHardClippedBases(read.getCigar());
             } else {
-                final int offset = getAfterLastAlignmentBaseOffset(read);
-                return offset == -1 ? -1 : read.getLength() - offset + 1 + CigarUtils.countRightHardClippedBases(read.getCigar());
+                return read.getLength() - getAfterLastAlignedBaseOffset(read) + 1 + CigarUtils.countRightHardClippedBases(read.getCigar());
             }
         }
     }
@@ -1243,20 +1263,22 @@ public final class ReadUtils {
      * Returns the offset (0-based) after the last base in the record that is aligned against the reference.
      *
      * <p>
-     *     It returns {@code -1} if there is not such a base (e.g. the record is unmapped or is totally enclosed in an
-     *      insertion). Also it will return {@code -1} if it has an empty cigar.
-     * </p>
-     * <p>
      *     Notice that this does not take in consideration whether the record is mapped against the forward and backward
-     *     strand. If what you want to find out is the last base position on the original unclipped and non-reverve complemented read sequence that is mapped
-     *     against the reference the use {@link #getLastAlignedReadPosition(GATKRead)} instead.
+     *     strand. If what you want to find out is the last base position on the original unclipped and non-reverve
+     *     complemented read sequence that is mapped against the reference the use
+     *     {@link #getLastAlignedReadPosition(GATKRead)} instead.
      * </p>
      *
-     * @return a number between {@code -1} and the read's length inclusive.
+     * @param read the query read.
+     * @throws IllegalArgumentException if {@code read} is {@code null} or does not have any base aligned against the
+     *    reference. You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return a number between 0 and the read's length inclusive.
      */
-    public static int getAfterLastAlignmentBaseOffset(final GATKRead read) {
+    public static int getAfterLastAlignedBaseOffset(final GATKRead read) {
         if (read.isUnmapped()) {
-            return -1;
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
         } else {
             final List<CigarElement> cigarElements = read.getCigarElements();
             if (cigarElements.isEmpty()) {
@@ -1268,13 +1290,13 @@ public final class ReadUtils {
                 final CigarElement ce = cigarElementIterator.previous();
                 final int length = ce.getLength();
                 final CigarOperator co = ce.getOperator();
-                if (co.isAlignment()) {
+                if (length > 0 && co.isAlignment()) {
                     return result;
                 } else if (co.consumesReadBases()) {
                     result -= length;
                 }
             }
-            return -1;
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
         }
     }
 
@@ -1284,21 +1306,26 @@ public final class ReadUtils {
      *     It will return {@code -1} if no position in the read is aligned against the reference (e.g. unmapped).
      * </p>
      *
-     * @return {@code -1} or any number between 1 and the length of the original read (including hard-clips). Never {@code 0}.
+     * @param read the query read.
+     * @throws IllegalArgumentException if {@code read} is {@code null} or does not have any base aligned against the
+     *    reference. You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return any number between 1 and the length of the original read (including hard-clips). Never {@code 0}.
      */
     public static int getLastAlignedReadPosition(final GATKRead read) {
         if (read.isUnmapped()) {
-            return -1;
+            throw new IllegalArgumentException("the input read cannot be unmapped");
         } else {
             final List<CigarElement> cigarElements = read.getCigarElements();
             if (cigarElements.isEmpty()) {
                 throw new IllegalArgumentException("the input read is mapped but the cigar is empty");
             } else if (!read.isReverseStrand()) {
-                final int offset = getAfterLastAlignmentBaseOffset(read);
-                return offset == -1 ? -1 : offset + CigarUtils.countLeftHardClippedBases(read.getCigar());
+                final int offset = getAfterLastAlignedBaseOffset(read);
+                return offset + CigarUtils.countLeftHardClippedBases(read.getCigar());
             } else {
                 final int offset = getFirstAlignedBaseOffset(read);
-                return offset == -1 ? -1 : read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
+                return read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
             }
         }
     }
