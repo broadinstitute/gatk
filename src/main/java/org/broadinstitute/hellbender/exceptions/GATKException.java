@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.exceptions;
 
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
@@ -67,21 +68,12 @@ public class GATKException extends RuntimeException {
             super(String.format("Attribute %s not of (or convertible to) type %s", attributeName, targetType), throwable);
         }
 
-        /**
-         * Creates a free-text message instance.
-         * @param message the custom error message.
-         */
-        public ReadAttributeTypeMismatch(final String message) {
-            super(message);
+        public ReadAttributeTypeMismatch( final SAMRecord read, final String attributeName, final String targetType) {
+            super(String.format("In read %s @ %s attribute %s not of (or convertible to) type %s", read.getReadName(), "" + read.getContig() + ":" + read.getStart(), attributeName, targetType));
         }
 
-        /**
-         * Creates a free-text message instance including causing {@link Throwable}
-         * @param message the custom error message.
-         * @param throwable the causing {@link Throwable}.
-         */
-        public ReadAttributeTypeMismatch(final String message, final Throwable throwable) {
-            super(message, throwable);
+        public ReadAttributeTypeMismatch( final SAMRecord read, final String attributeName, final String targetType, final Throwable ex) {
+            super(String.format("In read %s @ %s attribute %s not of (or convertible to) type %s", read.getReadName(), "" + read.getContig() + ":" + read.getStart(), attributeName, targetType, ex));
         }
     }
 }

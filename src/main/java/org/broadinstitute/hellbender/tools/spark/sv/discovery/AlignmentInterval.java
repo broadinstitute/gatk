@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -75,50 +76,45 @@ public final class AlignmentInterval {
     /**
      * Compose an alignment interval instance from a SAM supplementary alignment formatted string.
      * <p>
-     * The input string format is:
-     * <pre>
-     *         chr-name,start,strand,cigar,mq,nm,as
+     *     The input string format is:
+     *     <pre>
+     *         contig-name,start,strand,cigar,mq,nm,as
      *     </pre>
-     * where mq (mapping-quality), nm (number of mismatches) and as (alignment score) might be absent. The strand
-     * is symbolized as '+' for the forward-strand and '-' for the reverse-strand.
-     * <p>Examples:</p>
-     * <pre>
+     *     where nm (number of mismatches) and as (alignment score) might be absent. The strand
+     *     is symbolized as '+' for the forward-strand and '-' for the reverse-strand.
+     *     <p>An example with different degrees of completeness:</p>
+     *     <pre>
      *         chr10,1241241,+,10S1313M45I14M100H,30,5,66
      *         chr10,1241241,+,10S1313M45I14M100H,30,5
      *         chr10,1241241,+,10S1313M45I14M100H,30
-     *         chr10,1241241,+,10S1313M45I14M100H
      *     </pre>
-     * </p>
      *
-     * @param str the input string.
+     * </p>
+     * @param samSAtagString the input string.
      * @throws IllegalArgumentException if {@code str} is {@code null} or it does not look like a valid
      *                                  SA string.
      */
-    public AlignmentInterval(final String str) {
-        Utils.nonNull(str, "input str cannot be null");
-        final String[] parts = str.replaceAll(";$", "").split(",");
-        if (parts.length < 4) {
-            throw new IllegalArgumentException("the input SA string at least must contain 4 parts");
+    public AlignmentInterval(final String samSAtagString) {
+        Utils.nonNull(samSAtagString, "input str cannot be null");
+        final String[] parts = samSAtagString.replaceAll(";$", "").split(",");
+        if (parts.length < 5) {
+            throw new IllegalArgumentException("the input SA string at least must contain 5 parts: " + samSAtagString);
         }
 
         int nextPartsIndex = 0; // holds the next element index in parts to be parsed.
-        // Coordinates:
+
         final String referenceContig = parts[nextPartsIndex++];
         final int start = Integer.parseInt(parts[nextPartsIndex++]);
-        // Strand:
         final Strand strand = parseStrand(parts[nextPartsIndex++]);
         final boolean forwardStrand = strand == Strand.POSITIVE;
-        // Cigar:
-        final Cigar originalCigar = parseCigar(parts[nextPartsIndex++]);
+        final Cigar originalCigar = TextCigarCodec.decode(parts[nextPartsIndex++]);
         final Cigar cigar = forwardStrand ? originalCigar : CigarUtils.invertCigar(originalCigar);
-        // Optional fields:
-        final int mappingQuality = parts.length > nextPartsIndex ? Integer.parseInt(parts[nextPartsIndex++]) : SAMRecord.NO_MAPPING_QUALITY;
-        final int mismatches = parts.length > nextPartsIndex ? Integer.parseInt(parts[nextPartsIndex++]) : NO_NM;
-        final int alignmentScore = parts.length > nextPartsIndex ? Integer.parseInt(parts[nextPartsIndex++]) : NO_AS;
+        final int mappingQuality = ParamUtils.inRange(parseInt(parts[nextPartsIndex++]), 0, 255, "the mapping quality must be in the range [0, 255]");
+        final int mismatches = parts.length > nextPartsIndex ? ParamUtils.isPositiveOrZero(parseInt(parts[nextPartsIndex++]), "the number of mismatches cannot be negative") : NO_NM;
+        final int alignmentScore = parts.length > nextPartsIndex ? ParamUtils.isPositiveOrZero(parseInt(parts[nextPartsIndex]), "the alignment score cannot be negative") : NO_AS;
 
-        // Populate fields accordingly:
         this.referenceSpan = new SimpleInterval(referenceContig, start,
-                Math.max(start, CigarUtils.countReferenceBasesConsumed(cigar) + start - 1));
+                Math.max(start, cigar.getReferenceLength() + start - 1));
         this.startInAssembledContig = 1 + CigarUtils.countLeftClippedBases(cigar);
         this.endInAssembledContig = CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countRightClippedBases(cigar);
         this.mapQual = mappingQuality;
@@ -130,19 +126,11 @@ public final class AlignmentInterval {
         this.hasUndergoneOverlapRemoval = false;
     }
 
-    /**
-     * Parse a string into a cigar throwing a more informative exception than
-     * {@link TextCigarCodec#decode(String)} in case something goes wrong.
-     *
-     * @param cigarText the input cigar text.
-     * @return never {@code null}.
-     * @throws IllegalArgumentException if {@code cigarText} is not a an acceptable cigar as per {@link TextCigarCodec#decode(String) implementation}.
-     */
-    private static Cigar parseCigar(final String cigarText) {
+    private static int parseInt(final String str) {
         try {
-            return TextCigarCodec.decode(cigarText);
-        } catch (final RuntimeException ex) {
-            throw new IllegalArgumentException("bad formatted cigar: " + cigarText, ex);
+            return Integer.parseInt(str);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("not a valid integer in: " + str, ex);
         }
     }
 
@@ -398,7 +386,9 @@ public final class AlignmentInterval {
      * @return never {@code null}.
      * @throws IllegalArgumentException if either {@code header} or {@code contig} is {@code null}.
      */
-    public SAMRecord toSAMRecord(final SAMFileHeader header, final String name, final byte[] unclippedBases, final boolean hardClip, final int otherFlags, final Collection<? extends SAMRecord.SAMTagAndValue> otherAttributes) {
+    public SAMRecord toSAMRecord(final SAMFileHeader header, final String name,
+                                 final byte[] unclippedBases, final boolean hardClip, final int otherFlags,
+                                 final Collection<? extends SAMRecord.SAMTagAndValue> otherAttributes) {
         Utils.nonNull(header, "the input header cannot be null");
         final SAMRecord result = new SAMRecord(header);
 
@@ -410,8 +400,8 @@ public final class AlignmentInterval {
         final byte[] bases = unclippedBases == null
                 ? null
                 : hardClip ? Arrays.copyOfRange(unclippedBases, startInAssembledContig - 1, endInAssembledContig)
-                : unclippedBases.clone();
-        if (!forwardStrand) {
+                           : unclippedBases.clone();
+        if (!forwardStrand && bases != null) {
             SequenceUtil.reverseComplement(bases);
         }
         result.setReadBases(bases);

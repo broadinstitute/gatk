@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.samtools.*;
-import org.bdgenomics.adam.models.DNAAlphabet;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
-import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;

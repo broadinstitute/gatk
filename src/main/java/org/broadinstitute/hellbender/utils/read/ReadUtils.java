@@ -18,8 +18,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -346,16 +344,14 @@ public final class ReadUtils {
             if (num.intValue() == num.doubleValue()) {
                 return OptionalInt.of(num.intValue());
             } else {
-                throw new GATKException.ReadAttributeTypeMismatch(String.format("no an integer value for record %s @ %s and tag %s: %s",
-                        read.getReadName(), locationString(read), tag, obj));
+                throw new GATKException.ReadAttributeTypeMismatch(read, tag, "integer");
             }
         } else {
             final String str = "" + obj;
             try {
                 return OptionalInt.of(Integer.parseInt(str));
             } catch (final NumberFormatException ex) {
-                throw new GATKException.ReadAttributeTypeMismatch(String.format("no an integer value for record %s @ %s and tag %s: %s",
-                        read.getReadName(), locationString(read), tag, obj), ex);
+                throw new GATKException.ReadAttributeTypeMismatch(read, tag, "integer", ex);
             }
         }
     }
@@ -373,16 +369,6 @@ public final class ReadUtils {
         Utils.nonNull(tag);
         final Integer obj = read.getAttributeAsInteger(tag);
         return obj == null ? OptionalInt.empty() : OptionalInt.of(obj);
-    }
-
-    private static String locationString(final SAMRecord read) {
-        final String refName = read.getReferenceName();
-        if (refName == null || SAMRecord.NO_ALIGNMENT_REFERENCE_NAME.equals(refName)) {
-            return SAMRecord.NO_ALIGNMENT_REFERENCE_NAME;
-        } else {
-            final int start = read.getAlignmentStart();
-            return refName + ":" + start;
-        }
     }
 
     /**
@@ -1203,16 +1189,18 @@ public final class ReadUtils {
         if (read.isUnmapped()) {
             return -1;
         } else {
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.isEmpty()) {
+                throw new IllegalArgumentException("the input read is mapped yet contains no cigar-elements");
+            }
             int result = 0;
-            for (final CigarElement ce : read.getCigarElements()) {
+            for (final CigarElement ce : cigarElements) {
                 final int length = ce.getLength();
-                if (length != 0) { // paranoia test.
-                    final CigarOperator co = ce.getOperator();
-                    if (co.isAlignment()) {
-                        return result;
-                    } else if (co.consumesReadBases()) {
-                        result += length;
-                    }
+                final CigarOperator co = ce.getOperator();
+                if (co.isAlignment()) {
+                    return result;
+                } else if (co.consumesReadBases()) {
+                    result += length;
                 }
             }
             return -1;
@@ -1228,7 +1216,7 @@ public final class ReadUtils {
      *     the read has an empty cigar for whatever reason.
      * </p>
      * <p>
-     *     If what you are after is the offset of the first aligned base in the array returned by {@link #getBases()}
+     *     If what you are after is the offset of the first aligned base in the array returned by {@link GATKRead#getBases()}
      *     then you should be looking into {@link #getFirstAlignedBaseOffset(GATKRead)}.
      * </p>
      * @return {@code -1} or a number between {@code 1} and the length of the original read. Never {@code 0}.
@@ -1239,12 +1227,12 @@ public final class ReadUtils {
             return -1;
         } else {
             final List<CigarElement> cigarElements = read.getCigarElements();
-            if (cigarElements.size() < 1) {
-                return -1;
+            if (cigarElements.isEmpty()) {
+                throw new IllegalArgumentException("the input read is mapped yet has an empty cigar");
             } else if (!read.isReverseStrand()) {
                 final int offset = getFirstAlignedBaseOffset(read);
                 return offset == -1 ? -1 : offset + 1 + CigarUtils.countLeftHardClippedBases(read.getCigar());
-            } else { // isReverseStrand() == true
+            } else {
                 final int offset = getAfterLastAlignmentBaseOffset(read);
                 return offset == -1 ? -1 : read.getLength() - offset + 1 + CigarUtils.countRightHardClippedBases(read.getCigar());
             }
@@ -1256,7 +1244,7 @@ public final class ReadUtils {
      *
      * <p>
      *     It returns {@code -1} if there is not such a base (e.g. the record is unmapped or is totally enclosed in an
-     *      insertion or clip). Also it will return {@code -1} if it has an empty cigar.
+     *      insertion). Also it will return {@code -1} if it has an empty cigar.
      * </p>
      * <p>
      *     Notice that this does not take in consideration whether the record is mapped against the forward and backward
@@ -1270,19 +1258,20 @@ public final class ReadUtils {
         if (read.isUnmapped()) {
             return -1;
         } else {
-            int result = read.getLength();
             final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.isEmpty()) {
+                throw new IllegalArgumentException("the input read is mapped yet the cigar is empty");
+            }
+            int result = read.getLength();
             final ListIterator<CigarElement> cigarElementIterator = cigarElements.listIterator(cigarElements.size());
             while (cigarElementIterator.hasPrevious()) {
                 final CigarElement ce = cigarElementIterator.previous();
                 final int length = ce.getLength();
-                if (length != 0) { // paranohic test.
-                    final CigarOperator co = ce.getOperator();
-                    if (co.isAlignment()) {
-                        return result;
-                    } else if (co.consumesReadBases()) {
-                        result -= length;
-                    }
+                final CigarOperator co = ce.getOperator();
+                if (co.isAlignment()) {
+                    return result;
+                } else if (co.consumesReadBases()) {
+                    result -= length;
                 }
             }
             return -1;
@@ -1303,11 +1292,11 @@ public final class ReadUtils {
         } else {
             final List<CigarElement> cigarElements = read.getCigarElements();
             if (cigarElements.isEmpty()) {
-                return -1;
+                throw new IllegalArgumentException("the input read is mapped but the cigar is empty");
             } else if (!read.isReverseStrand()) {
                 final int offset = getAfterLastAlignmentBaseOffset(read);
                 return offset == -1 ? -1 : offset + CigarUtils.countLeftHardClippedBases(read.getCigar());
-            } else { // isReverseStrand
+            } else {
                 final int offset = getFirstAlignedBaseOffset(read);
                 return offset == -1 ? -1 : read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
             }
