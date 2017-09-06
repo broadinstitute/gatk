@@ -74,7 +74,7 @@ public final class ShardPartitioner extends Partitioner {
     public int getPartition(final String contig, final int position) {
         final Integer contigIndex = contigToIndex.get(contig);
         if (contigIndex != null) {
-            final SVInterval query = new SVInterval(contigIndex, position, position);
+            final SVInterval query = new SVInterval(contigIndex, position - 1, position);
             SVIntervalTree.Entry<Integer> entry = partitions.minOverlapper(query);
             if (entry != null) {
                 return entry.getValue();
@@ -101,7 +101,7 @@ public final class ShardPartitioner extends Partitioner {
                                                           // partition.
         int currentPartition = 0; // current partition index; first one is 0.
         int currentContigIndex = -1; // current contig index; before the first one is -1.
-        int currentPartitionStart = Integer.MIN_VALUE; // current partition- start positions set to and open start.
+        int currentPartitionStart = 1; // current partition- start positions set to and open start.
         L previousLocatable = null;
         while (shardIterator.hasNext()) {
             final L locatable = shardIterator.next();
@@ -110,15 +110,15 @@ public final class ShardPartitioner extends Partitioner {
                     throw new IllegalArgumentException("the input shard collection contains elements out of order or early elements reach beyond later elements");
                 }
                 if (leftInPartition == 0) {
-                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, locatable.getStart() - 1), currentPartition);
+                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart - 1, locatable.getStart() - 1), currentPartition);
                     currentPartitionStart = locatable.getStart();
                 }
             } else {
                 if (currentContig != null) {
-                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
+                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart - 1, Integer.MAX_VALUE), currentPartition);
                 }
                 currentContigIndex++;
-                currentPartitionStart = Integer.MIN_VALUE;
+                currentPartitionStart = 1;
                 currentContig = locatable.getContig();
                 contigToIndex.put(currentContig, currentContigIndex);
             }
@@ -128,7 +128,7 @@ public final class ShardPartitioner extends Partitioner {
             }
             previousLocatable = locatable;
         }
-        partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
+        partitions.put(new SVInterval(currentContigIndex, currentPartitionStart - 1, Integer.MAX_VALUE), currentPartition);
         this.numberOfPartitions = numberOfPartitions;
     }
 }
