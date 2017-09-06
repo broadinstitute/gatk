@@ -52,11 +52,11 @@ public class AnnotatedVariantProducer implements Serializable {
 
         final VariantContext firstMate =
                 produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc, -1,
-                        novelAdjacencyReferenceLocations.complication, inferredType.get(0), contigAlignments, broadcastReference);
+                        novelAdjacencyReferenceLocations.complication, inferredType.get(0), null, contigAlignments, broadcastReference);
 
         final VariantContext secondMate =
                 produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc, -1,
-                        novelAdjacencyReferenceLocations.complication, inferredType.get(1), contigAlignments, broadcastReference);
+                        novelAdjacencyReferenceLocations.complication, inferredType.get(1), null, contigAlignments, broadcastReference);
 
         final VariantContextBuilder builder0 = new VariantContextBuilder(firstMate);
         builder0.attribute(GATKSVVCFConstants.BND_MATEID_STR, secondMate.getID());
@@ -75,6 +75,7 @@ public class AnnotatedVariantProducer implements Serializable {
      * @param end                               END of the VC, assumed to be < 0 if for BND formatted variant
      * @param breakpointComplications           complications associated with this breakpoint
      * @param inferredType                      inferred type of variant
+     * @param altHaplotypeSeq                   alt haplotype sequence (could be null)
      * @param contigAlignments                  chimeric alignments from contigs used for generating this novel adjacency
      * @param broadcastReference                broadcasted reference
      *
@@ -83,6 +84,7 @@ public class AnnotatedVariantProducer implements Serializable {
     static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final SimpleInterval refLoc, final int end,
                                                                             final BreakpointComplications breakpointComplications,
                                                                             final SvType inferredType,
+                                                                            final byte[] altHaplotypeSeq,
                                                                             final Iterable<ChimericAlignment> contigAlignments,
                                                                             final Broadcast<ReferenceMultiSource> broadcastReference)
             throws IOException {
@@ -108,6 +110,10 @@ public class AnnotatedVariantProducer implements Serializable {
 
         if (end > 0)
             vcBuilder.attribute(VCFConstants.END_KEY, applicableEnd);
+
+        if (altHaplotypeSeq!=null)
+            vcBuilder.attribute(GATKSVVCFConstants.SEQ_ALT_HAPLOTYPE, new String(altHaplotypeSeq));
+
         return vcBuilder.make();
     }
 
@@ -164,7 +170,6 @@ public class AnnotatedVariantProducer implements Serializable {
     /**
      * Not testing this because the complications are already tested in the NovelAdjacencyReferenceLocations class' own test,
      * more testing here would be actually testing VCBuilder.
-     * @param breakpointComplications
      */
     private static Map<String, Object> parseComplicationsAndMakeThemAttributeMap(final BreakpointComplications breakpointComplications) {
 
@@ -181,14 +186,19 @@ public class AnnotatedVariantProducer implements Serializable {
 
         if (breakpointComplications.hasDuplicationAnnotation()) {
             attributeMap.put(GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, breakpointComplications.getDupSeqRepeatUnitRefSpan().toString());
-            if(!breakpointComplications.getCigarStringsForDupSeqOnCtg().isEmpty()) {
+            if (!breakpointComplications.getCigarStringsForDupSeqOnCtg().isEmpty()) {
                 attributeMap.put(GATKSVVCFConstants.DUP_SEQ_CIGARS,
                         StringUtils.join(breakpointComplications.getCigarStringsForDupSeqOnCtg(), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR));
             }
             attributeMap.put(GATKSVVCFConstants.DUPLICATION_NUMBERS,
                     new int[]{breakpointComplications.getDupSeqRepeatNumOnRef(), breakpointComplications.getDupSeqRepeatNumOnCtg()});
-            if(breakpointComplications.isDupAnnotIsFromOptimization()) {
+            if (breakpointComplications.isDupAnnotIsFromOptimization()) {
                 attributeMap.put(GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, "");
+            }
+
+            if (breakpointComplications.getDupSeqStrandOnCtg() != null) {
+                attributeMap.put(GATKSVVCFConstants.DUP_INV_ORIENTATIONS,
+                        breakpointComplications.getDupSeqStrandOnCtg().stream().map(Strand::toString).collect(Collectors.joining()));
             }
         }
         return attributeMap;
@@ -231,7 +241,7 @@ public class AnnotatedVariantProducer implements Serializable {
      * Utility structs for extraction information from the consensus NovelAdjacencyReferenceLocations out of multiple ChimericAlignments,
      * to be later added to annotations of the VariantContext extracted.
      */
-    static final class NovelAdjacencyEvidenceAnnotations implements Serializable {
+    private static final class NovelAdjacencyEvidenceAnnotations implements Serializable {
         private static final long serialVersionUID = 1L;
 
         final Integer minMQ;
@@ -241,11 +251,11 @@ public class AnnotatedVariantProducer implements Serializable {
 
         NovelAdjacencyEvidenceAnnotations(final ChimericAlignment chimericAlignment){
             minMQ = Math.min(chimericAlignment.regionWithLowerCoordOnContig.mapQual,
-                    chimericAlignment.regionWithHigherCoordOnContig.mapQual);
+                             chimericAlignment.regionWithHigherCoordOnContig.mapQual);
             minAL = Math.min(chimericAlignment.regionWithLowerCoordOnContig.referenceSpan.size(),
-                    chimericAlignment.regionWithHigherCoordOnContig.referenceSpan.size())
+                             chimericAlignment.regionWithHigherCoordOnContig.referenceSpan.size())
                     - AlignmentInterval.overlapOnContig(chimericAlignment.regionWithLowerCoordOnContig,
-                    chimericAlignment.regionWithHigherCoordOnContig);
+                                                        chimericAlignment.regionWithHigherCoordOnContig);
             sourceContigName = chimericAlignment.sourceContigName;
             insSeqMappings = chimericAlignment.insertionMappings;
         }
@@ -254,9 +264,10 @@ public class AnnotatedVariantProducer implements Serializable {
     @VisibleForTesting
     static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<ChimericAlignment> splitAlignmentEvidence) {
 
-        final List<NovelAdjacencyEvidenceAnnotations> annotations = Utils.stream(splitAlignmentEvidence)
-                .sorted(Comparator.comparing(ca -> ca.sourceContigName))
-                .map(NovelAdjacencyEvidenceAnnotations::new).collect(Collectors.toList());
+        final List<NovelAdjacencyEvidenceAnnotations> annotations =
+                Utils.stream(splitAlignmentEvidence)
+                        .sorted(Comparator.comparing(ca -> ca.sourceContigName))
+                        .map(NovelAdjacencyEvidenceAnnotations::new).collect(Collectors.toList());
 
         final Map<String, Object> attributeMap = new HashMap<>();
         attributeMap.put(GATKSVVCFConstants.TOTAL_MAPPINGS,    annotations.size());

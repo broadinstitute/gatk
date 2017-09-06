@@ -41,11 +41,12 @@ final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyCon
                         .groupByKey()
                         .mapToPair(noveltyAndEvidence -> DiscoverVariantsFromContigAlignmentsSAMSpark.inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))
                         .map(noveltyTypeAndEvidence -> DiscoverVariantsFromContigAlignmentsSAMSpark.annotateVariant(noveltyTypeAndEvidence._1,
-                                noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2, broadcastReference));
+                                noveltyTypeAndEvidence._2._1, null, noveltyTypeAndEvidence._2._2, broadcastReference));
+
 
         final PipelineOptions pipelineOptions = null;
-        SVVCFWriter.writeVCF(vcfOutputFileName, toolLogger, annotatedVariants.collect(), new ReferenceMultiSource(pipelineOptions, fastaReference,
-                ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null));
+        SVVCFWriter.writeVCF(annotatedVariants.collect(), vcfOutputFileName, new ReferenceMultiSource(pipelineOptions, fastaReference,
+                ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null), toolLogger);
     }
 
     /**

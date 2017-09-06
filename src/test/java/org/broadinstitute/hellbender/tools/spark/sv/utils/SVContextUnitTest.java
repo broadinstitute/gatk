@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -9,7 +8,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.integration.SVIntegrationTestDataProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -31,14 +29,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Unit tests for {@link SVContext}.
- */
-public class SVContextUnitTest {
 
-    private static final File VALID_VARIANTS_FILE = new File(BaseTest.largeFileTestDir, "svc_test.vcf.gz");
+public class SVContextUnitTest extends BaseTest {
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/spark/sv/utils/";
 
-    private static final File REFERENCE_FILE = new File(CommandLineProgramTest.b38_reference_20_21);
+    private static final File VALID_VARIANTS_FILE = new File(TEST_SUB_DIR, "SVContext.vcf.gz");
+
+    private static final File REFERENCE_FILE = new File(b38_reference_20_21);
 
     /**
      * Tests {@link SVContext#of}.
@@ -246,7 +243,7 @@ public class SVContextUnitTest {
     }
 
     private static ReferenceMultiSource referenceMultiSource(final String fastaFileName) {
-        return new ReferenceMultiSource((PipelineOptions) null, fastaFileName,
+        return new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions) null, fastaFileName,
                 (r) -> new SimpleInterval(r.getContig(), r.getAssignedStart(), r.getEnd()));
     }
 }

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedAssembly;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -105,12 +106,12 @@ public class SGATextFormatAlignmentParserUnitTest extends BaseTest {
             final SimpleInterval referenceIntervalLeft = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair]+1, alignmentStartsOnRef_0Based[2*pair]+cigars[2*pair].getReferenceLength()+1);
             final AlignmentInterval alignmentIntervalLeft = new AlignmentInterval(referenceIntervalLeft, alignmentStartsOnTig_0BasedInclusive[2*pair]+1, alignmentEndsOnTig_0BasedExclusive[2*pair],
                     strandedness[2*pair] ? cigars[2*pair] : CigarUtils.invertCigar(cigars[2*pair]),
-                    strandedness[2*pair], mapQual[2*pair], mismatches[2*pair], 100, false, false);
+                    strandedness[2*pair], mapQual[2*pair], mismatches[2*pair], 100, AlnModType.NONE);
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalLeft);
             final SimpleInterval referenceIntervalRight = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair+1]+1, alignmentStartsOnRef_0Based[2*pair+1]+cigars[2*pair+1].getReferenceLength()+1);
             final AlignmentInterval alignmentIntervalRight = new AlignmentInterval(referenceIntervalRight, alignmentStartsOnTig_0BasedInclusive[2*pair+1]+1, alignmentEndsOnTig_0BasedExclusive[2*pair+1],
                     strandedness[2*pair+1] ? cigars[2*pair+1] : CigarUtils.invertCigar(cigars[2*pair+1]),
-                    strandedness[2*pair+1], mapQual[2*pair+1], mismatches[2*pair+1], 100, false, false);
+                    strandedness[2*pair+1], mapQual[2*pair+1], mismatches[2*pair+1], 100, AlnModType.NONE);
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
 
             if (pair == 0) {

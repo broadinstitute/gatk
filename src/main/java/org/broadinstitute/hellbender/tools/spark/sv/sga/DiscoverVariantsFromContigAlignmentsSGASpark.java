@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -68,6 +69,7 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
 
         DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsAndWriteVCF(parsedContigAlignments, null,
                 ctx.broadcast(getReference()), vcfOutput, localLogger, getReferenceSequenceDictionary());
+
     }
 
     public static final class SGATextFormatAlignmentParser extends AlignedContigGenerator {
@@ -150,12 +152,19 @@ public final class DiscoverVariantsFromContigAlignmentsSGASpark extends GATKSpar
                     final int contigStart = Integer.valueOf(intervalFields[0].split("-")[0]);
                     final int contigEnd = Integer.valueOf(intervalFields[0].split("-")[1]);
 
+                    final AlnModType modType;
+                    switch (AlnModType.ModTypeString.valueOf(intervalFields[7])) {
+                        case O: modType = AlnModType.NONE; break;
+                        case H: modType = AlnModType.UNDERGONE_OVERLAP_REMOVAL; break;
+                        case E: modType = AlnModType.EXTRACTED_FROM_LARGER_ALIGNMENT; break;
+                        case S: modType = AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT; break;
+                        default: throw new IllegalArgumentException();
+                    }
                     intervals.add(new AlignmentInterval(AlignAssembledContigsSpark.decodeStringAsSimpleInterval(intervalFields[1]),
                                                         contigStart, contigEnd, TextCigarCodec.decode(intervalFields[2]),
                                                         intervalFields[3].equals("+"),
                                                         Integer.valueOf(intervalFields[4]), Integer.valueOf(intervalFields[5]),
-                                                        Integer.valueOf(intervalFields[6]), intervalFields[7].equals("s"),
-                                                        intervalFields[8].equals("h")));
+                                                        Integer.valueOf(intervalFields[6]), modType));
                 }
                 return new Tuple2<>(contigName, intervals);
             } catch (final Exception ex) {

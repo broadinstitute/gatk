@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -20,8 +21,8 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     @Test(groups = "sv")
     public void testFilterByRegionTooSmall() {
         final byte[] contigSequence = SVDiscoveryTestDataProvider.LONG_CONTIG1.getBytes();
-        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, false, false);
-        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, false, false);
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, AlnModType.NONE);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, AlnModType.NONE);
 
         Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH) );
         Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH) );
@@ -32,8 +33,8 @@ public class ChimericAlignmentUnitTest extends BaseTest {
 
     @Test(groups = "sv")
     public void testFilterByNextAlignmentMayBeNovelInsertion() throws Exception {
-        final AlignmentInterval overlappingRegion1 = new AlignmentInterval(new SimpleInterval("19", 48699881, 48700035), 1, 154, TextCigarCodec.decode("47S154M"), false, 60, 0, 100, false, false);
-        final AlignmentInterval overlappingRegion2 = new AlignmentInterval(new SimpleInterval("19", 48700584, 48700669), 117, 201, TextCigarCodec.decode("116H85M"), true, 60, 0, 100, false, false);
+        final AlignmentInterval overlappingRegion1 = new AlignmentInterval(new SimpleInterval("19", 48699881, 48700035), 1, 154, TextCigarCodec.decode("47S154M"), false, 60, 0, 100, AlnModType.NONE);
+        final AlignmentInterval overlappingRegion2 = new AlignmentInterval(new SimpleInterval("19", 48700584, 48700669), 117, 201, TextCigarCodec.decode("116H85M"), true, 60, 0, 100, AlnModType.NONE);
 
         Assert.assertTrue(ChimericAlignment.nextAlignmentMayBeNovelInsertion(overlappingRegion1, overlappingRegion2, 50));
     }

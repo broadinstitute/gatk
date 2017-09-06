@@ -21,10 +21,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 import scala.Tuple3;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -60,10 +57,14 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
         final JavaRDD<VariantContext> simpleStrandSwitchBkpts =
                 dealWithSimpleStrandSwitchBkpts(split._2, broadcastReference, toolLogger);
 
-        SVVCFWriter.writeVCF(vcfOutputFileName.replace(".vcf", "_simpleSS.vcf"), toolLogger,
-                simpleStrandSwitchBkpts.collect(), referenceSequenceDictionary);
+        SVVCFWriter.writeVCF(simpleStrandSwitchBkpts.collect(), vcfOutputFileName.replace(".vcf", "_simpleSS.vcf"), referenceSequenceDictionary, toolLogger
+        );
+        simpleStrandSwitchBkpts.unpersist();
 
-        // TODO: 8/23/17 add inv dup code in the next pr
+        final JavaRDD<VariantContext> invDups =
+                dealWithSuspectedInvDup(split._1, broadcastReference, toolLogger);
+        SVVCFWriter.writeVCF(invDups.collect(), vcfOutputFileName.replace(".vcf", "_invDup.vcf"), referenceSequenceDictionary, toolLogger
+        );
     }
 
     // =================================================================================================================
@@ -121,7 +122,7 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
         }
         return new AlignmentInterval(result._1, newTigStart, newTigEnd, result._2, input.forwardStrand, input.mapQual,
                 StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.MISSING_NM,
-                input.alnScore, input.isFromSplitGapAlignment, input.hasUndergoneOverlapRemoval);
+                input.alnScore, input.alnModType);
     }
 
     /**
@@ -243,6 +244,7 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
         right.forEach(cigar::add);
         return new Cigar(SvCigarUtils.compactifyNeighboringSoftClippings(cigar.getCigarElements()));
     }
+
     // =================================================================================================================
 
     /**
@@ -284,6 +286,8 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
 
         return Math.min(x - overlap, y - overlap) >= alignmentLengthThresholdInclusive;
     }
+
+    // =================================================================================================================
 
     // workflow manager for simple strand-switch alignment contigs
     private JavaRDD<VariantContext> dealWithSimpleStrandSwitchBkpts(final JavaRDD<AlignedContig> contigs,
@@ -330,5 +334,42 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
         return new Tuple2<>(novelAdjacency, new Tuple2<>(Arrays.asList(bkpt_1, bkpt_2), chimericAlignments));
     }
 
-    // TODO: 8/23/17 add inv dup code in the next PR
+    // =================================================================================================================
+
+    private JavaRDD<VariantContext> dealWithSuspectedInvDup(final JavaRDD<AlignedContig> contigs,
+                                                            final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                            final Logger toolLogger) {
+
+        final JavaPairRDD<ChimericAlignment, byte[]> invDupSuspects =
+                contigs
+                        .filter(tig ->
+                                splitPairStrongEnoughEvidenceForCA(tig.alignmentIntervals.get(0), tig.alignmentIntervals.get(1),
+                                        MORE_RELAXED_ALIGNMENT_MIN_MQ,  MORE_RELAXED_ALIGNMENT_MIN_LENGTH))
+                        .mapToPair(SimpleStrandSwitchVariantDetector::convertAlignmentIntervalsToChimericAlignment).cache();
+
+        toolLogger.info(invDupSuspects.count() + " chimera indicating inverted duplication");
+
+        return invDupSuspects
+                .mapToPair(pair -> new Tuple2<>(new NovelAdjacencyReferenceLocations(pair._1, pair._2), new Tuple2<>(pair._1, pair._2)))
+                .groupByKey()
+                .flatMapToPair(SimpleStrandSwitchVariantDetector::inferInvDupRange)
+                .map(noveltyTypeAndAltSeqAndEvidence ->
+                        DiscoverVariantsFromContigAlignmentsSAMSpark
+                                .annotateVariant(noveltyTypeAndAltSeqAndEvidence._1._1(), noveltyTypeAndAltSeqAndEvidence._1._2(),
+                                        noveltyTypeAndAltSeqAndEvidence._1._3(), noveltyTypeAndAltSeqAndEvidence._2, broadcastReference));
+    }
+
+    private static Iterator<Tuple2<Tuple3<NovelAdjacencyReferenceLocations, SimpleSVType.DuplicationInverted, byte[]>, List<ChimericAlignment>>>
+    inferInvDupRange(final Tuple2<NovelAdjacencyReferenceLocations, Iterable<Tuple2<ChimericAlignment, byte[]>>> noveltyAndEvidence) {
+
+        final NovelAdjacencyReferenceLocations novelAdjacency = noveltyAndEvidence._1;
+        final SimpleSVType.DuplicationInverted duplicationInverted = new SimpleSVType.DuplicationInverted(novelAdjacency);
+
+        final Map<byte[], List<ChimericAlignment>> collect = Utils.stream(noveltyAndEvidence._2)
+                .collect(Collectors.groupingBy(caAndSeq -> novelAdjacency.complication.extractAltHaplotypeForInvDup(caAndSeq._1, caAndSeq._2),
+                        Collectors.mapping(caAndSeq -> caAndSeq._1, Collectors.toList())));
+
+        return collect.entrySet().stream().map(entry -> new Tuple2<>(new Tuple3<>(novelAdjacency, duplicationInverted, entry.getKey()),
+                entry.getValue())).iterator();
+    }
 }

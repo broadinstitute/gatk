@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
@@ -58,9 +57,8 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
     @Test(groups = "spark")
     public void miniRefTest() throws IOException {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final ReferenceMultiSource ref = new ReferenceMultiSource((PipelineOptions)null,
-                REFERENCE_FILE_NAME,
-                ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource ref = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+                REFERENCE_FILE_NAME, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(null);
         if ( dict == null ) throw new GATKException("No reference dictionary available.");
 
@@ -78,7 +76,7 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         }
 
         final List<SVKmer> badKmers =
-                FindBadGenomicKmersSpark.findBadGenomicKmers(ctx, KMER_SIZE, Integer.MAX_VALUE, ref, null, null);
+                FindBadGenomicKmersSpark.findBadGenomicKmers(ctx, KMER_SIZE, Integer.MAX_VALUE, ref, null);
         final Set<SVKmer> badKmerSet = new HashSet<>(badKmers);
         Assert.assertEquals(badKmers.size(), badKmerSet.size());
         Assert.assertEquals(badKmerSet, kmerMap.keySet());
