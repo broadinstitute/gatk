@@ -14,8 +14,8 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -101,16 +101,16 @@ public final class FindSmallIndelRegions extends GATKSparkTool {
 
     @DefaultSerializer(SVTypeLen.Serializer.class)
     public final static class SVTypeLen {
-        private SvType.TYPES type;
+        private SimpleSVType.TYPES type;
         private int len;
 
         public SVTypeLen( final String svType, final int len ) {
-            this.type = SvType.TYPES.valueOf(svType);
+            this.type = SimpleSVType.TYPES.valueOf(svType);
             this.len = len;
         }
 
         public SVTypeLen( final Kryo kryo, final Input input ) {
-            type = SvType.TYPES.values()[input.readInt()];
+            type = SimpleSVType.TYPES.values()[input.readInt()];
             len = input.readInt();
         }
 
@@ -119,7 +119,7 @@ public final class FindSmallIndelRegions extends GATKSparkTool {
             output.writeInt(len);
         }
 
-        public SvType.TYPES getType() { return type; }
+        public SimpleSVType.TYPES getType() { return type; }
         public int getLen() { return len; }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SVTypeLen> {

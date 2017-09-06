@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.util.List;
 
-import static  org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType.createBracketedSymbAlleleString;
+import static  org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType.createBracketedSymbAlleleString;
 
 public class SVTypeUnitTest {
 
@@ -64,19 +64,19 @@ public class SVTypeUnitTest {
 
         // simple deletion
         worker(SVDiscoveryTestDataProvider.forSimpleDeletion_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -20,
-                SvType.TYPES.DEL.name());
+                SimpleSVType.TYPES.DEL.name());
 
         // simple insertion
         worker(SVDiscoveryTestDataProvider.forSimpleInsertion_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER, 50,
-                SvType.TYPES.INS.name());
+                SimpleSVType.TYPES.INS.name());
 
         // long range substitution (i.e. scarred deletion)
         worker(SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -20,
-                SvType.TYPES.DEL.name());
+                SimpleSVType.TYPES.DEL.name());
 
         // simple deletion with homology
         worker(SVDiscoveryTestDataProvider.forDeletionWithHomology_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -38,
-                SvType.TYPES.DEL.name());
+                SimpleSVType.TYPES.DEL.name());
 
         // simple tandem dup contraction from 2 units to 1 unit
         worker(SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -10,

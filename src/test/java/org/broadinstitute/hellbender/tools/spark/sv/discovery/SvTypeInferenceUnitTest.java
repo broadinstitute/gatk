@@ -41,53 +41,53 @@ public class SvTypeInferenceUnitTest extends BaseTest {
 
         // inversion
         NovelAdjacencyReferenceLocations breakpoints = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.INV.name(), ImmutableSet.of(GATKSVVCFConstants.INV33));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.INV.name(), ImmutableSet.of(GATKSVVCFConstants.INV33));
 
         breakpoints = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftPlus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.INV.name(), ImmutableSet.of(GATKSVVCFConstants.INV55));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.INV.name(), ImmutableSet.of(GATKSVVCFConstants.INV55));
 
         // simple deletion
         breakpoints = SVDiscoveryTestDataProvider.forSimpleDeletion_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DEL.name(), Collections.emptySet());
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), Collections.emptySet());
 
         // simple insertion
         breakpoints = SVDiscoveryTestDataProvider.forSimpleInsertion_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.INS.name(), Collections.emptySet());
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.INS.name(), Collections.emptySet());
 
         // long range substitution
         breakpoints = SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DEL.name(), Collections.emptySet());
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), Collections.emptySet());
 
         // simple deletion with homology
         breakpoints = SVDiscoveryTestDataProvider.forDeletionWithHomology_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DEL.name(), Collections.emptySet());
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), Collections.emptySet());
 
         // simple tandem dup contraction from 2 units to 1 unit
         breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING));
 
         // simple tandem dup expansion from 1 unit to 2 units
         breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
         breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
         breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
         breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING));
 
         // tandem dup contraction from 3 units to 2 units
         breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING));
 
         // tandem dup expansion from 2 units to 3 units
         breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SvType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
+        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.TANDUP_EXPANSION_STRING));
     }
 }

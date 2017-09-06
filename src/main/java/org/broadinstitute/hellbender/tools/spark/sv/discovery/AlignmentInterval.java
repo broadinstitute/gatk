@@ -9,6 +9,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -128,6 +129,21 @@ public final class AlignmentInterval {
                 Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1)
                         - Math.max(one.startInAssembledContig, two.startInAssembledContig)
         );
+    }
+
+    /**
+     * Computes overlap between reference span of the two input alignment intervals.
+     */
+    static int overlapOnRefSpan(final AlignmentInterval one, final AlignmentInterval two) {
+
+        if ( !one.referenceSpan.getContig().equals(two.referenceSpan.getContig()) ) return  0;
+
+        // dummy number for chr to be used in constructing SVInterval, since 2 input AI's both map to the same chr by this point
+        final int dummyChr = -1;
+        final SVInterval intOne = new SVInterval(dummyChr, one.referenceSpan.getStart(), one.referenceSpan.getEnd() + 1),
+                         intTwo = new SVInterval(dummyChr, two.referenceSpan.getStart(), two.referenceSpan.getEnd() + 1);
+
+        return intOne.overlapLen(intTwo);
     }
 
     static int getAlignmentStartInOriginalContig(final SAMRecord samRecord) {
