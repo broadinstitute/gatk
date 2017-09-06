@@ -5,41 +5,44 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.apache.spark.Partitioner;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * Partitioner based a shard list.
  *
  * Contiguous shards are grouped in partitions trying to keep the same number of shards per partition.
- * <p>
- *     This might not always be possible, for example the number of shard in a chromosome is not divisible by
- *     the number of shards in a partition. In these cases, some partitions may contain shards from several chromosomes.
- * </p>
  *
  * <p>
- *     The partition assigned to an object will depend on what shard or shards it overlaps. For {@link Locatable}
- *     instances we use its start position. The object is assigned a partition that could be any of the of the partitions
- *     assigned to any of the shards that overlap that object.
+ *     The partition number assigned to a key by the resulting partitioner will "loosely" depend on the shard or shards it overlaps with.
+ *     When an object is not overlapped by any shard but maps to a position on a contig with shards present,
+ *     its partition would equally be "loosely" dependent of the partitions assigned to shards closest to its position.
  * </p>
  * <p>
- *     If there are several shards that overlap that object with different partitions assigned to them,
- *     we always consistently return the same partition number for that object.
- * </p>
- * <p>
- *     When the input object is not overlapped by any shard, however its contig it amongst the one referred by a shard
- *     in this partitoner, we return a partition number of a shard that is "close" to its location.
+ *     When the input key object is not overlapped by any shard, but its contig it amongst the one referred by a shard
+ *     in this partitioner, we return a partition number of a shard that is "close" to its location.
  * </p>
  * <p>
  *     When the input object's contig if it is a {@code Locatable} is unknown to the partitioner or it is not a
- *     {@link Locatable} then a partition will be assigned at random but consistently the same number using the object {@link #hashCode}.
- *     So as long as {@link #hashCode} returns a consistent value, the resulting partion number will be consistently the same
- *     at every invokation.
+ *     {@link Locatable} then partitions will be assigned as it was mapping to one of the known contigs
+ *     selected at random but consistently based on the contigs name {@link #hashCode}.
  * </p>
+ * <p>
+ *     Thus this kind of partitioner is guaranteed to do a good job in evenly splitting keys amongst partition if
+ *     all keys map to some shard on a known contig and that each shard roughly will contain the same number of
+ *     keys. Otherwise, some non-pathological input object key sequences may result in uneven partitioning.
+ * </p>
+ * <p>
+ *     The only guarantee is that for objects A, B, C that map contiguous on the same contig on that order,
+ *     if {@code partition(A) == partition(B) == P} then {@code partition(C) == P} also.
+ * </p>
+ *
  */
 public abstract class ShardPartitioner<T> extends Partitioner {
 
@@ -48,12 +51,61 @@ public abstract class ShardPartitioner<T> extends Partitioner {
     private final Map<String, Integer> contigToIndex = new HashMap<>();
     private final SVIntervalTree<Integer> partitions = new SVIntervalTree<>();
 
-    private <T extends Locatable, L extends Locatable> ShardPartitioner<T> forLocatables(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
+    /**
+     * Creates a partitioner to be used on any locatable key objects.
+     * @param shards the shards this partitioner will be based on.
+     * @param numberOfPartitions number of output partition.
+     * @param <L> the type for the shards.
+     * @return never {@code null}.
+     */
+    public static <L extends Locatable> ShardPartitioner<Locatable> make(final Collection<L> shards, final int numberOfPartitions) {
+        return new ShardPartitioner<Locatable>(Locatable.class, shards, numberOfPartitions) {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public Locatable getLocatable(Locatable key) {
+                return key;
+            }
+        };
+    }
+
+    /**
+     * Creates a partitioner to be used on locatable key objects.
+     * @param clazz key object class.
+     * @param shards the shards this partitioner will be based on.
+     * @param numberOfPartitions number of output partition.
+     * @param <T> the class for the key object this partitioner will be used on.
+     * @param <L> the type for the shards.
+     * @return never {@code null}.
+     */
+    public static <T extends Locatable, L extends Locatable> ShardPartitioner<T> make(
+            final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
         return new ShardPartitioner<T>(clazz, shards, numberOfPartitions) {
             private static final long serialVersionUID = 1L;
             @Override
             public Locatable getLocatable(T key) {
                 return key;
+            }
+        };
+    }
+
+    /**
+     * Creates a partitioner to be used on non-locatable key objects.
+     * @param clazz key object class.
+     * @param shards the shards this partitioner will be based on.
+     * @param toLocatable function that extracts a {@link Locatable} out of {@link T} typed key objects.
+     * @param numberOfPartitions number of output partition.
+     * @param <T> the class for the key object this partitioner will be used on.
+     * @param <L> the type for the shards.
+     * @return never {@code null}.
+     */
+    public static <T, L extends Locatable> ShardPartitioner<T> make(final Class<T> clazz, final Collection<L> shards,
+                                                                    final SerializableFunction<T, Locatable> toLocatable,
+                                                                      final int numberOfPartitions) {
+        return new ShardPartitioner<T>(clazz, shards, numberOfPartitions) {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public Locatable getLocatable(T key) {
+                return toLocatable.apply(key);
             }
         };
     }
@@ -68,26 +120,26 @@ public abstract class ShardPartitioner<T> extends Partitioner {
      */
     @Override
     public int getPartition(final Object key) {
-
         if (key == null || clazz.isAssignableFrom(key.getClass())) {
-            return getPartition((Locatable) key);
+            final Locatable locatable = getLocatable((T) key);
+            return getPartition(locatable);
         } else {
-            throw new IllegalArgumentException("it must be a locatable")
+            throw new IllegalArgumentException("key is of the wrong class '" + key.getClass() + "' that does not extends '" + clazz + "'");
         }
     }
 
-    public abstract Locatable getLocatable(final T key);
+    protected abstract Locatable getLocatable(final T key);
 
-    public int getPartition(final String contig, final int position) {
+    private int getPartition(final Locatable locatable) {
+        Utils.nonNull(locatable);
+        return getPartition(locatable.getContig(), locatable.getStart(), locatable.getEnd());
+    }
+
+    private int getPartition(final String contig, final int start, final int end) {
         final Integer contigIndex = contigToIndex.get(contig);
-        if (contigIndex != null) {
-            final SVInterval query = new SVInterval(contigIndex, position - 1, position);
-            SVIntervalTree.Entry<Integer> entry = partitions.minOverlapper(query);
-            if (entry != null) {
-                return entry.getValue();
-            }
-        }
-        return (((((Objects.hashCode(contig) * 47) + position) * 47) + position) * 47) % numberOfPartitions;
+        final SVInterval query = new SVInterval(contigIndex != null ? contigIndex : Objects.hashCode(contig) % contigToIndex.size(), start, end + 1);
+        // By construction minOverlapper won't ever return a null:
+        return partitions.minOverlapper(query).getValue();
     }
 
     /**
@@ -96,7 +148,7 @@ public abstract class ShardPartitioner<T> extends Partitioner {
      * @param numberOfPartitions number of partitions for this partitioner.
      * @param <L> the shard type.
      */
-    public <L extends Locatable> ShardPartitioner(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
+    private <L extends Locatable> ShardPartitioner(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
         Utils.nonNull(clazz);
         Utils.nonNull(shards);
         this.clazz = clazz;
@@ -119,12 +171,12 @@ public abstract class ShardPartitioner<T> extends Partitioner {
                     throw new IllegalArgumentException("the input shard collection contains elements out of order or early elements reach beyond later elements");
                 }
                 if (leftInPartition == 0) {
-                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart - 1, locatable.getStart() - 1), currentPartition);
+                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, locatable.getStart()), currentPartition);
                     currentPartitionStart = locatable.getStart();
                 }
             } else {
                 if (currentContig != null) {
-                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart - 1, Integer.MAX_VALUE), currentPartition);
+                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
                 }
                 currentContigIndex++;
                 currentPartitionStart = 1;
@@ -137,7 +189,7 @@ public abstract class ShardPartitioner<T> extends Partitioner {
             }
             previousLocatable = locatable;
         }
-        partitions.put(new SVInterval(currentContigIndex, currentPartitionStart - 1, Integer.MAX_VALUE), currentPartition);
+        partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
         this.numberOfPartitions = numberOfPartitions;
     }
 }

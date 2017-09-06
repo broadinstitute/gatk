@@ -434,14 +434,15 @@ public class SparkSharder {
 
     /**
      * Returns a partitioner that would split the input in a number of roughly equaly sized shards.
-     * @param numberOfPartitions
-     * @param <L>
-     * @return
+     * <p>
+     *     This partitioner can only be used on key objects that implement {@link Locatable}.
+     * </p>
+     * @param numberOfPartitions number of partitions.
+     * @throws IllegalArgumentException if {@code numberOfPartitions} is 0 or a negative.
+     * @return never {@code null}.
      */
-    public <L extends Locatable> Partitioner partitioner(final int numberOfPartitions) {
-        return new ShardPartitioner(shards, numberOfPartitions);
-
-
+    public Partitioner partitioner(final int numberOfPartitions) {
+        return ShardPartitioner.make(shards, numberOfPartitions);
     }
 
     private static void addPartitionReadExtent(List<PartitionLocatable<SimpleInterval>> extents, int partitionIndex, String contig, int start, int end) {

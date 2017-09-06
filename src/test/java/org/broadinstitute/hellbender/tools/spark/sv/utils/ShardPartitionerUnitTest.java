@@ -38,7 +38,7 @@ public final class ShardPartitionerUnitTest {
                                 .mapToInt(Locatable::getEnd).max().getAsInt() + 10)).collect(Collectors.toList()));
         final IntervalsSkipList<ShardBoundary> shards = new IntervalsSkipList<>(sortedIntervals.stream()
                 .flatMap(si -> Shard.divideIntervalIntoShards(si, 25, 0, dictionary).stream()).collect(Collectors.toList()));
-        final ShardPartitioner partitioner = new ShardPartitioner(shards, numberOfPartitions);
+        final ShardPartitioner<SimpleInterval> partitioner = ShardPartitioner.make(SimpleInterval.class, shards, numberOfPartitions);
         Assert.assertSame(partitioner.numPartitions(), numberOfPartitions);
         for (final String contig : dictionary.getSequences().stream().map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList())) {
             for (int i =1; i < dictionary.getSequence(contig).getSequenceLength(); i++) {
