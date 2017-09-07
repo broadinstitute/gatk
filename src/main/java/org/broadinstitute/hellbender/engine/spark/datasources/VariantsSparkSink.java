@@ -118,7 +118,7 @@ public final class VariantsSparkSink {
         }
 
         final JavaRDD<VariantContext> sortedVariants = sortVariants(variants, header, numReducers);
-        final String outputPartsDirectory = outputFile + ".parts";
+        final String outputPartsDirectory = outputFile + ".parts/";
         saveAsShardedHadoopFiles(ctx, conf, outputPartsDirectory, sortedVariants,  header, false);
         VCFFileMerger.mergeParts(outputPartsDirectory, outputFile, header);
     }
