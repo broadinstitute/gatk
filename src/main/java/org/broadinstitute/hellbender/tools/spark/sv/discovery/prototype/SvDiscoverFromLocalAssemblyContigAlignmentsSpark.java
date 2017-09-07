@@ -41,15 +41,16 @@ import java.util.stream.Collectors;
  */
 @CommandLineProgramProperties(summary="Parses a SAM file containing long reads alignments, and outputs cxSV rearrangements.",
         oneLineSummary="Parses a long read SAM file, and outputs cxSV rearrangements.",
-        usageExample = "InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark \\" +
+        usageExample = "SvDiscoverFromLocalAssemblyContigAlignmentsSpark \\" +
                 "-I /path/to/my/dir/localAssemblies.sam \\" +
                 "-O /path/to/my/dir/outputDir \\" +
                 "-R /path/to/my/reference/reference.2bit --fastaReference /path/to/my/reference/reference.fasta",
+        omitFromCommandLine = true,
         programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
-public final class InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATKSparkTool {
+public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
-    private final Logger localLogger = LogManager.getLogger(InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark.class);
+    private final Logger localLogger = LogManager.getLogger(SvDiscoverFromLocalAssemblyContigAlignmentsSpark.class);
 
     @ArgumentCollection
     private StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection
@@ -92,7 +93,7 @@ public final class InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark exte
 
         // filter alignments and split the gaps
         final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed =
-                InternalFilterLongReadAlignmentsSAMSpark.filterByScore(reads, header, nonCanonicalChromosomeNamesFile, localLogger)
+                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, header, nonCanonicalChromosomeNamesFile, localLogger)
                         .filter(lr -> lr.alignmentIntervals.size()>1).cache();
 
         // divert the long reads by their possible type of SV
@@ -180,17 +181,17 @@ public final class InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark exte
 
         // divert away those likely suggesting cpx sv (more than 2 alignments after gap split, or 2 alignments to diff chr)
         contigsByRawTypes.put(RawTypes.Cpx,
-                contigsWithOnlyOneBestConfig.filter(InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyCpx));
+                contigsWithOnlyOneBestConfig.filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyCpx));
 
         // long reads with only 1 best configuration and having only 2 alignments mapped to the same chromosome
         final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChr =
                 contigsWithOnlyOneBestConfig
-                        .filter(InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark::hasOnly2Alignments)
-                        .filter(InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSameChromosomeMapping).cache();
+                        .filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::hasOnly2Alignments)
+                        .filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSameChromosomeMapping).cache();
 
         // divert away those with strand switch
         contigsByRawTypes.put(RawTypes.Inv,
-                contigsWithOnlyOneBestConfigAnd2AIToSameChr.filter(InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyInvBreakpointOrInsInv));
+                contigsWithOnlyOneBestConfigAnd2AIToSameChr.filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyInvBreakpointOrInsInv));
 
         // 2 AI, same chr, no strand switch, then only 2 cases left
         final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch =
@@ -198,7 +199,7 @@ public final class InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark exte
 
         // case 1: dispersed duplication, or MEI (that is, reference blocks seemingly switched their orders)
         contigsByRawTypes.put(RawTypes.DispersedDupOrMEI,
-                contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch.filter(InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSuggestingRefBlockOrderSwitch));
+                contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch.filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSuggestingRefBlockOrderSwitch));
 
         // case 2: no order switch: ins, del, or tandem dup
         contigsByRawTypes.put(RawTypes.InsDel,
@@ -224,7 +225,7 @@ public final class InternalSvDiscoverFromLocalAssemblyContigAlignmentsSpark exte
     }
 
     static String onErrorStringRepForAlignedContig(final AlignedContig contig) {
-        return InternalFilterLongReadAlignmentsSAMSpark.formatContigInfo(
+        return FilterLongReadAlignmentsSAMSpark.formatContigInfo(
                 new Tuple2<>(contig.contigName ,
                         contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())));
     }
