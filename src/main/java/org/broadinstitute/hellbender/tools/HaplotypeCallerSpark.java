@@ -164,16 +164,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference, authHolder));
         final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(authHolder, ctx, coordinateSortedReads, readsHeader, reference, intervals, hcArgs, shardingArgs);
-        if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF) {
-            // VariantsSparkSink/Hadoop-BAM VCFOutputFormat do not support writing GVCF, see https://github.com/broadinstitute/gatk/issues/2738
-            writeVariants(output, variants, hcEngine, readsHeader.getSequenceDictionary());
-        } else {
-            variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
-            try {
-                VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(readsHeader.getSequenceDictionary(), new HashSet<>()));
-            } catch (IOException e) {
-                throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
-            }
+        variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
+        try {
+            VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(readsHeader.getSequenceDictionary(), new HashSet<>()),
+                    hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, hcArgs.GVCFGQBands, hcArgs.genotypeArgs.samplePloidy);
+        } catch (IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
         }
     }
 
