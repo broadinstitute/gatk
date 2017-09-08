@@ -33,6 +33,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 @CommandLineProgramProperties(summary="Experimental code to dump statistics about regions containing small indels due to fragment length anomalies.",
         oneLineSummary="Experimental do not use.",
         usageExample="gatk-launch FindSmallIndelRegions -O hdfs://cluster-name:8020/path/to/statusDir -I hdfs://cluster-name:8020/path/to/bam --alignerIndexImage notUsed --kmersToIgnore notUsed",
+        omitFromCommandLine = true,
         programGroup=StructuralVariationSparkProgramGroup.class)
 @BetaFeature
 public final class FindSmallIndelRegions extends GATKSparkTool {

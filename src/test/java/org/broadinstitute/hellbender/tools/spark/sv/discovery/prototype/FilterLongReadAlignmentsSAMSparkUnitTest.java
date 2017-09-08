@@ -13,11 +13,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.InternalFilterLongReadAlignmentsSAMSpark.getCanonicalChromosomes;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark.getCanonicalChromosomes;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class InternalFilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
+public class FilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
 
     private static final Set<String> canonicalChromosomes = getCanonicalChromosomes(null, null);
 
@@ -64,8 +64,8 @@ public class InternalFilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
                                      final int expectedConfigurationCount,
                                      final int expectedAICount) {
 
-        final double scoreOne = InternalFilterLongReadAlignmentsSAMSpark.computeScoreOfConfiguration(configuration, canonicalChromosomes, 60);
-        final double equallyGoodOrBetterScore = InternalFilterLongReadAlignmentsSAMSpark.computeScoreOfConfiguration(configurationEquallyGoodOrBetter, canonicalChromosomes, 60);
+        final double scoreOne = FilterLongReadAlignmentsSAMSpark.computeScoreOfConfiguration(configuration, canonicalChromosomes, 60);
+        final double equallyGoodOrBetterScore = FilterLongReadAlignmentsSAMSpark.computeScoreOfConfiguration(configurationEquallyGoodOrBetter, canonicalChromosomes, 60);
         assertTrue( scoreOne <= equallyGoodOrBetterScore);
     }
 
@@ -76,7 +76,7 @@ public class InternalFilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
                                  final int expectedConfigurationCount,
                                  final int expectedAICount) {
 
-        assertEquals(InternalFilterLongReadAlignmentsSAMSpark.pickBestConfigurations(contig, canonicalChromosomes).size(), expectedConfigurationCount);
+        assertEquals(FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(contig, canonicalChromosomes).size(), expectedConfigurationCount);
     }
 
     @Test(dataProvider = "contigAlignmentsHeuristicFilter", groups = "sv")
@@ -86,7 +86,7 @@ public class InternalFilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
                                 final int expectedConfigurationCount,
                                 final int expectedAICount) {
         final AlignedContig tig =
-                InternalFilterLongReadAlignmentsSAMSpark.filterAndSplitGappedAI(
+                FilterLongReadAlignmentsSAMSpark.filterAndSplitGappedAI(
                         SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig))
                 , null, null).collect().get(0);
         assertEquals(tig.alignmentIntervals.size(), expectedAICount,

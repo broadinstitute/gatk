@@ -53,12 +53,13 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVar
  */
 @CommandLineProgramProperties(summary="Filters a SAM file containing long reads alignments, and outputs the filter-passing stripped down alignment information.",
         oneLineSummary="Filters a long read SAM file, and outputs essential results.",
-        usageExample = "InternalFilterLongReadAlignmentsSAMSpark -I /path/to/my/dir/longReads.sam -O /path/to/my/dir/filteredAlignmentsDir",
+        usageExample = "FilterLongReadAlignmentsSAMSpark -I /path/to/my/dir/longReads.sam -O /path/to/my/dir/filteredAlignmentsDir",
+        omitFromCommandLine = true,
         programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
-public final class InternalFilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
+public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
-    private final Logger localLogger = LogManager.getLogger(InternalFilterLongReadAlignmentsSAMSpark.class);
+    private final Logger localLogger = LogManager.getLogger(FilterLongReadAlignmentsSAMSpark.class);
 
     @Argument(doc = "file containing non-canonical contig names (e.g chrUn_KI270588v1) in the reference, human reference assumed when omitted",
             shortName = "nonCanoTigFile",
@@ -96,12 +97,12 @@ public final class InternalFilterLongReadAlignmentsSAMSpark extends GATKSparkToo
                         .sortBy(tig -> tig.contigName, true, reads.getNumPartitions()/100) // num partition is purely guess
                         .mapToPair(contig -> new Tuple2<>(contig.contigName,
                                 contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())))
-                        .map(InternalFilterLongReadAlignmentsSAMSpark::formatContigInfo).collect().iterator(),
+                        .map(FilterLongReadAlignmentsSAMSpark::formatContigInfo).collect().iterator(),
                 outputFilePrefix + "_newFiltering.ai");
 
         if (runOldFilteringToo) {
             FileUtils.writeLinesToSingleFile(
-                    oldWayOfFiltering(reads, header, localLogger).map(InternalFilterLongReadAlignmentsSAMSpark::formatContigInfo)
+                    oldWayOfFiltering(reads, header, localLogger).map(FilterLongReadAlignmentsSAMSpark::formatContigInfo)
                     .collect().iterator(),
                     outputFilePrefix + "_oldFiltering.ai");
         }
@@ -160,7 +161,7 @@ public final class InternalFilterLongReadAlignmentsSAMSpark extends GATKSparkToo
         final JavaRDD<AlignedContig> parsedContigAlignments
                 = new SAMFormattedContigAlignmentParser(longReads, header, false, toolLogger)
                 .getAlignedContigs()
-                .filter(InternalFilterLongReadAlignmentsSAMSpark::contigFilter).cache();
+                .filter(FilterLongReadAlignmentsSAMSpark::contigFilter).cache();
 
         toolLogger.info( "Primitive filtering based purely on MQ left these many contigs: " + parsedContigAlignments.count() );
 
@@ -197,7 +198,7 @@ public final class InternalFilterLongReadAlignmentsSAMSpark extends GATKSparkToo
         return parsedContigAlignments
                 .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigName,
                         new Tuple2<>(alignedContig.contigSequence, pickBestConfigurations(alignedContig, canonicalChromosomes))))
-                .flatMap(InternalFilterLongReadAlignmentsSAMSpark::reConstructContigFromPickedConfiguration);
+                .flatMap(FilterLongReadAlignmentsSAMSpark::reConstructContigFromPickedConfiguration);
     }
 
     /**
