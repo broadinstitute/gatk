@@ -19,7 +19,7 @@ import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -36,7 +36,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
     Allele Anoref;
     Allele GT;
 
-    @BeforeSuite
+    @BeforeClass
     public void setup() throws IOException {
         // alleles
         Aref = Allele.create("A", true);

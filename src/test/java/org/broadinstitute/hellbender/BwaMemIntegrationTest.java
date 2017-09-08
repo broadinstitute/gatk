@@ -2,22 +2,20 @@ package org.broadinstitute.hellbender;
 
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 public class BwaMemIntegrationTest extends BaseTest {
 
     private BwaMemIndex index;
 
-    @BeforeSuite
+    @BeforeClass
     public void loadIndex() {
         final String imageFile = createTempFile(b37_reference_20_21, ".img").toString();
         BwaMemIndex.createIndexImageFromFastaFile(b37_reference_20_21, imageFile);
         index = new BwaMemIndex(imageFile);
     }
 
-    @AfterSuite
+    @AfterClass
     public void unloadIndex() {
         index.close();
         index = null;

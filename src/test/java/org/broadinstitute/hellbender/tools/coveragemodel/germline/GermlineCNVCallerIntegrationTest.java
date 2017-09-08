@@ -21,7 +21,7 @@ import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeDataCol
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
@@ -105,7 +105,7 @@ public class GermlineCNVCallerIntegrationTest extends CommandLineProgramTest {
     private static SexGenotypeDataCollection LEARNING_SEX_GENOTYPES_DATA;
     private static SexGenotypeDataCollection CALLING_SEX_GENOTYPES_DATA;
 
-    @BeforeSuite
+    @BeforeClass
     public void init() throws IOException {
         LEARNING_SEX_GENOTYPES_DATA = new SexGenotypeDataCollection(TEST_LEARNING_SAMPLE_SEX_GENOTYPES_FILE);
         CALLING_SEX_GENOTYPES_DATA = new SexGenotypeDataCollection(TEST_CALLING_SAMPLE_SEX_GENOTYPES_FILE);
