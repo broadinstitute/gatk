@@ -85,6 +85,39 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
 
     // ============================================================================================================
 
+    /**
+     * Gets the UCSC version corresponding to the given gencode version.
+     * Version equivalences obtained here:
+     *
+     *  https://genome.ucsc.edu/FAQ/FAQreleases.html
+     *  https://www.gencodegenes.org/releases/
+     *
+     * @param gencodeVersion The gencode version to convert to UCSC version.
+     * @return The UCSC version in a {@link String} corresponding to the given gencode version.
+     */
+    private static String getUcscVersionFromGencodeVersion(final int gencodeVersion) {
+        if ((gencodeVersion < GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE ) ||
+                (gencodeVersion > GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE)) {
+            throw new GATKException("Gencode version is out of expected range.  Cannot decode: " + gencodeVersion);
+        }
+
+        switch (gencodeVersion) {
+            case 19: return "hg19";
+            case 20: return "hg19";
+            case 21: return "hg19";
+            case 22: return "hg19";
+            case 23: return "hg19";
+            case 24: return "hg19";
+            case 25: return "hg38";
+            case 26: return "hg38";
+        }
+
+        // This should never happen:
+        throw new GATKException("Gencode version is out of expected range.  Cannot decode: " + gencodeVersion);
+    }
+
+    // ============================================================================================================
+
     public GencodeGtfCodec() {
         super(GencodeGtfFeature.class);
     }
@@ -156,7 +189,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             // Split the line into different GTF Fields
             // Note that we're using -1 as the limit so that empty tokens will still be counted
             // (as opposed to discarded).
-            String[] splitLine = line.split(GTF_FIELD_DELIMITER, -1);
+            final String[] splitLine = line.split(GTF_FIELD_DELIMITER, -1);
 
             // Ensure the file is at least trivially well-formed:
             if (splitLine.length != NUM_COLUMNS) {
@@ -168,10 +201,13 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             final GencodeGtfFeature.FeatureType featureType = GencodeGtfFeature.FeatureType.getEnum( splitLine[FEATURE_TYPE_FIELD_INDEX] );
 
             // Create a baseline feature to add into our data:
-            GencodeGtfFeature feature = GencodeGtfFeature.create(splitLine);
+            final GencodeGtfFeature feature = GencodeGtfFeature.create(splitLine);
 
             // Make sure we keep track of the line number for if and when we need to write the file back out:
             feature.setFeatureOrderNumber(currentLineNum);
+
+            // Set our UCSC version number:
+            feature.setUcscGenomeVersion(getUcscVersionFromGencodeVersion(versionNumber));
 
             // Once we see another gene we take all accumulated records and combine them into the
             // current GencodeGtfFeature.
@@ -256,7 +292,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
                 logger.error("Gene Feature Aggregation: leaf feature store not empty: " + leafFeatureStore.toString());
             }
 
-            String msg = "Aggregated data left over after parsing complete: Exons: " + exonStore.size() + " ; LeafFeatures: " + leafFeatureStore.size();
+            final String msg = "Aggregated data left over after parsing complete: Exons: " + exonStore.size() + " ; LeafFeatures: " + leafFeatureStore.size();
             throw new GATKException.ShouldNeverReachHereException(msg);
         }
 
@@ -275,7 +311,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
      * @param reader The {@link LineIterator} from which to read the header.
      * @return The header as read from the {@code reader}
      */
-    private List<String> readActualHeader(LineIterator reader) {
+    private List<String> readActualHeader(final LineIterator reader) {
 
         // Make sure we start with a clear header:
         header.clear();
@@ -432,7 +468,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     }
 
     @Override
-    public boolean canDecode(String inputFilePath) {
+    public boolean canDecode(final String inputFilePath) {
 
         boolean canDecode;
         try {

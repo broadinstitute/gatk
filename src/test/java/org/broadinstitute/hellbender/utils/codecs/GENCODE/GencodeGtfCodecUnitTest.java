@@ -117,6 +117,14 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
         );
         final GencodeGtfExonFeature exon = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
+        // ======================
+        // Here we'll set the version number of each feature.
+        // Normally this is set in the decode method, so we need to do it manually.
+
+        exon.setUcscGenomeVersion("hg38");
+        transcript.setUcscGenomeVersion("hg38");
+        gene.setUcscGenomeVersion("hg38");
+
         // Aggregate the Features as they should be:
         transcript.addExon(exon);
         gene.addTranscript(transcript);
@@ -1093,10 +1101,73 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
         );
         final GencodeGtfExonFeature exon27 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
+        // ======================
+        // Here we'll set the version number of each feature.
+        // Normally this is set in the decode method, so we need to do it manually.
+
+        cds1.setUcscGenomeVersion("hg38");
+        cds2.setUcscGenomeVersion("hg38");
+        cds3.setUcscGenomeVersion("hg38");
+        cds4.setUcscGenomeVersion("hg38");
+        cds5.setUcscGenomeVersion("hg38");
+        cds6.setUcscGenomeVersion("hg38");
+        cds7.setUcscGenomeVersion("hg38");
+        cds8.setUcscGenomeVersion("hg38");
+        cds9.setUcscGenomeVersion("hg38");
+        cds10.setUcscGenomeVersion("hg38");
+        cds11.setUcscGenomeVersion("hg38");
+        cds12.setUcscGenomeVersion("hg38");
+        cds13.setUcscGenomeVersion("hg38");
+        cds14.setUcscGenomeVersion("hg38");
+        cds15.setUcscGenomeVersion("hg38");
+        cds16.setUcscGenomeVersion("hg38");
+        cds17.setUcscGenomeVersion("hg38");
+        cds18.setUcscGenomeVersion("hg38");
+        cds19.setUcscGenomeVersion("hg38");
+        exon1.setUcscGenomeVersion("hg38");
+        exon2.setUcscGenomeVersion("hg38");
+        exon3.setUcscGenomeVersion("hg38");
+        exon4.setUcscGenomeVersion("hg38");
+        exon5.setUcscGenomeVersion("hg38");
+        exon6.setUcscGenomeVersion("hg38");
+        exon7.setUcscGenomeVersion("hg38");
+        exon8.setUcscGenomeVersion("hg38");
+        exon9.setUcscGenomeVersion("hg38");
+        exon10.setUcscGenomeVersion("hg38");
+        exon11.setUcscGenomeVersion("hg38");
+        exon12.setUcscGenomeVersion("hg38");
+        exon13.setUcscGenomeVersion("hg38");
+        exon14.setUcscGenomeVersion("hg38");
+        exon15.setUcscGenomeVersion("hg38");
+        exon16.setUcscGenomeVersion("hg38");
+        exon17.setUcscGenomeVersion("hg38");
+        exon18.setUcscGenomeVersion("hg38");
+        exon19.setUcscGenomeVersion("hg38");
+        exon20.setUcscGenomeVersion("hg38");
+        exon21.setUcscGenomeVersion("hg38");
+        exon22.setUcscGenomeVersion("hg38");
+        exon23.setUcscGenomeVersion("hg38");
+        exon24.setUcscGenomeVersion("hg38");
+        exon25.setUcscGenomeVersion("hg38");
+        exon26.setUcscGenomeVersion("hg38");
+        exon27.setUcscGenomeVersion("hg38");
+        start_codon1.setUcscGenomeVersion("hg38");
+        stop_codon1.setUcscGenomeVersion("hg38");
+        start_codon2.setUcscGenomeVersion("hg38");
+        stop_codon2.setUcscGenomeVersion("hg38");
+        transcript1.setUcscGenomeVersion("hg38");
+        transcript2.setUcscGenomeVersion("hg38");
+        transcript3.setUcscGenomeVersion("hg38");
+        utr1.setUcscGenomeVersion("hg38");
+        utr2.setUcscGenomeVersion("hg38");
+        utr3.setUcscGenomeVersion("hg38");
+        utr4.setUcscGenomeVersion("hg38");
+        selenocysteine1.setUcscGenomeVersion("hg38");
+        gene1.setUcscGenomeVersion("hg38");
 
         // ======================
-
         // Now let's collapse these objects into their correct structure:
+
         exon1.setCds(cds1);
         exon1.setStartCodon(start_codon1);
 
@@ -2081,6 +2152,80 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
         final GencodeGtfUTRFeature utr6 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
 
         // ======================
+        // Here we'll set the version number of each feature.
+        // Normally this is set in the decode method, so we need to do it manually.
+
+        cds1.setUcscGenomeVersion("hg38");
+        cds2.setUcscGenomeVersion("hg38");
+        cds3.setUcscGenomeVersion("hg38");
+        cds4.setUcscGenomeVersion("hg38");
+        cds5.setUcscGenomeVersion("hg38");
+        cds6.setUcscGenomeVersion("hg38");
+        cds7.setUcscGenomeVersion("hg38");
+        cds8.setUcscGenomeVersion("hg38");
+        cds9.setUcscGenomeVersion("hg38");
+        cds10.setUcscGenomeVersion("hg38");
+        cds11.setUcscGenomeVersion("hg38");
+        cds12.setUcscGenomeVersion("hg38");
+        cds13.setUcscGenomeVersion("hg38");
+        cds14.setUcscGenomeVersion("hg38");
+        cds15.setUcscGenomeVersion("hg38");
+        cds16.setUcscGenomeVersion("hg38");
+        cds17.setUcscGenomeVersion("hg38");
+        cds18.setUcscGenomeVersion("hg38");
+        cds19.setUcscGenomeVersion("hg38");
+        cds20.setUcscGenomeVersion("hg38");
+        cds21.setUcscGenomeVersion("hg38");
+        cds22.setUcscGenomeVersion("hg38");
+        cds23.setUcscGenomeVersion("hg38");
+        cds24.setUcscGenomeVersion("hg38");
+        cds25.setUcscGenomeVersion("hg38");
+        cds26.setUcscGenomeVersion("hg38");
+        cds27.setUcscGenomeVersion("hg38");
+        exon1.setUcscGenomeVersion("hg38");
+        exon2.setUcscGenomeVersion("hg38");
+        exon3.setUcscGenomeVersion("hg38");
+        exon4.setUcscGenomeVersion("hg38");
+        exon5.setUcscGenomeVersion("hg38");
+        exon6.setUcscGenomeVersion("hg38");
+        exon7.setUcscGenomeVersion("hg38");
+        exon8.setUcscGenomeVersion("hg38");
+        exon9.setUcscGenomeVersion("hg38");
+        exon10.setUcscGenomeVersion("hg38");
+        exon11.setUcscGenomeVersion("hg38");
+        exon12.setUcscGenomeVersion("hg38");
+        exon13.setUcscGenomeVersion("hg38");
+        exon14.setUcscGenomeVersion("hg38");
+        exon15.setUcscGenomeVersion("hg38");
+        exon16.setUcscGenomeVersion("hg38");
+        exon17.setUcscGenomeVersion("hg38");
+        exon18.setUcscGenomeVersion("hg38");
+        exon19.setUcscGenomeVersion("hg38");
+        exon20.setUcscGenomeVersion("hg38");
+        exon21.setUcscGenomeVersion("hg38");
+        exon22.setUcscGenomeVersion("hg38");
+        exon23.setUcscGenomeVersion("hg38");
+        exon24.setUcscGenomeVersion("hg38");
+        exon25.setUcscGenomeVersion("hg38");
+        exon26.setUcscGenomeVersion("hg38");
+        exon27.setUcscGenomeVersion("hg38");
+        exon28.setUcscGenomeVersion("hg38");
+        exon29.setUcscGenomeVersion("hg38");
+        start_codon1.setUcscGenomeVersion("hg38");
+        start_codon2.setUcscGenomeVersion("hg38");
+        stop_codon1.setUcscGenomeVersion("hg38");
+        stop_codon2.setUcscGenomeVersion("hg38");
+        transcript1.setUcscGenomeVersion("hg38");
+        transcript2.setUcscGenomeVersion("hg38");
+        utr1.setUcscGenomeVersion("hg38");
+        utr2.setUcscGenomeVersion("hg38");
+        utr3.setUcscGenomeVersion("hg38");
+        utr4.setUcscGenomeVersion("hg38");
+        utr5.setUcscGenomeVersion("hg38");
+        utr6.setUcscGenomeVersion("hg38");
+        gene1.setUcscGenomeVersion("hg38");
+
+        // ======================
         // Now let's collapse these objects into their correct structure:
 
         exon2.setCds(cds1);
@@ -2217,6 +2362,14 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
                 null
         );
         final GencodeGtfExonFeature exon = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
+
+        // ======================
+        // Here we'll set the version number of each feature.
+        // Normally this is set in the decode method, so we need to do it manually.
+
+        exon.setUcscGenomeVersion("hg19");
+        transcript.setUcscGenomeVersion("hg19");
+        gene.setUcscGenomeVersion("hg19");
 
         // Aggregate the Features as they should be:
         transcript.addExon(exon);
@@ -2818,6 +2971,49 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
         final GencodeGtfExonFeature exon19 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         // ======================
+        // Here we'll set the version number of each feature.
+        // Normally this is set in the decode method, so we need to do it manually.
+        
+        exon1.setUcscGenomeVersion("hg19");
+        exon2.setUcscGenomeVersion("hg19");
+        exon3.setUcscGenomeVersion("hg19");
+        exon4.setUcscGenomeVersion("hg19");
+        exon5.setUcscGenomeVersion("hg19");
+        exon6.setUcscGenomeVersion("hg19");
+        exon7.setUcscGenomeVersion("hg19");
+        exon8.setUcscGenomeVersion("hg19");
+        exon9.setUcscGenomeVersion("hg19");
+        exon10.setUcscGenomeVersion("hg19");
+        exon11.setUcscGenomeVersion("hg19");
+        exon12.setUcscGenomeVersion("hg19");
+        exon13.setUcscGenomeVersion("hg19");
+        exon14.setUcscGenomeVersion("hg19");
+        exon15.setUcscGenomeVersion("hg19");
+        exon16.setUcscGenomeVersion("hg19");
+        exon17.setUcscGenomeVersion("hg19");
+        exon18.setUcscGenomeVersion("hg19");
+        exon19.setUcscGenomeVersion("hg19");
+        transcript1.setUcscGenomeVersion("hg19");
+        transcript2.setUcscGenomeVersion("hg19");
+        transcript3.setUcscGenomeVersion("hg19");
+        gene1.setUcscGenomeVersion("hg19");
+        gene2.setUcscGenomeVersion("hg19");
+        selenocysteine1.setUcscGenomeVersion("hg19");
+        start_codon1.setUcscGenomeVersion("hg19");
+        stop_codon1.setUcscGenomeVersion("hg19");
+        cds1.setUcscGenomeVersion("hg19");
+        cds2.setUcscGenomeVersion("hg19");
+        cds3.setUcscGenomeVersion("hg19");
+        cds4.setUcscGenomeVersion("hg19");
+        cds5.setUcscGenomeVersion("hg19");
+        cds6.setUcscGenomeVersion("hg19");
+        cds7.setUcscGenomeVersion("hg19");
+        cds8.setUcscGenomeVersion("hg19");
+        cds9.setUcscGenomeVersion("hg19");
+        utr1.setUcscGenomeVersion("hg19");
+        utr2.setUcscGenomeVersion("hg19");
+        
+        // ======================
         // Now let's collapse these objects into their correct structure:
 
         transcript1.addExon(exon1);
@@ -3056,7 +3252,26 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
         );
         final GencodeGtfUTRFeature utr3 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
 
+        // ======================
+        // Here we'll set the version number of each feature.
+        // Normally this is set in the decode method, so we need to do it manually.
 
+        exon1.setUcscGenomeVersion("hg19");
+        exon2.setUcscGenomeVersion("hg19");
+        exon3.setUcscGenomeVersion("hg19");
+        exon4.setUcscGenomeVersion("hg19");
+        exon5.setUcscGenomeVersion("hg19");
+        cds1.setUcscGenomeVersion("hg19");
+        cds2.setUcscGenomeVersion("hg19");
+        cds3.setUcscGenomeVersion("hg19");
+        cds4.setUcscGenomeVersion("hg19");
+        start_codon1.setUcscGenomeVersion("hg19");
+        utr1.setUcscGenomeVersion("hg19");
+        utr2.setUcscGenomeVersion("hg19");
+        utr3.setUcscGenomeVersion("hg19");
+        transcript1.setUcscGenomeVersion("hg19");
+        gene1.setUcscGenomeVersion("hg19");
+        
         // ======================
         // Now let's collapse these objects into their correct structure:
 
@@ -3089,7 +3304,8 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
     private Object[] createTestData_gencode_valid1() {
         return new Object[] {
             "gencode.valid1.gtf",
-            new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_valid1()) )
+            new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_valid1()) ),
+            "hg38"
         };
     }
 
@@ -3101,35 +3317,40 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
 
         return new Object[] {
                 "gencode.valid_gencode_file2.gtf",
-                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_valid_gencode_file2()) )
+                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_valid_gencode_file2()) ),
+                "hg38"
         };
     }
 
     private Object[] createTestData_gencode_and_this_is_a_valid_one_too_table() {
         return new Object[] {
                 "gencode.and.this.is.a.valid.one.too.table.gtf",
-                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_and_this_is_a_valid_one_too_table()) )
+                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_and_this_is_a_valid_one_too_table()) ),
+                "hg38"
         };
     }
 
     private Object[] createTestData_gencode_v19_valid_file1() {
         return new Object[] {
                 "gencode.v19.valid1.gtf",
-                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_v19_valid_file1() ) )
+                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_v19_valid_file1() ) ),
+                "hg19"
         };
     }
 
     private Object[] createTestData_gencode_v19_valid_gencode_file2() {
         return new Object[] {
                 "gencode.v19.valid_gencode_file2.gtf",
-                createGencodeGtfGene_gencode_v19_valid_gencode_file2()
+                createGencodeGtfGene_gencode_v19_valid_gencode_file2(),
+                "hg19"
         };
     }
 
     private Object[] createTestData_gencode_v19_and_this_is_a_valid_one_too() {
         return new Object[] {
                 "gencode.v19.and.this.is.a.valid.one.too.gtf",
-                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_v19_and_this_is_a_valid_one_too() ) )
+                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_v19_and_this_is_a_valid_one_too() ) ),
+                "hg19"
         };
     }
 
@@ -3301,7 +3522,7 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "decodeTestProvider")
-    public void testDecode( final String filePath, final List<GencodeGtfFeature> expected) throws IOException {
+    public void testDecode( final String filePath, final List<GencodeGtfFeature> expected, final String expectedUcscVersion) throws IOException {
         final GencodeGtfCodec gencodeGtfCodec = new GencodeGtfCodec();
 
         try (BufferedInputStream bufferedInputStream =
@@ -3324,6 +3545,9 @@ public class GencodeGtfCodecUnitTest extends BaseTest {
                 final GencodeGtfFeature feature = gencodeGtfCodec.decode(lineIterator);
 
                 Assert.assertTrue(expectedIterator.hasNext());
+                for (final GencodeGtfFeature subFeature : feature.getAllFeatures()) {
+                    Assert.assertEquals(subFeature.getUcscGenomeVersion(), expectedUcscVersion);
+                }
                 Assert.assertEquals(feature, expectedIterator.next());
 
                 ++numDecoded;

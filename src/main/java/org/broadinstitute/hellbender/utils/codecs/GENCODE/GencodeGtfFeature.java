@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.utils.codecs.GENCODE;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -71,6 +71,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     private static final Pattern NUMBER_PATTERN                 = Pattern.compile("\\d\\d*");
 
+    private String ucscGenomeVersion =  null;
     private final GencodeGtfFeatureBaseData baseData;
 
     // ================================================================================================
@@ -303,7 +304,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * This is useful to get any subfeatures included in this {@link GencodeGtfFeature}.
      * @return A {@link List} of the features represented in this {@link GencodeGtfFeature}.
      */
-    protected List<GencodeGtfFeature> getAllFeatures() {
+    @VisibleForTesting
+    List<GencodeGtfFeature> getAllFeatures() {
         final List<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
         return list;
@@ -428,6 +430,14 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     // ================================================================================================
 
+    public String getUcscGenomeVersion() {
+        return ucscGenomeVersion;
+    }
+
+    public void setUcscGenomeVersion(final String ucscGenomeVersion) {
+        this.ucscGenomeVersion = ucscGenomeVersion;
+    }
+
     public SimpleInterval getGenomicPosition() { return baseData.genomicPosition; }
 
     public int getFeatureOrderNumber() { return baseData.featureOrderNumber; }
@@ -548,6 +558,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         if (isEqual) {
             final GencodeGtfFeature thatFeature = (GencodeGtfFeature) that;
             isEqual = Objects.equals(baseData, thatFeature.baseData);
+
+            if ( isEqual ) {
+                isEqual = ucscGenomeVersion.equals( thatFeature.getUcscGenomeVersion() );
+            }
         }
 
         return isEqual;
