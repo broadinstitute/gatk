@@ -127,6 +127,20 @@ public final class RandomDNA {
         return result;
     }
 
+    /**
+     * Create a random reference and writes in FASTA format into a temporal file.
+     * <p>
+     *     The output file is instanciated using {@link File#createTempFile}.
+     * </p>
+     * <p>
+     *     The invoking code is responsible to manage and dispose of the output file.
+     * </p>
+     * @param dict the dictionary indicating the number of contigs and their lengths.
+     * @param basesPerLine number of base to print in each line of the output FASTA file.
+     * @return the temporal file with the random reference.
+     * @throws IOException if such an exception was thrown while accessing and writing into the temporal file.
+     * @throws IllegalArgumentException if {@code dict} is {@code null} or {@code basesPerLine} is 0 or negative.
+     */
     public File nextFasta(final SAMSequenceDictionary dict, final int basesPerLine)
         throws IOException {
         final File result = File.createTempFile("random-", ".fasta");
@@ -134,13 +148,34 @@ public final class RandomDNA {
         return result;
     }
 
+    /**
+     * Creates a random reference and writes it in FASTA format into a file.
+     * @param out the output file.
+     * @param dict the dictionary indicating the number of contigs and their lengths.
+     * @param basesPerLine number of base to print in each line of the output FASTA file.
+     *
+     * @throws IOException if such an exception was thrown while accessing and writing into the temporal file.
+     * @throws IllegalArgumentException if {@code dict} is {@code null}, or {@code out } is {@code null}
+     *    or {@code basesPerLine} is 0 or negative.
+     */
     public void nextFasta(final File out, final SAMSequenceDictionary dict, final int basesPerLine)
             throws IOException {
-        final FileWriter writer = new FileWriter(out);
-        nextFasta(writer, dict, basesPerLine);
-        writer.close();
+        Utils.nonNull(out);
+        try (final FileWriter writer = new FileWriter(out)) {
+            nextFasta(writer, dict, basesPerLine);
+        }
     }
 
+    /**
+     * Creates a random reference and writes it in FASTA format into a {@link Writer}.
+     * @param out the output writer.
+     * @param dict the dictionary indicating the number of contigs and their lengths.
+     * @param basesPerLine number of base to print in each line of the output FASTA file.
+     *
+     * @throws IOException if such an exception was thrown while accessing and writing into the temporal file.
+     * @throws IllegalArgumentException if {@code dict} is {@code null}, or {@code out } is {@code null}
+     *    or {@code basesPerLine} is 0 or negative.
+     */
     public void nextFasta(final Writer out, final SAMSequenceDictionary dict, final int basesPerLine)
             throws IOException {
         Utils.nonNull(out);

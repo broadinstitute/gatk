@@ -49,20 +49,17 @@ public final class BwaMemIntegrationTest extends BaseTest {
             fastaIndex = FastaSequenceIndexCreator.buildFromFasta(fastaFile.toPath());
             BwaMemIndex.createIndexImageFromFastaFile(fastaFile.getAbsolutePath(), imageFile.getAbsolutePath());
             index = new BwaMemIndex(imageFile.getAbsolutePath());
-        } catch (final Throwable th) {
-            if (fastaFile != null) { try { fastaFile.delete(); } catch (final Throwable ex) {}; }
-            if (imageFile != null) { try { imageFile.delete(); } catch (final Throwable ex) {}; }
-            if (index != null) { try { index.close(); } catch (final Throwable ex) {}; }
-            Assert.fail("exception at initialization", th);
+        } catch (final RuntimeException re) {
+            unloadIndex();
+            throw re;
         }
     }
 
     @AfterClass
     public void unloadIndex() {
-        fastaFile.delete();
-        imageFile.delete();
-        index.close();
-        index = null;
+        if (index != null) { try { index.close(); index = null; } catch (final RuntimeException ex) {}; }
+        if (imageFile != null) { try { imageFile.delete(); imageFile = null; } catch (final RuntimeException ex) {}; }
+        if (fastaFile != null) { try { fastaFile.delete(); fastaFile = null; } catch (final RuntimeException ex) {}; }
     }
 
     @Test
@@ -113,18 +110,21 @@ public final class BwaMemIntegrationTest extends BaseTest {
             } else {
                 BwaMemAlignment first  = blocks.get(0);
                 BwaMemAlignment second = blocks.get(1);
-                // we need to match the output alignments pair elements with the input records pair elements.
-                // this test bellow is not bullet proof but is quite unlikely that it will fail to spot
-                // a case in where the switch isn't needed:
-                if ((first.getRefId() == second.getRefId() && Math.abs(first.getRefStart() - chimeric.get(0).getStart()) > Math.abs(first.getRefStart() - chimeric.get(1).getStart()))
-                        ||  (first.getRefId() != second.getRefId() && second.getRefId() == TEST_DICTIONARY.getSequenceIndex(chimeric.get(0).getContig()))) {
+                // We need to match the output alignments pair elements with the input records pair elements.
+                // The test bellow is not bullet proof but is quite unlikely that it will fail to spot
+                // a case in where the switch is needed:
+                if ((first.getRefId() == second.getRefId()
+                            && Math.abs(first.getRefStart() - chimeric.get(0).getStart()) > Math.abs(first.getRefStart() - chimeric.get(1).getStart()))
+                        ||  (first.getRefId() != second.getRefId()
+                            && second.getRefId() == TEST_DICTIONARY.getSequenceIndex(chimeric.get(0).getContig()))) {
                    first = second;
                    second = blocks.get(0);
                 }
                 assertChimericAlignmentMatch(chimeric.get(0), first);
                 assertChimericAlignmentMatch(chimeric.get(1), second);
                 // one and only one is a supplementary alignment:
-                Assert.assertNotEquals(SAMFlag.SUPPLEMENTARY_ALIGNMENT.isSet(first.getSamFlag()), SAMFlag.SUPPLEMENTARY_ALIGNMENT.isSet(second.getSamFlag()));
+                Assert.assertNotEquals(SAMFlag.SUPPLEMENTARY_ALIGNMENT.isSet(first.getSamFlag()),
+                        SAMFlag.SUPPLEMENTARY_ALIGNMENT.isSet(second.getSamFlag()));
             }
         }
     }
