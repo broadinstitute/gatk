@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.*;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,9 +23,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
+import org.broadinstitute.hellbender.utils.bwa.*;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -501,17 +497,19 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 return new AlignedAssemblyOrExcuse(intervalAndReads._1(),
                         "no assembly -- too big (" + fastqSize + " bytes).");
             }
+            readsList.sort( Comparator.comparing(SVFastqUtils.FastqRead::getHeader) );
+            String assemblyName = AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1());
             if ( fastqDir != null ) {
-                final String fastqName = String.format("%s/%s.fastq",fastqDir, AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()));
-                final ArrayList<SVFastqUtils.FastqRead> sortedReads = new ArrayList<>(intervalAndReads._2());
-                sortedReads.sort(Comparator.comparing(SVFastqUtils.FastqRead::getHeader));
-                SVFastqUtils.writeFastqFile(fastqName, sortedReads.iterator());
+                final String fastqName = String.format("%s/%s.fastq", fastqDir, assemblyName);
+                //final ArrayList<SVFastqUtils.FastqRead> sortedReads = new ArrayList<>(readsList);
+                //sortedReads.sort(Comparator.comparing(SVFastqUtils.FastqRead::getHeader));
+                SVFastqUtils.writeFastqFile(fastqName, readsList.iterator());
             }
             final long timeStart = System.currentTimeMillis();
             final FermiLiteAssembly assembly = new FermiLiteAssembler().createAssembly(readsList);
             final int secondsInAssembly = (int)((System.currentTimeMillis() - timeStart + 500)/1000);
             if ( gfaDir != null ) {
-                final String gfaName =  String.format("%s/%s.gfa",gfaDir, AlignedAssemblyOrExcuse.formatAssemblyID(intervalAndReads._1()));
+                final String gfaName = String.format("%s/%s.gfa", gfaDir, assemblyName);
                 try ( final OutputStream os = BucketUtils.createFile(gfaName) ) {
                     assembly.writeGFA(os);
                 }
@@ -523,11 +521,60 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                     assembly.getContigs().stream()
                             .map(FermiLiteAssembly.Contig::getSequence)
                             .collect(SVUtils.arrayListCollector(assembly.getNContigs()));
+            final AlignedAssemblyOrExcuse result;
             try ( final BwaMemAligner aligner = new BwaMemAligner(BwaMemIndexCache.getInstance(alignerIndexFile)) ) {
                 aligner.setIntraCtgOptions();
                 final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(tigSeqs);
-                return new AlignedAssemblyOrExcuse(intervalAndReads._1(), assembly, secondsInAssembly, alignments);
+                result = new AlignedAssemblyOrExcuse(intervalAndReads._1(), assembly, secondsInAssembly, alignments);
             }
+            final List<SAMSequenceRecord> seqRecs;
+            final String fastaFile = String.format("%s/%s.fasta", fastqDir, assemblyName);
+            try ( final BufferedOutputStream os = new BufferedOutputStream(BucketUtils.createFile(fastaFile)) ) {
+                int nTigs = tigSeqs.size();
+                seqRecs = new ArrayList<>(nTigs);
+                for ( int tigId = 0; tigId != nTigs; ++tigId ) {
+                    final String seqName = assemblyName + "." + tigId;
+                    final byte[] seq = tigSeqs.get(tigId);
+                    os.write((">" + seqName + "\n").getBytes());
+                    os.write(seq);
+                    os.write('\n');
+                    seqRecs.add(new SAMSequenceRecord(seqName, seq.length));
+                }
+            }
+            catch ( IOException ioe ) {
+                throw new GATKException("Unable to write fasta file of contigs from assembly "+assemblyName, ioe);
+            }
+            final String imageFile = String.format("%s/%s.img", fastqDir, assemblyName);
+            BwaMemIndex.createIndexImageFromFastaFile(fastaFile, imageFile);
+            try ( final BwaMemIndex assemblyIndex = new BwaMemIndex(imageFile) ) {
+                List<String> refNames = assemblyIndex.getReferenceContigNames();
+                final SAMSequenceDictionary dict = new SAMSequenceDictionary(seqRecs);
+                final SAMFileHeader header = new SAMFileHeader(dict);
+                header.setSortOrder(SAMFileHeader.SortOrder.queryname);
+                try ( final BwaMemAligner aligner = new BwaMemAligner(assemblyIndex) ) {
+                    aligner.alignPairs();
+                    List<List<BwaMemAlignment>> alignments =
+                            aligner.alignSeqs(readsList, SVFastqUtils.FastqRead::getBases);
+                    final String samFile = String.format("%s/%s.sam", fastqDir, assemblyName);
+                    try ( final SAMFileWriter writer =
+                                  new SAMFileWriterFactory().makeSAMWriter(header, true, BucketUtils.createFile(samFile)) ) {
+                        final int nReads = readsList.size();
+                        for ( int readId = 0; readId != nReads; ++readId ) {
+                            final SVFastqUtils.FastqRead read = readsList.get(readId);
+                            final String readName = read.getName().substring(0, read.getName().indexOf('/'));
+                            final byte[] bases = read.getBases();
+                            final byte[] quals = read.getQuals();
+                            for ( final BwaMemAlignment alignment : alignments.get(readId) ) {
+                                final SAMRecord samRec =
+                                        BwaMemAlignmentUtils.applyAlignment(readName, bases, quals, null, alignment,
+                                                refNames, header, false, false);
+                                writer.addAlignment(samRec);
+                            }
+                        }
+                    }
+                }
+            }
+            return result;
         }
     }
 
