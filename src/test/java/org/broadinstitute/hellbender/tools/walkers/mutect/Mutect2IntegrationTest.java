@@ -63,7 +63,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-normal", normalSample,
                 "-R", b37_reference_20_21,
                 "-L", "20",
-                "-germline_resource", GNOMAD.getAbsolutePath(),
+                "-germline-resource", GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
@@ -113,7 +113,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-tumor", tumorSample,
                 "-I", normalBam.getAbsolutePath(),
                 "-normal", normalSample,
-                "-normal_panel", ponVcf.getAbsolutePath(),
+                "-pon", ponVcf.getAbsolutePath(),
                 "-R", b37_reference_20_21,
                 "-L", "20",
                 "-O", unfilteredVcf.getAbsolutePath()
@@ -172,7 +172,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-tumor", "NA12878",
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10010000",
-                "-germline_resource", GNOMAD.getAbsolutePath(),
+                "-germline-resource", GNOMAD.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
 

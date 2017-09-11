@@ -328,18 +328,18 @@ Hence we estimate
 \code{Mutect2} emits candidate variants with a set of annotations.  After that \code{FilterMutectCalls} produces filtered calls by subjecting these variants to a series of hard filters that reject sites if some annotation is out of an allowable range.  Here are the command line arguments that control these filters, along with the annotations they relate to.
 
 \begin{itemize}
-\item  \code{tumor\_lod} is the minimum likelihood of an allele as determined by the somatic likelihoods model required to pass.
-\item \code{maxEventsInHaplotype} is the maximum allowable number of called variants co-occurring in a single assembly region.  If the number of called variants exceeds this they will all be filtered.  Note that this filter is misnamed because it counts the total number of events over all haplotypes in an assembly region.
-\item \code{uniqueAltReadCount} is the minimum number of unique (start position, fragment length) pairs required to make a call.  This count is a proxy for the number of unique molecules (as opposed to PCR duplicates) supporting an allele.  Normally PCR duplicates are marked and filtered by the GATK engine, but in UMI-aware calling this may not be the case, hence the need for this filter.
-\item \code{maxAltAllelesThreshold} is the maximum allowable number of alt alleles at a site.  By default only biallelic variants pass the filter.
-\item \code{max\_germline\_posterior} is the maximum posterior probability, as determined by the above germline probability model, that a variant is a germline event.
-\item \code{normal\_artifact\_lod} is the maximum acceptable likelihood of an allele in the normal \textit{by the somatic likelihoods model}.  This is different from the normal likelihood that goes into the germline model, which makes a diploid assumption.  Here we compute the normal likelihood as if it were a tumor in order to detect artifacts.  
-\item \code{strandArtifactPosteriorProbability} is the posterior probability of a strand artifact, as determined by the model described above, required to apply the strand artifact filter.  This is necessary but not sufficient -- we also require the estimated max a posteriori allele fraction to be less than \code{strandArtifactAlleleFraction}.  The second condition prevents filtering real variants that also have significant strand bias, i.e. a true variant that \textit{also} has some artifactual reads.
-\item \code{minMedianBaseQuality} is the minimum median base quality of bases supporting a SNV.
-\item \code{minMedianMappingQuality} is the minimum median mapping quality of reads supporting an allele.
-\item \code{maxMedianFragmentLengthDifference} is the maximum difference between the median fragment lengths reads supporting alt and reference alleles.  Note that fragment length is based on where paired reads are mapped, not the actual physical fragment length.
-\item \code{minMedianReadPosition} is the minimum median length of bases supporting an allele from the closest end of the read.  Indels positions are measured by the end farthest from the end of the read.
-\item If \code{FilterMutectCalls} is passed a \code{contaminationTable} from \code{CalculateContamination} it will filter alleles with allele fraction less than the whole-bam contamination in the table\footnote{This should be made more sophisticated by integrating the possibility of contamination into the germline model.}.
+\item  \code{tumor-lod} is the minimum likelihood of an allele as determined by the somatic likelihoods model required to pass.
+\item \code{max-events-in-region} is the maximum allowable number of called variants co-occurring in a single assembly region.  If the number of called variants exceeds this they will all be filtered.
+\item \code{unique-alt-read-count} is the minimum number of unique (start position, fragment length) pairs required to make a call.  This count is a proxy for the number of unique molecules (as opposed to PCR duplicates) supporting an allele.  Normally PCR duplicates are marked and filtered by the GATK engine, but in UMI-aware calling this may not be the case, hence the need for this filter.
+\item \code{max-alt-allele-count} is the maximum allowable number of alt alleles at a site.  By default only biallelic variants pass the filter.
+\item \code{max-germline-posterior} is the maximum posterior probability, as determined by the above germline probability model, that a variant is a germline event.
+\item \code{normal-artifact-lod} is the maximum acceptable likelihood of an allele in the normal \textit{by the somatic likelihoods model}.  This is different from the normal likelihood that goes into the germline model, which makes a diploid assumption.  Here we compute the normal likelihood as if it were a tumor in order to detect artifacts.  
+\item \code{max-strand-artifact-probability} is the posterior probability of a strand artifact, as determined by the model described above, required to apply the strand artifact filter.  This is necessary but not sufficient -- we also require the estimated max a posteriori allele fraction to be less than \code{min-strand-artifact-allele-fraction}.  The second condition prevents filtering real variants that also have significant strand bias, i.e. a true variant that \textit{also} has some artifactual reads.
+\item \code{min-median-base-quality} is the minimum median base quality of bases supporting a SNV.
+\item \code{min-median-mapping-quality} is the minimum median mapping quality of reads supporting an allele.
+\item \code{max-median-fragment-length-difference} is the maximum difference between the median fragment lengths reads supporting alt and reference alleles.  Note that fragment length is based on where paired reads are mapped, not the actual physical fragment length.
+\item \code{min-median-read-position} is the minimum median length of bases supporting an allele from the closest end of the read.  Indels positions are measured by the end farthest from the end of the read.
+\item If \code{FilterMutectCalls} is passed a \code{contamination-table} from \code{CalculateContamination} it will filter alleles with allele fraction less than the whole-bam contamination in the table\footnote{This should be made more sophisticated by integrating the possibility of contamination into the germline model.}.
 \end{itemize}
 
 Additionally, there are two unadjustable filters. the panel of normals filter removes all alleles at a site belonging to the panel of normals, which is a vcf of blacklisted artifact sites.  It can be disabled by not passing a panel of normals to \code{Mutect2}.  There is also an STR contraction filter which removes variants that are the deletion of a single repeat unit of an STR when this repeat unit contains more than one base.  This filter can be disabled with the argument \code{-XA TandemRepeat} which turns off the \code{TandemRepeat} annotation.
@@ -353,18 +353,18 @@ Here for convenience is a table of \code{Mutect2} filters with their correspondi
  Filter & Annotation & Key & Argument \\ [0.5ex] 
  \hline\hline
  \code{t\_lod} & - &\code{TLOD} & \code{tumor\_lod} \\ 
- \code{clustered\_events} & - & \code{ECNT} & \code{maxEventsInHaplotype} \\
- \code{duplicate\_evidence} & \code{UniqueAltReadCount} & \code{UNIQ\_ALT\_READ\_COUNT} & \code{uniqueAltReadCount} \\
- \code{multiallelic} & - & - & \code{maxAltAllelesThreshold} \\
- \code{germline\_risk} & - & \code{P\_GERMLINE} & \code{max\_germline\_posterior} \\
- \code{artifact\_in\_normal} & - & \code{N\_ART\_LOD} & \code{normal\_artifact\_lod} \\
- \code{strand\_artifact} & \code{StrandArtifact} & \code{SA\_POST\_PROB}, \code{SA\_MAX\_AF} & \code{strandArtifactPosteriorProbability} \\
- \code{base\_quality} & \code{BaseQuality} & \code{MBQ} & \code{minMedianBaseQuality} \\
- \code{mapping\_quality} & \code{MappingQuality} & \code{MMQ} & \code{minMedianMappingQuality} \\
- \code{fragment\_length} & \code{FragmentLength} & \code{MFRL} & \code{maxMedianFragmentLengthDifference} \\
- \code{read\_position} & \code{ReadPosition} & \code{MPOS} &\code{minMedianReadPosition} \\
- \code{panel\_of\_normals} & - & \code{IN\_PON} & \code{normal\_panel} \\
- \code{contamination} & - & - & \code{contaminationTable} \\
+ \code{clustered\_events} & - & \code{ECNT} & \code{max-events-in-region} \\
+ \code{duplicate\_evidence} & \code{UniqueAltReadCount} & \code{UNIQ\_ALT\_READ\_COUNT} & \code{unique-alt-read-count} \\
+ \code{multiallelic} & - & - & \code{max-alt-alleles-count} \\
+ \code{germline\_risk} & - & \code{P\_GERMLINE} & \code{max-germline-posterior} \\
+ \code{artifact\_in\_normal} & - & \code{N\_ART\_LOD} & \code{normal-artifact-lod} \\
+ \code{strand\_artifact} & \code{StrandArtifact} & \code{SA\_POST\_PROB}, \code{SA\_MAX\_AF} & \code{max-strand-artifact-probability} \\
+ \code{base\_quality} & \code{BaseQuality} & \code{MBQ} & \code{min-median-base-quality} \\
+ \code{mapping\_quality} & \code{MappingQuality} & \code{MMQ} & \code{min-median-mapping-quality} \\
+ \code{fragment\_length} & \code{FragmentLength} & \code{MFRL} & \code{max-median-fragment-length-difference} \\
+ \code{read\_position} & \code{ReadPosition} & \code{MPOS} &\code{min-median-read-position} \\
+ \code{panel\_of\_normals} & - & \code{IN\_PON} & \code{panel-of-normals} \\
+ \code{contamination} & - & - & \code{contamination-table} \\
  \code{str\_contraction} & \code{TandemRepeat} & \code{RU}, \code{RPA} & - \\  [1ex] 
  \hline
  \end{tabular}

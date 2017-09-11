@@ -17,12 +17,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     //TODO: HACK ALERT HACK ALERT HACK ALERT
     //TODO: GATK4 does not yet have a way to tag inputs, eg -I:tumor tumor.bam -I:normal normal.bam,
     //TODO: so for now we require the user to specify bams *both* as inputs, with -I tumor.bam -I normal.bam
-    //TODO: *and* as sample names e.g. -tumor tumorSampleName -normal normalSampleName
+    //TODO: *and* as sample names e.g. -tumor <tumor sample> -normal <normal sample>
 
-    @Argument(fullName = "tumorSampleName", shortName = "tumor", doc = "BAM sample name of tumor", optional = false)
+    @Argument(fullName = "tumor-sample", shortName = "tumor", doc = "BAM sample name of tumor", optional = false)
     protected String tumorSampleName = null;
 
-    @Argument(fullName = "normalSampleName", shortName = "normal", doc = "BAM sample name of tumor", optional = true)
+    @Argument(fullName = "normal-sample", shortName = "normal", doc = "BAM sample name of tumor", optional = true)
     protected String normalSampleName = null;
 
     //TODO: END OF HACK ALERT
@@ -34,26 +34,26 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /**
      * A panel of normals can be a useful (optional) input to help filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
      */
-    @Argument(fullName="normal_panel", shortName = "PON", doc="VCF file of sites observed in normal.", optional = true)
+    @Argument(fullName="panel-of-normals", shortName = "pon", doc="VCF file of sites observed in normal.", optional = true)
     public FeatureInput<VariantContext> pon;
 
     /**
      * Usually we exclude sites in the panel of normals from active region determination, which saves time.  Setting this to true
      * causes Mutect to produce a variant call at these sites.  This call will still be filtered, but it shows up in the vcf.
      */
-    @Argument(fullName="genotypePonSites", doc="Whether to call sites in the PoN even though they will ultimately be filtered.", optional = true)
+    @Argument(fullName="genotype-pon-sites", doc="Whether to call sites in the PoN even though they will ultimately be filtered.", optional = true)
     public boolean genotypePonSites = false;
 
     /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
      */
-    @Argument(fullName="germline_resource", doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
+    @Argument(fullName="germline-resource", doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
     public FeatureInput<VariantContext> germlineResource;
 
     /**
      * Population allele fraction assigned to alleles not found in germline resource.
      */
-    @Argument(fullName="af_of_alleles_not_in_resource", shortName = "default_af",
+    @Argument(fullName="af-of-alleles-not-in-resource", shortName = "default-af",
             doc="Population allele fraction assigned to alleles not found in germline resource.  A reasonable value is" +
                     "1/(2* number of samples in resource) if a germline resource is available; otherwise an average " +
                     "heterozygosity rate such as 0.001 is reasonable.", optional = true)
@@ -66,7 +66,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Depending on tumor type, mutation rate ranges vary (Lawrence et al. Nature 2013), and so adjust parameter accordingly.
      * For higher expected rate of mutation, adjust number up, e.g. -5. For lower expected rate of mutation, adjust number down, e.g. -7.
      */
-    @Argument(fullName="log_somatic_prior",
+    @Argument(fullName="log-somatic-prior",
             doc="Prior probability that a given site has a somatic allele.", optional = true)
     public double log10PriorProbOfSomaticEvent = -6.0;
 
@@ -76,19 +76,19 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Default setting of 3 is permissive and will emit some amount of negative training data that 
      * {@link FilterMutectCalls} should then filter.
      */
-    @Argument(fullName = "tumor_lod_to_emit", optional = true, doc = "LOD threshold to emit tumor variant to VCF.")
+    @Argument(fullName = "tumor-lod-to-emit", shortName = "emit-lod", optional = true, doc = "LOD threshold to emit tumor variant to VCF.")
     public double emissionLodThreshold = 3.0;
 
     /**
      * Only variants with estimated tumor LODs exceeding this threshold will be considered active.
      */
-    @Argument(fullName = "initial_tumor_lod", optional = true, doc = "LOD threshold to consider pileup active.")
+    @Argument(fullName = "initial-tumor-lod", shortName = "init-lod", optional = true, doc = "LOD threshold to consider pileup active.")
     public double initialTumorLodThreshold = 2.0;
 
     /**
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
      */
-    @Argument(fullName = "max_population_af", optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
+    @Argument(fullName = "max-population-af", shortName = "max-af", optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
     public double maxPopulationAlleleFrequency = 0.01;
 
     /**
@@ -97,7 +97,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * It is unlikely such analyses will require changing the default value. Increasing the parameter may increase the sensitivity of somatic calling,
      * but may also increase calling false positive, i.e. germline, variants.
      */
-    @Argument(fullName = "normal_lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
+    @Argument(fullName = "normal-lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double NORMAL_LOD_THRESHOLD = 2.2;
 
     /**

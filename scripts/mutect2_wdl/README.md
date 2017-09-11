@@ -47,7 +47,7 @@ Recommended default values (where possible) are found in ``mutect2_multi_sample_
 - ``Mutect2_Multi.variants_for_contamination_index`` -- (optional, but required if ``Mutect2_Multi.variants_for_contamination`` is specified)  VCF index for contamination variants.  Please see GATK4 tool ``IndexFeatureFile`` for creation of an index.
 - ``Mutect2_Multi.is_run_orientation_bias_filter`` -- ``true``/``false`` whether the orientation bias filter should be run.
 - ``Mutect2_Multi.is_run_oncotator`` -- ``true``/``false`` whether the command-line version of oncotator should be run.  If ``false``, ``Mutect2_Multi.oncotator_docker`` parameter is ignored.
-- ``Mutect2_Multi.m2_docker`` -- Docker image to use for Mutect2 tasks.  This is only used for backends configured to use docker.
+- ``Mutect2_Multi.gatk_docker`` -- Docker image to use for Mutect2 tasks.  This is only used for backends configured to use docker.
 - ``Mutect2_Multi.oncotator_docker`` -- Docker image to use for Oncotator tasks.  This is only used for backends configured to use docker.
 - ``Mutect2_Multi.gatk4_jar_override`` -- (optional)  A GATK4 jar file to be used instead of the jar file in the docker image.  (See ``Mutect2_Multi.gatk4_jar``)  This can be very useful for developers.  Please note that you need to be careful that the docker image you use is compatible with the GATK4 jar file given here -- no automated checks are made.
 - ``Mutect2_Multi.preemptible_attempts`` -- Number of times to attempt running a task on a preemptible VM.  This is only used for cloud backends in cromwell and is ignored for local and SGE backends.
@@ -57,14 +57,14 @@ Recommended default values (where possible) are found in ``mutect2_multi_sample_
 - ``Mutect2_Multi.m2_extra_filtering_args`` -- (optional) a string of additional command line arguments of the form "-argument1 value1 -argument2 value2" for Mutect 2 filtering.  Most users will not need this.
 - ``Mutect2_Multi.pair_list`` -- a tab-separated table with no header in the following formats.  For tumor-normal mode:
  ```
- TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX</TAB>NORMAL_1_SAMPLE</TAB>
- TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NORMAL_2_BAM</TAB>NORMAL_2_BAM_INDEX</TAB>NORMAL_2_SAMPLE</TAB>
+ TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX
+ TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>NORMAL_2_BAM</TAB>NORMAL_2_BAM_INDEX
  . . .
  ```
 For tumor-only mode:
 ```
-TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE
-TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE
+TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX
+TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX
 . . .
 ```
 
@@ -94,10 +94,8 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.ref_dict`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.tumor_bam`` -- File path or storage location (depending on backend) of the tumor bam file.
 - ``Mutect2.tumor_bam_index`` --  File path or storage location (depending on backend) of the tumor bam file index.
-- ``Mutect2.tumor_sample_name`` -- A name to identify the tumor sample being used.
 - ``Mutect2.normal_bam`` -- (optional) File path or storage location (depending on backend) of the normal bam file.
 - ``Mutect2.normal_bam_index`` --  (optional, but required if ``Mutect2.normal_bam`` is specified)  File path or storage location (depending on backend) of the normal bam file index.
-- ``Mutect2.normal_sample_name`` --  (optional, but required if ``Mutect2.normal_bam`` is specified)  A name to identify the normal sample being used.
 - ``Mutect2.pon`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.pon_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.scatter_count`` -- Please see parameter description above in the mutect2_multi_sample.
@@ -107,7 +105,7 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.variants_for_contamination_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.is_run_orientation_bias_filter`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.is_run_oncotator`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.m2_docker`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.gatk_docker`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.oncotator_docker`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.gatk4_jar_override`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.preemptible_attempts`` -- Please see parameter description above in the mutect2_multi_sample.
@@ -141,8 +139,7 @@ Recommended default values (where possible) are found in ``mutect2-replicate-val
 - ``Mutect2ReplicateValidation.gnomad_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.variants_for_contamination`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.variants_for_contamination_index`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2ReplicateValidation.m2_docker`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2ReplicateValidation.cosmic`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2ReplicateValidation.gatk_docker`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.ref_fasta`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.ref_fasta_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.ref_dict`` -- Please see parameter description above in the mutect2_multi_sample.
@@ -153,15 +150,15 @@ Recommended default values (where possible) are found in ``mutect2-replicate-val
 - ``Mutect2ReplicateValidation.m2_extra_filtering_args`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2ReplicateValidation.replicate_pair_list`` -- tab-separated values with six columns in the following format:
  ```
- REP_1_BAM</TAB>REP_1_BAM_INDEX</TAB>REP_1_SAMPLE</TAB>REP_2_BAM</TAB>REP_2_BAM_INDEX</TAB>REP_2_SAMPLE</TAB>
- REP_3_BAM</TAB>REP_3_BAM_INDEX</TAB>REP_3_SAMPLE</TAB>REP_4_BAM</TAB>REP_4_BAM_INDEX</TAB>REP_4_SAMPLE</TAB>
+ REP_1_BAM</TAB>REP_1_BAM_INDEX</TAB>REP_2_BAM</TAB>REP_2_BAM_INDEX
+ REP_3_BAM</TAB>REP_3_BAM_INDEX</TAB>REP_4_BAM</TAB>REP_4_BAM_INDEX
  . . .
  ```
 For example:
 
 ```
-gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bai    SM-612V3        gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V4.bam gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V4.bai    SM-612V4
-gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bai    SM-612V3        gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V5.bam gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V5.bai    SM-612V5
+gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bai    gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V4.bam gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V4.bai
+gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bai    gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V5.bam gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V5.bai
 ```
 ### Example json
 
@@ -195,7 +192,7 @@ gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-
   "Mutect2_Multi.variants_for_contamination_index": "/data/m2/gnomad-common-biallelic-snps.vcf.idx",
   "Mutect2_Multi.is_run_orientation_bias_filter": true,
   "Mutect2_Multi.is_run_oncotator": true,
-  "Mutect2_Multi.m2_docker": "broadinstitute/gatk:1.0.0.0-alpha1.2.4",
+  "Mutect2_Multi.gatk_docker": "broadinstitute/gatk:1.0.0.0-alpha1.2.4",
   "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.3.0",
   "Mutect2_Multi.preemptible_attempts": 2,
   "Mutect2_Multi.onco_ds_tar_gz": "/data/onco_dir/oncotator_v1_ds_April052016.tar.gz",
@@ -208,5 +205,5 @@ gs://broad-dsde-methods/takuto/na12878-crsp-ice/SM-612V3.bam    gs://broad-dsde-
 Associated pair_list file (tab separated):
 
 ```
-/home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam	/home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam.bai	 synthetic.challenge.set1.tumor  /home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam    /home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam.bai	synthetic.challenge.set1.normal
+/home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam	/home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam.bai	 /home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam    /home/lichtens/test_onco_m2/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam.bai
 ```
