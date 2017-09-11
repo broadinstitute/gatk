@@ -6,9 +6,9 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Keep only reads whose strand is forward or reverse
+ * Keep only reads whose strand is either forward (not 0x10) or reverse (0x10), as specified. By default the filter keeps only forward reads (not 0x10).
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads whose strand is as specified")
 public final class ReadStrandFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
 
