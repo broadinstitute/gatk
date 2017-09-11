@@ -68,10 +68,26 @@ public class BreakpointEvidence {
         return location.toString() + "^" + weight;
     }
 
+    //* slicing equality -- just tests for equal fields */
+    public boolean equalFields( final BreakpointEvidence that ) {
+        return location.equals(that.location) && weight == that.weight && validated == that.validated;
+    }
+
     protected void serialize( final Kryo kryo, final Output output ) {
         intervalSerializer.write(kryo, output, location);
         output.writeInt(weight);
         output.writeBoolean(validated);
+    }
+
+    static SVInterval fixedWidthInterval( final int contigID,
+                                                  final int contigOffset, final int offsetUncertainty ) {
+        int width = 2 * offsetUncertainty;
+        int start = contigOffset - offsetUncertainty;
+        if ( start < 1 ) {
+            width += start - 1;
+            start = 1;
+        }
+        return new SVInterval(contigID, start, start + width);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<BreakpointEvidence> {
@@ -83,6 +99,36 @@ public class BreakpointEvidence {
         @Override
         public BreakpointEvidence read( final Kryo kryo, final Input input, final Class<BreakpointEvidence> klass ) {
             return new BreakpointEvidence(kryo, input);
+        }
+    }
+
+    @DefaultSerializer(ExternalEvidence.Serializer.class)
+    public final static class ExternalEvidence extends BreakpointEvidence {
+        public ExternalEvidence( final int contigID, final int start, final int end, final int weight ) {
+            this(new SVInterval(contigID, start, end), weight);
+        }
+
+        public ExternalEvidence( final SVInterval interval, final int weight ) {
+            super(interval, weight, false);
+        }
+
+        public ExternalEvidence( final Kryo kryo, final Input input ) {
+            super(kryo, input);
+        }
+
+        @Override
+        public String toString() { return super.toString() + "\tExternalEvidence"; }
+
+        public final static class Serializer extends com.esotericsoftware.kryo.Serializer<ExternalEvidence> {
+            @Override
+            public void write( final Kryo kryo, final Output output, final ExternalEvidence externalEvidence ) {
+                externalEvidence.serialize(kryo, output);
+            }
+
+            @Override
+            public ExternalEvidence read( final Kryo kryo, final Input input, final Class<ExternalEvidence> klass ) {
+                return new ExternalEvidence(kryo, input);
+            }
         }
     }
 
@@ -221,17 +267,6 @@ public class BreakpointEvidence {
                 start = readEnd;
             }
             return new SVInterval(metadata.getContigID(read.getContig()), start, start + width);
-        }
-
-        private static SVInterval fixedWidthInterval( final int contigID,
-                                                      final int contigOffset, final int offsetUncertainty ) {
-            int width = 2 * offsetUncertainty;
-            int start = contigOffset - offsetUncertainty;
-            if ( start < 1 ) {
-                width += start - 1;
-                start = 1;
-            }
-            return new SVInterval(contigID, start, start + width);
         }
     }
 

@@ -43,6 +43,10 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final ReadMetadata readMetadataExpected =
             new ReadMetadata(Collections.emptySet(), header, params.maxTrackedFragmentLength, reads, filter);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
+    private final List<List<BreakpointEvidence>> externalEvidence =
+            FindBreakpointEvidenceSpark.readExternalEvidence(null, readMetadataExpected,
+                                                    params.externalEvidenceWeight, params.externalEvidenceUncertainty);
+    private final Broadcast<List<List<BreakpointEvidence>>> broadcastExternalEvidence = ctx.broadcast(externalEvidence);
     private final Set<String> expectedQNames = loadExpectedQNames(qNamesFile);
     private final Set<String> expectedAssemblyQNames = loadExpectedQNames(asmQNamesFile);
     private final List<SVInterval> expectedIntervalList = Arrays.asList(testIntervals);
@@ -50,7 +54,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     @Test(groups = "spark")
     public void getIntervalsTest() {
         final List<SVInterval> actualIntervals =
-                FindBreakpointEvidenceSpark.getIntervals(params,broadcastMetadata,header,reads,filter);
+                FindBreakpointEvidenceSpark.getIntervals(params,broadcastMetadata,broadcastExternalEvidence,header,reads,filter);
         Assert.assertEquals(actualIntervals, expectedIntervalList);
     }
 
@@ -123,6 +127,38 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .map(qName -> new QNameAndInterval(qName, 0))
                 .forEach(qNameMultiMap::add);
         FindBreakpointEvidenceSpark.handleAssemblies(ctx,qNameMultiMap,reads,filter,2,true,new LocalAssemblyComparator(fastqFile));
+    }
+
+    @Test(groups = "sv")
+    public void readExternalEvidenceTest() {
+        final int evidenceWeight = params.externalEvidenceWeight;
+        final int evidenceSlop = params.externalEvidenceUncertainty;
+        ReadMetadata.PartitionBounds bounds = readMetadataExpected.getPartitionBounds(0);
+        SVInterval interval1 = new SVInterval(bounds.getFirstContigID(), bounds.getFirstStart(), bounds.getFirstStart()+100);
+        SVInterval interval2 = new SVInterval(bounds.getLastContigID(), bounds.getLastStart(), bounds.getLastStart()+200);
+        final File file = createTempFile("test", ".bed");
+        try ( final FileWriter writer = new FileWriter(file) ) {
+            writer.write(readMetadataExpected.getContigName(interval1.getContig()) + "\t" + (interval1.getStart()-1) + "\t" + interval1.getEnd() + "\n");
+            writer.write(readMetadataExpected.getContigName(interval2.getContig()) + "\t" + (interval2.getStart()-1) + "\t" + interval2.getEnd() + "\n");
+        } catch ( final IOException ioe ) {
+            throw new GATKException("failed to write test bed file", ioe);
+        }
+        final List<List<BreakpointEvidence>> actual;
+        try {
+            actual = FindBreakpointEvidenceSpark.readExternalEvidence(file.getPath(), readMetadataExpected,
+                                                                        evidenceWeight, evidenceSlop);
+        } finally {
+            file.delete();
+        }
+        Assert.assertEquals(actual.size(), readMetadataExpected.getNPartitions());
+        final List<BreakpointEvidence> partition0expected = new ArrayList<>(2);
+        partition0expected.add(new BreakpointEvidence.ExternalEvidence(interval1, evidenceWeight));
+        partition0expected.add(new BreakpointEvidence.ExternalEvidence(interval2, evidenceWeight));
+        final List<BreakpointEvidence> partition0actual = actual.get(0);
+        Assert.assertEquals(partition0actual.size(), partition0expected.size());
+        for ( int idx = 0; idx != partition0actual.size(); ++idx ) {
+            Assert.assertTrue(partition0actual.get(idx).equalFields(partition0expected.get(idx)));
+        }
     }
 
     /** This LocalAssemblyHandler compares an assembly with expected results. */
