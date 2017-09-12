@@ -466,7 +466,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
             shard.setReadFilter(new CountingReadFilter(new MappingQualityReadFilter(20))
                     .and(new CountingReadFilter(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
                     .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
-                    .and(new CountingReadFilter(ReadFilterLibrary.PRIMARY_ALIGNMENT))
+                    .and(new CountingReadFilter(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT))
                     .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
                     .and(new CountingReadFilter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
                     .and(new CountingReadFilter(ReadFilterLibrary.GOOD_CIGAR))
