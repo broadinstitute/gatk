@@ -115,6 +115,16 @@ public class SparkSharder {
         return leftWithIntervalKey.join(rightWithIntervalKey).mapToPair(tuple -> tuple._2());
     }
 
+    public <L extends Locatable> Partitioner shardPartitioner(final JavaPairRDD<L, ?> rdd) {
+        Utils.nonNull(rdd);
+        return ShardPartitioner.make(shards, rdd.getNumPartitions());
+    }
+
+    public <K extends Locatable, V> JavaPairRDD<K, V> partition(final JavaPairRDD<K, V> rdd) {
+        Utils.nonNull(rdd);
+        return rdd.partitionBy(shardPartitioner(rdd));
+    }
+
     /**
      * Given a cogrouped shared paired rdd, reduce the values into iterables that match a common matching-key with
      * a left/key value.
@@ -441,7 +451,7 @@ public class SparkSharder {
      * @throws IllegalArgumentException if {@code numberOfPartitions} is 0 or a negative.
      * @return never {@code null}.
      */
-    public Partitioner partitioner(final int numberOfPartitions) {
+    public <L extends Locatable> ShardPartitioner<L> partitioner(final int numberOfPartitions) {
         return ShardPartitioner.make(shards, numberOfPartitions);
     }
 

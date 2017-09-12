@@ -15,7 +15,7 @@ import java.util.stream.Stream;
  * records of an arbitrary type {@link R}.
  * <h3>Format description</h3>
  * <p>
- * Tab separated values may contain any number of <i>comment lines</i> (started with {@link TableUtils#COMMENT_PREFIX}),
+ * Tab separated values may contain any number of <i>comment lines</i> (started with {@value TableUtils#COMMENT_PREFIX}),
  * a column name containing line (aka. the <i>header line</i>) and any number of <i>data lines</i> one per record.
  * </p>
  * <p>While comment lines can contain any sequence of characters, the header and data lines are divided in
