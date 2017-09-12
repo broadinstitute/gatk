@@ -15,7 +15,7 @@ import java.util.*;
 import java.util.function.Function;
 
 /**
- * Partitioner based a shard list.
+ * Partitioner based on a shard list.
  *
  * Contiguous shards are grouped in partitions trying to keep the same number of shards per partition.
  *
@@ -58,11 +58,11 @@ public abstract class ShardPartitioner<T> extends Partitioner {
      * @param <L> the type for the shards.
      * @return never {@code null}.
      */
-    public static <L extends Locatable> ShardPartitioner<Locatable> make(final Collection<L> shards, final int numberOfPartitions) {
-        return new ShardPartitioner<Locatable>(Locatable.class, shards, numberOfPartitions) {
+    public static <L extends Locatable, K extends Locatable> ShardPartitioner<K> make(final Collection<L> shards, final int numberOfPartitions) {
+        return new ShardPartitioner<K>(Locatable.class, shards, numberOfPartitions) {
             private static final long serialVersionUID = 1L;
             @Override
-            public Locatable getLocatable(Locatable key) {
+            public Locatable getLocatable(K key) {
                 return key;
             }
         };
@@ -121,7 +121,7 @@ public abstract class ShardPartitioner<T> extends Partitioner {
     @Override
     public int getPartition(final Object key) {
         if (key == null || clazz.isAssignableFrom(key.getClass())) {
-            final Locatable locatable = getLocatable((T) key);
+            final Locatable locatable = getLocatable(clazz.cast(key));
             return getPartition(locatable);
         } else {
             throw new IllegalArgumentException("key is of the wrong class '" + key.getClass() + "' that does not extends '" + clazz + "'");

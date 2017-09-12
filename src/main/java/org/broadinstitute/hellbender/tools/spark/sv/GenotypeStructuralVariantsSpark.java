@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -28,6 +29,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.tools.spark.utils.ShardedPairRDD;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -128,7 +130,21 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<StructuralVariantContext, Iterable<GATKRead>> variantAndHaplotypes = sharder.matchLeftByKey(variantAndHaplotypesSharded,
                 StructuralVariantContext::getUniqueID,
                 r -> r.getAttributeAsString("VC"));
-        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndFragments = joinFragments(variantAndHaplotypes);
+        final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(variantAndHaplotypes.getNumPartitions());
+        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndFragments =
+                variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
+                    return Utils.stream(it)
+                            .map(t -> {
+                                final List<String> assemblyNames = Utils.stream(t._2())
+                                        .filter(c -> c.getReadGroup().equals("CTG"))
+                                        .map(c -> c.getName())
+                                        .map(n -> n.substring(0, n.indexOf(":")))
+                                        .distinct()
+                                        .map(asm -> Assembly)
+                            });
+
+                });
+                joinFragments(variantAndHaplotypes);
    //     processVariants(variantHaplotypesAndFragments)
 //        final SparkSharder sharder = new SparkSharder(ctx, getReference(), getIntervals(), 10000);
 
