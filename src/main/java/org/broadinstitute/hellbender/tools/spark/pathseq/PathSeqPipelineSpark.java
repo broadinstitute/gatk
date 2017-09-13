@@ -57,6 +57,16 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
     public int readsPerPartition = 5000;
 
     /**
+     * Because numReducers is based on the input size, it causes too many partitions to be produced when the output size is much smaller.
+     */
+    @Argument(doc = "Number of reads per partition for output. Use this to control the number of sharded BAMs (not --numReducers).",
+            fullName = "readsPerPartitionOutput",
+            optional = true,
+            minValue = 100,
+            minRecommendedValue = 100000)
+    public int readsPerPartitionOutput = 1000000;
+
+    /**
      * Reduces number of partitions of paired reads, keeping pairs together.
      */
     private static JavaRDD<GATKRead> repartitionPairedReads(final JavaRDD<GATKRead> pairedReads, final int alignmentPartitions, final long numReads) {
@@ -92,6 +102,11 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         filterArgs.doReadFilterArgumentWarnings(getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class), logger);
         SAMFileHeader header = PSUtils.checkAndClearHeaderSequences(getHeaderForReads(), filterArgs, logger);
+
+        //Do not allow use of numReducers
+        if (numReducers > 0) {
+            throw new UserException.BadInput("Use --readsPerPartitionOutput instead of --numReducers.");
+        }
 
         //Filter
         final PSFilter filter = new PSFilter(ctx, filterArgs, getReads(), header);
@@ -139,9 +154,12 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         //Write reads to BAM, if specified
         if (outputPath != null) {
             try {
-                final int numReducers = Math.max(1, (int) (numTotalReads / 1000000));
-                ReadsSparkSink.writeReads(ctx, outputPath, null, readsFinal, header,
-                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, numReducers);
+                //Reduce number of partitions since we previously went to ~5K reads per partition, which
+                // is far too small for sharded output.
+                final int numPartitions = Math.max(1, (int) (numTotalReads / readsPerPartitionOutput));
+                final JavaRDD<GATKRead> readsFinalRepartitioned = readsFinal.coalesce(numPartitions, false);
+                ReadsSparkSink.writeReads(ctx, outputPath, null, readsFinalRepartitioned, header,
+                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, numPartitions);
             } catch (final IOException e) {
                 throw new UserException.CouldNotCreateOutputFile(outputPath, "writing failed", e);
             }
