@@ -128,6 +128,10 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "output dir for assemblies", fullName = "gfaDir", optional = true)
         public String gfaDir;
 
+        @Argument(doc = "output file for non-assembled breakpoints in bedpe format",
+                fullName = "targetLinkFile", optional = true)
+        public String targetLinkFile;
+
         /**
          * This is a file that calls out the coordinates of intervals in the reference assembly to exclude from
          * consideration when calling putative breakpoints.

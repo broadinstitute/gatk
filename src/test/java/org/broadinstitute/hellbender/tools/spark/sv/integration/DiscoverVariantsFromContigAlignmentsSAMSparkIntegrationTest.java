@@ -20,7 +20,8 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
     static final List<String> annotationsToIgnoreWhenComparingVariants =
             Arrays.asList(GATKSVVCFConstants.ALIGN_LENGTHS,
                     GATKSVVCFConstants.CONTIG_NAMES,
-                    GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS);
+                    GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS,
+                    GATKSVVCFConstants.TOTAL_MAPPINGS);
 
     private static final class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs {
         final String outputDir;

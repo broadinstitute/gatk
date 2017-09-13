@@ -72,6 +72,11 @@ public final class SVInterval implements Comparable<SVInterval> {
         return new SVInterval(contig, Math.min(this.start, that.start), Math.max(this.end, that.end));
     }
 
+    public SVInterval intersect(final SVInterval that) {
+        if (! this.overlaps(that)) return null;
+        return new SVInterval(this.getContig(), Math.max(this.start, that.start), Math.min(this.end, that.end));
+    }
+
     @Override
     public boolean equals( final Object obj ) {
         if ( !(obj instanceof SVInterval) ) return false;
