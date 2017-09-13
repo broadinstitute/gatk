@@ -52,23 +52,6 @@ public abstract class ShardPartitioner<T> extends Partitioner {
     private final SVIntervalTree<Integer> partitions = new SVIntervalTree<>();
 
     /**
-     * Creates a partitioner to be used on any locatable key objects.
-     * @param shards the shards this partitioner will be based on.
-     * @param numberOfPartitions number of output partition.
-     * @param <L> the type for the shards.
-     * @return never {@code null}.
-     */
-    public static <L extends Locatable, K extends Locatable> ShardPartitioner<K> make(final Collection<L> shards, final int numberOfPartitions) {
-        return new ShardPartitioner<K>(Locatable.class, shards, numberOfPartitions) {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public Locatable getLocatable(K key) {
-                return key;
-            }
-        };
-    }
-
-    /**
      * Creates a partitioner to be used on locatable key objects.
      * @param clazz key object class.
      * @param shards the shards this partitioner will be based on.

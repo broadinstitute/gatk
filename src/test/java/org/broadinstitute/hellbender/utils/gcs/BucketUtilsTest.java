@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import htsjdk.samtools.util.IOUtil;
 import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -12,6 +14,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.spi.FileSystemProvider;
+import java.nio.file.spi.FileTypeDetector;
 import java.security.GeneralSecurityException;
 
 public final class BucketUtilsTest extends GATKBaseTest {
@@ -156,5 +160,4 @@ public final class BucketUtilsTest extends GATKBaseTest {
         BucketUtils.deleteFile(intermediate);
         Assert.assertFalse(BucketUtils.fileExists(intermediate));
     }
-
 }
