@@ -40,7 +40,6 @@ public final class PersistenceOptimizerUnitTest extends BaseTest {
                 .mapToDouble(i -> (double) i / numPoints - 0.5)
                 .map(x -> (x - 0.75) * (x - 0.5) * (x - 0.25) * (x - 0.1) * (x + 0.25) * (x + 0.5) + 0.0001 * rng.nextGaussian())
                 .toArray();
-        System.out.println(Arrays.stream(dataPolynomial).boxed().map(Object::toString).collect(Collectors.joining(", ")));
         final List<Integer> minimaIndicesExpectedPolynomial = Arrays.asList(
                 8, 68, 99, 73, 82, 89, 36, 34, 79, 45, 38, 49, 43, 84, 60, 56, 66, 62, 70, 92, 47, 87); //from implementation at https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html
 
@@ -56,7 +55,23 @@ public final class PersistenceOptimizerUnitTest extends BaseTest {
 
         final double[] dataFlat = new double[numPoints];
         Arrays.fill(dataFlat, 1.);
-        final List<Integer> minimaIndicesExpectedFlat = Collections.singletonList(0);
+        final List<Integer> minimaIndicesExpectedFlat = Collections.singletonList(0);               //leftmost point of a constant region is considered a local minimum
+
+        final double[] dataFlatWithExtrema = new double[numPoints];
+        Arrays.fill(dataFlatWithExtrema, 1.);
+        dataFlatWithExtrema[10] = 0.;
+        dataFlatWithExtrema[90] = 2.;
+        final List<Integer> minimaIndicesExpectedFlatWithExtrema = Arrays.asList(10, 91, 0);        //leftmost point of a constant region is considered a local minimum
+
+        final double[] dataAbsoluteValue = IntStream.range(0, numPoints).boxed()
+                .mapToDouble(i -> Math.abs(i - numPoints / 2))
+                .toArray();
+        final List<Integer> minimaIndicesExpectedAbsoluteValue = Collections.singletonList(50);
+
+        final double[] dataNegativeAbsoluteValue = IntStream.range(0, numPoints).boxed()
+                .mapToDouble(i -> -Math.abs(i - numPoints / 2))
+                .toArray();
+        final List<Integer> minimaIndicesExpectedNegativeAbsoluteValue = Arrays.asList(0, 99);
 
         final double[] dataSingle = new double[]{1.};
         final List<Integer> minimaIndicesExpectedSingle = Collections.singletonList(0);
@@ -67,6 +82,9 @@ public final class PersistenceOptimizerUnitTest extends BaseTest {
                 {dataIdentity, minimaIndicesExpectedIdentity},
                 {dataIdentityNegative, minimaIndicesExpectedIdentityNegative},
                 {dataFlat, minimaIndicesExpectedFlat},
+                {dataFlatWithExtrema, minimaIndicesExpectedFlatWithExtrema},
+                {dataAbsoluteValue, minimaIndicesExpectedAbsoluteValue},
+                {dataNegativeAbsoluteValue, minimaIndicesExpectedNegativeAbsoluteValue},
                 {dataSingle, minimaIndicesExpectedSingle}
         };
     }

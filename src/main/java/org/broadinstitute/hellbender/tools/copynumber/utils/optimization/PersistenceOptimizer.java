@@ -68,6 +68,10 @@ public final class PersistenceOptimizer {
 
     /**
      * Identifies the local minima of {@code data} based on topological persistence upon construction.
+     * Note that for a region where the data takes constant values that occurs either to the right
+     * of a local maximum or at the beginning of the data, the leftmost point in the region
+     * is considered a local minimum.
+     * @param data  values of a one-dimensional function evaluated at points in left-to-right order
      */
     public PersistenceOptimizer(final double[] data) {
         Utils.nonNull(data);
@@ -100,7 +104,8 @@ public final class PersistenceOptimizer {
         return Collections.unmodifiableList(persistences);
     }
 
-    //find extrema pairs via a watershed algorithm
+    //find extrema pairs via a watershed algorithm;
+    //note that sortedIndices must be the stably sorted indices of data
     private static List<ExtremaPair> findExtremaPairs(final double[] data,
                                                       final List<Integer> sortedIndices) {
         final List<Component> components = new ArrayList<>(data.length);
@@ -143,8 +148,7 @@ public final class PersistenceOptimizer {
                     } else {
                         extremaPairs.add(new ExtremaPair(data, components.get(rightColor).minIndex, index));
                     }
-                    mergeComponents(components, colors, leftColor, rightColor);
-                    colors[index] = colors[index - 1];                          //local maxmimum takes color of component to left by convention
+                    mergeComponents(components, colors, leftColor, rightColor, index);
                 }
             }
         }
@@ -153,7 +157,7 @@ public final class PersistenceOptimizer {
         return extremaPairs.stream().sorted(Comparator.comparingDouble((ExtremaPair p) -> p.persistence).reversed()).collect(Collectors.toList());
     }
 
-    //create a new component and add a new color when a local minimum is found
+    //create a new component and add a new color when a local minimum is found at index
     private static void createComponent(final double[] data,
                                         final List<Component> components,
                                         final int[] colors,
@@ -162,40 +166,41 @@ public final class PersistenceOptimizer {
         components.add(new Component(index, data[index]));
     }
 
-    //given components and colors, extend the component at componentIndex to include the point at datumIndex
+    //given components and colors, extend the component at componentIndex to include the point at index
     //and assign the color of that component to this point
     private static void extendComponent(final List<Component> components,
                                         final int[] colors,
                                         final int componentIndex,
-                                        final int datumIndex) {
-        if (datumIndex + 1 == components.get(componentIndex).leftIndex) {
-            components.get(componentIndex).leftIndex = datumIndex;
-        } else if (datumIndex - 1 == components.get(componentIndex).rightIndex) {
-            components.get(componentIndex).rightIndex = datumIndex;
+                                        final int index) {
+        if (index + 1 == components.get(componentIndex).leftIndex) {
+            components.get(componentIndex).leftIndex = index;
+        } else if (index - 1 == components.get(componentIndex).rightIndex) {
+            components.get(componentIndex).rightIndex = index;
         }
-        colors[datumIndex] = componentIndex;
+        colors[index] = componentIndex;
     }
 
     //merge components by assigning the color of the component with the lower minimum value
-    //to the boundary of the merged component
+    //to the boundary of the merged component when a local maximum is encountered at index
     private static void mergeComponents(final List<Component> components,
                                         final int[] colors,
-                                        final int index1,
-                                        final int index2) {
+                                        final int leftColor,
+                                        final int rightColor,
+                                        final int index) {
         final int indexToKeep;
         final int indexToMerge;
-        if (components.get(index1).minValue < components.get(index2).minValue) {
-            indexToKeep = index1;
-            indexToMerge = index2;
-        } else if (components.get(index1).minValue > components.get(index2).minValue) {
-            indexToKeep = index2;
-            indexToMerge = index1;
-        } else if (index1 < index2) {       //if values are equal, sort by index
-            indexToKeep = index1;
-            indexToMerge = index2;
+        if (components.get(leftColor).minValue < components.get(rightColor).minValue) {
+            indexToKeep = leftColor;
+            indexToMerge = rightColor;
+        } else if (components.get(leftColor).minValue > components.get(rightColor).minValue) {
+            indexToKeep = rightColor;
+            indexToMerge = leftColor;
+        } else if (leftColor < rightColor) {       //if values are equal, sort by index
+            indexToKeep = leftColor;
+            indexToMerge = rightColor;
         } else {
-            indexToKeep = index2;
-            indexToMerge = index1;
+            indexToKeep = rightColor;
+            indexToMerge = leftColor;
         }
         colors[components.get(indexToMerge).leftIndex] = indexToKeep;
         colors[components.get(indexToMerge).rightIndex] = indexToKeep;
@@ -204,5 +209,6 @@ public final class PersistenceOptimizer {
         } else {
             components.get(indexToKeep).rightIndex = components.get(indexToMerge).rightIndex;
         }
+        colors[index] = colors[index - 1];          //local maximum takes color of component to left by convention
     }
 }
