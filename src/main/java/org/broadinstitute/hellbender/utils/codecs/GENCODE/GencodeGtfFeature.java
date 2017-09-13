@@ -575,10 +575,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     /**
      * Checks if {@code other} is contained within this {@link GencodeGtfFeature}.
      * Comparison is made using {@link SimpleInterval#contains(Locatable)} ala {@link GencodeGtfFeatureBaseData#genomicPosition}
-     * @param other {@link Locatable}-derived class of which to check the bounds.
+     * @param other {@link Locatable} of which to check the bounds.
      * @return true if {@code other} is contained within the bounds of this {@link GencodeGtfFeature}, false otherwise.
      */
-    public <T extends Locatable> boolean contains(final T other) {
+    public boolean contains(final Locatable other) {
         return baseData.genomicPosition.contains(other);
     }
 
