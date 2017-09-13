@@ -56,7 +56,10 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
             minValue = 100)
     public int readsPerPartition = 5000;
 
-    @Argument(doc = "Number of reads per partition for output.",
+    /**
+     * Because numReducers is based on the input size, it causes too many partitions to be produced when the output size is much smaller.
+     */
+    @Argument(doc = "Number of reads per partition for output. Use this to control the number of sharded BAMs (not --numReducers).",
             fullName = "readsPerPartitionOutput",
             optional = true,
             minValue = 100,
@@ -99,6 +102,11 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         filterArgs.doReadFilterArgumentWarnings(getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class), logger);
         SAMFileHeader header = PSUtils.checkAndClearHeaderSequences(getHeaderForReads(), filterArgs, logger);
+
+        //Do not allow use of numReducers
+        if (numReducers > 0) {
+            throw new UserException.BadInput("Use --readsPerPartitionOutput instead of --numReducers.");
+        }
 
         //Filter
         final PSFilter filter = new PSFilter(ctx, filterArgs, getReads(), header);
