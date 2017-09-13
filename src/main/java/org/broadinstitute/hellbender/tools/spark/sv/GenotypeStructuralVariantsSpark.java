@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.Shard;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
@@ -31,6 +32,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.tools.spark.utils.ShardedPairRDD;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
@@ -119,7 +121,10 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         setUp(ctx);
-        final JavaRDD<GATKRead> haplotypeAndContigs = haplotypesAndContigsSource.getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), getIntervals(), 0);
+        final List<SimpleInterval> intervals = hasIntervals() ? getIntervals()
+                : IntervalUtils.getAllIntervalsForReference(getReferenceSequenceDictionary());
+        final TraversalParameters traversalParameters = new TraversalParameters(intervals, false);
+        final JavaRDD<GATKRead> haplotypeAndContigs = haplotypesAndContigsSource.getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), traversalParameters,  0);
         final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .map(StructuralVariantContext::new).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
@@ -130,20 +135,22 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<StructuralVariantContext, Iterable<GATKRead>> variantAndHaplotypes = sharder.matchLeftByKey(variantAndHaplotypesSharded,
                 StructuralVariantContext::getUniqueID,
                 r -> r.getAttributeAsString("VC"));
-        final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(variantAndHaplotypes.getNumPartitions());
-        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndFragments =
+        final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(StructuralVariantContext.class, variantAndHaplotypes.getNumPartitions());
+        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndFragments = null; /*
                 variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
                     return Utils.stream(it)
                             .map(t -> {
                                 final List<String> assemblyNames = Utils.stream(t._2())
-                                        .filter(c -> c.getReadGroup().equals("CTG"))
+                                        .filter(c -> c.getReadGroup().equals(ComposeStructuralVariantHaplotypesSpark.CONTIG_READ_GROUP))
                                         .map(c -> c.getName())
                                         .map(n -> n.substring(0, n.indexOf(":")))
                                         .distinct()
-                                        .map(asm -> Assembly)
+                                        .collect(Collectors.toList());
+
+                                return null;
                             });
 
-                });
+                });*/
                 joinFragments(variantAndHaplotypes);
    //     processVariants(variantHaplotypesAndFragments)
 //        final SparkSharder sharder = new SparkSharder(ctx, getReference(), getIntervals(), 10000);

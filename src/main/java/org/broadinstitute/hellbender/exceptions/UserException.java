@@ -43,6 +43,14 @@ public class UserException extends RuntimeException {
      * Subtypes of UserException for common kinds of errors
      */
 
+    public static class CouldNotReadInput extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public CouldNotReadInput(final Path path, final String message) {
+            super(String.format("Couldn't read from '%s': %s", path, message));
+        }
+    }
+
     /**
      * <p/>
      * Class UserException.CouldNotReadInputFile

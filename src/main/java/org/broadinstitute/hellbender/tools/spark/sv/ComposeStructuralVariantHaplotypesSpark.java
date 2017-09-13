@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -161,8 +162,11 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         Utils.nonNull(alignedContigsFileName);
         final ReadsSparkSource alignedContigs = new ReadsSparkSource(ctx);
         final VariantsSparkSource variantsSource = new VariantsSparkSource(ctx);
+        final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() :
+                IntervalUtils.getAllIntervalsForReference(getReferenceSequenceDictionary());
+        final TraversalParameters travParameters = new TraversalParameters(intervals, false);
 
-        final JavaRDD<GATKRead> contigs = alignedContigs.getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(), getIntervals());
+        final JavaRDD<GATKRead> contigs = alignedContigs.getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(), travParameters);
         final JavaRDD<StructuralVariantContext> variants = variantsSource
                 .getParallelVariantContexts(variantsFileName, getIntervals())
                 .filter(ComposeStructuralVariantHaplotypesSpark::supportedVariant)
@@ -372,9 +376,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
     private static List<SAMRecord> convertToSAMRecords(final AlignedContig alignment, final SAMFileHeader header, final StructuralVariantContext vc, final int referenceHaplotypeStart, final String hpTagValue, final double hpQualTagValue, final AlignedContigScore referenceScore, final AlignedContigScore alternativeScore, final int variantStart) {
         final List<SAMRecord> result = new ArrayList<>(alignment.alignmentIntervals.size());
-        result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment, false));
+        result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence, false, 0, Collections.emptyList()));
         for (int i = 1; i < alignment.alignmentIntervals.size(); i++) {
-            result.add(alignment.alignmentIntervals.get(i).toSAMRecord(header, alignment, true));
+            result.add(alignment.alignmentIntervals.get(i).toSAMRecord(header, alignment.contigName, alignment.contigSequence, true, SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(), Collections.emptyList()));
         }
         for (final SAMRecord record : result) {
             record.setReadName(vc.getUniqueID() + '/' + alignment.contigName);
@@ -683,7 +687,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                     } else {
                         final String targetName = a.contigName;
                         final List<SimpleInterval> locations = a.alignmentIntervals.stream().map(ai -> ai.referenceSpan).collect(Collectors.toList());
-                        final GATKRead candidate = s.getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(), locations)
+                        final TraversalParameters traversalParameters = new TraversalParameters(locations, false);
+                        final GATKRead candidate = s.getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(), traversalParameters)
                                 .filter(rr -> rr.getName().equals(targetName))
                                 .filter(rr -> !rr.getCigar().containsOperator(CigarOperator.H))
                                 .first();

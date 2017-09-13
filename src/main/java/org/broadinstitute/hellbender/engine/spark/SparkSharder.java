@@ -115,14 +115,14 @@ public class SparkSharder {
         return leftWithIntervalKey.join(rightWithIntervalKey).mapToPair(tuple -> tuple._2());
     }
 
-    public <L extends Locatable> Partitioner shardPartitioner(final JavaPairRDD<L, ?> rdd) {
+    public <L extends Locatable> Partitioner shardPartitioner(final Class<L> clazz, final JavaPairRDD<L, ?> rdd) {
         Utils.nonNull(rdd);
-        return ShardPartitioner.make(shards, rdd.getNumPartitions());
+        return ShardPartitioner.make(clazz, shards, rdd.getNumPartitions());
     }
 
-    public <K extends Locatable, V> JavaPairRDD<K, V> partition(final JavaPairRDD<K, V> rdd) {
+    public <K extends Locatable, V> JavaPairRDD<K, V> partition(final Class<K> clazz, final JavaPairRDD<K, V> rdd) {
         Utils.nonNull(rdd);
-        return rdd.partitionBy(shardPartitioner(rdd));
+        return rdd.partitionBy(shardPartitioner(clazz, rdd));
     }
 
     /**
@@ -451,8 +451,8 @@ public class SparkSharder {
      * @throws IllegalArgumentException if {@code numberOfPartitions} is 0 or a negative.
      * @return never {@code null}.
      */
-    public <L extends Locatable> ShardPartitioner<L> partitioner(final int numberOfPartitions) {
-        return ShardPartitioner.make(shards, numberOfPartitions);
+    public <L extends Locatable> ShardPartitioner<L> partitioner(final Class<L> clazz, final int numberOfPartitions) {
+        return ShardPartitioner.make(clazz, shards, numberOfPartitions);
     }
 
     private static void addPartitionReadExtent(List<PartitionLocatable<SimpleInterval>> extents, int partitionIndex, String contig, int start, int end) {
