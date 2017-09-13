@@ -24,6 +24,12 @@ Syntax
     -s [GCS_SAVE_PATH] or --save [GCS_SAVE_PATH]
       save results in specified bucket/folder
       (defaults to \$PROJECT_NAME/\$GCS_USER)
+    -t [MAX_LIFE] or --life:
+      life time of cluster
+      (defaults to \$CLUSTER_MAX_LIFE_HOURS)
+    -d [MAX_IDLE] or --idle:
+      maximum idling time for cluster
+      (defaults to \$CLUSTER_MAX_IDLE_MINUTES)
 
   Mandatory Positional Arguments:
     GATK_Folder: path to local copy of GATK
@@ -48,7 +54,7 @@ c) create a Google Dataproc cluster used for running the GATK-SV
 d) run the analysis (call runWholePipeline.sh)
 e) copy results to a datetime and git-version stamped directory
    on GCS, along with logged console output (call copy_sv_results.sh)
-f) shut down the cluster
+f) shut down the cluster (or self-terminate based on the configuration)
 EOF
 }
 
@@ -106,6 +112,30 @@ while [ $# -ge 1 ]; do
             GCS_SAVE_PATH=${1#*=} # remove everything up to = and assign rest to save
             shift
             ;;
+        -t|--life)
+            if [ $# -ge 2 ]; then
+                CLUSTER_MAX_LIFE_HOURS="$2"
+                shift 2
+            else
+                throw_error "--life requires a non-empty argument"
+            fi
+            ;;
+        --life=?*)
+            CLUSTER_MAX_LIFE_HOURS=${1#*=} # remove everything up to = and assign rest to life
+            shift
+            ;;
+        -d|--idle)
+            if [ $# -ge 2 ]; then
+                CLUSTER_MAX_IDLE_MINUTES="$2"
+                shift 2
+            else
+                throw_error "--idle requires a non-empty argument"
+            fi
+            ;;
+        --idle=?*)
+            CLUSTER_MAX_IDLE_MINUTES=${1#*=} # remove everything up to = and assign rest to idle
+            shift
+            ;;
         --)   # explicit call to end of all options
             shift
             break
@@ -124,6 +154,9 @@ if [ $# -lt 4 ]; then
   exit 1
 fi
 
+CLUSTER_MAX_LIFE_HOURS=${CLUSTER_MAX_LIFE_HOURS:-4h}
+CLUSTER_MAX_IDLE_MINUTES=${CLUSTER_MAX_IDLE_MINUTES:-60m}
+
 # init variables that MUST be defined
 GATK_DIR="$1"
 PROJECT_NAME="$2"
@@ -140,6 +173,8 @@ PATH="${GATK_DIR}/scripts/sv:${PATH}"
 
 # configure caching .jar files
 export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/staging/"}
+
+echo
 
 # set cluster name based on user and target bam file
 # (NOTE: can override by defining SV_CLUSTER_NAME)
@@ -172,6 +207,10 @@ GCS_REFERENCE_IMAGE="/mnt/1/reference/$(basename ${GCS_REFERENCE_IMAGE})"
 LOCAL_LOG_FILE=${SV_LOCAL_LOG_FILE:-"${TMPDIR}sv-discovery-${SANITIZED_BAM}.log"}
 
 # check if GATK jar was compiled from the current .git hash
+echo
+if [[ ! -f ${GATK_DIR}/build/libs/gatk-spark.jar ]]; then
+    echo "Cannot find GATK spark jar, maybe you forgot to build? Given GATK dir.: ${GATK_DIR}"
+fi
 GATK_GIT_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | cut -d- -f5 | cut -c2-)
 CURRENT_GIT_HASH=$(git -C ${GATK_DIR} rev-parse --short HEAD | cut -c1-7)
 if [ "${QUIET}" != "Y" ] && [ "${GATK_GIT_HASH}" != "${CURRENT_GIT_HASH}" ]; then
@@ -191,6 +230,7 @@ GIT_BRANCH=$(git -C ${GATK_DIR} branch --contains ${GATK_GIT_HASH} | rev | cut -
 # set output directory to datetime-git branch-git hash stamped folder
 OUTPUT_DIR="/results/$(date "+%Y-%m-%d_%H.%M.%S")-${GIT_BRANCH}-${GATK_GIT_HASH}"
 
+
 # call create_cluster, using default_init
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
@@ -206,8 +246,8 @@ while true; do
                     INIT_ARGS="${INIT_SCRIPT} gs://${GCS_SAVE_PATH}/init/"
                 fi
 
-                echo "create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${GCS_REFERENCE_DIR} ${GCS_BAM_DIR} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-                create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${GCS_REFERENCE_DIR} ${GCS_BAM_DIR} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
+                echo "create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${CLUSTER_MAX_LIFE_HOURS} ${CLUSTER_MAX_IDLE_MINUTES} ${GCS_REFERENCE_DIR} ${GCS_BAM_DIR} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+                create_cluster.sh ${GATK_DIR} ${PROJECT_NAME} ${CLUSTER_NAME} ${CLUSTER_MAX_LIFE_HOURS} ${CLUSTER_MAX_IDLE_MINUTES} ${GCS_REFERENCE_DIR} ${GCS_BAM_DIR} ${INIT_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
                 break
                 ;;
         [Nn]*)  break
