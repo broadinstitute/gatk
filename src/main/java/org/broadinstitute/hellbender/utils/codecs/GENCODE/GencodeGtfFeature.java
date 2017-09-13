@@ -579,8 +579,17 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * @return true if {@code other} is contained within the bounds of this {@link GencodeGtfFeature}, false otherwise.
      */
     public <T extends Locatable> boolean contains(final T other) {
-        Utils.nonNull(other);
         return baseData.genomicPosition.contains(other);
+    }
+
+    /**
+     * Checks if {@code other} overlaps with this {@link GencodeGtfFeature}.
+     * Comparison is made using {@link SimpleInterval#overlaps(Locatable)} ala {@link GencodeGtfFeatureBaseData#genomicPosition}
+     * @param other {@link Locatable}-derived class of which to check the bounds.
+     * @return true if {@code other} overlaps the bounds of this {@link GencodeGtfFeature}, false otherwise.
+     */
+    public boolean overlaps(final Locatable other) {
+        return baseData.genomicPosition.overlaps(other);
     }
 
     public void setFeatureOrderNumber(final int featureOrderNumber) {
