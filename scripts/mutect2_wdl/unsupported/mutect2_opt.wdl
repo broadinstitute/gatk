@@ -58,7 +58,7 @@ workflow Mutect2 {
   String? sequencing_center
   String? sequence_source
   File? default_config_file
-  Boolean is_bamOut=false
+  Boolean is_bamOut = false
 
   # Do not populate unless you know what you are doing...
   File? auth
@@ -203,8 +203,8 @@ workflow Mutect2 {
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
         File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
-        File? merged_bam_out = select_first([MergeBamOuts.merged_bam_out, "null"])
-        File? merged_bam_out_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
+        File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
+        File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
   }
 }
 
@@ -283,8 +283,8 @@ task M2 {
   output {
     File output_vcf = "${output_vcf_name}.vcf"
     File output_bamOut = "bamout.bam"
-    String tumor_bam_sample_name = read_lines("tumor_name.txt")[0]
-    String normal_bam_sample_name = read_lines("normal_name.txt")[0]
+    String tumor_bam_sample_name = read_string("tumor_name.txt")
+    String normal_bam_sample_name = read_string("normal_name.txt")
   }
 }
 
@@ -492,7 +492,7 @@ task SplitIntervals {
 
 task MergeBamOuts {
   String gatk4_jar
-  Array[File] bam_outs
+  Array[File]+ bam_outs
   File picard_jar
   File ref_fasta
   File ref_fasta_index
@@ -507,7 +507,7 @@ task MergeBamOuts {
   Int? disk_space_gb
 
   command <<<
-          # This command block relies that there is at least one file in bam_outs.
+          # This command block assumes that there is at least one file in bam_outs.
           #  Do not call this task if len(bam_outs) == 0
           set -e
           java -Xmx4G -jar ${picard_jar} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
