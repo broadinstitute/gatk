@@ -60,6 +60,9 @@ workflow Mutect2 {
   File? default_config_file
   Boolean is_bamOut = false
 
+  # Do not populate unless you know what you are doing...
+  File? auth
+
   call ProcessOptionalArguments {
     input:
       tumor_sample_name = tumor_sample_name,
@@ -105,7 +108,8 @@ workflow Mutect2 {
         preemptible_attempts = preemptible_attempts,
         m2_docker = m2_docker,
         m2_extra_args = m2_extra_args,
-        is_bamOut = is_bamOut
+	is_bamOut = is_bamOut,
+        auth = auth
     }
   }
 
@@ -164,7 +168,8 @@ workflow Mutect2 {
       artifact_modes = artifact_modes,
       variants_for_contamination = variants_for_contamination,
       variants_for_contamination_index = variants_for_contamination_index,
-      m2_extra_filtering_args = m2_extra_filtering_args
+      m2_extra_filtering_args = m2_extra_filtering_args,
+      auth = auth
   }
 
 
@@ -209,10 +214,10 @@ task M2 {
   File ref_fasta
   File ref_fasta_index
   File ref_dict
-  File tumor_bam
-  File tumor_bam_index
-  File? normal_bam
-  File? normal_bam_index
+  String tumor_bam
+  String tumor_bam_index
+  String? normal_bam
+  String? normal_bam_index
   File? pon
   File? pon_index
   File? gnomad
@@ -223,8 +228,17 @@ task M2 {
   Int preemptible_attempts
   String? m2_extra_args
   Boolean? is_bamOut
+  
+  # Do not populate this unless you know what you are doing...
+  File? auth
 
   command <<<
+
+  if [[ "${auth}" == *.json ]]; then
+    gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+    GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+    export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+  fi
 
   # Use GATK Jar override if specified
   GATK_JAR=${gatk4_jar}
@@ -262,7 +276,7 @@ task M2 {
   runtime {
       docker: "${m2_docker}"
       memory: "5 GB"
-      disks: "local-disk " + 500 + " HDD"
+      disks: "local-disk " + 200 + " HDD"
       preemptible: "${preemptible_attempts}"
   }
 
@@ -358,7 +372,7 @@ task CollectSequencingArtifactMetrics {
   runtime {
     docker: "${m2_docker}"
     memory: "5 GB"
-    disks: "local-disk " + 500 + " HDD"
+    disks: "local-disk " + 700 + " HDD"
     preemptible: "${preemptible_attempts}"
   }
 
@@ -376,8 +390,8 @@ task Filter {
   Int preemptible_attempts
   String m2_docker
   File? pre_adapter_metrics
-  File? tumor_bam
-  File? tumor_bam_index
+  String? tumor_bam
+  String? tumor_bam_index
   File? ref_fasta
   File? ref_fasta_index
   Array[String]? artifact_modes
@@ -385,8 +399,17 @@ task Filter {
   File? variants_for_contamination_index
   String? m2_extra_filtering_args
 
+  # Do not populate this unless you know what you are doing...
+  File? auth
+
   command {
     set -e
+
+    if [[ "${auth}" == *.json ]]; then
+      gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+      GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+    fi
 
     # Use GATK Jar override if specified
     GATK_JAR=${gatk4_jar}
@@ -396,8 +419,8 @@ task Filter {
 
     touch contamination.table
     if [[ "${variants_for_contamination}" == *.vcf ]]; then
-        java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-        java -Xmx4g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
+        java -Xmx6g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+        java -Xmx6g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
         contamination_cmd="-contaminationTable contamination.table"
     fi
 
@@ -407,7 +430,7 @@ task Filter {
 
     # FilterByOrientationBias must come after all of the other filtering.
     if [[ ! -z "${pre_adapter_metrics}" ]]; then
-        java -Xmx4g -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
+        java -Xmx6g -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
             -V filtered.vcf -P ${pre_adapter_metrics} --output "${output_vcf_name}-filtered.vcf"
     else
         mv filtered.vcf "${output_vcf_name}-filtered.vcf"
@@ -417,8 +440,8 @@ task Filter {
 
   runtime {
     docker: "${m2_docker}"
-    memory: "5 GB"
-    disks: "local-disk " + 600 + " HDD"
+    memory: "7 GB"
+    disks: "local-disk " + 200 + " HDD"
     preemptible: "${preemptible_attempts}"
   }
 
