@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
@@ -32,7 +31,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 public class AddContextDataToReadSparkUnitTest extends BaseTest {
@@ -65,7 +63,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         JavaRDD<GATKVariant> rddVariants = ctx.parallelize(variantList);
 
         ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
-        when(mockSource.getReferenceBases(any(PipelineOptions.class), any())).then(new ReferenceBasesAnswer());
+        when(mockSource.getReferenceBases(isNull(), any(SimpleInterval.class))).then(new ReferenceBasesAnswer());
         when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SAMSequenceDictionary sd = new SAMSequenceDictionary(Lists.newArrayList(new SAMSequenceRecord("1", 100000), new SAMSequenceRecord("2", 100000)));
         when(mockSource.getReferenceSequenceDictionary(null)).thenReturn(sd);
@@ -90,7 +88,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         private static final long serialVersionUID = 1L;
         @Override
         public ReferenceBases answer(InvocationOnMock invocation) throws Throwable {
-            return FakeReferenceSource.bases(invocation.getArgumentAt(1, SimpleInterval.class));
+            return FakeReferenceSource.bases(invocation.getArgument(1));
         }
     }
 }
