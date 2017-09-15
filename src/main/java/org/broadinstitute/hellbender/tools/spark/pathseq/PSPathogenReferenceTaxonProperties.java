@@ -13,7 +13,7 @@ import java.util.Set;
 public final class PSPathogenReferenceTaxonProperties {
     private String name;
     private String rank = null;
-    private String parentTaxId = null;
+    private int parentTaxId = PSTree.NULL_NODE;
     private long length = 0;
     private final Map<String, Long> accessions;
 
@@ -44,11 +44,11 @@ public final class PSPathogenReferenceTaxonProperties {
 
     public void setName(final String name) { this.name = name;}
     public void setRank(final String rank) { this.rank = rank;}
-    public void setParent(final String parentTaxId) { this.parentTaxId = parentTaxId;}
+    public void setParent(final int parentTaxId) { this.parentTaxId = parentTaxId;}
 
     public String getName() { return name; }
     public String getRank() { return rank; }
-    public String getParent() { return parentTaxId; }
+    public int getParent() { return parentTaxId; }
     public Set<String> getAccessions() {
         return accessions.keySet();
     }

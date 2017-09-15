@@ -36,9 +36,9 @@ public final class PSScoreArgumentCollection implements Serializable {
     public boolean divideByGenomeLength = false;
 
     @Argument(doc = "If true, normalized abundance scores will be reported as a percentage within their kingdom.",
-            fullName = "normalizeByKingdom",
+            fullName = "notNormalizedByKingdom",
             optional = true)
-    public boolean normalizeByKingdom = true;
+    public boolean notNormalizedByKingdom = false;
 
     @Argument(doc = "Write accessions found in the reads header but not the taxonomy database to this file",
             fullName = "scoreWarningsFile",

@@ -13,8 +13,8 @@ import java.util.Map;
 
 public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
 
-    final static int SCORE_TABLE_COLUMNS = 10;
-    final static double SCORE_ABSOLUTE_ERROR_TOLERANCE = 1e-6;
+    static final int SCORE_TABLE_COLUMNS = 10;
+    static final double SCORE_ABSOLUTE_ERROR_TOLERANCE = 1e-6;
 
     @Override
     public String getTestedClassName() {
@@ -22,13 +22,13 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
     }
 
     private static boolean testPathogenTaxonScores(final PSPathogenTaxonScore a, final PSPathogenTaxonScore b) {
-        if (!a.kingdomTaxonId.equals(b.kingdomTaxonId)) return false;
-        if (!PathSeqTestUtils.equalWithinTolerance(a.descendentScore,b.descendentScore, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
-        if (!PathSeqTestUtils.equalWithinTolerance(a.totalReads,b.totalReads, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
-        if (!PathSeqTestUtils.equalWithinTolerance(a.referenceLength,b.referenceLength, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
-        if (!PathSeqTestUtils.equalWithinTolerance(a.selfScore,b.selfScore, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
-        if (!PathSeqTestUtils.equalWithinTolerance(a.scoreNormalized,b.scoreNormalized, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
-        if (!PathSeqTestUtils.equalWithinTolerance(a.unambiguousReads,b.unambiguousReads, SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
+        if (a.getKingdomTaxonId() != b.getKingdomTaxonId()) return false;
+        if (!PathSeqTestUtils.equalWithinTolerance(a.getDescendentScore(),b.getDescendentScore(), SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
+        if (!PathSeqTestUtils.equalWithinTolerance(a.getTotalReads(),b.getTotalReads(), SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
+        if (!PathSeqTestUtils.equalWithinTolerance(a.getReferenceLength(),b.getReferenceLength(), SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
+        if (!PathSeqTestUtils.equalWithinTolerance(a.getSelfScore(),b.getSelfScore(), SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
+        if (!PathSeqTestUtils.equalWithinTolerance(a.getScoreNormalized(),b.getScoreNormalized(), SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
+        if (!PathSeqTestUtils.equalWithinTolerance(a.getUnambiguousReads(),b.getUnambiguousReads(), SCORE_ABSOLUTE_ERROR_TOLERANCE)) return false;
         return true;
     }
 
@@ -39,12 +39,12 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
             Assert.assertTrue(tok.length == SCORE_TABLE_COLUMNS, "Expected " + SCORE_TABLE_COLUMNS + " columns, but found " + tok.length);
             final PSPathogenTaxonScore score = new PSPathogenTaxonScore();
             final String taxonId = tok[0];
-            score.kingdomTaxonId = tok[4];
-            score.selfScore = new Double(tok[5]);
-            score.scoreNormalized = new Double(tok[6]);
-            score.totalReads = new Integer(tok[7]);
-            score.unambiguousReads = new Integer(tok[8]);
-            score.referenceLength = new Long(tok[9]);
+            score.setKingdomTaxonId(Math.abs(tok[4].hashCode()));
+            score.addSelfScore(new Double(tok[5]));
+            score.addScoreNormalized(new Double(tok[6]));
+            score.addTotalReads(new Integer(tok[7]));
+            score.addUnambiguousReads(new Integer(tok[8]));
+            score.setReferenceLength(new Long(tok[9]));
             Assert.assertFalse(scores.containsKey(taxonId), "Found more than one entry for taxon ID " + taxonId);
             scores.put(taxonId, score);
         }
@@ -153,7 +153,7 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
         args.addOutput(bamOut);
         args.addFileArgument("taxonomicDatabasePath", taxFile);
         args.addFileArgument("scoresOutputPath", output);
-        args.addBooleanArgument("normalizeByKingdom", false);
+        args.addBooleanArgument("notNormalizedByKingdom", true);
         this.runCommandLine(args.getArgsArray());
 
         final String input_expected = FileUtils.readFileToString(expectedFile);
