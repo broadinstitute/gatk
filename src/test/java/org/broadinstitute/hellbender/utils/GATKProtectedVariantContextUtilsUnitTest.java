@@ -2,17 +2,17 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 2/15/17.
@@ -55,4 +55,45 @@ public class GATKProtectedVariantContextUtilsUnitTest {
         Assert.assertEquals(counts, new int[]{1, 1, 0, 0});
 
     }
+
+    @Test(dataProvider = "variantTypes")
+    public void testVariantTypesAndIsComplex(final String ref, final String alt, final VariantContext.Type gtType, boolean isComplexIndel) {
+        Assert.assertEquals(GATKProtectedVariantContextUtils.typeOfVariant(Allele.create(ref), Allele.create(alt)), gtType);
+        Assert.assertEquals(GATKProtectedVariantContextUtils.isComplexIndel(Allele.create(ref), Allele.create(alt)), isComplexIndel);
+    }
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testSymbolicRef() {
+        GATKProtectedVariantContextUtils.typeOfVariant(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, Allele.create("C"));
+    }
+
+    @DataProvider(name = "variantTypes")
+    public Object[][] variantTypes() {
+        return new Object[][]{
+                // ref, alt, type, isComplex?
+                {"CCTTGGCTTATTCCA", "C", VariantContext.Type.INDEL, false},
+                {"C", "CCTTGGCTTATTCCA", VariantContext.Type.INDEL, false},
+                {"ACTAG", "A", VariantContext.Type.INDEL, false},
+                {"ATT", "AT", VariantContext.Type.INDEL, false},
+                {"AT", "ATT", VariantContext.Type.INDEL, false},
+                {"CT", "CAGG", VariantContext.Type.INDEL, true},
+                {"CTTT", "CAGG", VariantContext.Type.MNP, false},
+                {"CTTT", "CAGGG", VariantContext.Type.INDEL, true},
+                {"T", "T", VariantContext.Type.NO_VARIATION, false},
+                {"CTAG", "CTAG", VariantContext.Type.NO_VARIATION, false},
+                {"A", "AAGAAGCATGC", VariantContext.Type.INDEL, false},
+                {"A", "C", VariantContext.Type.SNP, false},
+                {"AG", "CA", VariantContext.Type.MNP, false},
+                {"AGAAGG", "CATTCC", VariantContext.Type.MNP, false},
+                {"GC", "GA", VariantContext.Type.SNP, false},
+                {"GA", "<NON_REF>", VariantContext.Type.SYMBOLIC, false},
+                {"GA", "*", VariantContext.Type.NO_VARIATION, false},
+
+                // There are two MNPs here
+                {"AGAAGG", "CATACC", VariantContext.Type.MNP, false},
+
+                // Note that this is technically a simple AT insertion, but the isComplex cannot handle this properly.
+                {"CT", "CATT", VariantContext.Type.INDEL, true},
+        };
+    }
+
 }

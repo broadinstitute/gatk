@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
@@ -67,7 +66,7 @@ public class OrientationBiasFilterer {
             // Get the reference allele as a String and make sure that there is only one ref allele and that it is length
             //  one, which would indicate that it could be a part of a SNP/SNV
             final List<String> refAlleles = alleles.stream().filter(a -> a.isReference()).map(a -> a.getBaseString()).collect(Collectors.toList());
-            if (((refAlleles.size() == 1) && (refAlleles.get(0).length() == 1))) {
+            if (((refAlleles.size() == 1) && (refAlleles.get(0).length() == 1)) && alleles.size() > 1) {
                 final Character refAllele = (char) refAlleles.get(0).getBytes()[0];
 
                 // Since we only look at the first alt allele on a site, we do not need a for loop over all non-ref alleles, e.g. for (int i = 1; i < alleles.size(); i++) {
