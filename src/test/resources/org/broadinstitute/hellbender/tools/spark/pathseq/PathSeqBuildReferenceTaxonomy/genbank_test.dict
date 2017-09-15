@@ -1,0 +1,16 @@
+@HD	VN:1.5	SO:unsorted
+@SQ	SN:ref|gACC_1a	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:ref|gACC_1b	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:ref|gACC_1c	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:ref|gACC_1d	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:ref|gACC_1e	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:gACC_2a	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:gACC_2b	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:gACC_2c	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:gACC_2d	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:ref|gACC_3a	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:ref|gACC_3b	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:ref|gACC_3c	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:taxid|8|gSpFXa	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:taxid|8|gSpFXb	LN:99	M5:b091f1dc6e3c6ef4391fabc5d8149f05	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
+@SQ	SN:taxid|8|gSpFXc	LN:43	M5:a36e7c8209009c5458f8c5fa2f7db2ff	UR:file:/Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqBuildReferenceTaxonomy/genbank_test.fasta
