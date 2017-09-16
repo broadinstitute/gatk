@@ -14,6 +14,14 @@ public interface ReferenceSource {
     ReferenceBases getReferenceBases(SimpleInterval interval) throws IOException;
     SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException;
 
+    default ReferenceBases getReferenceBases(final SimpleInterval interval) throws IOException {
+        return getReferenceBases(null, interval);
+    }
+
+    default SAMSequenceDictionary getReferenceSequenceDictionary() throws IOException {
+        return getReferenceSequenceDictionary(null);
+    }
+
     /**
      * Returns whether this reference source can be used with Spark broadcast.
      * Currently, only {@link ReferenceTwoBitSource} is compatible with the Spark broadcast implementation.

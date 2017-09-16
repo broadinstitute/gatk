@@ -265,21 +265,17 @@ public class SVFastqUtils {
             return headerParts[0].substring(1); // skip the '@'.
         }
 
-        public OptionalInt getFragmentNumber() {
+        public TemplateFragmentOrdinal getFragmentOrdinal() {
             final String id = getId();
             final int fragmentPartStart = id.lastIndexOf(FRAGMENT_NUMBER_SEPARATOR_CHR);
             if (fragmentPartStart < 0) {
-                return OptionalInt.empty();
+                return TemplateFragmentOrdinal.UNPAIRED;
             } else {
                 try {
                     final int number = Integer.parseInt(id.substring(fragmentPartStart + 1));
-                    if (number < 0) {
-                        return OptionalInt.empty();
-                    } else {
-                        return OptionalInt.of(number);
-                    }
+                    return TemplateFragmentOrdinal.valueOf(number);
                 } catch (final NumberFormatException ex) {
-                    return OptionalInt.empty();
+                    return TemplateFragmentOrdinal.PAIRED_UNKNOWN;
                 }
             }
         }

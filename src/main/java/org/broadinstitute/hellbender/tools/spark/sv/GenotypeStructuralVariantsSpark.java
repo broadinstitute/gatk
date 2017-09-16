@@ -2,18 +2,13 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.util.Locatable;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.spark.Partitioner;
-import org.apache.spark.RangePartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.bdgenomics.adam.rdd.GenomicPositionPartitioner;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -27,24 +22,26 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
+import org.broadinstitute.hellbender.tools.BwaMemIndexImageCreator;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
-import org.broadinstitute.hellbender.tools.spark.utils.ShardedPairRDD;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.io.File;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Created by valentin on 4/20/17.
@@ -136,23 +133,30 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 StructuralVariantContext::getUniqueID,
                 r -> r.getAttributeAsString("VC"));
         final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(StructuralVariantContext.class, variantAndHaplotypes.getNumPartitions());
-        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndFragments = null; /*
+        final String fastqDir = this.fastqDir;
+        final String fastqFileFormat = "asm%05d.fastq";
+        final Pattern ASSEMBLY_NAME_ALPHAS = Pattern.compile("[a-zA-Z_]+");
+        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndTemplates =
                 variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
+                    final AssemblyCollection assemblyCollection = new AssemblyCollection(fastqDir, fastqFileFormat);
                     return Utils.stream(it)
                             .map(t -> {
-                                final List<String> assemblyNames = Utils.stream(t._2())
+                                final IntStream assemblyNumbers = Utils.stream(t._2())
                                         .filter(c -> c.getReadGroup().equals(ComposeStructuralVariantHaplotypesSpark.CONTIG_READ_GROUP))
-                                        .map(c -> c.getName())
+                                        .map(GATKRead::getName)
                                         .map(n -> n.substring(0, n.indexOf(":")))
-                                        .distinct()
-                                        .collect(Collectors.toList());
+                                        .map(a -> ASSEMBLY_NAME_ALPHAS.matcher(a).replaceAll("0"))
+                                        .mapToInt(Integer::parseInt)
+                                        .sorted()
+                                        .distinct();
+                                final Stream<Template> allTemplates = assemblyNumbers
+                                        .boxed()
+                                        .flatMap(i -> assemblyCollection.templates(i).stream())
+                                        .distinct();
+                                return new Tuple2<>(t._1(), new Tuple2<>(t._2(), (Iterable<Template>) allTemplates.collect(Collectors.toList())));
+                             }).iterator(); });
 
-                                return null;
-                            });
-
-                });*/
-                joinFragments(variantAndHaplotypes);
-   //     processVariants(variantHaplotypesAndFragments)
+          //  processVariants(variantHaplotypesAndTemplates)
 //        final SparkSharder sharder = new SparkSharder(ctx, getReference(), getIntervals(), 10000);
 
 //        final SparkSharder.ShardedRDD<GATKRead> sharedReads = sharder.shard(haplotypeAndContigs, null);
@@ -184,7 +188,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         .entrySet()
                         .stream()
                         .map(entry -> Template.create(entry.getKey(),
-                          removeRepeatedReads(entry.getValue()), read -> new Template.Fragment(read.getName(), read.getFragmentNumber().orElse(0), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
+                          removeRepeatedReads(entry.getValue()), read -> new Template.Fragment(read.getName(), read.getFragmentOrdinal(), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
                         ).collect(Collectors.toList()))));
     }
 
@@ -203,8 +207,29 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private JavaRDD<StructuralVariantContext> processVariants(final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> input, final JavaSparkContext ctx) {
         final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator(ctx, dist);
-        final ReferenceMultiSource reference = getReference();
-        return null;// input
+        return input.mapPartitions(it -> {
+            final Stream<Tuple2<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>>> variants = Utils.stream(it);
+            final Map<String, String> imagesByName = new HashMap<>();
+
+            variants.map(variant -> {
+                for (final GATKRead haplotypeOrContig : variant._2()._1()) {
+                    final boolean isHaplotype = haplotypeOrContig.getReadGroup().equals("HAP");
+                    final String imageName = isHaplotype
+                            ? haplotypeOrContig.getAttributeAsString("VC") + "/" +  haplotypeOrContig.getName()
+                            : haplotypeOrContig.getName();
+                    //imagesByName.computeIfAbsent(imageName, (imageName) -> {
+                        //final String imageFile = Files.createTempFile("bwa-mem-img-", ".img");
+                    //    return null; // BwaMemIndex.createIndexImageFromFastaFile(fasta);
+
+                //});
+                }
+                return null;
+            });
+            return null;
+        });
+
+        //final ReferenceMultiSource reference = getReference();
+       // return null;// input
                 //.partitionBy(new );
                 //map(t -> processVariant(t._1(), t._2()._1(), t._2()._2()));
     }

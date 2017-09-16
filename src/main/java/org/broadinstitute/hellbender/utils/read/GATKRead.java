@@ -35,7 +35,7 @@ public interface GATKRead extends Locatable {
     /**
      * @return The name of the read (equivalent to QNAME in SAM), or {@code null} if the read has no name.
      */
-    String getName();
+    String  getName();
 
     /**
      * Set the name of the read (equivalent to QNAME in SAM), or set to {@code null} if the read has no name.
