@@ -263,7 +263,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * @return Default size in MB of the cloud prefetch buffer. May be overridden by individual tools.
      *         The default implementation returns a value (40 MB) that is suitable for tools with a small
-     *         number of large cloud inputs. Tools with large numbers of cloud inputs will likely want to
+     *         number of large cloud inputs. Tools with large numbers of cloud templates will likely want to
      *         override to specify a smaller size.
      */
     public int getDefaultCloudPrefetchBufferSize() {

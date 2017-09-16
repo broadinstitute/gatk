@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.ValidationStringency;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.TemplateFragmentOrdinal;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -39,9 +40,9 @@ public class Template implements Serializable {
         private final int[] qualities;
         private final int length;
         private final String name;
-        private final int number;
+        private final TemplateFragmentOrdinal number;
 
-        public Fragment(final String name, final int number, final byte[] bases, final int[] qualities) {
+        public Fragment(final String name, final TemplateFragmentOrdinal number, final byte[] bases, final int[] qualities) {
             this.name = name;
             this.bases = Utils.nonNull(bases);
             this.qualities = Utils.nonNull(qualities);
@@ -73,8 +74,8 @@ public class Template implements Serializable {
             if (paired) {
                 record.setReadPairedFlag(true);
                 record.setMateUnmappedFlag(true);
-                record.setFirstOfPairFlag(number == 1);
-                record.setSecondOfPairFlag(number == 2);
+                record.setFirstOfPairFlag(number == TemplateFragmentOrdinal.PAIRED_FIRST);
+                record.setSecondOfPairFlag(number == TemplateFragmentOrdinal.PAIRED_SECOND);
             }
             record.setValidationStringency(ValidationStringency.STRICT);
             return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);

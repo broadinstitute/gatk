@@ -373,7 +373,7 @@ public final class PSScorer {
     }
 
     /**
-     * Helper function for handling PSPathogenTaxonScore retrieval from the taxScores map
+     * Helper function for handling PSPathogenTaxonScore     retrieval from the taxScores map
      */
     private static PSPathogenTaxonScore getOrAddScoreInfo(final String taxIds,
                                                           final Map<String, PSPathogenTaxonScore> taxScores,

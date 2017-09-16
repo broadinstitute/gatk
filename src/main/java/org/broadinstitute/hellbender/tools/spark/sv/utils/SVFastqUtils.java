@@ -12,6 +12,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.Template;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.TemplateFragmentOrdinal;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -185,6 +186,7 @@ public class SVFastqUtils {
 
     @DefaultSerializer(FastqRead.Serializer.class)
     public static final class FastqRead implements FermiLiteAssembler.BasesAndQuals {
+
         private final String header;
         private final byte[] bases;
         private final byte[] quals;
@@ -237,21 +239,17 @@ public class SVFastqUtils {
             return headerParts[0].substring(1); // skip the '@'.
         }
 
-        public OptionalInt getFragmentNumber() {
+        public TemplateFragmentOrdinal getFragmentOrdinal() {
             final String id = getId();
             final int fragmentPartStart = id.lastIndexOf(FRAGMENT_NUMBER_SEPARATOR_CHR);
             if (fragmentPartStart < 0) {
-                return OptionalInt.empty();
+                return TemplateFragmentOrdinal.UNPAIRED;
             } else {
                 try {
                     final int number = Integer.parseInt(id.substring(fragmentPartStart + 1));
-                    if (number < 0) {
-                        return OptionalInt.empty();
-                    } else {
-                        return OptionalInt.of(number);
-                    }
+                    return TemplateFragmentOrdinal.valueOf(number);
                 } catch (final NumberFormatException ex) {
-                    return OptionalInt.empty();
+                    return TemplateFragmentOrdinal.PAIRED_UNKNOWN;
                 }
             }
         }

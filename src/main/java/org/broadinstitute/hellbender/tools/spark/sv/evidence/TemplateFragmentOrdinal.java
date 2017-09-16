@@ -62,4 +62,22 @@ public enum TemplateFragmentOrdinal {
             return UNPAIRED;
         }
     }
+
+    /**
+     * Returns the instance that correspond to the given integer value.
+     * <p>
+     *     For unsupported fragment number we return {@link #PAIRED_UNKNOWN}.
+     * </p>
+     * @param value the query int fragment ordinal value 1-based.
+     * @return never {@code null}.
+     */
+    public static TemplateFragmentOrdinal valueOf(final int value) {
+        switch (value) {
+            case 1: return PAIRED_FIRST;
+            case 2: return PAIRED_SECOND;
+            case 0: return PAIRED_INTERIOR;
+            default:
+                return PAIRED_UNKNOWN;
+        }
+    }
 }
