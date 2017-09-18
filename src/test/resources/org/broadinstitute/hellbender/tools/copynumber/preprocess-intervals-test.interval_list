@@ -1,0 +1,8 @@
+@HD	VN:1.4	SO:coordinate
+@SQ	SN:20	LN:63025520	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	AS:GRCh37	M5:0dec9660ec1efaaf33281c0d5ea2560f	SP:Homo Sapiens
+@SQ	SN:21	LN:48129895	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	AS:GRCh37	M5:2979a6085bfe28e3ad6f552f361ed74d	SP:Homo Sapiens
+20	100	200	+	interval-541
+20	400	600	+	interval-542
+20	10000	11000	+	interval-543
+21	20000	22000	+	interval-573
+21	1	100	+	interval-574
