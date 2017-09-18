@@ -26,7 +26,7 @@ public class PathSeqBuildReferenceTaxonomyIntegrationTest extends CommandLinePro
     }
 
     @BeforeTest
-    public void before() {
+    public void before() { 
         refseqReferenceFile = getTestFile("test.fasta");
         genbankReferenceFile = getTestFile("genbank_test.fasta");
         taxdumpFile = getTestFile("taxdump.tar.gz");
