@@ -118,10 +118,6 @@ public final class PSFilterArgumentCollection implements Serializable {
             fullName = "filterDuplicates",
             optional = true)
     public boolean filterDuplicates = true;
-    @Argument(doc = "Write remaining reads and time elapsed after each step to file. Substantially reduces performance.",
-            fullName = "metricsFile",
-            optional = true)
-    public String metricsFileUri = null;
 
     public void doReadFilterArgumentWarnings(final GATKReadFilterPluginDescriptor pluginDescriptor, final Logger logger) {
         final List<ReadFilter> readFilters = pluginDescriptor.getAllInstances();

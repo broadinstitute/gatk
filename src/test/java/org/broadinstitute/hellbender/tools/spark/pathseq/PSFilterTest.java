@@ -29,9 +29,9 @@ import java.util.stream.Collectors;
 
 public class PSFilterTest extends CommandLineProgramTest {
 
-    private final String BWA_IMAGE_PATH = "src/test/resources/" + PSFilter.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.bwa_image";
+    private final String BWA_IMAGE_PATH = "src/test/resources/" + PSFilter.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
 
-    final static List<List<String>> readFastq(final File fastqFile) {
+    static final List<List<String>> readFastq(final File fastqFile) {
         try {
             final LineIterator itr = IOUtils.lineIterator(new FileReader(fastqFile));
             final List<List<String>> seqs = new ArrayList<>(100);
@@ -54,7 +54,7 @@ public class PSFilterTest extends CommandLineProgramTest {
         throw new TestException("Invalid fastq test file " + fastqFile);
     }
 
-    final static List<GATKRead> getReadsFromFastq(final File fastqFile) {
+    static final List<GATKRead> getReadsFromFastq(final File fastqFile) {
         final List<List<String>> fastqList = readFastq(fastqFile);
         return fastqList.stream().map(list -> {
             final String name = list.get(0);
@@ -66,7 +66,7 @@ public class PSFilterTest extends CommandLineProgramTest {
         }).collect(Collectors.toList());
     }
 
-    final static List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
+    static final List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
         final List<GATKRead> readList1 = getReadsFromFastq(fastqFile1);
         final List<GATKRead> readList2 = getReadsFromFastq(fastqFile2);
         readList1.forEach(read -> {
@@ -82,7 +82,7 @@ public class PSFilterTest extends CommandLineProgramTest {
         return readList1;
     }
 
-    final static List<GATKRead> makeReadSet(final SAMFileHeader header) {
+    static final List<GATKRead> makeReadSet(final SAMFileHeader header) {
         final List<GATKRead> readList = new ArrayList<>(3);
 
         final List<GATKRead> readPair1 = ArtificialReadUtils.createPair(header, "paired_1", 101, 1, 102, false, false);
@@ -240,6 +240,14 @@ public class PSFilterTest extends CommandLineProgramTest {
         }
         Assert.assertEquals(numDup_1, 1);
         Assert.assertEquals(numDup_2, 1);
+    }
+
+    @Test(expectedExceptions = Exception.class)
+    public void testGetFilterMetricsException() {
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final PSFilter filter = new PSFilter(ctx, new PSFilterArgumentCollection(), null);
+        //Can't get metrics from a filter that has not been run
+        filter.getFilterMetrics();
     }
 
 }

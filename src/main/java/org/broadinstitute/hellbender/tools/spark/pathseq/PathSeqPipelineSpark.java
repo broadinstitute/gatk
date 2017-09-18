@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
@@ -51,6 +53,16 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             optional = true)
     public String outputPath = null;
+
+    @Argument(doc = "Log counts of filtered reads to this file",
+            fullName = "filterMetricsFile",
+            optional = true)
+    public String filterMetricsFileUri = null;
+
+    @Argument(doc = "Log counts of mapped and unmapped reads to this file",
+            fullName = "scoreMetricsFile",
+            optional = true)
+    public String scoreMetricsFileUri = null;
 
     @Argument(doc = "Number of reads per partition to use for alignment and scoring.",
             fullName = "readsPerPartition",
@@ -111,8 +123,10 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         }
 
         //Filter
-        final PSFilter filter = new PSFilter(ctx, filterArgs, getReads(), header);
-        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> result = filter.doFilter();
+        final MetricsFile<PSFilterMetrics, Long> filterMetricsFile = filterMetricsFileUri != null ? getMetricsFile() : null;
+        final PSFilter filter = new PSFilter(ctx, filterArgs, header);
+        final JavaRDD<GATKRead> inputReads = getReads();
+        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> result = filter.doFilter(inputReads, filterMetricsFile);
         JavaRDD<GATKRead> pairedReads = result._1;
         JavaRDD<GATKRead> unpairedReads = result._2;
 
@@ -120,9 +134,12 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         final long numPairedReads = pairedReads.count();
         final long numUnpairedReads = unpairedReads.count();
         final long numTotalReads = numPairedReads + numUnpairedReads;
-        logger.info("Number of paired reads after filtering: " + numPairedReads);
-        logger.info("Number of unpaired reads after filtering: " + numUnpairedReads);
-        logger.info("Number of total reads after filtering: " + numTotalReads);
+
+        //Log read counts
+        if (filterMetricsFile != null) {
+            filterMetricsFile.addMetric(filter.getFilterMetrics());
+            MetricsUtils.saveMetrics(filterMetricsFile, filterMetricsFileUri);
+        }
 
         //Closes Bwa image, kmer filter, and metrics file if used
         //Note the host Bwa image before must be unloaded before trying to load the pathogen image
@@ -152,6 +169,13 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         //Clean up header
         header = PSBwaUtils.removeUnmappedHeaderSequences(header, readsFinal, logger);
+
+        //Log read counts
+        if (scoreMetricsFileUri != null) {
+            final MetricsFile<PSScoreMetrics, Long> scoreMetricsFile = filterMetricsFileUri != null ? getMetricsFile() : null;
+            scoreMetricsFile.addMetric(PSScorer.getScoreMetrics(readsFinal, numTotalReads));
+            MetricsUtils.saveMetrics(scoreMetricsFile, scoreMetricsFileUri);
+        }
 
         //Write reads to BAM, if specified
         if (outputPath != null) {

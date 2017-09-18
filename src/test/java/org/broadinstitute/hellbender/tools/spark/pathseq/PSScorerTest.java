@@ -599,4 +599,32 @@ public class PSScorerTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testGetScoreMetrics() {
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final List<GATKRead> reads = new ArrayList<>();
+
+        final JavaRDD<GATKRead> emptyReads = ctx.parallelize(reads);
+        final PSScoreMetrics emptyMetrics = PSScorer.getScoreMetrics(emptyReads, 0L);
+        Assert.assertEquals((long) emptyMetrics.MAPPED_READS, 0L);
+        Assert.assertEquals((long) emptyMetrics.UNMAPPED_READS, 0L);
+
+        final int numMappedReads = 17;
+        for (int i = 0; i < numMappedReads; i++) {
+            final GATKRead read = ArtificialReadUtils.createRandomRead(0);
+            read.setAttribute(PSScorer.HITS_TAG, PSTaxonomyConstants.ROOT_ID);
+            reads.add(read);
+        }
+        final int numUnappedReads = 42;
+        for (int i = 0; i < numUnappedReads; i++) {
+            final GATKRead read = ArtificialReadUtils.createRandomRead(0);
+            reads.add(read);
+        }
+        final JavaRDD<GATKRead> testReads = ctx.parallelize(reads);
+        final PSScoreMetrics testMetrics = PSScorer.getScoreMetrics(testReads, numMappedReads + numUnappedReads);
+        Assert.assertEquals((long) testMetrics.MAPPED_READS, numMappedReads);
+        Assert.assertEquals((long) testMetrics.UNMAPPED_READS, numUnappedReads);
+
+    }
+
 }
