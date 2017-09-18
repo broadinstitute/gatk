@@ -105,10 +105,10 @@ workflow CramToUnmappedBams {
   Int sort_sam_disk_size
   Int validate_sam_file_disk_size
 
-  String input_file_name = select_first([input_cram, input_bam])
-  String bam_from_cram_name = basename(input_file_name, ".cram") + ".bam"
-
   if(defined(input_cram)) {
+    String input_cram_string = select_first([input_cram])
+    String bam_from_cram_name = basename(input_cram_string, ".cram") + ".bam"
+
     call CramToBam {
       input:
         input_cram = input_cram,
@@ -129,16 +129,18 @@ workflow CramToUnmappedBams {
   }
 
   scatter (unmapped_bam in RevertSam.unmapped_bams) {
+    String output_basename = sub(sub(unmapped_bam, dir_pattern, ""), ".coord.sorted.unmapped_bam$", "")
+
     call SortSam {
       input:
         input_bam = unmapped_bam,
-        sorted_bam_name = sub(sub(unmapped_bam, dir_pattern, ""), ".coord.sorted.unmapped.bam$", "") + ".unmapped.bam",
+        sorted_bam_name = output_basename + ".unmapped.bam",
         disk_size = sort_sam_disk_size
     }
     call ValidateSamFile {
       input:
         input_bam = SortSam.sorted_bam,
-        report_filename = sub(sub(SortSam.sorted_bam, dir_pattern, ""), ".unmapped.bam$", "") + ".validation_report",
+        report_filename = output_basename + ".validation_report",
         disk_size = validate_sam_file_disk_size
     }
   }
