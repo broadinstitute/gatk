@@ -1,9 +1,33 @@
+task GenerateOutputMap {
+  File input_bam
+  Int disk_size
+
+  command {
+    samtools view -H ${input_bam} | grep @RG | cut -f2 | tr -d ID: > readgroups.txt
+
+    echo -e "READ_GROUP_ID\tOUTPUT" > output_map.tsv
+    
+    for rg in `cat readgroups.txt`; do
+      echo -e "$rg\t$rg.unmapped.bam" >> output_map.tsv
+    done
+  }
+
+  runtime {
+    docker: "broadinstitute/genomes-in-the-cloud:2.2.3-1469027018"
+    disks: "local-disk " + disk_size + " HDD"
+    memory: "1 GB"
+  }
+  output {
+    File output_map = "output_map.tsv"
+  }
+}
+
 task CramToBam {
-  File? input_cram
+  File input_cram
   String output_bam_name
-  File? ref_fasta
-  File? ref_fasta_index
-  Int? disk_size
+  File ref_fasta
+  File ref_fasta_index
+  Int disk_size
 
   command {
     samtools view -1 -h -T ${ref_fasta} -o ${output_bam_name} ${input_cram}
@@ -98,7 +122,6 @@ workflow CramToUnmappedBams {
   File? input_cram
   File? ref_fasta
   File? ref_fasta_index
-  File output_map
   String dir_pattern = "gs://.*/"
   Int? cram_to_bam_disk_size
   Int revert_sam_disk_size
@@ -106,25 +129,31 @@ workflow CramToUnmappedBams {
   Int validate_sam_file_disk_size
 
   if(defined(input_cram)) {
-    String input_cram_string = select_first([input_cram])
-    String bam_from_cram_name = basename(input_cram_string, ".cram") + ".bam"
+    String input_cram_path = select_first([input_cram])
+    String bam_from_cram_name = basename(input_cram_path, ".cram") + ".bam"
 
     call CramToBam {
       input:
-        input_cram = input_cram,
+        input_cram = select_first([input_cram]),
         output_bam_name = bam_from_cram_name,
-        ref_fasta = ref_fasta,
-        ref_fasta_index = ref_fasta_index,
-        disk_size = cram_to_bam_disk_size
+        ref_fasta = select_first([ref_fasta]),
+        ref_fasta_index = select_first([ref_fasta_index]),
+        disk_size = select_first([cram_to_bam_disk_size])
     }
   }
 
   File input_data = select_first([CramToBam.output_bam, input_bam])
 
+  call GenerateOutputMap {
+    input:
+      input_bam = input_data,
+      disk_size = revert_sam_disk_size
+  }
+
   call RevertSam {
     input:
       input_bam = input_data,
-      output_map = output_map,
+      output_map = GenerateOutputMap.output_map,
       disk_size = revert_sam_disk_size
   }
 

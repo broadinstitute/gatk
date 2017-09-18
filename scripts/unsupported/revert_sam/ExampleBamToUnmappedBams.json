@@ -1,7 +1,0 @@
-{
-  "CramToUnmappedBams.input_bam": "String",
-  "CramToUnmappedBams.output_map": "String",
-  "CramToUnmappedBams.revert_sam_disk_size": Int,
-  "CramToUnmappedBams.sort_sam_disk_size": Int,
-  "CramToUnmappedBams.validate_sam_file_disk_size": Int 
-}
