@@ -1,0 +1,10 @@
+{
+  "CramToUnmappedBams.input_cram": "gs://input_file.cram",
+  "CramToUnmappedBams.ref_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "CramToUnmappedBams.ref_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "CramToUnmappedBams.output_map": "gs://input_file_output_map.tsv",
+  "CramToUnmappedBams.cram_to_bam_disk_size": 10,
+  "CramToUnmappedBams.revert_sam_disk_size": 10,
+  "CramToUnmappedBams.sort_sam_disk_size": 10,
+  "CramToUnmappedBams.validate_sam_file_disk_size": 10
+}

@@ -1,0 +1,7 @@
+{
+  "CramToUnmappedBams.input_bam": "gs://input_file.bam",
+  "CramToUnmappedBams.output_map": "gs://input_file_output_map.tsv",
+  "CramToUnmappedBams.revert_sam_disk_size": 10,
+  "CramToUnmappedBams.sort_sam_disk_size": 10,
+  "CramToUnmappedBams.validate_sam_file_disk_size": 10 
+}
