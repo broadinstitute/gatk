@@ -66,7 +66,9 @@ task GenerateOutputMap {
   Int disk_size
 
   command {
-    samtools view -H ${input_bam} | grep @RG | cut -f2 | tr -d ID: > readgroups.txt
+    set -e
+    
+    samtools view -H ${input_bam} | grep @RG | cut -f2 | sed s/ID:// > readgroups.txt
 
     echo -e "READ_GROUP_ID\tOUTPUT" > output_map.tsv
     
