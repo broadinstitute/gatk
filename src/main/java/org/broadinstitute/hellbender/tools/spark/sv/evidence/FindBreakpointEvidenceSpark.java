@@ -527,25 +527,40 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(tigSeqs);
                 result = new AlignedAssemblyOrExcuse(intervalAndReads._1(), assembly, secondsInAssembly, alignments);
             }
+            final int nTigs = tigSeqs.size();
+            if ( nTigs == 0 ) {
+                return result;
+            }
+
+            final String tmpDir = "/tmp/fbes";
+            new File(tmpDir).mkdir();
             final List<SAMSequenceRecord> seqRecs;
-            final String fastaFile = String.format("%s/%s.fasta", fastqDir, assemblyName);
-            try ( final BufferedOutputStream os = new BufferedOutputStream(BucketUtils.createFile(fastaFile)) ) {
-                int nTigs = tigSeqs.size();
-                seqRecs = new ArrayList<>(nTigs);
-                for ( int tigId = 0; tigId != nTigs; ++tigId ) {
-                    final String seqName = assemblyName + "." + tigId;
-                    final byte[] seq = tigSeqs.get(tigId);
-                    os.write((">" + seqName + "\n").getBytes());
-                    os.write(seq);
-                    os.write('\n');
-                    seqRecs.add(new SAMSequenceRecord(seqName, seq.length));
+            final String fastaFile = String.format("%s/%s.fasta", tmpDir, assemblyName);
+            final String fastaFileHDFS = String.format("%s/%s.fasta", fastqDir, assemblyName);
+            try ( final BufferedOutputStream os1 = new BufferedOutputStream(BucketUtils.createFile(fastaFileHDFS)) ) {
+                try ( final BufferedOutputStream os2 = new BufferedOutputStream(BucketUtils.createFile(fastaFile)) ) {
+                    seqRecs = new ArrayList<>(nTigs);
+                    for (int tigId = 0; tigId != nTigs; ++tigId) {
+                        final String seqName = assemblyName + "." + tigId;
+                        final byte[] line1 = (">" + seqName + "\n").getBytes();
+                        final byte[] seq = tigSeqs.get(tigId);
+                        os1.write(line1);
+                        os1.write(seq);
+                        os1.write('\n');
+                        os2.write(line1);
+                        os2.write(seq);
+                        os2.write('\n');
+                        seqRecs.add(new SAMSequenceRecord(seqName, seq.length));
+                    }
                 }
             }
             catch ( IOException ioe ) {
                 throw new GATKException("Unable to write fasta file of contigs from assembly "+assemblyName, ioe);
             }
-            final String imageFile = String.format("%s/%s.img", fastqDir, assemblyName);
+            final String imageFile = String.format("%s/%s.img", tmpDir, assemblyName);
             BwaMemIndex.createIndexImageFromFastaFile(fastaFile, imageFile);
+            try { BucketUtils.deleteFile(fastaFile); }
+            catch ( IOException ioe ) { throw new GATKException("unable to delete "+fastaFile, ioe); }
             try ( final BwaMemIndex assemblyIndex = new BwaMemIndex(imageFile) ) {
                 List<String> refNames = assemblyIndex.getReferenceContigNames();
                 final SAMSequenceDictionary dict = new SAMSequenceDictionary(seqRecs);
@@ -561,7 +576,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         final int nReads = readsList.size();
                         for ( int readId = 0; readId != nReads; ++readId ) {
                             final SVFastqUtils.FastqRead read = readsList.get(readId);
-                            final String readName = read.getName().substring(0, read.getName().indexOf('/'));
+                            final String readName = read.getName();
                             final byte[] bases = read.getBases();
                             final byte[] quals = read.getQuals();
                             for ( final BwaMemAlignment alignment : alignments.get(readId) ) {
@@ -574,6 +589,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                     }
                 }
             }
+            try { BucketUtils.deleteFile(imageFile); }
+            catch ( IOException ioe ) { throw new GATKException("unable to delete "+imageFile, ioe); }
             return result;
         }
     }
