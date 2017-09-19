@@ -1,0 +1,15 @@
+{
+  "##_COMMENT1": "Inputs required only for Cram to Unmapped Bam conversion",
+  "CramToUnmappedBams.input_cram": "String",
+  "CramToUnmappedBams.ref_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "CramToUnmappedBams.ref_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "CramToUnmappedBams.cram_to_bam_disk_size": Int,
+
+  "##_COMMENT2": "Inputs required only for Bam to Unmapped Bam conversion",
+  "CramToUnmappedBams.input_bam": "String",
+
+  "##_COMMENT3": "Inputs required for both Cram/Bam to Unmapped Bam conversion",
+  "CramToUnmappedBams.revert_sam_disk_size": Int,
+  "CramToUnmappedBams.sort_sam_disk_size": Int,
+  "CramToUnmappedBams.validate_sam_file_disk_size": Int
+}
