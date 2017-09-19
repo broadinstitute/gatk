@@ -103,59 +103,6 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     }
 
     /**
-     * A <Kmer,count> pair.
-     */
-    @DefaultSerializer(KmerAndCount.Serializer.class)
-    @VisibleForTesting
-    final static class KmerAndCount extends SVKmerLong implements Map.Entry<SVKmer, Integer> {
-        private int count;
-
-        KmerAndCount( final SVKmerLong kmer ) { this(kmer,1); }
-
-        KmerAndCount( final SVKmerLong kmer, final int count ) {
-            super(kmer);
-            this.count = count;
-        }
-
-        private KmerAndCount( final Kryo kryo, final Input input ) {
-            super(kryo, input);
-            count = input.readInt();
-        }
-
-        protected void serialize( final Kryo kryo, final Output output ) {
-            super.serialize(kryo, output);
-            output.writeInt(count);
-        }
-
-        @Override
-        public SVKmer getKey() { return new SVKmerLong(this); }
-        @Override
-        public Integer getValue() { return count; }
-        @Override
-        public Integer setValue( final Integer count ) {
-            final Integer result = this.count;
-            this.count = count;
-            return result;
-        }
-        public int grabCount() { return count; }
-        public void bumpCount() { count += 1; }
-        public void bumpCount( final int extra ) { count += extra; }
-
-        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<KmerAndCount> {
-            @Override
-            public void write( final Kryo kryo, final Output output, final KmerAndCount kmerAndInterval) {
-                kmerAndInterval.serialize(kryo, output);
-            }
-
-            @Override
-            public KmerAndCount read(final Kryo kryo, final Input input,
-                                     final Class<KmerAndCount> klass ) {
-                return new KmerAndCount(kryo, input);
-            }
-        }
-    }
-
-    /**
      * Do a map/reduce on an RDD of genomic sequences:
      * Kmerize, mapping to a pair <kmer,1>, reduce by summing values by key, filter out <kmer,N> where
      * N <= MAX_KMER_FREQ, and collect the high frequency kmers back in the driver.

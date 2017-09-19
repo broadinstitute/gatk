@@ -68,12 +68,8 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
             final SimpleInterval interval = new SimpleInterval(rec.getSequenceName(), 1, rec.getSequenceLength());
             final byte[] bases = ref.getReferenceBases(null, interval).getBases();
-            final SVKmerizer kmerizer = new SVKmerizer(bases, KMER_SIZE, new SVKmerLong());
-            while ( kmerizer.hasNext() ) {
-                final SVKmer kmer = kmerizer.next().canonical(KMER_SIZE);
-                final Long currentCount = kmerMap.getOrDefault(kmer, 0L);
-                kmerMap.put(kmer, currentCount+1);
-            }
+            SVKmerizer.canonicalStream(bases, KMER_SIZE, new SVKmerLong())
+                    .forEach(kmer -> kmerMap.put(kmer, kmerMap.getOrDefault(kmer, 0L) + 1));
         }
         final Iterator<Map.Entry<SVKmer, Long>> kmerIterator = kmerMap.entrySet().iterator();
         while ( kmerIterator.hasNext() ) {
