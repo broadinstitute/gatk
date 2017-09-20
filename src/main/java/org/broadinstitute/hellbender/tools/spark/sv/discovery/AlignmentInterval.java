@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Each assembled contig should have at least one such accompanying structure, or 0 when it is unmapped.
@@ -197,7 +199,11 @@ public final class AlignmentInterval {
 
     @VisibleForTesting
     public AlignmentInterval(final BwaMemAlignment alignment, final List<String> refNames, final int unclippedContigLength) {
-
+        Utils.nonNull(refNames);
+        Utils.nonNull(alignment);
+        Utils.validateArg(SAMFlag.READ_UNMAPPED.isUnset(alignment.getSamFlag()), "the input alignment must be mapped");
+        final int refIndex = alignment.getRefId();
+        Utils.validateArg(refNames.size() > refIndex, "the referene name list provided must be larger than the reference idx in the alignment");
         // +1 because the BwaMemAlignment class has 0-based coordinate system
         this.referenceSpan = new SimpleInterval(refNames.get(alignment.getRefId()),
                 alignment.getRefStart() + 1, alignment.getRefEnd());
@@ -311,6 +317,19 @@ public final class AlignmentInterval {
         output.writeInt(alnScore);
         output.writeBoolean(isFromSplitGapAlignment);
         output.writeBoolean(hasUndergoneOverlapRemoval);
+    }
+
+    /**
+     * Composes a list of alignment-interval records based on a {@link String} representation.
+     * @param str the input string representation.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code str} is {@code null} or is not a legal
+     * representation of a sequence of {@link AlignmentInterval alignment-intervals}.
+     */
+    public static List<AlignmentInterval> decodeList(final String str) {
+        Utils.nonNull(str);
+        final String[] parts = str.replaceAll(";$", "").split(";");
+        return Stream.of(parts).map(String::trim).filter(s -> !s.isEmpty()).map(AlignmentInterval::new).collect(Collectors.toList());
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentInterval> {

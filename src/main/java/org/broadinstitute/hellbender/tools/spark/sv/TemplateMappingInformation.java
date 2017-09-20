@@ -19,13 +19,11 @@ public class TemplateMappingInformation implements Serializable {
 
     public String name;
     public final ReadPairOrientation pairOrientation;
-    public final OptionalDouble firstAlignmentScore;
-    public final OptionalDouble secondAlignmentScore;
+    public OptionalDouble firstAlignmentScore = OptionalDouble.empty();
+    public OptionalDouble secondAlignmentScore = OptionalDouble.empty();
     public final OptionalInt insertSize;
 
     public TemplateMappingInformation(final double firstAlignment, final double secondAlignment, final ReadPairOrientation orientation) {
-        Utils.nonNull(firstAlignment);
-        Utils.nonNull(secondAlignment);
         Utils.nonNull(orientation);
         if (orientation.isProper()) {
             throw new IllegalArgumentException("you cannot create a mapping information object with proper orientation without indicating the insert size");
@@ -33,6 +31,16 @@ public class TemplateMappingInformation implements Serializable {
         firstAlignmentScore = OptionalDouble.of(firstAlignment);
         secondAlignmentScore = OptionalDouble.of(secondAlignment);
         pairOrientation = orientation;
+        insertSize = OptionalInt.empty();
+    }
+
+    public TemplateMappingInformation(final double alignment, final boolean isFirst) {
+        if (isFirst) {
+            firstAlignmentScore = OptionalDouble.of(alignment);
+        } else {
+            secondAlignmentScore = OptionalDouble.of(alignment);
+        }
+        pairOrientation = ReadPairOrientation.XX;
         insertSize = OptionalInt.empty();
     }
 
@@ -46,14 +54,6 @@ public class TemplateMappingInformation implements Serializable {
         secondAlignmentScore = OptionalDouble.of(secondAlignment);
         this.insertSize = OptionalInt.of(insertSize);
         pairOrientation = ReadPairOrientation.PROPER;
-    }
-
-    public TemplateMappingInformation(final double firstAlignment) {
-        Utils.nonNull(firstAlignment);
-        firstAlignmentScore = OptionalDouble.of(firstAlignment);
-        secondAlignmentScore = OptionalDouble.empty();
-        insertSize = OptionalInt.empty();
-        pairOrientation = ReadPairOrientation.XX;
     }
 
     public TemplateMappingInformation() {

@@ -132,4 +132,14 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
             }
         }
     }
+
+    default void fill(final double value) {
+        final int numberOfAlleles = numberOfAlleles();
+        final int numberOfReads = numberOfReads();
+        for (int i = 0; i < numberOfAlleles; i++) {
+            for (int j = 0; j < numberOfReads; j++) {
+                set(i, j, value);
+            }
+        }
+    }
 }

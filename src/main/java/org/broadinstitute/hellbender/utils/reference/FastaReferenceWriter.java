@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.utils.reference;
 
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.io.CountingOutputStream;
+import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.apache.commons.io.output.NullWriter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -17,36 +20,131 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Utility class to compose FASTA formatted reference files.
+ * Writes a FASTA formatted reference file.
+ * <p>
+ *     In addition it also can compose the index and dictionary files for the outputted writer.
+ * </p>
+ * <p>
+ *    Example:
+ *    <code>
+ *        String[] seqNames = ...;
+ *        byte[][] seqBases = ...;
+ *        ...
+ *        try (final FastaReferenceWriter writer = new FastaReferenceFileWriter(outputFile)) {
+ *            for (int i = 0; i < seqNames.length; i++) {
+ *              writer.startSequence(seqNames[i]).appendBases(seqBases[i]);
+ *            }
+ *        }
+ *    </code>
+ * </p>
+ * <p>
+ *     The two main operations that one can invoke on a opened writer is {@link #startSequence} and {@link #appendBases}.
+ *     The former indicates that we are going to append a new sequence to the output and is invoked once per sequence.
+ *     The latter adds bases to the current sequence and can be called as many times as is needed.
+ * </p>
+ * <p>
+ *     The writer will make sure that the output adheres to the FASTA reference sequence file format restrictions:
+ *     <ul>
+ *         <li>Sequence names are valid (non-empty, without space/blank, control characters),</li>
+ *         <li>sequence description are valid (without control characters),</li>
+ *         <li>bases are valid nucleotides ore IUPAC redundancy codes and X [ACGTNX...] (lower or uppercase are accepted),</li>
+ *         <li>sequence cannot have 0 length,</li>
+ *         <li>and that each sequence can only appear once in the output</li>
+ *     </ul>
+ * </p>
  */
-public class FastaReferenceFileWriter implements AutoCloseable {
+public class FastaReferenceWriter implements AutoCloseable {
 
+    /**
+     * Default number of bases per line.
+     */
     public static final int DEFAULT_BASES_PER_LINE = 60;
 
+    /**
+     * Sequence header start character.
+     */
     public static final char HEADER_START_CHAR = '>';
+
+    /**
+     * Character used to separate the sequence name and the description if any.
+     */
     public static final char HEADER_NAME_AND_DESCRIPTION_SEPARATOR = ' ';
 
+    /**
+     * Convenient cached {@code byte[]} representation of the line separator.
+     */
     private static final byte[] LINE_SEPARATOR = System.lineSeparator().getBytes();
 
-    // we use this counter for basic byte array outputs.
-    private final CountingOutputStream fastaOutput;
-    // we use the writer for String / number and other formatted outputs.
-    private final Writer fastaWriter;
-    private final Writer faiWriter;
+    /**
+     * Output stream to the main FASTA output.
+     * <p>
+     *     We use it also to count the number of bytes so far outputted thus the offset included in
+     *     the index file entry.
+     * </p>
+     */
+    private final CountingOutputStream fastaStream;
+
+    /**
+     * Writer for the index file.
+     */
+    private final Writer indexWriter;
+
+    /**
+     * Output stream to the output dictionary.
+     */
     private final OutputStream dictOutput;
+
+    /**
+     * Default number of bases per line to be applied unless one is
+     */
     private final int defaultBasePerLine;
+
+    /**
+     * Records the sequences that have been already fully appended to this writer.
+     * <p>
+     *     The key is the sequence name.
+     * </p>
+     * <p>
+     *     The value is the sequence length in bases.
+     * </p>
+     */
     private final Map<String, Long> sequenceNamesAndSizes;
-    private int currentBasePerLine;
-    private int lineBasesCount;
+
+    /**
+     * Bases per line to be applied to the sequence that is been currently appended to the output.
+     */
+    private int currentBasesPerLine;
+
+    /**
+     * Holds the number of bases in the current output line.
+     */
+    private int currentLineBasesCount;
+
+    /**
+     * Holds the number of bases so far appended for the current sequence.
+     */
     private long currentBasesCount;
+
+    /**
+     * Holds the FASTA output file offset for the current sequence.
+     */
     private long currentSequenceOffset;
+
+    /**
+     * Holds the name of the sequence that is been appended currently.
+     */
     private String currentSequenceName;
+
+    /**
+     * Flag indicating whether this writer has been already closed.
+     */
     private boolean closed;
 
     /**
@@ -67,7 +165,7 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalArgumentException if {@code fastaFile} is {@code null}.
      * @throws IOException if such exception is thrown when accessing the output path resources.
      */
-    public FastaReferenceFileWriter(final Path fastaFile, final boolean makeFaiOutput, final boolean makeDictOutput)
+    public FastaReferenceWriter(final Path fastaFile, final boolean makeFaiOutput, final boolean makeDictOutput)
         throws IOException
     {
         this(fastaFile, DEFAULT_BASES_PER_LINE, makeFaiOutput, makeDictOutput);
@@ -89,8 +187,8 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalArgumentException if {@code fastaFile} is {@code null} or {@code basesPerLine} is 0 or negative.
      * @throws IOException if such exception is thrown when accessing the output path resources.
      */
-    public FastaReferenceFileWriter(final Path fastaFile, final int basesPerLine, final boolean makeFaiOutput,
-                                    final boolean makeDictOutput)
+    public FastaReferenceWriter(final Path fastaFile, final int basesPerLine, final boolean makeFaiOutput,
+                                final boolean makeDictOutput)
         throws IOException
     {
         this(Utils.nonNull(fastaFile, "the input fasta-file cannot be null"),
@@ -110,15 +208,15 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * </p>
      *
      * @param fastaFile the output fasta file path.
-     * @param faiFile the path of the index file, if requested, {@code null} if none should be generated.
+     * @param indexFile the path of the index file, if requested, {@code null} if none should be generated.
      * @param dictFile the path of the dictFile, if requested, {@code null} if nono should be generated.
      * @throws IllegalArgumentException if {@code fastaFile} is {@code null}.
      * @throws IOException if such exception is thrown when accessing the output path resources.
      */
-    public FastaReferenceFileWriter(final Path fastaFile, final Path faiFile, final Path dictFile)
+    public FastaReferenceWriter(final Path fastaFile, final Path indexFile, final Path dictFile)
         throws IOException
     {
-        this(fastaFile, DEFAULT_BASES_PER_LINE, faiFile, dictFile);
+        this(fastaFile, DEFAULT_BASES_PER_LINE, indexFile, dictFile);
     }
 
     /**
@@ -129,29 +227,28 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * </p>
      *
      * @param fastaFile the output fasta file path.
-     * @param faiFile the path of the index file, if requested, {@code null} if none should be generated.
+     * @param indexFile the path of the index file, if requested, {@code null} if none should be generated.
      * @param dictFile the path of the dictFile, if requested, {@code null} if nono should be generated.
      * @throws IllegalArgumentException if {@code fastaFile} is {@code null} or {@code basesPerLine} is 0 or negative.
      * @throws IOException if such exception is thrown when accessing the output path resources.
      */
-    public FastaReferenceFileWriter(final Path fastaFile, final int basesPerLine, final Path faiFile, final Path dictFile)
+    public FastaReferenceWriter(final Path fastaFile, final int basesPerLine, final Path indexFile, final Path dictFile)
         throws IOException
     {
         this(BucketUtils.createFile(fastaFile.toString()),
              basesPerLine,
-             faiFile == null ? null : BucketUtils.createFile(faiFile.toString()),
+             indexFile == null ? null : BucketUtils.createFile(indexFile.toString()),
              dictFile == null ? null : BucketUtils.createFile(dictFile.toString()));
     }
 
     // The actual common constructor, all other constructor delegate on this one:
-    private FastaReferenceFileWriter(final OutputStream fastaOutput,
-                                     final int basesPerLine,
-                                     final OutputStream faiOutput,
-                                     final OutputStream dictOutput) {
+    private FastaReferenceWriter(final OutputStream fastaOutput,
+                                 final int basesPerLine,
+                                 final OutputStream indexOutput,
+                                 final OutputStream dictOutput) {
         this.defaultBasePerLine = checkBasesPerLine(basesPerLine);
-        this.fastaOutput = new CountingOutputStream(fastaOutput);
-        this.fastaWriter = new OutputStreamWriter(fastaOutput);
-        this.faiWriter = faiOutput == null ? null : new OutputStreamWriter(faiOutput);
+        this.fastaStream = new CountingOutputStream(fastaOutput);
+        this.indexWriter = indexOutput == null ? new NullWriter() : new OutputStreamWriter(indexOutput);
         this.dictOutput = dictOutput;
         this.sequenceNamesAndSizes = new LinkedHashMap<>();
     }
@@ -180,7 +277,6 @@ public class FastaReferenceFileWriter implements AutoCloseable {
             final char ch = name.charAt(i);
             Utils.validateArg(!Character.isWhitespace(ch), "the input name contains a blank characters: '" + StringUtils.escape(name) + "'");
             Utils.validateArg(!Character.isISOControl(ch), "the input name contains control characters: '" + StringUtils.escape(name) + "'");
-            Utils.validateArg(ch != HEADER_START_CHAR, "the input name contains '" + HEADER_START_CHAR + "' character: '" + StringUtils.escape(name) + "'");
         }
         return name;
     }
@@ -240,7 +336,7 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalStateException if no base was added to the previous base or the writer is already closed.
      * @throws IOException if such exception is thrown when writing into the output resources.
      */
-    public FastaReferenceFileWriter startSequence(final String sequenceName)
+    public FastaReferenceWriter startSequence(final String sequenceName)
         throws IOException
     {
         return startSequence(sequenceName, "", defaultBasePerLine);
@@ -273,7 +369,7 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalStateException if no base was added to the previous base or the writer is already closed.
      * @throws IOException if such exception is thrown when writing into the output resources.
      */
-    public FastaReferenceFileWriter startSequence(final String sequenceName, final int basesPerLine)
+    public FastaReferenceWriter startSequence(final String sequenceName, final int basesPerLine)
         throws IOException
     {
         return startSequence(sequenceName, "", checkBasesPerLine(basesPerLine));
@@ -311,7 +407,7 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalStateException if no base was added to the previous base or the writer is already closed.
      * @throws IOException if such exception is thrown when writing into the output resources.
      */
-    public FastaReferenceFileWriter startSequence(final String sequenceName, final String description)
+    public FastaReferenceWriter startSequence(final String sequenceName, final String description)
         throws IOException
     {
         return startSequence(sequenceName, description, defaultBasePerLine);
@@ -349,11 +445,12 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalStateException if no base was added to the previous base or the writer is already closed.
      * @throws IOException if such exception is thrown when writing into the output resources.
      */
-    public FastaReferenceFileWriter startSequence(final String sequenceName, final String description, final int basesPerLine)
+    public FastaReferenceWriter startSequence(final String sequenceName, final String description, final int basesPerLine)
         throws IOException
     {
         assertIsNotClosed();
         checkSequenceName(sequenceName);
+        Charset.defaultCharset();
         final String nonNullDescription = checkDescription(description);
         checkBasesPerLine(basesPerLine);
         closeSequence();
@@ -361,13 +458,15 @@ public class FastaReferenceFileWriter implements AutoCloseable {
             throw new IllegalArgumentException("the input sequence name '" + sequenceName + "' has already been added");
         }
         currentSequenceName = sequenceName;
-        currentBasePerLine = basesPerLine;
-        fastaWriter.append(HEADER_START_CHAR).append(sequenceName);
+        currentBasesPerLine = basesPerLine;
+        final StringBuilder builder = new StringBuilder(sequenceName.length() + nonNullDescription.length() + 10);
+        builder.append(HEADER_START_CHAR).append(sequenceName);
         if (!nonNullDescription.isEmpty()) {
-            fastaWriter.append(HEADER_NAME_AND_DESCRIPTION_SEPARATOR).append(nonNullDescription);
+            builder.append(HEADER_NAME_AND_DESCRIPTION_SEPARATOR).append(nonNullDescription);
         }
-        fastaWriter.append(System.lineSeparator()).flush();
-        currentSequenceOffset = fastaOutput.getCount();
+        fastaStream.write(builder.toString().getBytes());
+        fastaStream.write(LINE_SEPARATOR);
+        currentSequenceOffset = fastaStream.getCount();
         return this;
     }
 
@@ -378,22 +477,20 @@ public class FastaReferenceFileWriter implements AutoCloseable {
             if (currentBasesCount == 0) {
                 throw new IllegalStateException("no base was added");
             }
-            closeFaiSequence();
+            writeIndexEntry();
             sequenceNamesAndSizes.put(currentSequenceName, currentBasesCount);
-            fastaOutput.write(LINE_SEPARATOR);
+            fastaStream.write(LINE_SEPARATOR);
             currentBasesCount = 0;
         }
     }
 
-    private void closeFaiSequence()
+    private void writeIndexEntry()
         throws IOException
     {
-        if (faiWriter != null) {
-            faiWriter.append(currentSequenceName).append('\t')
+        indexWriter.append(currentSequenceName).append('\t')
                      .append(String.valueOf(currentBasesCount)).append('\t')
                      .append(String.valueOf(currentSequenceOffset)).append('\t')
-                     .append(String.valueOf(currentBasePerLine)).append(System.lineSeparator());
-        }
+                     .append(String.valueOf(currentBasesPerLine + LINE_SEPARATOR.length)).append(System.lineSeparator());
     }
 
     /**
@@ -406,7 +503,7 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */
-    public FastaReferenceFileWriter appendBases(final byte[] bases)
+    public FastaReferenceWriter appendBases(final byte[] bases)
         throws IOException
     {
         return appendBases(bases, 0, bases.length);
@@ -425,7 +522,7 @@ public class FastaReferenceFileWriter implements AutoCloseable {
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */
-    public FastaReferenceFileWriter appendBases(final byte[] bases, final int offset, final int length)
+    public FastaReferenceWriter appendBases(final byte[] bases, final int offset, final int length)
         throws IOException
     {
         assertIsNotClosed();
@@ -437,15 +534,16 @@ public class FastaReferenceFileWriter implements AutoCloseable {
         final int to = offset + length;
         Utils.validateArg(to >= bases.length, "the length + offset goes beyond the end of " +
                 "the input base array: '" + to + "' >= '" + bases.length + "'");
+
         int next = offset;
         while (next < to) {
-            if (lineBasesCount == currentBasePerLine) {
-                fastaOutput.write(LINE_SEPARATOR);
-                lineBasesCount = 0;
+            if (currentLineBasesCount == currentBasesPerLine) {
+                fastaStream.write(LINE_SEPARATOR);
+                currentLineBasesCount = 0;
             }
-            int nextLength = Math.min(to - next, currentBasePerLine);
-            fastaOutput.write(bases, next, nextLength);
-            lineBasesCount += nextLength;
+            int nextLength = Math.min(to - next, currentBasesPerLine);
+            fastaStream.write(bases, next, nextLength);
+            currentLineBasesCount += nextLength;
             next += nextLength;
         }
         currentBasesCount += length;
@@ -476,10 +574,8 @@ public class FastaReferenceFileWriter implements AutoCloseable {
     {
         if (!closed) {
             closeSequence();
-            fastaWriter.close();
-            //Implied by the one above:
-            //fastaOutput.close();
-            if (faiWriter != null) faiWriter.close();
+            fastaStream.close();
+            indexWriter.close();
             if (dictOutput != null) {
                 outputDictionary();
                 dictOutput.close();
@@ -497,7 +593,58 @@ public class FastaReferenceFileWriter implements AutoCloseable {
         );
         final SAMFileHeader header = new SAMFileHeader();
         header.setSequenceDictionary(dictionary);
-        try (@SuppressWarnings("unused") final SAMFileWriter samWriter =
-                     new SAMFileWriterFactory().makeSAMWriter(header, false, dictOutput)) {}
+
+        // use a empty try-resource results in compilation warnings due to the empty
+        // try body, so I do the traditional try-catch here.
+        try {
+            new SAMFileWriterFactory().makeSAMWriter(header, false, dictOutput);
+        } catch (final SAMException ex) {
+            throw new GATKException(ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Convenient method to write a FASTA file with a single sequence.
+     *
+     * @param whereTo the path to. must not be null.
+     * @param makeIndex whether the index file should be written at its standard location.
+     * @param makeDict whether the dictionary file should be written at it standard location.
+     * @param name the sequence name, cannot contain white space, or control chracter or the header start character.
+     * @param description the sequence description, "" if no description.
+     * @param bases the sequence bases, cannot be {@code null}.
+     * @throws IOException if such exception is thrown when writing in the output resources.
+     */
+    public static void writeSingleSequenceReference(final Path whereTo, final boolean makeIndex,
+                                                    final boolean makeDict, final String name,
+                                                    final String description, final byte[] bases)
+            throws IOException
+    {
+        try (final FastaReferenceWriter writer = new FastaReferenceWriter(whereTo, makeIndex, makeDict)) {
+            writer.startSequence(name, description);
+            writer.appendBases(bases);
+        }
+    }
+
+    /**
+     * Convenient method to write a FASTA file with a single sequence.
+     *
+     * @param whereTo the path to. must not be null.
+     * @param basesPerLine number of bases per line. must be 1 or greater.
+     * @param makeIndex whether the index file should be written at its standard location.
+     * @param makeDict whether the dictionary file should be written at it standard location.
+     * @param name the sequence name, cannot contain white space, or control chracter or the header start character.
+     * @param description the sequence description, "" if no description.
+     * @param bases the sequence bases, cannot be {@code null}.
+     * @throws IOException if such exception is thrown when writing in the output resources.
+     */
+    public static void writeSingleSequenceReference(final Path whereTo, final int basesPerLine, final boolean makeIndex,
+                                                    final boolean makeDict, final String name,
+                                                    final String description, final byte[] bases)
+        throws IOException
+    {
+        try (final FastaReferenceWriter writer = new FastaReferenceWriter(whereTo, basesPerLine, makeIndex, makeDict)) {
+            writer.startSequence(name, description);
+            writer.appendBases(bases);
+        }
     }
 }

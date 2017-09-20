@@ -557,4 +557,17 @@ public final class CigarUtils {
             throw new IllegalArgumentException("the input cigar only have clipping operations");
         }
     }
+
+    /**
+     * Total number of bases that are match aligned regardless wether they are matches or mismatches.
+     * @param cigar
+     * @return never {@code null}.
+     */
+    public static int countAlignedBases(final Cigar cigar) {
+        Utils.nonNull(cigar);
+        return cigar.getCigarElements().stream()
+                .filter(ce -> ce.getOperator().isAlignment())
+                .mapToInt(CigarElement::getLength)
+                .sum();
+    }
 }

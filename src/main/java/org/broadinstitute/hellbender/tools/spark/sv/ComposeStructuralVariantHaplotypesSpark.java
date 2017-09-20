@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSp
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
@@ -311,8 +310,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                     contigs.forEach(contig -> {
                         final AlignedContig referenceAlignment = referenceAlignedContigs.get(contig.contigName);
                         final AlignedContig alternativeAlignment = alternativeAlignedContigs.get(contig.contigName);
-                        final AlignedContigScore referenceScore = calculateAlignedContigScore(referenceAlignment);
-                        final AlignedContigScore alternativeScore = calculateAlignedContigScore(alternativeAlignment);
+                        final AlignmentScore referenceScore = calculateAlignedContigScore(referenceAlignment);
+                        final AlignmentScore alternativeScore = calculateAlignedContigScore(alternativeAlignment);
                         final String hpTagValue = calculateHPTag(referenceScore.getValue(), alternativeScore.getValue());
                         final double hpQualTagValue = calculateHPQualTag(referenceScore.getValue(), alternativeScore.getValue());
                         final SAMRecord outputRecord = convertToUnmappedSAMRecord(outputHeader, vc, contig, referenceScore, alternativeScore, referenceAlignment, alternativeAlignment, hpTagValue, hpQualTagValue);
@@ -327,7 +326,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         if (alignedOutputWriter != null) alignedOutputWriter.close();
     }
 
-    private SAMRecord convertToUnmappedSAMRecord(SAMFileHeader outputHeader, final StructuralVariantContext vc, final AlignedContig originalContig, final AlignedContigScore referenceScore, final AlignedContigScore alternativeScore,
+    private SAMRecord convertToUnmappedSAMRecord(SAMFileHeader outputHeader, final StructuralVariantContext vc, final AlignedContig originalContig, final AlignmentScore referenceScore, final AlignmentScore alternativeScore,
                                                  final AlignedContig referenceAlignment, final AlignedContig alternativeAlignment, final String hpTagValue, double hpQualTagValue) {
         final SAMRecord outputRecord = new SAMRecord(outputHeader);
         outputRecord.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
@@ -374,7 +373,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         return builder.toString();
     }
 
-    private static List<SAMRecord> convertToSAMRecords(final AlignedContig alignment, final SAMFileHeader header, final StructuralVariantContext vc, final int referenceHaplotypeStart, final String hpTagValue, final double hpQualTagValue, final AlignedContigScore referenceScore, final AlignedContigScore alternativeScore, final int variantStart) {
+    private static List<SAMRecord> convertToSAMRecords(final AlignedContig alignment, final SAMFileHeader header, final StructuralVariantContext vc, final int referenceHaplotypeStart, final String hpTagValue, final double hpQualTagValue, final AlignmentScore referenceScore, final AlignmentScore alternativeScore, final int variantStart) {
         final List<SAMRecord> result = new ArrayList<>(alignment.alignmentIntervals.size());
         result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence, false, 0, Collections.emptyList()));
         for (int i = 1; i < alignment.alignmentIntervals.size(); i++) {
@@ -409,102 +408,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         return result;
     }
 
-    /**
-     * Class to represent and calculate the aligned contig score.
-     */
-    private static class AlignedContigScore {
 
-        public static final int STRAND_SWITCH_COST = 60;
-        public static final double MATCH_COST = 0.01;
-        public static final int MISMATCH_COST = 30;
-        public static final double GAP_OPEN_COST = 45;
-        public static final double GAP_EXTEND_COST = 3;
-
-        final int totalReversals;
-        final int totalIndels;
-        final int totalMatches;
-        final int totalMismatches;
-        final int totalIndelLength;
-
-        public AlignedContigScore(final int reversals, final int indels, final int matches, final int mismatches, final int totalIndelLength) {
-            this.totalReversals = reversals;
-            this.totalIndels = indels;
-            this.totalMatches = matches;
-            this.totalMismatches = mismatches;
-            this.totalIndelLength = totalIndelLength;
-        }
-
-        public double getValue() {
-            return -(int) Math.round(totalMatches * MATCH_COST
-                    + totalMismatches * MISMATCH_COST
-                    + totalIndels * GAP_OPEN_COST
-                    + (totalIndelLength - totalIndels) * GAP_EXTEND_COST
-                    + totalReversals * STRAND_SWITCH_COST);
-        }
-
-        public String toString() {
-            return  getValue() + ":" + Utils.join(",", totalMatches, totalMismatches,
-                    totalIndels, totalIndelLength, totalReversals);
-        }
-    }
-
-    private AlignedContigScore calculateAlignedContigScore(final AlignedContig ctg) {
-        final List<AlignmentInterval> intervals = ctg.alignmentIntervals.stream()
-                .sorted(Comparator.comparing(ai -> ai.startInAssembledContig))
-                .collect(Collectors.toList());
-        int totalReversals = 0;
-        int totalIndels = 0;
-        int totalMatches = 0;
-        int totalMismatches = 0;
-        int totalIndelLength = 0;
-        for (int i = 0; i < intervals.size(); i++) {
-            final AlignmentInterval ai = intervals.get(i);
-            if (i > 0) {
-                final AlignmentInterval prev = intervals.get(i - 1);
-                if (prev.forwardStrand != ai.forwardStrand) {
-                    totalReversals++;
-                } else {
-                    final AlignmentInterval left = ai.forwardStrand ? prev : ai;
-                    final AlignmentInterval right = ai.forwardStrand ? ai : prev;
-                    if (left.referenceSpan.getEnd() < right.referenceSpan.getStart()) {
-                        totalIndels++;
-                        totalIndelLength += right.referenceSpan.getStart() - left.referenceSpan.getEnd();
-                    }
-                    if (left.endInAssembledContig < right.startInAssembledContig) {
-                        totalIndels++;
-                        totalIndelLength += right.startInAssembledContig - left.endInAssembledContig - 1;
-                    }
-                }
-            }
-            final int matches = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator().isAlignment())
-                    .mapToInt(CigarElement::getLength).sum();
-            final int misMatches = ai.mismatches;
-            final int indelCount = (int) ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator().isIndel())
-                    .count();
-            final int indelLengthSum = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator().isIndel())
-                    .mapToInt(CigarElement::getLength).sum();
-            totalIndels += indelCount;
-            totalMatches += matches;
-            totalMismatches += misMatches;
-            totalIndelLength += indelLengthSum;
-        }
-        if (intervals.isEmpty()) {
-            totalIndelLength += ctg.contigSequence.length;
-            totalIndels++;
-        } else {
-            if (intervals.get(0).startInAssembledContig > 1) {
-                totalIndelLength += intervals.get(0).startInAssembledContig - 1;
-                totalIndels++;
-            }
-            if (intervals.get(intervals.size() - 1).endInAssembledContig < ctg.contigSequence.length) {
-                totalIndelLength += ctg.contigSequence.length - intervals.get(intervals.size() - 1).endInAssembledContig;
-                totalIndels++;
-            }
-        }
-        return new AlignedContigScore(totalReversals, totalIndels, totalMatches, totalMismatches, totalIndelLength);
+    private static AlignmentScore calculateAlignedContigScore(final AlignedContig ctg) {
+        return AlignmentScore.calculate(ctg.contigSequence.length, ctg.alignmentIntervals);
     }
 
     private String calculateHPTag(final double referenceScore, final double alternativeScore) {

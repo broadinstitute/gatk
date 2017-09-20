@@ -355,6 +355,26 @@ public final class ReadUtils {
     }
 
     /**
+     * Encapsulates a string attribute into an {@link Optional<String>} instance.
+     *
+     * @param read the input read.
+     * @param tag the attribute tag name.
+     * @throws IllegalArgumentException if {@code read} or {@code tag} are {@code null}.
+     * @throws GATKException.ReadAttributeTypeMismatch if the attribute
+     *         value cannot be typed as a single String value.
+     * @return never {@code null}, but perhaps empty indicating that no value was provided for this attribute.
+     */
+    public static Optional<String> getOptionalStringAttribute(final GATKRead read, final String tag) {
+        Utils.nonNull(read);
+        Utils.nonNull(tag);
+        if (!read.hasAttribute(tag)) {
+            return Optional.empty();
+        } else {
+            return Optional.of(read.getAttributeAsString(tag));
+        }
+    }
+
+    /**
      * Encapsulates a integer attribute into an {@link OptionalInt} instance.
      * @param read the input read.
      * @param tag the attribute tag name.
@@ -368,6 +388,7 @@ public final class ReadUtils {
         final Integer obj = read.getAttributeAsInteger(tag);
         return obj == null ? OptionalInt.empty() : OptionalInt.of(obj);
     }
+
 
     /**
      * A marker to tell which end of the read has been clipped

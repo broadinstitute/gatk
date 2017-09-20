@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class BwaMemIndexCache {
 
+
     private final static Map<String, BwaMemIndex> instances = new HashMap<>();
 
     /**
