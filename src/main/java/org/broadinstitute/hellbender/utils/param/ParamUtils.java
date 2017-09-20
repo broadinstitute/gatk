@@ -158,6 +158,14 @@ public class ParamUtils {
         return val;
     }
 
+    public static int isPositiveOrZeroInteger(final CharSequence seq, final String message) {
+        try {
+            return isPositiveOrZero(Integer.parseInt(seq.toString()), message);
+        } catch (final NumberFormatException | NullPointerException ex) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
     /**
      * Checks that the  input is greater than zero and returns the same value or throws an {@link IllegalArgumentException}
      * @param val value to check

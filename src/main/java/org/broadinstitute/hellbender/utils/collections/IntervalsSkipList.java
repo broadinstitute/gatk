@@ -62,7 +62,7 @@ public final class IntervalsSkipList<T extends Locatable> extends AbstractCollec
     @Override
     @SuppressWarnings("unchecked")
     public Iterator<T> iterator() {
-        return Iterators.concat(intervals.values().stream().map(Iterable::iterator).toArray(i -> (Iterator<T>[]) new Iterator[i]));
+        return Iterators.concat(intervals.values().stream().map(Iterable::iterator).toArray(Iterator[]::new));
     }
 
     @Override

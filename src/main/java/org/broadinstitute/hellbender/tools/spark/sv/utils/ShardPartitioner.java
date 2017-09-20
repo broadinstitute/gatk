@@ -46,6 +46,8 @@ import java.util.function.Function;
  */
 public abstract class ShardPartitioner<T> extends Partitioner {
 
+    private static final long serialVersionUID = 1L;
+
     private final Class<T> clazz;
     private final int numberOfPartitions;
     private final Map<String, Integer> contigToIndex = new HashMap<>();

@@ -32,8 +32,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
 
     private final Map<String, Integer> templateIndex;
 
-    private final List<Haplotype> haplotypes;
-
+    private final List<SVHaplotype> haplotypes;
 
     public int maximumInsertSize() {
         int result = 0;
@@ -62,7 +61,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         return result;
     }
 
-    public TemplateHaplotypeScoreTable(final Iterable<Template> templates, final Iterable<Haplotype> haplotypes)
+    public TemplateHaplotypeScoreTable(final Iterable<Template> templates, final Iterable<SVHaplotype> haplotypes)
     {
         this.templates = CollectionUtils.collect(templates, t -> t, new ArrayList<>(1000));
         this.haplotypes = CollectionUtils.collect(haplotypes, t -> t, new ArrayList<>());
@@ -136,7 +135,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         return templates;
     }
 
-    public List<Haplotype> haplotypes() {
+    public List<SVHaplotype> haplotypes() {
         return haplotypes;
     }
 
@@ -203,9 +202,9 @@ public class TemplateHaplotypeScoreTable implements Serializable {
     }
 
     public GenotypeLikelihoods calculateGenotypeLikelihoods(final int ploidy) {
-        final ReadLikelihoods<Haplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("the-sample"),
+        final ReadLikelihoods<SVHaplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("the-sample"),
                 new IndexedAlleleList<>(haplotypes), Collections.singletonMap("the-sample", templates.stream().map(t -> t.fragments().get(0).toUnmappedRead(null, false)).collect(Collectors.toList())));
-        final LikelihoodMatrix<Haplotype> matrix = likelihoods.sampleMatrix(0);
+        final LikelihoodMatrix<SVHaplotype> matrix = likelihoods.sampleMatrix(0);
         matrix.setAll(values);
         final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, haplotypes.size());
         return calculator.genotypeLikelihoods(matrix);
@@ -213,5 +212,30 @@ public class TemplateHaplotypeScoreTable implements Serializable {
 
     public double[] getRow(final int i) {
         return values[Utils.validIndex(i, values.length)].clone();
+    }
+
+    public OptionalDouble getBestAlignmentScore(final int templateIndex, final int fragmentIndex) {
+        if (fragmentIndex != 0 && fragmentIndex != 1) {
+            throw new IllegalArgumentException("currently only two fragments are supported");
+        }
+        Double result = null;
+        for (int h = 0; h < haplotypes.size(); h++) {
+            final TemplateMappingInformation info = this.mappingInfo[h][templateIndex];
+            final OptionalDouble score = fragmentIndex == 0 ? info.firstAlignmentScore : info.secondAlignmentScore;
+            if (score.isPresent()) {
+                 result = score.getAsDouble();
+            }
+        }
+        return result == null ? OptionalDouble.empty() : OptionalDouble.of(result);
+    }
+
+    public void applyMissingAlignmentScore(final int template, final int fragment, final double missingAlignmentScore) {
+        final OptionalDouble score = OptionalDouble.of(missingAlignmentScore);
+        for (int h = 0; h < haplotypes.size(); h++) {
+            if (fragment == 0 && !getMappingInfo(h, template).firstAlignmentScore.isPresent())
+                getMappingInfo(h, template).firstAlignmentScore = score;
+            else if (!getMappingInfo(h, template).secondAlignmentScore.isPresent())
+                getMappingInfo(h, template).secondAlignmentScore = score;
+        }
     }
 }

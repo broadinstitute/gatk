@@ -607,7 +607,7 @@ public final class CigarUtils {
                     resultElements.add(new CigarElement(length, CigarOperator.D));
                 }
             } else if (operator.consumesReferenceBases() && !seenAlignment) {
-               additionalLeftClipping += length;
+                additionalLeftClipping += length;
             }
 
         }
@@ -634,5 +634,18 @@ public final class CigarUtils {
             return new Cigar(Arrays.asList(resultElements.toArray(new CigarElement[resultElements.size()])));
 
         }
+    }
+
+    /**
+     * Total number of bases that are match aligned regardless wether they are matches or mismatches.
+     * @param cigar
+     * @return never {@code null}.
+     */
+    public static int countAlignedBases(final Cigar cigar) {
+        Utils.nonNull(cigar);
+        return cigar.getCigarElements().stream()
+                .filter(ce -> ce.getOperator().isAlignment())
+                .mapToInt(CigarElement::getLength)
+                .sum();
     }
 }

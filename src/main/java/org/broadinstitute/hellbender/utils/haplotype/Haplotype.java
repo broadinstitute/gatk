@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.Consumer;
 
-public final class Haplotype extends Allele {
+public class Haplotype extends Allele {
     private static final long serialVersionUID = 1L;
 
     /**
