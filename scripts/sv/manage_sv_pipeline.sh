@@ -211,11 +211,11 @@ echo
 if [[ ! -f ${GATK_DIR}/build/libs/gatk-spark.jar ]]; then
     echo "Cannot find GATK spark jar, maybe you forgot to build? Given GATK dir.: ${GATK_DIR}"
 fi
-GATK_GIT_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | cut -d- -f5 | cut -c2-)
+GATK_GIT_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | awk 'BEGIN {FS="-g"} {print $2}' | cut -d- -f 1)
 CURRENT_GIT_HASH=$(git -C ${GATK_DIR} rev-parse --short HEAD | cut -c1-7)
 if [ "${QUIET}" != "Y" ] && [ "${GATK_GIT_HASH}" != "${CURRENT_GIT_HASH}" ]; then
     while true; do
-        read -p "Current git hash does not match GATK git hash. Run anyway?" yn
+        read -p "gatk-spark.jar version (${GATK_GIT_HASH}) does not match current git commit (${CURRENT_GIT_HASH}). Run anyway? (yes/no)" yn
         case $yn in
             [Yy]*)  break
                     ;;
