@@ -10,6 +10,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.optimization.PersistenceOptimizer;
+import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -111,7 +113,7 @@ public final class KernelSegmenter<T> {
         ParamUtils.isPositiveOrZero(maxNumChangepoints, "Maximum number of changepoints must be non-negative.");
         ParamUtils.isPositive(kernelApproximationDimension, "Dimension of kernel approximation must be positive.");
         Utils.validateArg(windowSizes.stream().allMatch(ws -> ws > 0), "Window sizes must all be positive.");
-        Utils.validateArg(new HashSet<>(windowSizes).size() == windowSizes.size(), "Window sizes must all be unique.");
+        Utils.validateArg(windowSizes.stream().distinct().count() == windowSizes.size(), "Window sizes must all be unique.");
         ParamUtils.isPositiveOrZero(numChangepointsPenaltyLinearFactor,
                 "Linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
         ParamUtils.isPositiveOrZero(numChangepointsPenaltyLogLinearFactor,
@@ -220,11 +222,8 @@ public final class KernelSegmenter<T> {
             final double[] invSqrtSingularValues = Arrays.stream(svd.getSingularValues()).map(Math::sqrt).map(x -> 1. / (x + EPSILON)).toArray();
             @Override
             public double visit(int i, int j, double value) {
-                double sum = 0.;
-                for (int k = 0; k < numSubsample; k++) {
-                    sum += kernel.apply(data.get(i), dataSubsample.get(k)) * svd.getU().getEntry(k, j) * invSqrtSingularValues[j];
-                }
-                return sum;
+                return new IndexRange(0, numSubsample)
+                        .sum(k -> kernel.apply(data.get(i), dataSubsample.get(k)) * svd.getU().getEntry(k, j) * invSqrtSingularValues[j]);
             }
         });
         return reducedObservationMatrix;
@@ -233,9 +232,8 @@ public final class KernelSegmenter<T> {
     //for N x p matrix Z_ij, returns the N-dimensional vector sum(Z_ij * Z_ij, j = 0,..., p - 1),
     //which are the diagonal elements K_ii of the approximate kernel matrix
     private static double[] calculateKernelApproximationDiagonal(final RealMatrix reducedObservationMatrix) {
-        return IntStream.range(0, reducedObservationMatrix.getRowDimension()).boxed()
-                .mapToDouble(i -> Arrays.stream(reducedObservationMatrix.getRow(i)).map(z -> z * z).sum())
-                .toArray();
+        return new IndexRange(0, reducedObservationMatrix.getRowDimension())
+                .mapToDouble(i -> MathUtils.square(reducedObservationMatrix.getRowVector(i).getNorm()));
     }
 
     //finds indices of changepoint candidates from all window sizes
@@ -260,7 +258,7 @@ public final class KernelSegmenter<T> {
             final double[] windowCosts = calculateWindowCosts(reducedObservationMatrix, kernelApproximationDiagonal, windowSize);
 
             logger.debug(String.format("Finding local minima of local changepoint costs for window size %d...", windowSize));
-            final List<Integer> windowCostLocalMinima = new PersistenceOptimizer(windowCosts).getMinimaIndices();
+            final List<Integer> windowCostLocalMinima = new ArrayList<>(new PersistenceOptimizer(windowCosts).getMinimaIndices());
             windowCostLocalMinima.remove(Integer.valueOf(0));                //remove first data point if present
             windowCostLocalMinima.remove(Integer.valueOf(data.size() - 1));  //remove last data point if present
             changepointCandidates.addAll(windowCostLocalMinima.subList(0, Math.min(maxNumChangepoints, windowCostLocalMinima.size())));
@@ -286,8 +284,8 @@ public final class KernelSegmenter<T> {
         //calculate penalties as a function of the number of changepoints
         final int numData = reducedObservationMatrix.getRowDimension();
         final List<Double> changepointPenalties = IntStream.range(0, maxNumChangepoints + 1).boxed()
-                .map(numChangepoints -> numChangepointsPenaltyLinearFactor * numChangepoints
-                        + numChangepointsPenaltyLogLinearFactor * numChangepoints * Math.log(numData / (numChangepoints + EPSILON)))
+                .map(numChangepoints -> calculateChangepointPenalty(
+                        numChangepoints, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, numData))
                 .collect(Collectors.toList());
 
         //construct initial list of all segments and initialize costs
@@ -356,6 +354,14 @@ public final class KernelSegmenter<T> {
         return changepoints.subList(0, numChangepointsOptimal);
     }
 
+    private static double calculateChangepointPenalty(final int numChangepoints,
+                                                      final double numChangepointsPenaltyLinearFactor,
+                                                      final double numChangepointsPenaltyLogLinearFactor,
+                                                      final int numData) {
+        return numChangepointsPenaltyLinearFactor * numChangepoints
+                + numChangepointsPenaltyLogLinearFactor * numChangepoints * Math.log(numData / (numChangepoints + EPSILON));
+    }
+
     /**
      * Calculates the cost of a segment.  This is defined by Eq. 11 of
      * <a href="https://hal.inria.fr/hal-01413230/document">https://hal.inria.fr/hal-01413230/document</a>
@@ -388,11 +394,7 @@ public final class KernelSegmenter<T> {
         //use recurrence relations to iteratively calculate cost
         for (final int tauPrime : indices) {
             D += kernelApproximationDiagonal[tauPrime];
-            double ZdotW = 0.;
-            for (int j = 0; j < p; j++) {
-                ZdotW += reducedObservationMatrix.getEntry(tauPrime, j) * W[j];
-                W[j] += reducedObservationMatrix.getEntry(tauPrime, j);
-            }
+            final double ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, W, tauPrime, 1);
             V += 2. * ZdotW + kernelApproximationDiagonal[tauPrime];
         }
         final double C = D - V / (indices.size() + 1);
@@ -459,57 +461,33 @@ public final class KernelSegmenter<T> {
 
             //update quantities in left segment
             leftD -= kernelApproximationDiagonal[start];
-            ZdotW = 0.;
-            for (int j = 0; j < p; j++) {
-                ZdotW += reducedObservationMatrix.getEntry(start, j) * leftW[j];
-                leftW[j] -= reducedObservationMatrix.getEntry(start, j);
-            }
+            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, leftW, start, -1);
             leftV += -2. * ZdotW + kernelApproximationDiagonal[start];
 
             leftD += kernelApproximationDiagonal[centerNext];
-            ZdotW = 0.;
-            for (int j = 0; j < p; j++) {
-                ZdotW += reducedObservationMatrix.getEntry(centerNext, j) * leftW[j];
-                leftW[j] += reducedObservationMatrix.getEntry(centerNext, j);
-            }
+            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, leftW, centerNext, 1);
             leftV += 2. * ZdotW + kernelApproximationDiagonal[centerNext];
 
             leftC = leftD - leftV * windowSizeReciprocal;
 
             //update quantities in right segment
             rightD -= kernelApproximationDiagonal[centerNext];
-            ZdotW = 0.;
-            for (int j = 0; j < p; j++) {
-                ZdotW += reducedObservationMatrix.getEntry(centerNext, j) * rightW[j];
-                rightW[j] -= reducedObservationMatrix.getEntry(centerNext, j);
-            }
+            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, rightW, centerNext, -1);
             rightV += -2. * ZdotW + kernelApproximationDiagonal[centerNext];
 
             rightD += kernelApproximationDiagonal[endNext];
-            ZdotW = 0.;
-            for (int j = 0; j < p; j++) {
-                ZdotW += reducedObservationMatrix.getEntry(endNext, j) * rightW[j];
-                rightW[j] += reducedObservationMatrix.getEntry(endNext, j);
-            }
+            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, rightW, endNext, 1);
             rightV += 2. * ZdotW + kernelApproximationDiagonal[endNext];
 
             rightC = rightD - rightV * windowSizeReciprocal;
 
             //update quantities in total segment
             totalD -= kernelApproximationDiagonal[start];
-            ZdotW = 0.;
-            for (int j = 0; j < p; j++) {
-                ZdotW += reducedObservationMatrix.getEntry(start, j) * totalW[j];
-                totalW[j] -= reducedObservationMatrix.getEntry(start, j);
-            }
+            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, totalW, start, -1);
             totalV += -2. * ZdotW + kernelApproximationDiagonal[start];
 
             totalD += kernelApproximationDiagonal[endNext];
-            ZdotW = 0.;
-            for (int j = 0; j < p; j++) {
-                ZdotW += reducedObservationMatrix.getEntry(endNext, j) * totalW[j];
-                totalW[j] += reducedObservationMatrix.getEntry(endNext, j);
-            }
+            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, totalW, endNext, 1);
             totalV += 2. * ZdotW + kernelApproximationDiagonal[endNext];
 
             totalC = totalD - 0.5 * totalV * windowSizeReciprocal;
@@ -522,5 +500,18 @@ public final class KernelSegmenter<T> {
             end = endNext;
         }
         return windowCosts;
+    }
+
+    private static double calculateZdotWAndModifyW(final RealMatrix reducedObservationMatrix,
+                                                   final int p,
+                                                   final double[] W,
+                                                   final int rowIndex,
+                                                   final int signMultiplier) {
+        double ZdotW = 0.;
+        for (int j = 0; j < p; j++) {
+            ZdotW += reducedObservationMatrix.getEntry(rowIndex, j) * W[j];
+            W[j] += signMultiplier * reducedObservationMatrix.getEntry(rowIndex, j);
+        }
+        return ZdotW;
     }
 }

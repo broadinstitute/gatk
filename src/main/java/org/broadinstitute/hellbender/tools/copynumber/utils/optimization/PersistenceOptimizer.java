@@ -89,7 +89,7 @@ public final class PersistenceOptimizer {
     }
 
     /**
-     * Returns a list of the indices of the local minima, sorted first by decreasing topological persistence
+     * Returns an unmodifiable list of the indices of the local minima, sorted first by decreasing topological persistence
      * and then by increasing index.  The first element is the index of the global minimum.
      */
     public List<Integer> getMinimaIndices() {
@@ -97,7 +97,7 @@ public final class PersistenceOptimizer {
     }
 
     /**
-     * Returns the corresponding list of the topological persistences of the local minima given by
+     * Returns the corresponding unmodifiable list of the topological persistences of the local minima given by
      * {@link PersistenceOptimizer#getMinimaIndices()}.
      */
     public List<Double> getPersistences() {
