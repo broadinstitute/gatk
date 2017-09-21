@@ -46,9 +46,9 @@ public class PSTree {
         final int treeSize = input.readInt();
         tree = new HashMap<>(treeSize);
         for (int i = 0; i < treeSize; i++) {
-            final String key = input.readString();
+            final int key = input.readInt();
             final PSTreeNode value = kryo.readObject(input, PSTreeNode.class);
-            tree.put(Integer.valueOf(key), value);
+            tree.put(key, value);
         }
 
         kryo.setReferences(oldReferences);
@@ -58,7 +58,7 @@ public class PSTree {
      * Returns short String of 20 arbitrarily chosen nodes
      */
     private static String getAbbreviatedNodeListString(final Set<Integer> nodes) {
-        return "[" + nodes.stream().limit(20).map(String::valueOf).collect(Collectors.joining(", ")) + "]";
+        return nodes.stream().limit(20).map(String::valueOf).collect(Collectors.joining(", ","[","]"));
     }
 
     protected void serialize(final Kryo kryo, final Output output) {
@@ -67,8 +67,8 @@ public class PSTree {
 
         output.writeString(String.valueOf(root));
         output.writeInt(tree.size());
-        for (final Integer key : tree.keySet()) {
-            output.writeString(String.valueOf(key));
+        for (final int key : tree.keySet()) {
+            output.writeInt(key);
             kryo.writeObject(output, tree.get(key));
         }
 

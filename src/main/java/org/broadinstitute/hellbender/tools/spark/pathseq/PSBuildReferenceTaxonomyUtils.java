@@ -17,8 +17,8 @@ import java.util.zip.GZIPInputStream;
 
 public final class PSBuildReferenceTaxonomyUtils {
 
-    protected final static Logger logger = LogManager.getLogger(PSBuildReferenceTaxonomyUtils.class);
-
+    protected static final Logger logger = LogManager.getLogger(PSBuildReferenceTaxonomyUtils.class);
+    private static final String VERTICAL_BAR_DELIMITER_REGEX = "\\s*\\|\\s*";
     /**
      * Build set of accessions contained in the reference.
      * Returns: a map from accession to the name and length of the record. If the sequence name contains the
@@ -33,14 +33,14 @@ public final class PSBuildReferenceTaxonomyUtils {
         for (final SAMSequenceRecord record : dictionaryList) {
             final String recordName = record.getSequenceName();
             final long recordLength = record.getSequenceLength();
-            final String[] tokens = recordName.split("[|]");
+            final String[] tokens = recordName.split(VERTICAL_BAR_DELIMITER_REGEX);
             String recordAccession = null;
             int recordTaxId = PSTree.NULL_NODE;
             for (int i = 0; i < tokens.length - 1 && recordTaxId == PSTree.NULL_NODE; i++) {
                 if (tokens[i].equals("ref")) {
                     recordAccession = tokens[i + 1];
                 } else if (tokens[i].equals("taxid")) {
-                    recordTaxId = Integer.valueOf(tokens[i + 1]);
+                    recordTaxId = parseTaxonId(tokens[i + 1]);
                 }
             }
             if (recordTaxId == PSTree.NULL_NODE) {
@@ -54,6 +54,14 @@ public final class PSBuildReferenceTaxonomyUtils {
             }
         }
         return accessionToNameAndLength;
+    }
+
+    private static int parseTaxonId(final String taxonId) {
+        try {
+            return Integer.valueOf(taxonId);
+        } catch (final NumberFormatException e) {
+            throw new UserException.BadInput("Expected taxonomy ID to be an integer but found \"" + taxonId + "\"", e);
+        }
     }
 
     /**
@@ -118,7 +126,7 @@ public final class PSBuildReferenceTaxonomyUtils {
             while ((line = reader.readLine()) != null && !line.isEmpty()) {
                 final String[] tokens = line.trim().split("\t", minColumns + 1);
                 if (tokens.length >= minColumns) {
-                    final int taxId = Integer.valueOf(tokens[taxIdColumnIndex]);
+                    final int taxId = parseTaxonId(tokens[taxIdColumnIndex]);
                     final String accession = tokens[accessionColumnIndex];
                     if (accessionToNameAndLength.containsKey(accession)) {
                         final Tuple2<String, Long> nameAndLength = accessionToNameAndLength.get(accession);
@@ -144,15 +152,14 @@ public final class PSBuildReferenceTaxonomyUtils {
         try {
             String line;
             while ((line = reader.readLine()) != null) {
-                //Split into columns delimited by <TAB>|<TAB>. Note the "\\|" is required to match "|" otherwise Java
-                // thinks it's an escape character and throws and error
-                final String[] tokens = line.split("\t\\|\t");
-                if (tokens.length != 4) {
-                    throw new UserException.BadInput("Expected 4 columns in tax dump names file but found " + tokens.length);
+                //Split into columns delimited by <TAB>|<TAB>
+                final String[] tokens = line.split(VERTICAL_BAR_DELIMITER_REGEX);
+                if (tokens.length < 4) {
+                    throw new UserException.BadInput("Expected at least 4 columns in tax dump names file but found " + tokens.length);
                 }
                 final String nameType = tokens[3];
-                if (nameType.equals("scientific name\t|")) {
-                    final int taxId = Integer.valueOf(tokens[0]);
+                if (nameType.equals("scientific name")) {
+                    final int taxId = parseTaxonId(tokens[0]);
                     final String name = tokens[1];
                     if (taxIdToProperties.containsKey(taxId)) {
                         taxIdToProperties.get(taxId).setName(name);
@@ -176,12 +183,12 @@ public final class PSBuildReferenceTaxonomyUtils {
             final Collection<Integer> taxIdsNotFound = new ArrayList<>();
             String line;
             while ((line = reader.readLine()) != null) {
-                final String[] tokens = line.split("\t\\|\t");
-                if (tokens.length != 13) {
-                    throw new UserException.BadInput("Expected 13 columns in tax dump nodes file but found " + tokens.length);
+                final String[] tokens = line.split(VERTICAL_BAR_DELIMITER_REGEX);
+                if (tokens.length < 3) {
+                    throw new UserException.BadInput("Expected at least 3 columns in tax dump nodes file but found " + tokens.length);
                 }
-                final int taxId = Integer.valueOf(tokens[0]);
-                final int parent = Integer.valueOf(tokens[1]);
+                final int taxId = parseTaxonId(tokens[0]);
+                final int parent = parseTaxonId(tokens[1]);
                 final String rank = tokens[2];
                 final PSPathogenReferenceTaxonProperties taxonProperties;
                 if (taxIdToProperties.containsKey(taxId)) {
@@ -267,10 +274,8 @@ public final class PSBuildReferenceTaxonomyUtils {
         //Trim tree down to nodes corresponding only to reference taxa (and their ancestors)
         final Set<Integer> relevantNodes = new HashSet<>();
         for (final int taxonId : taxIdToProperties.keySet()) {
-            if (!taxIdToProperties.get(taxonId).getAccessions().isEmpty()) {
-                if (tree.hasNode(taxonId)) {
-                    relevantNodes.addAll(tree.getPathOf(taxonId));
-                }
+            if (!taxIdToProperties.get(taxonId).getAccessions().isEmpty() && tree.hasNode(taxonId)) {
+                relevantNodes.addAll(tree.getPathOf(taxonId));
             }
         }
         if (relevantNodes.isEmpty()) {

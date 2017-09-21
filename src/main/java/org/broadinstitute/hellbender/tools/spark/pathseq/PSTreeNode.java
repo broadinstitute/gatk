@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Objects;
 
 /**
  * Node class for PSTree
@@ -30,7 +31,7 @@ public class PSTreeNode {
 
         name = input.readString();
         rank = input.readString();
-        parent = Integer.valueOf(input.readString());
+        parent = input.readInt();
         length = input.readLong();
         final int numChildren = input.readInt();
         children = new HashSet<>(numChildren);
@@ -47,7 +48,7 @@ public class PSTreeNode {
 
         output.writeString(name);
         output.writeString(rank);
-        output.writeString(String.valueOf(parent));
+        output.writeInt(parent);
         output.writeLong(length);
         output.writeInt(children.size());
         for (final int child : children) {
@@ -126,8 +127,8 @@ public class PSTreeNode {
 
     @Override
     public int hashCode() {
-        int result = name != null ? name.hashCode() : 0;
-        result = 31 * result + (rank != null ? rank.hashCode() : 0);
+        int result = Objects.hashCode(name);
+        result = 31 * result + Objects.hashCode(rank);
         result = 31 * result + parent;
         result = 31 * result + (int) (length ^ (length >>> 32));
         result = 31 * result + children.hashCode();

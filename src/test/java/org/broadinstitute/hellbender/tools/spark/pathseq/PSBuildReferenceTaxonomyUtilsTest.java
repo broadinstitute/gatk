@@ -161,8 +161,8 @@ public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
         final Iterator<Integer> resultIter = result.iterator();
         Assert.assertEquals(resultIter.next().intValue(), 4);
 
-        //Throw exception when the input has wrong number of columns
-        final String badInput = input + "5\t|\t1\t|\tkingdom\t|\t-\t|\t-\t|\t-\t|\t-\t|\n";
+        //Throw exception when the input has insufficient number of columns
+        final String badInput = input + "5\t|\t1\t|\n";
         final BufferedReader badReader = new BufferedReader(new StringReader(badInput));
         PSBuildReferenceTaxonomyUtils.parseNodesFile(badReader, taxIdToProperties);
     }
