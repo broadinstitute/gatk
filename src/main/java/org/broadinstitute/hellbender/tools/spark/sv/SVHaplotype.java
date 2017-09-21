@@ -7,7 +7,9 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by valentin on 9/16/17.
@@ -66,6 +68,7 @@ public class SVHaplotype extends Haplotype {
         final AlignmentScore altScore = getMandatoryAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.ALTERNATIVE_SCORE_TAG);
         final boolean isContig = read.getReadGroup().equals("CTG");
         return new SVHaplotype(read.getName(), read, variantId, isContig, read.getBases(), refAln, refScore, altAln, altScore);
+
     }
 
     private static AlignmentScore getMandatoryAlignmentScore(final GATKRead read, final String tag) {
