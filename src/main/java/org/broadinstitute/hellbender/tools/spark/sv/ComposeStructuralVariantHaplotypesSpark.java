@@ -125,9 +125,13 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     public static final String PADDING_SIZE_FULL_NAME = "paddingSize";
     public static final String ALIGNED_OUTPUT_SHORT_NAME = "alnOut";
     public static final String ALIGNED_OUTPUT_FULL_NAME = "alignedOutput";
+    public static final String SAMPLE_SHORT_NAME = "sample";
+    public static final String SAMPLE_FULL_NAME = "sample";
 
     public static final int DEFAULT_SHARD_SIZE = 10_000;
     public static final int DEFAULT_PADDING_SIZE = 50;
+    public static final String DEFAULT_SAMPLE = "sample";
+
     private static final int FASTA_BASES_PER_LINE = 60;
 
     public static final String HAPLOTYPE_READ_GROUP = "HAP";
@@ -148,6 +152,12 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
               fullName = SHARD_SIZE_FULL_NAME,
     optional = true)
     private int shardSize = DEFAULT_SHARD_SIZE;
+
+    @Argument(doc = "sample name to use in output BAM files read-groups",
+              shortName = SAMPLE_SHORT_NAME,
+              fullName = SAMPLE_FULL_NAME,
+              optional = true)
+    private String sample = DEFAULT_SAMPLE;
 
     @Argument(doc ="padding size",
               shortName = PADDING_SIZE_SHORT_NAME,
@@ -309,14 +319,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                                    final SAMSequenceDictionary dictionary,
                                    final ReadsSparkSource readSource) {
 
-        final SAMFileHeader outputHeader = new SAMFileHeader();
-        final SAMProgramRecord programRecord = new SAMProgramRecord(getProgramName());
-        programRecord.setCommandLine(getCommandLine());
-        outputHeader.setSequenceDictionary(dictionary);
-        outputHeader.addProgramRecord(programRecord);
-        outputHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        outputHeader.addReadGroup(new SAMReadGroupRecord(HAPLOTYPE_READ_GROUP));
-        outputHeader.addReadGroup(new SAMReadGroupRecord(CONTIG_READ_GROUP));
+        final SAMFileHeader outputHeader = composeOutputHeader(dictionary);
         final SAMFileWriter outputWriter = BamBucketIoUtils.makeWriter(outputFileName, outputHeader, false);
         final SAMFileWriter alignedOutputWriter = alignedOutputFileName == null
                 ? null : BamBucketIoUtils.makeWriter(alignedOutputFileName, outputHeader, false);
@@ -361,6 +364,22 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 });
         outputWriter.close();
         if (alignedOutputWriter != null) alignedOutputWriter.close();
+    }
+
+    private SAMFileHeader composeOutputHeader(SAMSequenceDictionary dictionary) {
+        final SAMFileHeader outputHeader = new SAMFileHeader();
+        final SAMProgramRecord programRecord = new SAMProgramRecord(getProgramName());
+        programRecord.setCommandLine(getCommandLine());
+        outputHeader.setSequenceDictionary(dictionary);
+        outputHeader.addProgramRecord(programRecord);
+        outputHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        final SAMReadGroupRecord contigsReadGroup = new SAMReadGroupRecord(CONTIG_READ_GROUP);
+        contigsReadGroup.setSample(sample);
+        final SAMReadGroupRecord haplotypesReadGroup = new SAMReadGroupRecord(HAPLOTYPE_READ_GROUP);
+        contigsReadGroup.setSample(sample);
+        outputHeader.addReadGroup(haplotypesReadGroup);
+        outputHeader.addReadGroup(contigsReadGroup);
+        return outputHeader;
     }
 
     private SAMRecord convertToUnmappedSAMRecord(final SAMFileHeader outputHeader, final StructuralVariantContext vc,
