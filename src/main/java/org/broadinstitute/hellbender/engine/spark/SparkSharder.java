@@ -80,7 +80,7 @@ public class SparkSharder {
     private static List<ShardBoundary> divideIntoShards(final SAMSequenceDictionary sequenceDictionary, final List<SimpleInterval> intervals, final int shardSize, final int shardPadding) {
         Utils.nonNull(sequenceDictionary);
         ParamUtils.isPositive(shardSize, "the shard size must be positive");
-        ParamUtils.isPositive(shardPadding, "the shard padding must be positive");
+        ParamUtils.isPositiveOrZero(shardPadding, "the shard padding must be 0 or greater");
         final Map<String, List<SimpleInterval>> consolidatedIntervals = IntervalUtils.sortAndMergeIntervals(intervals, true);
         return consolidatedIntervals.values().stream()
                 .flatMap(List::stream)

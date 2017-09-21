@@ -131,7 +131,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     @Override
     public boolean requiresReads() {
-        return true;
+        return false;
     }
 
     @Override
@@ -155,7 +155,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .map(StructuralVariantContext::new).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
-        final SparkSharder sharder = new SparkSharder(ctx, getReferenceSequenceDictionary(), getIntervals(), shardSize, 0, 10000);
+        final SparkSharder sharder = new SparkSharder(ctx, getReferenceSequenceDictionary(), intervals, shardSize, 0, 10000);
         final JavaRDD<Shard<StructuralVariantContext>> variantSharded = sharder.shard(variants, StructuralVariantContext.class);
         final JavaRDD<Shard<GATKRead>> haplotypesSharded = sharder.shard(haplotypeAndContigs, GATKRead.class);
         final JavaPairRDD<Shard<StructuralVariantContext>, Shard<GATKRead>> variantAndHaplotypesSharded = sharder.cogroup(variantSharded, haplotypesSharded);
@@ -188,7 +188,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 });
 
         final JavaRDD<StructuralVariantContext> calls = processVariants(variantHaplotypesAndTemplates, ctx);
-
         final VCFHeader header = composeOutputHeader();
         SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
                 referenceArguments.getReferenceFile().getAbsolutePath(), calls, header, logger);
