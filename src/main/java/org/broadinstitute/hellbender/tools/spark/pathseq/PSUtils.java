@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.*;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -9,6 +8,8 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Common functions for PathSeq
@@ -43,9 +44,9 @@ public final class PSUtils {
     /**
      * Prints warning message followed by a list of relevant items
      */
-    public static void logItemizedWarning(final Logger logger, final Collection<String> items, final String warning) {
+    public static void logItemizedWarning(final Logger logger, final Collection<?> items, final String warning) {
         if (!items.isEmpty()) {
-            final String str = String.join(", ", items);
+            final String str =  items.stream().map(String::valueOf).collect(Collectors.joining(", "));
             logger.warn(warning + " : " + str);
         }
     }
@@ -85,5 +86,22 @@ public final class PSUtils {
         header.setSequenceDictionary(new SAMSequenceDictionary());
 
         return header;
+    }
+
+    public static int getMatchesLessDeletions(final Cigar cigar, final int numMismatches) {
+        Utils.nonNull(cigar, "Cannot get match score for null cigar");
+        Utils.validateArg(numMismatches >= 0, "numMismatches cannot be negative");
+        int numMatches = -numMismatches;
+        int numDeletions = 0;
+        final List<CigarElement> cigarElements = cigar.getCigarElements();
+        for (final CigarElement e : cigarElements) {
+            if (e.getOperator().isAlignment()) {
+                numMatches += e.getLength();
+            } else if (e.getOperator().equals(CigarOperator.DELETION)) {
+                numDeletions += e.getLength();
+            }
+        }
+        if (numMatches < 0) throw new IllegalArgumentException("numMismatches was greater than the number of matches/mismatches in the cigar");
+        return numMatches - numDeletions;
     }
 }

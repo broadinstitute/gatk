@@ -203,11 +203,11 @@ public final class PSFilter implements AutoCloseable {
 
     @VisibleForTesting
     static JavaRDD<GATKRead> doBwaFilter(final JavaRDD<GATKRead> reads,
-                                                   final String indexFileName,
-                                                   final int minSeedLength, final int numThreads,
-                                                   final int minCoverage, final int minIdentity) {
+                                         final String indexFileName,
+                                         final int minSeedLength, final int numThreads,
+                                         final int minIdentity) {
 
-        return reads.mapPartitions(itr -> (new PSBwaFilter(indexFileName, minCoverage, minIdentity, minSeedLength, numThreads, false)).apply(itr));
+        return reads.mapPartitions(itr -> (new PSBwaFilter(indexFileName, minIdentity, minSeedLength, numThreads, false)).apply(itr));
     }
 
     /**
@@ -221,7 +221,7 @@ public final class PSFilter implements AutoCloseable {
         recordReadCountMetric(reads, "primary_reads");
 
         if (filterArgs.alignedInput) {
-            reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minCoverage, filterArgs.minIdentity)));
+            reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minIdentity)));
             recordReadCountMetric(reads, "prealigned_filter");
         }
 
@@ -270,7 +270,7 @@ public final class PSFilter implements AutoCloseable {
         //Bwa host alignment filtering
         if (filterArgs.indexImageFile != null) {
             reads = doBwaFilter(reads, filterArgs.indexImageFile, filterArgs.minSeedLength,
-                    filterArgs.bwaThreads, filterArgs.minCoverage, filterArgs.minIdentity);
+                    filterArgs.bwaThreads, filterArgs.minIdentity);
             recordReadCountMetric(reads, "bwa");
         }
 

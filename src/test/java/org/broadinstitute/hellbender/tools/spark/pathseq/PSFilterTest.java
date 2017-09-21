@@ -176,7 +176,7 @@ public class PSFilterTest extends CommandLineProgramTest {
     public Object[][] loadReads() {
         return new Object[][]{
                 {"hg19mini.0.fq", null, 3},
-                {"hg19mini.1.fq", "hg19mini.2.fq", 4},
+                {"hg19mini.1.fq", "hg19mini.2.fq", 2},
                 {"hg19mini.negative.0.fq", null, 45},
                 {"hg19mini.negative.1.fq", "hg19mini.negative.2.fq", 60}
         };
@@ -198,7 +198,7 @@ public class PSFilterTest extends CommandLineProgramTest {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final JavaRDD<GATKRead> reads = ctx.parallelize(readList);
 
-        final List<GATKRead> result = PSFilter.doBwaFilter(reads, BWA_IMAGE_PATH, 19, 1, 70, 65).collect();
+        final List<GATKRead> result = PSFilter.doBwaFilter(reads, BWA_IMAGE_PATH, 19, 1, 65).collect();
         BwaMemIndexCache.closeAllDistributedInstances(ctx);
         Assert.assertEquals(result.size(), expectedNum);
     }
