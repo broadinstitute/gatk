@@ -127,9 +127,4 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.QUAL_BY_DEPTH_KEY); }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }

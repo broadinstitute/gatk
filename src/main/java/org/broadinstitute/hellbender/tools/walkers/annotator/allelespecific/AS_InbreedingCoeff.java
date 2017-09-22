@@ -54,8 +54,6 @@ public final class AS_InbreedingCoeff extends InfoFieldAnnotation implements AS_
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY); }
 
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,

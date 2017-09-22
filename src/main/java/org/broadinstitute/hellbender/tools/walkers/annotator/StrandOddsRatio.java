@@ -114,9 +114,4 @@ public final class StrandOddsRatio extends StrandBiasTest implements StandardAnn
     public List<String> getKeyNames() {
         return Collections.singletonList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY);
     }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }
