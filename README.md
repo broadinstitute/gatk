@@ -264,12 +264,12 @@ brew install R
 
 The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
 ```
-sudo Rscript scripts/install_R_packages.R
+sudo Rscript scripts/docker/gatkbase/install_R_packages.R
 ```
 **or**
 ```
 R 
-source("scripts/install_R_packages.R")
+source("scripts/docker/gatkbase/install_R_packages.R")
 ```
 
 #### <a name="cnv_workflows">Running the CNV workflows</a>
