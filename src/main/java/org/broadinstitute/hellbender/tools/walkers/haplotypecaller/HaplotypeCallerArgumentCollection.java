@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
 import java.io.Serializable;
 import java.util.ArrayList;

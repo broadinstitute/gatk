@@ -6,6 +6,7 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.testng.Assert;
@@ -249,7 +250,7 @@ public final class AlignmentUtilsUnitTest {
             final MutatedSequence hap = mutateSequence(referenceBases, mutations);
             final Haplotype haplotype = new Haplotype(hap.seq.getBytes());
             final SmithWatermanAlignment align = SmithWatermanJavaAligner.getInstance()
-                    .align(paddedReference.getBytes(), hap.seq.getBytes(), SmithWatermanJavaAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
+                    .align(paddedReference.getBytes(), hap.seq.getBytes(), SmithWatermanAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
             haplotype.setAlignmentStartHapwrtRef(align.getAlignmentOffset());
             haplotype.setCigar(align.getCigar());
 

@@ -22,7 +22,7 @@ public class SWNativeAlignerWrapperUnitTest extends SmithWatermanAlignerAbstract
 
             @Override
             public SWNativeAlignerResult align(byte[] ref, byte[] alt, SWParameters parameters, SWOverhangStrategy overhangStrategy) {
-                final SmithWatermanAlignment alignment = SmithWatermanJavaAligner.alignUsingSmithWaterman(ref, alt,
+                final SmithWatermanAlignment alignment = SmithWatermanJavaAligner.getInstance().align(ref, alt,
                                                                                                           parameters,
                                                                                                           overhangStrategy);
                 return new SWNativeAlignerResult(TextCigarCodec.encode(alignment.getCigar()), alignment.getAlignmentOffset());

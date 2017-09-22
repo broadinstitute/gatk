@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.utils.smithwaterman;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
@@ -27,15 +25,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private static final SmithWatermanJavaAligner ALIGNER = new SmithWatermanJavaAligner();
 
     /**
-     * return the stateless singleton instance of SmithWatermanAligner
+     * return the stateless singleton instance of SmithWatermanJavaAligner
      */
     public static SmithWatermanJavaAligner getInstance() {
         return ALIGNER;
     }
-
-    // match=1, mismatch = -1/3, gap=-(1+k/3)
-    public static final SWParameters ORIGINAL_DEFAULT = new SWParameters(3, -1, -4, -3);
-    public static final SWParameters STANDARD_NGS = new SWParameters(25, -50, -110, -6);
 
     /**
      * The state of a trace step through the matrix
@@ -46,8 +40,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         DELETION,
         CLIP
     }
-
-    private static final boolean cutoff = false;
 
     /**
      * Create a new SW pairwise aligner, this has no state so instead of creating new instances, we create a singleton which is
@@ -63,10 +55,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
      */
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
-        return alignUsingSmithWaterman(reference, alternate, parameters, overhangStrategy);
-    }
-
-    public static SmithWatermanAlignment alignUsingSmithWaterman(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 ) {
             throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
         }
@@ -101,12 +89,12 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
     /**
      * Calculates the SW matrices for the given sequences
-     *  @param reference  ref sequence
+     * @param reference  ref sequence
      * @param alternate  alt sequence
      * @param sw         the Smith-Waterman matrix to populate
      * @param btrack     the back track matrix to populate
      * @param overhangStrategy    the strategy to use for dealing with overhangs
-     * @param parameters
+     * @param parameters the set of weights to use to configure the alignment
      */
     private static void calculateMatrix(final byte[] reference, final byte[] alternate, final int[][] sw, final int[][] btrack,
                                         final SWOverhangStrategy overhangStrategy, final SWParameters parameters) {
@@ -117,12 +105,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         final int ncol = sw[0].length;//alternate.length+1; formerly m
         final int nrow = sw.length;// reference.length+1; formerly n
 
-        final int MATRIX_MIN_CUTOFF;   // never let matrix elements drop below this cutoff
-        if ( cutoff ) {
-            MATRIX_MIN_CUTOFF = 0;
-        } else {
-            MATRIX_MIN_CUTOFF = (int) -1.0e8;
-        }
+        final int MATRIX_MIN_CUTOFF = (int) -1.0e8;   // never let matrix elements drop below this cutoff
 
         final int lowInitValue= Integer.MIN_VALUE/2;
         final int[] best_gap_v = new int[ncol+1];

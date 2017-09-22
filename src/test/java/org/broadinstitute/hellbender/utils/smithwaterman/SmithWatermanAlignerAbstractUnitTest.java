@@ -142,7 +142,7 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends BaseTest {
 
     @Test(dataProvider = "ComplexReadAlignedToRef")
     public void testReadAlignedToRefComplexAlignment(final String reference, final String read, final int expectedStart, final String expectedCigar) {
-        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanJavaAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
+        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
     }
 
     @DataProvider(name = "OddNoAlignment")
@@ -169,7 +169,7 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends BaseTest {
         final String read      = match + "GGG";
         final int expectedStart = 3;
         final String expectedCigar = "5M3S";
-        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanJavaAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
+        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
     }
 
     @Test
@@ -179,7 +179,7 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends BaseTest {
         final String alt =               "ACAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGA";
         final int expectedStart = 14;
         final String expectedCigar = "31M20S";
-        assertAlignmentMatchesExpected(ref, alt, expectedStart, expectedCigar, SmithWatermanJavaAligner.STANDARD_NGS, SWOverhangStrategy.SOFTCLIP);
+        assertAlignmentMatchesExpected(ref, alt, expectedStart, expectedCigar, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.SOFTCLIP);
     }
 
     @Test
@@ -246,7 +246,7 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends BaseTest {
         final String matchingSection = "CCCCC";
         final String reference = "AAA" + matchingSection;
         final String read = matchingSection;
-        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanJavaAligner.ORIGINAL_DEFAULT,
+        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanAligner.ORIGINAL_DEFAULT,
                                        strategy);
     }
 
@@ -273,6 +273,6 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends BaseTest {
     public void testSubstringMatchLong(int expectedStart, String expectedCigar, SWOverhangStrategy strategy) {
         final String reference = "ATAGAAAATAGTTTTTGGAAATATGGGTGAAGAGACATCTCCTCTTATGGAAAAAGGGATTCTAGAATTTAACAATAAATATTCCCAACTTTCCCCAAGGCTTTAAAATCTACCTTGAAGGAGCAGCTGATGTATTTCTAGAACAGACTTAGGTGTCTTGGTGTGGCCTGTAAAGAGATACTGTCTTTCTCTTTTGAGTGTAAGAGAGAAAGGACAGTCTACTCAATAAAGAGTGCTGGGAAAACTGAATATCCACACACAGAATAATAAAACTAGATCCTATCTCTCACCATATACAAAGATCAACTCAAAACAAATTAAAGACCTAAATGTAAGACAAGAAATTATAAAACTACTAGAAAAAAACACAAGGGAAATGCTTCAGGACATTGGC";
         final String read      = "AAAAAAA";
-        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanJavaAligner.ORIGINAL_DEFAULT, strategy);
+        assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanAligner.ORIGINAL_DEFAULT, strategy);
     }
 }

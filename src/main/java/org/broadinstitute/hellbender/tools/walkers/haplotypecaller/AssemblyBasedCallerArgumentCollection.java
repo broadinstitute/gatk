@@ -186,7 +186,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     public List<String> annotationsToExclude = new ArrayList<>();
 
     @Advanced
-    @Argument(fullName = "smithWaterman", shortName = "smithWaterman", doc = "Which SmithWatermanImplementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
+    @Argument(fullName = "smithWaterman", shortName = "smithWaterman", doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
     public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.FASTEST_AVAILABLE;
 
 }
