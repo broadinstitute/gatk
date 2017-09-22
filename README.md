@@ -262,7 +262,7 @@ brew tap homebrew/science
 brew install R
 ```
 
-The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
+The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/docker/gatkbase/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
 ```
 sudo Rscript scripts/docker/gatkbase/install_R_packages.R
 ```
