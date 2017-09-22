@@ -35,6 +35,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocation;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
@@ -151,29 +152,30 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals()
                 : IntervalUtils.getAllIntervalsForReference(getReferenceSequenceDictionary());
         final TraversalParameters traversalParameters = new TraversalParameters(intervals, false);
-        final JavaRDD<GATKRead> haplotypeAndContigs = haplotypesAndContigsSource.getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), traversalParameters, 0);
+        final JavaRDD<SVHaplotype> haplotypeAndContigs = haplotypesAndContigsSource
+                .getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), traversalParameters, 0)
+                .map(SVHaplotype::of);
         final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .map(StructuralVariantContext::new).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
         final SparkSharder sharder = new SparkSharder(ctx, getReferenceSequenceDictionary(), intervals, shardSize, 0, 10000);
         final JavaRDD<Shard<StructuralVariantContext>> variantSharded = sharder.shard(variants, StructuralVariantContext.class);
-        final JavaRDD<Shard<GATKRead>> haplotypesSharded = sharder.shard(haplotypeAndContigs, GATKRead.class);
-        final JavaPairRDD<Shard<StructuralVariantContext>, Shard<GATKRead>> variantAndHaplotypesSharded = sharder.cogroup(variantSharded, haplotypesSharded);
-        final JavaPairRDD<StructuralVariantContext, Iterable<GATKRead>> variantAndHaplotypes = sharder.matchLeftByKey(variantAndHaplotypesSharded,
-                StructuralVariantContext::getUniqueID,
-                r -> r.getAttributeAsString("VC"));
+        final JavaRDD<Shard<SVHaplotype>> haplotypesSharded = sharder.shard(haplotypeAndContigs, SVHaplotype.class);
+        final JavaPairRDD<Shard<StructuralVariantContext>, Shard<SVHaplotype>> variantAndHaplotypesSharded = sharder.cogroup(variantSharded, haplotypesSharded);
+        final JavaPairRDD<StructuralVariantContext, Iterable<SVHaplotype>> variantAndHaplotypes = sharder
+                .matchLeftByKey(variantAndHaplotypesSharded, StructuralVariantContext::getUniqueID, SVHaplotype::getVariantId);
         final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(StructuralVariantContext.class, variantAndHaplotypes.getNumPartitions());
         final String fastqDir = this.fastqDir;
         final String fastqFileFormat = "asm%05d.fastq";
         final Pattern ASSEMBLY_NAME_ALPHAS = Pattern.compile("[a-zA-Z_]+");
-        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> variantHaplotypesAndTemplates =
+        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> variantHaplotypesAndTemplates =
                 variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
                     final AssemblyCollection assemblyCollection = new AssemblyCollection(fastqDir, fastqFileFormat);
                     return Utils.stream(it)
                             .map(t -> {
                                 final IntStream assemblyNumbers = Utils.stream(t._2())
-                                        .filter(c -> c.getReadGroup().equals(ComposeStructuralVariantHaplotypesSpark.CONTIG_READ_GROUP))
-                                        .map(GATKRead::getName)
+                                        .filter(c -> c.isContig())
+                                        .map(SVHaplotype::getName)
                                         .map(n -> n.substring(0, n.indexOf(":")))
                                         .map(a -> ASSEMBLY_NAME_ALPHAS.matcher(a).replaceAll("0"))
                                         .mapToInt(Integer::parseInt)
@@ -236,9 +238,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         }
     }
 
-    private JavaRDD<StructuralVariantContext> processVariants(final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> input, final JavaSparkContext ctx) {
+    private JavaRDD<StructuralVariantContext> processVariants(final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> input, final JavaSparkContext ctx) {
         return input.mapPartitions(it -> {
-            final Stream<Tuple2<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>>> variants = Utils.stream(it);
+            final Stream<Tuple2<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>>> variants = Utils.stream(it);
             final Map<String, File> imagesByName = new HashMap<>();
             final SAMFileHeader header = new SAMFileHeader();
             header.setSequenceDictionary(getReferenceSequenceDictionary());
@@ -251,7 +253,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         .map(Template.Fragment::bases)
                         .collect(Collectors.toList());
                 final List<SVHaplotype> haplotypes = Utils.stream(variant._2()._1())
-                        .map(SVHaplotype::of).collect(Collectors.toList());
+                        .collect(Collectors.toList());
                 final List<GATKRead> reads = templates.stream().map(t -> {
                     final SAMRecord record = new SAMRecord(header);
                     record.setReadName(t.name());

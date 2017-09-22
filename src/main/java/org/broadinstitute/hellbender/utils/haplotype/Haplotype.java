@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.Consumer;
 
-public class Haplotype extends Allele {
+public class Haplotype extends Allele implements Locatable {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -334,5 +334,20 @@ public class Haplotype extends Allele {
             result.setGenomeLocation(new SimpleInterval(record.getContig(), record.getStart(), record.getEnd()));
         }
         return result;
+    }
+
+    @Override
+    public String getContig() {
+        return genomeLocation == null ? null : genomeLocation.getContig();
+    }
+
+    @Override
+    public int getStart() {
+        return genomeLocation == null ? -1 : genomeLocation.getStart();
+    }
+
+    @Override
+    public int getEnd() {
+        return genomeLocation == null ? -1 : genomeLocation.getEnd();
     }
 }
