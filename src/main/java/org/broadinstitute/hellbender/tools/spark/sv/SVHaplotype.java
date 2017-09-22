@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -67,7 +68,8 @@ public class SVHaplotype extends Haplotype {
         final AlignmentScore refScore = getMandatoryAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.REFERENCE_SCORE_TAG);
         final AlignmentScore altScore = getMandatoryAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.ALTERNATIVE_SCORE_TAG);
         final boolean isContig = read.getReadGroup().equals("CTG");
-        return new SVHaplotype(read.getName(), read, variantId, isContig, read.getBases(), refAln, refScore, altAln, altScore);
+        final SimpleInterval location = new SimpleInterval(read.getAssignedContig(), read.getAssignedStart(), read.getAssignedStart());
+        return new SVHaplotype(read.getName(), location, variantId, isContig, read.getBases(), refAln, refScore, altAln, altScore);
 
     }
 
