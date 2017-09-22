@@ -7,7 +7,7 @@ import java.io.Closeable;
 import java.util.function.Supplier;
 
 /**
- * Interface for Smith-Waterman aligners
+ * Interface and factory for Smith-Waterman aligners
  */
 public interface SmithWatermanAligner extends Closeable {
 
@@ -16,8 +16,13 @@ public interface SmithWatermanAligner extends Closeable {
     SWParameters STANDARD_NGS = new SWParameters(25, -50, -110, -6);
 
     /**
-      *  Perform an alignment and return the result
-      */
+     *  perform a Smith-Waterman alignment of alt against ref
+     *
+     * @param ref bases to align to, values must be the byte equivalent of uppercase chars
+     * @param alt bases to align against ref, values must be the byte equivalent of uppercase chars
+     * @param parameters a set of weights to use when performing the alignment
+     * @param overhangStrategy how to treat overhangs during alignment
+     */
     SmithWatermanAlignment align(final byte[] ref, final byte[] alt, SWParameters parameters, SWOverhangStrategy overhangStrategy);
 
     /**
@@ -33,7 +38,14 @@ public interface SmithWatermanAligner extends Closeable {
     default void close() {}
 
     enum Implementation {
+        /**
+         * use the fastest Smith-Waterman aligner that runs on your hardware
+         */
         FASTEST_AVAILABLE(SmithWatermanJavaAligner::getInstance),
+
+        /**
+         * use the pure java implementation of Smith-Waterman, works on all hardware
+         */
         JAVA(SmithWatermanJavaAligner::getInstance);
 
         private final Supplier<SmithWatermanAligner> alignerSupplier;
