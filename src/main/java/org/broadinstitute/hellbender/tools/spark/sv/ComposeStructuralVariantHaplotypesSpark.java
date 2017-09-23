@@ -29,8 +29,10 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StructuralVariantContext;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SATagBuilder;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.SupplementaryAlignments;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -125,8 +127,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     public static final String PADDING_SIZE_FULL_NAME = "paddingSize";
     public static final String ALIGNED_OUTPUT_SHORT_NAME = "alnOut";
     public static final String ALIGNED_OUTPUT_FULL_NAME = "alignedOutput";
-    public static final String SAMPLE_SHORT_NAME = "sample";
-    public static final String SAMPLE_FULL_NAME = "sample";
+    public static final String SAMPLE_SHORT_NAME = "S";
+    public static final String SAMPLE_FULL_NAME = "sampleName";
 
     public static final int DEFAULT_SHARD_SIZE = 10_000;
     public static final int DEFAULT_PADDING_SIZE = 50;
@@ -194,6 +196,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
         Utils.nonNull(ctx);
         Utils.nonNull(alignedContigsFileName);
+
         final ReadsSparkSource alignedContigs = new ReadsSparkSource(ctx);
         final VariantsSparkSource variantsSource = new VariantsSparkSource(ctx);
 
@@ -751,15 +754,15 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                         final String targetName = a.contigName;
                         final List<SimpleInterval> locations = a.alignmentIntervals.stream()
                                 .map(ai -> ai.referenceSpan).collect(Collectors.toList());
-                        final GATKRead candidate = s.getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(),
+                        final List<GATKRead> candidate = s.getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(),
                                         new TraversalParameters(locations, false))
                                 .filter(rr -> rr.getName().equals(targetName))
                                 .filter(rr -> !rr.getCigar().containsOperator(CigarOperator.H))
-                                .first();
-                        final AlignedContig result = addAlignment(a, candidate);
-                        if (result.contigSequence[0] != 0 && a.contigSequence[result.contigSequence.length - 1] != 0) {
-                            logger.warn("Contig " + result.contigName + " " + readAlignmentString(candidate) + " "
-                                    + candidate.getAttributeAsString("SA") + " gave-up!");
+                                .top(1);
+                        final AlignedContig result = candidate.isEmpty() ? a  : addAlignment(a, candidate.get(0));
+                        if (result.contigSequence[0] == 0 || result.contigSequence[result.contigSequence.length - 1] == 0) {
+                            logger.warn("Contig " + result.contigName + " " + " "
+                                    + a.alignmentIntervals.stream().map(AlignmentInterval::toSumpplementaryAlignmentString).collect(Collectors.joining(",")) + " gave-up!");
                             return null;
                         } else {
                             return result;
@@ -768,11 +771,6 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
         return new Tuple2<>(vc._1, updatedList);
-    }
-
-    private static String readAlignmentString(final GATKRead r) {
-        return r.getContig() + "," + r.getStart() + "," + (r.isReverseStrand() ?  "-" : "+") + "," + r.getCigar() + ","
-                + r.getMappingQuality() + "," + r.getAttributeAsString("NM");
     }
 
     private static AlignedContig convertToAlignedContig(final GATKRead read) {
@@ -799,7 +797,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                             + "overlapping alternative read alignments: " + read.getName() + " at " + (contigIdx + 1));
                 }
             }
-            return new AlignedContig(read.getName(), contigBases, Collections.singletonList(new AlignmentInterval(read)), false);
+            return new AlignedContig(read.getName(), contigBases,
+                    Stream.concat(Collections.singletonList(new AlignmentInterval(read)).stream(),
+                                SupplementaryAlignments.of(read).stream()).collect(Collectors.toList()), false);
         }
     }
 
@@ -840,7 +840,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
         return new AlignedContig(a.contigName, cBases,
                 Stream.concat(a.alignmentIntervals.stream(), b.alignmentIntervals.stream())
-                      .sorted(Comparator.comparing(ai -> ai.startInAssembledContig))
+                      .collect(Collectors.groupingBy(ai -> ai.startInAssembledContig)).values().stream()
+                      .map(l -> l.get(0))
+                      .sorted(Comparator.comparingInt(ai -> ai.startInAssembledContig))
                       .collect(Collectors.toList()), false);
     }
 }
