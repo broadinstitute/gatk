@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
@@ -19,6 +20,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -41,10 +43,13 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SerializableBiFunction;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
@@ -57,12 +62,17 @@ import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
+import scala.Function2;
 import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.IntFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -86,12 +96,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     public static final String INSERT_SIZE_DISTR_FULL_NAME = "insertSizeDistribution";
 
     private static final long serialVersionUID = 1L;
-
-    private static final Comparator<List<AlignmentInterval>> LEFT_RIGHT_ALIGNMENT_COMPARATOR =
-            Comparator.comparingInt(GenotypeStructuralVariantsSpark::unclippedStart)
-                    .thenComparingInt(GenotypeStructuralVariantsSpark::unclippedEnd)
-                    .thenComparingInt(GenotypeStructuralVariantsSpark::clippedStart)
-                    .thenComparingInt(GenotypeStructuralVariantsSpark::clippedEnd);
 
     @ArgumentCollection
     private RequiredVariantInputArgumentCollection variantArguments = new RequiredVariantInputArgumentCollection();
@@ -164,17 +168,22 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<Shard<StructuralVariantContext>, Shard<SVHaplotype>> variantAndHaplotypesSharded = sharder.cogroup(variantSharded, haplotypesSharded);
         final JavaPairRDD<StructuralVariantContext, Iterable<SVHaplotype>> variantAndHaplotypes = sharder
                 .matchLeftByKey(variantAndHaplotypesSharded, StructuralVariantContext::getUniqueID, SVHaplotype::getVariantId);
+        final Collection<Tuple2<StructuralVariantContext, Iterable<SVHaplotype>>> vv = variantAndHaplotypes.filter(t -> Utils.stream(t._2().iterator()).count() == 0).collect();
+        if (vv.size() == 0) {
+            throw new IllegalStateException(vv.iterator().next()._1.getUniqueID());
+        }
         final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(StructuralVariantContext.class, variantAndHaplotypes.getNumPartitions());
         final String fastqDir = this.fastqDir;
-        final String fastqFileFormat = "asm%05d.fastq";
+        final String fastqFileFormat = "asm%06d.fastq";
         final Pattern ASSEMBLY_NAME_ALPHAS = Pattern.compile("[a-zA-Z_]+");
+
         final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> variantHaplotypesAndTemplates =
-                variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
+            variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
                     final AssemblyCollection assemblyCollection = new AssemblyCollection(fastqDir, fastqFileFormat);
                     return Utils.stream(it)
                             .map(t -> {
                                 final IntStream assemblyNumbers = Utils.stream(t._2())
-                                        .filter(c -> c.isContig())
+                                        .filter(SVHaplotype::isContig)
                                         .map(SVHaplotype::getName)
                                         .map(n -> n.substring(0, n.indexOf(":")))
                                         .map(a -> ASSEMBLY_NAME_ALPHAS.matcher(a).replaceAll("0"))
@@ -188,6 +197,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 return new Tuple2<>(t._1(), new Tuple2<>(t._2(), (Iterable<Template>) allTemplates.collect(Collectors.toList())));
                             }).iterator();
                 });
+        variantHaplotypesAndTemplates.collect();
 
         final JavaRDD<StructuralVariantContext> calls = processVariants(variantHaplotypesAndTemplates, ctx);
         final VCFHeader header = composeOutputHeader();
@@ -211,12 +221,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     }
 
     private VCFHeader composeOutputHeader() {
-        final SAMFileHeader readHeader = getHeaderForReads();
-        final List<String> samples = readHeader.getReadGroups().stream()
-                .map(SAMReadGroupRecord::getSample)
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
+        final List<String> samples = Collections.singletonList("sample");
         final VCFHeader result = new VCFHeader(Collections.emptySet(), samples);
         result.setSequenceDictionary(getReferenceSequenceDictionary());
         result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.END_KEY, 1, VCFHeaderLineType.Integer, "last base position of the variant"));
@@ -239,15 +244,23 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     }
 
     private JavaRDD<StructuralVariantContext> processVariants(final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> input, final JavaSparkContext ctx) {
-        return input.mapPartitions(it -> {
-            final Stream<Tuple2<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>>> variants = Utils.stream(it);
+        final Broadcast<SAMSequenceDictionary> broadCastDictionary = ctx.broadcast(getReferenceSequenceDictionary());
+        final SerializableBiFunction<String, byte[], File> imageCreator =  GenotypeStructuralVariantsSpark::createTransientImageFile;
+        final AlignmentPenalties penalties = this.penalties;
+        final InsertSizeDistribution insertSizeDistribution = this.insertSizeDistribution;
+        return input.mapPartitions(it -> { /*
+            final SAMSequenceDictionary dictionary = broadCastDictionary.getValue();
+            final Stream<Tuple2<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>>> variants =
+                    Utils.stream(it);
             final Map<String, File> imagesByName = new HashMap<>();
             final SAMFileHeader header = new SAMFileHeader();
-            header.setSequenceDictionary(getReferenceSequenceDictionary());
-            final GenotypeLikelihoodCalculator genotypeCalculator = new GenotypeLikelihoodCalculators().getInstance(2, 2);
+            header.setSequenceDictionary(dictionary);
+            final GenotypeLikelihoodCalculator genotypeCalculator =
+                    new GenotypeLikelihoodCalculators().getInstance(2, 2); */
 
-            return variants.map(variant -> {
-                final List<Template> templates = Utils.stream(variant._2()._2()).collect(Collectors.toList());
+           /* return variants.map(variant -> { /*
+                final List<Template> templates = Utils.stream(variant._2()._2())
+                        .collect(Collectors.toList());
                 final List<byte[]> sequences = templates.stream()
                         .flatMap(t -> t.fragments().stream())
                         .map(Template.Fragment::bases)
@@ -267,28 +280,39 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 final int refHaplotypeIndex = haplotypes.indexOf(ref);
                 final int altHaplotypeIndex = haplotypes.indexOf(alt);
 
-                final TemplateHaplotypeScoreTable scoreTable = new TemplateHaplotypeScoreTable(templates, haplotypes);
-                for (int h = 0; h < haplotypes.size(); h++) {
+                final TemplateHaplotypeScoreTable scoreTable =
+                        new TemplateHaplotypeScoreTable(templates, haplotypes);*/
+               // for (int h = 0; h < haplotypes.size(); h++) {
+                    /*
                     final SVHaplotype haplotype = haplotypes.get(h);
+
                     final boolean isContig = haplotype.isContig();
                     final String imageName = isContig
                             ? haplotype.getName()
                             : haplotype.getVariantId() + "/" + haplotype.getName();
-                    final File imageFile = imagesByName.computeIfAbsent(imageName, (in) ->
-                            createTransientImageFile(in, haplotype.getBases()));
+                    final File imageFile =
+                            imagesByName.computeIfAbsent(imageName, (in) -> imageCreator.apply(in, haplotype.getBases()));
                     final BwaMemIndex index = BwaMemIndexCache.getInstance(imageFile.toString());
                     final BwaMemAligner aligner = new BwaMemAligner(index);
                     final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(sequences);
+                    final IntFunction<String> haplotypeName = i -> i == 0 ? haplotype.getName() : null;
                     for (int i = 0; i < templates.size(); i++) {
+                        final Template template = templates.get(i);
                         final List<BwaMemAlignment> firstAlignment = alignments.get(i * 2);
                         final List<BwaMemAlignment> secondAlignment = alignments.get(i * 2 + 1);
-                        final TemplateMappingInformation mappingInformation = calculateMappingInfo(haplotype,
-                                templates.get(i), firstAlignment, secondAlignment);
+                        final List<AlignmentInterval> firstIntervals = BwaMemAlignmentUtils.toAlignmentIntervals(firstAlignment, haplotypeName, template.fragments().get(0).length());
+                        final List<AlignmentInterval> secondIntervals = BwaMemAlignmentUtils.toAlignmentIntervals(secondAlignment, haplotypeName, template.fragments().get(1).length());
+
+                        final TemplateMappingInformation mappingInformation = TemplateMappingInformation.fromAlignments(
+                                firstIntervals, template.fragments().get(0).length(),
+                                secondIntervals, template.fragments().get(1).length());
                         scoreTable.setMappingInfo(h, i, mappingInformation);
                     }
-                }
+                    */
+              //  }
                 // resolve the missing mapping scores to the worst seen + a penalty.
-                for (int t = 0; t < templates.size(); t++) {
+             //   for (int t = 0; t < templates.size(); t++) {
+                    /*
                     final OptionalDouble bestFirstAlignmentScore = scoreTable.getBestAlignmentScore(t, 0);
                     if (bestFirstAlignmentScore.isPresent()) {
                         final double missingAlignmentScore = bestFirstAlignmentScore.getAsDouble() - 0.1 * penalties.unmappedFragmentPenalty;
@@ -299,15 +323,16 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         final double missingAlignmentScore = bestSecondAlignmentScore.getAsDouble() - 0.1 * penalties.unmappedFragmentPenalty;
                         scoreTable.applyMissingAlignmentScore(t, 1, missingAlignmentScore);
                     }
-                }
-                final ReadLikelihoods<SVHaplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("sample"),
+                    */
+             //   }
+             /*   final ReadLikelihoods<SVHaplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("sample"),
                         new IndexedAlleleList<>(ref, alt), Collections.singletonMap("sample", reads));
                 final LikelihoodMatrix<SVHaplotype> sampleLikelihoods = likelihoods.sampleMatrix(0);
                 sampleLikelihoods.fill(Double.NEGATIVE_INFINITY);
                 final int refIdx = likelihoods.indexOfAllele(ref);
-                final int altIdx = likelihoods.indexOfAllele(alt);
-                for (final SVHaplotype haplotype : haplotypes) {
-                    final double haplotypeRefScore = haplotype.getReferenceScore();
+                final int altIdx = likelihoods.indexOfAllele(alt);*/
+            //    for (final SVHaplotype haplotype : haplotypes) {
+                /*    final double haplotypeRefScore = haplotype.getReferenceScore();
                     final double haplotypeAltScore = haplotype.getAlternativeScore();
                     for (int t = 0; t < templates.size(); t++) {
                         for (int h = 0; h < haplotypes.size(); h++) {
@@ -319,9 +344,10 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                     Math.max(firstMappingScore + secondMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t * 2)));
                         }
                     }
-                }
-                for (int t = 0; t < templates.size(); t++) {
-                    final TemplateMappingInformation refMapping = scoreTable.getMappingInfo(refHaplotypeIndex, t);
+                    */
+             //   }
+              //  for (int t = 0; t < templates.size(); t++) {
+                /*    final TemplateMappingInformation refMapping = scoreTable.getMappingInfo(refHaplotypeIndex, t);
                     final TemplateMappingInformation altMapping = scoreTable.getMappingInfo(altHaplotypeIndex, t);
                     if (refMapping.pairOrientation.isProper() == altMapping.pairOrientation.isProper()) {
                         if (refMapping.pairOrientation.isProper()) {
@@ -333,22 +359,17 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
                     } else {
                         sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
-                    }
-                }
-                likelihoods.normalizeLikelihoods(true, -0.1 * penalties.maximumLikelihoodDiffernenceCap);
+                    }*/
+             //   }
+            /*    likelihoods.normalizeLikelihoods(true, -0.1 * penalties.maximumLikelihoodDiffernenceCap);
                 final GenotypeLikelihoods likelihoods1 = genotypeCalculator.genotypeLikelihoods(sampleLikelihoods);
                 final VariantContextBuilder newVariantBuilder = new VariantContextBuilder(variant._1());
                 newVariantBuilder.genotypes(
                         new GenotypeBuilder().name("sample")
                                 .PL(likelihoods1.getAsPLs()).make());
-                return new StructuralVariantContext(newVariantBuilder.make());
-            }).iterator();
-        });
-
-        //final ReferenceMultiSource reference = getReference();
-        // return null;// input
-        //.partitionBy(new );
-        //map(t -> processVariant(t._1(), t._2()._1(), t._2()._2()));
+                return new StructuralVariantContext(newVariantBuilder.make());*/
+        //    return null; }).iterator();
+        return null; });
     }
 
     private static StructuralVariantContext processVariant(final StructuralVariantContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {
@@ -401,90 +422,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         return null;
     }
 
-    private TemplateMappingInformation calculateMappingInfo(final SVHaplotype haplotype, final Template template, final List<BwaMemAlignment> first, final List<BwaMemAlignment> second) {
 
-        final List<AlignmentInterval> firstIntervals = composeAlignmentIntervals(haplotype, template, 0, first);
-        final List<AlignmentInterval> secondIntervals = composeAlignmentIntervals(haplotype, template, 1, second);
-        final double firstScore = score(template.fragments().get(0).length(), firstIntervals);
-        final double secondScore = score(template.fragments().get(1).length(), secondIntervals);
 
-        if (firstIntervals.isEmpty() && secondIntervals.isEmpty()) {
-            return new TemplateMappingInformation();
-        } else if (secondIntervals.isEmpty()) {
-            return new TemplateMappingInformation(firstScore, true);
-        } else if (firstIntervals.isEmpty()) {
-            return new TemplateMappingInformation(secondScore, false);
-        } else {
-            final Pair<List<AlignmentInterval>, List<AlignmentInterval>> sortedAlignments
-                    = sortLeftRightAlignments(firstIntervals, secondIntervals);
-            final Pair<SVFastqUtils.Strand, SVFastqUtils.Strand> strands = new ImmutablePair<>(
-                    strand(sortedAlignments.getLeft()), strand(sortedAlignments.getRight()));
-            final ReadPairOrientation orientation = ReadPairOrientation.fromStrands(strands.getLeft(), strands.getRight());
-            if (orientation.isProper()) {
-                return new TemplateMappingInformation(firstScore, secondScore,
-                        unclippedEnd(sortedAlignments.getRight()) - unclippedStart(sortedAlignments.getLeft()));
-            } else {
-                return new TemplateMappingInformation(firstScore, secondScore, orientation);
-            }
-        }
-    }
-
-    private static double score(final int length, final List<AlignmentInterval> intervals) {
-        return intervals.isEmpty() ? Double.NaN : AlignmentScore.calculate(length, intervals).getValue();
-
-    }
-
-    private static Pair<List<AlignmentInterval>, List<AlignmentInterval>> sortLeftRightAlignments(
-            final List<AlignmentInterval> first, final List<AlignmentInterval> second) {
-        final int cmp = LEFT_RIGHT_ALIGNMENT_COMPARATOR.compare(first, second);
-        return (cmp <= 0) ? new ImmutablePair<>(first, second)
-                : new ImmutablePair<>(second, first);
-    }
-
-    private static SVFastqUtils.Strand strand(final List<AlignmentInterval> firstIntervals) {
-        final int mappedBasesOrientation = firstIntervals.stream()
-                .mapToInt(ai -> (ai.forwardStrand ? 1 : -1) * CigarUtils.countAlignedBases(ai.cigarAlong5to3DirectionOfContig))
-                .sum();
-        if (mappedBasesOrientation != 0) {
-            return mappedBasesOrientation < 0 ? SVFastqUtils.Strand.NEGATIVE : SVFastqUtils.Strand.POSITIVE;
-        } else { // tie-break:
-            final Comparator<AlignmentInterval> comparator0 = Comparator.comparingInt(a -> CigarUtils.countAlignedBases(a.cigarAlong5to3DirectionOfContig));
-            final Comparator<AlignmentInterval> comparator1 = comparator0.thenComparingInt(a -> a.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator() == CigarOperator.I)
-                    .mapToInt(CigarElement::getLength)
-                    .sum());
-            final Comparator<AlignmentInterval> comparator = comparator1.thenComparingInt(a -> a.startInAssembledContig).reversed();
-
-            final boolean forwardStrand = firstIntervals.stream().sorted(comparator).findFirst().get().forwardStrand;
-            return forwardStrand ? SVFastqUtils.Strand.POSITIVE : SVFastqUtils.Strand.NEGATIVE;
-        }
-    }
-
-    private static int unclippedStart(final List<AlignmentInterval> intervals) {
-        return intervals.stream()
-                .mapToInt(ai -> ai.referenceSpan.getStart() - (ai.forwardStrand ? CigarUtils.countLeftClippedBases(ai.cigarAlong5to3DirectionOfContig)
-                                                                                : CigarUtils.countRightClippedBases(ai.cigarAlong5to3DirectionOfContig)))
-                .min().getAsInt();
-    }
-
-    private static int clippedStart(final List<AlignmentInterval> intervals) {
-        return intervals.stream()
-                .mapToInt(ai -> ai.referenceSpan.getStart())
-                .min().getAsInt();
-    }
-
-    private static int unclippedEnd(final List<AlignmentInterval> intervals) {
-        return intervals.stream()
-                .mapToInt(ai -> ai.referenceSpan.getEnd() + (ai.forwardStrand ? CigarUtils.countRightClippedBases(ai.cigarAlong5to3DirectionOfContig)
-                                                                              : CigarUtils.countLeftClippedBases(ai.cigarAlong5to3DirectionOfContig)))
-                .max().getAsInt();
-    }
-
-    private static int clippedEnd(final List<AlignmentInterval> intervals) {
-        return intervals.stream()
-                .mapToInt(ai -> ai.referenceSpan.getEnd())
-                .max().getAsInt();
-    }
 
     private static List<AlignmentInterval> composeAlignmentIntervals(final SVHaplotype haplotype, final Template template, final int fragmentIndex, final List<BwaMemAlignment> alignerOutput) {
         if (alignerOutput.isEmpty() || alignerOutput.size() == 1 && SAMFlag.READ_UNMAPPED.isSet(alignerOutput.get(0).getSamFlag())) {

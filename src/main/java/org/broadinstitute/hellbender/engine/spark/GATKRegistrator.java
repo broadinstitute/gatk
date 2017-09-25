@@ -6,6 +6,7 @@ import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import htsjdk.samtools.*;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.PairedEnds;
 
@@ -26,6 +27,23 @@ public class GATKRegistrator implements KryoRegistrator {
 
         registerGATKClasses(kryo);
 
+        // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
+        // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
+        // in newer versions (3.0.x), but we can't use those because of incompatibility with Spark. We just include the
+        // fix here.
+        // We are tracking this issue with (#874)
+        kryo.register(Collections.unmodifiableMap(Collections.EMPTY_MAP).getClass(), new UnmodifiableCollectionsSerializer());
+
+        kryo.register(Collections.unmodifiableList(Collections.EMPTY_LIST).getClass(), new UnmodifiableCollectionsSerializer());
+
+        kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
+
+        kryo.register(SAMRecord.class, new SAMRecordSerializer());
+
+//        kryo.register(ShardPartitioner.class, new ShardPartitioner.Serializer());
+
+        //register to avoid writing the full name of this class over and over
+        kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
 
         // register the ADAM data types using Avro serialization, including:
         //     AlignmentRecord

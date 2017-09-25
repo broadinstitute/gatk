@@ -1,18 +1,16 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.util.Locatable;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.apache.spark.Partitioner;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.utils.SerializableFunction;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.io.Serializable;
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * Partitioner based on a shard list.
@@ -44,55 +42,32 @@ import java.util.function.Function;
  * </p>
  *
  */
-public abstract class ShardPartitioner<T> extends Partitioner {
+//@DefaultSerializer(ShardPartitioner.Serializer.class)
+public final class ShardPartitioner<T extends Locatable> extends Partitioner {
 
     private static final long serialVersionUID = 1L;
 
     private final Class<T> clazz;
     private final int numberOfPartitions;
-    private final Map<String, Integer> contigToIndex = new HashMap<>();
-    private final SVIntervalTree<Integer> partitions = new SVIntervalTree<>();
+    private final Map<String, Integer> contigToIndex = new LinkedHashMap<>();
+    private final SVIntervalTree<Integer> partitions;
 
-    /**
-     * Creates a partitioner to be used on locatable key objects.
-     * @param clazz key object class.
-     * @param shards the shards this partitioner will be based on.
-     * @param numberOfPartitions number of output partition.
-     * @param <T> the class for the key object this partitioner will be used on.
-     * @param <L> the type for the shards.
-     * @return never {@code null}.
-     */
-    public static <T extends Locatable, L extends Locatable> ShardPartitioner<T> make(
-            final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
-        return new ShardPartitioner<T>(clazz, shards, numberOfPartitions) {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public Locatable getLocatable(T key) {
-                return key;
-            }
-        };
-    }
-
-    /**
-     * Creates a partitioner to be used on non-locatable key objects.
-     * @param clazz key object class.
-     * @param shards the shards this partitioner will be based on.
-     * @param toLocatable function that extracts a {@link Locatable} out of {@link T} typed key objects.
-     * @param numberOfPartitions number of output partition.
-     * @param <T> the class for the key object this partitioner will be used on.
-     * @param <L> the type for the shards.
-     * @return never {@code null}.
-     */
-    public static <T, L extends Locatable> ShardPartitioner<T> make(final Class<T> clazz, final Collection<L> shards,
-                                                                    final SerializableFunction<T, Locatable> toLocatable,
-                                                                      final int numberOfPartitions) {
-        return new ShardPartitioner<T>(clazz, shards, numberOfPartitions) {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public Locatable getLocatable(T key) {
-                return toLocatable.apply(key);
-            }
-        };
+    @SuppressWarnings("unchecked")
+    private ShardPartitioner(final Serialized serialized) {
+        try {
+            clazz = (Class<T>) Class.forName(serialized.clazzName);
+        } catch (final ClassNotFoundException ex) {
+            throw new GATKException.ShouldNeverReachHereException(ex);
+        }
+        numberOfPartitions = serialized.numberOfPartitions;
+        for (int i = 0; i < serialized.contigNames.length; i++) {
+            contigToIndex.put(serialized.contigNames[i], serialized.contigIndex[i]);
+        }
+        partitions = new SVIntervalTree<>();
+        for (int i = 0; i < serialized.intervalStart.length; i++) {
+            partitions.put(new SVInterval(serialized.intervalIndex[i], serialized.intervalStart[i], serialized.intervalEnd[i]),
+                    serialized.intervalPartition[i]);
+        }
     }
 
     @Override
@@ -106,14 +81,12 @@ public abstract class ShardPartitioner<T> extends Partitioner {
     @Override
     public int getPartition(final Object key) {
         if (key == null || clazz.isAssignableFrom(key.getClass())) {
-            final Locatable locatable = getLocatable(clazz.cast(key));
+            final Locatable locatable = clazz.cast(key);
             return getPartition(locatable);
         } else {
             throw new IllegalArgumentException("key is of the wrong class '" + key.getClass() + "' that does not extends '" + clazz + "'");
         }
     }
-
-    protected abstract Locatable getLocatable(final T key);
 
     private int getPartition(final Locatable locatable) {
         Utils.nonNull(locatable);
@@ -124,7 +97,27 @@ public abstract class ShardPartitioner<T> extends Partitioner {
         final Integer contigIndex = contigToIndex.get(contig);
         final SVInterval query = new SVInterval(contigIndex != null ? contigIndex : Objects.hashCode(contig) % contigToIndex.size(), start, end + 1);
         // By construction minOverlapper won't ever return a null:
+        //return 0;
         return partitions.minOverlapper(query).getValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private ShardPartitioner(final Kryo kryo, final Input input) {
+        final String clazzName = input.readString();
+        try {
+            this.clazz = (Class<T>) Class.forName(clazzName);
+        } catch (final ClassNotFoundException ex) {
+            throw new GATKException("unknown Locatable class " + clazzName);
+        }
+        if (!Locatable.class.isAssignableFrom(clazz)) {
+            throw new GATKException("the element class does not extend Locatable: " + clazzName);
+        }
+        this.numberOfPartitions = input.readInt();
+        final int numberOfContigs = contigToIndex.size();
+        for (int i = 0; i < numberOfContigs; i++) {
+            contigToIndex.put(input.readString(), input.readInt());
+        }
+        partitions = (SVIntervalTree<Integer>) kryo.getSerializer(SVIntervalTree.class).read(kryo, input, (Class<SVIntervalTree<Integer>>) (Class) SVIntervalTree.class);
     }
 
     /**
@@ -133,15 +126,16 @@ public abstract class ShardPartitioner<T> extends Partitioner {
      * @param numberOfPartitions number of partitions for this partitioner.
      * @param <L> the shard type.
      */
-    private <L extends Locatable> ShardPartitioner(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
+    public <L extends Locatable> ShardPartitioner(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
         Utils.nonNull(clazz);
         Utils.nonNull(shards);
         this.clazz = clazz;
         ParamUtils.isNotEmpty(shards, "shard list");
         ParamUtils.isPositive(numberOfPartitions, "the number of input partitions must be 1 or greater");
-
         final int numberOfShardsPerPartition = (int) Math.ceil(shards.size() / (float) numberOfPartitions);
         final Iterator<L> shardIterator = shards.iterator();
+        partitions = new SVIntervalTree<>();
+
         String currentContig = null;
         int leftInPartition = numberOfShardsPerPartition; // number of shards left to be included to complete the current
                                                           // partition.
@@ -161,7 +155,7 @@ public abstract class ShardPartitioner<T> extends Partitioner {
                 }
             } else {
                 if (currentContig != null) {
-                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
+                    //partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
                 }
                 currentContigIndex++;
                 currentPartitionStart = 1;
@@ -176,5 +170,89 @@ public abstract class ShardPartitioner<T> extends Partitioner {
         }
         partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
         this.numberOfPartitions = numberOfPartitions;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void serialize(final Kryo kryo, final Output output) {
+        output.writeString(clazz.getName());
+        output.writeInt(numberOfPartitions);
+        output.writeInt(contigToIndex.size());
+        for (final Map.Entry<String, Integer> entry : contigToIndex.entrySet()) {
+            output.writeString(entry.getKey());
+            output.writeInt(entry.getValue());
+        }
+        kryo.getSerializer(partitions.getClass()).write(kryo, output, partitions);
+    }
+
+    public static final class Serializer<T extends Locatable> extends com.esotericsoftware.kryo.Serializer<ShardPartitioner<T>> {
+        @Override
+        public void write(final Kryo kryo, final Output output, final ShardPartitioner<T> interval ) {
+            interval.serialize(kryo, output);
+        }
+
+        @Override
+        public  ShardPartitioner<T> read(final Kryo kryo, final Input input, final Class<ShardPartitioner<T>> klass ) {
+            return new ShardPartitioner<>(kryo, input);
+        }
+    }
+
+    // Needed for serialization since {@link #partitions SVIntervalTree<String> partitions} is not serializable.
+    // Please do not change signature (including Object return type) as that may break Serialization.
+    private Object writeReplace() {
+        return new Serialized(this);
+    }
+
+    /**
+     * Serialized form of {@link ShardPartitioner} instances.
+     * <p>
+     *     Solves the issue with non-Java serializable {@link SVIntervalTree}.
+     * </p>
+     * <p>
+     *     For some unknown reason currently we cannot apply Kryo serialization on classes that
+     *     extends {@link Serializable} and since {@link ShardPartitioner} extends {@link Partitioner}
+     *     we don't have an option but to use Java's standard object serialization framework.
+     * </p>
+     */
+    private static class Serialized implements Serializable {
+
+        private static final long serialVersionUID = ShardPartitioner.serialVersionUID;
+
+        private final String clazzName;
+        private final int numberOfPartitions;
+        private final String[] contigNames;
+        private final int[] contigIndex;
+        private final int[] intervalStart;
+        private final int[] intervalEnd;
+        private final int[] intervalIndex;
+        private final int[] intervalPartition;
+
+        private Serialized(final ShardPartitioner<?> partitioner) {
+           this.clazzName = partitioner.clazz.getName();
+           this.numberOfPartitions = partitioner.numberOfPartitions;
+           this.contigNames = new String[partitioner.contigToIndex.size()];
+           this.contigIndex = new int[this.contigNames.length];
+           int nextIndex = 0;
+           for (final Map.Entry<String, Integer> entry : partitioner.contigToIndex.entrySet()) {
+               contigNames[nextIndex] = entry.getKey();
+               contigIndex[nextIndex++] = entry.getValue();
+           }
+           this.intervalStart = new int[partitioner.partitions.size()];
+           this.intervalEnd = new int[intervalStart.length];
+           this.intervalIndex = new int[intervalStart.length];
+           this.intervalPartition = new int[intervalStart.length];
+           nextIndex = 0;
+           for (final SVIntervalTree.Entry<Integer> entry : partitioner.partitions) {
+               final SVInterval interval = entry.getInterval();
+               intervalStart[nextIndex] = interval.getStart();
+               intervalEnd[nextIndex] = interval.getEnd();
+               intervalIndex[nextIndex] = interval.getContig();
+               intervalPartition[nextIndex++] = entry.getValue();
+           }
+        }
+
+        // Please don't change signature including return type.
+        private Object readResolve() {
+            return new ShardPartitioner<>(this);
+        }
     }
 }

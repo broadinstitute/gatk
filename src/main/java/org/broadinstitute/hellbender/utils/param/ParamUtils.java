@@ -367,4 +367,12 @@ public class ParamUtils {
         return isNotEmpty(arg, "input collection");
     }
 
+    public static double isDouble(final CharSequence seq, final String error) {
+        Utils.nonNull(seq, "the input char sequence must not be null");
+        try {
+            return Double.parseDouble(seq.toString());
+        } catch (final NumberFormatException ex) {
+            throw new IllegalArgumentException(error, ex);
+        }
+    }
 }

@@ -117,7 +117,7 @@ public class SparkSharder {
 
     public <L extends Locatable> Partitioner shardPartitioner(final Class<L> clazz, final JavaPairRDD<L, ?> rdd) {
         Utils.nonNull(rdd);
-        return ShardPartitioner.make(clazz, shards, rdd.getNumPartitions());
+        return new ShardPartitioner<>(clazz, shards, rdd.getNumPartitions());
     }
 
     public <K extends Locatable, V> JavaPairRDD<K, V> partition(final Class<K> clazz, final JavaPairRDD<K, V> rdd) {
@@ -147,7 +147,7 @@ public class SparkSharder {
             final Map<K, List<R>> rs = Utils.stream(tuple._2())
                     .collect(Collectors.groupingBy(rightMatchingKey));
             final Stream<Tuple2<L, List<R>>> lAndRs = ls.keySet().stream().flatMap(k ->
-                    ls.get(k).stream().map(l -> new Tuple2<>(l, rs.get(k))));
+                    ls.get(k).stream().map(l -> new Tuple2<>(l, rs.getOrDefault(k, Collections.emptyList()))));
             return lAndRs.iterator();
         }).mapToPair(tuple -> new Tuple2<>(tuple._1(), tuple._2()));
     }
@@ -452,7 +452,7 @@ public class SparkSharder {
      * @return never {@code null}.
      */
     public <L extends Locatable> ShardPartitioner<L> partitioner(final Class<L> clazz, final int numberOfPartitions) {
-        return ShardPartitioner.make(clazz, shards, numberOfPartitions);
+        return new ShardPartitioner<>(clazz, shards, numberOfPartitions);
     }
 
     private static void addPartitionReadExtent(List<PartitionLocatable<SimpleInterval>> extents, int partitionIndex, String contig, int start, int end) {

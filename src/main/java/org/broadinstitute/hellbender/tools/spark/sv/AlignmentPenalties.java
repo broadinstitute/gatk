@@ -5,10 +5,14 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
+import java.io.Serializable;
+
 /**
  * Created by valentin on 6/1/17.
  */
-public class AlignmentPenalties {
+public class AlignmentPenalties implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     public static final String UNMAPPED_FRAGMENT_PENALTY_FULL_NAME = "unmappedFragmentPenalty";
     public static final String UNMAPPED_FRAGMENT_PENALTY_SHORT_NAME = "ufp";

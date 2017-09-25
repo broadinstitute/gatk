@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Class to represent and calculate the aligned contig score.
@@ -36,15 +37,17 @@ class AlignmentScore {
 
     public static AlignmentScore valueOf(final String str) {
         final String[] parts = Utils.nonNull(str).split("[:,]");
-        Utils.validateArg(parts.length != 6, "the input string has the wrong number of components: " + str);
+        Utils.validateArg(parts.length == 6, "the input string has the wrong number of components");
         int nextIdx = 0;
+        // we only check that the first value is a valid double (score), we don't keep this value as is derivable from
+        // the other based on penalties.
+        ParamUtils.isDouble(parts[nextIdx++], "score is not a valid double value");
         final int matches = ParamUtils.isPositiveOrZeroInteger(parts[nextIdx++], "matches is not a valid positive integer");
         final int misMatches = ParamUtils.isPositiveOrZeroInteger(parts[nextIdx++], "misMatches is not a valid positive integer");
         final int indels = ParamUtils.isPositiveOrZeroInteger(parts[nextIdx++], "indels is not a valid positive integer");
         final int indelLenghts = ParamUtils.isPositiveOrZeroInteger(parts[nextIdx++], "indel-length is not a valid positive integer");
         final int reversals = ParamUtils.isPositiveOrZeroInteger(parts[nextIdx], "reversals is not a valid positive integer");
-        final AlignmentScore result = new AlignmentScore(matches, misMatches, indels, indelLenghts, reversals);
-        return result;
+        return new AlignmentScore(matches, misMatches, indels, indelLenghts, reversals);
     }
 
     public static AlignmentScore calculate(final int sequenceLength, final List<AlignmentInterval> alignmentIntervals) {

@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -1083,10 +1084,12 @@ public final class Utils {
     }
 
     public static <T> Stream<T> stream(final Iterable<T> iterable) {
+        Utils.nonNull(iterable);
         return StreamSupport.stream(iterable.spliterator(), false);
     }
 
     public static <T> Stream<T> stream(final Iterator<T> iterator) {
+        Utils.nonNull(iterator);
         return stream(() -> iterator);
     }
 
