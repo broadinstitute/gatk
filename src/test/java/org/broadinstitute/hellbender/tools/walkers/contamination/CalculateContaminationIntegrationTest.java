@@ -1,45 +1,77 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import org.apache.commons.math3.distribution.BinomialDistribution;
+import org.apache.commons.math3.distribution.UniformRealDistribution;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.IntStream;
 
 /**
  * Created by David Benjamin on 2/16/17.
  */
 public class CalculateContaminationIntegrationTest extends CommandLineProgramTest {
+    public static final File SPIKEIN_DATA_DIRECTORY = new File(getTestDataDir(), "calculatecontamination");
+    public static final File NA12891_1_PCT_NA12892_99_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.01_NA12892_0.99.table");
+    public static final File NA12891_3_PCT_NA12892_97_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.03_NA12892_0.97.table");
+    public static final File NA12891_5_PCT_NA12892_95_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.05_NA12892_0.95.table");
+    public static final File NA12891_8_PCT_NA12892_92_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.08_NA12892_0.92.table");
+    public static final double BASELINE_CONTAMINATION_OF_NA12892 = 0.01;
+
     @Test
-    public void test() {
+    public void testArtificialData() {
+        final RandomGenerator randomGenerator = RandomGeneratorFactory.createRandomGenerator(new Random(111));
+
         final String contig = "chr1";
         final int spacing = 100000;
-        final double contamination = 0.07;
-        final double alleleFrequency = 0.2;
-        final double refContamination = contamination * (1 - alleleFrequency);
+        final int numSites = 2000;
+        final int lohStart = 1000;
+        final int lohEnd = 1100;
+        final double lohMinorAlleleFraction = 0.2;
+        final double[] minorAlleleFractions = Collections.nCopies(numSites, 0.5).stream().mapToDouble(x -> x).toArray();
+        IntStream.range(lohStart, lohEnd).forEach(n -> minorAlleleFractions[n] = lohMinorAlleleFraction);
 
-        final int depth = 100;
 
+        final int sampleDepth = 100;
+        final int contaminantDepth = 7;
+        final int totalDepth = sampleDepth + contaminantDepth;
+        final double contamination = (double) contaminantDepth / (sampleDepth + contaminantDepth);
+
+        final UniformRealDistribution alleleFrequencyDistribution = new UniformRealDistribution(randomGenerator, 0.05, 0.3);
         final List<PileupSummary> ps = new ArrayList<>();
 
-        // if allele frequency is 0.2, then hets are about 10 times as common as hom var
-        // thus we make nine hets for every hom var
-        for (int n = 0; n < 1000; n++) {
-            int position = n * spacing;
-                ps.add(n % 10 == 0
-                        ? new PileupSummary(contig, position, (int) (depth*refContamination), (int) (depth * (1 - refContamination)), 0, alleleFrequency)
-                        : new PileupSummary(contig, position, depth / 2, depth/2, 1, alleleFrequency));
-        }
+        for (int n = 0; n < numSites; n++) {
+            final int position = n * spacing;
+            final double alleleFrequency = alleleFrequencyDistribution.sample();
 
-        // same idea, but loss of heterozygosity
-        // as above we make nine hets for every hom var, but these are LoH hets with a skewed allele fration of 0.8
-        for (int n = 1000; n < 1100; n++) {
-            int position = n * spacing;
-            ps.add(n % 10 == 0
-                    ? new PileupSummary(contig, position, (int) (depth*refContamination), (int) (depth * (1 - refContamination)), 0, alleleFrequency)
-                    : new PileupSummary(contig, position, (int) 0.2 * depth, (int) (0.8 * depth), 1, alleleFrequency));
+            // get the contaminant "genotype"
+            final int contaminantAltCount = new BinomialDistribution(randomGenerator, contaminantDepth, alleleFrequency).sample();
+            int totalAltCount = contaminantAltCount;
+
+            final double hetProbability = 2 * alleleFrequency * (1 - alleleFrequency);
+            final double homAltProbability = alleleFrequency * alleleFrequency;
+            final double x = randomGenerator.nextDouble();
+            if (x < hetProbability) {    // het
+                //draw alt allele fractions from mixture of binomials centered at maf and 1 - maf
+                final double altFraction = randomGenerator.nextDouble() < 0.5 ? minorAlleleFractions[n] : 1 - minorAlleleFractions[n];
+                totalAltCount += new BinomialDistribution(randomGenerator, sampleDepth, altFraction).sample();
+
+            } else if (x < hetProbability + homAltProbability) {    //hom alt
+                totalAltCount += sampleDepth;
+            } else {    // hom ref
+                //do nothing -- no alts from the sample
+            }
+            final int totalRefCount = totalDepth - totalAltCount;
+            ps.add(new PileupSummary(contig, position, totalRefCount, totalAltCount, 0, alleleFrequency));
         }
 
         final File psTable = createTempFile("pileups", ".table");
@@ -48,6 +80,55 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
 
         final String[] args = {
                 "-I", psTable.getAbsolutePath(),
+                "-O", contaminationTable.getAbsolutePath(),
+        };
+        runCommandLine(args);
+
+        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
+        Assert.assertEquals(calculatedContamination, contamination, 0.01);
+    }
+
+
+    // spike-in where even at 0% spikein the bam file still had some baseline contamination
+    @Test(dataProvider = "spikeInData")
+    public void testSpikeIn(final File pileupSummary, final double spikeIn, final double baselineContamination) {
+        final File contaminationTable = createTempFile("contamination", ".table");
+        final double contamination = spikeIn + baselineContamination;
+
+        final String[] args = {
+                "-I", pileupSummary.getAbsolutePath(),
+                "-O", contaminationTable.getAbsolutePath(),
+        };
+        runCommandLine(args);
+
+        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
+        Assert.assertEquals(calculatedContamination, contamination, 0.01);
+    }
+
+    // pileup summary table, spikein fraction, baseline contamination before spike-in
+    @DataProvider(name = "spikeInData")
+    public Object[][] spikeInData() {
+        return new Object[][]{
+                {NA12891_1_PCT_NA12892_99_PCT, 0.01, BASELINE_CONTAMINATION_OF_NA12892},
+                {NA12891_3_PCT_NA12892_97_PCT, 0.03, BASELINE_CONTAMINATION_OF_NA12892},
+                {NA12891_5_PCT_NA12892_95_PCT, 0.05, BASELINE_CONTAMINATION_OF_NA12892},
+                {NA12891_8_PCT_NA12892_92_PCT, 0.08, BASELINE_CONTAMINATION_OF_NA12892}
+        };
+    }
+
+    // Using 1% spike-in as a very close approximation to an uncontaminated matched normal.
+    @Test
+    public void testMatchedNormal() {
+        final File normal = NA12891_1_PCT_NA12892_99_PCT;
+        final File contaminated = NA12891_8_PCT_NA12892_92_PCT;
+        final double baselineContamination = BASELINE_CONTAMINATION_OF_NA12892;
+        final double contamination = 0.08 + baselineContamination;
+        final File contaminationTable = createTempFile("contamination", ".table");
+
+
+        final String[] args = {
+                "-I", contaminated.getAbsolutePath(),
+                "-matched", normal.getAbsolutePath(),
                 "-O", contaminationTable.getAbsolutePath(),
         };
         runCommandLine(args);

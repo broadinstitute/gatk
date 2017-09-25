@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -82,6 +83,10 @@ public class PileupSummary implements Locatable {
     }
     public double getAltFraction() {
         return totalCount == 0 ? 0 : (double) altCount / totalCount;
+    }
+    public double getMinorAlleleFraction() {
+        final double altFraction = getAltFraction();
+        return FastMath.min(altFraction, 1 - altFraction);
     }
 
 
