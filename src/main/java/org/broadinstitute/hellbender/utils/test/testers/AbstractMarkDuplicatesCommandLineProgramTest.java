@@ -29,7 +29,7 @@ import java.util.List;
  */
 public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends CommandLineProgramTest {
 
-    public static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MarkDuplicates/");
+    public static final File TEST_DATA_DIR = new File(getTestDataDir(), "walkers/MarkDuplicates2/");
 
     protected abstract AbstractMarkDuplicatesTester getTester();
 
@@ -48,7 +48,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         // 5'1: 2, 5'2:46+73M=118
         // 5'1: 2, 5'2:51+68M=118
         tester.addMappedPair(0, 12, 46, false, false, "6S42M28S", "3S73M", true, 50); // only add the first one
-        // NB: this next record should not be a duplicate in MarkDuplicates
+        // NB: this next record should not be a duplicate in MarkDuplicates2
         tester.addMappedPair(0, 12, 51, false, false, "6S42M28S", "8S68M", true, 50); // only add the first one
         tester.runTest();
     }

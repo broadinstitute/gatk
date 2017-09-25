@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
+package org.broadinstitute.hellbender.tools.walkers.markduplicates;
 
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
@@ -13,7 +13,9 @@ import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -57,6 +59,8 @@ import static java.lang.Math.pow;
  *
  * @author Tim Fennell
  */
+@BetaFeature
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Attempts to estimate library complexity from sequence of read pairs alone. Does so by sorting all reads " +
                 "by the first N bases (5 by default) of each read and then comparing reads with the first " +
@@ -75,7 +79,7 @@ import static java.lang.Math.pow;
         oneLineSummary = "Estimates library complexity from the sequence of read pairs",
         programGroup = ReadProgramGroup.class
 )
-public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCommandLineProgram {
+public final class EstimateLibraryComplexity2 extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more files to combine and " +
@@ -227,7 +231,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
     class PairedReadComparator implements Comparator<PairedReadSequence>, Serializable {
         private static final long serialVersionUID = 7452449563074722818L;
 
-        final int BASES = EstimateLibraryComplexity.this.MIN_IDENTICAL_BASES;
+        final int BASES = EstimateLibraryComplexity2.this.MIN_IDENTICAL_BASES;
 
         @Override
         public int compare(final PairedReadSequence lhs, final PairedReadSequence rhs) {
@@ -247,7 +251,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
         }
     }
 
-    public EstimateLibraryComplexity() {
+    public EstimateLibraryComplexity2() {
         MAX_RECORDS_IN_RAM = (int) (Runtime.getRuntime().maxMemory() / PairedReadSequence.size_in_bytes) / 2;
     }
 

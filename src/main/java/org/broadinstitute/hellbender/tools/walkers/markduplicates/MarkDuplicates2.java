@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
+package org.broadinstitute.hellbender.tools.walkers.markduplicates;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
@@ -7,7 +7,9 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.SortingLongCollection;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
@@ -26,13 +28,15 @@ import java.util.Map;
  *
  * @author Tim Fennell
  */
+@BetaFeature
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules. " +
                 "All records are then written to the output file with the duplicate records flagged.",
         oneLineSummary = "Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules.",
         programGroup = ReadProgramGroup.class
 )
-public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
+public final class MarkDuplicates2 extends AbstractMarkDuplicatesCommandLineProgram {
     /**
      * If more than this many sequences in SAM file, don't spill to disk because there will not
      * be enough file handles.
@@ -63,7 +67,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
 
     private LibraryIdGenerator libraryIdGenerator = null; // this is initialized in buildSortedReadEndLists
 
-    public MarkDuplicates() {
+    public MarkDuplicates2() {
         DUPLICATE_SCORING_STRATEGY = DuplicateScoringStrategy.ScoringStrategy.SUM_OF_BASE_QUALITIES;
     }
 

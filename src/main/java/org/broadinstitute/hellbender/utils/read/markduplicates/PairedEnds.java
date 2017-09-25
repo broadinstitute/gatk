@@ -100,7 +100,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   /**
    * Returns the pair orientation suitable for optical duplicates,
    * which always goes by the first then the second end for the strands.
-   * This is based on code in MarkDuplicates and ReadEnds.getOrientationByte.
+   * This is based on code in MarkDuplicates2 and ReadEnds.getOrientationByte.
    * Returns one of {@link ReadEnds#RR}, {@link ReadEnds#RF}, {@link ReadEnds#FR}, {@link ReadEnds#FF}
    */
   public byte getOrientationForOpticalDuplicates() {
