@@ -146,6 +146,7 @@ dependencies {
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
     compile 'org.nd4j:nd4j-native-platform:0.5.0'
     compile 'org.nd4j:nd4j-kryo_2.11:0.5.0'
+    compile 'org.broadinstitute:gatk-native-bindings:0.1.0-rc-1'
 
     compile 'org.ojalgo:ojalgo:39.0'
     compile ('org.apache.spark:spark-mllib_2.11:' + sparkVersion) {
