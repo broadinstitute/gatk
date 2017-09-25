@@ -252,4 +252,9 @@ public final class GVCFWriter implements VariantContextWriter {
         }
 
     }
+
+    @Override
+    public void setHeader(VCFHeader header) {
+        underlyingWriter.setHeader(header);
+    }
 }

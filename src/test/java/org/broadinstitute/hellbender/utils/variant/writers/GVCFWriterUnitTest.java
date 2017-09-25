@@ -40,9 +40,11 @@ public class GVCFWriterUnitTest extends BaseTest {
         boolean headerWritten = false;
         boolean closed = false;
         boolean error = false;
+        boolean headerSet = false;
 
         @Override
         public void writeHeader(VCFHeader header) {
+            headerSet = true;
             headerWritten = true;
         }
 
@@ -60,6 +62,11 @@ public class GVCFWriterUnitTest extends BaseTest {
         public void add(VariantContext vc) {
             emitted.add(vc);
         }
+
+        @Override
+        public void setHeader(VCFHeader header) {
+            headerSet = true;
+        }
     }
 
     private static final List<Integer> standardPartition = ImmutableList.of(1, 10, 20);
@@ -74,7 +81,17 @@ public class GVCFWriterUnitTest extends BaseTest {
         final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
         writer.writeHeader(new VCFHeader());
+        Assert.assertTrue(mockWriter.headerSet);
         Assert.assertTrue(mockWriter.headerWritten);
+    }
+
+    @Test
+    public void testHeaderSetting(){
+        final MockWriter mockWriter = new MockWriter();
+        final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
+        writer.setHeader(new VCFHeader());
+        Assert.assertTrue(mockWriter.headerSet);
+        Assert.assertFalse(mockWriter.headerWritten);
     }
 
     @Test
