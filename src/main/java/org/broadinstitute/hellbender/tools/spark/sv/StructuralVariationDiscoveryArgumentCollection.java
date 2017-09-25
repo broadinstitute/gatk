@@ -71,9 +71,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Maximum number of templates containing an assembly kmer.", fullName = "maxQNamesPerKmer")
         public int maxQNamesPerKmer = 500;
 
-        @Argument(doc = "Guess at number of clean kmers per assembly partition.", fullName = "assemblyKmerMapSize")
-        public int assemblyKmerMapSize = 250000;
-
         @Argument(doc = "Guess at the ratio of reads in the final assembly to the number reads mapped to the interval.",
                 fullName = "assemblyToMappedSizeRatioGuess")
         public int assemblyToMappedSizeRatioGuess = 7;
@@ -95,6 +92,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Uncertainty in location of external evidence.", fullName = "externalEvidenceUncertainty")
         public int externalEvidenceUncertainty = 150;
+
+        @Argument(doc = "Adapter sequence.", fullName = "adapterSequence", optional = true)
+        public String adapterSequence;
 
         // --------- locations ----------
 

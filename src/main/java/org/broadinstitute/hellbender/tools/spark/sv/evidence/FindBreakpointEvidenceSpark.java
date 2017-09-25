@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
@@ -327,8 +328,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Tuple2<List<AlignedAssemblyOrExcuse>, HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> kmerIntervalsAndDispositions =
                 getKmerAndIntervalsSet(params, ctx, qNamesMultiMap, nIntervals,
                                         unfilteredReads, filter, logger);
-        qNamesMultiMap.addAll(
-                getAssemblyQNames(params, ctx, kmerIntervalsAndDispositions._2(), unfilteredReads, filter));
+
+        HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmersAndIntervals =
+                removeUbiquitousKmers(params, ctx, kmerIntervalsAndDispositions._2(), unfilteredReads, filter, logger);
+
+        qNamesMultiMap.addAll(getAssemblyQNames(params, ctx, kmersAndIntervals, unfilteredReads, filter, logger));
 
         if ( params.qNamesAssemblyFile != null ) {
             QNameAndInterval.writeQNames(params.qNamesAssemblyFile, qNamesMultiMap);
@@ -359,6 +363,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 SVUtils.readKmersFile(params.kSize,
                                         params.kmersToIgnoreFile,
                                         new SVKmerLong(params.kSize));
+        if ( params.adapterSequence != null ) {
+            SVKmerizer.stream(params.adapterSequence, params.kSize, 0, new SVKmerLong())
+                    .forEach(kmer -> kmerKillSet.add(kmer.canonical(params.kSize)));
+        }
         log("Ignoring " + kmerKillSet.size() + " genomically common kmers.", logger);
 
         final Tuple2<List<AlignedAssemblyOrExcuse>, List<KmerAndInterval>> kmerIntervalsAndDispositions =
@@ -477,6 +485,54 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     }
 
     /**
+     * For a set of interesting kmers, count occurrences of each over all reads, and remove those
+     * that appear too frequently from the set.
+     */
+    private static HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> removeUbiquitousKmers(
+            final FindBreakpointEvidenceSparkArgumentCollection params,
+            final JavaSparkContext ctx,
+            final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmersAndIntervals,
+            final JavaRDD<GATKRead> unfilteredReads,
+            final SVReadFilter filter,
+            final Logger logger ) {
+        final Broadcast<HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> broadcastKmersAndIntervals =
+                ctx.broadcast(kmersAndIntervals);
+
+        final int kmersPerPartition = params.cleanerKmersPerPartitionGuess;
+        final int kSize = params.kSize;
+        final int maxQNamesPerKmer = params.maxQNamesPerKmer;
+        final List<SVKmer> ubiquitousKmers =
+                unfilteredReads
+                        .filter(filter::notJunk)
+                        .filter(filter::isPrimaryLine)
+                        .mapPartitions(readItr ->
+                            new KmerCounter(kSize,kmersPerPartition,broadcastKmersAndIntervals.getValue()).apply(readItr))
+                        .mapToPair(kmerAndCount -> new Tuple2<>(kmerAndCount.getKey(), kmerAndCount.getValue()))
+                        .reduceByKey(Integer::sum)
+                        .filter(pair -> pair._2() > maxQNamesPerKmer)
+                        .map(pair -> pair._1())
+                        .collect();
+
+        for ( final SVKmer kmer : ubiquitousKmers ) {
+            final Iterator<KmerAndInterval> entryItr = kmersAndIntervals.findEach(kmer);
+            while ( entryItr.hasNext() ) {
+                entryItr.next();
+                entryItr.remove();
+            }
+        }
+
+        try {
+            broadcastKmersAndIntervals.destroy();
+        } catch ( Exception e ) {
+            logger.warn("Trouble destroying broadcast kmers and intervals", e);
+        }
+
+        log("Removed "+ubiquitousKmers.size()+" ubiquitous kmers.", logger);
+
+        return kmersAndIntervals;
+    }
+
+    /**
      * Grab template names for all reads that contain kmers associated with a given breakpoint.
      */
     @VisibleForTesting static List<QNameAndInterval> getAssemblyQNames(
@@ -484,33 +540,27 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final JavaSparkContext ctx,
             final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
             final JavaRDD<GATKRead> unfilteredReads,
-            final SVReadFilter filter ) {
-        final Broadcast<HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> broadcastKmerMultiMap =
+            final SVReadFilter filter,
+            final Logger logger ) {
+        final Broadcast<HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> broadcastKmersAndIntervals =
                 ctx.broadcast(kmerMultiMap);
 
         final int kSize = params.kSize;
-        final int maxDUSTScore = params.maxDUSTScore;
-        final int maxQNamesPerKmer = params.maxQNamesPerKmer;
-        final int kmerMapSize = params.assemblyKmerMapSize;
-        final List<QNameAndInterval> qNames =
+        final List<QNameAndInterval> qNamesAndIntervals =
             unfilteredReads
-                .mapPartitionsToPair(readItr ->
-                        new FlatMapGluer<>(
-                                new QNamesForKmersFinder(kSize, maxDUSTScore, broadcastKmerMultiMap.value(), filter),
-                                readItr), false)
-                .mapPartitions(pairItr ->
-                        new KmerQNameToQNameIntervalMapper(broadcastKmerMultiMap.value(),
-                                                            maxQNamesPerKmer,
-                                                            kmerMapSize).call(pairItr).iterator())
+                .filter(filter::notJunk)
+                .filter(filter::isPrimaryLine)
+                .mapPartitions(readItr ->
+                        new FlatMapGluer<>(new QNameIntervalFinder(kSize,broadcastKmersAndIntervals.getValue()), readItr))
                 .collect();
 
         try {
-            broadcastKmerMultiMap.destroy();
+            broadcastKmersAndIntervals.destroy();
         } catch (Exception e) {
             logger.warn("Could not destroy broadcastKmerMultiMap", e);
         }
 
-        return qNames;
+        return qNamesAndIntervals;
     }
 
     /** find kmers for each interval */

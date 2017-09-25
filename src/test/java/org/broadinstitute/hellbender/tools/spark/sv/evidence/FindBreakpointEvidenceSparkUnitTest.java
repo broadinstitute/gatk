@@ -117,7 +117,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 map(kmer -> new KmerAndInterval(kmer, 0))
                 .forEach(kmerAndIntervalSet::add);
         final Set<String> actualAssemblyQNames = new HashSet<>();
-        FindBreakpointEvidenceSpark.getAssemblyQNames(params, ctx, kmerAndIntervalSet, reads, filter)
+        FindBreakpointEvidenceSpark.getAssemblyQNames(params, ctx, kmerAndIntervalSet, reads, filter, logger)
                 .stream()
                 .map(QNameAndInterval::getKey)
                 .forEach(actualAssemblyQNames::add);
