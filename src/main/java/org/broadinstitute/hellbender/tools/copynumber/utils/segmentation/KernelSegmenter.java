@@ -217,16 +217,22 @@ public final class KernelSegmenter<T> {
 
         //calculate reduced observation matrix
         logger.info(String.format("Calculating reduced observation matrix (%d x %d)...", data.size(), numSubsample));
-        final RealMatrix reducedObservationMatrix = new Array2DRowRealMatrix(data.size(), numSubsample);
-        reducedObservationMatrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
-            final double[] invSqrtSingularValues = Arrays.stream(svd.getSingularValues()).map(Math::sqrt).map(x -> 1. / (x + EPSILON)).toArray();
+        final double[] invSqrtSingularValues = Arrays.stream(svd.getSingularValues()).map(Math::sqrt).map(x -> 1. / (x + EPSILON)).toArray();
+        final RealMatrix subKernelUMatrix = new Array2DRowRealMatrix(numSubsample, numSubsample);
+        subKernelUMatrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
             public double visit(int i, int j, double value) {
-                return new IndexRange(0, numSubsample)
-                        .sum(k -> kernel.apply(data.get(i), dataSubsample.get(k)) * svd.getU().getEntry(k, j) * invSqrtSingularValues[j]);
+                return svd.getU().getEntry(i, j) * invSqrtSingularValues[j];
             }
         });
-        return reducedObservationMatrix;
+        final RealMatrix reducedKernelMatrix = new Array2DRowRealMatrix(data.size(), numSubsample);
+        reducedKernelMatrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(int i, int j, double value) {
+                return kernel.apply(data.get(i), dataSubsample.get(j));
+            }
+        });
+        return reducedKernelMatrix.multiply(subKernelUMatrix);
     }
 
     //for N x p matrix Z_ij, returns the N-dimensional vector sum(Z_ij * Z_ij, j = 0,..., p - 1),
