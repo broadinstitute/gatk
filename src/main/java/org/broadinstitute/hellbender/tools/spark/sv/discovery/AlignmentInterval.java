@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -199,13 +200,20 @@ public final class AlignmentInterval {
 
     @VisibleForTesting
     public AlignmentInterval(final BwaMemAlignment alignment, final List<String> refNames, final int unclippedContigLength) {
-        Utils.nonNull(refNames);
+        this(alignment, refNames::get, unclippedContigLength);
+    }
+
+    public AlignmentInterval(final BwaMemAlignment alignment, final IntFunction<String> indexToRefName,
+                             final int unclippedContigLength)  {
+        Utils.nonNull(indexToRefName);
         Utils.nonNull(alignment);
         Utils.validateArg(SAMFlag.READ_UNMAPPED.isUnset(alignment.getSamFlag()), "the input alignment must be mapped");
         final int refIndex = alignment.getRefId();
-        Utils.validateArg(refNames.size() > refIndex, "the referene name list provided must be larger than the reference idx in the alignment");
+        Utils.validateArg(refIndex >= 0, "the ref-id for a mapped alignment cannot be negative");
+        final String refName = indexToRefName.apply(refIndex);
+        Utils.nonNull(refName, "the reference name cannot be null");
         // +1 because the BwaMemAlignment class has 0-based coordinate system
-        this.referenceSpan = new SimpleInterval(refNames.get(alignment.getRefId()),
+        this.referenceSpan = new SimpleInterval(refName,
                 alignment.getRefStart() + 1, alignment.getRefEnd());
         this.forwardStrand = 0 == (alignment.getSamFlag() & SAMFlag.READ_REVERSE_STRAND.intValue());
         this.cigarAlong5to3DirectionOfContig = forwardStrand ? TextCigarCodec.decode(alignment.getCigar())
@@ -329,7 +337,7 @@ public final class AlignmentInterval {
     public static List<AlignmentInterval> decodeList(final String str) {
         Utils.nonNull(str);
         final String[] parts = str.replaceAll(";$", "").split(";");
-        return Stream.of(parts).map(String::trim).filter(s -> !s.isEmpty()).map(AlignmentInterval::new).collect(Collectors.toList());
+        return Stream.of(parts).map(String::trim).filter(s -> !s.isEmpty() && !s.equals("*")).map(AlignmentInterval::new).collect(Collectors.toList());
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentInterval> {

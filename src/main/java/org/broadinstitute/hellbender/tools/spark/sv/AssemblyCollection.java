@@ -6,11 +6,13 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-
+import java.io.File;
+import java.io.Serializable;
 import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,7 +21,9 @@ import java.util.WeakHashMap;
 /**
  * Represents a collection of assembly files  of file in the assembly collection
  */
-public class AssemblyCollection {
+public class AssemblyCollection implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final Path fastqDir;
     private final String fastqFileFormat;
@@ -28,7 +32,16 @@ public class AssemblyCollection {
 
     public AssemblyCollection(final String fastqDir, final String fastqFileFormat) {
         Utils.nonNull(fastqDir);
-        this.fastqDir = FileSystems.getFileSystem(URI.create(fastqDir)).getPath(fastqDir);
+        URI fastqDirURI = URI.create(fastqDir);
+        if (fastqDirURI.getScheme() == null) {
+            fastqDirURI = new File(fastqDir).toURI();
+        }
+        try {
+            this.fastqDir = Paths.get(fastqDirURI);
+        } catch (final RuntimeException ex) {
+            fastqDirURI.toString();
+            throw ex;
+        }
         this.fastqFileFormat = Utils.nonNull(fastqFileFormat);
         this.templatesById = new WeakHashMap<>(10);
     }

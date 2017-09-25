@@ -12,6 +12,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.PairedEnds;
 
@@ -52,6 +53,8 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
 
         kryo.register(SAMRecord.class, new SAMRecordSerializer());
+
+//        kryo.register(ShardPartitioner.class, new ShardPartitioner.Serializer());
 
         //register to avoid writing the full name of this class over and over
         kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));

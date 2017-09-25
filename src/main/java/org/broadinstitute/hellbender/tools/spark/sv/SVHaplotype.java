@@ -8,9 +8,8 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Created by valentin on 9/16/17.
@@ -33,7 +32,7 @@ public class SVHaplotype extends Haplotype {
         } else if (name.equals("alt")) {
             return Double.NEGATIVE_INFINITY;
         } else {
-            return referenceAlignmentScore.getValue();
+            return referenceAlignmentScore == null ? Double.NaN : referenceAlignmentScore.getValue();
         }
     }
 
@@ -43,7 +42,7 @@ public class SVHaplotype extends Haplotype {
         } else if (name.equals("ref")) {
             return Double.NEGATIVE_INFINITY;
         } else {
-            return alternativeAlignmentScore.getValue();
+            return alternativeAlignmentScore == null ? Double.NaN  : alternativeAlignmentScore.getValue();
         }
     }
 
@@ -65,18 +64,18 @@ public class SVHaplotype extends Haplotype {
         final String variantId = getMandatoryAttribute(read, ComposeStructuralVariantHaplotypesSpark.VARIANT_CONTEXT_TAG);
         final List<AlignmentInterval> refAln = getAlignmentIntervalsAttribute(read, ComposeStructuralVariantHaplotypesSpark.REFERENCE_ALIGNMENT_TAG);
         final List<AlignmentInterval> altAln = getAlignmentIntervalsAttribute(read, ComposeStructuralVariantHaplotypesSpark.ALTERNATIVE_ALIGNMENT_TAG);
-        final AlignmentScore refScore = getMandatoryAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.REFERENCE_SCORE_TAG);
-        final AlignmentScore altScore = getMandatoryAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.ALTERNATIVE_SCORE_TAG);
+        final AlignmentScore refScore = getOptionalAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.REFERENCE_SCORE_TAG);
+        final AlignmentScore altScore = getOptionalAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.ALTERNATIVE_SCORE_TAG);
         final boolean isContig = read.getReadGroup().equals("CTG");
         final SimpleInterval location = new SimpleInterval(read.getAssignedContig(), read.getAssignedStart(), read.getAssignedStart());
         return new SVHaplotype(read.getName(), location, variantId, isContig, read.getBases(), refAln, refScore, altAln, altScore);
 
     }
 
-    private static AlignmentScore getMandatoryAlignmentScore(final GATKRead read, final String tag) {
-        return AlignmentScore.valueOf(getMandatoryAttribute(read, tag));
+    private static AlignmentScore getOptionalAlignmentScore(final GATKRead read, final String tag) {
+        final String str = read.getAttributeAsString(tag);
+        return str == null ? null : AlignmentScore.valueOf(str);
     }
-
 
     private static String getMandatoryAttribute(final GATKRead read, final String tag) {
         return ReadUtils.getOptionalStringAttribute(read, tag)
@@ -84,7 +83,8 @@ public class SVHaplotype extends Haplotype {
     }
 
     private static List<AlignmentInterval> getAlignmentIntervalsAttribute(final GATKRead read, final String tag) {
-        return AlignmentInterval.decodeList(getMandatoryAttribute(read, tag));
+        final Optional<String> str = ReadUtils.getOptionalStringAttribute(read, tag);
+        return str.isPresent() ? AlignmentInterval.decodeList(str.get()) : null;
     }
 
     private SVHaplotype(final String name, final Locatable loc, final String variantId, final boolean isContig,
@@ -98,8 +98,8 @@ public class SVHaplotype extends Haplotype {
         this.alternativeAlignment = altAln;
         this.referenceAlignmentScore = refScore;
         this.alternativeAlignmentScore = altScore;
-        final double refScoreValue = refScore.getValue();
-        final double altScoreValue = altScore.getValue();
+        final double refScoreValue = refScore == null ? Double.NaN : refScore.getValue();
+        final double altScoreValue = refScore == null ? Double.NaN : altScore.getValue();
         if (refScoreValue < altScoreValue) {
             this.call = Call.ALT;
             this.callQuality = altScoreValue - refScoreValue;
