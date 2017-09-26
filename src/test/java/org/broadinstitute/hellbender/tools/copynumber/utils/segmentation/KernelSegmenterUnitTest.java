@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.segmentation;
 
+import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter.ChangepointSortOrder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -77,10 +78,10 @@ public final class KernelSegmenterUnitTest extends BaseTest {
 
         final List<Integer> changepoints = new KernelSegmenter<>(data)
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
-                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, ChangepointSortOrder.BACKWARD_SELECTION);
         final List<Integer> changepointsIndexSorted = new KernelSegmenter<>(data)
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
-                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, true);
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, ChangepointSortOrder.INDEX);
 
         Assert.assertEquals(changepoints, changepointsExpected);
         Assert.assertEquals(changepointsIndexSorted, changepointsExpected.stream().sorted().collect(Collectors.toList()));
@@ -98,7 +99,7 @@ public final class KernelSegmenterUnitTest extends BaseTest {
 
         final List<Integer> changepoints = new KernelSegmenter<>(data)
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
-                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, ChangepointSortOrder.BACKWARD_SELECTION);
 
         Assert.assertEquals(changepoints, changepointsExpected.isEmpty() ? changepointsExpected : changepointsExpected.subList(0, maxNumChangepoints));
     }
@@ -115,10 +116,10 @@ public final class KernelSegmenterUnitTest extends BaseTest {
 
         final List<Integer> changepoints = new KernelSegmenter<>(data)
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
-                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, ChangepointSortOrder.BACKWARD_SELECTION);
         final List<Integer> changepointsIndexSorted = new KernelSegmenter<>(data)
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
-                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, true);
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, ChangepointSortOrder.INDEX);
 
         Assert.assertEquals(changepoints, Collections.emptyList());
         Assert.assertEquals(changepointsIndexSorted, Collections.emptyList());
@@ -136,7 +137,7 @@ public final class KernelSegmenterUnitTest extends BaseTest {
 
         final List<Integer> changepoints = new KernelSegmenter<>(data)
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
-                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, ChangepointSortOrder.BACKWARD_SELECTION);
 
         Assert.assertEquals(changepoints.size(), data.isEmpty() ? 0 : maxNumChangepoints);
         Assert.assertEquals(changepoints.subList(0, changepointsExpected.size()), changepointsExpected);
@@ -154,6 +155,6 @@ public final class KernelSegmenterUnitTest extends BaseTest {
 
         new KernelSegmenter<>(data)
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
-                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, ChangepointSortOrder.BACKWARD_SELECTION);
     }
 }

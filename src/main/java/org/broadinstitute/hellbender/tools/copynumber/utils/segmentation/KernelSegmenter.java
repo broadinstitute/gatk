@@ -56,7 +56,7 @@ import java.util.stream.IntStream;
  * </ol>
  * <ol>
  *     5) These sets of local minima from all window sizes together provide the pool of candidate changepoints
- *     (some of which may overlap exactly or approximately).  We perform backwards selection using the global segmentation cost.
+ *     (some of which may overlap exactly or approximately).  We perform backward selection using the global segmentation cost.
  *     That is, we calculate the global segmentation cost given all the candidate changepoints,
  *     calculate the cost change for removing each of the changepoints individually,
  *     remove the changepoint with the minimum cost change, and repeat.
@@ -81,6 +81,10 @@ import java.util.stream.IntStream;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class KernelSegmenter<DATA> {
+    public enum ChangepointSortOrder {
+        BACKWARD_SELECTION, INDEX
+    }
+
     private static final Logger logger = LogManager.getLogger(KernelSegmenter.class);
 
     private static final int RANDOM_SEED = 1216;
@@ -102,7 +106,7 @@ public final class KernelSegmenter<DATA> {
      * @param numChangepointsPenaltyLinearFactor    factor A for penalty of the form A * C, where C is the number of changepoints
      * @param numChangepointsPenaltyLogLinearFactor factor B for penalty of the form B * C * log (N / C),
      *                                              where C is the number of changepoints and N is the number of data points
-     * @param sortByIndex                           if true, sort by increasing index order
+     * @param changepointSortOrder                  sort by decreasing change to the global segmentation cost or by increasing index order
      */
     public List<Integer> findChangepoints(final int maxNumChangepoints,
                                           final BiFunction<DATA, DATA, Double> kernel,
@@ -110,7 +114,7 @@ public final class KernelSegmenter<DATA> {
                                           final List<Integer> windowSizes,
                                           final double numChangepointsPenaltyLinearFactor,
                                           final double numChangepointsPenaltyLogLinearFactor,
-                                          final boolean sortByIndex) {
+                                          final ChangepointSortOrder changepointSortOrder) {
         ParamUtils.isPositiveOrZero(maxNumChangepoints, "Maximum number of changepoints must be non-negative.");
         ParamUtils.isPositive(kernelApproximationDimension, "Dimension of kernel approximation must be positive.");
         Utils.validateArg(!windowSizes.isEmpty(), "At least one window size must be provided.");
@@ -141,11 +145,11 @@ public final class KernelSegmenter<DATA> {
         final List<Integer> changepointCandidates = findChangepointCandidates(
                 data, reducedObservationMatrix, kernelApproximationDiagonal, maxNumChangepoints, windowSizes);
 
-        logger.info("Performing backwards model selection on changepoint candidates...");
+        logger.info("Performing backward model selection on changepoint candidates...");
         return selectChangepoints(
                 changepointCandidates, maxNumChangepoints, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor,
                 reducedObservationMatrix, kernelApproximationDiagonal).stream()
-                .sorted((a, b) -> sortByIndex ? Integer.compare(a, b) : 0)    //if sortByIndex = false, retain order from backwards model selection
+                .sorted((a, b) -> changepointSortOrder.equals(ChangepointSortOrder.INDEX) ? Integer.compare(a, b) : 0)    //if BACKWARD_SELECTION, simply retain original order from backward model selection
                 .collect(Collectors.toList());
     }
 
@@ -283,7 +287,7 @@ public final class KernelSegmenter<DATA> {
         return changepointCandidates;
     }
 
-    //performs backwards model selection to order changepoints by increasing change to the global segmentation cost
+    //performs backward model selection to order changepoints by increasing change to the global segmentation cost
     //and returns the requested number
     private static List<Integer> selectChangepoints(final List<Integer> changepointCandidates,
                                                     final int maxNumChangepoints,
