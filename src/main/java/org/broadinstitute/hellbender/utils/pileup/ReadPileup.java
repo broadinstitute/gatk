@@ -43,7 +43,7 @@ public class ReadPileup implements Iterable<PileupElement> {
     }
 
     /**
-     * Create a new pileup at loc, using an stratified pileup
+     * Create a new pileup at loc, using a stratified pileup.
      */
     public ReadPileup(final Locatable loc, final Map<String, ReadPileup> stratifiedPileup) {
         this.loc = loc;

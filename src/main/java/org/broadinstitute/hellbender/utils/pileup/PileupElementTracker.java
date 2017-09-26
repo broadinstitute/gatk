@@ -12,6 +12,10 @@ import java.util.stream.Stream;
 /**
  * Abstract class for tracking the pileup elements from different sources.
  *
+ * <p>Note: these classes are fairly low-level, developers should probably confirm that their changes do not belong in
+ * a higher-level class such as {@link org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState}
+ * or {@link ReadPileup}.
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public abstract class PileupElementTracker implements Iterable<PileupElement> {

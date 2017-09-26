@@ -31,6 +31,10 @@ import java.util.stream.StreamSupport;
  *     <li>{@link #getTrackerForSample(String, SAMFileHeader)}</li>
  * </ul>
  *
+ * <p>Note: this classes is fairly low-level, developers should probably confirm that their changes do not belong in
+ * a higher-level class such as {@link org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState}
+ * or {@link ReadPileup}.
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 class PerSamplePileupElementTracker extends PileupElementTracker {

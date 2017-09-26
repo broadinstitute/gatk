@@ -23,23 +23,47 @@ import java.util.stream.Collectors;
  *
  * <p>Note: this tracker inherits from {@link UnifiedPileupElementTracker} for re-use the implementation for iterator methods.
  *
+ * <p>Note: this classes is fairly low-level, developers should probably confirm that their changes do not belong in
+ * a higher-level class such as {@link org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState}
+ * or {@link ReadPileup}.
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 class SingleSamplePileupElementTracker extends UnifiedPileupElementTracker {
 
     private final String sampleName;
 
-    /** Instantiates an empty element tracker for the sample. */
+    /**
+     * Instantiates an empty element tracker for the sample.
+     *
+     * @param sampleName the name of this sample.
+     */
     SingleSamplePileupElementTracker(final String sampleName) {
         this(sampleName, Collections.emptyList(), true);
     }
 
-    /** Instantiates an unsorted element tracker for the sample. */
+    /**
+     * Instantiates an unsorted element tracker for the sample.
+     *
+     * <p>Note: if a {@link #sortedIterator()} is requested, sorting would be performed an cached into the tracker.
+     *
+     * @param sampleName the name of this sample.
+     * @param sampleElements list of pileup elements.
+     */
     SingleSamplePileupElementTracker(final String sampleName, final List<PileupElement> sampleElements) {
         this(sampleName, sampleElements, false);
     }
 
-    /** Instantiates a sorted/unsorted element tracker for them sample. The sample may be {@code null}. */
+    /**
+     * Instantiates a sorted/unsorted element tracker for them sample. The sample may be {@code null}.
+     *
+     * <p>Note: if {@code preSorted=true} and a {@link #sortedIterator()} is requested, sorting would be performed
+     * an cached into the tracker.
+     *
+     * @param sampleName the name of this sample.
+     * @param sampleElements list of pileup elements.
+     * @param preSorted {@code true} if the elements are already sorted; {@code false} otherwise.
+     */
     SingleSamplePileupElementTracker(final String sampleName, final List<PileupElement> sampleElements, final boolean preSorted) {
         super(sampleElements, preSorted);
         this.sampleName = sampleName;

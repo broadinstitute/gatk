@@ -29,6 +29,10 @@ import java.util.stream.Stream;
  *     <li>{@link #splitBySample(SAMFileHeader)} returns a {@link PerSamplePileupElementTracker} if a multiple samples are present (more efficient implementation of some methods)</li>
  * </ul>
  *
+ * <p>Note: this classes is fairly low-level, developers should probably confirm that their changes do not belong in
+ * a higher-level class such as {@link org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState}
+ * or {@link ReadPileup}.
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 class UnifiedPileupElementTracker extends PileupElementTracker {
@@ -43,12 +47,25 @@ class UnifiedPileupElementTracker extends PileupElementTracker {
         this(Collections.emptyList(), true);
     }
 
-    /** Instantiates an unsorted element tracker.  */
+    /** Instantiates an unsorted element tracker.
+     *
+     * <p>Note: if  {@link #sortedIterator()} is requested, sorting would be performed an cached into the tracker.
+     *
+     * @param pileup list of pileup elements.
+     */
     UnifiedPileupElementTracker(final List<PileupElement> pileup) {
         this(pileup, false);
     }
 
-    /** Instantiates a sorted/unsorted element tracker. */
+    /**
+     * Instantiates a sorted/unsorted element tracker.
+     *
+     * <p>Note: if {@code preSorted=true} and a {@link #sortedIterator()} is requested, sorting would be performed
+     * an cached into the tracker.
+     *
+     * @param pileup list of pileup elements.
+     * @param preSorted {@code true} if the elements are already sorted; {@code false} otherwise.
+     */
     UnifiedPileupElementTracker(final List<PileupElement> pileup, final boolean preSorted) {
         this.elements = Utils.nonNull(pileup);
         this.sorted = preSorted;
