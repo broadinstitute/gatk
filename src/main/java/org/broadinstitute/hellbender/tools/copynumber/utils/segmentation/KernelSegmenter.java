@@ -8,7 +8,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.optimization.PersistenceOptimizer;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -277,7 +277,7 @@ public final class KernelSegmenter<DATA> {
         }
 
         if (changepointCandidates.isEmpty()) {
-            throw new UserException.BadInput("No changepoint candidates found.  Window sizes may be inappropriate.");
+            throw new GATKException.ShouldNeverReachHereException("No changepoint candidates found.");
         }
 
         return changepointCandidates;
