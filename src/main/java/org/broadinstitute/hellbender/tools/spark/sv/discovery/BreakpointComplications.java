@@ -326,14 +326,17 @@ public final class BreakpointComplications {
         final int distBetweenAlignRegionsOnRef = r2b - r1e - 1, // distance-1 between the two regions on reference, denoted as d1 in the comments below
                   distBetweenAlignRegionsOnCtg = c2b - c1e - 1; // distance-1 between the two regions on contig, denoted as d2 in the comments below
 
-        if ( distBetweenAlignRegionsOnRef > 0 ) {        // Deletion:
+        final boolean oneContainedInTheOther = leftReferenceSpan.contains(rightReferenceSpan) || rightReferenceSpan.contains(leftReferenceSpan);
+        if (oneContainedInTheOther) {
+            resolveComplicationForSimpleTandupExpansion(leftReferenceSpan, rightReferenceSpan, firstContigRegion, secondContigRegion, r1e, r2b, distBetweenAlignRegionsOnCtg, contigSeq, true);
+        } else if ( distBetweenAlignRegionsOnRef > 0 ) {        // Deletion:
             resolveComplicationForSimpleDel(firstContigRegion, secondContigRegion, distBetweenAlignRegionsOnCtg, contigSeq);
         } else if (distBetweenAlignRegionsOnRef == 0 && distBetweenAlignRegionsOnCtg > 0) { // Insertion: simple insertion, inserted sequence is the sequence [c1e+1, c2b-1] on the contig
             insertedSequenceForwardStrandRep = getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
         } else if (distBetweenAlignRegionsOnRef == 0 && distBetweenAlignRegionsOnCtg < 0) { // Tandem repeat contraction: reference has two copies but one copy was deleted on the contig; duplicated sequence on reference are [r1e-|d2|+1, r1e] and [r2b, r2b+|d2|-1]
             resolveComplicationForSimpleTandupContraction(leftReferenceSpan, firstContigRegion, secondContigRegion, r1e, c1e, c2b, contigSeq);
         } else if (distBetweenAlignRegionsOnRef < 0 && distBetweenAlignRegionsOnCtg >= 0) { // Tandem repeat expansion:   reference bases [r1e-|d1|+1, r1e] to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1] with optional inserted sequence [c1e+1, c2b-1] in between the two intervals on contig
-            resolveComplicationForSimpleTandupExpansion(leftReferenceSpan, firstContigRegion, secondContigRegion, r1e, r2b, distBetweenAlignRegionsOnCtg, contigSeq);
+            resolveComplicationForSimpleTandupExpansion(leftReferenceSpan, rightReferenceSpan, firstContigRegion, secondContigRegion, r1e, r2b, distBetweenAlignRegionsOnCtg, contigSeq, false);
         } else if (distBetweenAlignRegionsOnRef < 0 && distBetweenAlignRegionsOnCtg < 0) {  // most complicated case, see below
             // Deletion:  duplication with repeat number N1 on reference, N2 on contig, such that N1 <= 2*N2 (and N2<N1);
             // Insertion: duplication with repeat number N1 on reference, N2 on contig, such that N2 <= 2*N1 (and N1<N2);
@@ -353,25 +356,33 @@ public final class BreakpointComplications {
     //==================================================================================================================
 
     private void resolveComplicationForSimpleTandupExpansion(final SimpleInterval leftReferenceInterval,
+                                                             final SimpleInterval rightReferenceInterval,
                                                              final AlignmentInterval firstContigRegion,
                                                              final AlignmentInterval secondContigRegion,
                                                              final int r1e, final int r2b,
-                                                             final int distBetweenAlignRegionsOnCtg, final byte[] contigSeq) {
+                                                             final int distBetweenAlignRegionsOnCtg, final byte[] contigSeq,
+                                                             final boolean oneContainedInTheOther) {
+        // TODO: 9/26/17 duplicated ref span and cigars are wrong when oneContainedInTheOther==true, but needs cigar utility function first from another PR
         // note this does not incorporate the duplicated reference sequence
         insertedSequenceForwardStrandRep = distBetweenAlignRegionsOnCtg == 0 ? "" : getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
         hasDuplicationAnnotation  = true;
-        dupSeqRepeatUnitRefSpan   = new SimpleInterval(leftReferenceInterval.getContig(), r2b, r1e);
+        dupSeqRepeatUnitRefSpan   = oneContainedInTheOther ? rightReferenceInterval : new SimpleInterval(leftReferenceInterval.getContig(), r2b, r1e);
         dupSeqRepeatNumOnRef      = 1;
         dupSeqRepeatNumOnCtg      = 2;
         dupSeqStrandOnRef         = Arrays.asList(Strand.POSITIVE);
         dupSeqStrandOnCtg         = Arrays.asList(Strand.POSITIVE, Strand.POSITIVE);
         cigarStringsForDupSeqOnCtg = new ArrayList<>(2);
-        if (firstContigRegion.forwardStrand) {
-            cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(extractCigarForTandup(firstContigRegion, r1e, r2b)) );
-            cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(extractCigarForTandup(secondContigRegion, r1e, r2b)) );
+        if (oneContainedInTheOther) {
+            cigarStringsForDupSeqOnCtg.add( dupSeqRepeatUnitRefSpan.size() + "M" );
+            cigarStringsForDupSeqOnCtg.add( dupSeqRepeatUnitRefSpan.size() + "M" );
         } else {
-            cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(CigarUtils.invertCigar(extractCigarForTandup(firstContigRegion, r1e, r2b))) );
-            cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(CigarUtils.invertCigar(extractCigarForTandup(secondContigRegion, r1e, r2b))) );
+            if (firstContigRegion.forwardStrand) {
+                cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(extractCigarForTandup(firstContigRegion, r1e, r2b)) );
+                cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(extractCigarForTandup(secondContigRegion, r1e, r2b)) );
+            } else {
+                cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(CigarUtils.invertCigar(extractCigarForTandup(firstContigRegion, r1e, r2b))) );
+                cigarStringsForDupSeqOnCtg.add( TextCigarCodec.encode(CigarUtils.invertCigar(extractCigarForTandup(secondContigRegion, r1e, r2b))) );
+            }
         }
     }
 
