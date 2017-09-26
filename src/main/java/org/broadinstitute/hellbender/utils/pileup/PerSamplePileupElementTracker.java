@@ -18,12 +18,26 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
+ * Pileup tracker where the elements comes from multiple samples
+ *
+ * <p>This tracker is used when the all the pileup elements are already split by sample, providing more
+ * efficient implementation for:
+ *
+ * <ul>
+ *     <li>{@link #sortedIterator()}</li>
+ *     <li>{@link #splitBySample(SAMFileHeader)}</li>
+ *     <li>{@link #getSamples(SAMFileHeader)}</li>
+ *     <li>{@link #fixOverlaps()}</li>
+ *     <li>{@link #getTrackerForSample(String, SAMFileHeader)}</li>
+ * </ul>
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 class PerSamplePileupElementTracker extends PileupElementTracker {
 
     private final Map<String, PileupElementTracker> stratified;
 
+    /** Instantiates a per-sample element tracker. */
     PerSamplePileupElementTracker(final Map<String, PileupElementTracker> stratified) {
         Utils.nonNull(stratified, "null stratified PileupElementTracker");
         Utils.nonEmpty(stratified.keySet(), "empty stratified PileupElementTracker");

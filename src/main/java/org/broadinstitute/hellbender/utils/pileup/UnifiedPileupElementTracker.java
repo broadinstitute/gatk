@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.Collections;
@@ -15,6 +16,19 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
+ * Pileup tracker where the elements are unified, that is, not already split by sample or belonging to an unique one.
+ *
+ * <p>This tracker is used when the origin of the pileup elements provided are a mixture coming from different samples.
+ * It has the following advantages:
+ *
+ * <ul>
+ *     <li>It caches the sorted list of elements after calling {@link #sortedIterator()}</li>
+ *     <li>{@link #makeFilteredTracker(Predicate)} keeps the sorted status for do not re-sort the list.</li>
+ *     <li>{@link #getTrackerForSample(String, SAMFileHeader)} returns a {@link SingleSamplePileupElementTracker} (more efficient implementation of some methods).</li>
+ *     <li>{@link #splitBySample(SAMFileHeader)} returns a {@link SingleSamplePileupElementTracker} if a single sample is present (more efficient implementation of some methods)</li>
+ *     <li>{@link #splitBySample(SAMFileHeader)} returns a {@link PerSamplePileupElementTracker} if a multiple samples are present (more efficient implementation of some methods)</li>
+ * </ul>
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 class UnifiedPileupElementTracker extends PileupElementTracker {
@@ -24,17 +38,20 @@ class UnifiedPileupElementTracker extends PileupElementTracker {
 
     private List<PileupElement> elements;
 
+    /** Instantiates an empty element tracker. */
     UnifiedPileupElementTracker() {
         this(Collections.emptyList(), true);
     }
 
+    /** Instantiates an unsorted element tracker.  */
     UnifiedPileupElementTracker(final List<PileupElement> pileup) {
         this(pileup, false);
     }
 
+    /** Instantiates a sorted/unsorted element tracker. */
     UnifiedPileupElementTracker(final List<PileupElement> pileup, final boolean preSorted) {
-        this.elements = pileup;
-        this.sorted = false;
+        this.elements = Utils.nonNull(pileup);
+        this.sorted = preSorted;
     }
 
     @Override
@@ -48,6 +65,7 @@ class UnifiedPileupElementTracker extends PileupElementTracker {
         return iterator();
     }
 
+    /** Sorts the tracker. */
     protected void sortTracker() {
         // only sort if it is not sorted yet
         if (!sorted) {
