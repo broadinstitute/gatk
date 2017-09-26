@@ -16,6 +16,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Collections;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+
 public class ChimericAlignmentUnitTest extends BaseTest {
 
     @Test(groups = "sv")
@@ -32,11 +34,11 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     }
 
     @Test(groups = "sv")
-    public void testFilterByNextAlignmentMayBeNovelInsertion() throws Exception {
+    public void testFilterByNextAlignmentMayBeNovelInsertion() {
         final AlignmentInterval overlappingRegion1 = new AlignmentInterval(new SimpleInterval("19", 48699881, 48700035), 1, 154, TextCigarCodec.decode("47S154M"), false, 60, 0, 100, AlnModType.NONE);
         final AlignmentInterval overlappingRegion2 = new AlignmentInterval(new SimpleInterval("19", 48700584, 48700669), 117, 201, TextCigarCodec.decode("116H85M"), true, 60, 0, 100, AlnModType.NONE);
 
-        Assert.assertTrue(ChimericAlignment.nextAlignmentMayBeNovelInsertion(overlappingRegion1, overlappingRegion2, 50));
+        Assert.assertTrue(ChimericAlignment.nextAlignmentMayBeInsertion(overlappingRegion1, overlappingRegion2, 50, CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true));
     }
 
     @Test(groups = "sv")
