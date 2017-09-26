@@ -32,31 +32,31 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Unit tests for {@link StructuralVariantContext}.
+ * Unit tests for {@link SVContext}.
  */
-public class StructuralVariantContextUnitTest {
+public class SVContextUnitTest {
 
     private static final File VALID_VARIANTS_FILE = new File(BaseTest.largeFileTestDir, "svc_test.vcf.gz");
 
     private static final File REFERENCE_FILE = new File(CommandLineProgramTest.b38_reference_20_21);
 
     /**
-     * Tests {@link StructuralVariantContext#create}.
+     * Tests {@link SVContext#of}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts")
     public void testCreate(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         Assert.assertNotNull(svc);
     }
 
     /**
-     * Tests {@link StructuralVariantContext#getStructuralVariantLength()}.
+     * Tests {@link SVContext#getStructuralVariantLength()}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testLength(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         final int length = svc.getStructuralVariantLength();
         if (!vc.hasAttribute(GATKSVVCFConstants.SVLEN)) {
             Assert.assertEquals(length, -1);
@@ -66,12 +66,12 @@ public class StructuralVariantContextUnitTest {
     }
 
     /**
-     * Tests {@link StructuralVariantContext#getStructuralVariantType()}.
+     * Tests {@link SVContext#getStructuralVariantType()}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testType(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         final StructuralVariantType type = svc.getStructuralVariantType();
         Assert.assertNotNull(type);
         final Allele alternativeAllele = svc.getAlternateAllele(0);
@@ -80,34 +80,34 @@ public class StructuralVariantContextUnitTest {
     }
 
     /**
-     * Tests {@link StructuralVariantContext#getInsertedSequence()}.
+     * Tests {@link SVContext#getInsertedSequence()}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         final byte[] actual = svc.getInsertedSequence();
         Assert.assertEquals(actual == null ? "<null>" : new String(actual), vc.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "<null>"));
     }
 
     /**
-     * Tests {@link StructuralVariantContext#getEnd()}.
+     * Tests {@link SVContext#getEnd()}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testEnd(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         Assert.assertEquals(svc.getEnd(), vc.getEnd());
     }
 
     /**
-     * Tests {@link StructuralVariantContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
+     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
     public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         final int paddingSize = 10;
         final Haplotype refHaplotype = svc.composeHaplotypeBasedOnReference(0, paddingSize, reference);
         Assert.assertNotNull(refHaplotype);
@@ -119,13 +119,13 @@ public class StructuralVariantContextUnitTest {
     }
 
     /**
-     * Tests {@link StructuralVariantContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
+     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
     public void testComposeAlternativeHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
         }
@@ -153,7 +153,7 @@ public class StructuralVariantContextUnitTest {
 
 
     /**
-     * Tests {@link StructuralVariantContext#getBreakPointIntervals(int, SAMSequenceDictionary)}.
+     * Tests {@link SVContext#getBreakPointIntervals(int, SAMSequenceDictionary)}.
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
@@ -164,7 +164,7 @@ public class StructuralVariantContextUnitTest {
     }
 
     private void testGetBreakPoints(final VariantContext vc, final ReferenceMultiSource reference, final int paddingSize) throws IOException {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
         }
@@ -185,12 +185,12 @@ public class StructuralVariantContextUnitTest {
     }
 
     /**
-     * Tests {@link StructuralVariantContext#getSupportingContigIds()}.
+     * Tests {@link SVContext#getSupportingContigIds()}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testContigNames(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final SVContext svc = SVContext.of(vc);
         final List<String> actual = svc.getSupportingContigIds();
         final List<String> expected = vc.getAttributeAsStringList(GATKSVVCFConstants.CONTIG_NAMES, null);
         Assert.assertEquals(actual, expected);

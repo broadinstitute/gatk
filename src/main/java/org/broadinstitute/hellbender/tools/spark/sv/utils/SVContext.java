@@ -21,7 +21,7 @@ import java.util.List;
  * Variant context with additional method to mine the structural variant specific information from structural
  * variant records.
  */
-public final class StructuralVariantContext extends VariantContext {
+public final class SVContext extends VariantContext {
 
     private static final long serialVersionUID = 1L;
 
@@ -56,12 +56,12 @@ public final class StructuralVariantContext extends VariantContext {
      * a structural variant context based on its annotations.
      * @return never {@code null}, potentially the same as the input if it happens to be an instance of this class.
      */
-    public static StructuralVariantContext create(final VariantContext vc) {
-        if (vc instanceof StructuralVariantContext) {
-            return (StructuralVariantContext) vc;
+    public static SVContext of(final VariantContext vc) {
+        if (vc instanceof SVContext) {
+            return (SVContext) vc;
         } else {
             assertIsStructuralVariantContext(vc);
-            return new StructuralVariantContext(vc);
+            return new SVContext(vc);
         }
     }
 
@@ -77,7 +77,7 @@ public final class StructuralVariantContext extends VariantContext {
         }
     }
 
-    private StructuralVariantContext(final VariantContext other) {
+    private SVContext(final VariantContext other) {
         super(other);
     }
 
