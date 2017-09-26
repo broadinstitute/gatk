@@ -166,8 +166,8 @@ public final class VariantContextTestUtils {
 
     static List<Integer> createAlleleIndexMap(final List<Allele> originalAlleles, final List<Allele> sortedAlleles){
         final List<Integer> mapping = new ArrayList<>(originalAlleles.size());
-        for ( final Allele a: originalAlleles){
-            final int newIndex = sortedAlleles.indexOf(a);
+        for ( final Allele a: sortedAlleles){
+            final int newIndex = originalAlleles.indexOf(a);
             mapping.add(newIndex);
         }
         return mapping;
