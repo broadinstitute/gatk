@@ -406,7 +406,11 @@ public final class KernelSegmenter<DATA> {
         //use recurrence relations to iteratively calculate cost
         for (final int tauPrime : indices) {
             D += kernelApproximationDiagonal[tauPrime];
-            final double ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, W, tauPrime, 1);
+            double ZdotW = 0.;
+            for (int j = 0; j < p; j++) {
+                ZdotW += reducedObservationMatrix.getEntry(tauPrime, j) * W[j];
+                W[j] += reducedObservationMatrix.getEntry(tauPrime, j);
+            }
             V += 2. * ZdotW + kernelApproximationDiagonal[tauPrime];
         }
         final double C = D - V / (indices.size() + 1);
@@ -473,33 +477,57 @@ public final class KernelSegmenter<DATA> {
 
             //update quantities in left segment
             leftD -= kernelApproximationDiagonal[start];
-            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, leftW, start, -1);
+            ZdotW = 0.;
+            for (int j = 0; j < p; j++) {
+                ZdotW += reducedObservationMatrix.getEntry(start, j) * leftW[j];
+                leftW[j] -= reducedObservationMatrix.getEntry(start, j);
+            }
             leftV += -2. * ZdotW + kernelApproximationDiagonal[start];
 
             leftD += kernelApproximationDiagonal[centerNext];
-            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, leftW, centerNext, 1);
+            ZdotW = 0.;
+            for (int j = 0; j < p; j++) {
+                ZdotW += reducedObservationMatrix.getEntry(centerNext, j) * leftW[j];
+                leftW[j] += reducedObservationMatrix.getEntry(centerNext, j);
+            }
             leftV += 2. * ZdotW + kernelApproximationDiagonal[centerNext];
 
             leftC = leftD - leftV * windowSizeReciprocal;
 
             //update quantities in right segment
             rightD -= kernelApproximationDiagonal[centerNext];
-            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, rightW, centerNext, -1);
+            ZdotW = 0.;
+            for (int j = 0; j < p; j++) {
+                ZdotW += reducedObservationMatrix.getEntry(centerNext, j) * rightW[j];
+                rightW[j] -= reducedObservationMatrix.getEntry(centerNext, j);
+            }
             rightV += -2. * ZdotW + kernelApproximationDiagonal[centerNext];
 
             rightD += kernelApproximationDiagonal[endNext];
-            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, rightW, endNext, 1);
+            ZdotW = 0.;
+            for (int j = 0; j < p; j++) {
+                ZdotW += reducedObservationMatrix.getEntry(endNext, j) * rightW[j];
+                rightW[j] += reducedObservationMatrix.getEntry(endNext, j);
+            }
             rightV += 2. * ZdotW + kernelApproximationDiagonal[endNext];
 
             rightC = rightD - rightV * windowSizeReciprocal;
 
             //update quantities in total segment
             totalD -= kernelApproximationDiagonal[start];
-            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, totalW, start, -1);
+            ZdotW = 0.;
+            for (int j = 0; j < p; j++) {
+                ZdotW += reducedObservationMatrix.getEntry(start, j) * totalW[j];
+                totalW[j] -= reducedObservationMatrix.getEntry(start, j);
+            }
             totalV += -2. * ZdotW + kernelApproximationDiagonal[start];
 
             totalD += kernelApproximationDiagonal[endNext];
-            ZdotW = calculateZdotWAndModifyW(reducedObservationMatrix, p, totalW, endNext, 1);
+            ZdotW = 0.;
+            for (int j = 0; j < p; j++) {
+                ZdotW += reducedObservationMatrix.getEntry(endNext, j) * totalW[j];
+                totalW[j] += reducedObservationMatrix.getEntry(endNext, j);
+            }
             totalV += 2. * ZdotW + kernelApproximationDiagonal[endNext];
 
             totalC = totalD - 0.5 * totalV * windowSizeReciprocal;
@@ -512,18 +540,5 @@ public final class KernelSegmenter<DATA> {
             end = endNext;
         }
         return windowCosts;
-    }
-
-    private static double calculateZdotWAndModifyW(final RealMatrix reducedObservationMatrix,
-                                                   final int p,
-                                                   final double[] W,
-                                                   final int rowIndex,
-                                                   final int signMultiplier) {
-        double ZdotW = 0.;
-        for (int j = 0; j < p; j++) {
-            ZdotW += reducedObservationMatrix.getEntry(rowIndex, j) * W[j];
-            W[j] += signMultiplier * reducedObservationMatrix.getEntry(rowIndex, j);
-        }
-        return ZdotW;
     }
 }
