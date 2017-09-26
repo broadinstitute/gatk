@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.sv.sga;
+package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.google.common.base.Throwables;
 import org.apache.commons.io.FileUtils;
@@ -9,10 +9,14 @@ import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A class for experimenting with cmd line programs (such as bwa and sga) that's not part of GATK (or has Java bindings yet).
+ * A class for experimenting with cmd line programs (such as bwa) that's not part of GATK (or has Java bindings yet).
+ * See {@code ExternalCommandlineProgramModule.SGAModule} for illustration on how to construct a module,
+ * and {@code ExternalCommandlineProgramModule#exampleRun(String, String, File, boolean)}] on how to execute it.
  */
 abstract class ExternalCommandlineProgramModule {
 
@@ -156,5 +160,60 @@ abstract class ExternalCommandlineProgramModule {
      */
     protected void setupWorkingEnvironment(final ProcessBuilder builder, final String... args){
 
+    }
+
+    /**
+     * INTENDED FOR ILLUSTRATION PURPOSE ONLY FOR HOW TO CONSTRUCT A {@link ExternalCommandlineProgramModule}
+     * Represents an SGA module that can be called via "run" (in base) to do actual work.
+     */
+    @Deprecated
+    private static final class SGAModule extends ExternalCommandlineProgramModule {
+
+        private final String moduleName;
+
+        SGAModule(final String moduleName){
+            this.moduleName = moduleName;
+        }
+
+        @Override
+        public String getModuleName(){
+            return "sga " + moduleName;
+        }
+
+        @Override
+        public List<String> initializeCommands(final Path pathToSGA) {
+            final ArrayList<String> result = new ArrayList<>();
+            result.add(pathToSGA.toString());
+            result.add(moduleName);
+            return result;
+        }
+    }
+
+    /**
+     * INTENDED FOR ILLUSTRATION PURPOSE ONLY FOR HOW TO USE A {@link ExternalCommandlineProgramModule}
+     * @param sgaPathString         absolute path to the program
+     * @param moduleName            name of the module to be run (e.g. "bwa index", "bwa mem")
+     * @param workingDir            directory to work in, especially if there's file IO
+     * @param enableSTDIOCapture    whether to enable capturing stdout and stderr from the module
+     */
+    @Deprecated
+    private static void exampleRun(final String sgaPathString,
+                                   final String moduleName,
+                                   final File workingDir,
+                                   final boolean enableSTDIOCapture) {
+        // intake program path
+        final Path sgaPath = Paths.get(sgaPathString);
+        // instantiate the desired module, and provide appropriate parameters
+        final SGAModule module = new SGAModule(moduleName);
+        final List<String> moduleArgs = new ArrayList<>();
+        moduleArgs.add("--algorithm"); moduleArgs.add("ropebwt");
+        moduleArgs.add("--check");
+        moduleArgs.add("");
+        // run, collect runtime information and check return status
+        final SGAModule.RuntimeInfo moduleRuntimeInfo = module.run(sgaPath, workingDir, moduleArgs, enableSTDIOCapture);
+        final SGAModule.RuntimeInfo.ReturnStatus returnStatus = moduleRuntimeInfo.returnStatus;
+        if(!(returnStatus.equals(SGAModule.RuntimeInfo.ReturnStatus.SUCCESS))){
+            throw new RuntimeException("Appropriate action and error message here");
+        }
     }
 }

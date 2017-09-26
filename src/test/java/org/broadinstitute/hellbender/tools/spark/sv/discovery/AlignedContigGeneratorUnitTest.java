@@ -38,39 +38,6 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
     private static final List<String> refNames = Collections.singletonList(dummyRefName);
 
     @Test(groups = "sv")
-    @SuppressWarnings("deprecation")
-    public void testParseAlignedAssembledContigTextLine() throws Exception {
-        MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
-            //use the HDFS on the mini cluster
-            final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
-            final Path tempPath = new Path(workingDirectory, "testLocalAssemblyFormatRead");
-            final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-
-            final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
-            final FSDataOutputStream fsOutStream = fs.create(tempPath);
-
-            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3%100%O";
-            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5%100%O";
-            fsOutStream.writeBytes(gappedAlignmentContig_1);
-            fsOutStream.writeBytes("\n");
-            fsOutStream.writeBytes(gappedAlignmentContig_2);
-            fsOutStream.writeBytes("\n");
-            fsOutStream.close();
-            fs.deleteOnExit(tempPath);
-
-            Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
-
-            final Map<String, List<AlignmentInterval>> contigNameAndAlignments
-                    = org.broadinstitute.hellbender.tools.spark.sv.sga.DiscoverVariantsFromContigAlignmentsSGASpark
-                    .SGATextFormatAlignmentParser.parseAndBreakAlignmentTextRecords(ctx, tempPath.toString(), null).collectAsMap();
-
-            Assert.assertEquals(contigNameAndAlignments.keySet().size(), 2);
-            Assert.assertEquals(contigNameAndAlignments.get("asm000001:tig00001").size(), 2);
-            Assert.assertEquals(contigNameAndAlignments.get("asm000001:tig00002").size(), 2);
-        });
-    }
-
-    @Test(groups = "sv")
     public void testConvertGATKReadsToAlignedContig() throws Exception {
         final String read1Seq = "ACACACACACACACACACACACACACACCAGAAGAAAAATTCTGGTAAAACTTATTTGTTCTTAAACATAAAACTAGAGGTGCAAAATAACATTAGTGTATGGTTAATATAGGAAAGATAAGCAATTTCATCTTCTTTGTACCCCACTTATTGGTACTCAACAAGTTTTGAATAAATTCGTGAAATAAAGAAAAAAACCAACAAGTTCATATCTCCAAGTAGTCTTGGTAATTTAAACACTTTCAAGTATCTTCATACCCTGTTAGTACTTCTTTCTGCTCTGTGTCAACAGAAGTATTCTCAACACTCTTGTGGTTAATTTGGTTAAAACTCATTACAAAGAACCCTAAGTTATCCGTCACAGCTGCTAAACCCATTAGTACAGGAGACTTTAAGGCCATAATGTGTCCATTTTCAGGATATAATTGAAGAGAGGCAAATGATACATGGTTTTCCAAAAATATTGGACCAGGGAGCCTCTTCAAGAAAGAATCCCTGATTCGGGAGTTCTTATACTTTTTCAAGAA";
         final byte[] read1Quals = new byte[read1Seq.length()];
@@ -219,11 +186,5 @@ public class AlignedContigGeneratorUnitTest extends BaseTest {
                 {"CTG=1START=20fd0END=200000"},
                 {"CTG=1START=20END=19"}
         };
-    }
-
-    @Test(dataProvider = "InvalidSimpleIntervalStrings", expectedExceptions = GATKException.class)
-    @SuppressWarnings("deprecation")
-    public void testEnCodeAndDecodeSimpleIntervalAsString_expectException(final String text) {
-        org.broadinstitute.hellbender.tools.spark.sv.sga.AlignAssembledContigsSpark.decodeStringAsSimpleInterval(text);
     }
 }
