@@ -31,7 +31,7 @@ import java.util.stream.IntStream;
  * </p>
  *
  * <p>
- * Given <i>N</i> data points to segment, the basic steps of the method are:
+ * Given <i>N</i> sequential data points of type {@code DATA} to segment, the basic steps of the method are:
  *
  * <ol>
  *     1) Select <i>C<sub>max</sub></i>, the maximum number of changepoints to discover.
@@ -40,6 +40,7 @@ import java.util.stream.IntStream;
  *     2) Select a kernel (linear for sensitivity to changes in the distribution mean,
  *     Gaussian with a specified variance for multimodal data, etc.)
  *     and a subsample of <i>p</i> points to approximate it using singular value decomposition.
+ *     This is provided via a lambda of the form {@code (DATA, DATA) -> double}.
  * </ol>
  * <ol>
  *     3) Select window sizes <i>w<sub>j</sub></i> for which to calculate local costs at each point.
@@ -62,7 +63,7 @@ import java.util.stream.IntStream;
  *     This gives the global cost as a function of the number of changepoints <i>C</i>.
  * </ol>
  * <ol>
- *     6) Add a penalty <i>A * C + B * C * log N / C</i> to the global cost and find the minimum to determine the
+ *     6) Add a penalty <i>A * C + B * C * log (N / C)</i> to the global cost and find the minimum to determine the
  *     number of changepoints, where <i>A</i> and <i>B</i> are specified penalty factors.
  *
  * </ol>
@@ -79,16 +80,16 @@ import java.util.stream.IntStream;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class KernelSegmenter<T> {
+public final class KernelSegmenter<DATA> {
     private static final Logger logger = LogManager.getLogger(KernelSegmenter.class);
 
     private static final int RANDOM_SEED = 1216;
     private static final double EPSILON = 1E-10;
 
-    private final List<T> data;
+    private final List<DATA> data;
 
-    public KernelSegmenter(final List<T> data) {
-        this.data = Collections.unmodifiableList(new ArrayList<T>(data));
+    public KernelSegmenter(final List<DATA> data) {
+        this.data = Collections.unmodifiableList(new ArrayList<>(Utils.nonNull(data)));
     }
 
     /**
@@ -104,7 +105,7 @@ public final class KernelSegmenter<T> {
      * @param sortByIndex                           if true, sort by increasing index order
      */
     public List<Integer> findChangepoints(final int maxNumChangepoints,
-                                          final BiFunction<T, T, Double> kernel,
+                                          final BiFunction<DATA, DATA, Double> kernel,
                                           final int kernelApproximationDimension,
                                           final List<Integer> windowSizes,
                                           final double numChangepointsPenaltyLinearFactor,
@@ -112,6 +113,7 @@ public final class KernelSegmenter<T> {
                                           final boolean sortByIndex) {
         ParamUtils.isPositiveOrZero(maxNumChangepoints, "Maximum number of changepoints must be non-negative.");
         ParamUtils.isPositive(kernelApproximationDimension, "Dimension of kernel approximation must be positive.");
+        Utils.validateArg(!windowSizes.isEmpty(), "At least one window size must be provided.");
         Utils.validateArg(windowSizes.stream().allMatch(ws -> ws > 0), "Window sizes must all be positive.");
         Utils.validateArg(windowSizes.stream().distinct().count() == windowSizes.size(), "Window sizes must all be unique.");
         ParamUtils.isPositiveOrZero(numChangepointsPenaltyLinearFactor,
@@ -120,7 +122,11 @@ public final class KernelSegmenter<T> {
                 "Log-linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
 
         if (maxNumChangepoints == 0) {
-            logger.warn("No changepoints were requested, returning empty list...");
+            logger.warn("No changepoints were requested, returning an empty list...");
+            return Collections.emptyList();
+        }
+        if (data.isEmpty()) {
+            logger.warn("No data points were provided, returning an empty list...");
             return Collections.emptyList();
         }
 
@@ -356,7 +362,7 @@ public final class KernelSegmenter<T> {
                 .collect(Collectors.toList());
         final int numChangepointsOptimal = totalSegmentationCostsPlusPenalties.indexOf(Collections.min(totalSegmentationCostsPlusPenalties));
 
-        logger.info(String.format("Found %d changepoints after applying penalties.", numChangepointsOptimal));
+        logger.info(String.format("Found %d changepoints after applying the changepoint penalty.", numChangepointsOptimal));
         return changepoints.subList(0, numChangepointsOptimal);
     }
 

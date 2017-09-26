@@ -17,8 +17,15 @@ import java.util.stream.IntStream;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class KernelSegmenterUnitTest extends BaseTest {
-    private static final int RANDOM_SEED = 1;   //reset seed before each simulated test case
+    private static final int RANDOM_SEED = 1;   //make sure to reset random seed to this value before each simulated test case
 
+    /**
+     * Generates data for a few test cases, including:
+     * 1) Gaussian data with changepoints in the mean every 100 points,
+     * 2) zero-mean multimodal data, in which the sign of each point is randomly chosen and
+     * changepoints occur in the absolute value of the mean every 100 points, and
+     * 3) zero-mean Gaussian data with no changepoints.
+     */
     @DataProvider(name = "dataKernelSegmenter")
     public Object[][] dataKernelSegmenter() {
         final int numPoints = 1000;
@@ -41,9 +48,20 @@ public final class KernelSegmenterUnitTest extends BaseTest {
         final List<Integer> changepointsExpectedZeroMeanMultimodal = Arrays.asList(
                 499, 599, 799, 699, 399, 899, 299, 199, 99);            //from python implementation
 
+        rng.setSeed(RANDOM_SEED);
+        final List<Double> dataGaussianNoSegments = IntStream.range(0, numPoints).boxed()
+                .map(i -> 0.1 * rng.nextGaussian())
+                .collect(Collectors.toList());
+        final List<Integer> changepointsExpectedGaussianNoSegments = Collections.emptyList();
+
+        final List<Double> dataEmpty = Collections.emptyList();
+        final List<Integer> changepointsExpectedEmpty = Collections.emptyList();
+
         return new Object[][]{
                 {dataGaussian, linearKernel, changepointsExpectedGaussian},
-                {dataZeroMeanMultimodal, gaussianKernel, changepointsExpectedZeroMeanMultimodal}
+                {dataZeroMeanMultimodal, gaussianKernel, changepointsExpectedZeroMeanMultimodal},
+                {dataGaussianNoSegments, linearKernel, changepointsExpectedGaussianNoSegments},
+                {dataEmpty, linearKernel, changepointsExpectedEmpty}
         };
     }
 
@@ -82,7 +100,7 @@ public final class KernelSegmenterUnitTest extends BaseTest {
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
                         numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
 
-        Assert.assertEquals(changepoints, changepointsExpected.subList(0, maxNumChangepoints));
+        Assert.assertEquals(changepoints, changepointsExpected.isEmpty() ? changepointsExpected : changepointsExpected.subList(0, maxNumChangepoints));
     }
 
     @Test(dataProvider = "dataKernelSegmenter")
@@ -120,7 +138,22 @@ public final class KernelSegmenterUnitTest extends BaseTest {
                 .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
                         numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
 
-        Assert.assertEquals(changepoints.size(), maxNumChangepoints);
+        Assert.assertEquals(changepoints.size(), data.isEmpty() ? 0 : maxNumChangepoints);
         Assert.assertEquals(changepoints.subList(0, changepointsExpected.size()), changepointsExpected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testKernelSegmenterEmptyWindowSizes() {
+        final int maxNumChangepoints = 25;
+        final int kernelApproximationDimension = 20;
+        final List<Integer> windowSizes = Collections.emptyList();
+        final double numChangepointsPenaltyLinearFactor = 0.;
+        final double numChangepointsPenaltyLogLinearFactor = 0.;
+        final List<Double> data = Arrays.asList(1., 2., 3.);
+        final BiFunction<Double, Double, Double> kernel = (x, y) -> x * y;
+
+        new KernelSegmenter<>(data)
+                .findChangepoints(maxNumChangepoints, kernel, kernelApproximationDimension, windowSizes,
+                        numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, false);
     }
 }
