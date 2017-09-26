@@ -13,7 +13,9 @@ public class VariantContextTestUtilsUnitTest {
     private static final Allele ARef = Allele.create("A", true);
     private static final Allele T = Allele.create("T");
     private static final Allele C = Allele.create("C");
+    private static final Allele CC = Allele.create("CC");
     private static final Allele G = Allele.create("G");
+    private static final Allele GG = Allele.create("GG");
     private static final String SAMPLE_1 = "NA1";
     private static final String SAMPLE_2 = "NA2";
 
@@ -126,6 +128,8 @@ public class VariantContextTestUtilsUnitTest {
         VariantContextBuilder builderA = new VariantContextBuilder("a","20",10433328,10433328,  Arrays.asList(ARef,G,C));
         VariantContextBuilder builderB = new VariantContextBuilder("a","20",10433328,10433328,  Arrays.asList(ARef,C,G));
         VariantContextBuilder builderC = new VariantContextBuilder("a","20",10433328,10433328,  Arrays.asList(ARef,C,T));
+        VariantContextBuilder builderD = new VariantContextBuilder("a","20",10433328,10433328,  Arrays.asList(ARef,C,CC,G,GG));
+        VariantContextBuilder builderE = new VariantContextBuilder("a","20",10433328,10433328,  Arrays.asList(ARef,GG,C,G,CC));
         VariantContext A = builderA.make();
         VariantContext B = builderB.make();
         VariantContext C = builderC.make();
@@ -133,8 +137,12 @@ public class VariantContextTestUtilsUnitTest {
         // TESTING ATTRIBUTES
         builderA.attribute("AS_RAW_MQ","40|20|10").attribute("RAW_MQ","20").attribute("PG", "10,20,30,40,50,60");
         builderB.attribute("AS_RAW_MQ","40|10|20").attribute("RAW_MQ","20").attribute("PG", "10,40,60,20,50,30");
+        builderD.attribute("AS_RAW_MQ","0|1|2|3|4");
+        builderE.attribute("AS_RAW_MQ","0|4|1|3|2");
         VariantContext A_RAWMQ = builderA.make();
         VariantContext B_RAWMQ = builderB.make();
+        VariantContext D_RAWMQ = builderD.make();
+        VariantContext E_RAWMQ = builderE.make();
 
         // TESTING GENOTYPES
         builderA.genotypes(Arrays.asList(new GenotypeBuilder(SAMPLE_1).alleles(Arrays.asList(ARef, G)).PL(new double[]{30,0,190,0,0,0}).GQ(30).AD(new int[]{1,2,3}).make(),
@@ -158,6 +166,7 @@ public class VariantContextTestUtilsUnitTest {
         return new Object[][]{{A,B,true},
                 {A,C,false},
                 {A_RAWMQ,B_RAWMQ,true},
+                {D_RAWMQ,E_RAWMQ,true},
                 {A_RAWMQ,B_RAWMQ_BAD,false},
                 {A_RAWMQ,B_PG_BAD,false},
                 {A_withGenotypes,B_withGenotypes,true},
