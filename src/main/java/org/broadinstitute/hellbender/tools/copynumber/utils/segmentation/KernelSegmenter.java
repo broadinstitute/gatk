@@ -189,10 +189,10 @@ public final class KernelSegmenter<DATA> {
     }
 
     //calculates the N x p reduced observation matrix, defined as Z in equation preceding Eq. 14 in https://hal.inria.fr/hal-01413230/document
-    private static <T> RealMatrix calculateReducedObservationMatrix(final RandomGenerator rng,
-                                                                    final List<T> data,
-                                                                    final BiFunction<T, T, Double> kernel,
-                                                                    final int kernelApproximationDimension) {
+    private static <DATA> RealMatrix calculateReducedObservationMatrix(final RandomGenerator rng,
+                                                                       final List<DATA> data,
+                                                                       final BiFunction<DATA, DATA, Double> kernel,
+                                                                       final int kernelApproximationDimension) {
         if (kernelApproximationDimension > data.size()) {
             logger.warn("Specified dimension of the kernel approximation exceeds the number of data points to segment; " +
                     "using all data points to calculate kernel matrix.");
@@ -201,7 +201,7 @@ public final class KernelSegmenter<DATA> {
         //subsample data with replacement
         final int numSubsample = Math.min(kernelApproximationDimension, data.size());
         logger.info(String.format("Subsampling %d points from data to find kernel approximation...", numSubsample));
-        final List<T> dataSubsample = numSubsample == data.size()
+        final List<DATA> dataSubsample = numSubsample == data.size()
                 ? data
                 : IntStream.range(0, numSubsample).boxed().map(i -> data.get(rng.nextInt(data.size()))).collect(Collectors.toList());
 
@@ -249,11 +249,11 @@ public final class KernelSegmenter<DATA> {
     }
 
     //finds indices of changepoint candidates from all window sizes
-    private static <T> List<Integer> findChangepointCandidates(final List<T> data,
-                                                               final RealMatrix reducedObservationMatrix,
-                                                               final double[] kernelApproximationDiagonal,
-                                                               final int maxNumChangepoints,
-                                                               final List<Integer> windowSizes) {
+    private static <DATA> List<Integer> findChangepointCandidates(final List<DATA> data,
+                                                                  final RealMatrix reducedObservationMatrix,
+                                                                  final double[] kernelApproximationDiagonal,
+                                                                  final int maxNumChangepoints,
+                                                                  final List<Integer> windowSizes) {
         final List<Integer> changepointCandidates = new ArrayList<>(windowSizes.size() * maxNumChangepoints);
 
         //for each window size, calculate local changepoint costs at each point and add maxNumChangepoints candidates
