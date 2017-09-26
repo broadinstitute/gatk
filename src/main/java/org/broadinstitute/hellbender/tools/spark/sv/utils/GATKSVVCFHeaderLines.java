@@ -65,6 +65,10 @@ public class GATKSVVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SVTYPE, 1, VCFHeaderLineType.String, "Type of structural variant"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SVLEN, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Difference in length between REF and ALT alleles"));
 
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.IMPRECISE, 0, VCFHeaderLineType.Flag, "Imprecise structural variation"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CIPOS, 2, VCFHeaderLineType.Integer, "Confidence interval around POS for imprecise variants"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CIEND, 2, VCFHeaderLineType.Integer, "Confidence interval around END for imprecise variants"));
+
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TOTAL_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of contig alignments that support the variant"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HQ_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of high-quality contig alignments that support the variant"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MAPPING_QUALITIES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Mapping qualities of the contig alignments that support the variant"));
@@ -92,5 +96,9 @@ public class GATKSVVCFHeaderLines {
 
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TANDUP_CONTRACTION_STRING, 0, VCFHeaderLineType.Flag, "Tandem repeats contraction compared to reference"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TANDUP_EXPANSION_STRING, 0, VCFHeaderLineType.Flag, "Tandem repeats expansion compared to reference"));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.READ_PAIR_SUPPORT, 1, VCFHeaderLineType.Integer, "Number of discordant read pairs supporting the variant"));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SPLIT_READ_SUPPORT, 1, VCFHeaderLineType.Integer, "Number of split read supplementary mappings supporting the variant"));
+
     }
 }

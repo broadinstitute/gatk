@@ -1011,7 +1011,7 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
 
         @Override
         public SVIntervalTree<T> read( final Kryo kryo, final Input input, final Class<SVIntervalTree<T>> klass ) {
-            return new SVIntervalTree<T>(kryo, input);
+            return new SVIntervalTree<>(kryo, input);
         }
     }
 }

@@ -57,9 +57,10 @@ public class BreakpointEvidence {
 
     /**
      * Returns true if this piece of evidence specifies a possible distal target for the breakpoint.
-     * @param readMetadata
+     * @param readMetadata Read metadata for the library
+     * @param minEvidenceMapQ The minimum mapping quality threshold (inclusive) for which a target (mate or SA mapping) should be created
      */
-    public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+    public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapQ) {
         return false;
     }
 
@@ -69,7 +70,9 @@ public class BreakpointEvidence {
      * read. Returns null if the evidence does not specify or support a possible targeted region (for example, the case
      * of an read with an unmapped mate). Strands of the intervals indicate whether the distal target intervals are
      * upstream or downstream of their proposed breakpoints: true indicates that the breakpoint is upstream of the interval
-     * start position; false indicates that the breakpoint is downstream of the interval end position
+     * start position; false indicates that the breakpoint is downstream of the interval end position.
+     * @param minEvidenceMapq The minimum mapping quality (inclusive) of the target evidence; if the mapping quality is below
+     *                        this value the evidence is treated as not having a distal target
      */
     public List<StrandedInterval> getDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
         return null;
@@ -393,9 +396,9 @@ public class BreakpointEvidence {
         }
 
         @Override
-        public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+        public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapQ) {
             // todo: right now we are limiting distal target calculation to split reads that have only one supplementary mapping
-            return saMappings != null && saMappings.size() == 1 && hasHighQualitySupplementaryMappings(readMetadata, minEvidenceMapq);
+            return saMappings != null && saMappings.size() == 1 && hasHighQualitySupplementaryMappings(readMetadata, minEvidenceMapQ);
         }
 
         private boolean hasHighQualitySupplementaryMappings(final ReadMetadata readMetadata, final int minEvidenceMapq) {
@@ -421,6 +424,27 @@ public class BreakpointEvidence {
                     && ! saInterval.overlaps(getLocation());
         }
 
+        /**
+         * In the case of a split read with an SA tag, the distal target interval is a StrandedInterval where the interval
+         * location is the possible breakpoint interval given by the clipping location on the supplementary alignment,
+         * and the strand indicates whether or not the rest of the supplementary alignment is upstream or downstream of
+         * of the breakpoint. For example, for a split read spanning a deletion:
+         *
+         *    --C|xxxxxxxxxxx|C->
+         *      +++         ^^^
+         *
+         *  C     = Clipping location
+         *  --C   = Evidence
+         *  C->   = Target evidence given by the SA tag
+         *  +++   = Evidence getLocation
+         *  |xxx| = Deletion
+         *  ^^^   = Distal target interval
+         *
+         *  Since the clipping is at the left side of the distal target interval, the distal target strand will be (-)
+         *  (because the putative breakpoint upstream of the end of the distal target interval), and the StrandedInterval
+         *  implied by BreakpointEvidence.getLocation() and BreakpointEvidence.isEvidenceUpstreamOfBreakpoint()
+         *  will have a strand of (+).
+         */
         @Override
         public List<StrandedInterval> getDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
             if (hasDistalTargets(readMetadata, minEvidenceMapq)) {
@@ -629,8 +653,9 @@ public class BreakpointEvidence {
         }
 
         @Override
-        public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
-            return getFragmentOrdinal() == TemplateFragmentOrdinal.PAIRED_FIRST && isTargetHighQuality(readMetadata, minEvidenceMapq);
+        public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapQ) {
+            return getLocation().isUpstreamOf(target)
+                    && isTargetHighQuality(readMetadata, minEvidenceMapQ);
         }
 
         private boolean isTargetHighQuality(final ReadMetadata readMetadata, final int minEvidenceMapq) {
@@ -638,6 +663,25 @@ public class BreakpointEvidence {
                     && ! target.overlaps(getLocation()) && ! readMetadata.ignoreCrossContigID(target.getContig());
         }
 
+        /**
+         * In the case of a discordant read pair, the distal target interval is a StrandedInterval where the interval
+         * location is the possible breakpoint interval given by the inferred rest-of-fragment interval for the mate read
+         * (ie the region that would contain the mate's mated read if its fragment size had been drawn from the non-outlier
+         * fragment size distribution), and the strand can be easily computed as the strand of the reference the mate
+         * mapped to. For example in the case of a deletion, if this piece of BreakpointEvidence represents the forward
+         * strand mapping read in a long-fragment size pair:
+         *
+         *    ---->   |xxxxxxxxxxx|   <----
+         *         +++++        ^^^^^^
+         *  ----> = Evidence
+         *  +++++ = Evidence getLocation
+         *  <---- = Mate
+         *  |xxx| = Deletion
+         *  ^^^^^ = Distal target interval
+         *
+         *  The distal target strand will be (-), and the StrandedInterval implied by BreakpointEvidence.getLocation() and
+         *  BreakpointEvidence.isEvidenceUpstreamOfBreakpoint() will have a strand of (+).
+         */
         @Override
         public List<StrandedInterval> getDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
             if (hasDistalTargets(readMetadata, minEvidenceMapq)) {

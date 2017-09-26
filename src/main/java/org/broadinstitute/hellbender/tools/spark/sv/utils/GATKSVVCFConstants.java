@@ -6,6 +6,9 @@ public class GATKSVVCFConstants {
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
     public static final String SVTYPE = "SVTYPE";
     public static final String SVLEN = "SVLEN";
+    public static final String IMPRECISE = "IMPRECISE";
+    public static final String CIPOS = "CIPOS";
+    public static final String CIEND = "CIEND";
 
     public static final String BREAKEND_STR = "BND";
     public static final String BND_MATEID_STR = "MATEID";
@@ -44,4 +47,6 @@ public class GATKSVVCFConstants {
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
     public static final String TANDUP_CONTRACTION_INTERNAL_ID_START_STRING = "DEL-DUPLICATION-TANDEM-CONTRACTION";
     public static final String TANDUP_EXPANSION_INTERNAL_ID_START_STRING = "INS-DUPLICATION-TANDEM-EXPANSION";
+    public static final String READ_PAIR_SUPPORT = "READ_PAIR_SUPPORT";
+    public static final String SPLIT_READ_SUPPORT = "SPLIT_READ_SUPPORT";
 }

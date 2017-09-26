@@ -66,7 +66,7 @@ public final class LibraryStatistics {
     public IntHistogram createEmptyHistogram() { return fragmentSizeCDF.createEmptyHistogram(); }
 
     public int getMaxNonOutlierFragmentSize() {
-        return fragmentSizeCDF.popStat(.9f);
+        return fragmentSizeCDF.popStat(.90f);
     }
 
     public final static class Serializer extends com.esotericsoftware.kryo.Serializer<LibraryStatistics> {

@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
@@ -54,10 +53,15 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
                         contig -> BreakpointComplications.isLikelyInvertedDuplication(contig.alignmentIntervals.get(0),
                                 contig.alignmentIntervals.get(1)), true);
 
+        final PipelineOptions options = null;
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(options, fastaReference,
+                ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+
         final JavaRDD<VariantContext> simpleStrandSwitchBkpts =
                 dealWithSimpleStrandSwitchBkpts(split._2, broadcastReference, toolLogger);
-        SVVCFWriter.writeVCF(null, vcfOutputFileName.replace(".vcf", "_simpleSS.vcf"),
-                fastaReference, simpleStrandSwitchBkpts, toolLogger);
+
+        SVVCFWriter.writeVCF(vcfOutputFileName.replace(".vcf", "_simpleSS.vcf"), toolLogger,
+                simpleStrandSwitchBkpts.collect(), referenceSequenceDictionary);
 
         // TODO: 8/23/17 add inv dup code in the next pr
     }

@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -24,8 +24,9 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
@@ -84,12 +85,18 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        final SAMFileHeader headerForReads = getHeaderForReads();
+
         final JavaRDD<AlignedContig> parsedContigAlignments
-                = new SAMFormattedContigAlignmentParser(getReads(), getHeaderForReads(), true, localLogger)
+                = new SAMFormattedContigAlignmentParser(getReads(), headerForReads, true, localLogger)
                 .getAlignedContigs();
 
-        discoverVariantsAndWriteVCF(parsedContigAlignments, discoverStageArgs.fastaReference,
-                ctx.broadcast(getReference()), getAuthenticatedGCSOptions(), vcfOutputFileName, localLogger);
+        discoverVariantsAndWriteVCF(parsedContigAlignments,
+                discoverStageArgs,
+                ctx.broadcast(getReference()),
+                vcfOutputFileName,
+                localLogger,
+                headerForReads.getSequenceDictionary());
     }
 
     public static final class SAMFormattedContigAlignmentParser extends AlignedContigGenerator implements Serializable {
@@ -167,21 +174,93 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * turn into annotated {@link VariantContext}'s, and writes them to VCF.
      */
     public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
-                                                   final String fastaReference, final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                   final PipelineOptions pipelineOptions, final String vcfFileName,
-                                                   final Logger toolLogger) {
+                                                   final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                   final String vcfOutputFileName,
+                                                   final Logger localLogger,
+                                                   final SAMSequenceDictionary samSequenceDictionary) {
+        discoverVariantsAndWriteVCF(alignedContigs, parameters, broadcastReference, vcfOutputFileName,
+                localLogger, null, null, samSequenceDictionary);
+    }
 
-        final JavaRDD<VariantContext> annotatedVariants =
+    public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
+                                                   final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                   final String vcfOutputFileName, final Logger localLogger,
+                                                   final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                   final ReadMetadata metadata,
+                                                   final SAMSequenceDictionary sequenceDictionary) {
+
+        JavaRDD<VariantContext> annotatedVariants =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
                         .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
                                 ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH)))
                         .flatMapToPair(DiscoverVariantsFromContigAlignmentsSAMSpark::discoverNovelAdjacencyFromChimericAlignments)    // a filter-passing contig's alignments may or may not produce novel adjacency
                         .groupByKey()                                                                                                 // group the same novel adjacency produced by different contigs together
                         .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments
-                        .map(noveltyTypeAndEvidence -> annotateVariant(noveltyTypeAndEvidence._1,                                     // annotate the novel adjacency and inferred type
-                                noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2, broadcastReference));
+                        .map(noveltyTypeAndEvidence ->
+                                annotateVariant(                   // annotate the novel adjacency and inferred type
+                                        noveltyTypeAndEvidence._1,
+                                        noveltyTypeAndEvidence._2._1,
+                                        noveltyTypeAndEvidence._2._2,
+                                        broadcastReference));
 
-        SVVCFWriter.writeVCF(pipelineOptions, vcfFileName, fastaReference, annotatedVariants, toolLogger);
+        List<VariantContext> collectedAnnotatedVariants = annotatedVariants.collect();
+
+        if (evidenceTargetLinks != null) {
+            collectedAnnotatedVariants = processEvidenceTargetLinks(parameters,
+                    localLogger,
+                    evidenceTargetLinks,
+                    metadata,
+                    collectedAnnotatedVariants, broadcastReference.getValue());
+        }
+
+        SVVCFWriter.writeVCF(vcfOutputFileName, localLogger, collectedAnnotatedVariants,
+                sequenceDictionary);
+    }
+
+    /**
+     * Uses the input EvidenceTargetLinks to either annotate the variants called from assembly discovery with split
+     * read and read pair evidence, or to call new imprecise variants if the number of pieces of evidence exceeds
+     * a given threshold.
+     */
+    @VisibleForTesting
+    static List<VariantContext> processEvidenceTargetLinks(final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                           final Logger localLogger,
+                                                           final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                           final ReadMetadata metadata,
+                                                           final List<VariantContext> assemblyDiscoveredVariants,
+                                                           final ReferenceMultiSource reference) {
+        final int originalEvidenceLinkSize = evidenceTargetLinks.size();
+        List<VariantContext> result = assemblyDiscoveredVariants
+                .stream()
+                .map(variant -> AnnotatedVariantProducer.annotateWithImpreciseEvidenceLinks(
+                        variant,
+                        evidenceTargetLinks,
+                        reference.getReferenceSequenceDictionary(null),
+                        metadata, parameters.assemblyImpreciseEvidenceOverlapUncertainty))
+                        .collect(Collectors.toList());
+        localLogger.info("Used " + (originalEvidenceLinkSize - evidenceTargetLinks.size()) + " evidence target links to annotate assembled breakpoints");
+
+        final List<VariantContext> impreciseVariants =
+                Utils.stream(evidenceTargetLinks)
+                        .map(p -> p._2)
+                        .filter(EvidenceTargetLink::isImpreciseDeletion)
+                        .filter(e -> e.getReadPairs() + e.getSplitReads() > parameters.impreciseEvidenceVariantCallingThreshold)
+                        .map(e -> createImpreciseDeletionVariant(e, reference.getReferenceSequenceDictionary(null), reference))
+                        .collect(Collectors.toList());
+
+        localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
+        result.addAll(impreciseVariants);
+        return result;
+    }
+
+    private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,
+                                                                 final SAMSequenceDictionary sequenceDictionary,
+                                                                 final ReferenceMultiSource reference) {
+        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, sequenceDictionary);
+        return AnnotatedVariantProducer
+                .produceAnnotatedVcFromEvidenceTargetLink(e, svType, sequenceDictionary, reference);
     }
 
     // TODO: 7/6/17 interface to be changed in the new implementation, where one contig produces a set of NARL's.
@@ -221,4 +300,5 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                         inferredType, chimericAlignments,
                         broadcastReference);
     }
+
 }

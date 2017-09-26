@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -260,12 +261,20 @@ public final class SVContext extends VariantContext {
      *     In case the padding is set to zero, since the 0-length interval is not valid, this method would
      *     return an interval including the base just before the break-point.
      * </p>
+     * <p>
+     *      If padForHomology is set, the breakpoint interval will include the region specified as homologous
+     *      sequence in the HOMOLOGY_LENGTH attribute of VariantContext, in addition to the
+     *      normal padding specified in the first parameter.
+     * </p>
      *
      * @param padding the padding around the exact location of the break point to be included in the padded interval.
      * @param dictionary reference meta-data.
+     * @param padForHomology Add homologous sequence around the breakpoint to the interval
      * @return never {@code null}, potentially 0-length but typically at least one element.
      */
-    public List<SimpleInterval> getBreakPointIntervals(final int padding, final SAMSequenceDictionary dictionary) {
+    public List<SimpleInterval> getBreakPointIntervals(final int padding,
+                                                       final SAMSequenceDictionary dictionary,
+                                                       final boolean padForHomology) {
         ParamUtils.isPositiveOrZero(padding, "the input padding must be 0 or greater");
         Utils.nonNull(dictionary, "the input dictionary cannot be null");
         final String contigName = getContig();
@@ -277,9 +286,12 @@ public final class SVContext extends VariantContext {
                     composePaddedInterval(contigName, contigLength, start, start, padding));
         } else if (type == StructuralVariantType.DEL) {
             final int end = getEnd();
+            final int homologyPadding = (padForHomology ? getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0) : 0);
             return Arrays.asList(
-                    composePaddedInterval(contigName, contigLength, start, start, padding),
-                    composePaddedInterval(contigName, contigLength, end, end, padding));
+                    composePaddedInterval(contigName, contigLength, start + 1,
+                            start + 1 + homologyPadding, padding),
+                    composePaddedInterval(contigName, contigLength, end,
+                            end + homologyPadding, padding));
         } else {
             // Please, add more types as needed!
             throw new UnsupportedOperationException("currently only supported for INS and DELs");
@@ -292,5 +304,27 @@ public final class SVContext extends VariantContext {
                 Math.max(1, padding > 0 ? start - padding + 1 : start),
                 Math.min(contigSize, end + padding));
 
+    }
+
+    public PairedStrandedIntervals getPairedStrandedIntervals(final SAMSequenceDictionary samSequenceDictionary, final int padding) {
+        final StructuralVariantType type = getStructuralVariantType();
+        if (type == StructuralVariantType.DEL) {
+            final List<SimpleInterval> breakPointIntervals = getBreakPointIntervals(padding, samSequenceDictionary, true);
+            final SimpleInterval leftBreakpointSimpleInterval = breakPointIntervals.get(0);
+            final SVInterval leftBreakpointInterval = new SVInterval(
+                    samSequenceDictionary.getSequenceIndex(leftBreakpointSimpleInterval.getContig()),
+                    leftBreakpointSimpleInterval.getStart(),
+                    leftBreakpointSimpleInterval.getEnd() + 1);
+            final SimpleInterval rightBreakpointSimpleInterval = breakPointIntervals.get(1);
+            final SVInterval rightBreakpointInterval = new SVInterval(
+                    samSequenceDictionary.getSequenceIndex(rightBreakpointSimpleInterval.getContig()),
+                    rightBreakpointSimpleInterval.getStart(),
+                    rightBreakpointSimpleInterval.getEnd() + 1);
+
+            return new PairedStrandedIntervals(new StrandedInterval(leftBreakpointInterval, true),
+                    new StrandedInterval(rightBreakpointInterval, false));
+        } else {
+            throw new UnsupportedOperationException("currently only supported for DELs");
+        }
     }
 }

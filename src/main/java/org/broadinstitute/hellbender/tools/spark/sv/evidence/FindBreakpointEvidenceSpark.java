@@ -93,7 +93,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      *
      * @return the in-memory representation of assembled contigs alignments, whose length equals the number of local assemblies (regardless of success of failure status)
      */
-    public static Tuple2<List<AlignedAssemblyOrExcuse>, List<EvidenceTargetLink>> gatherEvidenceAndWriteContigSamFile(
+    public static AssembledEvidenceResults gatherEvidenceAndWriteContigSamFile(
             final JavaSparkContext ctx,
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final SAMFileHeader header,
@@ -107,12 +107,15 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final SVReadFilter filter = new SVReadFilter(params);
 
         // develop evidence, intervals, and, finally, a set of template names for each interval
-        final Tuple3<List<SVInterval>, List<EvidenceTargetLink>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>>
-                intervalsAndQNameMap = getMappedQNamesSet(params, ctx, header, unfilteredReads, filter, toolLogger);
-        final List<SVInterval> intervals = intervalsAndQNameMap._1();
-        if ( intervals.isEmpty() ) return new Tuple2<>(new ArrayList<>(), intervalsAndQNameMap._2());
+        final EvidenceScanResults
+                evidenceScanResults = getMappedQNamesSet(params, ctx, header, unfilteredReads, filter, toolLogger);
+        final List<SVInterval> intervals = evidenceScanResults.intervals;
+        if ( intervals.isEmpty() ) return new AssembledEvidenceResults(
+                evidenceScanResults.readMetadata,
+                new ArrayList<>(),
+                evidenceScanResults.evidenceTargetLinks);
 
-        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = intervalsAndQNameMap._3();
+        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = evidenceScanResults.qNamesForAssemblyMultiMap;
 
         // supplement the template names with other reads that share kmers
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList;
@@ -146,7 +149,31 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 params.assembliesSortOrder == SAMFileHeader.SortOrder.queryname);
         log("Wrote SAM file of aligned contigs.", toolLogger);
 
-        return new Tuple2<>(alignedAssemblyOrExcuseList, intervalsAndQNameMap._2());
+        return new AssembledEvidenceResults(evidenceScanResults.readMetadata, alignedAssemblyOrExcuseList, evidenceScanResults.evidenceTargetLinks);
+    }
+
+    public static final class AssembledEvidenceResults {
+        final ReadMetadata readMetadata;
+        final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList;
+        final List<EvidenceTargetLink> evidenceTargetLinks;
+
+        public AssembledEvidenceResults(final ReadMetadata readMetadata, final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList, final List<EvidenceTargetLink> evidenceTargetLinks) {
+            this.readMetadata = readMetadata;
+            this.alignedAssemblyOrExcuseList = alignedAssemblyOrExcuseList;
+            this.evidenceTargetLinks = evidenceTargetLinks;
+        }
+
+        public ReadMetadata getReadMetadata() {
+            return readMetadata;
+        }
+
+        public List<AlignedAssemblyOrExcuse> getAlignedAssemblyOrExcuseList() {
+            return alignedAssemblyOrExcuseList;
+        }
+
+        public List<EvidenceTargetLink> getEvidenceTargetLinks() {
+            return evidenceTargetLinks;
+        }
     }
 
     /**
@@ -157,7 +184,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * clean up by removing some intervals that are bogus as evidenced by ubiquitous kmers,
      * and return a set of template names and the intervals to which they belong.
      */
-    private static Tuple3<List<SVInterval>, List<EvidenceTargetLink>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> getMappedQNamesSet(
+    private static EvidenceScanResults getMappedQNamesSet(
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final JavaSparkContext ctx,
             final SAMFileHeader header,
@@ -191,7 +218,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int nIntervals = intervals.size();
         log("Discovered " + nIntervals + " intervals.", logger);
 
-        if ( nIntervals == 0 ) return new Tuple3<>(intervals, intervalsAndEvidenceTargetLinks._2(), null);
+        if ( nIntervals == 0 ) return new EvidenceScanResults(readMetadata, intervals, intervalsAndEvidenceTargetLinks._2(), null);
 
         if ( params.exclusionIntervalsFile != null ) {
             intervals = removeIntervalsNearGapsAndLog(intervals, params.exclusionIntervalPadding, readMetadata,
@@ -210,7 +237,24 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
         log("Discovered " + qNamesMultiMap.size() + " mapped template names.", logger);
 
-        return new Tuple3<>(intervals, intervalsAndEvidenceTargetLinks._2(), qNamesMultiMap);
+        return new EvidenceScanResults(readMetadata, intervals, intervalsAndEvidenceTargetLinks._2(), qNamesMultiMap);
+    }
+
+    static final class EvidenceScanResults {
+        final ReadMetadata readMetadata;
+        final List<SVInterval> intervals;
+        final List<EvidenceTargetLink> evidenceTargetLinks;
+        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesForAssemblyMultiMap;
+
+        public EvidenceScanResults(final ReadMetadata readMetadata,
+                                   final List<SVInterval> intervals,
+                                   final List<EvidenceTargetLink> evidenceTargetLinks,
+                                   final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesForAssemblyMultiMap) {
+            this.readMetadata = readMetadata;
+            this.intervals = intervals;
+            this.evidenceTargetLinks = evidenceTargetLinks;
+            this.qNamesForAssemblyMultiMap = qNamesForAssemblyMultiMap;
+        }
     }
 
     /** Read a file of contig names that will be ignored when checking for inter-contig pairs. */
