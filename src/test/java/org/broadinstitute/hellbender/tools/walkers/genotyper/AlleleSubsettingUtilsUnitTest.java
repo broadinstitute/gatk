@@ -302,4 +302,18 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3)[1], 3.5, 1.0e-8);
     }
 
+    // This test exists to enforce the behavior that AlleleSubsetting utils can be used to reorder alleles, if a developer
+    // ever changes this behavior then they must be mindful that VariantContextTestUtils.sortAlleles relies on this behavior.
+    @Test
+    public void testAlleleReorderingBehavior() {
+        final List<Allele> threeAlleles = Arrays.asList(Aref, G, C);
+        final List<Allele> threeAllelesSorted = Arrays.asList(Aref, C, G);
+        final Genotype g5 = new GenotypeBuilder("sample2", Arrays.asList(Aref, C)).PL(new double[] {0.0, 1.0, 2.0, 3.0, 4.0, 5.0}).make();
+
+        final GenotypesContext newGs = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(g5),
+                2, threeAlleles, threeAllelesSorted,
+                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, 10);
+
+        Assert.assertEquals(newGs.get(0).getPL(), new int[] {50, 20, 0, 40, 10, 30});
+    }
 }

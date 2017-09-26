@@ -33,6 +33,8 @@ public final class AlleleSubsettingUtils {
     /**
      * Create the new GenotypesContext with the subsetted PLs and ADs
      *
+     * Will reorder subsetted alleles according to the ordering provided by the list allelesToKeep
+     *
      * @param originalGs               the original GenotypesContext
      * @param originalAlleles          the original alleles
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
@@ -271,7 +273,7 @@ public final class AlleleSubsettingUtils {
      * @param newAlleles            New alleles -- must be a subset of {@code originalAlleles}
      * @return                      old PL indices of new genotypes
      */
-    private static int[] subsettedPLIndices(final int ploidy, final List<Allele> originalAlleles, final List<Allele> newAlleles) {
+    public static int[] subsettedPLIndices(final int ploidy, final List<Allele> originalAlleles, final List<Allele> newAlleles) {
         final int[] result = new int[GenotypeLikelihoods.numLikelihoods(newAlleles.size(), ploidy)];
         final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalAlleles).permutation(new IndexedAlleleList<>(newAlleles));
 

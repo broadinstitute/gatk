@@ -1,16 +1,10 @@
 package org.broadinstitute.hellbender.utils.variant;
 
-import htsjdk.variant.vcf.VCFFilterHeaderLine;
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLineCount;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.*;
 
@@ -23,6 +17,10 @@ public class GATKVCFHeaderLines {
     public static VCFInfoHeaderLine getInfoLine(final String id) { return infoLines.get(id); }
     public static VCFFormatHeaderLine getFormatLine(final String id) { return formatLines.get(id); }
     public static VCFFilterHeaderLine getFilterLine(final String id) { return filterLines.get(id); }
+
+    public static Set<VCFInfoHeaderLine> getAllInfoLines() { return Collections.unmodifiableSet(new HashSet<>(infoLines.values())); }
+    public static Set<VCFFormatHeaderLine> getAllFormatLines() { return Collections.unmodifiableSet(new HashSet<>(formatLines.values())); }
+    public static Set<VCFFilterHeaderLine> getAllFilterLines() { return Collections.unmodifiableSet(new HashSet<>(filterLines.values())); }
 
     private static final Map<String, VCFInfoHeaderLine> infoLines = new LinkedHashMap<>(60);
     private static final Map<String, VCFFormatHeaderLine> formatLines = new LinkedHashMap<>(25);

@@ -1,23 +1,25 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
-import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -169,9 +171,13 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     private void assertVariantContextsMatch(File input, File expected, List<String> extraArgs, String reference) throws IOException {
-        runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, ATTRIBUTES_TO_IGNORE), reference);
+        try {
+            final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream( IOUtils.getPath(expected.getAbsolutePath())));
+            runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE ,header), reference);
+        } catch (java.io.IOException e) {
+            throw new AssertionError("There was a problem reading your expected input file");
+        }
     }
-
     private void assertGenotypesMatch(File input, File expected, List<String> additionalArguments, String reference) throws IOException {
         runGenotypeGVCFSAndAssertSomething(input, expected, additionalArguments, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes,
                                            reference);
