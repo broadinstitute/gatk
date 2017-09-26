@@ -20,7 +20,7 @@ public abstract class PileupElementTracker implements Iterable<PileupElement> {
     public static final double SAMTOOLS_OVERLAP_LOW_CONFIDENCE = 0.8;
 
     /** Comparator for sorting by start read position*/
-    protected static final Comparator<PileupElement> READ_START_COMPARATOR = (l, r) -> Integer.compare(l.getRead().getStart(), r.getRead().getStart());
+    protected static final Comparator<PileupElement> READ_START_COMPARATOR = Comparator.comparingInt(l -> l.getRead().getStart());
 
     /**
      * Gets a stream over the elements in this tracker without any specific order.
