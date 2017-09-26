@@ -119,13 +119,16 @@ public class ChimericAlignment {
      *     2) if the alignment region is too small, it is skipped
      * If the alignment region passes the above two filters and the next alignment region could be treated as potential inserted sequence,
      * note down the mapping & alignment information of that region and skip it
-     * @param alignedContig          made of (sorted {alignmentIntervals}, sequence) of a potentially-signalling locally-assembled contig
-     * @param uniqueRefSpanThreshold for an alignment interval to be used to construct a ChimericAlignment,
-     *                               how long a unique--i.e. the same ref span is not covered by other alignment intervals--alignment on the reference must it have
+     * @param alignedContig                     made of (sorted {alignmentIntervals}, sequence) of a potentially-signalling locally-assembled contig
+     * @param uniqueRefSpanThreshold            for an alignment interval to be used to construct a ChimericAlignment,
+     * @param filterAlignmentByMqOrLength       whether to perform filtering based on MQ for first several alignments and based alignment length for all alignments
+     * @param filterWhollyContainedAlignments   whether to perform filtering on alignments whose ref span is contained in others'
      */
     @VisibleForTesting
     public static List<ChimericAlignment> parseOneContig(final AlignedContig alignedContig,
-                                                         final int uniqueRefSpanThreshold) {
+                                                         final int uniqueRefSpanThreshold,
+                                                         final boolean filterAlignmentByMqOrLength,
+                                                         final boolean filterWhollyContainedAlignments) {
 
         if (alignedContig.alignmentIntervals.size() < 2) {
             return new ArrayList<>();
@@ -135,8 +138,10 @@ public class ChimericAlignment {
 
         // fast forward to the first alignment region with high MapQ
         AlignmentInterval current = iterator.next();
-        while (mapQualTooLow(current) && iterator.hasNext()) {
-            current = iterator.next();
+        if (filterAlignmentByMqOrLength) {
+            while (mapQualTooLow(current, CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD) && iterator.hasNext()) {
+                current = iterator.next();
+            }
         }
 
         final List<ChimericAlignment> results = new ArrayList<>(alignedContig.alignmentIntervals.size() - 1);
@@ -145,9 +150,9 @@ public class ChimericAlignment {
         // then iterate over the AR's in pair to identify CA's.
         while ( iterator.hasNext() ) {
             final AlignmentInterval next = iterator.next();
-            if (firstAlignmentIsTooShort(current, next, uniqueRefSpanThreshold)) {
+            if (filterAlignmentByMqOrLength && firstAlignmentIsTooShort(current, next, uniqueRefSpanThreshold)) {
                 continue;
-            } else if (nextAlignmentMayBeNovelInsertion(current, next, uniqueRefSpanThreshold)) {
+            } else if (nextAlignmentMayBeInsertion(current, next, uniqueRefSpanThreshold, CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, filterWhollyContainedAlignments)) {
                 if (iterator.hasNext()) {
                     insertionMappings.add(next.toPackedString());
                     continue;
@@ -169,8 +174,8 @@ public class ChimericAlignment {
 
     // TODO: 11/22/16 it might also be suitable to consider the reference context this alignment region is mapped to
     //       and not simply apply a hard filter (need to think about how to test)
-    static boolean mapQualTooLow(final AlignmentInterval next) {
-        return next.mapQual < CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+    private static boolean mapQualTooLow(final AlignmentInterval next, final int mapQThresholdInclusive) {
+        return next.mapQual < mapQThresholdInclusive;
     }
 
     /**
@@ -186,12 +191,14 @@ public class ChimericAlignment {
      * To implement the idea that for two consecutive alignment regions of a contig, the one with higher reference coordinate might be a novel insertion.
      */
     @VisibleForTesting
-    public static boolean nextAlignmentMayBeNovelInsertion(final AlignmentInterval current, final AlignmentInterval next,
-                                                           final Integer minAlignLength) {
-        return mapQualTooLow(next) ||                                           // inserted sequence might have low mapping quality
-                firstAlignmentIsTooShort(next, current, minAlignLength) ||      // inserted sequence might be very small
-                current.referenceSpan.contains(next.referenceSpan) ||   // one might completely contain the other
-                next.referenceSpan.contains(current.referenceSpan);
+    public static boolean nextAlignmentMayBeInsertion(final AlignmentInterval current, final AlignmentInterval next,
+                                                      final Integer minAlignLength, final int mapQThresholdInclusive,
+                                                      final boolean filterWhollyContained) {
+        // not unique: inserted sequence may have low mapping quality (low reference uniqueness) or may be very small (low read uniqueness)
+        final boolean isNotUnique = mapQualTooLow(next, mapQThresholdInclusive) || firstAlignmentIsTooShort(next, current, minAlignLength);
+        return isNotUnique
+                ||
+                (filterWhollyContained && (current.referenceSpan.contains(next.referenceSpan) || next.referenceSpan.contains(current.referenceSpan)));
     }
 
     @VisibleForTesting

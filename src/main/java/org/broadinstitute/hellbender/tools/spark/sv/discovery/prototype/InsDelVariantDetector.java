@@ -9,14 +9,11 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import scala.Tuple2;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 
@@ -46,32 +43,12 @@ final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyCon
     }
 
     /**
-     * Very similar to {@link ChimericAlignment#parseOneContig(AlignedContig, int)}, except that
-     * badly mapped (MQ < 60) 1st alignment is no longer skipped.
+     * Delegates to {@link ChimericAlignment#parseOneContig(AlignedContig, int, boolean, boolean)}.
      */
     private static Tuple2<byte[], List<ChimericAlignment>> convertAlignmentIntervalToChimericAlignment (final AlignedContig contig,
                                                                                                         final int minAlignmentBlockSize) {
 
-        final List<AlignmentInterval> alignmentIntervals = contig.alignmentIntervals;
-        final Iterator<AlignmentInterval> iterator = alignmentIntervals.iterator();
-        AlignmentInterval current = iterator.next();
-        final List<ChimericAlignment> results = new ArrayList<>(alignmentIntervals.size() - 1);
-        final List<String> insertionMappings = new ArrayList<>();
-        while ( iterator.hasNext() ) {
-            final AlignmentInterval next = iterator.next();
-            if (ChimericAlignment.nextAlignmentMayBeNovelInsertion(current, next, minAlignmentBlockSize)) {
-                if (iterator.hasNext()) {
-                    insertionMappings.add(next.toPackedString());
-                    continue;
-                } else {
-                    break;
-                }
-            }
-
-            final ChimericAlignment ca = new ChimericAlignment(current, next, insertionMappings, contig.contigName);
-            if (ca.isNotSimpleTranslocation())
-                results.add(ca);
-        }
-        return new Tuple2<>(contig.contigSequence,results);
+        return new Tuple2<>(contig.contigSequence,
+                            ChimericAlignment.parseOneContig(contig, minAlignmentBlockSize, false, false));
     }
 }

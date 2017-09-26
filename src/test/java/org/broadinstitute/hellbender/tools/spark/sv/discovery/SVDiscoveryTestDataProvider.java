@@ -200,7 +200,7 @@ public final class SVDiscoveryTestDataProvider {
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, AlnModType.NONE);
 
         final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2), false);
-        final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(ChimericAlignment.parseOneContig(alignedContig, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH).get(0), contigSequence);
+        final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(ChimericAlignment.parseOneContig(alignedContig, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, true, true).get(0), contigSequence);
         return new Tuple4<>(region1, region2, breakpoints, "asm702700:tig00001");
     }
 
