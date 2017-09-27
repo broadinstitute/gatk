@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * We filter the variant if the count is lower than a user-specified threshold.
  * Mutect2FilteringEngine::applyDuplicatedAltReadFilter is the accompanying filter.
  */
-public class UniqueAltReadCount extends GenotypeAnnotation implements StandardSomaticAnnotation {
+public class UniqueAltReadCount extends GenotypeAnnotation {
     public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
 
     @Override

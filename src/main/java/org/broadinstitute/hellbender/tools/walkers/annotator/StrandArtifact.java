@@ -21,7 +21,7 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
  *
  * Created by tsato on 4/19/17.
  */
-public class StrandArtifact extends GenotypeAnnotation implements StandardSomaticAnnotation {
+public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
     public static final String POSTERIOR_PROBABILITIES_KEY = "SA_POST_PROB";
     public static final String MAP_ALLELE_FRACTIONS_KEY = "SA_MAP_AF";
 

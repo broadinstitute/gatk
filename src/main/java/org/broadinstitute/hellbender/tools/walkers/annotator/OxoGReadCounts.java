@@ -14,14 +14,10 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.broadinstitute.hellbender.utils.BaseUtils.Base.A;
-import static org.broadinstitute.hellbender.utils.BaseUtils.Base.C;
 
 
 /**
@@ -36,7 +32,7 @@ import static org.broadinstitute.hellbender.utils.BaseUtils.Base.C;
  *      "Discovery and characterization of artefactual mutations in deep coverage targeted capture sequencing data due to oxidative DNA damage during sample preparation."
  *  by Costello et al.</a></p>
  */
-public final class OxoGReadCounts extends GenotypeAnnotation {
+public final class OxoGReadCounts extends GenotypeAnnotation implements StandardMutectAnnotation {
 
     @Override
     public List<String> getKeyNames() {
