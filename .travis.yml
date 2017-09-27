@@ -1,9 +1,6 @@
 language: java
 sudo: required
 dist: trusty
-# Request an older travis image, as newer ones have less space.
-# See https://blog.travis-ci.com/2017-08-29-trusty-image-updates
-group: deprecated-2017Q3
 git:
   depth: 9999999
   lfs_skip_smudge: true
