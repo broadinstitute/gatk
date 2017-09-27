@@ -24,7 +24,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private final TemplateMappingInformation[][] mappingInfo;
+    public final TemplateMappingInformation[][] mappingInfo;
 
     private final double[][] values;
 
@@ -218,15 +218,17 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         if (fragmentIndex != 0 && fragmentIndex != 1) {
             throw new IllegalArgumentException("currently only two fragments are supported");
         }
-        Double result = null;
+        double result = Double.NaN;
         for (int h = 0; h < haplotypes.size(); h++) {
             final TemplateMappingInformation info = this.mappingInfo[h][templateIndex];
             final OptionalDouble score = fragmentIndex == 0 ? info.firstAlignmentScore : info.secondAlignmentScore;
-            if (score.isPresent()) {
-                 result = score.getAsDouble();
+            if (Double.isNaN(result)) {
+                result = score.orElse(Double.NaN);
+            } else if (score.isPresent() && score.getAsDouble() < result) {
+                result = score.getAsDouble();
             }
         }
-        return result == null ? OptionalDouble.empty() : OptionalDouble.of(result);
+        return Double.isNaN(result) ? OptionalDouble.empty() : OptionalDouble.of(result);
     }
 
     public void applyMissingAlignmentScore(final int template, final int fragment, final double missingAlignmentScore) {

@@ -46,7 +46,6 @@ public class AlignmentPenalties implements Serializable {
     public double inversion = -4.0 * Math.log(10);
     public double indelStart = -4.5 * Math.log(10);
     public double indelExtend = Math.log(0.1);
-    public double maximumLikelihoodDiffernenceCap;
 
     public void validate() {
         if (unmappedFragmentPenalty < 0 || Double.isInfinite(unmappedFragmentPenalty) || Double.isNaN(unmappedFragmentPenalty)) {

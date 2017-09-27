@@ -112,7 +112,7 @@ class AlignmentScore {
 
 
     public double getValue() {
-        return -(int) Math.round(totalMatches * MATCH_COST
+        return -0.1 * Math.round(totalMatches * MATCH_COST
                 + totalMismatches * MISMATCH_COST
                 + totalIndels * GAP_OPEN_COST
                 + (totalIndelLength - totalIndels) * GAP_EXTEND_COST

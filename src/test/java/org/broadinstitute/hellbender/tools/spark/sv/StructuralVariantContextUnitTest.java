@@ -45,12 +45,12 @@ public class StructuralVariantContextUnitTest extends BaseTest {
     private static final File REFERENCE_FILE = new File(CommandLineProgramTest.b38_reference_20_21);
 
     /**
-     * Tests {@link StructuralVariantContext#create}.
+     * Tests {@link StructuralVariantContext#of}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts")
     public void testCreate(final VariantContext vc) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         Assert.assertNotNull(svc);
     }
 
@@ -60,7 +60,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testLength(final VariantContext vc) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         final int length = svc.getStructuralVariantLength();
         if (!vc.hasAttribute(GATKSVVCFConstants.SVLEN)) {
             Assert.assertEquals(length, -1);
@@ -75,7 +75,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testType(final VariantContext vc) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         final StructuralVariantType type = svc.getStructuralVariantType();
         Assert.assertNotNull(type);
         final Allele alternativeAllele = svc.getAlternateAllele(0);
@@ -89,7 +89,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testInsertedSequence(final VariantContext vc) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         final byte[] actual = svc.getInsertedSequence();
         Assert.assertEquals(actual == null ? "<null>" : new String(actual), vc.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "<null>"));
     }
@@ -100,7 +100,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testEnd(final VariantContext vc) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         Assert.assertEquals(svc.getEnd(), vc.getEnd());
     }
 
@@ -111,7 +111,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
     public void testComposeReferenceHaplotype(final VariantContext vc) throws IOException {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         final ReferenceMultiSource reference = referenceMultiSource();
         final int paddingSize = 10;
         final Haplotype refHaplotype = svc.composeHaplotypeBasedOnReference(0, paddingSize, reference);
@@ -130,7 +130,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
     public void testComposeAlternativeHaplotype(final VariantContext vc) throws IOException {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
         }
@@ -170,7 +170,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
     }
 
     private void testGetBreakPoints(final VariantContext vc, final int paddingSize) throws IOException {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
         }
@@ -197,7 +197,7 @@ public class StructuralVariantContextUnitTest extends BaseTest {
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
     public void testContigNames(final StructuralVariantContext vc) {
-        final StructuralVariantContext svc = StructuralVariantContext.create(vc);
+        final StructuralVariantContext svc = StructuralVariantContext.of(vc);
         final List<String> actual = svc.getSupportingContigIds();
         final List<String> expected = vc.getAttributeAsStringList(GATKSVVCFConstants.CONTIG_NAMES, null);
         Assert.assertEquals(actual, expected);

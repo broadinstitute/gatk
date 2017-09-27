@@ -40,6 +40,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocation;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.StructuralVariantContext;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -133,6 +134,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private VariantsSparkSource variantsSource;
     private ReadsSparkSource haplotypesAndContigsSource;
+    public static final Pattern ASSEMBLY_NAME_ALPHAS = Pattern.compile("[a-zA-Z_]+");
 
     @Override
     public boolean requiresReads() {
@@ -161,21 +163,17 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 .map(SVHaplotype::of);
         final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
-                .map(StructuralVariantContext::new).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
+                .map(StructuralVariantContext::of).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
         final SparkSharder sharder = new SparkSharder(ctx, getReferenceSequenceDictionary(), intervals, shardSize, 0, 10000);
         final JavaRDD<Shard<StructuralVariantContext>> variantSharded = sharder.shard(variants, StructuralVariantContext.class);
         final JavaRDD<Shard<SVHaplotype>> haplotypesSharded = sharder.shard(haplotypeAndContigs, SVHaplotype.class);
         final JavaPairRDD<Shard<StructuralVariantContext>, Shard<SVHaplotype>> variantAndHaplotypesSharded = sharder.cogroup(variantSharded, haplotypesSharded);
         final JavaPairRDD<StructuralVariantContext, Iterable<SVHaplotype>> variantAndHaplotypes = sharder
                 .matchLeftByKey(variantAndHaplotypesSharded, StructuralVariantContext::getUniqueID, SVHaplotype::getVariantId);
-        final Collection<Tuple2<StructuralVariantContext, Iterable<SVHaplotype>>> vv = variantAndHaplotypes.filter(t -> Utils.stream(t._2().iterator()).count() == 0).collect();
-        if (vv.size() == 0) {
-            throw new IllegalStateException(vv.iterator().next()._1.getUniqueID());
-        }
+
         final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(StructuralVariantContext.class, variantAndHaplotypes.getNumPartitions());
         final String fastqDir = this.fastqDir;
         final String fastqFileFormat = "asm%06d.fastq";
-        final Pattern ASSEMBLY_NAME_ALPHAS = Pattern.compile("[a-zA-Z_]+");
 
         final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> variantHaplotypesAndTemplates =
             variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
@@ -197,7 +195,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 return new Tuple2<>(t._1(), new Tuple2<>(t._2(), (Iterable<Template>) allTemplates.collect(Collectors.toList())));
                             }).iterator();
                 });
-        variantHaplotypesAndTemplates.collect();
 
         final JavaRDD<StructuralVariantContext> calls = processVariants(variantHaplotypesAndTemplates, ctx);
         final VCFHeader header = composeOutputHeader();
@@ -206,9 +203,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         tearDown(ctx);
     }
 
-    private JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> joinFragments(JavaPairRDD<StructuralVariantContext, Iterable<GATKRead>> variantAndHaplotypes) {
+    private JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> joinFragments(final JavaPairRDD<StructuralVariantContext, Iterable<GATKRead>> variantAndHaplotypes) {
         return variantAndHaplotypes
-                .mapToPair(tuple -> new Tuple2<>(tuple._1(), new Tuple2<>(tuple._2(), tuple._1().assemblyIDs())))
+                .mapToPair(tuple -> new Tuple2<>(tuple._1(), new Tuple2<>(tuple._2(), tuple._1().getUniqueID())))
                 .mapToPair(tuple -> new Tuple2<>(tuple._1(), new Tuple2<>(tuple._2()._1(), Utils.stream(tuple._2()._1())
                         .map(id -> String.format("%s/%s.fastq", fastqDir, id))
                         .flatMap(file -> SVFastqUtils.readFastqFile(file).stream())
@@ -248,7 +245,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final SerializableBiFunction<String, byte[], File> imageCreator =  GenotypeStructuralVariantsSpark::createTransientImageFile;
         final AlignmentPenalties penalties = this.penalties;
         final InsertSizeDistribution insertSizeDistribution = this.insertSizeDistribution;
-        return input.mapPartitions(it -> { /*
+        return input.mapPartitions(it -> {
             final SAMSequenceDictionary dictionary = broadCastDictionary.getValue();
             final Stream<Tuple2<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>>> variants =
                     Utils.stream(it);
@@ -256,9 +253,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             final SAMFileHeader header = new SAMFileHeader();
             header.setSequenceDictionary(dictionary);
             final GenotypeLikelihoodCalculator genotypeCalculator =
-                    new GenotypeLikelihoodCalculators().getInstance(2, 2); */
+                    new GenotypeLikelihoodCalculators().getInstance(2, 2);
 
-           /* return variants.map(variant -> { /*
+            return variants.map(variant -> {
                 final List<Template> templates = Utils.stream(variant._2()._2())
                         .collect(Collectors.toList());
                 final List<byte[]> sequences = templates.stream()
@@ -281,9 +278,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 final int altHaplotypeIndex = haplotypes.indexOf(alt);
 
                 final TemplateHaplotypeScoreTable scoreTable =
-                        new TemplateHaplotypeScoreTable(templates, haplotypes);*/
-               // for (int h = 0; h < haplotypes.size(); h++) {
-                    /*
+                        new TemplateHaplotypeScoreTable(templates, haplotypes);
+                  for (int h = 0; h < haplotypes.size(); h++) {
                     final SVHaplotype haplotype = haplotypes.get(h);
 
                     final boolean isContig = haplotype.isContig();
@@ -308,11 +304,11 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 secondIntervals, template.fragments().get(1).length());
                         scoreTable.setMappingInfo(h, i, mappingInformation);
                     }
-                    */
-              //  }
-                // resolve the missing mapping scores to the worst seen + a penalty.
-             //   for (int t = 0; t < templates.size(); t++) {
-                    /*
+
+                }
+             //    resolve the missing mapping scores to the worst seen + a penalty.
+                for (int t = 0; t < templates.size(); t++) {
+
                     final OptionalDouble bestFirstAlignmentScore = scoreTable.getBestAlignmentScore(t, 0);
                     if (bestFirstAlignmentScore.isPresent()) {
                         final double missingAlignmentScore = bestFirstAlignmentScore.getAsDouble() - 0.1 * penalties.unmappedFragmentPenalty;
@@ -323,31 +319,32 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         final double missingAlignmentScore = bestSecondAlignmentScore.getAsDouble() - 0.1 * penalties.unmappedFragmentPenalty;
                         scoreTable.applyMissingAlignmentScore(t, 1, missingAlignmentScore);
                     }
-                    */
-             //   }
-             /*   final ReadLikelihoods<SVHaplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("sample"),
+                }
+                final ReadLikelihoods<SVHaplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("sample"),
                         new IndexedAlleleList<>(ref, alt), Collections.singletonMap("sample", reads));
                 final LikelihoodMatrix<SVHaplotype> sampleLikelihoods = likelihoods.sampleMatrix(0);
                 sampleLikelihoods.fill(Double.NEGATIVE_INFINITY);
                 final int refIdx = likelihoods.indexOfAllele(ref);
-                final int altIdx = likelihoods.indexOfAllele(alt);*/
-            //    for (final SVHaplotype haplotype : haplotypes) {
-                /*    final double haplotypeRefScore = haplotype.getReferenceScore();
+                final int altIdx = likelihoods.indexOfAllele(alt);
+                for (int h = 0; h < haplotypes.size(); h++) {
+                    final SVHaplotype haplotype = haplotypes.get(h);
                     final double haplotypeAltScore = haplotype.getAlternativeScore();
+                    final double haplotypeRefScore = haplotype.getReferenceScore();
                     for (int t = 0; t < templates.size(); t++) {
-                        for (int h = 0; h < haplotypes.size(); h++) {
-                            final double firstMappingScore = scoreTable.getMappingInfo(h, t).firstAlignmentScore.getAsDouble();
-                            final double secondMappingScore = scoreTable.getMappingInfo(h, t).secondAlignmentScore.getAsDouble();
-                            sampleLikelihoods.set(refIdx, t,
+                        final boolean noAlignment = !scoreTable.getMappingInfo(h, t).firstAlignmentScore.isPresent()
+                                && !scoreTable.getMappingInfo(h, t).secondAlignmentScore.isPresent();
+                        if (noAlignment) continue;
+                        final double firstMappingScore = scoreTable.getMappingInfo(h, t).firstAlignmentScore.orElse(0.0);
+                        final double secondMappingScore = scoreTable.getMappingInfo(h, t).secondAlignmentScore.orElse(0.0);
+                        sampleLikelihoods.set(refIdx, t,
                                     Math.max(firstMappingScore + secondMappingScore + haplotypeRefScore, sampleLikelihoods.get(refIdx, t)));
-                            sampleLikelihoods.set(altIdx, t * 2,
-                                    Math.max(firstMappingScore + secondMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t * 2)));
-                        }
+                        sampleLikelihoods.set(altIdx, t,
+                                    Math.max(firstMappingScore + secondMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t)));
+
                     }
-                    */
-             //   }
-              //  for (int t = 0; t < templates.size(); t++) {
-                /*    final TemplateMappingInformation refMapping = scoreTable.getMappingInfo(refHaplotypeIndex, t);
+                }
+                for (int t = 0; t < templates.size(); t++) {
+                    final TemplateMappingInformation refMapping = scoreTable.getMappingInfo(refHaplotypeIndex, t);
                     final TemplateMappingInformation altMapping = scoreTable.getMappingInfo(altHaplotypeIndex, t);
                     if (refMapping.pairOrientation.isProper() == altMapping.pairOrientation.isProper()) {
                         if (refMapping.pairOrientation.isProper()) {
@@ -359,17 +356,18 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
                     } else {
                         sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
-                    }*/
-             //   }
-            /*    likelihoods.normalizeLikelihoods(true, -0.1 * penalties.maximumLikelihoodDiffernenceCap);
+                    }
+                }
+                likelihoods.removeUniformativeReads(0.0);
+                likelihoods.normalizeLikelihoods(true, -0.1 * penalties.maximumTemplateScoreDifference);
                 final GenotypeLikelihoods likelihoods1 = genotypeCalculator.genotypeLikelihoods(sampleLikelihoods);
                 final VariantContextBuilder newVariantBuilder = new VariantContextBuilder(variant._1());
                 newVariantBuilder.genotypes(
                         new GenotypeBuilder().name("sample")
                                 .PL(likelihoods1.getAsPLs()).make());
-                return new StructuralVariantContext(newVariantBuilder.make());*/
-        //    return null; }).iterator();
-        return null; });
+                return StructuralVariantContext.of(newVariantBuilder.make());
+           }).iterator();
+        });
     }
 
     private static StructuralVariantContext processVariant(final StructuralVariantContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {

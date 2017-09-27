@@ -26,9 +26,9 @@ public class InsertSizeDistribution implements Serializable {
     private transient RealDistribution dist;
 
     private RealDistribution dist() {
+        initializeDistribution();
         return dist;
     }
-
 
     public InsertSizeDistribution(final String distrString) {
         this.description = distrString;
@@ -48,7 +48,7 @@ public class InsertSizeDistribution implements Serializable {
     private static RealDistribution parseNormalDistribution(final String distrString) {
         final Matcher matcher = NORMAL_DISTR_PATTERN.matcher(distrString);
         if (!matcher.find()) {
-            return null;
+            throw new IllegalArgumentException("bad description: " + distrString);
         }
         final double mean = Double.parseDouble(matcher.group(MEAN_DISTR_PARAM_NAME));
         final double sd = Double.parseDouble(matcher.group(SD_DISTR_PARAM_NAME));

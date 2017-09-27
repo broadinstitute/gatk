@@ -169,7 +169,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         final JavaRDD<StructuralVariantContext> variants = variantsSource
                 .getParallelVariantContexts(variantsFileName, getIntervals())
                 .filter(ComposeStructuralVariantHaplotypesSpark::supportedVariant)
-                .map(vc -> StructuralVariantContext.create(vc));
+                .map(StructuralVariantContext::of);
 
         final JavaPairRDD<StructuralVariantContext, List<GATKRead>> variantOverlappingContigs = composeOverlappingContigRecordsPerVariant(ctx, contigs, variants);
         processVariants(ctx, variantOverlappingContigs, getReferenceSequenceDictionary(), alignedContigs);
