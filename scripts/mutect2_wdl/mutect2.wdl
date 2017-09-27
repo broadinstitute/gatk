@@ -1,7 +1,7 @@
 #  Run Mutect 2 on a single tumor-normal pair or on a single tumor sample.
 #
 #  Description of inputs
-#  gatk4_jar: java jar file containing gatk 4 (protected)
+#  gatk4_jar: java jar file containing gatk 4
 #  intervals: genomic intervals
 #  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
 #  tumor_bam, tumor_bam_index: self-explanatory
