@@ -17,8 +17,8 @@ import java.util.function.Function;
  * Results are returned as a QNameAndInterval iterator.
  */
 public final class QNameIntervalFinder implements Function<GATKRead,Iterator<QNameAndInterval>> {
-    final int kSize;
-    final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap;
+    private final int kSize;
+    private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap;
 
     public QNameIntervalFinder( final int kSize, final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap ) {
         this.kSize = kSize;
@@ -26,8 +26,8 @@ public final class QNameIntervalFinder implements Function<GATKRead,Iterator<QNa
     }
 
     @Override
-    public Iterator<QNameAndInterval> apply( GATKRead read ) {
-        List<Integer> intervals = new ArrayList<>();
+    public Iterator<QNameAndInterval> apply( final GATKRead read ) {
+        final List<Integer> intervals = new ArrayList<>();
         SVKmerizer.canonicalStream(read.getBases(), kSize, new SVKmerLong())
                 .forEach(kmer -> {
                     final Iterator<KmerAndInterval> kmerAndIntervalIterator = kmerMap.findEach(kmer);

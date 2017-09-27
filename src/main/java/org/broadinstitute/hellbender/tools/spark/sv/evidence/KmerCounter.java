@@ -14,9 +14,9 @@ import java.util.Iterator;
  * The counts are returned as a KmerAndCount iterator.
  */
 public final class KmerCounter {
-    final int kSize;
-    final int kmersPerPartitionGuess;
-    final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap;
+    private final int kSize;
+    private final int kmersPerPartitionGuess;
+    private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap;
 
     public KmerCounter( final int kSize, final int kmersPerPartitionGuess,
                         final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap ) {
@@ -25,7 +25,7 @@ public final class KmerCounter {
         this.kmersPerPartitionGuess = kmersPerPartitionGuess;
     }
 
-    public Iterator<KmerAndCount> apply( Iterator<GATKRead> readItr ) {
+    public Iterator<KmerAndCount> apply( final Iterator<GATKRead> readItr ) {
         final HopscotchMap<SVKmer, Integer, KmerAndCount> counts = new HopscotchMap<>(kmersPerPartitionGuess);
         while ( readItr.hasNext() ) {
             final GATKRead read = readItr.next();
