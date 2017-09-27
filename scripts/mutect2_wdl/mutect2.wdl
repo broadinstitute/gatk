@@ -73,7 +73,31 @@ workflow Mutect2 {
       gatk_docker = gatk_docker
   }
 
+  call GetSampleName as GetTumorSample {
+        input:
+          gatk4_jar = gatk4_jar,
+          bam = tumor_bam,
+          bam_index = tumor_bam_index,
+          gatk4_jar_override = gatk4_jar_override,
+          preemptible_attempts = preemptible_attempts,
+          gatk_docker = gatk_docker
+  }
+
+  if (defined(normal_bam)) {
+      call GetSampleName as GetNormalSample {
+            input:
+              gatk4_jar = gatk4_jar,
+              bam = select_first([normal_bam, "placeholder"]),
+              bam_index = select_first([normal_bam_index, "placeholder"]),
+              gatk4_jar_override = gatk4_jar_override,
+              preemptible_attempts = preemptible_attempts,
+              gatk_docker = gatk_docker
+      }
+  }
+
+
   scatter (subintervals in SplitIntervals.interval_files ) {
+
     call M2 {
       input: 
         gatk4_jar = gatk4_jar,
@@ -83,8 +107,10 @@ workflow Mutect2 {
         ref_dict = ref_dict,
         tumor_bam = tumor_bam,
         tumor_bam_index = tumor_bam_index,
+        tumor_sample = GetTumorSample.sample,
         normal_bam = normal_bam,
         normal_bam_index = normal_bam_index,
+        normal_sample = GetNormalSample.sample,
         pon = pon,
         pon_index = pon_index,
         gnomad = gnomad,
@@ -93,7 +119,10 @@ workflow Mutect2 {
         preemptible_attempts = preemptible_attempts,
         gatk_docker = gatk_docker,
         m2_extra_args = m2_extra_args,
-        is_bamOut = is_bamOut
+        is_bamOut = is_bamOut,
+        output_name = GetTumorSample.sample + (if defined(normal_bam) then ("-vs-" + GetNormalSample.sample) else "-tumor-only"),
+        preemptible_attempts = preemptible_attempts,
+        gatk_docker = gatk_docker
     }
   }
 
@@ -164,7 +193,9 @@ workflow Mutect2 {
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
-                default_config_file = default_config_file
+                default_config_file = default_config_file,
+                case_id = GetTumorSample.sample,
+                control_id = GetNormalSample.sample
         }
   }
 
@@ -174,12 +205,48 @@ workflow Mutect2 {
         File filtered_vcf = Filter.filtered_vcf
         File filtered_vcf_index = Filter.filtered_vcf_index
         File contamination_table = Filter.contamination_table
+        String tumor_sample = GetTumorSample.sample
+        String? normal_sample = GetNormalSample.sample
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
         File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
         File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
         File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
+  }
+}
+
+task GetSampleName {
+  String gatk4_jar
+  File bam
+  File bam_index
+  File? gatk4_jar_override
+
+  # Runtime parameters
+  Int? mem
+  String gatk_docker
+  Int? preemptible_attempts
+  Int? disk_space_gb
+
+  command <<<
+      # Use GATK Jar override if specified
+      GATK_JAR=${gatk4_jar}
+      if [[ "${gatk4_jar_override}" == *.jar ]]; then
+          GATK_JAR=${gatk4_jar_override}
+      fi
+
+      java -Xmx4g -jar $GATK_JAR GetSampleName -I ${bam} -O sample.txt
+  >>>
+
+  runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+  }
+
+  output {
+    String sample = read_string("sample.txt")
   }
 }
 
@@ -191,8 +258,10 @@ task M2 {
   File ref_dict
   File tumor_bam
   File tumor_bam_index
+  String tumor_sample
   File? normal_bam
   File? normal_bam_index
+  String? normal_sample
   File? pon
   File? pon_index
   File? gnomad
@@ -200,6 +269,7 @@ task M2 {
   File? gatk4_jar_override
   String? m2_extra_args
   Boolean? is_bamOut
+  String output_name
 
   # Runtime parameters
   Int? mem
@@ -215,29 +285,18 @@ task M2 {
       GATK_JAR=${gatk4_jar_override}
   fi
 
-  java -Xmx4g -jar $GATK_JAR GetSampleName -I ${tumor_bam} -O tumor_name.txt
-  output_vcf=`cat tumor_name.txt`-tumor-only.vcf
-
    # We need to create a file regardless, even if it stays empty
    touch bamout.bam
-
-  if [[ "_${normal_bam}" == *.bam ]]; then
-      java -Xmx4g -jar $GATK_JAR GetSampleName -I ${normal_bam} -O normal_name.txt
-      normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
-      output_vcf=`cat tumor_name.txt`-vs-`cat normal_name.txt`.vcf
-  fi
-
-
 
   java -Xmx4g -jar $GATK_JAR Mutect2 \
     -R ${ref_fasta} \
     -I ${tumor_bam} \
-    -tumor `cat tumor_name.txt` \
-    $normal_command_line \
+    -tumor ${tumor_sample} \
+    ${"-I " + normal_bam} ${"-normal " + normal_sample} \
     ${"--germline-resource " + gnomad} \
     ${"-pon " + pon} \
     ${"-L " + intervals} \
-    -O $output_vcf \
+    -O "${output_name}.vcf" \
     ${true='--bamOutput bamout.bam' false='' is_bamOut} \
     ${m2_extra_args}
   >>>
@@ -250,7 +309,7 @@ task M2 {
   }
 
   output {
-    File output_vcf = glob("*.vcf")[0]
+    File output_vcf = "${output_name}.vcf"
     File output_bamOut = "bamout.bam"
   }
 }
@@ -483,6 +542,8 @@ task oncotate_m2 {
     String? sequencing_center
     String? sequence_source
     File? default_config_file
+    String case_id
+    String? control_id
 
   # Runtime parameters
   Int? mem
@@ -494,11 +555,6 @@ task oncotate_m2 {
 
           # fail if *any* command below (not just the last) doesn't return 0, in particular if wget fails
           set -e
-
-          #get tumor and normal sample names from the M2 vcf header
-          #normal sample gives an empty string if not present
-          case_id=`grep 'tumor_sample=' ${m2_vcf} | sed 's/\#\#tumor_sample\=//'`
-          control_id=`grep 'normal_sample=' ${m2_vcf} | sed 's/\#\#normal_sample\=//'`
 
           # local db dir is a directory and has been specified
           if [[ -d "${onco_ds_local_db_dir}" ]]; then
@@ -520,11 +576,11 @@ task oncotate_m2 {
           fi
 
         ${default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
-            -v ${m2_vcf} $case_id.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
+            -v ${m2_vcf} ${case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
             -a Center:${default="Unknown" sequencing_center} \
             -a source:${default="Unknown" sequence_source} \
-            -a normal_barcode:$control_id \
-            -a tumor_barcode:$case_id \
+            -a normal_barcode:${control_id} \
+            -a tumor_barcode:${case_id} \
             ${"--default_config " + default_config_file}
     >>>
 
@@ -537,6 +593,6 @@ task oncotate_m2 {
     }
 
     output {
-        File oncotated_m2_maf=glob("*.maf.annotated")[0]
+        File oncotated_m2_maf="${case_id}.maf.annotated"
     }
 }
