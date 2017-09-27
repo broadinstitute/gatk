@@ -45,7 +45,7 @@ class SingleSamplePileupElementTracker extends UnifiedPileupElementTracker {
     /**
      * Instantiates an unsorted element tracker for the sample.
      *
-     * <p>Note: if a {@link #sortedIterator()} is requested, sorting would be performed an cached into the tracker.
+     * <p>Note: if a {@link #sortedIterator()} is requested, sorting will be performed and cached into the tracker.
      *
      * @param sampleName the name of this sample.
      * @param sampleElements list of pileup elements.
@@ -57,8 +57,8 @@ class SingleSamplePileupElementTracker extends UnifiedPileupElementTracker {
     /**
      * Instantiates a sorted/unsorted element tracker for them sample. The sample may be {@code null}.
      *
-     * <p>Note: if {@code preSorted=true} and a {@link #sortedIterator()} is requested, sorting would be performed
-     * an cached into the tracker.
+     * <p>Note: if {@code preSorted=true} and a {@link #sortedIterator()} is requested, sorting will be performed
+     * and cached into the tracker.
      *
      * @param sampleName the name of this sample.
      * @param sampleElements list of pileup elements.

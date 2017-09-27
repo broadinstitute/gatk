@@ -49,7 +49,7 @@ class UnifiedPileupElementTracker extends PileupElementTracker {
 
     /** Instantiates an unsorted element tracker.
      *
-     * <p>Note: if  {@link #sortedIterator()} is requested, sorting would be performed an cached into the tracker.
+     * <p>Note: if {@link #sortedIterator()} is requested, sorting will be performed and cached into the tracker.
      *
      * @param pileup list of pileup elements.
      */
@@ -60,8 +60,8 @@ class UnifiedPileupElementTracker extends PileupElementTracker {
     /**
      * Instantiates a sorted/unsorted element tracker.
      *
-     * <p>Note: if {@code preSorted=true} and a {@link #sortedIterator()} is requested, sorting would be performed
-     * an cached into the tracker.
+     * <p>Note: if {@code preSorted=true} and a {@link #sortedIterator()} is requested, sorting will be performed
+     * and cached into the tracker.
      *
      * @param pileup list of pileup elements.
      * @param preSorted {@code true} if the elements are already sorted; {@code false} otherwise.
