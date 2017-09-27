@@ -260,7 +260,7 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
     }
 
     /**
-     * Roughly similar to {@link ChimericAlignment#nextAlignmentMayBeNovelInsertion(AlignmentInterval, AlignmentInterval, Integer)}:
+     * Roughly similar to {@link ChimericAlignment#nextAlignmentMayBeInsertion(AlignmentInterval, AlignmentInterval, Integer, int, boolean)}:
      *  1) either alignment may have very low mapping quality (a more relaxed mapping quality threshold);
      *  2) either alignment may consume only a "short" part of the contig, or if assuming that the alignment consumes
      *     roughly the same amount of ref bases and read bases, has isAlignment that is too short
@@ -349,8 +349,8 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
                 .flatMapToPair(SimpleStrandSwitchVariantDetector::inferInvDupRange)
                 .map(noveltyTypeAndAltSeqAndEvidence ->
                         DiscoverVariantsFromContigAlignmentsSAMSpark
-                                .annotateVariant(noveltyTypeAndAltSeqAndEvidence._1._1(), noveltyTypeAndAltSeqAndEvidence._1._2(),
-                                        noveltyTypeAndAltSeqAndEvidence._1._3(), noveltyTypeAndAltSeqAndEvidence._2, broadcastReference));
+                                .annotateVariant(noveltyTypeAndAltSeqAndEvidence._1._1(), noveltyTypeAndAltSeqAndEvidence._1._3(), noveltyTypeAndAltSeqAndEvidence._1._2(),
+                                        noveltyTypeAndAltSeqAndEvidence._2, broadcastReference));
     }
 
     private static Iterator<Tuple2<Tuple3<NovelAdjacencyReferenceLocations, SimpleSVType.DuplicationInverted, byte[]>, List<ChimericAlignment>>>

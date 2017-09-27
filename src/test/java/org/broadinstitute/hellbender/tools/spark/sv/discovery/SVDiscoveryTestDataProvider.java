@@ -175,7 +175,7 @@ public final class SVDiscoveryTestDataProvider {
     }
 
     private static Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>
-    forSimpleInversionWithNovelInsertion_leftFlankingForwardStrandOnly() throws IOException {
+    forSimpleInversionWithNovelInsertion_leftFlankingForwardStrandOnly() {
         // inversion with inserted sequence
         final byte[] leftFlank = makeDummySequence(146, (byte)'A');
         final byte[] rightFlankRC = makeDummySequence(50, (byte)'C');
@@ -193,7 +193,7 @@ public final class SVDiscoveryTestDataProvider {
     }
 
     private static Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>
-    forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint() throws IOException {
+    forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint() {
         // inversion with strange left breakpoint
         final byte[] contigSequence = LONG_CONTIG1.getBytes();
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, AlnModType.NONE);
@@ -345,7 +345,7 @@ public final class SVDiscoveryTestDataProvider {
      * 50-'A' + 50-'C' where the middle 10-'A'+10-'C' is substituted with 10-'G' (forward strand representation)
      */
     private static List<Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>>
-    forLongRangeSubstitution() throws IOException {
+    forLongRangeSubstitution() {
 
         final List<Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>> result = new ArrayList<>();
 
@@ -418,7 +418,7 @@ public final class SVDiscoveryTestDataProvider {
      * Return a list of two entries for positive and reverse strand representations.
      */
     private static List<Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>>
-    forSimpleTandemDuplicationContraction() throws IOException {
+    forSimpleTandemDuplicationContraction() {
 
         final List<Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>> result = new ArrayList<>();
 
@@ -550,7 +550,7 @@ public final class SVDiscoveryTestDataProvider {
      * 4. expansion from 2 units to 3 units without pseudo-homology
      */
     private static List<Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>>
-    forComplexTandemDuplication() throws IOException {
+    forComplexTandemDuplication() {
 
         final List<Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String>> result = new ArrayList<>();
         final String leftRefFlank       = "TGCCAGGTTACATGGCAAAGAGGGTAGATAT";                                                                    // 31
