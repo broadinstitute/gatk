@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
@@ -26,15 +30,20 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -63,7 +72,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             discoverStageArgs
             = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
-    @Argument(doc = "sam file for aligned contigs", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(doc = "output path for discovery (non-genotyped) VCF", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String vcfOutputFileName;
 
@@ -197,16 +206,15 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         JavaRDD<VariantContext> annotatedVariants =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
                         .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
-                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, true, true)))
+                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, true, false)))
                         .flatMapToPair(DiscoverVariantsFromContigAlignmentsSAMSpark::discoverNovelAdjacencyFromChimericAlignments)    // a filter-passing contig's alignments may or may not produce novel adjacency
-                        .groupByKey()                                                                                                 // group the same novel adjacency produced by different contigs together
+                        .groupByKey()                                                                                                 // group the same novel adjacency and alt haplotype sequence produced by different contigs together
                         .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments
                         .map(noveltyTypeAndEvidence ->
                                 annotateVariant(                                                                                      // annotate the novel adjacency and inferred type
-                                        noveltyTypeAndEvidence._1,
-                                        noveltyTypeAndEvidence._2._1,
-                                        null,
-                                        noveltyTypeAndEvidence._2._2,
+                                        noveltyTypeAndEvidence._1.novelAdjacencyReferenceLocations,
+                                        noveltyTypeAndEvidence._1.altHaplotypeSequence,
+                                        noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2,
                                         broadcastReference));
 
         List<VariantContext> collectedAnnotatedVariants = annotatedVariants.collect();
@@ -270,22 +278,34 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     /**
      * Given contig alignments, emit novel adjacency not present on the reference to which the locally-assembled contigs were aligned.
      */
-    public static Iterator<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>>
-    discoverNovelAdjacencyFromChimericAlignments(final Tuple2<byte[], List<ChimericAlignment>> ticSeqAndChimeras) {
-        return Utils.stream(ticSeqAndChimeras._2)
-                .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, ticSeqAndChimeras._1), ca))
-                .collect(Collectors.toList()).iterator();
+    public static Iterator<Tuple2<NovelAdjacencyAndInferredAltHaptype, ChimericAlignment>>
+    discoverNovelAdjacencyFromChimericAlignments(final Tuple2<byte[], List<ChimericAlignment>> tigSeqAndChimeras) {
+        return Utils.stream(tigSeqAndChimeras._2)
+                .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, tigSeqAndChimeras._1), ca))
+                .map(narlAndEvidenceCA -> {
+                    final ChimericAlignment ca = narlAndEvidenceCA._2;
+                    final SimpleInterval referenceSpan1 = ca.regionWithLowerCoordOnContig.referenceSpan;
+                    final SimpleInterval referenceSpan2 = ca.regionWithHigherCoordOnContig.referenceSpan;
+                    final byte[] altHaplotypeSeq;
+                    if (ca.strandSwitch == StrandSwitch.NO_SWITCH && (referenceSpan1.contains(referenceSpan2) || referenceSpan2.contains(referenceSpan1))) {
+                        altHaplotypeSeq = BreakpointComplications.extractAltHaplotypeForTandupExpansionWithContainment(ca.regionWithLowerCoordOnContig,
+                                ca.regionWithHigherCoordOnContig, narlAndEvidenceCA._1.complication, tigSeqAndChimeras._1);
+                    } else {
+                        altHaplotypeSeq = null;
+                    }
+                    return new Tuple2<>(new NovelAdjacencyAndInferredAltHaptype(narlAndEvidenceCA._1, altHaplotypeSeq), ca);
+                }).iterator();
     }
 
     // TODO: 7/6/17 interface to be changed in the new implementation, where a set of NRAL's associated with a single contig is considered together.
     /**
      * Given input novel adjacency and evidence chimeric alignments, infer type of variant.
      */
-    public static Tuple2<NovelAdjacencyReferenceLocations, Tuple2<SvType, Iterable<ChimericAlignment>>> inferType(
-            final NovelAdjacencyReferenceLocations novelAdjacency,
+    public static Tuple2<NovelAdjacencyAndInferredAltHaptype, Tuple2<SvType, Iterable<ChimericAlignment>>> inferType(
+            final NovelAdjacencyAndInferredAltHaptype novelAdjacency,
             final Iterable<ChimericAlignment> chimericAlignments) {
         return new Tuple2<>(novelAdjacency,
-                new Tuple2<>(SvTypeInference.inferFromNovelAdjacency(novelAdjacency),
+                new Tuple2<>(SvTypeInference.inferFromNovelAdjacency(novelAdjacency.novelAdjacencyReferenceLocations),
                         chimericAlignments));
     }
 
@@ -293,8 +313,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * Produces annotated variant as described in {@link GATKSVVCFHeaderLines}, given input arguments.
      */
     public static VariantContext annotateVariant(final NovelAdjacencyReferenceLocations novelAdjacency,
-                                                 final SvType inferredType,
-                                                 final byte[] altHaplotypeSeq,
+                                                 final byte[] altHaplotypeSeq, final SvType inferredType,
                                                  final Iterable<ChimericAlignment> chimericAlignments,
                                                  final Broadcast<ReferenceMultiSource> broadcastReference)
             throws IOException {
@@ -305,4 +324,74 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                         broadcastReference);
     }
 
+    @DefaultSerializer(NovelAdjacencyAndInferredAltHaptype.Serializer.class)
+    public static final class NovelAdjacencyAndInferredAltHaptype {
+
+        private static final NovelAdjacencyReferenceLocations.Serializer localSerializer = new NovelAdjacencyReferenceLocations.Serializer();
+        public final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations;
+        public final byte[] altHaplotypeSequence;
+
+        NovelAdjacencyAndInferredAltHaptype(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations,
+                                            final byte[] altHaplotypeSequence) {
+            this.novelAdjacencyReferenceLocations = novelAdjacencyReferenceLocations;
+            this.altHaplotypeSequence = altHaplotypeSequence;
+        }
+
+        public NovelAdjacencyAndInferredAltHaptype(final Kryo kryo, final Input input) {
+            novelAdjacencyReferenceLocations = localSerializer.read(kryo, input, NovelAdjacencyReferenceLocations.class);
+            final boolean altSeqIsNull = input.readBoolean();
+            if (altSeqIsNull) {
+                altHaplotypeSequence = null;
+            } else {
+                final int arraySize = input.readInt();
+                altHaplotypeSequence = new byte[arraySize];
+                for (int i = 0 ; i < arraySize; ++i) {
+                    altHaplotypeSequence[i] = input.readByte();
+                }
+            }
+        }
+
+        private void serialize(final Kryo kryo, final Output output) {
+            localSerializer.write(kryo, output, novelAdjacencyReferenceLocations);
+            if (altHaplotypeSequence==null) {
+                output.writeBoolean(true);
+            } else {
+                output.writeBoolean(false);
+                output.writeInt(altHaplotypeSequence.length);
+                for (final byte b : altHaplotypeSequence) {
+                    output.writeByte(b);
+                }
+            }
+        }
+
+        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<NovelAdjacencyAndInferredAltHaptype> {
+            @Override
+            public void write(final Kryo kryo, final Output output, final NovelAdjacencyAndInferredAltHaptype novelAdjacencyReferenceLocations ) {
+                novelAdjacencyReferenceLocations.serialize(kryo, output);
+            }
+
+            @Override
+            public NovelAdjacencyAndInferredAltHaptype read(final Kryo kryo, final Input input, final Class<NovelAdjacencyAndInferredAltHaptype> klass ) {
+                return new NovelAdjacencyAndInferredAltHaptype(kryo, input);
+            }
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            NovelAdjacencyAndInferredAltHaptype that = (NovelAdjacencyAndInferredAltHaptype) o;
+
+            if (!novelAdjacencyReferenceLocations.equals(that.novelAdjacencyReferenceLocations)) return false;
+            return Arrays.equals(altHaplotypeSequence, that.altHaplotypeSequence);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = novelAdjacencyReferenceLocations.hashCode();
+            result = 31 * result + Arrays.hashCode(altHaplotypeSequence);
+            return result;
+        }
+    }
 }

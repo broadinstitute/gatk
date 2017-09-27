@@ -104,9 +104,8 @@ public class ChimericAlignment {
 
         this.strandSwitch = determineStrandSwitch(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig);
 
-        final boolean involvesRefIntervalSwitch = involvesRefPositionSwitch(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig);
         this.isForwardStrandRepresentation = isForwardStrandRepresentation(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig,
-                this.strandSwitch, involvesRefIntervalSwitch);
+                this.strandSwitch, involvesRefPositionSwitch(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig));
 
         this.insertionMappings = insertionMappings;
     }
@@ -161,10 +160,10 @@ public class ChimericAlignment {
                 }
             }
 
-            final boolean isNotSimpleTranslocation = isNotSimpleTranslocation(current, next,
-                    determineStrandSwitch(current, next), involvesRefPositionSwitch(current, next));
-            if (isNotSimpleTranslocation)
-                results.add(new ChimericAlignment(current, next, insertionMappings, alignedContig.contigName));
+            final ChimericAlignment chimericAlignment = new ChimericAlignment(current, next, insertionMappings, alignedContig.contigName);
+            if (chimericAlignment.isNotSimpleTranslocation() &&
+                    !BreakpointComplications.isLikelyInvertedDuplication(current, next))
+                results.add(chimericAlignment);
 
             current = next;
         }
@@ -191,9 +190,9 @@ public class ChimericAlignment {
      * To implement the idea that for two consecutive alignment regions of a contig, the one with higher reference coordinate might be a novel insertion.
      */
     @VisibleForTesting
-    public static boolean nextAlignmentMayBeInsertion(final AlignmentInterval current, final AlignmentInterval next,
-                                                      final Integer minAlignLength, final int mapQThresholdInclusive,
-                                                      final boolean filterWhollyContained) {
+    static boolean nextAlignmentMayBeInsertion(final AlignmentInterval current, final AlignmentInterval next,
+                                               final Integer minAlignLength, final int mapQThresholdInclusive,
+                                               final boolean filterWhollyContained) {
         // not unique: inserted sequence may have low mapping quality (low reference uniqueness) or may be very small (low read uniqueness)
         final boolean isNotUnique = mapQualTooLow(next, mapQThresholdInclusive) || firstAlignmentIsTooShort(next, current, minAlignLength);
         return isNotUnique
@@ -202,7 +201,7 @@ public class ChimericAlignment {
     }
 
     @VisibleForTesting
-    public static StrandSwitch determineStrandSwitch(final AlignmentInterval first, final AlignmentInterval second) {
+    static StrandSwitch determineStrandSwitch(final AlignmentInterval first, final AlignmentInterval second) {
         if (first.forwardStrand == second.forwardStrand) {
             return StrandSwitch.NO_SWITCH;
         } else {
@@ -214,8 +213,8 @@ public class ChimericAlignment {
      * Determine if the region that maps to a lower coordinate on the contig also maps to a lower coordinate on the reference.
      */
     @VisibleForTesting
-    public static boolean involvesRefPositionSwitch(final AlignmentInterval regionWithLowerCoordOnContig,
-                                                    final AlignmentInterval regionWithHigherCoordOnContig) {
+    static boolean involvesRefPositionSwitch(final AlignmentInterval regionWithLowerCoordOnContig,
+                                             final AlignmentInterval regionWithHigherCoordOnContig) {
 
         return regionWithHigherCoordOnContig.referenceSpan.getStart() < regionWithLowerCoordOnContig.referenceSpan.getStart();
     }
@@ -267,10 +266,11 @@ public class ChimericAlignment {
     }
 
     Tuple2<SimpleInterval, SimpleInterval> getCoordSortedReferenceSpans() {
-        if (involvesRefPositionSwitch(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig))
-            return new Tuple2<>(regionWithHigherCoordOnContig.referenceSpan, regionWithLowerCoordOnContig.referenceSpan);
-        else
+        if (isForwardStrandRepresentation) {
             return new Tuple2<>(regionWithLowerCoordOnContig.referenceSpan, regionWithHigherCoordOnContig.referenceSpan);
+        } else {
+            return new Tuple2<>(regionWithHigherCoordOnContig.referenceSpan, regionWithLowerCoordOnContig.referenceSpan);
+        }
     }
 
 
