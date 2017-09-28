@@ -101,7 +101,6 @@ public final class PSUtils {
                 numDeletions += e.getLength();
             }
         }
-        if (numMatches < 0) throw new IllegalArgumentException("numMismatches was greater than the number of matches/mismatches in the cigar");
         return numMatches - numDeletions;
     }
 }
