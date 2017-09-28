@@ -50,6 +50,9 @@ public class SVDUSTFilteredKmerizer extends SVKmerizer {
         return Utils.stream(new SVDUSTFilteredKmerizer(seq, kSize, maxDUSTScore, kmer));
     }
 
+    /** Get the DUST score for the kmer that nextKmer just returned. */
+    public int getCurrentDUSTScore() { return curDUSTScore; }
+
     @Override
     protected SVKmer nextKmer( final SVKmer initialKmer, int validBaseCount ) {
         final int len = seq.length();
