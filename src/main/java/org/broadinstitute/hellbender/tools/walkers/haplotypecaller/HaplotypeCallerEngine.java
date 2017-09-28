@@ -171,7 +171,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         initializeActiveRegionEvaluationGenotyperEngine();
 
         if (annotationEngine == null) {
-            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.annotationGroupsToUse, hcArgs.annotationsToUse, hcArgs.annotationsToExclude, hcArgs.dbsnp.dbsnp, hcArgs.comps);
+            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.variantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps);
 
         }
 
@@ -225,13 +225,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
 
             // also, we don't need to output several of the annotations
-            hcArgs.annotationsToExclude.add(ChromosomeCounts.class.getSimpleName());
-            hcArgs.annotationsToExclude.add(FisherStrand.class.getSimpleName());
-            hcArgs.annotationsToExclude.add(StrandOddsRatio.class.getSimpleName());
-            hcArgs.annotationsToExclude.add(QualByDepth.class.getSimpleName());
+            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(ChromosomeCounts.class.getSimpleName());
+            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(FisherStrand.class.getSimpleName());
+            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(StrandOddsRatio.class.getSimpleName());
+            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(QualByDepth.class.getSimpleName());
 
             // but we definitely want certain other ones
-            hcArgs.annotationsToUse.add(StrandBiasBySample.class.getSimpleName());
+            hcArgs.variantAnnotationArgumentCollection.annotationsToUse.add(StrandBiasBySample.class.getSimpleName());
             logger.info("Standard Emitting and Calling confidence set to 0.0 for reference-model confidence output");
             if ( ! hcArgs.annotateAllSitesWithPLs ) {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");

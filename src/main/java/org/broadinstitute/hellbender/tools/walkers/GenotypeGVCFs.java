@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
@@ -94,26 +95,11 @@ public final class GenotypeGVCFs extends VariantWalker {
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
-    /**
-     * Which annotations to recompute for the combined output VCF file.
-     */
-    @Advanced
-    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to recompute", optional=true)
-    private List<String> annotationsToUse = new ArrayList<>();
-
-
-    @Advanced
-    @Argument(fullName="annotationsToExclude", shortName="AX", doc="One or more specific annotations to exclude from recomputation", optional=true)
-    private List<String> annotationsToExclude = new ArrayList<>();
-
-    /**
-     * This argument controls which groups of annotations to add to the output VCF file. Not recommended for normal
-     * operation of the tool because it obscures the specific requirements of individual annotations. Any requirements
-     * that are not met (e.g. failing to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
-     */
-    @Advanced
-    @Argument(fullName="group", shortName="G", doc="One or more classes/groups of annotations to apply to variant calls", optional=true)
-    private List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{StandardAnnotation.class.getSimpleName()}));
+    @ArgumentCollection
+    private final VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
+            Arrays.asList(StandardAnnotation.class.getSimpleName()),
+            Collections.emptyList(),
+            Collections.emptyList());
 
     /**
      * This option can only be activated if intervals are specified.
@@ -164,7 +150,7 @@ public final class GenotypeGVCFs extends VariantWalker {
 
         genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbsnp.dbsnp, Collections.emptyList());
+        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(variantAnnotationArgumentCollection, dbsnp.dbsnp, Collections.emptyList());
 
         merger = new ReferenceConfidenceVariantContextMerger();
 

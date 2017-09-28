@@ -31,7 +31,7 @@ import java.util.Map;
  *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerSampleHC.php">DepthPerSampleHC</a></b> calculates depth of coverage after filtering by HaplotypeCaller.</li>
  * </ul>
  */
-public final class Coverage extends InfoFieldAnnotation implements StandardAnnotation {
+public final class Coverage extends InfoFieldAnnotation implements StandardAnnotation, StandardMutectAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
