@@ -1,10 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -13,9 +17,9 @@ import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
-import java.util.OptionalDouble;
-import java.util.stream.StreamSupport;
+import java.util.Map;
 
 /**
  * Created by David Benjamin on 2/14/17.
@@ -29,6 +33,7 @@ public class PileupSummary implements Locatable {
     private final int totalCount;
 
     private final double alleleFrequency;
+    private final Map<Allele, MutableInt> alleleCountMap = new HashMap<>();
 
     public PileupSummary(String contig, int position, int refCount, int altCount, int otherAltsCount, double alleleFrequency) {
         this.contig = contig;

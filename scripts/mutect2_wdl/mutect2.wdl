@@ -198,8 +198,8 @@ workflow Mutect2 {
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
         File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
-        File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
-        File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
+        File bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
+        File bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
   }
 }
 
