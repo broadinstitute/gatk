@@ -152,6 +152,47 @@ public class AlignmentIntervalUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
+    public void testCigarAlongTheReference(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
+                                                    final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
+                                                    final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
+
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(bwaMemAlignment, refNames, expectedContigLength);
+        final Cigar fiveToThree = alignmentInterval.cigarAlong5to3DirectionOfContig;
+        final Cigar alongRef = alignmentInterval.cigarAlongReference();
+        if (alignmentInterval.forwardStrand) {
+            Assert.assertEquals(new ArrayList<>(alongRef.getCigarElements()), new ArrayList<>(fiveToThree.getCigarElements()));
+        } else {
+            Assert.assertEquals(new ArrayList<>(CigarUtils.invertCigar(alongRef).getCigarElements()), new ArrayList<>(fiveToThree.getCigarElements()));
+        }
+    }
+
+    @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
+    public void testToSATagString(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
+                                           final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
+                                           final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
+
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(bwaMemAlignment, refNames, expectedContigLength);
+        final String saTagString = alignmentInterval.toSATagString();
+        final AlignmentInterval fromString = new AlignmentInterval(saTagString);
+        Assert.assertEquals(fromString, alignmentInterval);
+    }
+
+    @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
+    public void testAppendToBuilder(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
+                final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
+                final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
+
+        final StringBuilder builder = new StringBuilder();
+        builder.append("BEFORE->");
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(bwaMemAlignment, refNames, expectedContigLength);
+        alignmentInterval.appendSATagString(builder);
+        builder.append("<-AFTER");
+        final String fullString = builder.toString();
+        final String aiString = fullString.replace("BEFORE->","").replace("<-AFTER","");
+        Assert.assertEquals(aiString, alignmentInterval.toSATagString());
+    }
+
+    @Test(dataProvider = "AlignmentIntervalCtorTestForSimpleInversion", groups = "sv")
     public void testConstructionFromBwaMemAlignment(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
                                                     final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                                     final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
