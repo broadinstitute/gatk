@@ -50,17 +50,24 @@ public abstract class PerAlleleAnnotation extends GenotypeAnnotation {
                 .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
                 .forEach(ba -> getValueForRead(ba.read, vc).ifPresent(v -> values.get(ba.allele).add(v)));
 
-        final int[] statistics = vc.getAlleles().stream().mapToInt(a -> aggregate(values.get(a))).toArray();
+        final int[] statistics = vc.getAlleles().stream().filter(this::includeAllele).mapToInt(a -> aggregate(values.get(a))).toArray();
         gb.attribute(getVcfKey(), statistics);
     }
 
-    static boolean isUsableRead(final GATKRead read) {
+    private boolean includeAllele(final Allele allele) {
+        return allele.isNonReference() || includeRefAllele();
+    }
+
+    // this is false by default but implementations may wish to override
+    protected boolean includeRefAllele() { return false; }
+
+    private static boolean isUsableRead(final GATKRead read) {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
 
     @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFFormatHeaderLine(getVcfKey(), VCFHeaderLineCount.A, VCFHeaderLineType.Float, getDescription()));
+        return Arrays.asList(new VCFFormatHeaderLine(getVcfKey(), includeRefAllele() ? VCFHeaderLineCount.R : VCFHeaderLineCount.A, VCFHeaderLineType.Float, getDescription()));
     }
 
     @Override

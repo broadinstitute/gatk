@@ -67,15 +67,22 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      *
      * @param type the type of the writer we want to create, must not be null
      * @param outputFile the destination, must not be null
+     * @param createBamOutIndex true to create an index for the bamout
+     * @param createBamOutMD5 true to create an MD5 file for the bamout
      * @param sourceHeader the header of the input BAMs used to make calls, must not be null.
      * @return a new HaplotypeBAMWriter
      */
-    public static HaplotypeBAMWriter create(final WriterType type, final File outputFile, final SAMFileHeader sourceHeader) {
+    public static HaplotypeBAMWriter create(
+            final WriterType type,
+            final File outputFile,
+            final boolean createBamOutIndex,
+            final boolean createBamOutMD5,
+            final SAMFileHeader sourceHeader) {
         Utils.nonNull(type, "type cannot be null");
         Utils.nonNull(outputFile, "outputFile cannot be null");
         Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
 
-        return create(type, new SAMFileDestination(outputFile, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
+        return create(type, new SAMFileDestination(outputFile, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
     }
 
     /**

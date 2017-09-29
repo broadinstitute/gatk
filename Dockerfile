@@ -14,9 +14,7 @@ RUN java -jar gatk.jar -h
 
 #Setup test data
 WORKDIR /gatk
-# remove existing test data
-RUN rm -rf src/test/resources
-# Create link to where test data is expeced
+# Create link to where test data is expected
 RUN ln -s /testdata src/test/resources
 
 # Create a simple unit test runner

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 
+import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosRankSumTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -37,7 +38,6 @@ import java.util.OptionalDouble;
  * </ul>
  *
  */
-//FIXME - this whole class is essentially code duplicated from ReadPosRankSumTest
 public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_StandardAnnotation {
 
     @Override
@@ -48,29 +48,11 @@ public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_Standard
 
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
-        Utils.nonNull(read);
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        if ( offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
-            return OptionalDouble.empty();
-        }
-
-        // If the offset inside a deletion, it does not lie on a read.
-        if ( AlignmentUtils.isInsideDeletion(read.getCigar(), offset) ) {
-            return OptionalDouble.of(INVALID_ELEMENT_FROM_READ);
-        }
-
-        int readPos = AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);
-        final int numAlignedBases = AlignmentUtils.getNumAlignedBasesCountingSoftClips( read );
-
-        //After the middle of the read, we compute the position from the end of the read.
-        if (readPos > numAlignedBases / 2) {
-            readPos = numAlignedBases - (readPos + 1);
-        }
-        return OptionalDouble.of(readPos);
+        return ReadPosRankSumTest.getReadPosition(read, refLoc);
     }
 
     @Override
-    protected boolean isUsableRead(final GATKRead read, final int refLoc) {
+    public boolean isUsableRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         return super.isUsableRead(read, refLoc) && ReadUtils.getSoftEnd(read) >= refLoc;
     }

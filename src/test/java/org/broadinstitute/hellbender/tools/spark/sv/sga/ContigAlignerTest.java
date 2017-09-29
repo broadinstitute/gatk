@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv.sga;
 
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedAssembly;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -74,22 +75,22 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(alignedAssembly.alignedContigs.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 20);
 
         final AlignedContig alignedContig_9 = alignedAssembly.alignedContigs.get(3);
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContig9 = alignedContig_9.alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForContig9 = alignedContig_9.alignmentIntervals;
         Assert.assertEquals(alignedContig_9.contigName, "asm000001:tig00009");
         Assert.assertEquals(alignmentIntervalsForContig9.size(), 3);
 
-        final AlignedAssembly.AlignmentInterval firstAlignmentIntervalForContig_9 = alignmentIntervalsForContig9.get(0);
-        Assert.assertEquals(firstAlignmentIntervalForContig_9.referenceInterval, new SimpleInterval("21", 27373209, 27374158));
+        final AlignmentInterval firstAlignmentIntervalForContig_9 = alignmentIntervalsForContig9.get(0);
+        Assert.assertEquals(firstAlignmentIntervalForContig_9.referenceSpan, new SimpleInterval("21", 27373209, 27374158));
         Assert.assertTrue(firstAlignmentIntervalForContig_9.forwardStrand);
         Assert.assertEquals(firstAlignmentIntervalForContig_9.mapQual, 60);
 
-        final AlignedAssembly.AlignmentInterval secondAlignmentIntervalForContig_9 = alignmentIntervalsForContig9.get(1);
-        Assert.assertEquals(secondAlignmentIntervalForContig_9.referenceInterval, new SimpleInterval("21", 27374159, 27374706));
+        final AlignmentInterval secondAlignmentIntervalForContig_9 = alignmentIntervalsForContig9.get(1);
+        Assert.assertEquals(secondAlignmentIntervalForContig_9.referenceSpan, new SimpleInterval("21", 27374159, 27374706));
         Assert.assertFalse(secondAlignmentIntervalForContig_9.forwardStrand);
         Assert.assertEquals(secondAlignmentIntervalForContig_9.mapQual, 60);
 
-        final AlignedAssembly.AlignmentInterval thirdAlignmentIntervalForContig_9 = alignmentIntervalsForContig9.get(2);
-        Assert.assertEquals(thirdAlignmentIntervalForContig_9.referenceInterval, new SimpleInterval("21", 27374701, 27375218));
+        final AlignmentInterval thirdAlignmentIntervalForContig_9 = alignmentIntervalsForContig9.get(2);
+        Assert.assertEquals(thirdAlignmentIntervalForContig_9.referenceSpan, new SimpleInterval("21", 27374701, 27375218));
         Assert.assertTrue(thirdAlignmentIntervalForContig_9.forwardStrand);
         Assert.assertEquals(thirdAlignmentIntervalForContig_9.mapQual, 60);
     }
@@ -110,19 +111,19 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(alignedAssembly.alignedContigs.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 2);
 
         final AlignedContig alignedContig_3 = alignedAssembly.alignedContigs.get(0);
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContig_3 = alignedContig_3.alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForContig_3 = alignedContig_3.alignmentIntervals;
         Assert.assertEquals(alignedContig_3.contigName, "asm000001:tig00003");
         Assert.assertEquals(alignmentIntervalsForContig_3.size(), 2);
 
-        final AlignedAssembly.AlignmentInterval firstAlignmentIntervalForContig_3 = alignmentIntervalsForContig_3.get(0);
-        Assert.assertEquals(firstAlignmentIntervalForContig_3.referenceInterval, new SimpleInterval("20", 1388956, 1389146));
+        final AlignmentInterval firstAlignmentIntervalForContig_3 = alignmentIntervalsForContig_3.get(0);
+        Assert.assertEquals(firstAlignmentIntervalForContig_3.referenceSpan, new SimpleInterval("20", 1388956, 1389146));
         Assert.assertTrue(firstAlignmentIntervalForContig_3.forwardStrand);
         Assert.assertEquals(firstAlignmentIntervalForContig_3.mapQual, 60);
         Assert.assertEquals(firstAlignmentIntervalForContig_3.startInAssembledContig, 1);
         Assert.assertEquals(firstAlignmentIntervalForContig_3.endInAssembledContig, 191);
 
-        final AlignedAssembly.AlignmentInterval secondAlignmentIntervalForContig_3 = alignmentIntervalsForContig_3.get(1);
-        Assert.assertEquals(secondAlignmentIntervalForContig_3.referenceInterval, new SimpleInterval("20", 1390815, 1390938));
+        final AlignmentInterval secondAlignmentIntervalForContig_3 = alignmentIntervalsForContig_3.get(1);
+        Assert.assertEquals(secondAlignmentIntervalForContig_3.referenceSpan, new SimpleInterval("20", 1390815, 1390938));
         Assert.assertTrue(secondAlignmentIntervalForContig_3.forwardStrand);
         Assert.assertEquals(secondAlignmentIntervalForContig_3.mapQual, 60);
         Assert.assertEquals(secondAlignmentIntervalForContig_3.startInAssembledContig, 189);
@@ -147,19 +148,19 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(alignedAssembly.alignedContigs.stream().mapToInt(ctg -> ctg.alignmentIntervals.size()).sum(), 2);
 
         final AlignedContig alignedContig_20 = alignedAssembly.alignedContigs.get(0);
-        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContig_20 = alignedContig_20.alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForContig_20 = alignedContig_20.alignmentIntervals;
         Assert.assertEquals(alignedContig_20.contigName, "asm000021:tig00020");
         Assert.assertEquals(alignmentIntervalsForContig_20.size(), 2);
 
-        final AlignedAssembly.AlignmentInterval firstAlignmentIntervalForContig_20 = alignmentIntervalsForContig_20.get(0);
-        Assert.assertEquals(firstAlignmentIntervalForContig_20.referenceInterval, new SimpleInterval("20", 1000000, 1000099));
+        final AlignmentInterval firstAlignmentIntervalForContig_20 = alignmentIntervalsForContig_20.get(0);
+        Assert.assertEquals(firstAlignmentIntervalForContig_20.referenceSpan, new SimpleInterval("20", 1000000, 1000099));
         Assert.assertTrue(firstAlignmentIntervalForContig_20.forwardStrand);
         Assert.assertEquals(firstAlignmentIntervalForContig_20.mapQual, 60);
         Assert.assertEquals(firstAlignmentIntervalForContig_20.startInAssembledContig, 1);
         Assert.assertEquals(firstAlignmentIntervalForContig_20.endInAssembledContig, 100);
 
-        final AlignedAssembly.AlignmentInterval secondAlignmentIntervalForContig_20 = alignmentIntervalsForContig_20.get(1);
-        Assert.assertEquals(secondAlignmentIntervalForContig_20.referenceInterval, new SimpleInterval("20", 5000002, 5000101));
+        final AlignmentInterval secondAlignmentIntervalForContig_20 = alignmentIntervalsForContig_20.get(1);
+        Assert.assertEquals(secondAlignmentIntervalForContig_20.referenceSpan, new SimpleInterval("20", 5000002, 5000101));
         Assert.assertTrue(secondAlignmentIntervalForContig_20.forwardStrand);
         Assert.assertEquals(secondAlignmentIntervalForContig_20.mapQual, 60);
         Assert.assertEquals(secondAlignmentIntervalForContig_20.startInAssembledContig, 101);

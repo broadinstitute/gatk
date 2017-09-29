@@ -84,6 +84,10 @@ public class SVKmerizer implements Iterator<SVKmer> {
         return stream(seq, kSize, 1, kmer);
     }
 
+    public static Stream<SVKmer> canonicalStream( final byte[] seq, final int kSize, final SVKmer kmer ) {
+        return stream(seq, kSize, 1, kmer).map(kkk -> kkk.canonical(kSize));
+    }
+
     protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
         final int len = seq.length();
         while ( idx < len ) {

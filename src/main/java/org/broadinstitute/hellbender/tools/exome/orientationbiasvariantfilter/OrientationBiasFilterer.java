@@ -107,8 +107,11 @@ public class OrientationBiasFilterer {
     }
 
     private static double calculateFob(final Genotype genotype, final boolean isRelevantArtifact) {
-        final int altF2R1 = OrientationBiasUtils.getGenotypeInteger(genotype, GATKVCFConstants.OXOG_ALT_F2R1_KEY, 0);
-        final int altF1R2 = OrientationBiasUtils.getGenotypeInteger(genotype, GATKVCFConstants.OXOG_ALT_F1R2_KEY, 0);
+        final int[] f2R1Counts = OrientationBiasUtils.getF2R1(genotype);
+        final int[] f1R2Counts = OrientationBiasUtils.getF1R2(genotype);
+
+        final int altF2R1 = (f2R1Counts == null || f2R1Counts.length < 2) ? 0 : f2R1Counts[1];
+        final int altF1R2 = (f1R2Counts == null || f2R1Counts.length < 2) ? 0 : f1R2Counts[1];
         return (isRelevantArtifact ? altF1R2 : altF2R1) / (double) (altF1R2 + altF2R1);
     }
 

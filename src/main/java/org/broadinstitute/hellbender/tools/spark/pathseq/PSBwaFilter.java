@@ -20,14 +20,13 @@ import java.util.List;
 public class PSBwaFilter {
 
     private final BwaMemIndex bwaIndex;
-    private final int minCov, minIdent;
+    private final int minIdent;
     private final int minSeedLength, numThreads;
     private final boolean bPaired;
 
-    public PSBwaFilter(final String indexFileName, final int minCov, final int minIdent,
+    public PSBwaFilter(final String indexFileName, final int minIdent,
                        final int minSeedLength, final int numThreads, final boolean bPaired) {
         this.bwaIndex = BwaMemIndexCache.getInstance(indexFileName);
-        this.minCov = minCov;
         this.minIdent = minIdent;
         this.minSeedLength = minSeedLength;
         this.numThreads = numThreads;
@@ -65,7 +64,7 @@ public class PSBwaFilter {
         final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(reads, GATKRead::getBases);
 
         //Filter reads if they map sufficiently well to the reference
-        final HostAlignmentReadFilter hostFilter = new HostAlignmentReadFilter(minCov, minIdent);
+        final HostAlignmentReadFilter hostFilter = new HostAlignmentReadFilter(minIdent);
         final ArrayList<GATKRead> results = new ArrayList<>(numReads);
         for (int i = 0; i < numReads; i++) {
             if (testReadAlignments(hostFilter, alignments.get(i))) {

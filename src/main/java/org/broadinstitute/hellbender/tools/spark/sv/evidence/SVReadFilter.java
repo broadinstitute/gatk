@@ -3,13 +3,15 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.Serializable;
 import java.util.Iterator;
 import java.util.function.BiPredicate;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
-public class SVReadFilter implements java.io.Serializable {
+public class SVReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
+
     private final int minEvidenceMapQ;
     private final int minEvidenceMatchLength;
     private final int allowedShortFragmentOverhang;
@@ -32,9 +34,13 @@ public class SVReadFilter implements java.io.Serializable {
         return notJunk(read) && !read.isUnmapped();
     }
 
+    public boolean isMappedPrimary( final GATKRead read ) {
+        return isMapped(read) && isPrimaryLine(read);
+    }
+
     public boolean isEvidence( final GATKRead read ) {
         return isMapped(read) && read.getMappingQuality() >= minEvidenceMapQ &&
-                SVUtils.matchLen(read.getCigar()) >= minEvidenceMatchLength;
+                SVUtils.matchLen(read.getCigar()) >= minEvidenceMatchLength && ! read.isSecondaryAlignment();
     }
 
     public boolean isTemplateLenTestable( final GATKRead read ) {
@@ -48,5 +54,17 @@ public class SVReadFilter implements java.io.Serializable {
 
     public Iterator<GATKRead> applyFilter( final Iterator<GATKRead> readItr, final BiPredicate<SVReadFilter, GATKRead> predicate ) {
         return new SVUtils.IteratorFilter<>(readItr, read -> predicate.test(this, read));
+    }
+
+    public int getMinEvidenceMapQ() {
+        return minEvidenceMapQ;
+    }
+
+    public int getMinEvidenceMatchLength() {
+        return minEvidenceMatchLength;
+    }
+
+    public int getAllowedShortFragmentOverhang() {
+        return allowedShortFragmentOverhang;
     }
 }

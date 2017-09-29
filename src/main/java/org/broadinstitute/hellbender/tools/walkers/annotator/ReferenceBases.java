@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,6 +23,8 @@ public class ReferenceBases extends InfoFieldAnnotation {
 
     public static final int NUM_BASES_ON_EITHER_SIDE = 10;
 
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(REFERENCE_BASES_KEY); }
 
@@ -29,7 +32,10 @@ public class ReferenceBases extends InfoFieldAnnotation {
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
-
+        if (ref==null)  {
+            warning.warn("REF_BASES requires the reference to annotate, none was provided");
+            return Collections.emptyMap();
+        }
         final int basesToDiscardInFront = Math.max(vc.getStart() - ref.getWindow().getStart() - NUM_BASES_ON_EITHER_SIDE, 0);
         final String allBases = new String(ref.getBases());
         final String localBases = allBases.substring(basesToDiscardInFront, basesToDiscardInFront + 2 * NUM_BASES_ON_EITHER_SIDE);

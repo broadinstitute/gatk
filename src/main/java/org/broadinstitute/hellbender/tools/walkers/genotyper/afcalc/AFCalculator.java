@@ -26,7 +26,7 @@ public abstract class AFCalculator {
     public AFCalculationResult getLog10PNonRef(final VariantContext vc, final int defaultPloidy, final int maximumAlternativeAlleles, final double[] log10AlleleFrequencyPriors) {
         Utils.nonNull(vc, "VariantContext cannot be null");
         Utils.nonNull(log10AlleleFrequencyPriors, "priors vector cannot be null");
-        Utils.validateArg( vc.getNAlleles() > 1, "VariantContext has only a single reference allele, but getLog10PNonRef requires at least one alt allele " + vc);
+        Utils.validateArg( vc.getNAlleles() > 1, () -> "VariantContext has only a single reference allele, but getLog10PNonRef requires at least one alt allele " + vc);
 
         // reset the result, so we can store our new result there
         final StateTracker stateTracker = getStateTracker(true, maximumAlternativeAlleles);

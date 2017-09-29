@@ -16,6 +16,10 @@ import java.security.GeneralSecurityException;
 
 public final class BucketUtilsTest extends BaseTest {
 
+    static {
+        BucketUtils.setGlobalNIODefaultOptions();
+    }
+
     @Test(groups={"bucket"})
     public void testIsCloudStorageURL(){
         Assert.assertTrue(BucketUtils.isCloudStorageUrl("gs://abucket/bucket"));
@@ -130,6 +134,27 @@ public final class BucketUtilsTest extends BaseTest {
         Assert.assertTrue(fileSize > 0);
         long dirSize = BucketUtils.dirSize(dir.getAbsolutePath());
         Assert.assertEquals(dirSize, fileSize * 2);
+    }
+
+    @Test(groups={"bucket"})
+    public void testDirSizeGCS() throws IOException, GeneralSecurityException {
+        final String src = publicTestDir + "empty.vcf";
+        final String gcsSubDir = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
+        final String intermediate = BucketUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
+        BucketUtils.copyFile(src, intermediate);
+        Assert.assertTrue(BucketUtils.fileExists(intermediate));
+
+        long srcFileSize = BucketUtils.fileSize(src);
+        Assert.assertTrue(srcFileSize > 0);
+        long intermediateFileSize = BucketUtils.fileSize(intermediate);
+        Assert.assertEquals(intermediateFileSize, srcFileSize);
+        long intermediateDirSize = BucketUtils.dirSize(intermediate);
+        Assert.assertEquals(intermediateDirSize, srcFileSize);
+        long intermediateParentDirSize = BucketUtils.dirSize(gcsSubDir);
+        Assert.assertEquals(intermediateParentDirSize, srcFileSize);
+
+        BucketUtils.deleteFile(intermediate);
+        Assert.assertFalse(BucketUtils.fileExists(intermediate));
     }
 
 }

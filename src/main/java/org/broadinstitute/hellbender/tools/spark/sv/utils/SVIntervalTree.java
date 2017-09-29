@@ -1,5 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -26,9 +32,37 @@ import java.util.Objects;
  * all this weirdness.  The sentinel value is null by default, so put and remove will behave like you might expect them
  * to if you're not worrying about this stuff:  they'll return null for novel insertions and failed deletions.
  */
+@DefaultSerializer(SVIntervalTree.Serializer.class)
 public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>> {
     private Node<V> root;
     private V sentinel;
+
+    public SVIntervalTree() {}
+
+    @SuppressWarnings("unchecked")
+    private SVIntervalTree( final Kryo kryo, final Input input ) {
+        final SVInterval.Serializer intervalSerializer = new SVInterval.Serializer();
+        int size = input.readInt();
+        while ( size-- > 0 ) {
+            final SVInterval interval = intervalSerializer.read(kryo, input, SVInterval.class);
+            final V value = (V)kryo.readClassAndObject(input);
+            put(interval, value);
+        }
+    }
+
+    private void serialize( final Kryo kryo, final Output output ) {
+        final SVInterval.Serializer intervalSerializer = new SVInterval.Serializer();
+        int nEntries = size();
+        output.writeInt(nEntries);
+        for ( final Entry<V> entry : this ) {
+            intervalSerializer.write(kryo, output, entry.getInterval());
+            kryo.writeClassAndObject(output, entry.getValue());
+            nEntries -= 1;
+        }
+        if ( nEntries != 0 ) {
+            throw new GATKException("SVIntervalTree size and iteration gave a different number of intervals.");
+        }
+    }
 
     /**
      * Return the number of intervals in the tree.
@@ -966,6 +1000,18 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
         @Override
         public void remove() {
             itr.remove();
+        }
+    }
+
+    public static final class Serializer<T> extends com.esotericsoftware.kryo.Serializer<SVIntervalTree<T>> {
+        @Override
+        public void write( final Kryo kryo, final Output output, final SVIntervalTree<T> interval ) {
+            interval.serialize(kryo, output);
+        }
+
+        @Override
+        public SVIntervalTree<T> read( final Kryo kryo, final Input input, final Class<SVIntervalTree<T>> klass ) {
+            return new SVIntervalTree<T>(kryo, input);
         }
     }
 }

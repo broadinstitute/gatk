@@ -21,6 +21,7 @@ import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -69,11 +70,11 @@ public final class ReadsSparkSource implements Serializable {
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
-     * @param intervals intervals of reads to include.
+     * @param traversalParameters parameters controlling which reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals) {
-        return getParallelReads(readFileName, referencePath, intervals, 0);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters) {
+        return getParallelReads(readFileName, referencePath, traversalParameters, 0);
     }
 
     /**
@@ -81,12 +82,12 @@ public final class ReadsSparkSource implements Serializable {
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
-     * @param intervals intervals of reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
+     * @param traversalParameters parameters controlling which reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
      *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals, final long splitSize) {
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize) {
         SAMFileHeader header = getHeader(readFileName, referencePath);
 
         // use the Hadoop configuration attached to the Spark context to maintain cumulative settings
@@ -100,19 +101,21 @@ public final class ReadsSparkSource implements Serializable {
         setHadoopBAMConfigurationProperties(readFileName, referencePath);
 
         boolean isBam = IOUtils.isBamFileName(readFileName);
-        if (isBam && intervals != null && !intervals.isEmpty()) {
-            BAMInputFormat.setIntervals(conf, intervals);
-        } else {
-            conf.unset(BAMInputFormat.INTERVALS_PROPERTY);
+        if (isBam) {
+            if (traversalParameters == null) {
+                BAMInputFormat.unsetTraversalParameters(conf);
+            } else {
+                BAMInputFormat.setTraversalParameters(conf, traversalParameters.getIntervalsForTraversal(), traversalParameters.traverseUnmappedReads());
+            }
         }
 
         rdd2 = ctx.newAPIHadoopFile(
-                    readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
-                    conf);
+                readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
+                conf);
 
         JavaRDD<GATKRead> reads= rdd2.map(v1 -> {
             SAMRecord sam = v1._2().get();
-            if (isBam || samRecordOverlaps(sam, intervals)) { // don't check overlaps for BAM since it is done by input format
+            if (isBam || samRecordOverlaps(sam, traversalParameters)) { // don't check overlaps for BAM since it is done by input format
                 return (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
             }
             return null;
@@ -149,7 +152,7 @@ public final class ReadsSparkSource implements Serializable {
      * @param inputPath path to the Parquet data
      * @return RDD of (ADAM-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getADAMReads(final String inputPath, final List<SimpleInterval> intervals, final SAMFileHeader header) throws IOException {
+    public JavaRDD<GATKRead> getADAMReads(final String inputPath, final TraversalParameters traversalParameters, final SAMFileHeader header) throws IOException {
         Job job = Job.getInstance(ctx.hadoopConfiguration());
         AvroParquetInputFormat.setAvroReadSchema(job, AlignmentRecord.getClassSchema());
         Broadcast<SAMFileHeader> bHeader;
@@ -163,7 +166,7 @@ public final class ReadsSparkSource implements Serializable {
                 inputPath, AvroParquetInputFormat.class, Void.class, AlignmentRecord.class, job.getConfiguration())
                 .values();
         JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
-        JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), intervals));
+        JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), traversalParameters));
         return putPairsInSamePartition(header, filteredRdd);
     }
 
@@ -287,9 +290,16 @@ public final class ReadsSparkSource implements Serializable {
      * formats that don't support query-by-interval natively at the Hadoop-BAM layer.
      */
     //TODO: use IntervalsSkipList, see https://github.com/broadinstitute/gatk/issues/1531
-    private static boolean samRecordOverlaps(final SAMRecord record, final List<SimpleInterval> intervals ) {
-        if (intervals == null || intervals.isEmpty()) {
+    private static boolean samRecordOverlaps(final SAMRecord record, final TraversalParameters traversalParameters ) {
+        if (traversalParameters == null) {
             return true;
+        }
+        if (traversalParameters.traverseUnmappedReads() && record.getReadUnmappedFlag() && record.getAlignmentStart() == SAMRecord.NO_ALIGNMENT_START) {
+            return true; // include record if unmapped records should be traversed and record is unmapped
+        }
+        List<SimpleInterval> intervals = traversalParameters.getIntervalsForTraversal();
+        if (intervals == null || intervals.isEmpty()) {
+            return false; // no intervals means 'no mapped reads'
         }
         for (SimpleInterval interval : intervals) {
             if (record.getReadUnmappedFlag() && record.getAlignmentStart() != SAMRecord.NO_ALIGNMENT_START) {

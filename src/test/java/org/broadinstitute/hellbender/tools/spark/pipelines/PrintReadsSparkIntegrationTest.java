@@ -3,11 +3,20 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -16,12 +25,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -45,6 +49,35 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
                 {"print_reads.sorted.cram", ".bam", "print_reads.fasta"},
                 {"print_reads.sorted.cram", ".cram", "print_reads.fasta"}
         };
+    }
+
+    @DataProvider
+    public Object[][] gcsTestingData() {
+        return new Object[][]{
+            {"org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam",
+                ".bam", false, null},
+            {"org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.bam",
+                ".bam", true, null},
+        };
+    }
+
+    /**
+     * Test the Spark code locally, including GCS access.
+     *
+     * For this to work, the settings in src/main/resources/core-site.xml must be correct,
+     * and the project name and credential file it points to must be present.
+     */
+    @Test(dataProvider = "gcsTestingData", groups = "bucket")
+    public void testGCSInputsAndOutputs(final String gcsInput, final String outputExtension,
+        final boolean outputToGCS, final File expectedOutput) {
+        final String gcsInputPath = getGCPTestInputPath() + gcsInput;
+        final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
+        final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
+
+        final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+        argBuilder.addArgument("input", gcsInputPath)
+            .addArgument("output", outputPath);
+        runCommandLine(argBuilder);
     }
 
     @Test(dataProvider="testingData", groups="spark")
@@ -222,6 +255,68 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         runCommandLine(args.getArgsArray());
     }
 
+    @DataProvider(name = "UnmappedReadInclusionTestData")
+    public Object[][] unmappedReadInclusionTestData() {
+        // This bam has mapped reads from various contigs, plus a few unmapped reads with no mapped mate
+        final File unmappedBam = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
+
+        // This is a snippet of the CEUTrio.HiSeq.WGS.b37.NA12878 bam from large, with mapped reads
+        // from chromosome 20 (with one mapped read having an unmapped mate), plus several unmapped
+        // reads with no mapped mate.
+        final File ceuSnippet = new File(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
+        final File ceuSnippetCram = new File(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.cram");
+
+        return new Object[][] {
+                { unmappedBam, null, Arrays.asList("unmapped"), Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                // The same interval as above in an intervals file
+                { unmappedBam, null, Arrays.asList(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_unmapped.intervals"), Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                { unmappedBam, null, Arrays.asList("1:200-300", "unmapped"), Arrays.asList("a", "b", "c", "u1", "u2", "u3", "u4", "u5") },
+                { unmappedBam, null, Arrays.asList("1:200-300", "4:700-701", "unmapped"), Arrays.asList("a", "b", "c", "k", "u1", "u2", "u3", "u4", "u5") },
+                // The same intervals as above in an intervals file
+                { unmappedBam, null, Arrays.asList(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_unmapped2.intervals"), Arrays.asList("a", "b", "c", "k", "u1", "u2", "u3", "u4", "u5") },
+                { ceuSnippet, null, Arrays.asList("unmapped"), Arrays.asList("g", "h", "h", "i", "i") },
+                { ceuSnippet, null, Arrays.asList("20:10000009-10000011"), Arrays.asList("a", "b", "c", "d", "e") },
+                { ceuSnippet, null, Arrays.asList("20:10000009-10000011", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "g", "h", "h", "i", "i") },
+                { ceuSnippet, null, Arrays.asList("20:10000009-10000013", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "f", "f", "g", "h", "h", "i", "i") },
+                { ceuSnippetCram, b37_reference_20_21, Arrays.asList("unmapped"), Arrays.asList("g", "h", "h", "i", "i") },
+                { ceuSnippetCram, b37_reference_20_21, Arrays.asList("20:10000009-10000011", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "g", "h", "h", "i", "i") },
+                { ceuSnippetCram, b37_reference_20_21, Arrays.asList("20:10000009-10000013", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "f", "f", "g", "h", "h", "i", "i") }
+        };
+    }
+
+    @Test(dataProvider = "UnmappedReadInclusionTestData")
+    public void testUnmappedReadInclusion( final File input, final String reference, final List<String> intervalStrings, final List<String> expectedReadNames ) {
+        final File outFile = createTempFile("testUnmappedReadInclusion", ".bam");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("-I"); args.add(input.getAbsolutePath());
+        args.add("-O"); args.add(outFile.getAbsolutePath());
+        for ( final String intervalString : intervalStrings ) {
+            args.add("-L"); args.add(intervalString);
+        }
+        if ( reference != null ) {
+            args.add("-R"); args.add(reference);
+        }
+
+        runCommandLine(args);
+
+        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(outFile.toPath()) ) {
+            final List<GATKRead> actualReads = new ArrayList<>();
+            for ( final GATKRead read : outputReadsSource ) {
+                actualReads.add(read);
+            }
+
+            if (actualReads.size() != expectedReadNames.size()) {
+                System.out.println("actual: " + actualReads);
+                System.out.println("expectedReadNames: " + expectedReadNames);
+            }
+            Assert.assertEquals(actualReads.size(), expectedReadNames.size(), "Wrong number of reads output");
+
+            for ( int readNumber = 0; readNumber < actualReads.size(); ++readNumber ) {
+                Assert.assertEquals(actualReads.get(readNumber).getName(), expectedReadNames.get(readNumber), "Unexpected read name");
+            }
+        }
+    }
 
     @DataProvider(name="readFilterTestData")
     public Object[][] testReadFilterData() {

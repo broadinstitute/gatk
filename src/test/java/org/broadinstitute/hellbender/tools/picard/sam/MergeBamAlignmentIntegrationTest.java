@@ -1250,7 +1250,8 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
                 "--ALIGNED_READS_ONLY", String.valueOf(alignReadsOnly),
                 "--CLIP_ADAPTERS", String.valueOf(clipAdapters),
                 "--IS_BISULFITE_SEQUENCE", String.valueOf(isBisulfiteSequence),
-                "--MAX_INSERTIONS_OR_DELETIONS", String.valueOf(maxInsOrDels)));
+                "--MAX_INSERTIONS_OR_DELETIONS", String.valueOf(maxInsOrDels),
+                "--VALIDATION_STRINGENCY", ValidationStringency.LENIENT.name()));
         if (alignedBams != null) {
             for (final File alignedBam : alignedBams) {
                 args.add("--ALIGNED_BAM"); args.add( alignedBam.getAbsolutePath());

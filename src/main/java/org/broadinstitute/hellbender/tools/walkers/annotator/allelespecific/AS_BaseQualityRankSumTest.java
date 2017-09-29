@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -50,7 +51,7 @@ public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_Stan
      */
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
-        return OptionalDouble.of(read.getBaseQuality(ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refLoc, ReadUtils.ClippingTail.RIGHT_TAIL)));
+        return BaseQualityRankSumTest.getReadBaseQuality(read, refLoc);
     }
 
 }

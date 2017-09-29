@@ -12,11 +12,11 @@ import java.io.Serializable;
 /**
  * Keep only reads from the specified library.
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads from the specified library")
 public final class LibraryReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "library", shortName = "library", doc="The name of the library to keep", optional=false)
+    @Argument(fullName = "library", shortName = "library", doc="Name of the library to keep", optional=false)
     public String libraryToKeep = null;
 
     // Command line parser requires a no-arg constructor

@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.integration.DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest.annotationsToIgnoreWhenComparingVariants;
+
 public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
     private static final class StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs {
@@ -54,19 +56,27 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                     " --breakpointIntervals " + outputDir + "/intervals" +
                     " --fastqDir "            + outputDir + "/fastq";
         }
+
+        @Override
+        public String toString() {
+            return "StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs{" +
+                    "bamLoc='" + bamLoc + '\'' +
+                    ", kmerIgnoreListLoc='" + kmerIgnoreListLoc + '\'' +
+                    ", alignerRefIndexImgLoc='" + alignerRefIndexImgLoc + '\'' +
+                    ", outputDir='" + outputDir + '\'' +
+                    '}';
+        }
     }
 
     @DataProvider(name = "svDiscoverPipelineSparkIntegrationTest")
     public Object[][] createTestData() throws IOException {
         List<Object[]> tests = new ArrayList<>();
-        final File tempDirLeft = BaseTest.createTempDir("forLeft");
-        tempDirLeft.deleteOnExit();
-        Files.createDirectories(Paths.get(tempDirLeft.getAbsolutePath()+"/fastq"));
-        tests.add(new Object[]{new StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_LEFT, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirLeft.getAbsolutePath())});
-        final File tempDirRight = BaseTest.createTempDir("forRight");
-        tempDirRight.deleteOnExit();
-        Files.createDirectories(Paths.get(tempDirRight.getAbsolutePath()+"/fastq"));
-        tests.add(new Object[]{new StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_RIGHT, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirRight.getAbsolutePath())});
+
+        final File tempDirNew = BaseTest.createTempDir("new");
+        tempDirNew.deleteOnExit();
+        Files.createDirectories(Paths.get(tempDirNew.getAbsolutePath()+"/fastq"));
+        tests.add(new Object[]{new StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_NEW, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirNew.getAbsolutePath())});
+
 
         return tests.toArray(new Object[][]{});
     }
@@ -77,7 +87,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
         runCommandLine(args);
 
-        svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), false);
+        svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, false);
     }
 
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
@@ -139,12 +149,12 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             argsToBeModified.set(idx+1, path.toUri().toString());
 
             runCommandLine(argsToBeModified);
-            svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), true);
+            svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, true);
         });
     }
 
-    public static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath,
-                                                     final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
+    static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath,
+                                              final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
 
         VCFFileReader fileReader;
         CloseableIterator<VariantContext> iterator;

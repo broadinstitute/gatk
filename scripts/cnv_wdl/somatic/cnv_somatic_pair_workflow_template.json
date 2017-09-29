@@ -9,5 +9,6 @@
   "CNVSomaticPairWorkflow.ref_fasta": "$__ref_fasta__",
   "CNVSomaticPairWorkflow.targets": "$__targets__",
   "CNVSomaticPairWorkflow.tumor_bam_idx": "$__tumor_bam_idx__",
-  "CNVSomaticPairWorkflow.tumor_bam": "$__tumor_bam__"
+  "CNVSomaticPairWorkflow.tumor_bam": "$__tumor_bam__",
+  "CNVSomaticPairWorkflow.gatk_docker": "$__gatk_docker__"
 }

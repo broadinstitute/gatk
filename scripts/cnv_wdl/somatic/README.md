@@ -48,6 +48,7 @@ The reference used must be the same between PoN and case samples.
 - ``CNVSomaticPairWorkflow.targets`` -- (optional) Target file (NOT in bed format) that was used to describe the baits in capture (exome) samples.  Please run ``ConvertBedToTargetFile`` to convert a BED file to a target file.  If provided, then WES workflow will be run; otherwise, WGS workflow will be run.
 - ``CNVSomaticPairWorkflow.tumor_bam_idx`` -- File path or storage location (depending on backend) of the tumor BAM file index.
 - ``CNVSomaticPairWorkflow.tumor_bam`` -- File path or storage location (depending on backend) of the tumor BAM index.
+- ``CNVSomaticPairWorkflow.is_run_oncotator`` -- (optional, default: false) Whether Oncotator should be run on the called segment file.
 
 In additional, there are several task-level parameters (for tasks in the subworkflows ``CNVSomaticPairWorkflow.NormalCopyRatioWorkflow``, ``CNVSomaticPairWorkflow.TumorCopyRatioWorkflow``, and ``CNVSomaticPairWorkflow.TumorAlleleFractionWorkflow``) that may be set by advanced users as above.  Be sure to set copy-ratio parameters identically for both the normal and tumor when appropriate.
 

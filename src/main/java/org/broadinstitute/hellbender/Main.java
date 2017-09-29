@@ -151,7 +151,7 @@ public class Main {
         try {
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
-            System.exit(0);
+            //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){
             System.err.println(program.getUsage());
             handleUserException(e);
@@ -258,7 +258,7 @@ public class Main {
                 if (null == property) {
                     if (missingAnnotationClasses.isEmpty()) missingAnnotationClasses += clazz.getSimpleName();
                     else missingAnnotationClasses += ", " + clazz.getSimpleName();
-                } else if (!property.omitFromCommandLine()) { /** We should check for missing annotations later **/
+                } else { /** We should check for missing annotations later **/
                     if (simpleNameToClass.containsKey(clazz.getSimpleName())) {
                         throw new RuntimeException("Simple class name collision: " + clazz.getSimpleName());
                     }
@@ -321,24 +321,25 @@ public class Main {
             final CommandLineProgramProperties property = getProgramProperty(clazz);
             if (null == property) {
                 throw new RuntimeException(String.format("The class '%s' is missing the required CommandLineProgramProperties annotation.", clazz.getSimpleName()));
-            }
-            programsToProperty.put(clazz, property);
-            // Get the command line program group for the command line property
-            // NB: we want to minimize the number of times we make a new instance, hence programGroupClassToProgramGroupInstance
-            CommandLineProgramGroup programGroup = programGroupClassToProgramGroupInstance.get(property.programGroup());
-            if (null == programGroup) {
-                try {
-                    programGroup = property.programGroup().newInstance();
-                } catch (final InstantiationException | IllegalAccessException e) {
-                    throw new RuntimeException(e);
+            } else if (!property.omitFromCommandLine()) { // only if they are not omit from the command line
+                programsToProperty.put(clazz, property);
+                // Get the command line program group for the command line property
+                // NB: we want to minimize the number of times we make a new instance, hence programGroupClassToProgramGroupInstance
+                CommandLineProgramGroup programGroup = programGroupClassToProgramGroupInstance.get(property.programGroup());
+                if (null == programGroup) {
+                    try {
+                        programGroup = property.programGroup().newInstance();
+                    } catch (final InstantiationException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                    programGroupClassToProgramGroupInstance.put(property.programGroup(), programGroup);
                 }
-                programGroupClassToProgramGroupInstance.put(property.programGroup(), programGroup);
+                List<Class<?>> programs = programsByGroup.get(programGroup);
+                if (null == programs) {
+                    programsByGroup.put(programGroup, programs = new ArrayList<>());
+                }
+                programs.add(clazz);
             }
-            List<Class<?>> programs = programsByGroup.get(programGroup);
-            if (null == programs) {
-                programsByGroup.put(programGroup, programs = new ArrayList<>());
-            }
-            programs.add(clazz);
         }
 
         /** Print out the programs in each group **/

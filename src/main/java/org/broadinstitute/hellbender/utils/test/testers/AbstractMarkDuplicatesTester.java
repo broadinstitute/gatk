@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.utils.test.testers;
 
+import htsjdk.samtools.*;
 import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordSetBuilder;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
@@ -104,7 +101,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
             updateExpectedDuplicationMetrics();
             // Read the output and check the duplicate flag
             int outputRecords = 0;
-            final SamReader reader = SamReaderFactory.makeDefault().open(getOutput());
+            final SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(getOutput());
             for (final SAMRecord record : reader) {
                 outputRecords++;
                 final String key = samRecordToDuplicatesFlagsKey(record);

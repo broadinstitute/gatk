@@ -23,8 +23,9 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         final String filePath = sharedFile ? file: getToolTestDataDir() + file;
         final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
         final String intervals = region == null ? "" : " -L " + region;
+        final String referenceString = reference == null ? "" : " -R " + reference;
 
-        return "-R " + reference + intervals + " --variant " + filePath + typeArgString;
+        return referenceString + intervals + " --variant " + filePath + typeArgString;
     }
 
     public String baseTestStringWithoutReference(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type) {
@@ -243,6 +244,23 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
                 baseTestString(false, "NA12891.AS.chr20snippet.g.vcf", true, ALLELES, "20:10433000-10437000", b37_reference_20_21) + " --gvcf ",
                 Collections.emptyList());
         spec.executeTest("tests correct gvcf", this);
+    }
+
+    @Test
+    public void testNoIntervalFullGenomeGVCF() throws IOException  {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.chr20snippet.g.vcf", true, REF, null, null) + " --gvcf ",
+                0,
+                UserException.class);
+        spec.executeTest("tests gvcf that doesnt cover full genome but doesnt give an interval", this);
+    }
+
+    @Test
+    public void testNoIntervalShortenedHeaderDict() throws IOException  {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.fullchr20_with_chr20_dict_only.g.vcf", true, REF, null, null) + " --gvcf ",
+                Collections.emptyList());
+        spec.executeTest("tests gvcf that has a header dictionary of just chr20 and doesn't give an interval", this);
     }
 
     @Test

@@ -112,7 +112,6 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
      */
     protected boolean isUsableRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
-        return !( read.getMappingQuality() == 0 ||
-                read.getMappingQuality() == QualityUtils.MAPPING_QUALITY_UNAVAILABLE );
+        return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
 }

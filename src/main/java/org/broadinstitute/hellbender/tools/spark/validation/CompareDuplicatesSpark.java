@@ -13,6 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -55,7 +56,13 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         JavaRDD<GATKRead> firstReads = filteredReads(getReads(), readArguments.getReadFilesNames().get(0));
 
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
-        JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, getIntervals(), bamPartitionSplitSize), input2);
+        TraversalParameters traversalParameters;
+        if ( hasIntervals() ) {
+            traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
+        } else {
+            traversalParameters = null;
+        }
+        JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize), input2);
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.
         long firstBamSize = firstReads.count();

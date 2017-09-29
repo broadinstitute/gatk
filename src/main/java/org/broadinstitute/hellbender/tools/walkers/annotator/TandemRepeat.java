@@ -24,7 +24,7 @@ import java.util.*;
  * </ul>
  *
  */
-public final class TandemRepeat extends InfoFieldAnnotation {
+public final class TandemRepeat extends InfoFieldAnnotation implements StandardMutectAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,

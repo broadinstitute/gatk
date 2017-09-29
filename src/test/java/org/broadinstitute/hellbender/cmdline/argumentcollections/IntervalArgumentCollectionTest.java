@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -89,6 +90,38 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
         iac.addToIntervalStrings("1:20-30");
         iac.intervalPadding = 10;
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 10, 40)));
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testIntervalMergingRuleAdjacentMerge(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:1-100");
+        iac.addToIntervalStrings("1:101-200");
+        iac.intervalMerging = IntervalMergingRule.ALL;
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 1, 200)));
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testIntervalMergingRuleAdjacentNoMerge(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:1-100");
+        iac.addToIntervalStrings("1:101-200");
+        iac.intervalMerging = IntervalMergingRule.OVERLAPPING_ONLY;
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).size(), 2);
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).get(0), new SimpleInterval("1", 1, 100));
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).get(1), new SimpleInterval("1", 101, 200));
+    }
+
+    /**
+     * Asserts that the interval set rule is applied first, then the interval ordering rule. This should give an error because the overlap is empty.
+     * @param iac
+     */
+    @Test(dataProvider = "optionalOrNot", expectedExceptions = CommandLineException.BadArgumentValue.class)
+    public void testIntervalSetAndMergingOverlap(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:1-100");
+        iac.addToIntervalStrings("1:101-200");
+        iac.addToIntervalStrings("1:90-110");
+        iac.intervalSetRule = IntervalSetRule.INTERSECTION;
+        iac.intervalMerging = IntervalMergingRule.ALL;
+        iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
     }
 
     @Test(dataProvider = "optionalOrNot")

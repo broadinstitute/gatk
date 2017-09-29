@@ -31,6 +31,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -69,6 +70,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private SomaticGenotypingEngine genotypingEngine;
     private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
     private VariantAnnotatorEngine annotationEngine;
+    private final SmithWatermanAligner aligner;
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
 
@@ -85,18 +87,21 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      * and a reference file
      *
      * @param MTAC command-line arguments for the HaplotypeCaller
+     * @param createBamOutIndex true to create an index file for the bamout
+     * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param header header for the reads
      * @param reference path to the reference
      */
-    public Mutect2Engine(final M2ArgumentCollection MTAC, final SAMFileHeader header, final String reference ) {
+    public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference ) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
         Utils.nonNull(reference);
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
-        initialize();
+        aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
+        initialize(createBamOutIndex, createBamOutMD5);
     }
 
-    private void initialize() {
+    private void initialize(final boolean createBamOutIndex, final boolean createBamOutBamMD5) {
 
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
         if (!samplesList.asListOfSamples().contains(MTAC.tumorSampleName)) {
@@ -107,9 +112,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                     " sample name " + MTAC.normalSampleName);
         }
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.annotationGroupsToUse,
-                MTAC.annotationsToUse,
-                MTAC.annotationsToExclude,
+        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.variantAnnotationArgumentCollection,
                 MTAC.dbsnp.dbsnp,
                 MTAC.comps);
 
@@ -117,7 +120,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, MTAC.tumorSampleName, MTAC.normalSampleName);
         genotypingEngine.setAnnotationEngine(annotationEngine);
-        haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, header);
+        haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutBamMD5, header);
 
         trimmer.initialize(MTAC.assemblyRegionTrimmerArgs, header.getSequenceDictionary(), MTAC.debug,
                 MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, false);
@@ -137,7 +140,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
         filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
@@ -205,7 +208,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion,allVariationEvents);
         if (!trimmingResult.isVariationPresent()) {
@@ -225,7 +228,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
         final ReadLikelihoods<Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
-        final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc());
+        final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
         readLikelihoods.changeReads(readRealignments);
 
         final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes = genotypingEngine.callMutations(
@@ -271,6 +274,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      */
     public void shutdown() {
         likelihoodCalculationEngine.close();
+        aligner.close();
 
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();

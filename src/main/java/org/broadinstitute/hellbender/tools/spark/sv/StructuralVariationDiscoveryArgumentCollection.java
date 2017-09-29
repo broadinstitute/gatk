@@ -12,13 +12,16 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class FindBreakpointEvidenceSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        public static final int KMER_SIZE = 51;
+        public static final int MAX_DUST_SCORE = KMER_SIZE - 2;
+
         //--------- parameters ----------
 
         @Argument(doc = "Kmer size.", fullName = "kSize")
-        public int kSize = SVConstants.KMER_SIZE;
+        public int kSize = KMER_SIZE;
 
         @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
-        public int maxDUSTScore = SVConstants.MAX_DUST_SCORE;
+        public int maxDUSTScore = MAX_DUST_SCORE;
 
         @Argument(doc = "The minimum mapping quality for reads used to gather evidence of breakpoints.",
                 fullName = "minEvidenceMapQ", optional = true)
@@ -68,9 +71,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Maximum number of templates containing an assembly kmer.", fullName = "maxQNamesPerKmer")
         public int maxQNamesPerKmer = 500;
 
-        @Argument(doc = "Guess at number of clean kmers per assembly partition.", fullName = "assemblyKmerMapSize")
-        public int assemblyKmerMapSize = 250000;
-
         @Argument(doc = "Guess at the ratio of reads in the final assembly to the number reads mapped to the interval.",
                 fullName = "assemblyToMappedSizeRatioGuess")
         public int assemblyToMappedSizeRatioGuess = 7;
@@ -87,12 +87,24 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Don't look for extra reads mapped outside the interval.", fullName = "intervalOnlyAssembly")
         public boolean intervalOnlyAssembly = false;
 
+        @Argument(doc = "Weight to give external evidence.", fullName = "externalEvidenceWeight")
+        public int externalEvidenceWeight = 10;
+
+        @Argument(doc = "Uncertainty in location of external evidence.", fullName = "externalEvidenceUncertainty")
+        public int externalEvidenceUncertainty = 150;
+
+        @Argument(doc = "Adapter sequence.", fullName = "adapterSequence", optional = true)
+        public String adapterSequence;
+
         // --------- locations ----------
 
         @Argument(doc = "bwa-mem index image file", fullName = "alignerIndexImage")
         public String alignerIndexImageFile;
 
-        @Argument(doc = "file for read metadata", fullName = "readMetadata", optional = true)
+        @Argument(doc = "external evidence input file", fullName = "externalEvidence", optional = true)
+        public String externalEvidenceFile;
+
+        @Argument(doc = "output file for read metadata", fullName = "readMetadata", optional = true)
         public String metadataFile;
 
         @Argument(doc = "directory for evidence output", fullName = "breakpointEvidenceDir", optional = true)
@@ -115,6 +127,10 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "output dir for assemblies", fullName = "gfaDir", optional = true)
         public String gfaDir;
+
+        @Argument(doc = "output file for non-assembled breakpoints in bedpe format",
+                fullName = "targetLinkFile", optional = true)
+        public String targetLinkFile;
 
         /**
          * This is a file that calls out the coordinates of intervals in the reference assembly to exclude from
@@ -154,6 +170,12 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = 50; // alignment with gap of size >= 50 will be broken apart.
+        public static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
+        public static final int MISSING_NM = Integer.MIN_VALUE;
+        public static final int ARTIFICIAL_MISMATCH = MISSING_NM;
+        public static final int DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
+
         // todo: document this better
         // Currently the discovery stage requires a reference parameter in 2bit format (to broadcast) and
         // a reference in FASTA format (to get a good sequence dictionary for sorting variants).
@@ -163,7 +185,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
                 fullName = "minAlignLength", optional = true)
-        public Integer minAlignLength = SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
+        public Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
     }
 
 }

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount;
 
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
@@ -22,8 +21,6 @@ final class AllelicCountWriter extends TableWriter<AllelicCount> {
 
     @Override
     protected void composeLine(final AllelicCount record, final DataLine dataLine) {
-        Utils.validateArg(record.getAltNucleotide() != null && record.getRefNucleotide() != null,
-                "AllelicCount must have all fields specified to be written to file.");
         dataLine.append(record.getInterval().getContig())
                 .append(record.getInterval().getEnd())
                 .append(record.getRefReadCount())

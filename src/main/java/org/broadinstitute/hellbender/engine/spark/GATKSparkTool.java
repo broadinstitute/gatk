@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -221,10 +222,19 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified, and unfiltered.
      */
     public JavaRDD<GATKRead> getUnfilteredReads() {
+        TraversalParameters traversalParameters;
+        if ( intervalArgumentCollection.intervalsSpecified() ) {
+            traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
+        } else if ( hasIntervals() ) { // intervals may have been supplied by editIntervals
+            traversalParameters = new TraversalParameters(getIntervals(), false);
+        } else {
+            traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)
+        }
+
         // TODO: This if statement is a temporary hack until #959 gets resolved.
         if (readInput.endsWith(".adam")) {
             try {
-                return readsSource.getADAMReads(readInput, intervals, getHeaderForReads());
+                return readsSource.getADAMReads(readInput, traversalParameters, getHeaderForReads());
             } catch (IOException e) {
                 throw new UserException("Failed to read ADAM file " + readInput, e);
             }
@@ -234,8 +244,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
             final String refPath = hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null;
-            // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
-            return readsSource.getParallelReads(readInput, refPath, intervals, bamPartitionSplitSize);
+            return readsSource.getParallelReads(readInput, refPath, traversalParameters, bamPartitionSplitSize);
         }
     }
 

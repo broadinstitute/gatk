@@ -31,4 +31,12 @@ public class ReferenceBasesUnitTest extends BaseTest {
         Assert.assertEquals(refBases, "ACTGCATCCCTTGCATTTCC");
     }
 
+    // Asserts that the code silently failed
+    @Test
+    public void TestNoReferenceBehavior() {
+        final VariantContext vc = new VariantContextBuilder("source", "20", 10_000_100, 10_000_100, Collections.singleton(Allele.create((byte) 'A', true))).make();
+        final String refBases = (String) new ReferenceBases().annotate(null, vc, null)
+                .get(ReferenceBases.REFERENCE_BASES_KEY);
+        Assert.assertNull(refBases);
+    }
 }

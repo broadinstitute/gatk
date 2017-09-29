@@ -36,15 +36,17 @@ public final class AlignedAssemblyOrExcuse {
     private final String errorMessage;
     private final FermiLiteAssembly assembly;
     private final List<List<BwaMemAlignment>> contigAlignments;
+    private final int secondsInAssembly;
 
     public AlignedAssemblyOrExcuse( final int assemblyId, final String errorMessage ) {
         this.assemblyId = assemblyId;
         this.errorMessage = errorMessage;
         this.assembly = null;
         this.contigAlignments = null;
+        this.secondsInAssembly = 0;
     }
 
-    public AlignedAssemblyOrExcuse( final int assemblyId, final FermiLiteAssembly assembly,
+    public AlignedAssemblyOrExcuse( final int assemblyId, final FermiLiteAssembly assembly, final int secondsInAssembly,
                                     final List<List<BwaMemAlignment>> contigAlignments ) {
         Utils.validate(assembly.getNContigs()==contigAlignments.size(),
                 "Number of contigs in assembly doesn't match length of list of alignments.");
@@ -54,11 +56,13 @@ public final class AlignedAssemblyOrExcuse {
         this.errorMessage = null;
         this.assembly = assembly;
         this.contigAlignments = contigAlignments;
+        this.secondsInAssembly = secondsInAssembly;
     }
 
     private AlignedAssemblyOrExcuse( final Kryo kryo, final Input input ) {
         this.assemblyId = input.readInt();
         this.errorMessage = input.readString();
+        this.secondsInAssembly = input.readInt();
         if ( errorMessage != null ) {
             this.assembly = null;
             this.contigAlignments = null;
@@ -90,6 +94,8 @@ public final class AlignedAssemblyOrExcuse {
             this.contigAlignments = contigAlignments;
         }
     }
+
+    public int getSecondsInAssembly() { return secondsInAssembly; }
 
     /**
      * write a SAM file containing records for each aligned contig
@@ -187,7 +193,8 @@ public final class AlignedAssemblyOrExcuse {
                 } else if ( alignedAssemblyOrExcuse.getErrorMessage() != null ) {
                     disposition = alignedAssemblyOrExcuse.getErrorMessage();
                 } else {
-                    disposition = "produced " + alignedAssemblyOrExcuse.getAssembly().getNContigs() + " contigs";
+                    disposition = "produced " + alignedAssemblyOrExcuse.getAssembly().getNContigs() +
+                            " contigs in " + alignedAssemblyOrExcuse.getSecondsInAssembly() + " secs.";
                 }
                 writer.write(intervalId + "\t" +
                         seqName + ":" + interval.getStart() + "-" + interval.getEnd() + "\t" +
@@ -311,6 +318,7 @@ public final class AlignedAssemblyOrExcuse {
     private void serialize( final Kryo kryo, final Output output ) {
         output.writeInt(assemblyId);
         output.writeString(errorMessage);
+        output.writeInt(secondsInAssembly);
         if ( errorMessage == null ) {
             final int nContigs = assembly.getNContigs();
             final Map<Contig, Integer> contigMap = new HashMap<>();

@@ -32,6 +32,7 @@ releases of the toolkit.
     * [Note on 2bit Reference](#2bit)
     * [Using R to generate plots](#R)
     * [Running the CNV workflows](#cnv_workflows)
+    * [GATK Tab Completion for Bash](#tab_completion)
 * [For GATK Developers](#developers)
     * [General guidelines for GATK4 developers](#dev_guidelines)
     * [Testing GATK4](#testing)
@@ -42,6 +43,7 @@ releases of the toolkit.
     * [Setting up profiling using JProfiler](#jprofiler)
     * [Uploading Archives to Sonatype](#sonatype)
     * [Building GATK4 Docker images](#docker_building)
+    * [Releasing GATK4](#releasing_gatk)
     * [Generating GATK4 documentation](#gatkdocs)
     * [Using Zenhub to track github issues](#zenhub)
 * [Further Reading on Spark](#spark_further_reading)
@@ -75,7 +77,7 @@ You can download and run pre-built versions of GATK4 from the following places:
 
 * Starting with the beta release, a zip archive with everything you need to run GATK4 can be downloaded for each release from the [github releases page](https://github.com/broadinstitute/gatk/releases).
 
-* Starting with the beta release, you can download a GATK4 docker image from [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/)
+* Starting with the beta release, you can download a GATK4 docker image from [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). We also host unstable nightly development builds on [this dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk-nightly/).
     * Within the docker image, run gatk-launch commands as usual from the default startup directory (/gatk).
 
 ## <a name="building">Building GATK4</a>
@@ -260,20 +262,48 @@ brew tap homebrew/science
 brew install R
 ```
 
-The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
+The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/docker/gatkbase/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
 ```
-sudo Rscript scripts/install_R_packages.R
+sudo Rscript scripts/docker/gatkbase/install_R_packages.R
 ```
 **or**
 ```
 R 
-source("scripts/install_R_packages.R")
+source("scripts/docker/gatkbase/install_R_packages.R")
 ```
 
 #### <a name="cnv_workflows">Running the CNV workflows</a>
 
 * A walkthrough and examples for the CNV workflows can be found [here](http://gatkforums.broadinstitute.org/gatk/discussion/9143)
-      
+
+#### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
+
+* A tab completion bootstrap file for the bash shell is now included in releases.  This file allows the command-line shell to complete GATK run options in a manner equivalent to built-in command-line tools (e.g. grep).  
+
+* This tab completion functionality has only been tested in the bash shell, and is released as a beta feature.
+
+* To enable tab completion for the GATK, open a terminal window and source the included tab completion script:
+
+```
+source gatk-launch-completion.sh
+```
+
+* Sourcing this file will allow you to press the tab key twice to get a list of options available to add to your current GATK command.  By default you will have to source this file once in each command-line session, then for the rest of the session the GATK tab completion functionality will be available.  GATK tab completion will be available in that current command-line session only.
+
+* Note that you must have already started typing an invocation of the GATK (using gatk-launch) for tab completion to initiate:
+
+```
+./gatk-launch <TAB><TAB>
+```
+
+* We recommend adding a line to your bash settings file (i.e. your ~/.bashrc file) that sources the tab completion script.  To add this line to your bash settings / bashrc file you can use the following command:
+
+```
+echo "source <PATH_TO>/gatk-launch-completion.sh" >> ~/.bashrc
+```
+
+* Where ```<PATH_TO>``` is the fully qualified path to the ```gatk-launch-completion.sh``` script.
+
 ## <a name="developers">For GATK Developers</a>
 
 #### <a name="dev_guidelines">General guidelines for GATK4 developers</a>
@@ -318,10 +348,11 @@ source("scripts/install_R_packages.R")
     * Test report is in `build/reports/tests/test/index.html`.
     * What will happen depends on the value of the `TEST_TYPE` environment variable: 
        * unset or any other value         : run non-cloud unit and integration tests, this is the default
-       * `cloud`, `unit`, `integration`   : run only the cloud, unit, or integration tests
+       * `cloud`, `unit`, `integration`, `spark`   : run only the cloud, unit, integration, or Spark tests
        * `all`                            : run the entire test suite
     * Cloud tests require being logged into `gcloud` and authenticated with a project that has access
       to the cloud test data.  They also require setting several certain environment variables.
+      * `HELLBENDER_JSON_SERVICE_ACCOUNT_KEY` : path to a local JSON file with [service account credentials](https://cloud.google.com/storage/docs/authentication#service_accounts) 
       * `HELLBENDER_TEST_PROJECT` : your google cloud project 
       * `HELLBENDER_TEST_APIKEY` : your google cloud API key
       * `HELLBENDER_TEST_STAGING` : a gs:// path to a writable location
@@ -460,6 +491,10 @@ Currently all builds are considered snapshots.  The archive name is based off of
 #### <a name="docker_building">Building GATK4 Docker images</a>
 
 Please see the [the Docker README](scripts/docker/README.md) in ``scripts/docker``.  This has instructions for the Dockerfile in the root directory.
+
+#### <a name="releasing_gatk">Releasing GATK4</a>
+
+Please see the [How to release GATK4](https://github.com/broadinstitute/gatk/wiki/How-to-release-GATK4) wiki article for instructions on releasing GATK4.
 
 #### <a name="gatkdocs">Generating GATK4 documentation</a>
 

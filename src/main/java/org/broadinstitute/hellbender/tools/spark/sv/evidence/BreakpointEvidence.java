@@ -9,6 +9,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -19,8 +20,10 @@ import java.util.List;
  * Various types of read anomalies that provide evidence of genomic breakpoints.
  * There is a shallow hierarchy based on this class that classifies the anomaly as, for example, a split read,
  *   or a pair that has both reads on the same reference strand.
- * Each BreakpointEvidence object comes from examining a single read, and describing its funkiness, if any, by
- *   instantiating one of the subclasses that addresses that type of funkiness.
+ * Each BreakpointEvidence object of type ReadEvidence object comes from examining a single read, and describing its
+ *   funkiness, if any, by instantiating one of the subclasses that addresses that type of funkiness. Instances of
+ *   BreakpointEvidence that are not of subtype ReadEvidence consolidate information from one or more pieces of
+ *   ReadEvidence into a single object.
  */
 @DefaultSerializer(BreakpointEvidence.Serializer.class)
 public class BreakpointEvidence {
@@ -47,9 +50,16 @@ public class BreakpointEvidence {
     public void setValidated( final boolean validated ) { this.validated = validated; }
 
     /**
-     * Returns true if this piece of evidence specifies a possible distal target for the breakpoint.
+     * If true: the evidence suggests a breakpoint at a reference location upstream of the interval's start coordinate
+     * If false: the evidence suggests a breakpoint downstream of the interval's end coordinate
      */
-    public boolean hasDistalTargets() {
+    public Boolean isEvidenceUpstreamOfBreakpoint() { return null; }
+
+    /**
+     * Returns true if this piece of evidence specifies a possible distal target for the breakpoint.
+     * @param readMetadata
+     */
+    public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
         return false;
     }
 
@@ -57,9 +67,11 @@ public class BreakpointEvidence {
      * Returns the distal interval implicated as a candidate adjacency to the breakpoint by this piece of evidence.
      * For example, in the case of a discordant read pair, this would be the region adjacent to the mate of the current
      * read. Returns null if the evidence does not specify or support a possible targeted region (for example, the case
-     * of an read with an unmapped mate).
+     * of an read with an unmapped mate). Strands of the intervals indicate whether the distal target intervals are
+     * upstream or downstream of their proposed breakpoints: true indicates that the breakpoint is upstream of the interval
+     * start position; false indicates that the breakpoint is downstream of the interval end position
      */
-    public List<SVInterval> getDistalTargets(final ReadMetadata readMetadata) {
+    public List<StrandedInterval> getDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
         return null;
     }
 
@@ -68,10 +80,26 @@ public class BreakpointEvidence {
         return location.toString() + "^" + weight;
     }
 
+    //* slicing equality -- just tests for equal fields */
+    public boolean equalFields( final BreakpointEvidence that ) {
+        return location.equals(that.location) && weight == that.weight && validated == that.validated;
+    }
+
     protected void serialize( final Kryo kryo, final Output output ) {
         intervalSerializer.write(kryo, output, location);
         output.writeInt(weight);
         output.writeBoolean(validated);
+    }
+
+    static SVInterval fixedWidthInterval( final int contigID,
+                                                  final int contigOffset, final int offsetUncertainty ) {
+        int width = 2 * offsetUncertainty;
+        int start = contigOffset - offsetUncertainty;
+        if ( start < 1 ) {
+            width += start - 1;
+            start = 1;
+        }
+        return new SVInterval(contigID, start, start + width);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<BreakpointEvidence> {
@@ -83,6 +111,36 @@ public class BreakpointEvidence {
         @Override
         public BreakpointEvidence read( final Kryo kryo, final Input input, final Class<BreakpointEvidence> klass ) {
             return new BreakpointEvidence(kryo, input);
+        }
+    }
+
+    @DefaultSerializer(ExternalEvidence.Serializer.class)
+    public final static class ExternalEvidence extends BreakpointEvidence {
+        public ExternalEvidence( final int contigID, final int start, final int end, final int weight ) {
+            this(new SVInterval(contigID, start, end), weight);
+        }
+
+        public ExternalEvidence( final SVInterval interval, final int weight ) {
+            super(interval, weight, false);
+        }
+
+        public ExternalEvidence( final Kryo kryo, final Input input ) {
+            super(kryo, input);
+        }
+
+        @Override
+        public String toString() { return super.toString() + "\tExternalEvidence"; }
+
+        public final static class Serializer extends com.esotericsoftware.kryo.Serializer<ExternalEvidence> {
+            @Override
+            public void write( final Kryo kryo, final Output output, final ExternalEvidence externalEvidence ) {
+                externalEvidence.serialize(kryo, output);
+            }
+
+            @Override
+            public ExternalEvidence read( final Kryo kryo, final Input input, final Class<ExternalEvidence> klass ) {
+                return new ExternalEvidence(kryo, input);
+            }
         }
     }
 
@@ -129,6 +187,7 @@ public class BreakpointEvidence {
         private static final int SINGLE_READ_WEIGHT = 1;
         private final String templateName; // QNAME of the read that was funky (i.e., the name of the fragment)
         private final TemplateFragmentOrdinal fragmentOrdinal; // which read we're talking about (first or last, for paired-end reads)
+        private final boolean forwardStrand;
 
         /**
          * evidence offset and width is set to "the rest of the fragment" not covered by this read
@@ -138,26 +197,29 @@ public class BreakpointEvidence {
             this.templateName = read.getName();
             if ( templateName == null ) throw new GATKException("Read has no name.");
             this.fragmentOrdinal = TemplateFragmentOrdinal.forRead(read);
+            this.forwardStrand = ! read.isReverseStrand();
         }
 
         /**
          * for use when the uncertainty in location has a fixed size
          */
         protected ReadEvidence( final GATKRead read, final ReadMetadata metadata,
-                                final int contigOffset, final int offsetUncertainty ) {
+                                final int contigOffset, final int offsetUncertainty, final boolean forwardStrand ) {
             super(fixedWidthInterval(metadata.getContigID(read.getContig()),contigOffset,offsetUncertainty),
                     SINGLE_READ_WEIGHT, false);
             this.templateName = read.getName();
             if ( templateName == null ) throw new GATKException("Read has no name.");
             this.fragmentOrdinal = TemplateFragmentOrdinal.forRead(read);
+            this.forwardStrand = forwardStrand;
         }
 
         @VisibleForTesting ReadEvidence( final SVInterval interval, final int weight,
                                          final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
-                                         final boolean validated ) {
+                                         final boolean validated, final boolean forwardStrand ) {
             super(interval, weight, validated);
             this.templateName = templateName;
             this.fragmentOrdinal = fragmentOrdinal;
+            this.forwardStrand = forwardStrand;
         }
 
         /**
@@ -169,6 +231,7 @@ public class BreakpointEvidence {
             super(kryo, input);
             this.templateName = input.readString();
             this.fragmentOrdinal = TemplateFragmentOrdinal.values()[input.readByte()];
+            this.forwardStrand = input.readBoolean();
         }
 
         @Override
@@ -176,6 +239,7 @@ public class BreakpointEvidence {
             super.serialize(kryo, output);
             output.writeString(templateName);
             output.writeByte(fragmentOrdinal.ordinal());
+            output.writeBoolean(forwardStrand);
         }
 
         public String getTemplateName() {
@@ -184,6 +248,11 @@ public class BreakpointEvidence {
 
         public TemplateFragmentOrdinal getFragmentOrdinal() {
             return fragmentOrdinal;
+        }
+
+        @Override
+        public Boolean isEvidenceUpstreamOfBreakpoint() {
+            return forwardStrand;
         }
 
         @Override
@@ -204,11 +273,14 @@ public class BreakpointEvidence {
         }
 
         private static SVInterval restOfFragmentInterval( final GATKRead read, final ReadMetadata metadata ) {
-            final int templateLen = metadata.getGroupMedianFragmentSize(read.getReadGroup());
+            final int templateLen = metadata.getFragmentLengthStatistics(read.getReadGroup()).getMaxNonOutlierFragmentSize();
             int width;
             int start;
             if ( read.isReverseStrand() ) {
-                final int readStart = read.getStart();
+                // we can get a little more precise about the interval by checking to see if there are any leading mismatches
+                // in the read's alignment and trimming them off.
+                int leadingMismatches = getLeadingMismatches(read, true);
+                final int readStart = read.getStart() + leadingMismatches;
                 width = readStart - (read.getUnclippedEnd() + 1 - templateLen);
                 start = readStart - width;
                 if ( start < 1 ) {
@@ -216,48 +288,67 @@ public class BreakpointEvidence {
                     start = 1;
                 }
             } else {
-                final int readEnd = read.getEnd() + 1;
+                int trailingMismatches = getLeadingMismatches(read, false);
+                final int readEnd = read.getEnd() + 1 - trailingMismatches;
                 width = read.getUnclippedStart() + templateLen - readEnd;
                 start = readEnd;
             }
             return new SVInterval(metadata.getContigID(read.getContig()), start, start + width);
         }
 
-        private static SVInterval fixedWidthInterval( final int contigID,
-                                                      final int contigOffset, final int offsetUncertainty ) {
-            int width = 2 * offsetUncertainty;
-            int start = contigOffset - offsetUncertainty;
-            if ( start < 1 ) {
-                width += start - 1;
-                start = 1;
+        @VisibleForTesting static int getLeadingMismatches(final GATKRead read, final boolean fromStart) {
+            int leadingMismatches = 0;
+            if (read.hasAttribute("MD")) {
+                final String mdString = read.getAttributeAsString("MD");
+                final List<TextMDCodec.MDElement> mdElements = TextMDCodec.parseMDString(mdString);
+                int idx = fromStart ? 0 : (mdElements.size() - 1);
+                while (fromStart ? (idx < mdElements.size()) : (idx >= 0)) {
+                    TextMDCodec.MDElement mdElement = mdElements.get(idx);
+                    if (mdElement instanceof TextMDCodec.MatchMDElement && mdElement.getLength() > 0) {
+                        break;
+                    } else {
+                        leadingMismatches += mdElement.getLength();
+                    }
+                    idx = idx + (fromStart ? 1 : -1);
+                }
             }
-            return new SVInterval(contigID, start, start + width);
+            return leadingMismatches;
         }
+
     }
 
     @DefaultSerializer(SplitRead.Serializer.class)
     public static final class SplitRead extends ReadEvidence {
-        private static final int UNCERTAINTY = 2;
+        private static final int UNCERTAINTY = 3;
         private static final String SA_TAG_NAME = "SA";
         private final String cigar;
         private final String tagSA;
+        private final boolean primaryAlignmentForwardStrand;
+        private boolean primaryAlignmentClippedAtStart;
+        private final List<SAMapping> saMappings;
 
-        public SplitRead( final GATKRead read, final ReadMetadata metadata, final boolean atStart ) {
-            super(read, metadata, atStart ? read.getStart() : read.getEnd(), UNCERTAINTY);
+        public SplitRead( final GATKRead read, final ReadMetadata metadata, final boolean primaryAlignmentClippedAtAlignmentStart ) {
+            // todo: if reads have multiple SA tags.. we should have two pieces of evidence with the right strands
+            super(read, metadata, primaryAlignmentClippedAtAlignmentStart ? read.getStart() : read.getEnd(), UNCERTAINTY, !primaryAlignmentClippedAtAlignmentStart);
             cigar = read.getCigar().toString();
+            this.primaryAlignmentForwardStrand = !read.isReverseStrand();
             if ( cigar.isEmpty() ) throw new GATKException("Read has no cigar string.");
+            this.primaryAlignmentClippedAtStart = primaryAlignmentClippedAtAlignmentStart;
             if (read.hasAttribute(SA_TAG_NAME)) {
                 tagSA = read.getAttributeAsString(SA_TAG_NAME);
             } else {
                 tagSA = null;
             }
+            saMappings = parseSATag(tagSA);
         }
 
         private SplitRead( final Kryo kryo, final Input input ) {
             super(kryo, input);
             cigar = input.readString();
             tagSA = input.readString();
-
+            primaryAlignmentForwardStrand = input.readBoolean();
+            primaryAlignmentClippedAtStart = input.readBoolean();
+            saMappings = parseSATag(tagSA);
         }
 
         @Override
@@ -265,6 +356,8 @@ public class BreakpointEvidence {
             super.serialize(kryo, output);
             output.writeString(cigar);
             output.writeString(tagSA);
+            output.writeBoolean(primaryAlignmentForwardStrand);
+            output.writeBoolean(primaryAlignmentClippedAtStart);
         }
 
         @Override
@@ -272,19 +365,75 @@ public class BreakpointEvidence {
             return super.toString()+"\tSplit\t"+cigar+"\t"+(tagSA == null ? " SA: None" : (" SA: " + tagSA));
         }
 
-        @Override
-        public boolean hasDistalTargets() {
-            return tagSA != null;
+        private List<SAMapping> parseSATag(final String tagSA) {
+            if (tagSA == null) {
+                return null;
+            } else {
+                final String[] saStrings = tagSA.split(";");
+                final List<SAMapping> supplementaryAlignments = new ArrayList<>(saStrings.length);
+                for (final String saString : saStrings) {
+                    final String[] saFields = saString.split(",", -1);
+                    if (saFields.length != 6) {
+                        throw new GATKException("Could not parse SATag: "+ saString);
+                    }
+                    final String contigId = saFields[0];
+                    final int pos = Integer.parseInt(saFields[1]);
+                    final boolean strand = "+".equals(saFields[2]);
+                    final String cigarString = saFields[3];
+                    final int mapQ = Integer.parseInt(saFields[4]);
+                    final int mismatches = Integer.parseInt(saFields[5]);
+                    SAMapping saMapping = new SAMapping(contigId, pos, strand, cigarString, mapQ, mismatches);
+
+                    supplementaryAlignments.add(saMapping);
+                }
+                return supplementaryAlignments;
+
+            }
+
         }
 
         @Override
-        public List<SVInterval> getDistalTargets(final ReadMetadata readMetadata) {
-            if (tagSA != null) {
-                final String[] saStrings = tagSA.split(";");
-                final List<SVInterval> supplementaryAlignments = new ArrayList<>(saStrings.length);
-                for (final String saString : saStrings) {
-                    SVInterval saInterval = saStringToSVInterval(readMetadata, saString);
-                    supplementaryAlignments.add(saInterval);
+        public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+            // todo: right now we are limiting distal target calculation to split reads that have only one supplementary mapping
+            return saMappings != null && saMappings.size() == 1 && hasHighQualitySupplementaryMappings(readMetadata, minEvidenceMapq);
+        }
+
+        private boolean hasHighQualitySupplementaryMappings(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+            boolean hqMappingFound = false;
+            if (saMappings != null) {
+                for (final SAMapping mapping : saMappings) {
+                    final int mapQ = mapping.getMapq();
+                    SVInterval saInterval = saMappingToSVInterval(readMetadata, mapping,
+                            calculateDistalTargetStrand(mapping, !primaryAlignmentClippedAtStart, primaryAlignmentForwardStrand));
+                    if (isHighQualityMapping(readMetadata, mapQ, saInterval, minEvidenceMapq)) {
+                        hqMappingFound = true;
+                        break;
+                    }
+                }
+            }
+            return hqMappingFound;
+        }
+
+        private boolean isHighQualityMapping(final ReadMetadata readMetadata, final int mapQ, final SVInterval saInterval, final int minEvidenceMapq) {
+            return mapQ >= minEvidenceMapq &&
+                    (saInterval.getContig() == getLocation().getContig() ||
+                    (!readMetadata.ignoreCrossContigID(saInterval.getContig()) && !readMetadata.ignoreCrossContigID(getLocation().getContig())))
+                    && ! saInterval.overlaps(getLocation());
+        }
+
+        @Override
+        public List<StrandedInterval> getDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+            if (hasDistalTargets(readMetadata, minEvidenceMapq)) {
+                final List<StrandedInterval> supplementaryAlignments = new ArrayList<>(saMappings.size());
+                for (final SAMapping saMapping : saMappings) {
+                    final int mapQ = saMapping.getMapq();
+                    final SVInterval saInterval = saMappingToSVInterval(readMetadata, saMapping,
+                            calculateDistalTargetStrand(saMapping, !primaryAlignmentClippedAtStart, primaryAlignmentForwardStrand));
+                    if (! isHighQualityMapping(readMetadata, mapQ, saInterval, minEvidenceMapq)) {
+                        continue;
+                    }
+                    final boolean strand = calculateDistalTargetStrand(saMapping, !primaryAlignmentClippedAtStart, primaryAlignmentForwardStrand);
+                    supplementaryAlignments.add(new StrandedInterval(saInterval, strand));
                 }
                 return supplementaryAlignments;
             } else {
@@ -292,21 +441,32 @@ public class BreakpointEvidence {
             }
         }
 
+        @VisibleForTesting
+        static boolean calculateDistalTargetStrand(final SAMapping saMapping, final boolean primaryEvidenceRightClipped,
+                                                   final boolean primaryAlignmentForwardStrand) {
+            final boolean primaryAlignmentRightClippedOnRead = (primaryAlignmentForwardStrand == primaryEvidenceRightClipped);
+
+            // todo: assuming that we only have one SA tag and it goes with the clipped end of the SplitRead evidence
+            if (primaryAlignmentRightClippedOnRead) {
+                return !saMapping.isForwardStrand();
+            } else {
+                return saMapping.isForwardStrand();
+            }
+
+        }
+
         // todo: for now, taking the entire location of the supplementary alignment plus the uncertainty on each end
         // A better solution might be to find the location of the actual clip on the other end of the reference,
         // but that would be significantly more complex and possibly computationally expensive
-        private SVInterval saStringToSVInterval(final ReadMetadata readMetadata, final String saString) {
-            final String[] values = saString.split(",", -1);
-            if (values.length != 6) {
-                throw new GATKException("Could not parse SATag: "+ saString);
-            }
-            final String contigId = values[0];
-            final int pos = Integer.parseInt(values[1]);
-            final Cigar cigar = TextCigarCodec.decode(values[3]);
+        private SVInterval saMappingToSVInterval(final ReadMetadata readMetadata, final SAMapping saMapping,
+                                                 final boolean saEvidenceDownstreamOfBreakpoint) {
+            final int contigId = readMetadata.getContigID(saMapping.getContigName());
+            final Cigar saCigar = TextCigarCodec.decode(saMapping.getCigar());
+            final int pos = saEvidenceDownstreamOfBreakpoint ? saMapping.getStart() + saCigar.getPaddedReferenceLength() : saMapping.getStart();
 
-            return new SVInterval( readMetadata.getContigID(contigId),
-                    pos - UNCERTAINTY,
-                    pos + cigar.getPaddedReferenceLength() + UNCERTAINTY);
+            return new SVInterval( contigId,
+                    Math.max(1, pos - UNCERTAINTY),
+                    pos + UNCERTAINTY + 1);
 
         }
 
@@ -321,6 +481,48 @@ public class BreakpointEvidence {
                 return new SplitRead(kryo, input);
             }
         }
+
+        final static class SAMapping {
+            private final String contigName;
+            private final int start;
+            private final boolean forwardStrand;
+            private final String cigar;
+            private final int mapq;
+            private final int mismatches;
+
+            public SAMapping(final String contigName, final int start, final boolean strand, final String cigar, final int mapq, final int mismatches) {
+                this.contigName = contigName;
+                this.start = start;
+                this.forwardStrand = strand;
+                this.cigar = cigar;
+                this.mapq = mapq;
+                this.mismatches = mismatches;
+            }
+
+            public String getContigName() {
+                return contigName;
+            }
+
+            public int getStart() {
+                return start;
+            }
+
+            public boolean isForwardStrand() {
+                return forwardStrand;
+            }
+
+            public String getCigar() {
+                return cigar;
+            }
+
+            public int getMapq() {
+                return mapq;
+            }
+
+            public int getMismatches() {
+                return mismatches;
+            }
+        }
     }
 
     @DefaultSerializer(LargeIndel.Serializer.class)
@@ -329,7 +531,7 @@ public class BreakpointEvidence {
         private final String cigar;
 
         LargeIndel( final GATKRead read, final ReadMetadata metadata, final int contigOffset ) {
-            super(read, metadata, contigOffset, UNCERTAINTY);
+            super(read, metadata, contigOffset, UNCERTAINTY, true);
             cigar = read.getCigar().toString();
             if ( cigar == null ) throw new GATKException("Read has no cigar string.");
         }
@@ -390,34 +592,106 @@ public class BreakpointEvidence {
         }
     }
 
+    public static abstract class DiscordantReadPairEvidence extends ReadEvidence {
+        protected final SVInterval target;
+        protected final boolean targetForwardStrand;
+        protected final int targetQuality;
+
+        // even if we have access to and use the mate cigar, we still don't really know the exact breakpoint interval
+        // specified by the mate since there could be unclipped mismatches at the ends of the alignment. This constant
+        // tries to correct for that.
+        public static final int MATE_ALIGNMENT_LENGTH_UNCERTAINTY = 2;
+
+        public DiscordantReadPairEvidence(final GATKRead read, final ReadMetadata metadata) {
+            super(read, metadata);
+            target = getMateTargetInterval(read, metadata);
+            targetForwardStrand = getMateForwardStrand(read);
+            if (read.hasAttribute("MQ")) {
+                targetQuality = read.getAttributeAsInteger("MQ");
+            } else {
+                targetQuality = Integer.MAX_VALUE;
+            }
+        }
+
+        public DiscordantReadPairEvidence(final Kryo kryo, final Input input) {
+            super(kryo, input);
+            target = intervalSerializer.read(kryo, input, SVInterval.class);
+            targetForwardStrand = input.readBoolean();
+            targetQuality = input.readInt();
+        }
+
+        @Override
+        protected void serialize(final Kryo kryo, final Output output) {
+            super.serialize(kryo, output);
+            intervalSerializer.write(kryo, output, target);
+            output.writeBoolean(targetForwardStrand);
+            output.writeInt(targetQuality);
+        }
+
+        @Override
+        public boolean hasDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+            return getFragmentOrdinal() == TemplateFragmentOrdinal.PAIRED_FIRST && isTargetHighQuality(readMetadata, minEvidenceMapq);
+        }
+
+        private boolean isTargetHighQuality(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+            return targetQuality >= minEvidenceMapq
+                    && ! target.overlaps(getLocation()) && ! readMetadata.ignoreCrossContigID(target.getContig());
+        }
+
+        @Override
+        public List<StrandedInterval> getDistalTargets(final ReadMetadata readMetadata, final int minEvidenceMapq) {
+            if (hasDistalTargets(readMetadata, minEvidenceMapq)) {
+                return Collections.singletonList(new StrandedInterval(target, targetForwardStrand));
+            } else {
+                return Collections.emptyList();
+            }
+        }
+
+        /**
+         * Finds the coordinates implicated by the read's mate as being part of the breakpoint, ie. the coordinates
+         * to the 3' end of the mate, where the breakpoint might lie. Given that we don't have the actual mate read here,
+         * we make two small assumptions: first, that the length of the mate is equal to the length of the read we are looking at.
+         * Second, since we don't have the mate's CIGAR we can't actually compute the end coordinates of the mate alignment,
+         * which might be pushed away from where we think it is by a large indel.
+         */
+        protected SVInterval getMateTargetInterval(final GATKRead read, final ReadMetadata metadata) {
+            final int mateContigIndex = metadata.getContigID(read.getMateContig());
+            final int mateStartPosition = read.getMateStart();
+            final boolean mateReverseStrand = read.mateIsReverseStrand();
+
+            final int maxAllowableFragmentSize = metadata.getFragmentLengthStatistics(read.getReadGroup()).getMaxNonOutlierFragmentSize();
+
+            final int mateAlignmentLength;
+            // if the read has an MC attribute we don't have to assume the aligned read length of the mate
+            if (read.hasAttribute("MC")) {
+                mateAlignmentLength = TextCigarCodec.decode(read.getAttributeAsString("MC")).getPaddedReferenceLength();
+            } else {
+                mateAlignmentLength = read.getLength();
+            }
+            return new SVInterval(mateContigIndex,
+                    Math.max(0, mateReverseStrand ?
+                                    mateStartPosition - maxAllowableFragmentSize + mateAlignmentLength :
+                                    mateStartPosition + mateAlignmentLength - MATE_ALIGNMENT_LENGTH_UNCERTAINTY),
+                    mateReverseStrand ?
+                            mateStartPosition + MATE_ALIGNMENT_LENGTH_UNCERTAINTY :
+                            mateStartPosition + maxAllowableFragmentSize);
+        }
+
+        protected boolean getMateForwardStrand(final GATKRead read) {
+            return ! read.mateIsReverseStrand();
+        }
+
+    }
+
     @DefaultSerializer(InterContigPair.Serializer.class)
-    public static final class InterContigPair extends ReadEvidence {
-        private final SVInterval target;
+    public static final class InterContigPair extends DiscordantReadPairEvidence {
 
         InterContigPair( final GATKRead read, final ReadMetadata metadata ) {
             super(read, metadata);
-            target = getMateTargetInterval(read, metadata);
         }
 
         private InterContigPair( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            target = intervalSerializer.read(kryo, input, SVInterval.class);
-        }
-
-        @Override
-        public boolean hasDistalTargets() {
-            return true;
-        }
-
-        @Override
-        public List<SVInterval> getDistalTargets(final ReadMetadata readMetadata) {
-            return Collections.singletonList(target);
-        }
-
-        @Override
-        protected void serialize( final Kryo kryo, final Output output ) {
-            super.serialize(kryo, output);
-            intervalSerializer.write(kryo, output, target);
         }
 
         @Override
@@ -438,52 +712,21 @@ public class BreakpointEvidence {
         }
     }
 
-    /**
-     * Finds the coordinates implicated by the read's mate as being part of the breakpoint, ie. the coordinates
-     * to the 3' end of the mate, where the breakpoint might lie. Given that we don't have the actual mate read here,
-     * we make two small assumptions: first, that the length of the mate is equal to the length of the read we are looking at.
-     * Second, since we don't have the mate's CIGAR we can't actually compute the end coordinates of the mate alignment,
-     * which might be pushed away from where we think it is by a large indel.
-     */
-    private static SVInterval getMateTargetInterval(final GATKRead read, final ReadMetadata metadata) {
-        final int mateContigIndex = metadata.getContigID(read.getMateContig());
-        final int mateStartPosition = read.getMateStart();
-        final boolean mateReverseStrand = read.mateIsReverseStrand();
-        final int medianFragmentSize = metadata.getGroupMedianFragmentSize(read.getReadGroup());
-        return new SVInterval(mateContigIndex,
-                mateReverseStrand ? mateStartPosition - medianFragmentSize : mateStartPosition + read.getLength(),
-                mateReverseStrand ? mateStartPosition : mateStartPosition + read.getLength() + medianFragmentSize);
-    }
-
     @DefaultSerializer(OutiesPair.Serializer.class)
-    public static final class OutiesPair extends ReadEvidence {
-        private final SVInterval target;
+    public static final class OutiesPair extends DiscordantReadPairEvidence {
 
         OutiesPair( final GATKRead read, final ReadMetadata metadata ) {
             super(read, metadata);
-            target = BreakpointEvidence.getMateTargetInterval(read, metadata);
         }
 
         private OutiesPair( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            target = intervalSerializer.read(kryo, input, SVInterval.class);
         }
 
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            intervalSerializer.write(kryo, output, target);
-        }
-
-        @Override
-        public boolean hasDistalTargets() {
-            return true;
-        }
-
-        @Override
-        public List<SVInterval> getDistalTargets(final ReadMetadata readMetadata) {
-            return Collections.singletonList(target);
         }
 
         @Override
@@ -505,33 +748,14 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(SameStrandPair.Serializer.class)
-    public static final class SameStrandPair extends ReadEvidence {
-        private final SVInterval target;
+    public static final class SameStrandPair extends DiscordantReadPairEvidence {
 
         SameStrandPair( final GATKRead read, final ReadMetadata metadata ) {
             super(read, metadata);
-            target = BreakpointEvidence.getMateTargetInterval(read, metadata);
         }
 
         private SameStrandPair( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            target = intervalSerializer.read(kryo, input, SVInterval.class);
-        }
-
-        @Override
-        public boolean hasDistalTargets() {
-            return true;
-        }
-
-        @Override
-        public List<SVInterval> getDistalTargets(final ReadMetadata readMetadata) {
-            return Collections.singletonList(target);
-        }
-
-        @Override
-        protected void serialize( final Kryo kryo, final Output output ) {
-            super.serialize(kryo, output);
-            intervalSerializer.write(kryo, output, target);
         }
 
         @Override
@@ -553,15 +777,13 @@ public class BreakpointEvidence {
     }
 
     @DefaultSerializer(WeirdTemplateSize.Serializer.class)
-    public static final class WeirdTemplateSize extends ReadEvidence {
+    public static final class WeirdTemplateSize extends DiscordantReadPairEvidence {
         private final int templateSize;
         private final int mateStartPosition;
         private final boolean mateReverseStrand;
-        private final SVInterval target;
 
         WeirdTemplateSize( final GATKRead read, final ReadMetadata metadata ) {
             super(read, metadata);
-            target = BreakpointEvidence.getMateTargetInterval(read, metadata);
             this.templateSize = read.getFragmentLength();
             this.mateStartPosition = read.getMateStart();
             this.mateReverseStrand = read.mateIsReverseStrand();
@@ -572,17 +794,6 @@ public class BreakpointEvidence {
             templateSize = input.readInt();
             mateStartPosition = input.readInt();
             mateReverseStrand = input.readBoolean();
-            target = intervalSerializer.read(kryo, input, SVInterval.class);
-        }
-
-        @Override
-        public boolean hasDistalTargets() {
-            return true;
-        }
-
-        @Override
-        public List<SVInterval> getDistalTargets(final ReadMetadata readMetadata) {
-            return Collections.singletonList(target);
         }
 
         @Override
@@ -591,7 +802,6 @@ public class BreakpointEvidence {
             output.writeInt(templateSize);
             output.writeInt(mateStartPosition);
             output.writeBoolean(mateReverseStrand);
-            intervalSerializer.write(kryo, output, target);
         }
 
         @Override

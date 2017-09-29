@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVDUSTFilteredKmerizer;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
@@ -19,15 +19,13 @@ import java.util.function.Function;
  */
 public final class QNamesForKmersFinder implements Function<GATKRead, Iterator<Tuple2<SVKmer, String>>> {
     private final int kSize;
-    private final int maxDUSTScore;
     private final SVReadFilter filter;
     private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap;
 
-    public QNamesForKmersFinder( final int kSize, final int maxDUSTScore,
+    public QNamesForKmersFinder( final int kSize,
                                  final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
                                  final SVReadFilter filter ) {
         this.kSize = kSize;
-        this.maxDUSTScore = maxDUSTScore;
         this.kmerMultiMap = kmerMultiMap;
         this.filter = filter;
     }
@@ -37,11 +35,11 @@ public final class QNamesForKmersFinder implements Function<GATKRead, Iterator<T
         if ( !filter.notJunk(read) || !filter.isPrimaryLine(read) ) return Collections.emptyIterator();
 
         final List<Tuple2<SVKmer, String>> results = new ArrayList<>();
-        SVDUSTFilteredKmerizer.stream(read.getBases(), kSize, maxDUSTScore, new SVKmerLong())
-                .map(kmer -> kmer.canonical(kSize))
+        SVKmerizer.canonicalStream(read.getBases(), kSize, new SVKmerLong())
                 .forEach(kmer -> {
-                    final Iterator<KmerAndInterval> itr = kmerMultiMap.findEach(kmer);
-                    if ( itr.hasNext() ) results.add(new Tuple2<>(kmer, read.getName()));
+                    if ( kmerMultiMap.contains(kmer) ) {
+                        results.add(new Tuple2<>(kmer, read.getName()));
+                    }
                 });
         return results.iterator();
     }

@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 /**
  * Represents a pileup of reads at a given position.
  */
-public final class ReadPileup implements Iterable<PileupElement> {
+public class ReadPileup implements Iterable<PileupElement> {
     private final Locatable loc;
     private final List<PileupElement> pileupElements;
 

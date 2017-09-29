@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import static org.broadinstitute.hellbender.utils.OptimizationUtils.argmax;
 
@@ -155,9 +156,9 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             addGenotypes(subsettedLog10TumorMatrix, subsettedLog10NormalMatrix, callVcb);
             final VariantContext call = callVcb.make();
             final VariantContext annotatedCall =  annotationEngine.annotateContext(call, featureContext, referenceContext, log10Likelihoods, a -> true);
-
+            final VariantContext trimmedCall = GATKVariantContextUtils.trimAlleles(annotatedCall, true, true);
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
-            returnCalls.add( annotatedCall );
+            returnCalls.add( trimmedCall );
         }
 
         final List<VariantContext> outputCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;

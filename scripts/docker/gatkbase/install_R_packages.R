@@ -10,8 +10,15 @@ if (!("optparse" %in% rownames(installed.packages()))) {
   install.packages(optparseUrl, repos=NULL, type="source")
 }
 dependencies = c("naturalsort","ggplot2","gplots","reshape","gsalib")
-if (!all(dependencies %in% rownames(installed.packages()))) {
-  install.packages(setdiff(dependencies, rownames(installed.packages())), repos="http://cran.cnr.Berkeley.edu")
+repos <- c("http://cran.cnr.Berkeley.edu", 
+           "https://cran.mtu.edu", 
+           "http://lib.stat.cmu.edu/R/CRAN/")
+missing <- which(!(dependencies %in% rownames(installed.packages())))
+try <- 1
+while(length(missing)!=0 & try <= length(repos)) {
+    install.packages(dependencies[missing], repos = repos[try])
+    missing <- which(!(dependencies %in% rownames(installed.packages())))
+    try <- try + 1
 }
 
 # HMM is only required for testing and not in production:

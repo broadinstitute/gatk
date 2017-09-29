@@ -16,8 +16,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ReadMetadataTest extends BaseTest {
-    private final static FragmentLengthStatistics fragmentLengthStatistics =
-            new FragmentLengthStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000));
+    private final static LibraryStatistics LIBRARY_STATISTICS =
+            new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
+                    60000000000L, 600000000L, 3000000000L);
 
     @Test(groups = "sv")
     void testEverything() {
@@ -28,14 +29,14 @@ public class ReadMetadataTest extends BaseTest {
         final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
         crossContigIgnoreSet.add(1);
         final ReadMetadata readMetadata =
-                new ReadMetadata(crossContigIgnoreSet, header, fragmentLengthStatistics, null, 1L, 1L, 1);
+                new ReadMetadata(crossContigIgnoreSet, header, LIBRARY_STATISTICS, null, 1L, 1L, 1);
         Assert.assertEquals(readMetadata.getContigID(chr1Name), 0);
         Assert.assertEquals(readMetadata.getContigID(chr2Name), 1);
         Assert.assertFalse(readMetadata.ignoreCrossContigID(0));
         Assert.assertTrue(readMetadata.ignoreCrossContigID(1));
         Assert.assertThrows(() -> readMetadata.getContigID("not a real name"));
         Assert.assertEquals(readMetadata.getLibraryStatistics(readMetadata.getLibraryName(groupName)),
-                            fragmentLengthStatistics);
+                LIBRARY_STATISTICS);
         Assert.assertThrows(() -> readMetadata.getLibraryName("not a real name"));
     }
 
@@ -45,7 +46,7 @@ public class ReadMetadataTest extends BaseTest {
         final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
         crossContigIgnoreSet.add(0);
         final ReadMetadata readMetadata =
-                new ReadMetadata(crossContigIgnoreSet, header, fragmentLengthStatistics,
+                new ReadMetadata(crossContigIgnoreSet, header, LIBRARY_STATISTICS,
                         new ReadMetadata.PartitionBounds[0], 1L, 1L, 1);
 
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -67,8 +68,8 @@ public class ReadMetadataTest extends BaseTest {
         Assert.assertEquals(readMetadata.getAllLibraryStatistics().keySet(),
                             readMetadata2.getAllLibraryStatistics().keySet());
         for ( final String readGroupName : readMetadata.getReadGroupToLibraryMap().keySet() ) {
-            final FragmentLengthStatistics stats1 = readMetadata.getFragmentLengthStatistics(readGroupName);
-            final FragmentLengthStatistics stats2 = readMetadata2.getFragmentLengthStatistics(readGroupName);
+            final LibraryStatistics stats1 = readMetadata.getFragmentLengthStatistics(readGroupName);
+            final LibraryStatistics stats2 = readMetadata2.getFragmentLengthStatistics(readGroupName);
             Assert.assertEquals(stats1.getMedian(),stats2.getMedian());
             Assert.assertEquals(stats1.getNegativeMAD(),stats2.getNegativeMAD());
             Assert.assertEquals(stats1.getPositiveMAD(),stats2.getPositiveMAD());

@@ -55,6 +55,28 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
         checkReadNames(outputFile, reference, expectedReadNames);
     }
 
+    @Test
+    public void testSamtoolsGeneratedCRAMSliceMD5Calculation() throws IOException {
+        // Note: The input CRAM used for this test was generated using samtools, with the "ambiguityCodes.fasta" file
+        // as the reference. Since the reference contains ambiguity codes (essential, since part of what we're trying
+        // to validate is that htsjdk calculates the same MD5 value for a slice who's reference spans ambiguity codes
+        // as samtools does), and since GATK wants an accompanying sequence dictionary, the .dict was generated
+        // with GATK because samtools has a bug in dictionary generation when the reference has ambiguity codes.
+        // See https://github.com/samtools/samtools/issues/704, and gatk tracking issue:
+        // https://github.com/broadinstitute/gatk/issues/3306
+        final File samtoolsGeneratedCRAM = new File(TEST_DATA_DIR, "samtoolsSliceMD5WithAmbiguityCodesTest.cram");
+        final File referenceWithAmbiguityCodes = new File(TEST_DATA_DIR, "ambiguityCodes.fasta");
+        final File outputFile = createTempFile("testReadSamtoolsGeneratedCRAM", ".cram");
+        final String[] args = new String[] {
+                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, samtoolsGeneratedCRAM.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, referenceWithAmbiguityCodes.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME
+        };
+        runCommandLine(args);  // no assert, just make sure we don't throw
+    }
+
+
     @DataProvider(name = "ReadCramWithIntervalsIndexTestData")
     public Object[][] readCramWithIntervalsBAIIndexTestData() {
         final File ref = new File(hg19MiniReference);
@@ -163,5 +185,6 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
                 {"cramtest.cram", ".sam", "cramtestWrongRef.fasta"},
         };
     }
+
 
 }

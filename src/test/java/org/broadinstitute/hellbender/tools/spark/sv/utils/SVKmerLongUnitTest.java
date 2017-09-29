@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -9,6 +8,9 @@ import org.testng.annotations.Test;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.MAX_DUST_SCORE;
 
 /**
  * Unit tests for SVKmerLong and SVKmerizer.
@@ -135,8 +137,8 @@ public class SVKmerLongUnitTest extends BaseTest {
                 "CATAAAGCCTAAATAGCCCACACGTTCCCCTTAAATAAGACTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGATCACGATGGATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGCAT".getBytes();
         final SVKmer kmer = new SVKmerLong();
         final List<SVKmer> kmers =
-                SVDUSTFilteredKmerizer.stream(seq, SVConstants.KMER_SIZE, SVConstants.MAX_DUST_SCORE, kmer)
-                        .collect(SVUtils.arrayListCollector(seq.length-SVConstants.KMER_SIZE+1));
+                SVDUSTFilteredKmerizer.stream(seq, KMER_SIZE, MAX_DUST_SCORE, kmer)
+                        .collect(SVUtils.arrayListCollector(seq.length - KMER_SIZE+1));
         final List<SVKmer> expectedKmers = Stream.of(
                 "CATAAAGCCTAAATAGCCCACACGTTCCCCTTAAATAAGACTTAGGGTTAG",
                 "ATAAAGCCTAAATAGCCCACACGTTCCCCTTAAATAAGACTTAGGGTTAGG",

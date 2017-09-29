@@ -1,15 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Collections;
 
 public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection {
     private static final long serialVersionUID = 9341L;
@@ -100,24 +100,15 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName = "normal_lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double NORMAL_LOD_THRESHOLD = 2.2;
 
-    /**
-     * Which annotations to add to the output VCF file. By default the tool adds all of the following annotations.
-     * If an annotation that a filter depends upon is absent, then the particular filtering will not occur and no warning will be given.
-     */
-    @Advanced
-    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to apply to variant calls.", optional = true)
-    protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"Coverage", "DepthPerAlleleBySample",
-            "TandemRepeat", "OxoGReadCounts", "ClippedBases", "ReadPosition", "BaseQuality", "MappingQuality",
-            "FragmentLength", "StrandArtifact"}));
 
     /**
-     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group.
-     * Note that this usage is not recommended because it obscures the specific requirements of individual annotations.
+     * Set of annotation arguments to use.
      * Any requirements that are not met, e.g. failing to provide a pedigree file for a pedigree-based annotation, may cause the run to fail.
-     * For somatic analyses, the StandardSomaticAnnotation group currently contains one annotations: StrandArtifact.
-     * Note the latter is redundant to an annotation given by the --annotation argument default.
      */
-    @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)
-    public List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{}));
+    @ArgumentCollection
+    VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
+            Arrays.asList(StandardMutectAnnotation.class.getSimpleName()),
+            Collections.emptyList(),
+            Collections.emptyList());
 
 }

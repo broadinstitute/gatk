@@ -13,10 +13,10 @@ echo "Building docker image for M2 WDL tests (skipping unit tests)..."
 #assume Dockerfile is in root
 echo "Building docker without running unit tests... ========="
 cd $WORKING_DIR/gatk
-
+# IMPORTANT: This code is duplicated in the cnv WDL test.
 if [ ${TRAVIS_PULL_REQUEST} != false ]; then
   HASH_TO_USE=FETCH_HEAD
-  sudo bash build_docker.sh  -e FETCH_HEAD -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
+  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
 else
   HASH_TO_USE=${TRAVIS_COMMIT}
   sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/;
@@ -35,7 +35,7 @@ cd $WORKING_DIR/
 
 echo "Running M2 WDL through cromwell (T/N)"
 ln -fs $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl
-sudo java -jar ~/cromwell-0.26.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod.json - $WORKING_DIR/test_m2_wdl.metadata
+sudo java -jar ~/cromwell-0.28.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod.json - $WORKING_DIR/test_m2_wdl.metadata
 
 echo "Running M2 WDL through cromwell (Tumor-only)"
-sudo java -jar ~/cromwell-0.26.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod_to.json - $WORKING_DIR/test_m2_wdl_to.metadata
+sudo java -jar ~/cromwell-0.28.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl $WORKING_DIR/test_m2_wdl_multi_mod_to.json - $WORKING_DIR/test_m2_wdl_to.metadata

@@ -9,6 +9,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -219,13 +220,35 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         List<SimpleInterval> intervals =
                 ImmutableList.of(new SimpleInterval("17", 69010, 69040), new SimpleInterval("17", 69910, 69920));
-        JavaRDD<GATKRead> reads = readSource.getParallelReads(NA12878_chr17_1k_BAM, null, intervals);
+        TraversalParameters traversalParameters = new TraversalParameters(intervals, false);
+        JavaRDD<GATKRead> reads = readSource.getParallelReads(NA12878_chr17_1k_BAM, null, traversalParameters);
 
         SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
         try (SamReader samReader = samReaderFactory.open(new File(NA12878_chr17_1k_BAM))) {
             int seqIndex = samReader.getFileHeader().getSequenceIndex("17");
             SAMRecordIterator query = samReader.query(new QueryInterval[]{new QueryInterval(seqIndex, 69010, 69040), new QueryInterval(seqIndex, 69910, 69920)}, false);
             Assert.assertEquals(reads.count(), Iterators.size(query));
+        }
+    }
+
+    @Test(groups = "spark")
+    public void testIntervalsWithUnmapped() throws IOException {
+        String bam = publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam";
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        List<SimpleInterval> intervals = ImmutableList.of(new SimpleInterval("20", 10000009, 10000011));
+        TraversalParameters traversalParameters = new TraversalParameters(intervals, true);
+        JavaRDD<GATKRead> reads = readSource.getParallelReads(bam, null, traversalParameters);
+
+        SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
+        try (SamReader samReader = samReaderFactory.open(new File(bam))) {
+            int seqIndex = samReader.getFileHeader().getSequenceIndex("20");
+            SAMRecordIterator query = samReader.query(new QueryInterval[]{new QueryInterval(seqIndex, 10000009, 10000011)}, false);
+            int queryReads = Iterators.size(query);
+            query.close();
+            SAMRecordIterator queryUnmapped = samReader.queryUnmapped();
+            queryReads += Iterators.size(queryUnmapped);
+            Assert.assertEquals(reads.count(), queryReads);
         }
     }
 

@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -20,7 +19,6 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -43,18 +41,11 @@ public final class OxoGReadCountsUnitTest {
 
     @Test
     public void testDescriptions() {
-        Assert.assertEquals(new OxoGReadCounts().getKeyNames(), Arrays.asList(GATKVCFConstants.OXOG_ALT_F1R2_KEY,
-                GATKVCFConstants.OXOG_ALT_F2R1_KEY,
-                GATKVCFConstants.OXOG_REF_F1R2_KEY,
-                GATKVCFConstants.OXOG_REF_F2R1_KEY,
-                GATKVCFConstants.OXOG_FRACTION_KEY), "annots");
+        Assert.assertEquals(new OxoGReadCounts().getKeyNames(), Arrays.asList(GATKVCFConstants.F1R2_KEY, GATKVCFConstants.F2R1_KEY));
         Assert.assertEquals(new OxoGReadCounts().getDescriptions(),
                 Arrays.asList(
-                        GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_ALT_F1R2_KEY),
-                        GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_ALT_F2R1_KEY),
-                        GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_REF_F1R2_KEY),
-                        GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_REF_F2R1_KEY),
-                        GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.OXOG_FRACTION_KEY))
+                        GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.F1R2_KEY),
+                        GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.F2R1_KEY))
         );
     }
 
@@ -89,34 +80,22 @@ public final class OxoGReadCountsUnitTest {
 
     @Test(dataProvider = "allPairs")
     public void testUsingReads(final Allele refAllele, final Allele altAllele){
-        final int alt_F1R2 = 1;
-        final int alt_F2R1 = 2;
-        final int ref_F1R2 = 4;
-        final int ref_F2R1 = 8;
+        final int altF1R2 = 1;
+        final int altF2R1 = 2;
+        final int refF1R2 = 4;
+        final int refF2R1 = 8;
 
         final List<Allele> alleles = Arrays.asList(refAllele, altAllele);
         final Genotype g = new GenotypeBuilder(sample1, alleles).DP(dpDepth).make();
-        final Pair<VariantContext, ReadLikelihoods<Allele>> pair = makeReads(alt_F1R2, alt_F2R1, ref_F1R2, ref_F2R1, refAllele, altAllele, alleles, g);
+        final Pair<VariantContext, ReadLikelihoods<Allele>> pair = makeReads(altF1R2, altF2R1, refF1R2, refF2R1, refAllele, altAllele, alleles, g);
         final VariantContext vc = pair.getLeft();
         final ReadLikelihoods<Allele> likelihoods = pair.getRight();
         final GenotypeBuilder gb = new GenotypeBuilder(g);
         new OxoGReadCounts().annotate(null, vc, g, gb, likelihoods);
-        final int actual_alt_F1R2 = (int) gb.make().getExtendedAttribute(GATKVCFConstants.OXOG_ALT_F1R2_KEY);
-        Assert.assertEquals(actual_alt_F1R2, alt_F1R2, GATKVCFConstants.OXOG_ALT_F1R2_KEY);
 
-        final int actual_alt_F2R1 = (int) gb.make().getExtendedAttribute(GATKVCFConstants.OXOG_ALT_F2R1_KEY);
-        Assert.assertEquals(actual_alt_F2R1, alt_F2R1, GATKVCFConstants.OXOG_ALT_F2R1_KEY);
+        Assert.assertEquals(OrientationBiasUtils.getF1R2(gb.make()), new int[] {refF1R2, altF1R2});
 
-        final int actual_ref_F2R1 = (int) gb.make().getExtendedAttribute(GATKVCFConstants.OXOG_REF_F2R1_KEY);
-        Assert.assertEquals(actual_ref_F2R1, ref_F2R1, GATKVCFConstants.OXOG_REF_F2R1_KEY);
-
-        final int actual_ref_F1R2 = (int) gb.make().getExtendedAttribute(GATKVCFConstants.OXOG_REF_F1R2_KEY);
-        Assert.assertEquals(actual_ref_F1R2, ref_F1R2, GATKVCFConstants.OXOG_REF_F1R2_KEY);
-
-        final double actual_fraction = (double) gb.make().getExtendedAttribute(GATKVCFConstants.OXOG_FRACTION_KEY);
-        final double num = refAllele.equals(refA) || refAllele.equals(refC) ? alt_F2R1 : alt_F1R2;
-        final double expectedFraction = num / (alt_F1R2 + alt_F2R1);
-        Assert.assertEquals(actual_fraction, expectedFraction, GATKVCFConstants.OXOG_FRACTION_KEY);
+        Assert.assertEquals(OrientationBiasUtils.getF2R1(gb.make()), new int[] {refF2R1, altF2R1});
 
         //now test a no-op
         final GenotypeBuilder gb1 = new GenotypeBuilder(g);
@@ -153,4 +132,5 @@ public final class OxoGReadCountsUnitTest {
         }
         return read;
     }
+
 }
