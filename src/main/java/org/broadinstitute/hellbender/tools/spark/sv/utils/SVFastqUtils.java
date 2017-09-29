@@ -4,26 +4,30 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.netflix.servo.util.VisibleForTesting;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
-import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.TemplateFragmentOrdinal;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,20 +42,17 @@ public class SVFastqUtils {
     public static final char HEADER_FIELD_SEPARATOR_CHR = '\t';
     public static final String HEADER_FIELD_SEPARATOR_REGEXP = "\\t"; // make sure its consistent with {@link #HEADER_FIELD_SEPARATOR_CHR}
     public static final char HEADER_FIELD_EQUAL_CHR = '=';
-    private static final char HEADER_FIELD_ARRAY_SEPARATOR_CHR = ';';
+    public static final String HEADER_FIELD_LIST_SEPARATOR_STR = AlignmentInterval.SA_TAG_INTERVAL_SEPARATOR_STR;
     private static final char LINE_SEPARATOR_CHR = '+';
     private static final String MAPPING_FIELD_NAME = "mapping";
-    private static final String UNMAPPED_STR = "unmapped";
-
-    private static final String FRAGMENT_NUMBER_SEPARATOR_STR = "" + FRAGMENT_NUMBER_SEPARATOR_CHR;
+    private static final String UNMAPPED_STR = "*";
     private static final String HEADER_FIELD_SEPARATOR_STR = "" + HEADER_FIELD_SEPARATOR_CHR;
     private static final String MAPPING_FIELD_EQUAL_TO = MAPPING_FIELD_NAME + HEADER_FIELD_EQUAL_CHR;
     private static final String UNMAPPED_DESCRIPTION_STR = MAPPING_FIELD_EQUAL_TO + UNMAPPED_STR;
-    private static final String HEADER_FIELD_ARRAY_SEPARATOR_STR = "" + HEADER_FIELD_ARRAY_SEPARATOR_CHR;
-    private static final Pattern MAPPING_DESCRIPTION_PATTERN = Pattern.compile("^" + MAPPING_FIELD_EQUAL_TO +
-            "(.+):(\\d+);(" + Strand.PATTERN.pattern() + ");(.+)$");
     private static final Pattern FASTQ_READ_HEADER_PATTERN = Pattern.compile("^" + HEADER_PREFIX_CHR +
             "([^" + HEADER_FIELD_SEPARATOR_REGEXP +  "]+)(" + HEADER_FIELD_SEPARATOR_REGEXP + "(.*))?$");
+
+    private static final Pattern SA_TAG_ALN_INTERVAL_SEPARATOR_PATTERN = Pattern.compile(HEADER_FIELD_LIST_SEPARATOR_STR);
 
     // TODO htsjdk has it own Strand annotation enum. These classes could be merged if that Strand would me updated
     // TODO so that one can get the enum constant char encoding; currently one can only do the transformation the other way.
@@ -93,91 +94,159 @@ public class SVFastqUtils {
     }
 
     public static final class Mapping implements Locatable {
-        
-        private final String contig;
 
-        private final int start;
+        final List<AlignmentInterval> intervals;
 
-        private final boolean forwardStrand;
-
-        private final Cigar cigar;
+        public Mapping(final String str) {
+            Utils.nonNull(str);
+            if (str.equals(UNMAPPED_STR)) {
+                intervals = Collections.emptyList();
+            } else {
+                intervals = Collections.unmodifiableList(SA_TAG_ALN_INTERVAL_SEPARATOR_PATTERN.splitAsStream(str)
+                    .filter(s -> !s.isEmpty())
+                    .map(AlignmentInterval::new)
+                    .collect(Collectors.toList()));
+            }
+        }
 
         public Mapping(final GATKRead read) {
             Utils.nonNull(read);
             if (read.isUnmapped()) {
-                contig = null;
-                start = -1;
-                forwardStrand = true;
-                cigar = null;
-            } else {
-                contig = read.getContig();
-                start = read.getStart();
-                forwardStrand = !read.isReverseStrand();
-                cigar = read.getCigar();
-            }
-        }
-
-        public Mapping(final String mappingDescription) {
-            Utils.nonNull(mappingDescription);
-            if (mappingDescription.equals(UNMAPPED_DESCRIPTION_STR)) {
-                contig = null;
-                start = -1;
-                forwardStrand = true;
-                cigar = null;
-            } else {
-                final Matcher matcher = MAPPING_DESCRIPTION_PATTERN.matcher(mappingDescription);
-                if (!matcher.find()) {
-                    throw new IllegalArgumentException("invalid mapping description: '" + mappingDescription + "'");
-                } else {
-                    contig = matcher.group(1);
-                    start = Integer.parseInt(matcher.group(2));
-                    cigar = TextCigarCodec.decode(matcher.group(4));
-                    forwardStrand = Strand.decode(matcher.group(3)) == Strand.POSITIVE;
+                intervals = Collections.emptyList();
+            } else if (!read.hasAttribute(SAMTag.SA.name())) {
+                if (read.isSupplementaryAlignment()) {
+                    throw new IllegalArgumentException("a supplementary alignment read record must supply a SA tag");
                 }
+                intervals = Collections.singletonList(new AlignmentInterval(read));
+            } else if (!read.isSupplementaryAlignment()) {
+                if (!read.hasAttribute(SAMTag.SA.name())) {
+                    intervals = Collections.singletonList(new AlignmentInterval(read));
+                } else {
+                    intervals = Collections.unmodifiableList(Stream.concat(
+                            Stream.of(new AlignmentInterval(read)),
+                            SA_TAG_ALN_INTERVAL_SEPARATOR_PATTERN.splitAsStream(read.getAttributeAsString(SAMTag.SA.name()))
+                                    .filter(s -> !s.isEmpty())
+                                    .map(AlignmentInterval::new))
+                            .collect(Collectors.toList()));
+                }
+            } else {
+                final List<AlignmentInterval> otherIntervals = SA_TAG_ALN_INTERVAL_SEPARATOR_PATTERN.splitAsStream(read.getAttributeAsString(SAMTag.SA.name()))
+                        .filter(s -> !s.isEmpty())
+                        .map(AlignmentInterval::new)
+                        .collect(Collectors.toList());
+                if (otherIntervals.isEmpty()) {
+                    throw new IllegalArgumentException("the SA tag on a supplementary read record does not have alignments");
+                }
+                final List<AlignmentInterval> newIntervals = new ArrayList<>(otherIntervals.size() + 1);
+                final AlignmentInterval readInterval = new AlignmentInterval(read);
+                final AlignmentInterval primaryInterval = otherIntervals.get(0);
+                newIntervals.add(primaryInterval);
+                newIntervals.add(readInterval);
+                newIntervals.addAll(otherIntervals.subList(1, otherIntervals.size()));
+                intervals = Collections.unmodifiableList(newIntervals);
+            }
+            if (!intervals.isEmpty() && intervals.get(0).cigarAlong5to3DirectionOfContig.containsOperator(CigarOperator.H)) {
+                throw new IllegalArgumentException("the interval/cigar of a non-supplementary record must not contain hard-clips");
             }
         }
 
         public boolean isMapped() {
-            return contig != null;
+            return !intervals.isEmpty();
         }
 
+        /**
+         * Returns the contig as per the primary interval, or {@code null} if unmapped.
+         * @return may return a {@code null}.
+         */
         @Override
         public String getContig() {
-            return contig;
+            return isMapped() ? intervals.get(0).referenceSpan.getContig() : null;
         }
 
+        /**
+         * Returns the primary interval start position, or {@link SAMRecord#NO_ALIGNMENT_START} if unmapped.
+         * @return {@link SAMRecord#NO_ALIGNMENT_START} or a strictly positive value.
+         */
         @Override
         public int getStart() {
-            return start;
+            return isMapped() ? intervals.get(0).referenceSpan.getStart() : SAMRecord.NO_ALIGNMENT_START;
         }
 
+        /**
+         * Returns the primary interval end position, or {@link SAMRecord#NO_ALIGNMENT_START} if unmapped.
+         * @return {@link SAMRecord#NO_ALIGNMENT_START} or a strictly positive value.
+         */
         @Override
         public int getEnd() {
-            return start;
+            return isMapped() ? intervals.get(0).referenceSpan.getEnd() : SAMRecord.NO_ALIGNMENT_START;
         }
 
+        /**
+         * Returns the cigar of the primary interval, or the empty cigar if {@code unmapped}.
+         * @return
+         */
         public Cigar getCigar() {
-            return cigar;
+            return isMapped() ? intervals.get(0).cigarAlongReference() : new Cigar();
         }
 
         public boolean isForwardStrand() {
-            return forwardStrand;
-        }
-
-        public static String toString(final GATKRead read) {
-            Utils.nonNull(read);
-            if (read.isUnmapped()) {
-                return UNMAPPED_DESCRIPTION_STR;
+            if (isMapped()) {
+                return intervals.get(0).forwardStrand;
             } else {
-                return MAPPING_FIELD_EQUAL_TO + String.join(HEADER_FIELD_ARRAY_SEPARATOR_STR, read.getContig() + SimpleInterval.CONTIG_SEPARATOR + read.getStart(), (read.isReverseStrand() ? Strand.NEGATIVE : Strand.POSITIVE).encodeAsString(), read.getCigar().toString());
+                throw new UnsupportedOperationException("no forward or backward strand if unmapped");
             }
         }
 
+        public AlignmentInterval getPrimaryInterval() {
+            return intervals.isEmpty() ? null : intervals.get(0);
+        }
+
+        public List<AlignmentInterval> getSupplementaryIntervals() {
+            return intervals.isEmpty() ? intervals : intervals.subList(1, intervals.size());
+        }
+
+        public List<AlignmentInterval> getAllIntervals() {
+            return intervals;
+        }
+
+        /**
+         * Generates the mapping string for a read. This contains the read own coordinates
+         * plus the content of the SA tag if present.
+         * @param read the source read.
+         * @return never null. {@link #UNMAPPED_DESCRIPTION_STR} if the read is unmapped.
+         */
+        public static String toString(final GATKRead read) {
+            Utils.nonNull(read);
+            if (read.isUnmapped()) {
+                return UNMAPPED_STR;
+            } else {
+                final StringBuilder builder = new StringBuilder(100);
+                new AlignmentInterval(read).appendSATagString(builder);
+                if (read.hasAttribute(SAMTag.SA.name())) {
+                    builder.append(HEADER_FIELD_LIST_SEPARATOR_STR)
+                           .append(read.getAttributeAsString(SAMTag.SA.name()));
+                }
+                if (builder.lastIndexOf(HEADER_FIELD_LIST_SEPARATOR_STR) == builder.length() - 1) {
+                    builder.setLength(builder.length() - 1);
+                }
+                return builder.toString();
+            }
+        }
+
+        /**
+         * Generates the mapping string as it would be included in the Fastq read header.
+         * @return never null. {@link #UNMAPPED_DESCRIPTION_STR} if the read is unmapped.
+         */
         public String toString() {
             if (isMapped()) {
-                return MAPPING_FIELD_EQUAL_TO + String.join(HEADER_FIELD_ARRAY_SEPARATOR_STR, getContig() + SimpleInterval.CONTIG_SEPARATOR + getStart(), (forwardStrand ? Strand.POSITIVE : Strand.NEGATIVE).encodeAsString(), cigar.toString());
+                final StringBuilder builder = new StringBuilder(100);
+                for (final AlignmentInterval interval : intervals) {
+                    interval.appendSATagString(builder).append(HEADER_FIELD_LIST_SEPARATOR_STR);
+                }
+                builder.setLength(builder.length() - 1);
+                return builder.toString();
             } else {
-                return UNMAPPED_DESCRIPTION_STR;
+                return UNMAPPED_STR;
             }
         }
     }
@@ -205,10 +274,11 @@ public class SVFastqUtils {
         private static String composeHeaderLine(final GATKRead read, final boolean includeMappingLocation) {
             Utils.nonNull(read);
             return HEADER_PREFIX_CHR + read.getName() + TemplateFragmentOrdinal.forRead(read)
-                    + (includeMappingLocation ?  (HEADER_FIELD_SEPARATOR_STR + Mapping.toString(read)) : "");
+                    + (includeMappingLocation ?  (HEADER_FIELD_SEPARATOR_STR + MAPPING_FIELD_EQUAL_TO + Mapping.toString(read)) : "");
         }
 
-        private FastqRead(final String header, final byte[] bases, final byte[] quals) {
+        @VisibleForTesting
+        FastqRead(final String header, final byte[] bases, final byte[] quals) {
             this.header = header;
             this.bases = bases;
             this.quals = quals;
@@ -235,13 +305,28 @@ public class SVFastqUtils {
             final String[] headerParts = header.split(HEADER_FIELD_SEPARATOR_STR);
             return headerParts[0].substring(1); // skip the '@'.
         }
+
         public String getName() { final String id = getId();
             final int fragmentNumberSeparatorIndex = id.lastIndexOf(FRAGMENT_NUMBER_SEPARATOR_CHR);
             return fragmentNumberSeparatorIndex >= 0 ? id.substring(0, fragmentNumberSeparatorIndex) : id;
         }
+
         public String getDescription() {
             final int tabIndex = header.indexOf(HEADER_FIELD_SEPARATOR_CHR);
             return tabIndex >= 0 ? header.substring(tabIndex + 1) : "";
+        }
+
+        public Mapping getMapping() {
+            final int mappingEqualToIndex = header.indexOf(MAPPING_FIELD_EQUAL_TO);
+            if (mappingEqualToIndex < 0) {
+                return null;
+            } else {
+                final int nextFieldSeperator = header.indexOf(HEADER_FIELD_SEPARATOR_STR, mappingEqualToIndex);
+                final String mappingString = nextFieldSeperator < 0
+                        ? header.substring(mappingEqualToIndex + MAPPING_FIELD_EQUAL_TO.length())
+                        : header.substring(mappingEqualToIndex + MAPPING_FIELD_EQUAL_TO.length(), nextFieldSeperator);
+                return new Mapping(mappingString);
+            }
         }
 
         @Override public byte[] getBases() { return bases; }
@@ -317,7 +402,7 @@ public class SVFastqUtils {
         final String description;
         if ( includeMappingLocation ) {
             final Mapping mapping = new Mapping(read);
-            description = HEADER_FIELD_SEPARATOR_CHR + mapping.toString();
+            description = HEADER_FIELD_SEPARATOR_CHR + Mapping.toString(read);
         } else {
             description = "";
         }

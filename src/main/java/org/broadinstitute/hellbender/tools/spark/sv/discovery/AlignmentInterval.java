@@ -15,6 +15,7 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.tribble.annotation.Strand;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -45,6 +46,23 @@ public final class AlignmentInterval {
      * Indicates that no AS (alignment score) annotation is present.
      */
     public static final int NO_AS = -1;
+
+    /**
+     * String used to separate several alignment-intervals in a
+     * SA Tag like string.
+     */
+    public static final String SA_TAG_INTERVAL_SEPARATOR_STR = ";";
+
+    /**
+     * String used to separate fields in an alignment-interval string
+     * representation.
+     */
+    public static final String SA_TAG_FIELD_SEPARATOR = ",";
+
+    /**
+     * Represents the lack of a value for a field in a string representation.
+     */
+    public static final String NO_VALUE_STR = ".";
 
     public final SimpleInterval referenceSpan;
     public final int startInAssembledContig;   // 1-based, inclusive
@@ -81,9 +99,9 @@ public final class AlignmentInterval {
      * <p>
      *     The input string format is:
      *     <pre>
-     *         contig-name,start,strand,cigar,mq,nm,as
+     *         contig-name,start,strand,cigar,mq(,nm(,as)?)?
      *     </pre>
-     *     where nm (number of mismatches) and as (alignment score) might be absent. The strand
+     *     where {@code nm} (number of mismatches) and {@code as} (alignment score) might be absent. The strand
      *     is symbolized as '+' for the forward-strand and '-' for the reverse-strand.
      *     <p>An example with different degrees of completeness:</p>
      *     <pre>
@@ -91,7 +109,21 @@ public final class AlignmentInterval {
      *         chr10,1241241,+,10S1313M45I14M100H,30,5
      *         chr10,1241241,+,10S1313M45I14M100H,30
      *     </pre>
-     *
+     * </p>
+     * <p>
+     *     Additionally for mapping quality, number of mismatches and alignment score one
+     *     can also represent that any value is unknown using {@value #NO_VALUE_STR}. This way
+     *     one can provide a concrete value for alignment score while the number of mismatches is
+     *     remains undefined.
+     * </p>
+     * <p>
+     *     Example:
+     *     <pre>
+     *         chr10,1241241,+,10S1313M45I14M100H,30,.,66
+     *     </pre>
+     * </p>
+     * <p>
+     *     For mapping quality this would be equivalent to use the special constant {@link SAMRecord#UNKNOWN_MAPPING_QUALITY} ({@value SAMRecord#UNKNOWN_MAPPING_QUALITY}).
      * </p>
      * @param samSAtagString the input string.
      * @throws IllegalArgumentException if {@code str} is {@code null} or it does not look like a valid
@@ -99,7 +131,17 @@ public final class AlignmentInterval {
      */
     public AlignmentInterval(final String samSAtagString) {
         Utils.nonNull(samSAtagString, "input str cannot be null");
-        final String[] parts = samSAtagString.replaceAll(";$", "").split(",");
+        final int firstSeparatorIndex = samSAtagString.indexOf(SA_TAG_INTERVAL_SEPARATOR_STR);
+        final String terminationTrimmedString;
+        if (firstSeparatorIndex < 0) {
+            terminationTrimmedString = samSAtagString;
+        } else if (firstSeparatorIndex == samSAtagString.length() - 1) {
+            terminationTrimmedString = samSAtagString.substring(0, firstSeparatorIndex);
+        } else { // there are several intervals (separated by ;) in the input string.
+            throw new IllegalArgumentException("the input string cannot contain more than one interval");
+        }
+
+        final String[] parts = terminationTrimmedString.split(SA_TAG_FIELD_SEPARATOR);
         if (parts.length < 5) {
             throw new IllegalArgumentException("the input SA string at least must contain 5 parts: " + samSAtagString);
         }
@@ -112,9 +154,9 @@ public final class AlignmentInterval {
         final boolean forwardStrand = strand == Strand.POSITIVE;
         final Cigar originalCigar = TextCigarCodec.decode(parts[nextPartsIndex++]);
         final Cigar cigar = forwardStrand ? originalCigar : CigarUtils.invertCigar(originalCigar);
-        final int mappingQuality = ParamUtils.inRange(parseInt(parts[nextPartsIndex++]), 0, 255, "the mapping quality must be in the range [0, 255]");
-        final int mismatches = parts.length > nextPartsIndex ? ParamUtils.isPositiveOrZero(parseInt(parts[nextPartsIndex++]), "the number of mismatches cannot be negative") : NO_NM;
-        final int alignmentScore = parts.length > nextPartsIndex ? ParamUtils.isPositiveOrZero(parseInt(parts[nextPartsIndex]), "the alignment score cannot be negative") : NO_AS;
+        final int mappingQuality = ParamUtils.inRange(parseZeroOrPositiveInt(parts[nextPartsIndex++], SAMRecord.UNKNOWN_MAPPING_QUALITY, "invalid mapping quality"), 0, 255, "the mapping quality must be in the range [0, 255]");
+        final int mismatches = parts.length > nextPartsIndex ? parseZeroOrPositiveInt(parts[nextPartsIndex++], NO_NM, "invalid number of mismatches") : NO_NM;
+        final int alignmentScore = parts.length > nextPartsIndex ? parseZeroOrPositiveInt(parts[nextPartsIndex], NO_AS, "invalid alignment score") : NO_AS;
 
         this.referenceSpan = new SimpleInterval(referenceContig, start,
                 Math.max(start, cigar.getReferenceLength() + start - 1));
@@ -129,11 +171,54 @@ public final class AlignmentInterval {
         this.hasUndergoneOverlapRemoval = false;
     }
 
-    private static int parseInt(final String str) {
+    /**
+     * Returns the SA tag string representation for this interval.
+     * @return never {@code null}.
+     */
+    public String toSATagString() {
+        return appendSATagString(new StringBuilder(100)).toString();
+    }
+
+    @Override
+    public String toString() {
+        return toSATagString();
+    }
+
+    /**
+     * Appends the SA string representation of this interval into a builder.
+     * @param builder where to append to.
+     * @return reference to the input builder.
+     * @throws IllegalArgumentException if the builder is {@code null}.
+     */
+    public StringBuilder appendSATagString(final StringBuilder builder) {
+        Utils.nonNull(builder);
+        builder.append(referenceSpan.getContig()).append(SA_TAG_FIELD_SEPARATOR)
+               .append(referenceSpan.getStart()).append(SA_TAG_FIELD_SEPARATOR)
+               .append(forwardStrand ? SVFastqUtils.Strand.POSITIVE.toString() : SVFastqUtils.Strand.NEGATIVE.toString()).append(SA_TAG_FIELD_SEPARATOR)
+               .append(forwardStrand ? cigarAlong5to3DirectionOfContig.toString() : CigarUtils.invertCigar(cigarAlong5to3DirectionOfContig).toString()).append(SA_TAG_FIELD_SEPARATOR)
+               .append(mapQual);
+        if (mismatches != NO_NM || alnScore != NO_AS) {
+            builder.append(SA_TAG_FIELD_SEPARATOR);
+            if (mismatches == NO_NM) {
+                builder.append(NO_VALUE_STR).append(SA_TAG_FIELD_SEPARATOR).append(alnScore);
+            } else if (alnScore == NO_AS) {
+                builder.append(mismatches);
+            } else {
+                builder.append(mismatches).append(SA_TAG_FIELD_SEPARATOR).append(alnScore);
+            }
+        }
+        return builder;
+    }
+
+    private static int parseZeroOrPositiveInt(final String str, final int defaultValue, final String errorMessage) {
         try {
-            return Integer.parseInt(str);
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("not a valid integer in: " + str, ex);
+            if (str.equals(NO_VALUE_STR)) {
+                return defaultValue;
+            } else {
+                return ParamUtils.isPositiveOrZero(Integer.parseInt(str), errorMessage + ": " + str);
+            }
+        } catch (final NumberFormatException ex) {
+            throw new IllegalArgumentException(errorMessage + "; not a valid integer in: " + str, ex);
         }
     }
 
@@ -313,6 +398,18 @@ public final class AlignmentInterval {
         output.writeBoolean(hasUndergoneOverlapRemoval);
     }
 
+    /**
+     * Returns the cigar of this alignment interval along the reference.
+     * <p>
+     *     This is the same as {@link #cigarAlong5to3DirectionOfContig} if in
+     *     the forward-strand, and its inverse if in the reverse-strand.
+     * </p>
+     * @return never {@code null}.
+     */
+    public Cigar cigarAlongReference() {
+        return (forwardStrand) ? cigarAlong5to3DirectionOfContig : CigarUtils.invertCigar(cigarAlong5to3DirectionOfContig);
+    }
+
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentInterval> {
         @Override
         public void write(final Kryo kryo, final Output output, final AlignmentInterval alignmentInterval) {
@@ -345,7 +442,7 @@ public final class AlignmentInterval {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        AlignmentInterval interval = (AlignmentInterval) o;
+        final AlignmentInterval interval = (AlignmentInterval) o;
 
         if (startInAssembledContig != interval.startInAssembledContig) return false;
         if (endInAssembledContig != interval.endInAssembledContig) return false;
