@@ -91,7 +91,7 @@ public class SVFastqUtilsUnitTest {
         assertUnmapped(new SVFastqUtils.Mapping("*"));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = GATKException.class)
     public void testNonPrimaryAlignmentReadWithoutSA() {
         final SAMFileHeader header;
         final SAMRecord samRecord;
@@ -116,7 +116,7 @@ public class SVFastqUtilsUnitTest {
         new SVFastqUtils.Mapping(read);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = GATKException.class)
     public void testNonPrimaryAlignmentWithSAWhereFirstElementHasHardclips() {
         final SAMFileHeader header;
         final SAMRecord samRecord;
@@ -142,7 +142,7 @@ public class SVFastqUtilsUnitTest {
         new SVFastqUtils.Mapping(read);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = GATKException.class)
     public void testPrimaryAlignmentWithHardClips() {
         final SAMFileHeader header;
         final SAMRecord samRecord;

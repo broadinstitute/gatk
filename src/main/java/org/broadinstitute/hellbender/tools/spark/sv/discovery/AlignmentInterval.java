@@ -211,14 +211,14 @@ public final class AlignmentInterval {
     }
 
     private static int parseZeroOrPositiveInt(final String str, final int defaultValue, final String errorMessage) {
-        try {
-            if (str.equals(NO_VALUE_STR)) {
-                return defaultValue;
-            } else {
+        if (str.equals(NO_VALUE_STR)) {
+            return defaultValue;
+        } else {
+            try {
                 return ParamUtils.isPositiveOrZero(Integer.parseInt(str), errorMessage + ": " + str);
+            } catch (final NumberFormatException ex) {
+                throw new IllegalArgumentException(errorMessage + "; not a valid integer in: " + str, ex);
             }
-        } catch (final NumberFormatException ex) {
-            throw new IllegalArgumentException(errorMessage + "; not a valid integer in: " + str, ex);
         }
     }
 

@@ -115,7 +115,8 @@ public class SVFastqUtils {
                 intervals = Collections.emptyList();
             } else if (!read.hasAttribute(SAMTag.SA.name())) {
                 if (read.isSupplementaryAlignment()) {
-                    throw new IllegalArgumentException("a supplementary alignment read record must supply a SA tag");
+                    throw new GATKException("a supplementary alignment read record must supply a SA tag. Perhaps this constraint isn't " +
+                            "satisfied by the aligner used to produce the record");
                 }
                 intervals = Collections.singletonList(new AlignmentInterval(read));
             } else if (!read.isSupplementaryAlignment()) {
@@ -135,7 +136,7 @@ public class SVFastqUtils {
                         .map(AlignmentInterval::new)
                         .collect(Collectors.toList());
                 if (otherIntervals.isEmpty()) {
-                    throw new IllegalArgumentException("the SA tag on a supplementary read record does not have alignments");
+                    throw new GATKException("the SA tag on a supplementary read record does not have alignments, perhaps this constraint is not satisfied by the aligner used to generate these records");
                 }
                 final List<AlignmentInterval> newIntervals = new ArrayList<>(otherIntervals.size() + 1);
                 final AlignmentInterval readInterval = new AlignmentInterval(read);
@@ -146,7 +147,7 @@ public class SVFastqUtils {
                 intervals = Collections.unmodifiableList(newIntervals);
             }
             if (!intervals.isEmpty() && intervals.get(0).cigarAlong5to3DirectionOfContig.containsOperator(CigarOperator.H)) {
-                throw new IllegalArgumentException("the interval/cigar of a non-supplementary record must not contain hard-clips");
+                throw new GATKException("the interval/cigar of a non-supplementary record must not contain hard-clips, perhaps this constraint is not satisfied by the aligner used to generate these records");
             }
         }
 
