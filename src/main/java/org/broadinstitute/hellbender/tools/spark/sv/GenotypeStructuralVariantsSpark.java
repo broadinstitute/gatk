@@ -256,7 +256,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     new GenotypeLikelihoodCalculators().getInstance(2, 2);
 
             return variants.map(variant -> {
-                final List<Template> templates = Utils.stream(variant._2()._2())
+                    final List<Template> templates = Utils.stream(variant._2()._2())
                         .collect(Collectors.toList());
                 final List<byte[]> sequences = templates.stream()
                         .flatMap(t -> t.fragments().stream())
@@ -349,8 +349,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     if (refMapping.pairOrientation.isProper() == altMapping.pairOrientation.isProper()) {
                         if (refMapping.pairOrientation.isProper()) {
                             sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) + insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10));
-                            sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) + insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10));
-
+                            sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) + insertSizeDistribution.logProbability(altMapping.insertSize.getAsInt()) / Math.log(10));
                         }
                     } else if (refMapping.pairOrientation.isProper()) {
                         sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
