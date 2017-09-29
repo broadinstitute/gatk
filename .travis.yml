@@ -21,7 +21,7 @@ env:
   - GRADLE_OPTS="-Xmx1024m -Dorg.gradle.daemon=false"
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-  - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 
+  - GCLOUD_HOME=$HOME/gcloud/google-cloud-sdk/bin
   - CLOUDSDK_PYTHON_SITEPACKAGES=1 
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
   #hellbender specific variables
@@ -57,9 +57,12 @@ before_install:
     export BOTO_CONFIG=/dev/null;
     openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
     scripts/install_gcloud.sh;
-    printf 'y\n' | $GCLOUD/gcloud components update app;
-    $GCLOUD/gcloud config set project broad-dsde-dev;
-    $GCLOUD/gcloud auth activate-service-account --key-file servicekey.json;
+    printf 'y\n' | $GCLOUD_HOME/gcloud components update;
+    if [[ $TEST_TYPE == cloud ]]; then
+      printf 'y\n' | $GCLOUD_HOME/gcloud components install beta;
+    fi;
+    $GCLOUD_HOME/gcloud config set project broad-dsde-dev;
+    $GCLOUD_HOME/gcloud auth activate-service-account --key-file servicekey.json;
     openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
@@ -102,7 +105,10 @@ install:
     if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
-    fi
+    elif [[ $TEST_TYPE == cloud ]]; then
+      echo "building a spark jar for the dataproc tests";
+      ./gradlew sparkjar;
+    fi;
   fi
 script:
 # run a basic sanity check to be sure that gatk-launch doesn't explode
@@ -154,12 +160,12 @@ after_success:
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
 # This also pokes the Dockerhub web api which is securely stored in the travis API with the variable "DOCKERHUB_URL"
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
-    $GCLOUD/gcloud components -q update gsutil;
+    $GCLOUD_HOME/gcloud components -q update gsutil;
     gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
     ./gradlew bundle;
     ZIP_FILE="$(ls build/ | grep .zip)";
     echo "Uploading zip to gs://gatk-nightly-builds/";
-    $GCLOUD/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
+    $GCLOUD_HOME/gsutil -m cp build/$ZIP_FILE gs://gatk-nightly-builds/"$(date +%Y-%m-%d)"-$ZIP_FILE;
     echo "Triggering an automatic build on dockerhub";
     curl -H "Content-Type:application/json" --data '{"build":true}' -X POST ${DOCKERHUB_URL};
   fi
@@ -167,9 +173,9 @@ after_failure:
 - dmesg | tail -100
 after_script:
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
-    $GCLOUD/gcloud components -q update gsutil;
+    $GCLOUD_HOME/gcloud components -q update gsutil;
     REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
-    $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/;
+    $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/;
     echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
   fi
 

@@ -32,16 +32,4 @@ public abstract class CommandLineProgramTest extends GATKBaseTest implements Com
         return new Main().instanceMain(makeCommandLineArgs(args));
     }
 
-    protected static void runProcess(final ProcessController processController, final String[] command) {
-        runProcess(processController, command, "Process exited with non-zero value. Command: "+ Arrays.toString(command) + "\n");
-    }
-
-    protected static void runProcess(final ProcessController processController, final String[] command, final String message) {
-        final ProcessSettings prs = new ProcessSettings(command);
-        prs.getStderrSettings().printStandard(true);
-        prs.getStdoutSettings().printStandard(true);
-        final ProcessOutput output = processController.exec(prs);
-        Assert.assertEquals(output.getExitValue(), 0, message);
-    }
-
 }
