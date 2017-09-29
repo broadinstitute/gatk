@@ -1156,7 +1156,8 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
                 for (int a = 0; a < numberOfAlleles; a++) {
                     final double value = valuesBySampleIndex[s][a][r];
                     if (value > best) {
-                        best = value; secondBest = best;
+                        secondBest = best;
+                        best = value;
                     } else if (value > secondBest) {
                         secondBest = value;
                     }
