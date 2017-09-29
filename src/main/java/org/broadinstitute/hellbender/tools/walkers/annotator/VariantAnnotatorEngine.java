@@ -4,7 +4,6 @@ import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -80,26 +79,6 @@ public final class VariantAnnotatorEngine {
         return new VariantAnnotatorEngine(AnnotationManager.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude), dbSNPInput, comparisonFeatureInputs);
     }
 
-    /**
-     * An overload of {@link org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine#ofSelectedMinusExcluded ofSelectedMinusExcluded}
-     * except that it accepts a {@link org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection} as input.
-     * @param argumentCollection            VariantAnnotationArgumentCollection containing requested annotations.
-     * @param dbSNPInput                    input for variants from a known set from DbSNP or null if not provided.
-     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
-     * @param comparisonFeatureInputs list of inputs with known variants.
-     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
-     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
-     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     * @return a VariantAnnotatorEngine initialized with the requested annotations
-     */
-    public static VariantAnnotatorEngine ofSelectedMinusExcluded(final VariantAnnotationArgumentCollection argumentCollection,
-                                                                 final FeatureInput<VariantContext> dbSNPInput,
-                                                                 final List<FeatureInput<VariantContext>> comparisonFeatureInputs) {
-        return ofSelectedMinusExcluded(argumentCollection.annotationGroupsToUse,
-                argumentCollection.annotationsToUse,
-                argumentCollection.annotationsToExclude,
-                dbSNPInput, comparisonFeatureInputs);
-    }
     private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput, final List<FeatureInput<VariantContext>> featureInputs) {
         final Map<FeatureInput<VariantContext>, String> overlaps = new LinkedHashMap<>();
         for ( final FeatureInput<VariantContext> fi : featureInputs) {
@@ -114,7 +93,6 @@ public final class VariantAnnotatorEngine {
 
         return new VariantOverlapAnnotator(dbSNPInput, overlaps);
     }
-
 
     /**
      * Returns the list of genotype annotations that will be applied.

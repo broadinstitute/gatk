@@ -213,9 +213,8 @@ public final class ReferenceConfidenceModel {
         // as our GLs for the site.
         final GenotypeLikelihoods leastConfidenceGLs = getGLwithWorstGQ(indelGLs, snpGLs);
 
-        final int[] leastConfidenceGLsAsPLs = leastConfidenceGLs.getAsPLs();
-        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(leastConfidenceGLsAsPLs));
-        gb.PL(leastConfidenceGLsAsPLs);
+        gb.GQ((int) (-10 * getGQForHomRef(leastConfidenceGLs)));
+        gb.PL(leastConfidenceGLs.getAsPLs());
 
         vcb.genotypes(gb.make());
         return vcb.make();

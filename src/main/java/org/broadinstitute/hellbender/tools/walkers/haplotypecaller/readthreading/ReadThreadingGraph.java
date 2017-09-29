@@ -7,7 +7,6 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KmerSearchableGraph;
@@ -18,8 +17,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
+import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
 import org.jgrapht.EdgeFactory;
 
 import java.io.File;
@@ -471,9 +469,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      *
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
-     * @param aligner
      */
-    public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength) {
         Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
         Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
 
@@ -486,7 +483,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         for ( final MultiDeBruijnVertex v : vertexSet() ) {
             if ( outDegreeOf(v) == 0 && ! isRefSink(v) ) {
                 attempted++;
-                nRecovered += recoverDanglingTail(v, pruneFactor, minDanglingBranchLength, aligner);
+                nRecovered += recoverDanglingTail(v, pruneFactor, minDanglingBranchLength);
             }
         }
 
@@ -499,9 +496,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      *
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
-     * @param aligner
      */
-    public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength) {
         Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
         Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
         if ( ! alreadyBuilt ) {
@@ -519,7 +515,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         int nRecovered = 0;
         for ( final MultiDeBruijnVertex v : danglingHeads ) {
             attempted++;
-            nRecovered += recoverDanglingHead(v, pruneFactor, minDanglingBranchLength, aligner);
+            nRecovered += recoverDanglingHead(v, pruneFactor, minDanglingBranchLength);
         }
 
         logger.debug(String.format("Recovered %d of %d dangling heads", nRecovered, attempted));
@@ -531,16 +527,15 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param vertex the vertex to recover
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
-     * @param aligner
      * @return 1 if we successfully recovered the vertex and 0 otherwise
      */
-    private int recoverDanglingTail(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    private int recoverDanglingTail(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength) {
         if ( outDegreeOf(vertex) != 0 ) {
             throw new IllegalStateException("Attempting to recover a dangling tail for " + vertex + " but it has out-degree > 0");
         }
 
         // generate the CIGAR string from Smith-Waterman between the dangling tail and reference paths
-        final DanglingChainMergeHelper danglingTailMergeResult = generateCigarAgainstDownwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength, aligner);
+        final DanglingChainMergeHelper danglingTailMergeResult = generateCigarAgainstDownwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength);
 
         // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
         if ( danglingTailMergeResult == null || ! cigarIsOkayToMerge(danglingTailMergeResult.cigar, false, true) ) {
@@ -557,16 +552,15 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param vertex the vertex to recover
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
-     * @param aligner
      * @return 1 if we successfully recovered a vertex and 0 otherwise
      */
-    private int recoverDanglingHead(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    private int recoverDanglingHead(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength) {
         if ( inDegreeOf(vertex) != 0 ) {
             throw new IllegalStateException("Attempting to recover a dangling head for " + vertex + " but it has in-degree > 0");
         }
 
         // generate the CIGAR string from Smith-Waterman between the dangling tail and reference paths
-        final DanglingChainMergeHelper danglingHeadMergeResult = generateCigarAgainstUpwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength, aligner);
+        final DanglingChainMergeHelper danglingHeadMergeResult = generateCigarAgainstUpwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength);
 
         // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
         if ( danglingHeadMergeResult == null || ! cigarIsOkayToMerge(danglingHeadMergeResult.cigar, true, false) ) {
@@ -710,13 +704,12 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * Generates the CIGAR string from the Smith-Waterman alignment of the dangling path (where the
      * provided vertex is the sink) and the reference path.
      *
-     * @param aligner
      * @param vertex   the sink of the dangling chain
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
     @VisibleForTesting
-    final DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, SmithWatermanAligner aligner) {
+    final DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength) {
         final int minTailPathLength = Math.max(1, minDanglingBranchLength); // while heads can be 0, tails absolutely cannot
 
         // find the lowest common ancestor path between this vertex and the diverging master path if available
@@ -734,7 +727,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         final byte[] altBases = getBasesForPath(altPath, false);
 
         // run Smith-Waterman to determine the best alignment (and remove trailing deletions since they aren't interesting)
-        final SmithWatermanAlignment alignment = aligner.align(refBases, altBases, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.LEADING_INDEL);
+        final SWPairwiseAlignment alignment = new SWPairwiseAlignment(refBases, altBases, SWPairwiseAlignment.STANDARD_NGS, SWPairwiseAlignment.OverhangStrategy.LEADING_INDEL);
         return new DanglingChainMergeHelper(altPath, refPath, altBases, refBases, AlignmentUtils.removeTrailingDeletions(alignment.getCigar()));
     }
 
@@ -742,13 +735,12 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * Generates the CIGAR string from the Smith-Waterman alignment of the dangling path (where the
      * provided vertex is the source) and the reference path.
      *
-     * @param aligner
      * @param vertex   the source of the dangling head
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
     @VisibleForTesting
-    final DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, SmithWatermanAligner aligner) {
+    final DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength) {
 
         // find the highest common descendant path between vertex and the reference source if available
         final List<MultiDeBruijnVertex> altPath = findPathDownwardsToHighestCommonDescendantOfReference(vertex, pruneFactor);
@@ -765,7 +757,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         final byte[] altBases = getBasesForPath(altPath, true);
 
         // run Smith-Waterman to determine the best alignment (and remove trailing deletions since they aren't interesting)
-        final SmithWatermanAlignment alignment = aligner.align(refBases, altBases, SmithWatermanAligner.STANDARD_NGS, SWOverhangStrategy.LEADING_INDEL);
+        final SWPairwiseAlignment alignment = new SWPairwiseAlignment(refBases, altBases, SWPairwiseAlignment.STANDARD_NGS, SWPairwiseAlignment.OverhangStrategy.LEADING_INDEL);
         return new DanglingChainMergeHelper(altPath, refPath, altBases, refBases, AlignmentUtils.removeTrailingDeletions(alignment.getCigar()));
     }
 
@@ -796,17 +788,6 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         return findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v), e -> getEdgeTarget(e));
     }
 
-    /**
-     * Finds a path starting from a given vertex and satisfying various predicates
-     *
-     * @param vertex   the original vertex
-     * @param pruneFactor  the prune factor to use in ignoring chain pieces
-     * @param done test for whether a vertex is at the end of the path
-     * @param returnPath test for whether to return a found path based on its terminal vertex
-     * @param nextEdge function on vertices returning the next edge in the path
-     * @param nextNode function of edges returning the next vertex in the path
-     * @return a path, if one satisfying all predicates is found, {@code null} otherwise
-     */
     private  List<MultiDeBruijnVertex> findPath(final MultiDeBruijnVertex vertex, final int pruneFactor,
                                             final Predicate<MultiDeBruijnVertex> done,
                                             final Predicate<MultiDeBruijnVertex> returnPath,
@@ -1147,8 +1128,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
     }
 
     /**
-     * Add a read to the sequence graph.  Finds maximal consecutive runs of bases with sufficient quality
-     * and applies {@see addSequence} to these subreads if they are longer than the kmer size.
+     * Add the given read to the sequence graph.  Ultimately the read will get sent through addSequence(), but first
+     * this method ensures we only use high quality bases and accounts for reduced reads, etc.
      *
      * @param read a non-null read
      */

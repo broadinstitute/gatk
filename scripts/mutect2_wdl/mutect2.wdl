@@ -58,7 +58,6 @@ workflow Mutect2 {
   String? sequencing_center
   String? sequence_source
   File? default_config_file
-  Boolean is_bamOut = false
 
   call ProcessOptionalArguments {
     input:
@@ -94,8 +93,10 @@ workflow Mutect2 {
         ref_dict = ref_dict,
         tumor_bam = tumor_bam,
         tumor_bam_index = tumor_bam_index,
+        tumor_sample_name = tumor_sample_name,
         normal_bam = normal_bam,
         normal_bam_index = normal_bam_index,
+        normal_sample_name = normal_sample_name,
         pon = pon,
         pon_index = pon_index,
         gnomad = gnomad,
@@ -104,8 +105,7 @@ workflow Mutect2 {
         gatk4_jar_override = gatk4_jar_override,
         preemptible_attempts = preemptible_attempts,
         m2_docker = m2_docker,
-        m2_extra_args = m2_extra_args,
-        is_bamOut = is_bamOut
+        m2_extra_args = m2_extra_args
     }
   }
 
@@ -117,21 +117,6 @@ workflow Mutect2 {
       gatk4_jar_override = gatk4_jar_override,
       preemptible_attempts = preemptible_attempts,
       m2_docker = m2_docker
-  }
-
-  if (is_bamOut) {
-    call MergeBamOuts {
-      input:
-        bam_outs = M2.output_bamOut,
-        picard_jar = picard_jar,
-        ref_fasta = ref_fasta,
-        ref_fasta_index = ref_fasta_index,
-        ref_dict = ref_dict,
-        gatk4_jar = gatk4_jar,
-        gatk4_jar_override = gatk4_jar_override,
-        m2_docker = m2_docker,
-        output_vcf_name = ProcessOptionalArguments.output_name
-    }
   }
 
   if (is_run_orientation_bias_filter) {
@@ -190,16 +175,10 @@ workflow Mutect2 {
         File filtered_vcf = Filter.filtered_vcf
         File filtered_vcf_index = Filter.filtered_vcf_index
         File contamination_table = Filter.contamination_table
-        Array[String] tumor_bam_sample_names = M2.tumor_bam_sample_name
-        String tumor_bam_sample_name = tumor_bam_sample_names[0]
-        Array[String] normal_bam_sample_names = M2.normal_bam_sample_name
-        String normal_bam_sample_name = normal_bam_sample_names[0]
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
         File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
-        File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
-        File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
   }
 }
 
@@ -211,8 +190,10 @@ task M2 {
   File ref_dict
   File tumor_bam
   File tumor_bam_index
+  String tumor_sample_name
   File? normal_bam
   File? normal_bam_index
+  String? normal_sample_name
   File? pon
   File? pon_index
   File? gnomad
@@ -222,9 +203,12 @@ task M2 {
   File? gatk4_jar_override
   Int preemptible_attempts
   String? m2_extra_args
-  Boolean? is_bamOut
 
   command <<<
+  if [[ "_${normal_bam}" == *.bam ]]; then
+      samtools view -H ${normal_bam} | sed -n "/SM:/{s/.*SM:\\(\\)/\\1/; s/\\t.*//p ;q};" > normal_name.txt
+      normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
+  fi
 
   # Use GATK Jar override if specified
   GATK_JAR=${gatk4_jar}
@@ -232,19 +216,7 @@ task M2 {
       GATK_JAR=${gatk4_jar_override}
   fi
 
-  if [[ "_${normal_bam}" == *.bam ]]; then
-      java -Xmx4g -jar $GATK_JAR GetSampleName -I ${normal_bam} -O normal_name.txt
-      normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
-  else
-      # Note that normal_name.txt is always created, it's just empty if no normal sample was given.
-      #     This is done to allow an output parameter of the normal sample.
-      touch normal_name.txt
-  fi
-
-  java -Xmx4g -jar $GATK_JAR GetSampleName -I ${tumor_bam} -O tumor_name.txt
-
-  # We need to create a file regardless, even if it stays empty
-  touch bamout.bam
+  samtools view -H ${tumor_bam} | sed -n "/SM:/{s/.*SM:\\(\\)/\\1/; s/\\t.*//p ;q};" > tumor_name.txt
 
   java -Xmx4g -jar $GATK_JAR Mutect2 \
     -R ${ref_fasta} \
@@ -255,7 +227,6 @@ task M2 {
     ${"--normal_panel " + pon} \
     ${"-L " + intervals} \
     -O "${output_vcf_name}.vcf" \
-    ${true='--bamOutput bamout.bam' false='' is_bamOut} \
     ${m2_extra_args}
   >>>
 
@@ -268,9 +239,6 @@ task M2 {
 
   output {
     File output_vcf = "${output_vcf_name}.vcf"
-    File output_bamOut = "bamout.bam"
-    String tumor_bam_sample_name = read_string("tumor_name.txt")
-    String normal_bam_sample_name = read_string("normal_name.txt")
   }
 }
 
@@ -347,8 +315,7 @@ task CollectSequencingArtifactMetrics {
   File picard_jar
 
   command {
-        set -e
-        java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="metrics" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
+        java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="metrics" R=${ref_fasta}
 
         # Convert to GATK format
         sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
@@ -407,18 +374,20 @@ task Filter {
 
     # FilterByOrientationBias must come after all of the other filtering.
     if [[ ! -z "${pre_adapter_metrics}" ]]; then
-        java -Xmx4g -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
+        java -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
             -V filtered.vcf -P ${pre_adapter_metrics} --output "${output_vcf_name}-filtered.vcf"
     else
         mv filtered.vcf "${output_vcf_name}-filtered.vcf"
         mv filtered.vcf.idx "${output_vcf_name}-filtered.vcf.idx"
     fi
+
+
   }
 
   runtime {
     docker: "${m2_docker}"
     memory: "5 GB"
-    disks: "local-disk " + 600 + " HDD"
+    disks: "local-disk " + 500 + " HDD"
     preemptible: "${preemptible_attempts}"
   }
 
@@ -467,43 +436,7 @@ task SplitIntervals {
   }
 }
 
-task MergeBamOuts {
-  String gatk4_jar
-  Array[File]+ bam_outs
-  File picard_jar
-  File ref_fasta
-  File ref_fasta_index
-  File ref_dict
-  File? gatk4_jar_override
-  String output_vcf_name
 
-  # Runtime parameters
-  Int? mem
-  String m2_docker
-  Int? preemptible_attempts
-  Int? disk_space_gb
-
-  command <<<
-          # This command block assumes that there is at least one file in bam_outs.
-          #  Do not call this task if len(bam_outs) == 0
-          set -e
-          java -Xmx4G -jar ${picard_jar} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
-
-          samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
-  >>>
-
-  runtime {
-    docker: "${m2_docker}"
-    memory: select_first([mem, 3]) + " GB"
-    disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-    preemptible: select_first([preemptible_attempts, 2])
-  }
-
-  output {
-    File merged_bam_out = "${output_vcf_name}.out.bam"
-    File merged_bam_out_index = "${output_vcf_name}.out.bam.bai"
-  }
-}
 
 task oncotate_m2 {
     File m2_vcf

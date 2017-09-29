@@ -4,8 +4,6 @@ import com.google.common.base.Strings;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -14,8 +12,7 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
+import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
@@ -42,8 +39,8 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends BaseTest {
         }
         
         public Map<Integer,VariantContext> calcAlignment() {
-            final SmithWatermanAlignment alignment = SmithWatermanJavaAligner.getInstance().align(ref, hap, new SWParameters(3, -1, -4, -1), SWOverhangStrategy.SOFTCLIP);
-            final Haplotype h = new Haplotype(hap, false, alignment.getAlignmentOffset(), alignment.getCigar());
+            final SWPairwiseAlignment alignment = new SWPairwiseAlignment(ref, hap, new SWPairwiseAlignment.Parameters(3,-1,-4, -1));
+            final Haplotype h = new Haplotype(hap, false, alignment.getAlignmentStart2wrt1(), alignment.getCigar());
             return new EventMap(h, ref, new SimpleInterval("4", 1, 1 + ref.length), "name");
         }
 

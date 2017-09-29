@@ -16,7 +16,7 @@ import java.util.OptionalInt;
  *
  * Created by David Benjamin on 3/20/17.
  */
-public class ReadPosition extends PerAlleleAnnotation implements StandardMutectAnnotation {
+public class ReadPosition extends PerAlleleAnnotation {
     public static final String KEY = "MPOS";
 
     @Override

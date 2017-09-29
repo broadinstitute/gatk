@@ -24,17 +24,16 @@ import java.util.stream.Collectors;
 @DefaultSerializer(PSTree.Serializer.class)
 public class PSTree {
 
-    private final int root;
-    private Map<Integer, PSTreeNode> tree;
-    public static final int NULL_NODE = 0;
+    private final String root;
+    private Map<String, PSTreeNode> tree;
 
-    public PSTree(final int rootId) {
+    public PSTree(final String rootId) {
         tree = new HashMap<>();
         root = rootId;
         tree.put(root, new PSTreeNode());
         tree.get(root).setName("root");
         tree.get(root).setRank("root");
-        tree.get(root).setParent(NULL_NODE);
+        tree.get(root).setParent(null);
     }
 
     @SuppressWarnings("unchecked")
@@ -42,11 +41,11 @@ public class PSTree {
         final boolean oldReferences = kryo.getReferences();
         kryo.setReferences(false);
 
-        root = Integer.valueOf(input.readString());
+        root = input.readString();
         final int treeSize = input.readInt();
         tree = new HashMap<>(treeSize);
         for (int i = 0; i < treeSize; i++) {
-            final int key = input.readInt();
+            final String key = input.readString();
             final PSTreeNode value = kryo.readObject(input, PSTreeNode.class);
             tree.put(key, value);
         }
@@ -57,18 +56,18 @@ public class PSTree {
     /**
      * Returns short String of 20 arbitrarily chosen nodes
      */
-    private static String getAbbreviatedNodeListString(final Set<Integer> nodes) {
-        return nodes.stream().limit(20).map(String::valueOf).collect(Collectors.joining(", ","[","]"));
+    private static String getAbbreviatedNodeListString(final Set<String> nodes) {
+        return "[" + nodes.stream().limit(20).collect(Collectors.joining(", ")) + "]";
     }
 
     protected void serialize(final Kryo kryo, final Output output) {
         final boolean oldReferences = kryo.getReferences();
         kryo.setReferences(false);
 
-        output.writeString(String.valueOf(root));
+        output.writeString(root);
         output.writeInt(tree.size());
-        for (final int key : tree.keySet()) {
-            output.writeInt(key);
+        for (final String key : tree.keySet()) {
+            output.writeString(key);
             kryo.writeObject(output, tree.get(key));
         }
 
@@ -79,11 +78,9 @@ public class PSTree {
      * Adds a node to the tree. ID must be unique, and all arguments must be non-null.
      * If the node exists, its properties are modified
      */
-    public void addNode(final int id, final String name, final int parent, final long length, final String rank) {
-        Utils.validateArg((name != null)  && (rank != null), "Passed a null argument to addNode()");
-        Utils.validateArg(id != NULL_NODE, "Passed invalid node ID to addNode()");
-        Utils.validateArg(parent != NULL_NODE, "Passed invalid parent ID to addNode()");
-        Utils.validateArg(root != id, "Tried to set root attributes using addNode()");
+    public void addNode(final String id, final String name, final String parent, final long length, final String rank) {
+        Utils.validateArg((id != null) && (name != null) && (parent != null) && (rank != null), "Passed a null argument to addNode()");
+        Utils.validateArg(!root.equals(id), "Tried to set root attributes using addNode()");
 
         //If the node already exists, keep its current children and set everything else
         if (!tree.containsKey(id)) {
@@ -106,9 +103,9 @@ public class PSTree {
     /**
      * Deletes nodes unreachable from the root and returns the set of deleted nodes.
      */
-    public Set<Integer> removeUnreachableNodes() {
-        final Set<Integer> reachable = traverse();
-        final Set<Integer> unreachable = new HashSet<>(tree.keySet());
+    public Set<String> removeUnreachableNodes() {
+        final Set<String> reachable = traverse();
+        final Set<String> unreachable = new HashSet<>(tree.keySet());
         unreachable.removeAll(reachable);
         retainNodes(reachable);
         return unreachable;
@@ -121,18 +118,18 @@ public class PSTree {
     public void checkStructure() {
 
         //Check child-parent pointers are consistent
-        for (final int id : tree.keySet()) {
+        for (final String id : tree.keySet()) {
             final PSTreeNode n = tree.get(id);
-            for (final int child : n.getChildren()) {
+            for (final String child : n.getChildren()) {
                 if (!tree.containsKey(child)) {
                     throw new UserException.BadInput("Malformed tree detected. Node " + id + " has non-existent child " + child);
                 }
-                if (tree.get(child).getParent() != id) {
+                if (!tree.get(child).getParent().equals(id)) {
                     throw new UserException.BadInput("Malformed tree detected. Node " + id + " has child " + child + ", whose parent is " + tree.get(child).getParent() + " instead of " + id);
                 }
             }
-            final int parent = n.getParent();
-            if (parent != NULL_NODE) {
+            final String parent = n.getParent();
+            if (parent != null) {
                 if (!tree.containsKey(parent)) {
                     throw new UserException.BadInput("Malformed tree detected. Node " + id + " has non-existent parent " + parent);
                 }
@@ -143,7 +140,7 @@ public class PSTree {
         }
 
         //Check disconnected sets of nodes using a traversal from the root
-        final Set<Integer> unreachable = removeUnreachableNodes();
+        final Set<String> unreachable = removeUnreachableNodes();
         if (!unreachable.isEmpty()) {
             final String nodesList = getAbbreviatedNodeListString(unreachable);
             throw new UserException.BadInput("Malformed tree detected. Tree is disconnected. " + unreachable.size() + " of " + tree.size() + " nodes were unreachable: " + nodesList);
@@ -153,12 +150,12 @@ public class PSTree {
     /**
      * Find all nodes reachable from the root
      */
-    private Set<Integer> traverse() {
-        final Queue<Integer> queue = new LinkedList<>();
-        final Set<Integer> visited = new HashSet<>(tree.size());
+    private Set<String> traverse() {
+        final Queue<String> queue = new LinkedList<>();
+        final Set<String> visited = new HashSet<>(tree.size());
         queue.add(root);
         while (!queue.isEmpty()) {
-            final int id = queue.poll();
+            final String id = queue.poll();
             if (!visited.contains(id)) { //checked visited in case there are cycles
                 if (tree.containsKey(id)) {
                     queue.addAll(tree.get(id).getChildren());
@@ -177,19 +174,19 @@ public class PSTree {
      * Get lowest common ancester of the set of given nodes.
      * Takes the intersection of node-to-root paths of all the nodes and finding the lowest one in the tree.
      */
-    public int getLCA(final Collection<Integer> nodes) {
+    public String getLCA(final Collection<String> nodes) {
         Utils.validateArg(nodes.size() > 0, "Queried lowest common ancestor of a null set");
-        final List<List<Integer>> paths = new ArrayList<>(nodes.size());
-        for (final int node : nodes) {
+        final List<List<String>> paths = new ArrayList<>(nodes.size());
+        for (final String node : nodes) {
             paths.add(getPathOf(node));
         }
-        final List<Integer> firstPath = paths.remove(0);
-        final Set<Integer> commonNodes = new HashSet<>(firstPath);
-        for (final List<Integer> path : paths) {
+        final List<String> firstPath = paths.remove(0);
+        final Set<String> commonNodes = new HashSet<>(firstPath);
+        for (final List<String> path : paths) {
             commonNodes.retainAll(path);
         }
         //Return first common node. Note paths are returned in order from lowest to highest (root at the end)
-        for (final int node : firstPath) {
+        for (final String node : firstPath) {
             if (commonNodes.contains(node)) return node;
         }
         //This should never happen if the tree structure has been checked
@@ -197,56 +194,56 @@ public class PSTree {
     }
 
     @SuppressWarnings("unchecked")
-    public Collection<Integer> getChildrenOf(final int id) {
+    public Collection<String> getChildrenOf(final String id) {
         Utils.validateArg(tree.containsKey(id), "Could not get children of node id " + id + " because it does not exist");
         return tree.get(id).getChildren();
     }
 
-    public Set<Integer> getNodeIDs() {
+    public Set<String> getNodeIDs() {
         return tree.keySet();
     }
 
-    public String getNameOf(final int id) {
+    public String getNameOf(final String id) {
         Utils.validateArg(tree.containsKey(id), "Could not get name of node id " + id + " because it does not exist");
         return tree.get(id).getName();
     }
 
-    public int getParentOf(final int id) {
+    public String getParentOf(final String id) {
         Utils.validateArg(tree.containsKey(id), "Could not get parent of node id " + id + " because it does not exist");
         return tree.get(id).getParent();
     }
 
-    public long getLengthOf(final int id) {
+    public long getLengthOf(final String id) {
         Utils.validateArg(tree.containsKey(id), "Could not get length of node id " + id + " because it does not exist");
         return tree.get(id).getLength();
     }
 
-    public String getRankOf(final int id) {
+    public String getRankOf(final String id) {
         Utils.validateArg(tree.containsKey(id), "Could not get rank of node id " + id + " because it does not exist");
         return tree.get(id).getRank();
     }
 
-    public boolean hasNode(final int id) {
+    public boolean hasNode(final String id) {
         return tree.containsKey(id);
     }
 
     /**
      * Removes all nodes not in the given set
      */
-    public void retainNodes(final Set<Integer> idsToKeep) {
+    public void retainNodes(final Set<String> idsToKeep) {
         Utils.validateArg(idsToKeep.contains(root), "Cannot remove root");
-        final HashMap<Integer, PSTreeNode> newTree = new HashMap<>(idsToKeep.size());
-        for (final int id : tree.keySet()) {
+        final HashMap<String, PSTreeNode> newTree = new HashMap<>(idsToKeep.size());
+        for (final String id : tree.keySet()) {
             if (idsToKeep.contains(id)) {
                 final PSTreeNode info = tree.get(id);
                 final PSTreeNode newInfo = info.copy();
-                for (final int child : info.getChildren()) {
+                for (final String child : info.getChildren()) {
                     if (!idsToKeep.contains(child)) {
                         newInfo.removeChild(child);
                     }
                 }
                 if (!idsToKeep.contains(info.getParent())) {
-                    newInfo.setParent(NULL_NODE);
+                    newInfo.setParent(null);
                 }
                 newTree.put(id, newInfo);
             }
@@ -254,33 +251,33 @@ public class PSTree {
         tree = newTree;
     }
 
-    public void setNameOf(final int id, final String name) {
+    public void setNameOf(final String id, final String name) {
         Utils.validateArg(tree.containsKey(id), "Could not set name of node id " + id + " because it does not exist");
         Utils.validateArg(name != null, "Cannot set node name to null");
-        Utils.validateArg(id != root, "Cannot set name of root");
+        Utils.validateArg(!id.equals(root), "Cannot set name of root");
         tree.get(id).setName(name);
     }
 
-    public void setRankOf(final int id, final String rank) {
+    public void setRankOf(final String id, final String rank) {
         Utils.validateArg(tree.containsKey(id), "Could not set rank of node id " + id + " because it does not exist");
         Utils.validateArg(rank != null, "Cannot set node rank to null");
-        Utils.validateArg(id != root, "Cannot set rank of root");
+        Utils.validateArg(!id.equals(root), "Cannot set rank of root");
         tree.get(id).setRank(rank);
     }
 
-    public void setLengthOf(final int id, final long length) {
+    public void setLengthOf(final String id, final long length) {
         Utils.validateArg(tree.containsKey(id), "Could not set rank of node id " + id + " because it does not exist");
-        Utils.validateArg(id != root, "Cannot set rank of root");
+        Utils.validateArg(!id.equals(root), "Cannot set rank of root");
         tree.get(id).setLength(length);
     }
 
     /**
      * Returns path of node id's from the input id to the root.
      */
-    public List<Integer> getPathOf(int id) {
-        final List<Integer> path = new ArrayList<>();
-        final Set<Integer> visitedNodes = new HashSet<>(tree.size());
-        while (id != NULL_NODE) {
+    public List<String> getPathOf(String id) {
+        final List<String> path = new ArrayList<>();
+        final Set<String> visitedNodes = new HashSet<>(tree.size());
+        while (id != null) {
             if (!visitedNodes.contains(id)) {
                 visitedNodes.add(id);
                 if (tree.containsKey(id)) {
@@ -303,12 +300,12 @@ public class PSTree {
 
         final PSTree psTree = (PSTree) o;
 
-        return root == psTree.root && tree.equals(psTree.tree);
+        return root.equals(psTree.root) && tree.equals(psTree.tree);
     }
 
     @Override
     public int hashCode() {
-        int result = root;
+        int result = root.hashCode();
         result = 31 * result + tree.hashCode();
         return result;
     }

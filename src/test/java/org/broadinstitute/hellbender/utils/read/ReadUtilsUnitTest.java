@@ -3,11 +3,15 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.api.services.genomics.model.LinearAlignment;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
-import htsjdk.samtools.*;
+import htsjdk.samtools.SamFiles;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,7 +23,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
-import java.util.stream.Stream;
 
 
 public final class ReadUtilsUnitTest extends BaseTest {
@@ -611,186 +614,6 @@ public final class ReadUtilsUnitTest extends BaseTest {
                     assumeSorted,
                     "test"
             );
-    }
-
-    @Test
-    public void testOptionalIntAttributeOnSAMRecord() {
-        final SAMRecord record = ArtificialReadUtils.createArtificialSAMRecord(
-                new Cigar(Collections.singletonList(new CigarElement(100, CigarOperator.M))));
-        Assert.assertFalse(ReadUtils.getOptionalIntAttribute(record, SAMTag.AS.name()).isPresent());
-        record.setAttribute(SAMTag.AS.name(), -10);
-        Assert.assertEquals(ReadUtils.getOptionalIntAttribute(record, SAMTag.AS.name()).orElse(-1), -10);
-        record.setAttribute(SAMTag.AS.name(), "-20");
-        Assert.assertEquals(ReadUtils.getOptionalIntAttribute(record, SAMTag.AS.name()).orElse(-1), -20);
-
-        record.setAttribute(SAMTag.AS.name(), 10.213f);
-        try {
-            ReadUtils.getOptionalIntAttribute(record, "AS").isPresent();
-            Assert.fail("expected and exception");
-        } catch (final Throwable ex) {
-            Assert.assertTrue(ex instanceof GATKException.ReadAttributeTypeMismatch, "wrong ex class: " + ex.getClass());
-        }
-
-        record.setAttribute(SAMTag.AS.name(), 10.0f);
-        try {
-            ReadUtils.getOptionalIntAttribute(record, "AS").isPresent();
-            Assert.fail("expected and exception");
-        } catch (final Throwable ex) {
-            Assert.assertTrue(ex instanceof GATKException.ReadAttributeTypeMismatch, "wrong ex class: " + ex.getClass());
-        }
-
-        record.setAttribute(SAMTag.AS.name(), "10.213");
-        try {
-            ReadUtils.getOptionalIntAttribute(record, "AS").isPresent();
-            Assert.fail("expected and exception");
-        } catch (final Throwable ex) {
-            Assert.assertTrue(ex instanceof GATKException.ReadAttributeTypeMismatch, "wrong ex class: " + ex.getClass());
-        }
-        record.setAttribute(SAMTag.AS.name(), null);
-        Assert.assertFalse(ReadUtils.getOptionalIntAttribute(record, "AS").isPresent());
-    }
-
-    @Test
-    public void testGetOptionalIntAttributeOnGATKRead() {
-        final SAMRecord record = ArtificialReadUtils.createArtificialSAMRecord(
-                new Cigar(Collections.singletonList(new CigarElement(100, CigarOperator.M))));
-        final GATKRead read = new SAMRecordToGATKReadAdapter(record);
-        Assert.assertFalse(ReadUtils.getOptionalIntAttribute(read, SAMTag.AS.name()).isPresent());
-        read.setAttribute(SAMTag.AS.name(), -10);
-        Assert.assertEquals(ReadUtils.getOptionalIntAttribute(read, SAMTag.AS.name()).orElse(-1), -10);
-        read.setAttribute(SAMTag.AS.name(), "-20");
-        Assert.assertEquals(ReadUtils.getOptionalIntAttribute(record, SAMTag.AS.name()).orElse(-1), -20);
-        read.setAttribute(SAMTag.AS.name(), "10.213");
-        try {
-            ReadUtils.getOptionalIntAttribute(read, SAMTag.AS.name()).isPresent();
-            Assert.fail("expected and exception");
-        } catch (final Throwable ex) {
-            Assert.assertTrue(ex instanceof GATKException.ReadAttributeTypeMismatch, "wrong ex class: " + ex.getClass());
-        }
-
-        read.setAttribute(SAMTag.AS.name(), "10.0");
-        try {
-            ReadUtils.getOptionalIntAttribute(read, SAMTag.AS.name()).isPresent();
-            Assert.fail("expected and exception");
-        } catch (final Throwable ex) {
-            Assert.assertTrue(ex instanceof GATKException.ReadAttributeTypeMismatch, "wrong ex class: " + ex.getClass());
-        }
-
-        read.clearAttribute(SAMTag.AS.name());
-        Assert.assertFalse(ReadUtils.getOptionalIntAttribute(read, SAMTag.AS.name()).isPresent());
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testHasBasesAligned(final GATKRead read) {
-        Assert.assertTrue(ReadUtils.hasBasesAlignedAgainstTheReference(read));
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetFirstAlignedBaseOffset(final GATKRead read) {
-        final int actual = ReadUtils.getFirstAlignedBaseOffset(read);
-        final int expected = CigarUtils.countLeftClippedBases(read.getCigar()) - CigarUtils.countLeftHardClippedBases(read.getCigar());
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetAfterLastAlignedBaseOffset(final GATKRead read) {
-        final int actual = ReadUtils.getAfterLastAlignedBaseOffset(read);
-        final int expected = read.getLength() - (CigarUtils.countRightClippedBases(read.getCigar()) - CigarUtils.countRightHardClippedBases(read.getCigar()));
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetFirstPositionAligned(final GATKRead read) {
-        final int actual = ReadUtils.getFirstAlignedReadPosition(read);
-        final int expected = (!read.isReverseStrand()
-                    ? CigarUtils.countLeftClippedBases(read.getCigar()) + 1
-                    : CigarUtils.countRightClippedBases(read.getCigar()) + 1);
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetLastPositionAligned(final GATKRead read) {
-        final int actual = ReadUtils.getLastAlignedReadPosition(read);
-        final int expected = (!read.isReverseStrand()
-                ? CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countRightClippedBases(read.getCigar())
-                : CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countLeftClippedBases(read.getCigar()));
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData")
-    public void testHashBasesNotAligned(final GATKRead read) {
-        Assert.assertFalse(ReadUtils.hasBasesAlignedAgainstTheReference(read));
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetFirstAlignedBaseOffsetOnUnmapped(final GATKRead read) {
-        ReadUtils.getFirstAlignedBaseOffset(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetAfterLastAlignedBaseOffsetOnUnmapped(final GATKRead read) {
-        ReadUtils.getAfterLastAlignedBaseOffset(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetFirtAlignedReadPositionOnUnmapped(final GATKRead read) {
-        ReadUtils.getFirstAlignedReadPosition(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetLastAlignedReadPositionOnUnmapped(final GATKRead read) {
-        ReadUtils.getLastAlignedReadPosition(read);
-    }
-
-    @DataProvider(name="unmappedGatkReadData")
-    public Object[][] unmappedGatkReadData() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        final Random rdn = new Random(17);
-        final RandomDNA rdnDna = new RandomDNA(11);
-        return Stream.of("*", "30I", "10S1I10S", "1D")
-                .map(TextCigarCodec::decode)
-                .map(c -> {
-                    final SAMRecord record = new SAMRecord(header);
-                    record.setReadUnmappedFlag(c.isEmpty());
-                    record.setCigar(c);
-                    record.setReadName("test-read");
-                    record.setReadBases(rdnDna.nextBases(c.getCigarElements().stream()
-                            .filter(ce -> ce.getOperator().consumesReadBases())
-                            .mapToInt(CigarElement::getLength).sum()));
-                    if (!c.isEmpty()) {
-                        record.setReferenceIndex(rdn.nextInt(header.getSequenceDictionary().getSequences().size()));
-                        record.setAlignmentStart(10_000 + header.getSequence(record.getReferenceIndex()).getSequenceLength() - 20_000);
-                        record.setReadNegativeStrandFlag(rdn.nextBoolean());
-                    }
-                    return record;
-                })
-                .map(SAMRecordToGATKReadAdapter::new)
-                .map(r -> new Object[] { r })
-                .toArray(Object[][]::new);
-    }
-
-    @DataProvider(name="mappedGatkReadsData")
-    public Object[][] mappedGatkReadsData() {
-        final Random rdn = new Random(17);
-        final RandomDNA rdnDna = new RandomDNA(11);
-        final List<Cigar> randomCigars = CigarTestUtils.randomValidCigars(rdn, 1_000, 10, 100);
-        final List<Object[]> result = new ArrayList<>(randomCigars.size());
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        for (final Cigar cigar : randomCigars) {
-            final SAMRecord record = new SAMRecord(header);
-            record.setReadUnmappedFlag(false);
-            record.setCigar(cigar);
-            record.setReadName("test-read");
-            record.setReadBases(rdnDna.nextBases(cigar.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator().consumesReadBases())
-                    .mapToInt(CigarElement::getLength).sum()));
-            record.setReferenceIndex(rdn.nextInt(header.getSequenceDictionary().getSequences().size()));
-            record.setAlignmentStart(10_000 + header.getSequence(record.getReferenceIndex()).getSequenceLength() - 20_000);
-            record.setReadNegativeStrandFlag(rdn.nextBoolean());
-            result.add(new Object[] {new SAMRecordToGATKReadAdapter(record)});
-        }
-
-        return result.toArray(new Object[result.size()][]);
     }
 
 }

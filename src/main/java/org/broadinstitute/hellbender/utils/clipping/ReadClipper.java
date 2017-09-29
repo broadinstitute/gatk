@@ -13,6 +13,8 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
+
 /**
  * A comprehensive clipping tool.
  *
@@ -386,9 +388,9 @@ public class ReadClipper {
      * @return a new read without adaptor sequence
      */
     private GATKRead hardClipAdaptorSequence () {
-        final int adaptorBoundary = ReadUtils.getAdaptorBoundary(read);
+        final int adaptorBoundary = getAdaptorBoundary(read);
 
-        if (adaptorBoundary == ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY || !ReadUtils.isInsideRead(read, adaptorBoundary)) {
+        if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || !isInsideRead(read, adaptorBoundary)) {
             return read;
         }
 

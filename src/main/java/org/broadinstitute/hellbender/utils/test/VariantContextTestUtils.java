@@ -1,20 +1,10 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.*;
-import org.apache.commons.collections4.CollectionUtils;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.collections.Permutation;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
 import java.util.*;
@@ -80,158 +70,10 @@ public final class VariantContextTestUtils {
         return attribute;
     }
 
-    /**
-     * Method which reorders the AltAlleles of a VariantContext so that they are in alphabetical order.
-     *
-     * It also reorders all annotation fields and the PL,AD, and SAC fields of each sample genotype in the variant context
-     * to be consistent with the new ordering
-     *
-     * NOTE: this method relies on the correctness of AlleleSubsettingUtils.subsetAlleles() for reordering alleles
-     *
-     * @param vc        Variant context to reorder
-     * @param header
-     * @return
-     */
-    public static VariantContext sortAlleles(final VariantContext vc, final VCFHeader header){
-        final List<Allele> originalAltAlleles = vc.getAlternateAlleles();
-        final List<Allele> sortedAltAlleles = originalAltAlleles.stream().sorted().collect(Collectors.toList());
-        final List<Allele> sortedAlleles = new ArrayList<>(vc.getNAlleles());
-
-        sortedAlleles.add(vc.getReference());
-        sortedAlleles.addAll(sortedAltAlleles);
-
-        final VariantContextBuilder result = new VariantContextBuilder(vc);
-        result.alleles(sortedAlleles);
-
-        GenotypesContext newGT = AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(),sortedAlleles,
-                GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
-
-        // Asserting that the new genotypes were calculated properly in case AlleleSubsettingUtils behavior changes
-        if (newGT.getSampleNames().size() != vc.getGenotypes().size()) throw new IllegalStateException("Sorting this variant context resulted in a different number of genotype alleles, check that AlleleSubsettingUtils still supports reordering:" + vc.toString());
-        for (int i =0; i<newGT.size(); i++){
-            if (vc.getGenotype(i).hasAD()) {
-                if (newGT.get(i).getAD().length != vc.getGenotype(i).getAD().length) throw new IllegalStateException("Sorting this variant context resulted in a different number of genotype alleles, check that AlleleSubsettingUtils still supports reordering:" + vc.toString());
-            }
-            if (vc.getGenotype(i).hasPL()) {
-                if (newGT.get(i).getPL().length != vc.getGenotype(i).getPL().length) throw new IllegalStateException("Sorting this variant context resulted in a different number of genotype alleles, check that AlleleSubsettingUtils still supports reordering:" + vc.toString());
-            }
-        }
-
-        final HashMap<String, Object> newAttributes = new HashMap<>(vc.getAttributes());
-        for (Map.Entry<String, Object> entry : newAttributes.entrySet()) {
-            VCFHeaderLineCount type = header.hasInfoLine(entry.getKey())?header.getInfoHeaderLine(entry.getKey()).getCountType():VCFHeaderLineCount.UNBOUNDED;
-            int ploidy = vc.getGenotypes().getMaxPloidy(2);
-
-            newAttributes.replace(entry.getKey(), updateAttribute(entry.getKey(), entry.getValue(), vc.getAlleles(), sortedAlleles, type, ploidy));
-        }
-
-        // The above will have built new genotype for PL,AD, and SAC fields excluding the GT and GQ field, thus we must re-add them for comparison.
-        for (int i = 0; i < newGT.size(); i++) {
-            Genotype replacementGenotype = new GenotypeBuilder(newGT.get(i))
-                    .GQ(vc.getGenotype(i).getGQ())
-                    .phased(vc.getGenotype(i).isPhased())
-                    .alleles(vc.getGenotype(i).getAlleles()).make();
-            newGT.replace(replacementGenotype);
-        }
-
-        result.attributes(newAttributes).genotypes(newGT);
-
-        return result.make();
-
-    }
-
-    private static Object updateAttribute(final String key, final Object value,
-                                          final List<Allele> originalAlleles, final List<Allele> sortedAlleles,
-                                          final VCFHeaderLineCount count, int ploidy) {
-        if (key.startsWith("AS_")) {
-            return remapASValues((String) value, createAlleleIndexMap(originalAlleles, sortedAlleles));
-        }else {
-            switch (count) {
-                case INTEGER:
-                    return value;
-                case UNBOUNDED:
-                    //doesn't depend on allele ordering
-                    return value;
-                case A:
-                    return remapATypeValues(attributeToList(value), createAlleleIndexMap(originalAlleles, sortedAlleles));
-                case R:
-                    return remapRTypeValues(attributeToList(value), createAlleleIndexMap(originalAlleles, sortedAlleles));
-                case G:
-                    return remapGTypeValues(attributeToList(value), originalAlleles, ploidy, sortedAlleles);
-                default:
-                    throw new GATKException("found unexpected vcf header count type: " + count);
-            }
-        }
-    }
-
-    static List<Integer> createAlleleIndexMap(final List<Allele> originalAlleles, final List<Allele> sortedAlleles){
-        final List<Integer> mapping = new ArrayList<>(originalAlleles.size());
-        for ( final Allele a: sortedAlleles){
-            final int newIndex = originalAlleles.indexOf(a);
-            mapping.add(newIndex);
-        }
-        return mapping;
-    }
-
-    static List<Object> remapRTypeValues(List<?> oldValue, List<Integer> mapping){
-        return remapListValues(oldValue, mapping, 0);
-    }
-
-    private static List<Object> remapListValues(List<?> oldValue, List<Integer> mapping, int offset) {
-        for( int i = 0; i < offset; i++){
-            Utils.validate(mapping.get(i) == i, "values within the offset must not map outside the offset ");
-        }
-        final ArrayList<Object> reordered = new ArrayList<>(oldValue.size());
-        for(int i = 0; i < oldValue.size(); i++){
-            reordered.add(oldValue.get(mapping.get(i+offset) - offset));
-        }
-        return reordered;
-    }
-
-    static List<Object> remapATypeValues(List<?> oldValue, List<Integer> mapping){
-        return remapListValues(oldValue, mapping, 1 );
-    }
-
-    static List<Object> remapGTypeValues(List<?> oldValue, List<Allele> originalAlleles, int ploidy, List<Allele> remappedAlleles){
-        if (oldValue.size() == 1 && oldValue.get(0) instanceof String) {
-            oldValue = Arrays.stream(((String) oldValue.get(0)).split(",")).collect(Collectors.toList());
-        }
-
-        List<Object> newValues = new ArrayList<>(oldValue.size());
-        int[] subsettedGenotypes = AlleleSubsettingUtils.subsettedPLIndices(ploidy, originalAlleles, remappedAlleles);
-        List<?> finalOldValue = oldValue;
-        newValues.addAll(Arrays.stream(subsettedGenotypes).mapToObj(idx -> finalOldValue.get(idx)).collect(Collectors.toList()));
-
-        return newValues;
-    }
-
-    static List<Object> remapASValues(String oldValue, List<Integer> mapping) {
-        return remapListValues(Arrays.asList(oldValue.split("\\|")), mapping, 0);
-    }
-
-    //copied from htsjdk.variant.variantcontext.CommonInfo.getAttributeAsList for simplicity
-    //maybe we should expose this as a static method in htsjdk?
-    @SuppressWarnings("unchecked")
-    private static List<Object> attributeToList(final Object attribute){
-        if ( attribute == null ) return Collections.emptyList();
-        if ( attribute instanceof List) return (List<Object>)attribute;
-        if ( attribute.getClass().isArray() ) {
-            if (attribute instanceof int[]) {
-                return Arrays.stream((int[])attribute).boxed().collect(Collectors.toList());
-            } else if (attribute instanceof double[]) {
-                return Arrays.stream((double[])attribute).boxed().collect(Collectors.toList());
-            }
-            return Arrays.asList((Object[])attribute);
-        }
-        return Collections.singletonList(attribute);
-    }
-
-
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
         Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");
+        Assert.assertEquals(actual.getAlleles(), expected.getAlleles(), "Genotype alleles");
         Assert.assertEquals(actual.getGenotypeString(), expected.getGenotypeString(), "Genotype string");
-        Assert.assertTrue(CollectionUtils.isEqualCollection(actual.getAlleles(), expected.getAlleles()), "Genotype alleles");
-        Assert.assertEquals(actual.getGenotypeString(false), expected.getGenotypeString(false), "Genotype string");
         Assert.assertEquals(actual.getType(), expected.getType(), "Genotype type");
 
         // filters are the same
@@ -242,11 +84,11 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.hasDP(), expected.hasDP(), "Genotype hasDP");
         Assert.assertEquals(actual.getDP(), expected.getDP(), "Genotype dp");
         Assert.assertEquals(actual.hasAD(), expected.hasAD(), "Genotype hasAD");
-        Assert.assertEquals(actual.getAD(), expected.getAD(), "Genotype AD");
+        Assert.assertTrue(Arrays.equals(actual.getAD(), expected.getAD()));
         Assert.assertEquals(actual.hasGQ(), expected.hasGQ(), "Genotype hasGQ");
         Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype gq");
         Assert.assertEquals(actual.hasPL(), expected.hasPL(), "Genotype hasPL");
-        Assert.assertEquals(actual.getPL(), expected.getPL(), "Genotype PL");
+        Assert.assertTrue(Arrays.equals(actual.getPL(), expected.getPL()));
 
         Assert.assertEquals(actual.hasLikelihoods(), expected.hasLikelihoods(), "Genotype haslikelihoods");
         Assert.assertEquals(actual.getLikelihoodsString(), expected.getLikelihoodsString(), "Genotype getlikelihoodsString");
@@ -350,7 +192,7 @@ public final class VariantContextTestUtils {
 
         Assert.assertEquals(actual.filtersWereApplied(), expected.filtersWereApplied(), "filtersWereApplied");
         Assert.assertEquals(actual.isFiltered(), expected.isFiltered(), "isFiltered");
-        Assert.assertEquals(actual.getFilters(), expected.getFilters(), "filters");
+        BaseTest.assertEqualsSet(actual.getFilters(), expected.getFilters(), "filters");
         BaseTest.assertEqualsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual());
 
         assertVariantContextsHaveSameGenotypes(actual, expected);
@@ -372,52 +214,5 @@ public final class VariantContextTestUtils {
                 assertGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample));
             }
         }
-    }
-
-    /**
-     * Method which compares two variant contexts for equality regardless of different allele ordering.
-     *
-     * It functions by sorting the alleles in each variant context, and using the header to parse its attributes and
-     * reorder them based on the new allele ordering.
-     *
-     * NOTES:
-     * - For genotype fields, the order dependant fields PL, AD, and SAC are all recalculated, no guarantee
-     *   is made about any other genotype fields which depend on the number of Alleles which might result in false negatives.
-     * - This test requires that all attribute keys from the variant context are present, if one is writing a test and needs
-     *   a complete header, consider {GATKVCFHeaderLine.getCompleteHeader()}
-     *
-     * @param actual                Variant context to test for equality
-     * @param expected              Expected result
-     * @param attributesToIgnore    Attributes we want to exclude from comparision
-     * @param header                Header used to map behavior of annotations
-     */
-    public static void assertVariantContextsAreEqualAlleleOrderIndependent(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore, VCFHeader header) {
-        if (actual.getAlleles().equals(expected.getAlleles())) {
-            assertVariantContextsAreEqual(actual, expected, attributesToIgnore);
-
-        } else {
-            VariantContext actualReordered = sortAlleles(actual, header);
-            VariantContext expectedReordered = sortAlleles(expected, header);
-            assertVariantContextsAreEqual(actualReordered, expectedReordered, attributesToIgnore);
-        }
-    }
-
-    /**
-     * Method which returns a complete header with all the GATK and HTSJDK standard header lines for testing purposes
-     *
-     * @return
-     */
-    public static VCFHeader getCompleteHeader() {
-        Set<VCFHeaderLine> lines = new HashSet<>();
-
-        // Adding HTSJDK lines
-        VCFStandardHeaderLines.addStandardInfoLines(lines,false, Collections.emptyList());
-        VCFStandardHeaderLines.addStandardFormatLines(lines,false, Collections.emptyList());
-
-        lines.addAll(GATKVCFHeaderLines.getAllInfoLines());
-        lines.addAll(GATKVCFHeaderLines.getAllFormatLines());
-        lines.addAll(GATKVCFHeaderLines.getAllFilterLines());
-
-        return new VCFHeader(lines);
     }
 }

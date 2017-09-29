@@ -25,7 +25,6 @@
 import "cnv_common_tasks.wdl" as CNVTasks
 import "cnv_somatic_copy_ratio_bam_workflow.wdl" as CopyRatio
 import "cnv_somatic_allele_fraction_pair_workflow.wdl" as AlleleFraction
-import "cnv_somatic_oncotate.wdl" as Oncotate
 
 workflow CNVSomaticPairWorkflow {
     # Workflow input files
@@ -48,19 +47,11 @@ workflow CNVSomaticPairWorkflow {
     # If no normal BAM is input, then do tumor-only workflow
     Boolean is_tumor_only = select_first([normal_bam, ""]) == ""
 
-    Boolean is_run_oncotator = false
-
-    # docker images
-    String gatk_docker
-    String oncotator_docker="broadinstitute/oncotator:1.9.3.0-eval-gatk-protected"
-
     if (!is_wgs) {
         call CNVTasks.PadTargets {
             input:
-                # The task will fail if targets is not defined when it gets here, but that should not be allowed to happen.
-                targets = select_first([targets, ""]),
-                gatk_jar = gatk_jar,
-                gatk_docker = gatk_docker
+                targets = targets,
+                gatk_jar = gatk_jar
         }
     }
 
@@ -73,8 +64,7 @@ workflow CNVSomaticPairWorkflow {
             ref_fasta_dict = ref_fasta_dict,
             ref_fasta_fai = ref_fasta_fai,
             cnv_panel_of_normals = cnv_panel_of_normals,
-            gatk_jar = gatk_jar,
-            gatk_docker = gatk_docker
+            gatk_jar = gatk_jar
     }
 
     if (!is_tumor_only) {
@@ -87,8 +77,7 @@ workflow CNVSomaticPairWorkflow {
                 ref_fasta_dict = ref_fasta_dict,
                 ref_fasta_fai = ref_fasta_fai,
                 cnv_panel_of_normals = cnv_panel_of_normals,
-                gatk_jar = gatk_jar,
-                gatk_docker = gatk_docker
+                gatk_jar = gatk_jar
         }
     }
 
@@ -106,16 +95,7 @@ workflow CNVSomaticPairWorkflow {
                 ref_fasta_dict = ref_fasta_dict,
                 ref_fasta_fai = ref_fasta_fai,
                 gatk_jar = gatk_jar,
-                gatk_docker = gatk_docker,
                 is_wgs = is_wgs
-        }
-    }
-
-    if (is_run_oncotator) {
-        call Oncotate.CNVOncotateCalledSegments as OncotateCalledCNVWorkflow {
-            input:
-                 called_file=TumorCopyRatioWorkflow.called_segments,
-                 oncotator_docker=oncotator_docker
         }
     }
 
@@ -128,6 +108,5 @@ workflow CNVSomaticPairWorkflow {
         File? normal_called_segments = NormalCopyRatioWorkflow.called_segments
         File? tumor_hets = TumorAlleleFractionWorkflow.tumor_hets
         File? tumor_acnv_segments = TumorAlleleFractionWorkflow.acnv_segments
-        File? oncotated_called_file = OncotateCalledCNVWorkflow.oncotated_called_file
     }
 }

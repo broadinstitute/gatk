@@ -36,7 +36,7 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     private PrintStream outputStream = null;
 
     @Override
-    protected int defaultReadShardSize() { return NO_INTERVAL_SHARDING; }
+    protected int defaultReadShardSize() { return 5000; }
 
     @Override
     protected int defaultReadShardPadding() { return 100; }

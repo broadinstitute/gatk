@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
-import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -20,7 +20,6 @@ public final class BreakpointDensityFilter implements Iterator<BreakpointEvidenc
     private final int minCoherentEvidenceWeight;
     private final PartitionCrossingChecker partitionCrossingChecker;
     private final SVIntervalTree<List<BreakpointEvidence>> evidenceTree;
-    private final int minEvidenceMapq;
     private Iterator<SVIntervalTree.Entry<List<BreakpointEvidence>>> treeItr;
     private Iterator<BreakpointEvidence> listItr;
 
@@ -28,8 +27,7 @@ public final class BreakpointDensityFilter implements Iterator<BreakpointEvidenc
                                     final ReadMetadata readMetadata,
                                     final int minEvidenceWeight,
                                     final int minCoherentEvidenceWeight,
-                                    final PartitionCrossingChecker partitionCrossingChecker,
-                                    final int minEvidenceMapq) {
+                                    final PartitionCrossingChecker partitionCrossingChecker ) {
         this.readMetadata = readMetadata;
         this.minEvidenceWeight = minEvidenceWeight;
         this.minCoherentEvidenceWeight = minCoherentEvidenceWeight;
@@ -37,7 +35,6 @@ public final class BreakpointDensityFilter implements Iterator<BreakpointEvidenc
         this.evidenceTree = buildTree(evidenceItr);
         this.treeItr = evidenceTree.iterator();
         this.listItr = null;
-        this.minEvidenceMapq = minEvidenceMapq;
     }
 
     @Override
@@ -89,7 +86,7 @@ public final class BreakpointDensityFilter implements Iterator<BreakpointEvidenc
 
     @VisibleForTesting boolean hasEnoughOverlappers( final SVInterval interval ) {
         final Iterator<SVIntervalTree.Entry<List<BreakpointEvidence>>> itr = evidenceTree.overlappers(interval);
-        PairedStrandedIntervalTree<BreakpointEvidence> targetIntervalTree = new PairedStrandedIntervalTree<>();
+        final SVIntervalTree<List<BreakpointEvidence>> targetIntervalTree = new SVIntervalTree<>();
         int weight = 0;
         while ( itr.hasNext() ) {
             final List<BreakpointEvidence> evidenceForInterval = itr.next().getValue();
@@ -99,42 +96,37 @@ public final class BreakpointDensityFilter implements Iterator<BreakpointEvidenc
             }
 
             for (final BreakpointEvidence evidence : evidenceForInterval) {
-                if (evidence.hasDistalTargets(readMetadata, minEvidenceMapq)) {
-                    final List<StrandedInterval> distalTargets = evidence.getDistalTargets(readMetadata, minEvidenceMapq);
-                    for (int i = 0; i < distalTargets.size(); i++) {
-                        targetIntervalTree.put(
-                                new PairedStrandedIntervals(
-                                        new StrandedInterval(evidence.getLocation(), evidence.isEvidenceUpstreamOfBreakpoint()),
-                                        distalTargets.get(i)),
-                                evidence
-                                );
+                if (evidence.hasDistalTargets()) {
+                    for (final SVInterval target : evidence.getDistalTargets(readMetadata)) {
+                        addToTree(targetIntervalTree, target, evidence);
                     }
                 }
             }
         }
 
-        final Iterator<Tuple2<PairedStrandedIntervals, BreakpointEvidence>> targetLinkIterator = targetIntervalTree.iterator();
-        while (targetLinkIterator.hasNext()) {
-            Tuple2<PairedStrandedIntervals, BreakpointEvidence> next = targetLinkIterator.next();
-            final int coherentEvidenceWeight = (int) Utils.stream(targetIntervalTree.overlappers(next._1())).count();
+        for (final SVIntervalTree.Entry<List<BreakpointEvidence>> targetTreeEntries : targetIntervalTree) {
+            final SVInterval target = targetTreeEntries.getInterval();
+            final int coherentEvidenceWeight =
+                    Utils.stream(targetIntervalTree.overlappers(target))
+                            .mapToInt(overlapper ->
+                                    overlapper.getValue().stream().mapToInt(BreakpointEvidence::getWeight).sum())
+                            .sum();
             if (coherentEvidenceWeight >= minCoherentEvidenceWeight) {
                 return true;
             }
-
         }
-
         return false;
     }
 
-    private static <T> void addToTree( final SVIntervalTree<List<T>> tree,
+    private static void addToTree( final SVIntervalTree<List<BreakpointEvidence>> tree,
                                    final SVInterval interval,
-                                   final T value ) {
-        final SVIntervalTree.Entry<List<T>> entry = tree.find(interval);
+                                   final BreakpointEvidence evidence ) {
+        final SVIntervalTree.Entry<List<BreakpointEvidence>> entry = tree.find(interval);
         if ( entry != null ) {
-            entry.getValue().add(value);
+            entry.getValue().add(evidence);
         } else {
-            final List<T> valueList = new ArrayList<>(1);
-            valueList.add(value);
+            final List<BreakpointEvidence> valueList = new ArrayList<>(1);
+            valueList.add(evidence);
             tree.put(interval, valueList);
         }
     }

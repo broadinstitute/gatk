@@ -33,8 +33,6 @@ public final class AlleleSubsettingUtils {
     /**
      * Create the new GenotypesContext with the subsetted PLs and ADs
      *
-     * Will reorder subsetted alleles according to the ordering provided by the list allelesToKeep
-     *
      * @param originalGs               the original GenotypesContext
      * @param originalAlleles          the original alleles
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
@@ -66,21 +64,15 @@ public final class AlleleSubsettingUtils {
             final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
             // create the new likelihoods array from the alleles we are allowed to use
             double[] newLikelihoods = null;
-            double newLog10GQ = -1;
             if (g.hasLikelihoods()) {
                 final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
                 newLikelihoods = originalLikelihoods.length == expectedNumLikelihoods ?
                         MathUtils.scaleLogSpaceArrayForNumericalStability(Arrays.stream(subsettedLikelihoodIndices)
                                 .mapToDouble(idx -> originalLikelihoods[idx]).toArray()) : null;
-                if (newLikelihoods != null) {
-                    final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
-                    newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
-                }
-
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
-            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ) : new GenotypeBuilder(g).noPL().noGQ();
+            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods) : new GenotypeBuilder(g).noPL();
 
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
 
@@ -273,7 +265,7 @@ public final class AlleleSubsettingUtils {
      * @param newAlleles            New alleles -- must be a subset of {@code originalAlleles}
      * @return                      old PL indices of new genotypes
      */
-    public static int[] subsettedPLIndices(final int ploidy, final List<Allele> originalAlleles, final List<Allele> newAlleles) {
+    private static int[] subsettedPLIndices(final int ploidy, final List<Allele> originalAlleles, final List<Allele> newAlleles) {
         final int[] result = new int[GenotypeLikelihoods.numLikelihoods(newAlleles.size(), ploidy)];
         final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalAlleles).permutation(new IndexedAlleleList<>(newAlleles));
 

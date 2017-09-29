@@ -38,7 +38,6 @@ import java.util.stream.IntStream;
  *
  */
 public final class RMSMappingQuality extends InfoFieldAnnotation implements StandardAnnotation, ReducibleAnnotation {
-    private static final RMSMappingQuality instance = new RMSMappingQuality();
 
     @Override
     public String getRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY;}
@@ -164,7 +163,4 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         return numOfReads;
     }
 
-    public static RMSMappingQuality getInstance() {
-        return instance;
-    }
 }

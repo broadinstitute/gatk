@@ -393,7 +393,6 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private GATKReportTable pmmTable;
     private GATKReportTable pPMixTable;
     private int numAnnotations;
-    private RScriptExecutor rScriptExecutor;
 
     //---------------------------------------------------------------------------------------------------------------
     //
@@ -406,14 +405,10 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
         dataManager = new VariantDataManager( new ArrayList<>(USE_ANNOTATIONS), VRAC );
 
-        if (RSCRIPT_FILE != null) {
-            rScriptExecutor = new RScriptExecutor();
-            if(!rScriptExecutor.externalExecutableExists()) {
-                Utils.warnUser(logger, String.format(
-                        "Rscript not found in environment path. %s will be generated but PDF plots will not.",
-                        RSCRIPT_FILE));
-            }
-        }
+        if (RSCRIPT_FILE != null && !RScriptExecutor.RSCRIPT_EXISTS)
+            Utils.warnUser(logger, String.format(
+                    "Rscript not found in environment path. %s will be generated but PDF plots will not.",
+                    RSCRIPT_FILE));
 
         if ( IGNORE_INPUT_FILTERS != null ) {
             ignoreInputFilterSet.addAll( IGNORE_INPUT_FILTERS );
@@ -693,11 +688,12 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     logger.info("Tranches plot will not be generated since we are running in scattered mode");
                 } else if (RSCRIPT_FILE != null) { //we don't use the RSCRIPT_FILE for tranches, but here it's an indicator if we're setup to run R
                     // Execute the RScript command to plot the table of truth values
-                    rScriptExecutor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
-                    rScriptExecutor.addArgs(new File(TRANCHES_FILE).getAbsoluteFile(), TARGET_TITV);
+                    final RScriptExecutor executor = new RScriptExecutor();
+                    executor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
+                    executor.addArgs(new File(TRANCHES_FILE).getAbsoluteFile(), TARGET_TITV);
                     // Print out the command line to make it clear to the user what is being executed and how one might modify it
-                    logger.info("Executing: " + rScriptExecutor.getApproximateCommandLine());
-                    rScriptExecutor.exec();
+                    logger.info("Executing: " + executor.getApproximateCommandLine());
+                    executor.exec();
                 }
                 return true;
             }

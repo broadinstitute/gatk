@@ -2,15 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardHCAnnotation;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -20,15 +15,21 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     private static final long serialVersionUID = 1L;
 
     /**
-     * When HaplotypeCaller is run with -ERC GVCF or -ERC BP_RESOLUTION, some annotations are excluded from the
-     * output by default because they will only be meaningful once they have been recalculated by GenotypeGVCFs. As
-     * of version 3.3 this concerns ChromosomeCounts, FisherStrand, StrandOddsRatio and QualByDepth.
+     * Which annotations to add to the output VCF file. The single value 'none' removes the default annotations.
+     * See the VariantAnnotator -list argument to view available annotations.
      */
-    @ArgumentCollection
-    public VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
-            Arrays.asList(StandardAnnotation.class.getSimpleName(), StandardHCAnnotation.class.getSimpleName()),
-            Collections.emptyList(),
-            Collections.emptyList());
+    @Advanced
+    @Argument(fullName = "annotation", shortName = "A", doc = "One or more specific annotations to apply to variant calls", optional = true)
+    public List<String> annotationsToUse = new ArrayList<>();
+
+    /**
+     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See
+     * the VariantAnnotator -list argument to view available groups. Note that this usage is not recommended because
+     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
+     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
+     */
+    @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)
+    public List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{"StandardAnnotation", "StandardHCAnnotation"}));
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This

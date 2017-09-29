@@ -13,9 +13,8 @@ import java.util.*;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 public class ReadClassifierTest extends BaseTest {
-    private final static LibraryStatistics stats =
-            new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
-                    60000000000L, 600000000L, 3000000000L);
+    private final static FragmentLengthStatistics stats =
+            new FragmentLengthStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000));
 
     @Test(groups = "sv")
     void restOfFragmentSizeTest() {
@@ -78,6 +77,7 @@ public class ReadClassifierTest extends BaseTest {
         read.setMateIsReverseStrand(true);
         read.setMatePosition(header.getSequenceDictionary().getSequence(2).getSequenceName(), read.getStart() - fragmentLen);
         checkClassification(classifier, read, Collections.emptyList());
+
     }
 
     private void checkClassification( final ReadClassifier classifier, final GATKRead read, final List<BreakpointEvidence> expectedEvidence ) {

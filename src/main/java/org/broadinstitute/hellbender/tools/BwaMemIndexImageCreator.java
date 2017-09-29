@@ -5,16 +5,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.BwaMemUtilitiesProgramGroup;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-
-import java.io.File;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 
 /**
  * Simply creates the reference index image file.
+ *
  */
 @CommandLineProgramProperties(
         summary = "Creates the image file for use by BwaMemAligner",
@@ -24,22 +20,24 @@ import java.util.stream.Collectors;
 public final class BwaMemIndexImageCreator extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "Input reference fasta file location.")
+              shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+              doc = "Input reference fasta file. The five bwa index files are assumed living in the same directory with the same prefix.")
     private String referenceFastaLoc = null;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output reference index image file (ending in \".img\").",
-            optional = true)
+              shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+              doc = "Output reference index image file (ending in \".img\").",
+              optional = true)
     private String referenceIndexImageOutputLoc = null;
 
     @Override
     protected final Object doWork() {
+
         if (referenceIndexImageOutputLoc == null) {
-            referenceIndexImageOutputLoc = referenceFastaLoc + ".img";
+            referenceIndexImageOutputLoc = referenceFastaLoc+".img";
         }
-        BwaMemIndex.createIndexImageFromFastaFile(referenceFastaLoc, referenceIndexImageOutputLoc);
+
+        BwaMemIndex.createIndexImage(referenceFastaLoc, referenceIndexImageOutputLoc);
         return null;
     }
 }

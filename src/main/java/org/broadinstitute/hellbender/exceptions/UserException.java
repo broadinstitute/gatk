@@ -231,9 +231,9 @@ public class UserException extends RuntimeException {
         }
 
         public MissingReferenceDictFile( final String fastaFile ) {
-            super(String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
+            String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
                     fastaFile,
-                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
+                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference"));
         }
     }
 
@@ -251,10 +251,10 @@ public class UserException extends RuntimeException {
         }
     }
 
-    public static class CannotExecuteScript extends UserException {
+    public static class CannotExecuteRScript extends UserException {
         private static final long serialVersionUID = 0L;
-        public CannotExecuteScript(final String scriptExecutor, String message) {
-            super(String.format("Unable to execute %s command: %s", scriptExecutor, message));
+        public CannotExecuteRScript(String message) {
+            super(String.format("Unable to execute RScript command: " + message));
         }
     }
 

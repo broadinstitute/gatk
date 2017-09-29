@@ -37,27 +37,27 @@ import java.util.List;
  * <h3>How HaplotypeCaller works</h3>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4147'>1. Define active regions </a></h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4147'>1. Define active regions </h4>
  *
  * <p>The program determines which regions of the genome it needs to operate on (active regions), based on the presence of
  * evidence for variation.
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4146'>2. Determine haplotypes by assembly of the active region </a></h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4146'>2. Determine haplotypes by assembly of the active region </h4>
  *
  * <p>For each active region, the program builds a De Bruijn-like graph to reassemble the active region and identifies
  * what are the possible haplotypes present in the data. The program then realigns each haplotype against the reference
  * haplotype using the Smith-Waterman algorithm in order to identify potentially variant sites. </p>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4441'>3. Determine likelihoods of the haplotypes given the read data </a></h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4441'>3. Determine likelihoods of the haplotypes given the read data </h4>
  *
  * <p>For each active region, the program performs a pairwise alignment of each read against each haplotype using the
  * PairHMM algorithm. This produces a matrix of likelihoods of haplotypes given the read data. These likelihoods are
  * then marginalized to obtain the likelihoods of alleles for each potentially variant site given the read data.   </p>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4442'>4. Assign sample genotypes </a></h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4442'>4. Assign sample genotypes </h4>
  *
  * <p>For each potentially variant site, the program applies Bayes' rule, using the likelihoods of alleles given the
  * read data to calculate the likelihoods of each genotype per sample given the read data observed for that
@@ -139,7 +139,7 @@ import java.util.List;
 @BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
-    public static final int DEFAULT_READSHARD_SIZE = NO_INTERVAL_SHARDING;
+    public static final int DEFAULT_READSHARD_SIZE = 5000;
     public static final int DEFAULT_READSHARD_PADDING = 100;
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
@@ -197,7 +197,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     @Override
     public void onTraversalStart() {
         final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
-        hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader);
+        hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), referenceReader);
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
@@ -218,7 +218,11 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        hcEngine.callRegion(region, featureContext).forEach(vcfWriter::add);
+        hcEngine.callRegion(region, featureContext).stream()
+                // Only include calls that start within the current read shard (as opposed to the padded regions around it).
+                // This is critical to avoid duplicating events that span shard boundaries!
+                .filter(call -> getCurrentReadShardBounds().contains(new SimpleInterval(call.getContig(), call.getStart(), call.getStart())))
+                .forEach(vcfWriter::add);
     }
 
     @Override
