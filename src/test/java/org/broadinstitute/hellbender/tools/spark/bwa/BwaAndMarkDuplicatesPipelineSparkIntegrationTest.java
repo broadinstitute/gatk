@@ -32,7 +32,6 @@ public final class BwaAndMarkDuplicatesPipelineSparkIntegrationTest extends Comm
         args.addReference(ref);
         args.addInput(input);
         args.addOutput(output);
-        args.addArgument("bwamemIndexImage", b37_reference_20_21+".img");
         args.addBooleanArgument("disableSequenceDictionaryValidation", true);
         this.runCommandLine(args.getArgsArray());
 

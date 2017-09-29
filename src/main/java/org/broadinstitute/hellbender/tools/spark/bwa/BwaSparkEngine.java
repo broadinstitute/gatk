@@ -3,12 +3,14 @@ package org.broadinstitute.hellbender.tools.spark.bwa;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.*;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
@@ -26,18 +28,22 @@ import java.util.*;
  * See {@link BwaSpark#runTool runTool} for an example.
  */
 public final class BwaSparkEngine implements AutoCloseable {
+    private static final String REFERENCE_INDEX_IMAGE_FILE_SUFFIX = ".img";
     private final JavaSparkContext ctx;
     private final String indexFileName;
     private final Broadcast<SAMFileHeader> broadcastHeader;
 
     public BwaSparkEngine(final JavaSparkContext ctx,
-                          final String indexFileName,
+                          final String referenceFile,
                           SAMFileHeader inputHeader,
                           final SAMSequenceDictionary refDictionary) {
-        Utils.nonNull(indexFileName);
+        Utils.nonNull(referenceFile);
         Utils.nonNull(inputHeader);
         this.ctx = ctx;
-        this.indexFileName = indexFileName;
+        String indexFile = referenceFile + REFERENCE_INDEX_IMAGE_FILE_SUFFIX;
+        ctx.addFile(indexFile);
+        this.indexFileName = IOUtils.getPath(indexFile).getFileName().toString();
+
         if (inputHeader.getSequenceDictionary() == null || inputHeader.getSequenceDictionary().isEmpty()) {
             Utils.nonNull(refDictionary);
             inputHeader = inputHeader.clone();
@@ -94,7 +100,7 @@ public final class BwaSparkEngine implements AutoCloseable {
         private static final int READS_PER_PARTITION_GUESS = 1500000;
 
         ReadAligner( final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs) {
-            this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
+            this.bwaMemIndex = BwaMemIndexCache.getInstance(SparkFiles.get(indexFileName));
             this.readsHeader = readsHeader;
             this.alignsPairs = alignsPairs;
         }
