@@ -18,7 +18,7 @@ import java.util.*;
  * The BwaSparkEngine provides a simple interface for transforming a JavaRDD<GATKRead> in which the reads are paired
  * and unaligned, into a JavaRDD<GATKRead> of aligned reads, and does so lazily.
  * Use it like this:
- *     Make one, call the {@link #align} method for each of your input RDDs in a pipeline that runs some action, close it.
+ *     Make one, call the align method for each of your input RDDs in a pipeline that runs some action, close it.
  *
  * The reason that the pipeline must culminate in some action, is because this class implements a lazy
  * transform, and nothing will happen otherwise.
@@ -48,35 +48,10 @@ public final class BwaSparkEngine implements AutoCloseable {
 
     public SAMFileHeader getHeader() { return broadcastHeader.getValue(); }
 
-    /**
-     * Performs pair-end alignment on a RDD.
-     * @param unalignedReads the read-pairs to align.
-     * @return never {@code null}.
-     */
-    public JavaRDD<GATKRead> alignPaired(final JavaRDD<GATKRead> unalignedReads) {
-        return align(unalignedReads, true);
-    }
-
-    /**
-     * Performs single-end alignment on a RDD.
-     *
-     * @param unalignedReads the reads to align.
-     * @return never {@code null}.
-     */
-    public JavaRDD<GATKRead> alignUnpaired(final JavaRDD<GATKRead> unalignedReads) {
-        return align(unalignedReads, false);
-    }
-
-    /**
-     * Performs read alignment on a RDD.
-     * @param unalignedReads the reads to align.
-     * @param pairedAlignment whether it should perform pair-end alignment ({@code true}) or single-end alignment ({@code false}).
-     * @return never {@code null}.
-     */
-    public JavaRDD<GATKRead> align(final JavaRDD<GATKRead> unalignedReads, final boolean pairedAlignment) {
+    public JavaRDD<GATKRead> align(final JavaRDD<GATKRead> unalignedReads) {
         final Broadcast<SAMFileHeader> broadcastHeader = this.broadcastHeader;
         final String indexFileName = this.indexFileName;
-        return unalignedReads.mapPartitions(itr -> new ReadAligner(indexFileName, broadcastHeader.value(), pairedAlignment).apply(itr));
+        return unalignedReads.mapPartitions(itr -> new ReadAligner(indexFileName, broadcastHeader.value()).apply(itr));
     }
 
     @Override
@@ -88,15 +63,13 @@ public final class BwaSparkEngine implements AutoCloseable {
     private static final class ReadAligner {
         private final BwaMemIndex bwaMemIndex;
         private final SAMFileHeader readsHeader;
-        private final boolean alignsPairs;
 
         // assumes 128Mb partitions, with reads needing about 100bytes each when BAM compressed
         private static final int READS_PER_PARTITION_GUESS = 1500000;
 
-        ReadAligner( final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs) {
+        ReadAligner( final String indexFileName, final SAMFileHeader readsHeader ) {
             this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
             this.readsHeader = readsHeader;
-            this.alignsPairs = alignsPairs;
         }
 
         Iterator<GATKRead> apply( final Iterator<GATKRead> readItr ) {
@@ -105,7 +78,7 @@ public final class BwaSparkEngine implements AutoCloseable {
                 inputReads.add(readItr.next());
             }
             final int nReads = inputReads.size();
-            if (alignsPairs && (nReads & 1) != 0 ) {
+            if ( (nReads & 1) != 0 ) {
                 throw new GATKException("We're supposed to be aligning paired reads, but there are an odd number of them.");
             }
             final List<List<BwaMemAlignment>> allAlignments;
@@ -117,9 +90,7 @@ public final class BwaSparkEngine implements AutoCloseable {
                 }
                 final BwaMemAligner aligner = new BwaMemAligner(bwaMemIndex);
                 // we are dealing with interleaved, paired reads.  tell BWA that they're paired.
-                if (alignsPairs) {
-                    aligner.alignPairs();
-                }
+                aligner.alignPairs();
                 allAlignments = aligner.alignSeqs(seqs);
             }
             final List<String> refNames = bwaMemIndex.getReferenceContigNames();

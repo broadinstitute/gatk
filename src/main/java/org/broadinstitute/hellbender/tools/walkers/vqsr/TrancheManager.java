@@ -209,11 +209,8 @@ public class TrancheManager {
                 return t;
             }
         }
-        //If we don't have enough good data to meet the trancheThreshold, for VQSLODs we still want to return something
-        logger.info(String.format("  Could not find tranche for %.3f: %.3f threshold; reporting empty tranche",
-                trancheThreshold, metricThreshold));
-        final VQSLODTranche t = VQSLODTranche.emptyTranche(data, n-1, trancheThreshold, model);
-        return t;
+
+        return null;
     }
 
     public static double fdrToTiTv(final double desiredFDR, final double targetTiTv) {

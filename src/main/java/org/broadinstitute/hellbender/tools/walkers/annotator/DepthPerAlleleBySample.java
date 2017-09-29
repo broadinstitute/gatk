@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_AlleleBalanceBySample.php">AlleleBalanceBySample</a></b> calculates allele balance for each individual sample.</li>
  * </ul>
  */
-public final class DepthPerAlleleBySample extends GenotypeAnnotation implements StandardAnnotation, StandardMutectAnnotation {
+public final class DepthPerAlleleBySample extends GenotypeAnnotation implements StandardAnnotation {
 
     @Override
     public void annotate(final ReferenceContext ref,

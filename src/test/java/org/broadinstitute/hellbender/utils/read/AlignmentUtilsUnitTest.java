@@ -2,13 +2,10 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import org.apache.commons.lang3.ArrayUtils;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
+import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -155,12 +152,10 @@ public final class AlignmentUtilsUnitTest {
         final GATKRead originalReadCopy = read.copy();
 
         if ( expectedReadCigar == null ) {
-            Assert.assertNull(AlignmentUtils.createReadAlignedToRef(read, haplotype, haplotype, refStart, true, SmithWatermanJavaAligner
-                    .getInstance()));
+            Assert.assertNull(AlignmentUtils.createReadAlignedToRef(read, haplotype, haplotype, refStart, true));
         } else {
             final Cigar expectedCigar = TextCigarCodec.decode(expectedReadCigar);
-            final GATKRead alignedRead = AlignmentUtils.createReadAlignedToRef(read, haplotype, haplotype, refStart, true, SmithWatermanJavaAligner
-                    .getInstance());
+            final GATKRead alignedRead = AlignmentUtils.createReadAlignedToRef(read, haplotype, haplotype, refStart, true);
 
             Assert.assertEquals(alignedRead.getName(), originalReadCopy.getName());
             Assert.assertEquals(alignedRead.getStart(), expectedReadStart);
@@ -249,9 +244,8 @@ public final class AlignmentUtilsUnitTest {
         for ( final List<Mutation> mutations : Utils.makePermutations(allMutations, 3, false) ) {
             final MutatedSequence hap = mutateSequence(referenceBases, mutations);
             final Haplotype haplotype = new Haplotype(hap.seq.getBytes());
-            final SmithWatermanAlignment align = SmithWatermanJavaAligner.getInstance()
-                    .align(paddedReference.getBytes(), hap.seq.getBytes(), SmithWatermanAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
-            haplotype.setAlignmentStartHapwrtRef(align.getAlignmentOffset());
+            final SWPairwiseAlignment align = new SWPairwiseAlignment(paddedReference.getBytes(), hap.seq.getBytes());
+            haplotype.setAlignmentStartHapwrtRef(align.getAlignmentStart2wrt1());
             haplotype.setCigar(align.getCigar());
 
             for ( final List<Mutation> readMutations : Utils.makePermutations(allMutations, 3, false) ) {
@@ -269,8 +263,7 @@ public final class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "ComplexReadAlignedToRef")
     public void testReadAlignedToRefComplexAlignment(final int testIndex, final GATKRead read, final String reference, final Haplotype haplotype, final int expectedMaxMismatches) throws Exception {
-        final GATKRead alignedRead = AlignmentUtils.createReadAlignedToRef(read, haplotype, new Haplotype(reference.getBytes(),true), 1, true, SmithWatermanJavaAligner
-                .getInstance());
+        final GATKRead alignedRead = AlignmentUtils.createReadAlignedToRef(read, haplotype, new Haplotype(reference.getBytes(),true), 1, true);
         if ( alignedRead != null ) {
             final int mismatches = AlignmentUtils.getMismatchCount(alignedRead, reference.getBytes(), alignedRead.getStart() - 1).numMismatches;
             Assert.assertTrue(mismatches <= expectedMaxMismatches,

@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
@@ -51,7 +53,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
 
         ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(isNull(), eq(i))).thenReturn(FakeReferenceSource.bases(i));
+            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
@@ -74,7 +76,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
 
         ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(isNull(), eq(i))).thenReturn(FakeReferenceSource.bases(i));
+            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 

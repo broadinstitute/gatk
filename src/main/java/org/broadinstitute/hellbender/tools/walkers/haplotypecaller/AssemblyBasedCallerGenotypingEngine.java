@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -199,10 +198,6 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
             if (emitReferenceConfidence) {
                 readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
             }
-        }
-
-        if (call.getAlleles().size() != readAlleleLikelihoodsForAnnotations.numberOfAlleles()) {
-            readAlleleLikelihoodsForAnnotations.updateNonRefAlleleLikelihoods(new IndexedAlleleList<>(call.getAlleles()));
         }
 
         // Skim the filtered map based on the location so that we do not add filtered read that are going to be removed

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.experimental.FindSmallIndelRegions;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -23,7 +22,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     private final GATKRead sentinel;
     private final int allowedShortFragmentOverhang;
     private final SVReadFilter filter;
-    private final KSWindowFinder smallIndelFinder;
+    private final FindSmallIndelRegions.Finder smallIndelFinder;
 
     public ReadClassifier( final ReadMetadata readMetadata,
                            GATKRead sentinel,
@@ -33,7 +32,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         this.sentinel = sentinel;
         this.allowedShortFragmentOverhang = allowedShortFragmentOverhang;
         this.filter = filter;
-        smallIndelFinder = new KSWindowFinder(readMetadata, filter);
+        smallIndelFinder = new FindSmallIndelRegions.Finder(readMetadata, filter);
     }
 
     @Override
@@ -48,9 +47,8 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
 
         final List<BreakpointEvidence> evidenceList = new ArrayList<>();
         checkForSplitRead(read, evidenceList);
-
         checkDiscordantPair(read, evidenceList);
-        smallIndelFinder.testReadAndGatherEvidence(read, evidenceList);
+        smallIndelFinder.test(read, evidenceList);
 
         return evidenceList.iterator();
     }
@@ -125,8 +123,6 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     }
 
     private void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
-        if (! filter.isPrimaryLine(read)) return;
-
         if ( read.mateIsUnmapped() ) {
             evidenceList.add(new BreakpointEvidence.MateUnmapped(read, readMetadata));
         } else {

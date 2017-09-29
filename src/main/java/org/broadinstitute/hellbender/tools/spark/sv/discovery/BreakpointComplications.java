@@ -13,19 +13,20 @@ import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import scala.Tuple2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * A helper struct for annotating complications that make the locations represented by its associated
- * {@link NovelAdjacencyReferenceLocations} a little ambiguous,
- * so that downstream analysis could infer sv type with these complications.
+ * A helper struct for annotating complications that make the locations represented by its associated {@link NovelAdjacencyReferenceLocations}
+ * a little ambiguous, so that downstream analysis could infer sv type with these complications.
  * To be updated as more types of complications can be processed and handled by
  * {@link BreakpointComplications( ChimericAlignment )}.
  */
 @DefaultSerializer(BreakpointComplications.Serializer.class)
-public final class BreakpointComplications {
+final class BreakpointComplications {
 
     @SuppressWarnings("unchecked")
     private static final List<String> DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG = new ArrayList<>(Collections.EMPTY_LIST);
@@ -116,31 +117,29 @@ public final class BreakpointComplications {
      * identify potential complications such as homology and duplication on the reference and/or on the contig.
      */
     BreakpointComplications(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
-        final Tuple2<SimpleInterval, SimpleInterval> referenceSpans = chimericAlignment.getCoordSortedReferenceSpans();
-        final SimpleInterval leftReferenceSpan  = referenceSpans._1;
-        final SimpleInterval rightReferenceSpan = referenceSpans._2;
+        final SimpleInterval leftReferenceInterval  = chimericAlignment.getCoordSortedReferenceIntervals()._1;
+        final SimpleInterval rightReferenceInterval = chimericAlignment.getCoordSortedReferenceIntervals()._2;
 
-        final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
-        final AlignmentInterval secondAlignmentInterval = chimericAlignment.regionWithHigherCoordOnContig;
+        final AlignedAssembly.AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
+        final AlignedAssembly.AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
+
 
         // a segment with lower coordinate on the locally-assembled contig could map to a higher reference coordinate region
         // under two basic types of SV's: inversion (strand switch necessary) and translocation (no strand switch necessary)
-        final boolean isNotSimpleTranslocation =
-                ChimericAlignment.isNotSimpleTranslocation(chimericAlignment.regionWithLowerCoordOnContig,
-                        chimericAlignment.regionWithHigherCoordOnContig, chimericAlignment.strandSwitch,
-                        ChimericAlignment.involvesRefPositionSwitch(firstAlignmentInterval, secondAlignmentInterval));
+        final boolean isNotSimpleTranslocation
+                = ChimericAlignment.isNotSimpleTranslocation(chimericAlignment.regionWithLowerCoordOnContig, chimericAlignment.regionWithHigherCoordOnContig,
+                chimericAlignment.strandSwitch, ChimericAlignment.involvesRefPositionSwitch(firstContigRegion, secondContigRegion));
 
         // TODO: 12/5/16 simple translocation, don't tackle yet
-        if (chimericAlignment.strandSwitch!= StrandSwitch.NO_SWITCH) { // the case involves an inversion
+        if (chimericAlignment.strandSwitch!= ChimericAlignment.StrandSwitch.NO_SWITCH) { // the case involves an inversion
             // TODO: 12/5/16 duplication detection to be done for inversion alleles
-            initForSimpleInversion(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
+            initForSimpleInversion(firstContigRegion, secondContigRegion, contigSeq);
         } else if (isNotSimpleTranslocation) {
-            initForInsDel(chimericAlignment, leftReferenceSpan, rightReferenceSpan, contigSeq);
+            initForInsDel(chimericAlignment, leftReferenceInterval, rightReferenceInterval, contigSeq);
         }
     }
 
-    private void initForSimpleInversion(final AlignmentInterval firstContigRegion, final AlignmentInterval secondContigRegion,
-                                        final byte[] contigSeq) {
+    private void initForSimpleInversion(final AlignedAssembly.AlignmentInterval firstContigRegion, final AlignedAssembly.AlignmentInterval secondContigRegion, final byte[] contigSeq) {
         homologyForwardStrandRep = getHomology(firstContigRegion, secondContigRegion, contigSeq);
         insertedSequenceForwardStrandRep = getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
         dupSeqRepeatUnitRefSpan = null;
@@ -150,45 +149,33 @@ public final class BreakpointComplications {
         hasDuplicationAnnotation = false;
     }
 
-    /**
-     * todo : see ticket #3529
-     * @return true iff the two AI of the {@code longRead} overlaps on reference is more than half of the two AI's minimal read span.
-     */
-    @VisibleForTesting
-    public static boolean isLikelyInvertedDuplication(final AlignmentInterval one, final AlignmentInterval two) {
-        return 2 * AlignmentInterval.overlapOnRefSpan(one, two) >
-                Math.min(one.endInAssembledContig - one.startInAssembledContig,
-                        two.endInAssembledContig - two.startInAssembledContig) + 1;
-    }
+    private void initForInsDel(final ChimericAlignment chimericAlignment, final SimpleInterval leftReferenceInterval, final SimpleInterval rightReferenceInterval, final byte[] contigSeq) {
 
-    private void initForInsDel(final ChimericAlignment chimericAlignment, final SimpleInterval leftReferenceInterval,
-                               final SimpleInterval rightReferenceInterval, final byte[] contigSeq) {
-
-        final AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
-        final AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
+        final AlignedAssembly.AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
+        final AlignedAssembly.AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
 
         final int r1e = leftReferenceInterval.getEnd(),
-                r2b = rightReferenceInterval.getStart(),
-                c1e = firstContigRegion.endInAssembledContig,
-                c2b = secondContigRegion.startInAssembledContig;
+                  r2b = rightReferenceInterval.getStart(),
+                  c1e = firstContigRegion.endInAssembledContig,
+                  c2b = secondContigRegion.startInAssembledContig;
 
         final int distBetweenAlignRegionsOnRef = r2b - r1e - 1, // distance-1 between the two regions on reference, denoted as d1 in the comments below
-                distBetweenAlignRegionsOnCtg = c2b - c1e - 1; // distance-1 between the two regions on contig, denoted as d2 in the comments below
+                  distBetweenAlignRegionsOnCtg = c2b - c1e - 1; // distance-1 between the two regions on contig, denoted as d2 in the comments below
 
         if ( distBetweenAlignRegionsOnRef > 0 ) {        // Deletion:
-            resolveComplicationForSimpleDel(firstContigRegion, secondContigRegion, distBetweenAlignRegionsOnCtg, contigSeq);
+            resolveComplicationForSimpleDel(contigSeq, firstContigRegion, secondContigRegion, distBetweenAlignRegionsOnCtg);
         } else if (distBetweenAlignRegionsOnRef == 0 && distBetweenAlignRegionsOnCtg > 0) { // Insertion: simple insertion, inserted sequence is the sequence [c1e+1, c2b-1] on the contig
             insertedSequenceForwardStrandRep = getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
         } else if (distBetweenAlignRegionsOnRef == 0 && distBetweenAlignRegionsOnCtg < 0) { // Tandem repeat contraction: reference has two copies but one copy was deleted on the contig; duplicated sequence on reference are [r1e-|d2|+1, r1e] and [r2b, r2b+|d2|-1]
-            resolveComplicationForSimpleTandupContraction(leftReferenceInterval, firstContigRegion, secondContigRegion, r1e, c1e, c2b, contigSeq);
+            resolveComplicationForSimpleTandupContraction(leftReferenceInterval, contigSeq, firstContigRegion, secondContigRegion, r1e, c1e, c2b);
         } else if (distBetweenAlignRegionsOnRef < 0 && distBetweenAlignRegionsOnCtg >= 0) { // Tandem repeat expansion:   reference bases [r1e-|d1|+1, r1e] to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1] with optional inserted sequence [c1e+1, c2b-1] in between the two intervals on contig
-            resolveComplicationForSimpleTandupExpansion(leftReferenceInterval, firstContigRegion, secondContigRegion, r1e, r2b, distBetweenAlignRegionsOnCtg, contigSeq);
+            resolveComplicationForSimpleTandupExpansion(leftReferenceInterval, contigSeq, firstContigRegion, secondContigRegion, r1e, r2b, distBetweenAlignRegionsOnCtg);
         } else if (distBetweenAlignRegionsOnRef < 0 && distBetweenAlignRegionsOnCtg < 0) {  // most complicated case, see below
             // Deletion:  duplication with repeat number N1 on reference, N2 on contig, such that N1 <= 2*N2 (and N2<N1);
             // Insertion: duplication with repeat number N1 on reference, N2 on contig, such that N2 <= 2*N1 (and N1<N2);
             // in both cases, the equal sign on the right can be taken only when there's pseudo-homology between starting bases of the duplicated sequence and starting bases of the right flanking region
             // the reference system with a shorter overlap (i.e. with less-negative distance between regions) has a higher repeat number
-            resolveComplicationForComplexTandup(firstContigRegion, secondContigRegion, r1e, distBetweenAlignRegionsOnRef, distBetweenAlignRegionsOnCtg, contigSeq);
+            resolveComplicationForComplexTandup(contigSeq, firstContigRegion, secondContigRegion, r1e, distBetweenAlignRegionsOnRef, distBetweenAlignRegionsOnCtg);
         } else if (distBetweenAlignRegionsOnRef == 0 && distBetweenAlignRegionsOnCtg == 0) {// SNP & indel
             throw new GATKException("Detected badly parsed chimeric alignment for identifying SV breakpoints; no rearrangement found: " + chimericAlignment.onErrStringRep());
         }
@@ -199,13 +186,8 @@ public final class BreakpointComplications {
         }
     }
 
-    private void resolveComplicationForSimpleTandupExpansion(final SimpleInterval leftReferenceInterval,
-                                                             final AlignmentInterval firstContigRegion,
-                                                             final AlignmentInterval secondContigRegion,
-                                                             final int r1e, final int r2b,
-                                                             final int distBetweenAlignRegionsOnCtg, final byte[] contigSeq) {
-        // note this does not incorporate the duplicated reference sequence
-        insertedSequenceForwardStrandRep = distBetweenAlignRegionsOnCtg == 0 ? "" : getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
+    private void resolveComplicationForSimpleTandupExpansion(SimpleInterval leftReferenceInterval, byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int r1e, int r2b, int distBetweenAlignRegionsOnCtg) {
+        insertedSequenceForwardStrandRep = distBetweenAlignRegionsOnCtg == 0 ? "" : getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq); // note this does not incorporate the duplicated reference sequence
         hasDuplicationAnnotation  = true;
         dupSeqRepeatUnitRefSpan   = new SimpleInterval(leftReferenceInterval.getContig(), r2b, r1e);
         dupSeqRepeatNumOnRef      = 1;
@@ -220,11 +202,7 @@ public final class BreakpointComplications {
         }
     }
 
-    private void resolveComplicationForSimpleTandupContraction(final SimpleInterval leftReferenceInterval,
-                                                               final AlignmentInterval firstContigRegion,
-                                                               final AlignmentInterval secondContigRegion,
-                                                               final int r1e, final int c1e, final int c2b,
-                                                               final byte[] contigSeq) {
+    private void resolveComplicationForSimpleTandupContraction(SimpleInterval leftReferenceInterval, byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int r1e, int c1e, int c2b) {
         homologyForwardStrandRep = getHomology(firstContigRegion, secondContigRegion, contigSeq);
         hasDuplicationAnnotation = true;
         dupSeqRepeatUnitRefSpan  = new SimpleInterval(leftReferenceInterval.getContig(), r1e - ( c1e - c2b ), r1e);
@@ -233,9 +211,7 @@ public final class BreakpointComplications {
         cigarStringsForDupSeqOnCtg = DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG;
     }
 
-    private void resolveComplicationForSimpleDel(final AlignmentInterval firstContigRegion,
-                                                 final AlignmentInterval secondContigRegion,
-                                                 final int distBetweenAlignRegionsOnCtg, final byte[] contigSeq) {
+    private void resolveComplicationForSimpleDel(byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int distBetweenAlignRegionsOnCtg) {
         if (distBetweenAlignRegionsOnCtg>=0) {
             // either: a clean deletion, deleted sequence is [r1e+1, r2b-1] on the reference
             // or    : deletion with scar, i.e. large non-conserved substitution, reference bases [r1e+1, r2b-1] is substituted with contig bases [c1e+1, c2b-1]
@@ -246,48 +222,39 @@ public final class BreakpointComplications {
         }
     }
 
-    private void resolveComplicationForComplexTandup(final AlignmentInterval firstContigRegion,
-                                                     final AlignmentInterval secondContigRegion,
-                                                     final int r1e, final int distBetweenAlignRegionsOnRef,
-                                                     final int distBetweenAlignRegionsOnCtg, final byte[] contigSeq) {
+    private void resolveComplicationForComplexTandup(byte[] contigSeq, AlignedAssembly.AlignmentInterval firstContigRegion, AlignedAssembly.AlignmentInterval secondContigRegion, int r1e, int distBetweenAlignRegionsOnRef, int distBetweenAlignRegionsOnCtg) {
+        final TandemRepeatStructure duplicationComplication = new TandemRepeatStructure(distBetweenAlignRegionsOnRef, distBetweenAlignRegionsOnCtg);
 
-        final TandemRepeatStructure duplicationComplication
-                = new TandemRepeatStructure(distBetweenAlignRegionsOnRef, distBetweenAlignRegionsOnCtg);
+        final boolean isExpansion = distBetweenAlignRegionsOnRef<distBetweenAlignRegionsOnCtg;
 
-        final boolean isExpansion     = distBetweenAlignRegionsOnRef<distBetweenAlignRegionsOnCtg;
-
-        final int repeatUnitSpanStart = r1e - duplicationComplication.pseudoHomologyLen
-                                            - duplicationComplication.repeatedSeqLen * duplicationComplication.lowerRepeatNumberEstimate
-                                            + 1;
+        final int repeatUnitSpanStart = r1e - duplicationComplication.pseudoHomologyLen - duplicationComplication.repeatedSeqLen * duplicationComplication.lowerRepeatNumberEstimate + 1;
         final int repeatUnitSpanEnd   = repeatUnitSpanStart + duplicationComplication.repeatedSeqLen - 1;
-        homologyForwardStrandRep      = getHomology(firstContigRegion, secondContigRegion, contigSeq);
-        hasDuplicationAnnotation      = true;
-        cigarStringsForDupSeqOnCtg    = DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG;
-        dupSeqRepeatUnitRefSpan       = new SimpleInterval(firstContigRegion.referenceSpan.getContig(), repeatUnitSpanStart, repeatUnitSpanEnd);
-        dupSeqRepeatNumOnRef          = isExpansion ? duplicationComplication.lowerRepeatNumberEstimate
-                                                    : duplicationComplication.higherRepeatNumberEstimate;
-        dupSeqRepeatNumOnCtg          = isExpansion ? duplicationComplication.higherRepeatNumberEstimate
-                                                    : duplicationComplication.lowerRepeatNumberEstimate;
-        dupAnnotIsFromOptimization    = true;
+        homologyForwardStrandRep    = getHomology(firstContigRegion, secondContigRegion, contigSeq);
+        hasDuplicationAnnotation = true;
+        cigarStringsForDupSeqOnCtg = DEFAULT_CIGAR_STRINGS_FOR_DUP_SEQ_ON_CTG;
+        dupSeqRepeatUnitRefSpan     = new SimpleInterval(firstContigRegion.referenceInterval.getContig(), repeatUnitSpanStart, repeatUnitSpanEnd);
+        dupSeqRepeatNumOnRef      = isExpansion ? duplicationComplication.lowerRepeatNumberEstimate  : duplicationComplication.higherRepeatNumberEstimate;
+        dupSeqRepeatNumOnCtg      = isExpansion ? duplicationComplication.higherRepeatNumberEstimate : duplicationComplication.lowerRepeatNumberEstimate;
+        dupAnnotIsFromOptimization = true;
     }
 
 
     /**
-     * Given a {@link AlignmentInterval} from a pair of ARs that forms a {@link ChimericAlignment} signalling a tandem duplication,
-     * extract a CIGAR from the {@link AlignmentInterval#cigarAlong5to3DirectionOfContig}
+     * Given a {@link AlignedAssembly.AlignmentInterval} from a pair of ARs that forms a {@link ChimericAlignment} signalling a tandem duplication,
+     * extract a CIGAR from the {@link AlignedAssembly.AlignmentInterval#cigarAlong5to3DirectionOfContig}
      * that corresponds to the alignment between the suspected repeated sequence on reference between
      * [{@code alignmentIntervalTwoReferenceIntervalSpanBegin}, {@code alignmentIntervalOneReferenceIntervalSpanEnd}],
-     * and the sequence in {@link AlignmentInterval#referenceSpan}.
+     * and the sequence in {@link AlignedAssembly.AlignmentInterval#referenceInterval}.
      */
     @VisibleForTesting
-    static Cigar extractCigarForTandup(final AlignmentInterval contigRegion,
+    static Cigar extractCigarForTandup(final AlignedAssembly.AlignmentInterval contigRegion,
                                        final int alignmentIntervalOneReferenceIntervalSpanEnd,
                                        final int alignmentIntervalTwoReferenceIntervalSpanBegin) {
 
         final List<CigarElement> elementList = contigRegion.cigarAlong5to3DirectionOfContig.getCigarElements();
         final List<CigarElement> result = new ArrayList<>(elementList.size());
-        final int refStart = contigRegion.referenceSpan.getStart(),
-                refEnd = contigRegion.referenceSpan.getEnd();
+        final int refStart = contigRegion.referenceInterval.getStart(),
+                  refEnd = contigRegion.referenceInterval.getEnd();
         final boolean isForwardStrand = contigRegion.forwardStrand;
         boolean initiatedCollection = false;
         int refPos = isForwardStrand ? refStart : refEnd;
@@ -299,7 +266,7 @@ public final class BreakpointComplications {
                 final int offsetIntoRepeatRegion = isForwardStrand ? refPos - alignmentIntervalTwoReferenceIntervalSpanBegin
                                                                    : alignmentIntervalOneReferenceIntervalSpanEnd - refPos;
                 final int overshootOutOfRepeatRegion = isForwardStrand ? refPos - alignmentIntervalOneReferenceIntervalSpanEnd - 1
-                                                                       : alignmentIntervalTwoReferenceIntervalSpanBegin - refPos - 1;
+                                                                        : alignmentIntervalTwoReferenceIntervalSpanBegin - refPos - 1;
 
                 if ( offsetIntoRepeatRegion > 0 ) {
                     if ( overshootOutOfRepeatRegion <= 0 ) {
@@ -321,12 +288,11 @@ public final class BreakpointComplications {
      *          Empty if they don't overlap on the contig.
      */
     @VisibleForTesting
-    static String getHomology(final AlignmentInterval current, final AlignmentInterval next, final byte[] contigSequence) {
+    static String getHomology(final AlignedAssembly.AlignmentInterval current, final AlignedAssembly.AlignmentInterval next, final byte[] contigSequence) {
 
         if (current.endInAssembledContig >= next.startInAssembledContig) {
-            final byte[] homologyBytes = Arrays.copyOfRange(contigSequence,
-                    next.startInAssembledContig-1, current.endInAssembledContig);
-            if (current.referenceSpan.getStart() > next.referenceSpan.getStart()) {
+            final byte[] homologyBytes = Arrays.copyOfRange(contigSequence, next.startInAssembledContig-1, current.endInAssembledContig);
+            if (current.referenceInterval.getStart() > next.referenceInterval.getStart()) {
                 SequenceUtil.reverseComplement(homologyBytes, 0, homologyBytes.length);
             }
             return new String(homologyBytes);
@@ -340,12 +306,11 @@ public final class BreakpointComplications {
      * @return Inserted sequence using two alignments of the same contig: as indicated by their separation on the the contig itself.
      */
     @VisibleForTesting
-    static String getInsertedSequence(final AlignmentInterval current, final AlignmentInterval next, final byte[] contigSequence) {
+    static String getInsertedSequence(final AlignedAssembly.AlignmentInterval current, final AlignedAssembly.AlignmentInterval next, final byte[] contigSequence) {
 
         if (current.endInAssembledContig < next.startInAssembledContig - 1) {
-            final byte[] insertedSequenceBytes = Arrays.copyOfRange(contigSequence,
-                    current.endInAssembledContig, next.startInAssembledContig - 1);
-            if (current.referenceSpan.getStart() > next.referenceSpan.getStart()) {
+            final byte[] insertedSequenceBytes = Arrays.copyOfRange(contigSequence, current.endInAssembledContig, next.startInAssembledContig - 1);
+            if (current.referenceInterval.getStart() > next.referenceInterval.getStart()) {
                 SequenceUtil.reverseComplement(insertedSequenceBytes, 0, insertedSequenceBytes.length);
             }
             return new String(insertedSequenceBytes);
@@ -354,40 +319,7 @@ public final class BreakpointComplications {
         }
     }
 
-    // TODO: 03/03/17 this complicated tandem duplication annotation is not exactly reproducible in the following sense:
-    //          1) depending on what the assembler might produce, e.g. different runs producing slightly different sequences
-    //          hence affecting alignment,
-    //          2) the assembler might decide to output RC sequences between runs hence the mapping would be to '+' or '-' strand
-    //       these randomness may give slightly different results by this treatment
-    /**
-     * This auxiliary structure, when constructed given overlaps of two corresponding regions on reference and contig sequences,
-     * attempts to find--naively and slowly--the repeat numbers on the reference and on the contig of tandem repeats,
-     * as well as the pseudo-homology between the duplicated sequence and the right flanking region.
-     *
-     * An example might help:
-     * an assembled contig that's actually a repeat expansion from 1 repeat to 2 repeats with pseudo-homology:
-     * TGCCAGGTTACATGGCAAAGAGGGTAGATATGGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCATGAGGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCAGGAGGGCAGCTGTGGATGGTGCAAATGCCATTTATGCTCCTCTCCACCCATATCC
-     * can be aligned to chr18,
-     * the 1st alignment chr18:312579-718, 140M135S, which can be broken into the following part
-     * 31:  TGCCAGGTTACATGGCAAAGAGGGTAGATAT
-     * 109: GGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCATGAGGGGAGCTGTGAA
-     * 135: GAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCAGGAGGGCAGCTGTGGATGGTGCAAATGCCATTTATGCTCCTCTCCACCCATATCC
-     * And the arithmetic to get the cigar operation length works this way:
-     * 31 + 109 = 140
-     * 109 = 96 + 13
-     * where 31 is the left flanking region before the repeated unit, which itself is 96 bases long (see below),
-     * the number 13 is the length of the pseudo-homology between the starting bases of the repeated sequence and the right flanking region
-     * a clearer picture emerges when we look at the 2nd alignment
-     * chr18:312610-757, 127S148M, which can be broken into
-     * 31: TGCCAGGTTACATGGCAAAGAGGGTAGATAT
-     * 96: GGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCATGA
-     * 96: GGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCAGGA
-     * 13: GGGCAGCTGTGGA
-     * 39: TGGTGCAAATGCCATTTATGCTCCTCTCCACCCATATCC
-     * And the arithmetic works this way:
-     * 31 + 96 = 127
-     * 96 + 13 + 39 = 148
-     */
+    // TODO: 03/03/17 this complicated tandem duplication case is not exactly reproducible (e.g. '+' and '-' strand may give slightly different results by this treatment)
     private static final class TandemRepeatStructure {
 
         /**
@@ -401,7 +333,34 @@ public final class BreakpointComplications {
         final int repeatedSeqLen;
         final int pseudoHomologyLen;
 
-
+        /**
+         * This function, when given overlaps of two corresponding regions on reference and contig sequences,
+         * attempts to find--naively and slowly--the repeat numbers on the reference and on the contig of tandem repeats,
+         * as well as the pseudo-homology between the duplicated sequence and the right flanking region.
+         *
+         * An example might help:
+         * an assembled contig that's actually a repeat expansion from 1 repeat to 2 repeats with pseudo-homology:
+         * TGCCAGGTTACATGGCAAAGAGGGTAGATATGGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCATGAGGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCAGGAGGGCAGCTGTGGATGGTGCAAATGCCATTTATGCTCCTCTCCACCCATATCC
+         * can be aligned to chr18:312XXX:
+         * the 1st alignment chr18:312579-718 140M135S, which can be broken into the following part
+         * 31:  TGCCAGGTTACATGGCAAAGAGGGTAGATAT
+         * 109: GGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCATGAGGGGAGCTGTGAA
+         * 135: GAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCAGGAGGGCAGCTGTGGATGGTGCAAATGCCATTTATGCTCCTCTCCACCCATATCC
+         * And the arithmetic works this way:
+         * 31 + 109 = 140
+         * 109 = 96 + 13
+         * where 31 is the left flanking region before the repeated unit, which itself is 96 bases long (see below),
+         * the number 13 is the length of the pseudo-homology between the starting bases of the repeated sequence and the right flanking region
+         * a clearer picture emerges when we look at the 2nd alignment chr18:312610-757 127S148M, which can be broken into
+         * 31: TGCCAGGTTACATGGCAAAGAGGGTAGATAT
+         * 96: GGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCATGA
+         * 96: GGGGAGCTGTGAAGAATGGAGCCAGTAATTAAATTCACTGAAGTCTCCACAGGAGGGCAAGGTGGACAATCTGTCCCATAGGAGGGGGATTCAGGA
+         * 13: GGGCAGCTGTGGA
+         * 39: TGGTGCAAATGCCATTTATGCTCCTCTCCACCCATATCC
+         * And the arithmetic works this way:
+         * 31 + 96 = 127
+         * 96 + 13 + 39 = 148
+         */
         @VisibleForTesting
         TandemRepeatStructure(final int distBetweenAlignRegionsOnRef, final int distBetweenAlignRegionsOnCtg) {
             // the reference system with a shorter overlap (i.e. with less-negative distance between regions) has a higher repeat number
@@ -506,8 +465,7 @@ public final class BreakpointComplications {
         if (!insertedSequenceForwardStrandRep.equals(that.insertedSequenceForwardStrandRep)) return false;
         if (dupSeqRepeatUnitRefSpan != null ? !dupSeqRepeatUnitRefSpan.equals(that.dupSeqRepeatUnitRefSpan) : that.dupSeqRepeatUnitRefSpan != null)
             return false;
-        return cigarStringsForDupSeqOnCtg != null ? cigarStringsForDupSeqOnCtg.equals(that.cigarStringsForDupSeqOnCtg)
-                : that.cigarStringsForDupSeqOnCtg == null;
+        return cigarStringsForDupSeqOnCtg != null ? cigarStringsForDupSeqOnCtg.equals(that.cigarStringsForDupSeqOnCtg) : that.cigarStringsForDupSeqOnCtg == null;
     }
 
     @Override

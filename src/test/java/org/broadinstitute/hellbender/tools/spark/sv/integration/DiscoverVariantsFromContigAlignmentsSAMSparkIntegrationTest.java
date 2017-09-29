@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.sv.integration;
 
 import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
@@ -16,12 +15,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends CommandLineProgramTest {
-
-    static final List<String> annotationsToIgnoreWhenComparingVariants =
-            Arrays.asList(GATKSVVCFConstants.ALIGN_LENGTHS,
-                    GATKSVVCFConstants.CONTIG_NAMES,
-                    GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS,
-                    GATKSVVCFConstants.TOTAL_MAPPINGS);
 
     private static final class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs {
         final String outputDir;
@@ -53,7 +46,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
         final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
         runCommandLine(args);
-        StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, false);
+        StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), false);
     }
 
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSparkIntegrationTest", groups = "sv")
@@ -96,7 +89,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
             argsToBeModified.set(idx+1, vcfOnHDFS);
 
             runCommandLine(argsToBeModified);
-            StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, true);
+            StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, Arrays.asList("ALIGN_LENGTHS", "CTG_NAMES"), true);
         });
     }
 }

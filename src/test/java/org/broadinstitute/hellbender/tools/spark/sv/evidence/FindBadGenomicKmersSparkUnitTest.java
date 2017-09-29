@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.SVConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
@@ -23,7 +23,7 @@ import java.util.*;
 
 public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
 
-    private static final int KMER_SIZE = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
+    private static final int KMER_SIZE = SVConstants.KMER_SIZE;
     private static final String REFERENCE_FILE_NAME = hg19MiniReference;
 
     @Test(groups = "spark")
@@ -68,8 +68,12 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
             final SimpleInterval interval = new SimpleInterval(rec.getSequenceName(), 1, rec.getSequenceLength());
             final byte[] bases = ref.getReferenceBases(null, interval).getBases();
-            SVKmerizer.canonicalStream(bases, KMER_SIZE, new SVKmerLong())
-                    .forEach(kmer -> kmerMap.put(kmer, kmerMap.getOrDefault(kmer, 0L) + 1));
+            final SVKmerizer kmerizer = new SVKmerizer(bases, KMER_SIZE, new SVKmerLong());
+            while ( kmerizer.hasNext() ) {
+                final SVKmer kmer = kmerizer.next().canonical(KMER_SIZE);
+                final Long currentCount = kmerMap.getOrDefault(kmer, 0L);
+                kmerMap.put(kmer, currentCount+1);
+            }
         }
         final Iterator<Map.Entry<SVKmer, Long>> kmerIterator = kmerMap.entrySet().iterator();
         while ( kmerIterator.hasNext() ) {

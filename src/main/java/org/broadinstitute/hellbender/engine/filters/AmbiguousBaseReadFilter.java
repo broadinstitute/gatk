@@ -7,9 +7,9 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Filters out reads that have greater than the threshold number for unknown (N) bases.
+ * Filters out reads with more than a threshold number of N's.
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filters out reads that have greater than the threshold number of N bases")
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class AmbiguousBaseReadFilter extends ReadFilter {
 
     private static final long serialVersionUID = 1L;

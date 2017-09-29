@@ -13,7 +13,7 @@ public final class ExampleReadWalkerWithReferenceSparkIntegrationTest extends Co
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
 
     @Test
-    public void testExampleReadWalkerWithReferenceSpark() throws IOException {
+    public void testExampleIntervalWalker() throws IOException {
         final File out = File.createTempFile("out", ".txt");
         out.delete();
         out.deleteOnExit();

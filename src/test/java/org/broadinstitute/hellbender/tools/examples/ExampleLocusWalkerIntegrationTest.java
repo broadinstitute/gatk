@@ -15,7 +15,7 @@ public class ExampleLocusWalkerIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
 
     @Test
-    public void testExampleLocusWalker() throws IOException {
+    public void testExampleVariantWalker() throws IOException {
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
             " -L 1" +
                 " -R " + hg19MiniReference +

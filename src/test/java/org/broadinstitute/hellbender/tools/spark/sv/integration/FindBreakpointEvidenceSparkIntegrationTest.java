@@ -44,18 +44,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                     " --alignerIndexImage " + alignerRefIndexImgLoc +
                     " --kmersToIgnore " + kmerIgnoreListLoc +
                     " --breakpointIntervals " + outputDir + "/intervals" +
-                    " --fastqDir "            + outputDir + "/fastq" +
-                    " --targetLinkFile "      + outputDir + "/targetLinks.bedpe";
-        }
-
-        @Override
-        public String toString() {
-            return "FindBreakpointEvidenceSparkIntegrationTestArgs{" +
-                    "bamLoc='" + bamLoc + '\'' +
-                    ", kmerIgnoreListLoc='" + kmerIgnoreListLoc + '\'' +
-                    ", alignerRefIndexImgLoc='" + alignerRefIndexImgLoc + '\'' +
-                    ", outputDir='" + outputDir + '\'' +
-                    '}';
+                    " --fastqDir "            + outputDir + "/fastq";
         }
     }
 
@@ -63,10 +52,14 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
     public Object[][] createTestData() throws IOException {
 
         List<Object[]> tests = new ArrayList<>();
-        final File tempDirNew = BaseTest.createTempDir("forNew");
-        tempDirNew.deleteOnExit();
-        Files.createDirectories(Paths.get(tempDirNew.getAbsolutePath()+"/fastq"));
-        tests.add(new Object[]{new FindBreakpointEvidenceSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_NEW, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirNew.getAbsolutePath())});
+        final File tempDirLeft = BaseTest.createTempDir("forLeft");
+        tempDirLeft.deleteOnExit();
+        Files.createDirectories(Paths.get(tempDirLeft.getAbsolutePath()+"/fastq"));
+        tests.add(new Object[]{new FindBreakpointEvidenceSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_LEFT, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirLeft.getAbsolutePath())});
+        final File tempDirRight = BaseTest.createTempDir("forRight");
+        tempDirRight.deleteOnExit();
+        Files.createDirectories(Paths.get(tempDirRight.getAbsolutePath()+"/fastq"));
+        tests.add(new Object[]{new FindBreakpointEvidenceSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_RIGHT, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirRight.getAbsolutePath())});
 
         return tests.toArray(new Object[][]{});
     }

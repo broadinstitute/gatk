@@ -7,7 +7,6 @@ import com.esotericsoftware.kryo.io.Output;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Objects;
 
 /**
  * Node class for PSTree
@@ -17,9 +16,9 @@ public class PSTreeNode {
 
     private String name = null;
     private String rank = null;
-    private int parent = 0;
+    private String parent = null;
     private long length = 0;
-    private Collection<Integer> children;
+    private Collection<String> children;
 
     public PSTreeNode() {
         children = new HashSet<>();
@@ -31,12 +30,12 @@ public class PSTreeNode {
 
         name = input.readString();
         rank = input.readString();
-        parent = input.readInt();
+        parent = input.readString();
         length = input.readLong();
         final int numChildren = input.readInt();
         children = new HashSet<>(numChildren);
         for (int i = 0; i < numChildren; i++) {
-            children.add(Integer.valueOf(input.readString()));
+            children.add(input.readString());
         }
 
         kryo.setReferences(oldReferences);
@@ -48,11 +47,11 @@ public class PSTreeNode {
 
         output.writeString(name);
         output.writeString(rank);
-        output.writeInt(parent);
+        output.writeString(parent);
         output.writeLong(length);
         output.writeInt(children.size());
-        for (final int child : children) {
-            output.writeString(String.valueOf(child));
+        for (final String child : children) {
+            output.writeString(child);
         }
 
         kryo.setReferences(oldReferences);
@@ -74,11 +73,11 @@ public class PSTreeNode {
         this.rank = rank;
     }
 
-    public int getParent() {
+    public String getParent() {
         return parent;
     }
 
-    public void setParent(final int parent) {
+    public void setParent(final String parent) {
         this.parent = parent;
     }
 
@@ -90,15 +89,15 @@ public class PSTreeNode {
         this.length = length;
     }
 
-    public Collection<Integer> getChildren() {
+    public Collection<String> getChildren() {
         return children;
     }
 
-    public void addChild(final int child) {
+    public void addChild(final String child) {
         this.children.add(child);
     }
 
-    public boolean removeChild(final int child) {
+    public boolean removeChild(final String child) {
         if (this.children.contains(child)) {
             this.children.remove(child);
             return true;
@@ -121,15 +120,15 @@ public class PSTreeNode {
         if (length != that.length) return false;
         if (name != null ? !name.equals(that.name) : that.name != null) return false;
         if (rank != null ? !rank.equals(that.rank) : that.rank != null) return false;
-        if (parent != that.parent) return false;
+        if (parent != null ? !parent.equals(that.parent) : that.parent != null) return false;
         return children.equals(that.children);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hashCode(name);
-        result = 31 * result + Objects.hashCode(rank);
-        result = 31 * result + parent;
+        int result = name != null ? name.hashCode() : 0;
+        result = 31 * result + (rank != null ? rank.hashCode() : 0);
+        result = 31 * result + (parent != null ? parent.hashCode() : 0);
         result = 31 * result + (int) (length ^ (length >>> 32));
         result = 31 * result + children.hashCode();
         return result;

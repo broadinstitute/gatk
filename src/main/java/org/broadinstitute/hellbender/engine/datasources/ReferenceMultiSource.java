@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
@@ -21,16 +20,13 @@ import java.io.Serializable;
 /**
  * Wrapper to load a reference sequence from the Google Genomics API, or a file stored on HDFS or locally.
  *
- * This class needs to subclassed by test code, so it cannot be declared final.
+ * This class needs to be mocked, so it cannot be declared final.
  */
 public class ReferenceMultiSource implements ReferenceSource, Serializable {
     private static final long serialVersionUID = 1L;
 
     private ReferenceSource referenceSource;
     private SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction;
-
-    @VisibleForTesting
-    protected ReferenceMultiSource() {};
 
     /**
      * @param pipelineOptions the pipeline options; must be GCSOptions if using the Google Genomics API

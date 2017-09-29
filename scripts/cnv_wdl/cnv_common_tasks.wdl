@@ -4,33 +4,21 @@
 
 # Pad targets in the target file by the specified amount (this was found to improve sensitivity and specificity)
 task PadTargets {
-    File targets
+    File? targets
     Int? padding
-    String gatk_jar
-
-    # Runtime parameters
+    File gatk_jar
     Int? mem
-    String gatk_docker
-    Int? preemptible_attempts
-    Int? disk_space_gb
 
     # Determine output filename
     String filename = select_first([targets, ""])
-    String base_filename = basename(filename, ".tsv")
+    String base_filename = sub(sub(sub(filename, "gs://", ""), "[/]*.*/", ""), "\\.tsv$", "")
 
-    command <<<
+    command {
         echo ${filename}; \
-        java -Xmx${default="1" mem}g -jar ${gatk_jar} PadTargets \
+        java -Xmx${default=1 mem}g -jar ${gatk_jar} PadTargets \
             --targets ${targets} \
-            --padding ${default="250" padding} \
+            --padding ${default=250 padding} \
             --output ${base_filename}.padded.tsv
-    >>>
-
-    runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 2]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
@@ -52,19 +40,14 @@ task CollectCoverage {
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    String gatk_jar
-
-    # Runtime parameters
+    File gatk_jar
     Int? mem
-    String gatk_docker
-    Int? preemptible_attempts
-    Int? disk_space_gb
 
     # If no padded target file is input, then do WGS workflow
     Boolean is_wgs = !defined(padded_targets)
 
     # Sample name is derived from the bam filename
-    String base_filename = basename(bam, ".bam")
+    String base_filename = sub(sub(sub(bam, "gs://", ""), "[/]*.*/", ""), "\\.bam$", "")
  
     # Output file name depending on type of coverage
     String cov_output_name = if (is_wgs && (select_first([transform, ""])  == "RAW")) then "${base_filename}.coverage.tsv.raw_cov" else "${base_filename}.coverage.tsv"
@@ -99,13 +82,6 @@ task CollectCoverage {
         fi
     >>>
 
-    runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB"))+50]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
-    }
-
     output {
         String entity_id = base_filename
         File coverage = cov_output_name 
@@ -119,26 +95,14 @@ task AnnotateTargets {
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    String gatk_jar
-
-    # Runtime parameters
+    File gatk_jar
     Int? mem
-    String gatk_docker
-    Int? preemptible_attempts
-    Int? disk_space_gb
 
     command {
         java -Xmx${default=4 mem}g -jar ${gatk_jar} AnnotateTargets \
             --targets ${targets} \
             --reference ${ref_fasta} \
             --output ${entity_id}.annotated.tsv
-    }
-
-    runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB"))+50]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
@@ -151,26 +115,14 @@ task CorrectGCBias {
     String entity_id
     File coverage   # This can be either single-sample or multi-sample
     File annotated_targets
-    String gatk_jar
-
-    # Runtime parameters
+    File gatk_jar
     Int? mem
-    String gatk_docker
-    Int? preemptible_attempts
-    Int? disk_space_gb
 
     command {
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CorrectGCBias \
           --input ${coverage} \
           --targets ${annotated_targets} \
           --output ${entity_id}.gc_corrected.tsv
-    }
-
-    runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(coverage, "GB"))+50]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {

@@ -79,47 +79,6 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertTrue(IntervalUtils.compareLocatables(chr1_5_100, chr1_1_100, dict) > 0);
     }
 
-    @DataProvider
-    public Object[][] testLocatableOrderingData() {
-        final SAMSequenceDictionary dict = new SAMSequenceDictionary();
-        dict.addSequence(new SAMSequenceRecord("1", 1000));
-        dict.addSequence(new SAMSequenceRecord("2", 1000));
-
-        return new Object[][] {
-                // first, second, dictionary, expectedIsBefore, expectedIsAfter, expectedContigComparison
-                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 200, 300), dict, true, false, 0 },
-                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 101, 200), dict, true, false, 0 },
-                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 100, 200), dict, false, false, 0 },
-                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 99, 200), dict, false, false, 0 },
-
-                { new SimpleInterval("1", 200, 300), new SimpleInterval("1", 1, 100), dict, false, true, 0 },
-                { new SimpleInterval("1", 101, 200), new SimpleInterval("1", 1, 100), dict, false, true, 0 },
-                { new SimpleInterval("1", 100, 200), new SimpleInterval("1", 1, 100), dict, false, false, 0 },
-                { new SimpleInterval("1", 99, 200), new SimpleInterval("1", 1, 100), dict, false, false, 0 },
-
-                { new SimpleInterval("1", 1, 100), new SimpleInterval("2", 1, 100), dict, true, false, -1 },
-                { new SimpleInterval("1", 1, 100), new SimpleInterval("2", 101, 200), dict, true, false, -1 },
-                { new SimpleInterval("1", 101, 200), new SimpleInterval("2", 1, 100), dict, true, false, -1 },
-                { new SimpleInterval("2", 1, 100), new SimpleInterval("1", 1, 100), dict, false, true, 1 },
-                { new SimpleInterval("2", 101, 200), new SimpleInterval("1", 1, 100), dict, false, true, 1 },
-                { new SimpleInterval("2", 1, 100), new SimpleInterval("1", 101, 200), dict, false, true, 1 }
-        };
-    }
-
-    @Test(dataProvider = "testLocatableOrderingData")
-    public void testLocatableOrdering(final SimpleInterval first, final SimpleInterval second, final SAMSequenceDictionary dict, final boolean expectedIsBefore, final boolean expectedIsAfter, final int expectedContigComparison) {
-        Assert.assertEquals(IntervalUtils.isBefore(first, second, dict), expectedIsBefore, "Wrong return value from IntervalUtils.isBefore()");
-        Assert.assertEquals(IntervalUtils.isAfter(first, second, dict), expectedIsAfter, "Wrong return value from IntervalUtils.isAfter()");
-
-        if ( expectedContigComparison < 0 ) {
-            Assert.assertTrue(IntervalUtils.compareContigs(first, second, dict) < 0, "Wrong return value from IntervalUtils.compareContigs()");
-        } else if ( expectedContigComparison > 0 ) {
-            Assert.assertTrue(IntervalUtils.compareContigs(first, second, dict) > 0, "Wrong return value from IntervalUtils.compareContigs()");
-        } else {
-            Assert.assertTrue(IntervalUtils.compareContigs(first, second, dict) == 0, "Wrong return value from IntervalUtils.compareContigs()");
-        }
-    }
-
     @Test
     public void testSpanningInterval_nullIfEmptyInput() throws Exception {
         Assert.assertNull(IntervalUtils.getSpanningInterval(Collections.emptyList()));

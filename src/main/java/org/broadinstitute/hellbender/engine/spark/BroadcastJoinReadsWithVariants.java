@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
 import java.util.Collections;
-import java.util.List;
 
 /**
  * Joins an RDD of GATKReads to variant data using a broadcast strategy.
@@ -22,39 +21,20 @@ import java.util.List;
 public final class BroadcastJoinReadsWithVariants {
     private BroadcastJoinReadsWithVariants(){}
 
-    /**
-     * Joins each read of an RDD<GATKRead> with overlapping variants from an RDD of GATKVariants. Broadcasts the
-     * variants, so this is only suitable for collections of variants that are <2GB (due to Spark's broadcast limitation).
-     *
-     * @param reads the RDD of reads, in coordinate-sorted order
-     * @param variants the RDD of variants
-     * @return an RDD that contains each read along with the overlapping variants
-     */
-    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(final JavaRDD<GATKRead> reads, final JavaRDD<GATKVariant> variants) {
+    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(final JavaRDD<GATKRead> reads, final JavaRDD<GATKVariant> variants ) {
         final JavaSparkContext ctx = new JavaSparkContext(reads.context());
-        final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(new IntervalsSkipList<>(variants.collect()));
-        return reads.mapToPair(r -> getOverlapping(r, variantsBroadcast.getValue()));
-    }
+        final IntervalsSkipList<GATKVariant> variantSkipList = new IntervalsSkipList<>(variants.collect());
+        final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(variantSkipList);
 
-    /**
-     * Joins each read of an RDD<GATKRead> with overlapping variants from an RDD of GATKVariants. Can be used for any size of
-     * variants (although they are still read into memory) since Spark broadcast is not used.
-     *
-     * @param reads the RDD of reads, in coordinate-sorted order
-     * @param variantsPaths the path to the variants file
-     * @return an RDD that contains each read along with the overlapping variants
-     */
-    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(final JavaRDD<GATKRead> reads, final List<String> variantsPaths) {
-        return reads.mapToPair(r -> getOverlapping(r, KnownSitesCache.getVariants(variantsPaths)));
-    }
-
-    private static Tuple2<GATKRead, Iterable<GATKVariant>> getOverlapping(final GATKRead read, final IntervalsSkipList<GATKVariant> intervalsSkipList) {
-        if (SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd())) {
-            return new Tuple2<>(read, intervalsSkipList.getOverlapping(new SimpleInterval(read)));
-        } else {
-            //Sometimes we have reads that do not form valid intervals (reads that do not consume any ref bases, eg CIGAR 61S90I
-            //In those cases, we'll just say that nothing overlaps the read
-            return new Tuple2<>(read, Collections.emptyList());
-        }
+        return reads.mapToPair(r -> {
+            final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsBroadcast.getValue();
+            if (SimpleInterval.isValid(r.getContig(), r.getStart(), r.getEnd())) {
+                return new Tuple2<>(r, intervalsSkipList.getOverlapping(new SimpleInterval(r)));
+            } else {
+                //Sometimes we have reads that do not form valid intervals (reads that do not consume any ref bases, eg CIGAR 61S90I
+                //In those cases, we'll just say that nothing overlaps the read
+                return new Tuple2<>(r, Collections.emptyList());
+            }
+        });
     }
 }

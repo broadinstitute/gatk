@@ -122,7 +122,7 @@ public final class Pileup extends LocusWalker {
         final List<ReadFilter> defaultFilters = super.getDefaultReadFilters();
         defaultFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
         defaultFilters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
-        defaultFilters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
+        defaultFilters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
         return defaultFilters;
     }
 

@@ -14,9 +14,9 @@ import java.util.Map;
 @DefaultSerializer(PSTaxonomyDatabase.Serializer.class)
 public class PSTaxonomyDatabase {
     public final PSTree tree;
-    public final Map<String, Integer> accessionToTaxId; //Reference contig name to taxonomic ID
+    public final Map<String, String> accessionToTaxId; //Reference contig name to taxonomic ID
 
-    public PSTaxonomyDatabase(final PSTree tree, final Map<String, Integer> map) {
+    public PSTaxonomyDatabase(final PSTree tree, final Map<String, String> map) {
         this.tree = tree;
         this.accessionToTaxId = map;
     }
@@ -31,7 +31,7 @@ public class PSTaxonomyDatabase {
         for (int i = 0; i < setSize; i++) {
             final String key = input.readString();
             final String value = input.readString();
-            accessionToTaxId.put(key, Integer.valueOf(value));
+            accessionToTaxId.put(key, value);
         }
 
         kryo.setReferences(oldReferences);
@@ -45,7 +45,7 @@ public class PSTaxonomyDatabase {
         output.writeInt(accessionToTaxId.size());
         for (final String key : accessionToTaxId.keySet()) {
             output.writeString(key);
-            output.writeString(String.valueOf(accessionToTaxId.get(key)));
+            output.writeString(accessionToTaxId.get(key));
         }
 
         kryo.setReferences(oldReferences);

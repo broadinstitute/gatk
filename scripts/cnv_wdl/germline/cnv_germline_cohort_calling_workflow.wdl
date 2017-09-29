@@ -47,14 +47,13 @@ workflow gCNVCohortCallingWorkflow {
   File sex_genotypes
   File contig_ploidy_annotations
   String gatk_jar
-  String gatk_docker
 
   # Transition prior table files
   File transition_prior_table
   Array[File] copy_number_transition_prior_files
 
   # Model directory and parameters
-  File model_path
+  String model_path
   Int num_latents
 
   # Output path
@@ -72,7 +71,6 @@ workflow gCNVCohortCallingWorkflow {
         sex_genotypes = sex_genotypes,
         contig_ploidy_annotations = contig_ploidy_annotations,
         gatk_jar = gatk_jar,
-        gatk_docker = gatk_docker,
         transition_prior_table = transition_prior_table,
         copy_number_transition_prior_files = copy_number_transition_prior_files,
         model_path = model_path,

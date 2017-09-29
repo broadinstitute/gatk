@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -39,9 +39,9 @@ import java.util.List;
  * </p>
  *
  * <pre>
- *     {@literal @}HD	VN:1.4	SO:unsorted
- *     {@literal @}SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
- *     {@literal @}SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
+ *     @HD	VN:1.4	SO:unsorted
+ *     @SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
+ *     @SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
  *      1	10736	10736	+	normal
  *      1	11522	11522	+	normal
  *      1	12098	12098	+	normal

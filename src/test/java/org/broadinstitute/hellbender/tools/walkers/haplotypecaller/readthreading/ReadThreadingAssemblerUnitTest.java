@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -170,8 +169,7 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
         final AssemblyRegion activeRegion = new AssemblyRegion(loc, null, true, 0, header);
         activeRegion.addAll(reads);
 //        logger.warn("Assembling " + activeRegion + " with " + engine);
-        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, Collections.<VariantContext>emptyList(), null, header,
-                                                                                SmithWatermanJavaAligner.getInstance());
+        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, Collections.<VariantContext>emptyList(), null, header);
         return assemblyResultSet.getHaplotypeList();
     }
 
@@ -253,8 +251,7 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
             assembler.setRecoverDanglingBranches(false); // needed to pass some of the tests
             assembler.setDebugGraphTransformations(true);
             assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
-            final SeqGraph graph = assembler.assemble(reads, refHaplotype, Collections.emptyList(), header, SmithWatermanJavaAligner
-                    .getInstance()).get(0).getGraph();
+            final SeqGraph graph = assembler.assemble(reads, refHaplotype, Collections.<Haplotype>emptyList(), header).get(0).getGraph();
             if ( DEBUG ) graph.printGraph(new File("test.dot"), 0);
             return graph;
         }

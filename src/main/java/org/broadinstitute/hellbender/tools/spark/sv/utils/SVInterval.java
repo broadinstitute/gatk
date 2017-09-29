@@ -40,7 +40,6 @@ public final class SVInterval implements Comparable<SVInterval> {
     public int getStart() { return start; }
     public int getEnd() { return end; }
     public int getLength() { return end-start; }
-    public SVLocation getStartLocation() { return new SVLocation(contig, start); }
 
     /** This definition is appropriate for half-open intervals.
      *  If you're building your intervals as closed, you're going to have trouble.
@@ -70,11 +69,6 @@ public final class SVInterval implements Comparable<SVInterval> {
     public SVInterval join( final SVInterval that ) {
         if ( this.contig != that.contig ) throw new GATKException("Joining across contigs.");
         return new SVInterval(contig, Math.min(this.start, that.start), Math.max(this.end, that.end));
-    }
-
-    public SVInterval intersect(final SVInterval that) {
-        if (! this.overlaps(that)) return null;
-        return new SVInterval(this.getContig(), Math.max(this.start, that.start), Math.min(this.end, that.end));
     }
 
     @Override

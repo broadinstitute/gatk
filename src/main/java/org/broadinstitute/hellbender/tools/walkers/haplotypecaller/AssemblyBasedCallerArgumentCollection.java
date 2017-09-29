@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCo
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -172,8 +171,17 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
 
     //Annotations
 
+
+    /**
+     * Which annotations to exclude from output in the VCF file.  Note that this argument has higher priority than the
+     * -A or -G arguments, so these annotations will be excluded even if they are explicitly included with the other
+     * options. When HaplotypeCaller is run with -ERC GVCF or -ERC BP_RESOLUTION, some annotations are excluded from the
+     * output by default because they will only be meaningful once they have been recalculated by GenotypeGVCFs. As
+     * of version 3.3 this concerns ChromosomeCounts, FisherStrand, StrandOddsRatio and QualByDepth.
+     *
+     */
     @Advanced
-    @Argument(fullName = "smithWaterman", shortName = "smithWaterman", doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
-    public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.FASTEST_AVAILABLE;
+    @Argument(fullName = "excludeAnnotation", shortName = "XA", doc = "One or more specific annotations to exclude", optional = true)
+    public List<String> annotationsToExclude = new ArrayList<>();
 
 }

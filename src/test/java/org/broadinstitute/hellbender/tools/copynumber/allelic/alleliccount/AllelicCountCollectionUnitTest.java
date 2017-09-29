@@ -69,4 +69,11 @@ public final class AllelicCountCollectionUnitTest extends BaseTest {
         allelicCounts.write(outputFile);
         Assert.assertTrue(FileUtils.contentEquals(outputFile, ALLELIC_COUNTS_FILE));
     }
+
+    //AllelicCountCollections must have all fields (including nucleotides) in order to be written to file
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testWriteMissingFields() {
+        final File outputFile = createTempFile("allelic-count-collection-test-output", ".tsv");
+        ALLELIC_COUNTS_MISSING_NUCLEOTIDES_EXPECTED.write(outputFile);
+    }
 }

@@ -29,22 +29,6 @@ public class NucleotideUnitTest {
         Assert.assertEquals(Nucleotide.X.toBase(), (byte)'X');
     }
 
-    @Test
-    public void testIsConcrete() {
-        for (final Nucleotide nuc : Nucleotide.values()) {
-            switch (nuc) {
-                case A:
-                case C:
-                case T:
-                case G:
-                    Assert.assertTrue(nuc.isConcrete());
-                    break;
-                default:
-                    Assert.assertFalse(nuc.isConcrete());
-            }
-        }
-    }
-
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testToBaseOnInvalid() {
         Nucleotide.INVALID.toBase();
@@ -100,7 +84,6 @@ public class NucleotideUnitTest {
                 Assert.assertEquals(subject.get(n), (long) shadow.getOrDefault(n, 0));
             }
         }
-        Assert.assertEquals(subject.sum(), shadow.values().stream().mapToLong(l -> l).sum());
     }
 
     @Test(dependsOnMethods = "testValueOfBase", dataProvider = "testSequences")
@@ -115,13 +98,12 @@ public class NucleotideUnitTest {
         for (final Nucleotide n : Nucleotide.values()) {
             Assert.assertEquals(subject.get(n), (long) shadow.getOrDefault(n, 0));
         }
-        Assert.assertEquals(subject.sum(), shadow.values().stream().mapToLong(l -> l).sum());
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testAddingAllAtOnceOnANullArray() {
         final Nucleotide.Counter subject = new Nucleotide.Counter();
-        subject.addAll(null);
+        subject.addAll((byte[])null);
     }
 
 
@@ -149,7 +131,6 @@ public class NucleotideUnitTest {
         for (final Nucleotide n : Nucleotide.values()) {
             Assert.assertEquals(subject.get(n), 0);
         }
-        Assert.assertEquals(subject.sum(), 0);
     }
 
     @DataProvider(name = "testSequences")

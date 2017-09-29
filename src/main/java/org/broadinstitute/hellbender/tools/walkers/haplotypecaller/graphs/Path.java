@@ -5,7 +5,6 @@ import joptsimple.internal.Strings;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -197,12 +196,11 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
      * Calculate the cigar elements for this path against the reference sequence
      *
      * @param refSeq the reference sequence that all of the bases in this path should align to
-     * @param aligner
      * @return a Cigar mapping this path to refSeq, or null if no reasonable alignment could be found
      */
-    public  Cigar calculateCigar(final byte[] refSeq, final SmithWatermanAligner aligner) {
+    public  Cigar calculateCigar(final byte[] refSeq) {
         //Note: CigarUtils.calculateCigar already checks for null
-        return CigarUtils.calculateCigar(refSeq, getBases(), aligner);
+        return CigarUtils.calculateCigar(refSeq,getBases());
     }
 
 }

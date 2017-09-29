@@ -19,8 +19,10 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
-import org.broadinstitute.hellbender.utils.read.*;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -31,7 +33,7 @@ import java.util.stream.Collectors;
 /**
  * Created by davidben on 9/8/16.
  */
-public final class AssemblyBasedCallerUtils {
+public class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
 
@@ -42,7 +44,7 @@ public final class AssemblyBasedCallerUtils {
      * </p>
      * @return never {@code null}
      */
-    public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
+    public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc) {
         final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAlleles();
         final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
 
@@ -50,7 +52,7 @@ public final class AssemblyBasedCallerUtils {
             final GATKRead originalRead = bestAllele.read;
             final Haplotype bestHaplotype = bestAllele.allele;
             final boolean isInformative = bestAllele.isInformative();
-            final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative, aligner);
+            final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative);
             result.put(originalRead, realignedRead);
         }
         return result;
@@ -191,13 +193,8 @@ public final class AssemblyBasedCallerUtils {
         return assemblyEngine;
     }
 
-    public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
-                                                               final boolean createBamOutIndex,
-                                                               final boolean createBamOutMD5,
-                                                               final SAMFileHeader header) {
-        return args.bamOutputPath != null ?
-                Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, new File(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
-                Optional.empty();
+    public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args, final SAMFileHeader header) {
+        return args.bamOutputPath != null ? Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, new File(args.bamOutputPath), header)) : Optional.empty();
     }
 
     // create the assembly using just high quality reads (eg Q20 or higher).  We may want to use lower
@@ -237,8 +234,7 @@ public final class AssemblyBasedCallerUtils {
                                                   final SampleList sampleList,
                                                   final Logger logger,
                                                   final ReferenceSequenceFile referenceReader,
-                                                  final ReadThreadingAssembler assemblyEngine,
-                                                  final SmithWatermanAligner aligner){
+                                                  final ReadThreadingAssembler assemblyEngine){
         finalizeRegion(region, argumentCollection.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList);
         if( argumentCollection.debug) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
@@ -258,8 +254,7 @@ public final class AssemblyBasedCallerUtils {
 
         try {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, referenceHaplotype, fullReferenceWithPadding,
-                                                                                        paddedReferenceLoc, givenAlleles, readErrorCorrector, header,
-                                                                                        aligner);
+                    paddedReferenceLoc, givenAlleles, readErrorCorrector, header);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
         } catch (final Exception e){

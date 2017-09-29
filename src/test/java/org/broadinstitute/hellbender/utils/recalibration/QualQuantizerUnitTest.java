@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -16,6 +16,10 @@ import java.util.List;
 
 
 public final class QualQuantizerUnitTest extends BaseTest {
+    @BeforeSuite
+    public void before() {
+
+    }
 
     // --------------------------------------------------------------------------------
     //

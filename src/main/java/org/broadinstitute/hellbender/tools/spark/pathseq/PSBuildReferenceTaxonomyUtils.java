@@ -17,8 +17,9 @@ import java.util.zip.GZIPInputStream;
 
 public final class PSBuildReferenceTaxonomyUtils {
 
-    protected static final Logger logger = LogManager.getLogger(PSBuildReferenceTaxonomyUtils.class);
-    private static final String VERTICAL_BAR_DELIMITER_REGEX = "\\s*\\|\\s*";
+    protected final static Logger logger = LogManager.getLogger(PSBuildReferenceTaxonomyUtils.class);
+    private final static String ROOT_ID = "1"; //NCBI root node taxonomic id
+
     /**
      * Build set of accessions contained in the reference.
      * Returns: a map from accession to the name and length of the record. If the sequence name contains the
@@ -27,41 +28,33 @@ public final class PSBuildReferenceTaxonomyUtils {
      * those are found, use the first word of the name as the accession.
      */
     protected static Map<String, Tuple2<String, Long>> parseReferenceRecords(final List<SAMSequenceRecord> dictionaryList,
-                                                                             final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+                                                                             final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
 
         final Map<String, Tuple2<String, Long>> accessionToNameAndLength = new HashMap<>();
         for (final SAMSequenceRecord record : dictionaryList) {
             final String recordName = record.getSequenceName();
             final long recordLength = record.getSequenceLength();
-            final String[] tokens = recordName.split(VERTICAL_BAR_DELIMITER_REGEX);
+            final String[] tokens = recordName.split("[|]");
             String recordAccession = null;
-            int recordTaxId = PSTree.NULL_NODE;
-            for (int i = 0; i < tokens.length - 1 && recordTaxId == PSTree.NULL_NODE; i++) {
+            String recordTaxId = null;
+            for (int i = 0; i < tokens.length - 1 && recordTaxId == null; i++) {
                 if (tokens[i].equals("ref")) {
                     recordAccession = tokens[i + 1];
                 } else if (tokens[i].equals("taxid")) {
-                    recordTaxId = parseTaxonId(tokens[i + 1]);
+                    recordTaxId = tokens[i + 1];
                 }
             }
-            if (recordTaxId == PSTree.NULL_NODE) {
+            if (recordTaxId == null) {
                 if (recordAccession == null) {
                     final String[] tokens2 = tokens[0].split(" "); //Default accession to first word in the name
                     recordAccession = tokens2[0];
                 }
                 accessionToNameAndLength.put(recordAccession, new Tuple2<>(recordName, recordLength));
             } else {
-                addReferenceAccessionToTaxon(recordTaxId, recordName, recordLength, taxIdToProperties);
+                updateAccessionTaxonProperties(recordTaxId, recordName, recordLength, taxIdToProperties);
             }
         }
         return accessionToNameAndLength;
-    }
-
-    private static int parseTaxonId(final String taxonId) {
-        try {
-            return Integer.valueOf(taxonId);
-        } catch (final NumberFormatException e) {
-            throw new UserException.BadInput("Expected taxonomy ID to be an integer but found \"" + taxonId + "\"", e);
-        }
     }
 
     /**
@@ -104,7 +97,7 @@ public final class PSBuildReferenceTaxonomyUtils {
      */
     protected static Set<String> parseCatalog(final BufferedReader reader,
                                               final Map<String, Tuple2<String, Long>> accessionToNameAndLength,
-                                              final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties,
+                                              final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties,
                                               final boolean bGenBank,
                                               final Set<String> accessionsNotFoundIn) {
 
@@ -126,11 +119,11 @@ public final class PSBuildReferenceTaxonomyUtils {
             while ((line = reader.readLine()) != null && !line.isEmpty()) {
                 final String[] tokens = line.trim().split("\t", minColumns + 1);
                 if (tokens.length >= minColumns) {
-                    final int taxId = parseTaxonId(tokens[taxIdColumnIndex]);
+                    final String taxId = tokens[taxIdColumnIndex];
                     final String accession = tokens[accessionColumnIndex];
                     if (accessionToNameAndLength.containsKey(accession)) {
                         final Tuple2<String, Long> nameAndLength = accessionToNameAndLength.get(accession);
-                        addReferenceAccessionToTaxon(taxId, nameAndLength._1, nameAndLength._2, taxIdToProperties);
+                        updateAccessionTaxonProperties(taxId, nameAndLength._1, nameAndLength._2, taxIdToProperties);
                         accessionsNotFoundOut.remove(accession);
                     }
                 } else {
@@ -148,24 +141,23 @@ public final class PSBuildReferenceTaxonomyUtils {
     /**
      * Parses scientific name of each taxon and puts it in taxIdToProperties
      */
-    protected static void parseNamesFile(final BufferedReader reader, final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+    protected static void parseNamesFile(final BufferedReader reader, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
         try {
             String line;
             while ((line = reader.readLine()) != null) {
-                //Split into columns delimited by <TAB>|<TAB>
-                final String[] tokens = line.split(VERTICAL_BAR_DELIMITER_REGEX);
-                if (tokens.length < 4) {
-                    throw new UserException.BadInput("Expected at least 4 columns in tax dump names file but found " + tokens.length);
+                //Split into columns delimited by <TAB>|<TAB>. Note the "\\|" is required to match "|" otherwise Java
+                // thinks it's an escape character and throws and error
+                final String[] tokens = line.split("\t\\|\t");
+                if (tokens.length != 4) {
+                    throw new UserException.BadInput("Expected 4 columns in tax dump names file but found " + tokens.length);
                 }
                 final String nameType = tokens[3];
-                if (nameType.equals("scientific name")) {
-                    final int taxId = parseTaxonId(tokens[0]);
+                if (nameType.equals("scientific name\t|")) {
+                    final String taxId = tokens[0];
                     final String name = tokens[1];
-                    if (taxIdToProperties.containsKey(taxId)) {
-                        taxIdToProperties.get(taxId).setName(name);
-                    } else {
-                        taxIdToProperties.put(taxId, new PSPathogenReferenceTaxonProperties(name));
-                    }
+                    final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.containsKey(taxId) ? taxIdToProperties.get(taxId) : new PSPathogenReferenceTaxonProperties();
+                    taxonProperties.name = name;
+                    taxIdToProperties.put(taxId, taxonProperties);
                 }
             }
         } catch (final IOException e) {
@@ -178,28 +170,29 @@ public final class PSBuildReferenceTaxonomyUtils {
      * Returns a Collection of tax ID's found in the nodes file that are not in taxIdToProperties (i.e. were not found in
      * a reference sequence name using the taxid|\<taxid\> tag or the catalog file).
      */
-    protected static Collection<Integer> parseNodesFile(final BufferedReader reader, final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+    protected static Collection<String> parseNodesFile(final BufferedReader reader, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
         try {
-            final Collection<Integer> taxIdsNotFound = new ArrayList<>();
+            final Collection<String> taxIdsNotFound = new ArrayList<>();
             String line;
             while ((line = reader.readLine()) != null) {
-                final String[] tokens = line.split(VERTICAL_BAR_DELIMITER_REGEX);
-                if (tokens.length < 3) {
-                    throw new UserException.BadInput("Expected at least 3 columns in tax dump nodes file but found " + tokens.length);
+                final String[] tokens = line.split("\t\\|\t");
+                if (tokens.length != 13) {
+                    throw new UserException.BadInput("Expected 13 columns in tax dump nodes file but found " + tokens.length);
                 }
-                final int taxId = parseTaxonId(tokens[0]);
-                final int parent = parseTaxonId(tokens[1]);
+                final String taxId = tokens[0];
+                final String parent = tokens[1];
                 final String rank = tokens[2];
                 final PSPathogenReferenceTaxonProperties taxonProperties;
                 if (taxIdToProperties.containsKey(taxId)) {
                     taxonProperties = taxIdToProperties.get(taxId);
                 } else {
-                    taxonProperties = new PSPathogenReferenceTaxonProperties("tax_" + taxId);
+                    taxonProperties = new PSPathogenReferenceTaxonProperties();
+                    taxonProperties.name = "tax_" + taxId;
                     taxIdsNotFound.add(taxId);
                 }
-                taxonProperties.setRank(rank);
-                if (taxId != PSTaxonomyConstants.ROOT_ID) { //keep root's parent set to null
-                    taxonProperties.setParent(parent);
+                taxonProperties.rank = rank;
+                if (!taxId.equals(ROOT_ID)) { //keep root's parent set to null
+                    taxonProperties.parentTaxId = parent;
                 }
                 taxIdToProperties.put(taxId, taxonProperties);
             }
@@ -212,33 +205,27 @@ public final class PSBuildReferenceTaxonomyUtils {
     /**
      * Helper function for building the map from tax id to reference contig accession
      */
-    private static void addReferenceAccessionToTaxon(final int taxId, final String accession, final long length, final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
-        taxIdToProperties.putIfAbsent(taxId, new PSPathogenReferenceTaxonProperties());
-        taxIdToProperties.get(taxId).addAccession(accession, length);
-    }
-
-    /**
-     * Removes nodes not in the tree from the tax_id-to-properties map
-     */
-    static void removeUnusedTaxIds(final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties,
-                                   final PSTree tree) {
-        taxIdToProperties.keySet().retainAll(tree.getNodeIDs());
+    private static void updateAccessionTaxonProperties(final String accession, final String name, final long length, final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+        final PSPathogenReferenceTaxonProperties taxonProperties;
+        if (taxIdToProperties.containsKey(accession)) {
+            taxonProperties = taxIdToProperties.get(accession);
+        } else {
+            taxonProperties = new PSPathogenReferenceTaxonProperties();
+        }
+        taxonProperties.accessions.add(name);
+        taxonProperties.length += length;
+        taxIdToProperties.put(accession, taxonProperties);
     }
 
     /**
      * Create reference_name-to-taxid map (just an inversion on taxIdToProperties)
      */
-    protected static Map<String, Integer> buildAccessionToTaxIdMap(final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties,
-                                                                  final PSTree tree,
-                                                                  final int minNonVirusContigLength) {
-        final Map<String, Integer> accessionToTaxId = new HashMap<>();
-        for (final int taxId : taxIdToProperties.keySet()) {
-            final boolean isVirus = tree.getPathOf(taxId).contains(PSTaxonomyConstants.VIRUS_ID);
+    protected static Map<String, String> buildAccessionToTaxIdMap(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+        final Map<String, String> accessionToTaxId = new HashMap<>();
+        for (final String taxId : taxIdToProperties.keySet()) {
             final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
-            for (final String name : taxonProperties.getAccessions()) {
-                if (isVirus || taxonProperties.getAccessionLength(name) >= minNonVirusContigLength) {
-                    accessionToTaxId.put(name, taxId);
-                }
+            for (String name : taxonProperties.accessions) {
+                accessionToTaxId.put(name, taxId);
             }
         }
         return accessionToTaxId;
@@ -247,16 +234,16 @@ public final class PSBuildReferenceTaxonomyUtils {
     /**
      * Returns a PSTree representing a reduced taxonomic tree containing only taxa present in the reference
      */
-    protected static PSTree buildTaxonomicTree(final Map<Integer, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
+    protected static PSTree buildTaxonomicTree(final Map<String, PSPathogenReferenceTaxonProperties> taxIdToProperties) {
 
         //Build tree of all taxa
-        final PSTree tree = new PSTree(PSTaxonomyConstants.ROOT_ID);
-        final Collection<Integer> invalidIds = new HashSet<>(taxIdToProperties.size());
-        for (final int taxId : taxIdToProperties.keySet()) {
-            if (taxId != PSTaxonomyConstants.ROOT_ID) {
+        final PSTree tree = new PSTree(ROOT_ID);
+        final Collection<String> invalidIds = new HashSet<>(taxIdToProperties.size());
+        for (final String taxId : taxIdToProperties.keySet()) {
+            if (!taxId.equals(ROOT_ID)) {
                 final PSPathogenReferenceTaxonProperties taxonProperties = taxIdToProperties.get(taxId);
-                if (taxonProperties.getName() != null && taxonProperties.getParent() != PSTree.NULL_NODE && taxonProperties.getRank() != null) {
-                    tree.addNode(taxId, taxonProperties.getName(), taxonProperties.getParent(), taxonProperties.getTotalLength(), taxonProperties.getRank());
+                if (taxonProperties.name != null && taxonProperties.parentTaxId != null && taxonProperties.rank != null) {
+                    tree.addNode(taxId, taxonProperties.name, taxonProperties.parentTaxId, taxonProperties.length, taxonProperties.rank);
                 } else {
                     invalidIds.add(taxId);
                 }
@@ -264,7 +251,7 @@ public final class PSBuildReferenceTaxonomyUtils {
         }
         PSUtils.logItemizedWarning(logger, invalidIds, "The following taxonomic IDs did not have name/taxonomy information (this may happen when the catalog and taxdump files are inconsistent)");
 
-        final Set<Integer> unreachableNodes = tree.removeUnreachableNodes();
+        final Set<String> unreachableNodes = tree.removeUnreachableNodes();
         if (!unreachableNodes.isEmpty()) {
             PSUtils.logItemizedWarning(logger, unreachableNodes, "Removed " + unreachableNodes.size() + " unreachable tree nodes");
         }
@@ -272,10 +259,12 @@ public final class PSBuildReferenceTaxonomyUtils {
         tree.checkStructure();
 
         //Trim tree down to nodes corresponding only to reference taxa (and their ancestors)
-        final Set<Integer> relevantNodes = new HashSet<>();
-        for (final int taxonId : taxIdToProperties.keySet()) {
-            if (!taxIdToProperties.get(taxonId).getAccessions().isEmpty() && tree.hasNode(taxonId)) {
-                relevantNodes.addAll(tree.getPathOf(taxonId));
+        final Set<String> relevantNodes = new HashSet<>();
+        for (final String tax : taxIdToProperties.keySet()) {
+            if (!taxIdToProperties.get(tax).accessions.isEmpty()) {
+                if (tree.hasNode(tax)) {
+                    relevantNodes.addAll(tree.getPathOf(tax));
+                }
             }
         }
         if (relevantNodes.isEmpty()) {

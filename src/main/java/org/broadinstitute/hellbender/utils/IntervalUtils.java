@@ -70,11 +70,16 @@ public final class IntervalUtils {
         Utils.nonNull(first);
         Utils.nonNull(second);
         Utils.nonNull(dictionary);
-
         int result = 0;
         if(first != second) {
+            // get the contigs
+            final int firstRefIndex = dictionary.getSequenceIndex(first.getContig());
+            final int secondRefIndex = dictionary.getSequenceIndex(second.getContig());
+            if(firstRefIndex == -1 || secondRefIndex == -1) {
+                throw new IllegalArgumentException("Can't do comparison because locatables are not found in dictionary");
+            }
             // compare the contigs
-            result = compareContigs(first, second, dictionary);
+            result = Integer.compare(firstRefIndex, secondRefIndex);
             if (result == 0) {
                 // compare start position
                 result = Integer.compare(first.getStart(), second.getStart());
@@ -86,64 +91,6 @@ public final class IntervalUtils {
         }
         return result;
     }
-
-    /**
-     * Tests whether the first Locatable ends before the start of the second Locatable
-     *
-     * @param first first Locatable
-     * @param second second Locatable
-     * @param dictionary sequence dictionary used to determine contig ordering
-     * @return true if first ends before the start of second, otherwise false
-     */
-    public static boolean isBefore(final Locatable first, final Locatable second, final SAMSequenceDictionary dictionary) {
-        Utils.nonNull(first);
-        Utils.nonNull(second);
-        Utils.nonNull(dictionary);
-
-        final int contigComparison = compareContigs(first, second, dictionary);
-        return contigComparison == -1 || (contigComparison == 0 && first.getEnd() < second.getStart());
-    }
-
-    /**
-     * Tests whether the first Locatable starts after the end of the second Locatable
-     *
-     * @param first first Locatable
-     * @param second second Locatable
-     * @param dictionary sequence dictionary used to determine contig ordering
-     * @return true if first starts after the end of second, otherwise false
-     */
-    public static boolean isAfter(final Locatable first, final Locatable second, final SAMSequenceDictionary dictionary) {
-        Utils.nonNull(first);
-        Utils.nonNull(second);
-        Utils.nonNull(dictionary);
-
-        final int contigComparison = compareContigs(first, second, dictionary);
-        return contigComparison == 1 || (contigComparison == 0 && first.getStart() > second.getEnd());
-    }
-
-    /**
-     * Determines the relative contig ordering of first and second using the provided sequence dictionary
-     *
-     * @param first first Locatable
-     * @param second second Locatable
-     * @param dictionary sequence dictionary used to determine contig ordering
-     * @return 0 if the two contigs are the same, a negative value if first's contig comes before second's contig,
-     *         or a positive value if first's contig comes after second's contig
-     */
-    public static int compareContigs(final Locatable first, final Locatable second, final SAMSequenceDictionary dictionary) {
-        Utils.nonNull(first);
-        Utils.nonNull(second);
-        Utils.nonNull(dictionary);
-
-        final int firstRefIndex = dictionary.getSequenceIndex(first.getContig());
-        final int secondRefIndex = dictionary.getSequenceIndex(second.getContig());
-        if (firstRefIndex == -1 || secondRefIndex == -1) {
-            throw new IllegalArgumentException("Can't do comparison because Locatables' contigs not found in sequence dictionary");
-        }
-        // compare the contigs
-        return Integer.compare(firstRefIndex, secondRefIndex);
-    }
-
 
     /**
      * getSpanningInterval returns interval that covers all of the locations passed in.
