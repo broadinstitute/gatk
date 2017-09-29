@@ -70,7 +70,7 @@ public abstract class ReadWalker extends GATKTool {
     void initializeFeatures() {
         //We override this method to change lookahead of the cache
         features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                      referenceArguments.getReferencePath());
+                                      referenceArguments.getReferencePath(), errorOnOutOfDateIndex);
         if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
             features = null;
         }

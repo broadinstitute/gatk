@@ -12,9 +12,11 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.net.URI;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Period;
 import java.time.ZonedDateTime;
 import java.util.Set;
@@ -115,8 +117,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
         // Set the modification time of vcfIdx to be before vcf:
         testCheckIndexModificationTimeHelper(vcf, vcfIdx);
 
-        final Index index = IndexFactory.loadIndex(vcfIdx.getAbsolutePath());
-        IndexUtils.checkIndexModificationTime(vcf, vcfIdx, false); //no blowup
+        IndexUtils.checkIndexModificationTime(vcf.toPath(), vcfIdx.toPath(), false); //no blowup
     }
 
     @Test(expectedExceptions = UserException.OutOfDateIndex.class)
@@ -127,8 +128,23 @@ public final class IndexUtilsUnitTest extends BaseTest{
         // Set the modification time of vcfIdx to be before vcf:
         testCheckIndexModificationTimeHelper(vcf, vcfIdx);
 
-        final Index index = IndexFactory.loadIndex(vcfIdx.getAbsolutePath());
-        IndexUtils.checkIndexModificationTime(vcf, vcfIdx, true); //User exception
+        IndexUtils.checkIndexModificationTime(vcf.toPath(), vcfIdx.toPath(), true); //User exception
+    }
+
+    @Test(groups = {"bucket"})
+    public void testCheckIndexModificationTimeGcsWarning() throws Exception {
+        final Path dataFilePath  = Paths.get(new URI(GCS_GATK_TEST_RESOURCES + "large/emptyDatedFile.vcf"));
+        final Path indexFilePath = Paths.get(new URI(GCS_GATK_TEST_RESOURCES + "large/emptyDatedFile.vcf.idx"));
+
+        IndexUtils.checkIndexModificationTime(dataFilePath, indexFilePath, false); //no blowup
+    }
+
+    @Test(groups = {"bucket"}, expectedExceptions = UserException.OutOfDateIndex.class)
+    public void testCheckIndexModificationTimeGcsException() throws Exception {
+        final Path dataFilePath  = Paths.get(new URI(GCS_GATK_TEST_RESOURCES + "large/emptyDatedFile.vcf"));
+        final Path indexFilePath = Paths.get(new URI(GCS_GATK_TEST_RESOURCES + "large/emptyDatedFile.vcf.idx"));
+
+        IndexUtils.checkIndexModificationTime(dataFilePath, indexFilePath, true); //no blowup
     }
 
     /**

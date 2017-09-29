@@ -8,6 +8,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -115,7 +116,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      */
     public ReadsDataSource( final List<Path> samPaths, SamReaderFactory customSamReaderFactory ) {
-        this(samPaths, null, customSamReaderFactory, 0, 0);
+        this(samPaths, null, customSamReaderFactory, 0, 0, GATKTool.ERROR_ON_OUT_OF_DATE_INDEX_DEFAULT);
     }
 
     /**
@@ -126,7 +127,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                   in which case index paths are inferred automatically.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices ) {
-        this(samPaths, samIndices, null, 0, 0);
+        this(samPaths, samIndices, null, 0, 0, GATKTool.ERROR_ON_OUT_OF_DATE_INDEX_DEFAULT);
     }
 
     /**
@@ -141,7 +142,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
         SamReaderFactory customSamReaderFactory) {
-        this(samPaths, samIndices, customSamReaderFactory, 0, 0);
+        this(samPaths, samIndices, customSamReaderFactory, 0, 0, GATKTool.ERROR_ON_OUT_OF_DATE_INDEX_DEFAULT);
     }
 
     /**
@@ -155,15 +156,17 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param errorOnOutOfDateIndex Whether to throw an error or warning when the modification time of the index is before the modification time of the feature file.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
             SamReaderFactory customSamReaderFactory,
-            int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer) {
+            int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer,
+            final boolean errorOnOutOfDateIndex) {
         this(samPaths, samIndices, customSamReaderFactory,
             (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is)
                                      : Function.identity()),
             (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is)
-                : Function.identity()));
+                : Function.identity()), errorOnOutOfDateIndex);
     }
 
     /**
@@ -177,11 +180,12 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      * @param cloudWrapper caching/prefetching wrapper for the data, if on Google Cloud.
      * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
+     * @param errorOnOutOfDateIndex Whether to throw an error or warning when the modification time of the index is before the modification time of the feature file.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
         SamReaderFactory customSamReaderFactory,
         Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
-        Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
+        Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper, final boolean errorOnOutOfDateIndex) {
         Utils.nonNull(samPaths);
         Utils.nonEmpty(samPaths, "ReadsDataSource cannot be created from empty file list");
 
@@ -229,6 +233,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             else {
                 final SamInputResource samResource = SamInputResource.of(samPath, wrapper);
                 Path indexPath = samIndices.get(samCount);
+
+                // Check that the index is not out of date:
+                IndexUtils.checkIndexModificationTime(samPath, indexPath, errorOnOutOfDateIndex);
+
                 samResource.index(indexPath, indexWrapper);
                 reader = samReaderFactory.open(samResource);
             }

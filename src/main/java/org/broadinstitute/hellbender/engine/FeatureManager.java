@@ -151,7 +151,29 @@ public final class FeatureManager implements AutoCloseable {
         this.toolInstanceSimpleClassName = toolInstance.getClass().getSimpleName();
         this.featureSources = new LinkedHashMap<>();
 
-        initializeFeatureSources(featureQueryLookahead, toolInstance, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference);
+        initializeFeatureSources(featureQueryLookahead, toolInstance, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference, GATKTool.ERROR_ON_OUT_OF_DATE_INDEX_DEFAULT);
+    }
+
+    /**
+     * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput
+     * arguments in the tool and creating query-able FeatureDataSources for them. Allows control over
+     * how much caching is performed by each {@link FeatureDataSource}.
+     *
+     * @param toolInstance Instance of the tool to be run (potentially containing one or more FeatureInput arguments)
+     *                     Must have undergone command-line argument parsing and argument value injection already.
+     * @param featureQueryLookahead When querying FeatureDataSources, cache this many extra bases of context beyond
+     *                              the end of query intervals in anticipation of future queries (>= 0).
+     * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param reference reference to use when opening feature files, may be null, currently only used by Genomics DB
+     * @param errorOnOutOfDateIndex Whether to throw an error or warning when the modification time of the index is before the modification time of the feature file.
+     *
+     */
+    public FeatureManager(final CommandLineProgram toolInstance, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference, final boolean errorOnOutOfDateIndex) {
+        this.toolInstanceSimpleClassName = toolInstance.getClass().getSimpleName();
+        this.featureSources = new LinkedHashMap<>();
+
+        initializeFeatureSources(featureQueryLookahead, toolInstance, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference, errorOnOutOfDateIndex);
     }
 
     /**
@@ -164,9 +186,10 @@ public final class FeatureManager implements AutoCloseable {
      *                     Must have undergone command-line argument parsing and argument value injection already.
      * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param errorOnOutOfDateIndex Whether to throw an error or warning when the modification time of the index is before the modification time of the feature file.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private void initializeFeatureSources( final int featureQueryLookahead, final CommandLineProgram toolInstance, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    private void initializeFeatureSources( final int featureQueryLookahead, final CommandLineProgram toolInstance, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference, final boolean errorOnOutOfDateIndex) {
 
         // Discover all arguments of type FeatureInput (or Collections thereof) in our tool's class hierarchy
         // (and associated ArgumentCollections). Arguments not specified by the user on the command line will
@@ -180,7 +203,7 @@ public final class FeatureManager implements AutoCloseable {
             // Only create a data source for Feature arguments that were actually specified
             if ( featureInput != null ) {
                 final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputField(featureArgument.getKey());
-                addToFeatureSources(featureQueryLookahead, featureInput, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference);
+                addToFeatureSources(featureQueryLookahead, featureInput, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference, errorOnOutOfDateIndex);
             }
         }
     }
@@ -194,13 +217,14 @@ public final class FeatureManager implements AutoCloseable {
      * @param featureType class of features
      * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param errorOnOutOfDateIndex Whether to throw an error or warning when the modification time of the index is before the modification time of the feature file.
      *
      * Note: package-visible to enable access from the core walker classes
      * (but not actual tools, so it's not protected).
      */
-    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference, final boolean errorOnOutOfDateIndex) {
         // Create a new FeatureDataSource for this file, and add it to our query pool
-        featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference));
+        featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference, errorOnOutOfDateIndex));
     }
 
     /**

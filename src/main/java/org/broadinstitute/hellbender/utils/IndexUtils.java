@@ -10,10 +10,13 @@ import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.io.IOException;
 import java.util.List;
 
@@ -21,27 +24,6 @@ public final class IndexUtils {
     private IndexUtils(){}
 
     private static final Logger logger = LogManager.getLogger(IndexUtils.class);
-
-    /**
-     * Get the index file associated with a given {@code featureFile}
-     *
-     * @param featureFile The feature file whose index we're trying to get.
-     * @return The index file corresponding to the given {@code featureFile} ; null if it doesn't exist.
-     */
-    public static File getIndexFile(final File featureFile) {
-
-        File indexFile = null;
-
-        // Try tribble first, if it's not there, we try tabix after:
-        indexFile = getTribbleIndexFile(featureFile);
-
-        // Try Tabix:
-        if ( indexFile == null ) {
-            indexFile = getTabixIndexFile(featureFile);
-        }
-
-        return indexFile;
-    }
 
     /**
      * Load a Tribble .idx index from disk, checking for out of date indexes and old versions
@@ -130,28 +112,40 @@ public final class IndexUtils {
         Utils.nonNull(index, "index");
         if (! index.isCurrentVersion()) {
             // we've loaded an old version of the index, we want to remove it
-            throw new UserException.OutdatedIndexVersion(indexFile.getAbsolutePath(), IndexFeatureFile.class.getSimpleName());
+            throw new UserException.OutOfDateIndex(indexFile.getAbsolutePath(), IndexFeatureFile.class.getSimpleName());
         }
     }
 
     /**
-     * Checks that the modification time of the given {@code indexFile} is after the modification time of the given {@code featureFile}.
-     * @param featureFile Feature file to check against {@code indexFile} modification time.
-     * @param indexFile Index file to check against {@code featureFile} modification time.
+     * Checks that the modification time of the given {@code indexFilePath} is after the modification time of the given {@code dataFilePath}.
+     * @param dataFilePath Feature file path to check against {@code indexFilePath} modification time.
+     * @param indexFilePath Index file path to check against {@code dataFilePath} modification time.
      * @param errorOnOutOfDateIndex If true, will throw a {@link UserException.OutOfDateIndex} if the index is out of date.
-     * @return True if the {@code indexFile} modification time is more recent than the {@code featureFile} modification time.  False otherwise.
+     * @return True if the {@code indexFilePath} modification time is more recent than the {@code dataFilePath} modification time.  False otherwise.
      */
-    public static boolean checkIndexModificationTime(final File featureFile, final File indexFile, boolean errorOnOutOfDateIndex) {
-        Utils.nonNull(featureFile, "featureFile");
-        Utils.nonNull(indexFile, "indexFile");
+    public static boolean checkIndexModificationTime(final Path dataFilePath, final Path indexFilePath, final boolean errorOnOutOfDateIndex) {
+        Utils.nonNull(dataFilePath, "featureFile");
+        Utils.nonNull(indexFilePath, "indexFile");
 
-        if (indexFile.lastModified() < featureFile.lastModified()) {
-            if (errorOnOutOfDateIndex) {
-                throw new UserException.OutOfDateIndex(indexFile.getAbsolutePath(), IndexFeatureFile.class.getSimpleName());
-            } else {
-                logger.warn("Index file " + indexFile + " is out of date (index older than input file). Use " + IndexFeatureFile.class.getSimpleName() + " to make a new index.");
-                return false;
+        if ( !Files.exists(dataFilePath) ) {
+            throw new GATKException("Data file does not exist: " + dataFilePath.toString());
+        }
+        else if ( !Files.exists(indexFilePath) ) {
+            throw new GATKException("Data index file does not exist: " + indexFilePath.toString());
+        }
+
+        try {
+            if (Files.getLastModifiedTime(indexFilePath).compareTo(Files.getLastModifiedTime(dataFilePath)) < 0) {
+                if (errorOnOutOfDateIndex) {
+                    throw new UserException.OutOfDateIndex(indexFilePath.toString(), IndexFeatureFile.class.getSimpleName());
+                } else {
+                    logger.warn("Index file " + indexFilePath.toString() + " is out of date (index older than input file). Use " + IndexFeatureFile.class.getSimpleName() + " to make a new index.");
+                    return false;
+                }
             }
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not read file modification time!", ex);
         }
 
         return true;

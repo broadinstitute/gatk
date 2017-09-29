@@ -51,6 +51,8 @@ import java.util.stream.Stream;
  */
 public abstract class GATKTool extends CommandLineProgram {
 
+    public static boolean ERROR_ON_OUT_OF_DATE_INDEX_DEFAULT = false;
+
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
@@ -74,8 +76,11 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.ERROR_ON_OUT_OF_DATE_INDEX,
             shortName = StandardArgumentDefinitions.ERROR_ON_OUT_OF_DATE_INDEX,
-            doc = "Throw an error when the index file is detected to be out of date (older than the indexed file).", optional = true, common = true)
-    protected boolean errorOnOutOfDateIndex = false;
+            doc = "Throw an error when the index file is detected to be out of date (older than the indexed file).  " +
+                  "Index files for the following input types will be checked: Tribble formats (e.g. VCF), BAM, CRAM, SAM.  " +
+                  "Defaults to false because it's common in certain environments (like cloud storage) for the index and the main file to have been copied out of order.",
+            optional = true, common = true)
+    protected boolean errorOnOutOfDateIndex = ERROR_ON_OUT_OF_DATE_INDEX_DEFAULT;
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
@@ -321,7 +326,7 @@ public abstract class GATKTool extends CommandLineProgram {
             }
 
             reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
-                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
+                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer), errorOnOutOfDateIndex);
         }
         else {
             reads = null;
@@ -353,7 +358,9 @@ public abstract class GATKTool extends CommandLineProgram {
                                         FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES,
                                         cloudPrefetchBuffer,
                                         cloudIndexPrefetchBuffer,
-                                        referenceArguments.getReferencePath());
+                                        referenceArguments.getReferencePath(),
+                                        errorOnOutOfDateIndex
+        );
         if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
             features = null;
         }
@@ -774,6 +781,13 @@ public abstract class GATKTool extends CommandLineProgram {
             record = header.getProgramRecord(pgID);
         }
         return pgID;
+    }
+
+    /**
+     * @return Whether to throw an error or warning when index files have a modification time before the data files.
+     */
+    public boolean getErrorOnOutOfDateIndex() {
+        return errorOnOutOfDateIndex;
     }
 
     /**

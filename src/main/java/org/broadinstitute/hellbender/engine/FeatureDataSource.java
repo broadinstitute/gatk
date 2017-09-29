@@ -19,10 +19,11 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
+import java.nio.file.Path;
+import java.nio.file.Files;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -98,12 +99,6 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * we have another cache miss and need to go to disk again.
      */
     private final int queryLookaheadBases;
-
-    /**
-     * If true, the constructor will throw a {@link UserException.OutOfDateIndex} if the index is out of date
-     * (i.e. if the index file has an older timestamp than the feature file).
-     */
-    private final boolean errorOnOutOfDateIndex;
 
     /**
      * Holds information about the path this datasource reads from.
@@ -252,15 +247,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      * @param reference Path to a reference. May be null. Needed only for reading from GenomicsDB.
-     * @param errorOnOutOfDateIndex If true, will throw a {@link UserException.OutOfDateIndex} if the index is out of date
+     * @param errorOnOutOfDateIndex If true, will throw a {@link UserException.OutOfDateIndex} if an index file is present and out of date.
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference,
                              final boolean errorOnOutOfDateIndex) {
         Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
-
-        this.errorOnOutOfDateIndex = errorOnOutOfDateIndex;
 
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
@@ -280,15 +273,22 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
             // Check that our index is not out-of-date:
             if( hasIndex ) {
-                File featureFile = new File(featureInput.getFeaturePath());
-                File indexFile = IndexUtils.getIndexFile( featureFile );
+                final Path featureFilePath = IOUtils.getPath( featureInput.getFeaturePath() );
 
-                // TODO: Should I change this back to an exception?
-                if ( indexFile == null ) {
-                    logger.warn("Index file should exist, but unable to find it!  Unable to check if index is out of date!");
+                if ( !Files.exists(featureFilePath) ) {
+                    throw new GATKException( "Index file should exist, but unable to find it!  Unable to check if index is out of date!" );
                 }
                 else {
-                    IndexUtils.checkIndexModificationTime(featureFile, indexFile, this.errorOnOutOfDateIndex);
+                    // Get our index file:
+                    // Try tribble first, if it's not there, we try tabix after:
+                    Path indexFilePath = Tribble.indexPath(featureFilePath);
+
+                    // Try Tabix:
+                    if ( (indexFilePath == null) || (!Files.exists(indexFilePath)) ) {
+                        indexFilePath = Tribble.tabixIndexPath(featureFilePath);
+                    }
+
+                    IndexUtils.checkIndexModificationTime(featureFilePath, indexFilePath, errorOnOutOfDateIndex);
                 }
             }
 
@@ -413,9 +413,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             return dict;
         }
         if (hasIndex) {
-            return IndexUtils.createSequenceDictionaryFromFeatureIndex(
-                    new File(featureInput.getFeaturePath())
-            );
+            return IndexUtils.createSequenceDictionaryFromFeatureIndex( new File(featureInput.getFeaturePath()) );
         }
         return null;
     }

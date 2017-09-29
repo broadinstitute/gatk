@@ -43,7 +43,7 @@ public abstract class VariantWalkerBase extends GATKTool {
         //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
         //This is because we have at least 1 source of features (namely the driving dataset).
         features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                      referenceArguments.getReferencePath());
+                                      referenceArguments.getReferencePath(), errorOnOutOfDateIndex);
         initializeDrivingVariants();
     }
 

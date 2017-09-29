@@ -36,7 +36,7 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
     @Override
     void initializeFeatures() {
         features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                      referenceArguments.getReferencePath());
+                                      referenceArguments.getReferencePath(), errorOnOutOfDateIndex);
         initializeDrivingFeatures();
     }
 
@@ -63,7 +63,7 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
 
             final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingFile.getAbsolutePath(), "drivingFeatureFile");
             features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                         referenceArguments.getReferencePath());
+                                         referenceArguments.getReferencePath(), errorOnOutOfDateIndex);
         } else {
             throw new UserException("File " + drivingFile + " contains features of the wrong type.");
         }

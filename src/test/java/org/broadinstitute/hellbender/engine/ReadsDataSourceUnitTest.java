@@ -596,7 +596,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
         // So we pass this invalid wrapper: if the code tries to use it, it'll blow up.
         Function<SeekableByteChannel, SeekableByteChannel> nullWrapper = (SeekableByteChannel) -> null;
 
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, nullWrapper, nullWrapper) ) {
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, nullWrapper, nullWrapper, false) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
@@ -631,7 +631,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
         Function<SeekableByteChannel, SeekableByteChannel> xorData = XorWrapper.forKey((byte)74);
         Function<SeekableByteChannel, SeekableByteChannel> xorIndex = XorWrapper.forKey((byte)80);
 
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, xorData, xorIndex) ) {
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, xorData, xorIndex, false) ) {
             Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
 
             final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
