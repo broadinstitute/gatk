@@ -1,19 +1,14 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.apache.zookeeper.KeeperException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithVariants;
 import org.testng.annotations.Test;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.FileSystemException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Period;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
