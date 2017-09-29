@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -22,6 +21,7 @@ import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -289,5 +289,117 @@ public class GATKProtectedVariantContextUtils {
                 }).filter(Objects::nonNull).collect(Collectors.toList());
 
         return new ReadPileup(loc, pile);
+    }
+
+    /** This is lifted directly from htsjdk with some minor modifications!  However, it is a private method there.
+     *
+     * This method cannot return {@link VariantContext.Type} MIXED
+     *
+     * Please see https://github.com/samtools/htsjdk/issues/999
+     *
+     * <p>Here are some cases that will not work properly, though this may not be an issue in practice:  </p>
+     *  <ul>
+     *      <li>"CGT" --> "GGA" this will be a MNP, but really it is two SNPs.</li>
+     *      <li>Spanning deletions for alternate will show as {@link VariantContext.Type} NO_VARIATION</li>
+     *      <li>Spanning deletions for reference will throw exception. </li>
+     *      <li>Reference that is symbolic will throw an exception.</li>
+     *  </ul>
+     *
+     * @param ref reference allele. Never {@code null}
+     * @param allele alternate allele to compare. Never {@code null}
+     * @return
+     */
+    public static VariantContext.Type typeOfVariant(final Allele ref, final Allele allele) {
+        Utils.nonNull(ref);
+        Utils.nonNull(allele);
+
+        if ( ref.isSymbolic() )
+            throw new IllegalStateException("Unexpected error: encountered a record with a symbolic reference allele");
+
+        if ( allele.isSymbolic() )
+            return VariantContext.Type.SYMBOLIC;
+
+        if (allele.equals(Allele.SPAN_DEL)) {
+            return VariantContext.Type.NO_VARIATION;
+        }
+
+        if ( ref.equals(Allele.SPAN_DEL) )
+            throw new IllegalStateException("Unexpected error: encountered a record with a spanning deletion reference allele");
+
+        if ( ref.length() == allele.length() ) {
+            if (ref.basesMatch(allele)) {
+                return VariantContext.Type.NO_VARIATION;
+            } else if ( allele.length() == 1 )
+                return VariantContext.Type.SNP;
+
+            // If the two alleles are the same length and only differ by one base, then still a SNP.
+            else if (IntStream.range(0, ref.length()).filter(i -> ref.getBases()[i] != allele.getBases()[i]).count() == 1) {
+                return VariantContext.Type.SNP;
+            } else
+                return VariantContext.Type.MNP;
+        }
+
+        // Important note: previously we were checking that one allele is the prefix of the other.  However, that's not an
+        // appropriate check as can be seen from the following example:
+        // REF = CTTA and ALT = C,CT,CA
+        // This should be assigned the INDEL type but was being marked as a MIXED type because of the prefix check.
+        // In truth, it should be absolutely impossible to return a MIXED type from this method because it simply
+        // performs a pairwise comparison of a single alternate allele against the reference allele (whereas the MIXED type
+        // is reserved for cases of multiple alternate alleles of different types).  Therefore, if we've reached this point
+        // in the code (so we're not a SNP, MNP, or symbolic allele), we absolutely must be an INDEL.
+
+        return VariantContext.Type.INDEL;
+
+        // old incorrect logic:
+        // if (oneIsPrefixOfOther(ref, allele))
+        //     return Type.INDEL;
+        // else
+        //     return Type.MIXED;
+    }
+
+    /**
+     *  This method should only be run on variants that are known to be indels.  See {@link GATKProtectedVariantContextUtils::typeOfVariant}
+     *
+     *<p>Here are some cases that will not work properly, though this may not be an issue in practice:  </p>
+     *  <ul>
+     *      <li>"CT" --> "CATT" this is really just a simple AT insertion, but this will show up as complex.</li>
+     *  </ul>
+     * @param ref reference allele. Never {@code null}
+     * @param allele alternate allele to compare. Never {@code null}
+     * @return true if the indel is complex (for example, also includes a SNP), false if simple indel.  If the input alleles define a variant that is not
+     *  an indel, then the behavior of this method is undefined (though will probably just return false).
+     *
+     */
+    public static boolean isComplexIndel(final Allele ref, final Allele allele) {
+
+        Utils.nonNull(ref);
+        Utils.nonNull(allele);
+
+        // Symbolic --> false
+        if (ref.isSymbolic() || (ref.length() == 0)) {
+            return false;
+        }
+        if (allele.isSymbolic() || (allele.length() == 0)) {
+            return false;
+        }
+
+        // SNP, MNP, or no variation --> false
+        if ( ref.length() == allele.length() ) {
+            return false;
+        }
+
+        // obvious simple del or simple indel
+        if ((allele.length() == 1) || (ref.length() == 1)) {
+            return false;
+        }
+
+        // If the ref starts with the alt or vice versa, this is still simple.
+        if (allele.length() > ref.length()) {
+            final boolean isAltStartsWithRef = IntStream.range(0, ref.length()).allMatch(i -> ref.getBases()[i] == allele.getBases()[i]);
+            return !isAltStartsWithRef;
+        } else {
+            final boolean isRefStartsWithAlt = IntStream.range(0, allele.length()).allMatch(i -> ref.getBases()[i] == allele.getBases()[i]);
+            return !isRefStartsWithAlt;
+        }
     }
 }

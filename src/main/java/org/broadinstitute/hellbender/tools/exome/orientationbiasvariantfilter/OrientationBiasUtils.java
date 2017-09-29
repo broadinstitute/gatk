@@ -268,6 +268,7 @@ public class OrientationBiasUtils {
 
         return getGenotypeStream(sampleName, variants)
                 .filter(g -> !g.isFiltered())
+                .filter(g -> g.getAlleles().size() > 1)
                 .filter(g -> !g.getAllele(0).basesMatch(g.getAllele(1)))
                 .count();
     }
