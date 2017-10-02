@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -14,7 +15,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public final class CollectBaseDistributionByCycleSparkIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectBaseDistributionByCycle");
+    private static final File TEST_DATA_DIR = new File(
+            "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectBaseDistributionByCycle");
 
     //Note: the 'expected' results in this test come from running picard 1.130
     //Note: these tests use the same data and results as the non-spark ones, by design
@@ -71,5 +73,11 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
         this.runCommandLine(args.getArgsArray());
 
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test
+    public void testGetRScriptResource() {
+        // Make sure the RScript resource can be resolved
+        Assert.assertNotNull(CollectBaseDistributionByCycleSpark.getBaseDistributionByCycleRScriptResource());
     }
 }

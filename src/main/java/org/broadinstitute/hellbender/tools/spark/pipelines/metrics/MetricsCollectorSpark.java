@@ -17,7 +17,7 @@ import java.util.List;
  * Each metrics collector has to be able to run from 4 different contexts:
  *
  *   - a standalone walker tool
- *   - the {@link org.broadinstitute.hellbender.tools.picard.analysis.CollectMultipleMetrics} walker tool
+ *   - the {@link org.broadinstitute.hellbender.metrics.analysis.CollectMultipleMetrics} walker tool
  *   - a standalone Spark tool
  *   - the {@link org.broadinstitute.hellbender.tools.spark.pipelines.metrics.CollectMultipleMetricsSpark} tool
  *
@@ -37,7 +37,7 @@ import java.util.List;
  *           XMetricsCollectorArgs per-record argument (type argument for {@link org.broadinstitute.hellbender.metrics.MultiLevelReducibleCollector})
  *   XMetricsCollectorSpark: adapter/bridge between RDD and the (read-based) XMetricsCollector,
  *          implements {@link org.broadinstitute.hellbender.tools.spark.pipelines.metrics.MetricsCollectorSpark}<XMetricsArgumentCollection>
- *   CollectXMetrics extends {@link org.broadinstitute.hellbender.tools.picard.analysis.SinglePassSamProgram}
+ *   CollectXMetrics extends {@link org.broadinstitute.hellbender.metrics.analysis.SinglePassSamProgram}
  *   CollectXMetricsSpark extends {@link org.broadinstitute.hellbender.tools.spark.pipelines.metrics.MetricsCollectorSparkTool}<MyMetricsArgumentCollection>
  *
  * The following schematic shows the general relationships of these collector component classes

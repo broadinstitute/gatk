@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.metrics.MetricsFile;
@@ -17,8 +18,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
-import org.broadinstitute.hellbender.tools.picard.analysis.BaseDistributionByCycleMetrics;
-import org.broadinstitute.hellbender.tools.picard.analysis.CollectBaseDistributionByCycle;
+import org.broadinstitute.hellbender.metrics.analysis.BaseDistributionByCycleMetrics;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -229,10 +229,19 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
                 plotSubtitle = StringUtil.asEmptyIfNull(readGroups.get(0).getLibrary());
             }
             final RScriptExecutor executor = new RScriptExecutor();
-            executor.addScript(new Resource(CollectBaseDistributionByCycle.R_SCRIPT, CollectBaseDistributionByCycle.class));
+            executor.addScript(getBaseDistributionByCycleRScriptResource());
             executor.addArgs(out, chartOutput.getAbsolutePath(), inputFileName, plotSubtitle);
             executor.exec();
         }
+    }
+
+    /**
+     * Return the R Script resource used by this class
+     */
+    @VisibleForTesting
+    static Resource getBaseDistributionByCycleRScriptResource() {
+        final String R_SCRIPT = "baseDistributionByCycle.R";
+        return new Resource(R_SCRIPT, CollectBaseDistributionByCycleSpark.class);
     }
 
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender;
 
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -40,6 +41,10 @@ public class Main {
          * to think about number formatting issues.
          */
         Utils.forceJVMLocaleToUSEnglish();
+
+        // Turn off the Picard legacy parser and opt in to Barclay syntax for Picard tools. This should be replaced
+        // with a config setting once PR https://github.com/broadinstitute/gatk/pull/3447 is merged.
+        System.setProperty("picard.useLegacyParser", "false");
     }
 
     /**
@@ -88,6 +93,7 @@ public class Main {
     protected List<String> getPackageList() {
         final List<String> packageList = new ArrayList<>();
         packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
+        packageList.addAll(Arrays.asList("picard"));
         return packageList;
     }
 
@@ -241,9 +247,11 @@ public class Main {
      * Returns the command line program specified, or prints the usage and exits with exit code 1 *
      */
     private static CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
+
         /** Get the set of classes that are our command line programs **/
         final ClassFinder classFinder = new ClassFinder();
         for (final String pkg : packageList) {
+            classFinder.find(pkg, picard.cmdline.CommandLineProgram.class);
             classFinder.find(pkg, CommandLineProgram.class);
         }
         String missingAnnotationClasses = "";
@@ -251,6 +259,9 @@ public class Main {
         toCheck.addAll(classList);
         final Map<String, Class<?>> simpleNameToClass = new LinkedHashMap<>();
         for (final Class<?> clazz : toCheck) {
+            if (clazz.equals(PicardCommandLineProgramExecutor.class)) {
+                continue;
+            }
             // No interfaces, synthetic, primitive, local, or abstract classes.
             if (ClassUtils.canMakeInstances(clazz)) {
                 final CommandLineProgramProperties property = getProgramProperty(clazz);
@@ -260,7 +271,7 @@ public class Main {
                     else missingAnnotationClasses += ", " + clazz.getSimpleName();
                 } else { /** We should check for missing annotations later **/
                     if (simpleNameToClass.containsKey(clazz.getSimpleName())) {
-                        throw new RuntimeException("Simple class name collision: " + clazz.getSimpleName());
+                        throw new RuntimeException("Simple class name collision: " + clazz.getName());
                     }
                     simpleNameToClass.put(clazz.getSimpleName(), clazz);
                 }
@@ -282,7 +293,11 @@ public class Main {
                 if (simpleNameToClass.containsKey(args[0])) {
                     final Class<?> clazz = simpleNameToClass.get(args[0]);
                     try {
-                        return (CommandLineProgram) clazz.newInstance();
+                        final Object commandLineProgram = clazz.newInstance();
+                        // wrap Picard CommandLinePrograms in a PicardCommandLineProgramExecutor
+                        return commandLineProgram instanceof picard.cmdline.CommandLineProgram ?
+                                new PicardCommandLineProgramExecutor((picard.cmdline.CommandLineProgram) commandLineProgram) :
+                                (CommandLineProgram) commandLineProgram;
                     } catch (final InstantiationException | IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }

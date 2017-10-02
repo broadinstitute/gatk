@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterConstants;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationSampleTransitionSummary;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

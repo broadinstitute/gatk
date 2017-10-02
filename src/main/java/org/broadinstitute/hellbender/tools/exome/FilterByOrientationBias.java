@@ -18,8 +18,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterer;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import picard.analysis.artifacts.SequencingArtifactMetrics;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 
 import java.io.File;
 import java.io.FileNotFoundException;
