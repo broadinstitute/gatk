@@ -59,6 +59,7 @@ NUM_EXECUTORS=$((2 * ${NUM_WORKERS}))
     --alignerIndexImage "${REF_INDEX_IMAGE}" \
     --exclusionIntervals "${INTERVAL_KILL_LIST}" \
     --kmersToIgnore "${KMER_KILL_LIST}" \
+    --kmerIntervals "${PROJECT_OUTPUT_DIR}/kmerIntervals" \
     --crossContigsToIgnore "${ALTS_KILL_LIST}" \
     --breakpointIntervals "${PROJECT_OUTPUT_DIR}/intervals" \
     --fastqDir "${PROJECT_OUTPUT_DIR}/fastq" \

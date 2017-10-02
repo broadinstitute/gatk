@@ -6,6 +6,7 @@ import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.HashPartitioner;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -612,17 +613,24 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int kmersPerPartition = params.cleanerKmersPerPartitionGuess;
         final int kSize = params.kSize;
         final int maxQNamesPerKmer = params.maxQNamesPerKmer;
+        final JavaPairRDD<SVKmer, Integer> kmerCounts =
+            unfilteredReads
+                .filter(filter::notJunk)
+                .filter(filter::isPrimaryLine)
+                .mapPartitions(readItr ->
+                    new KmerCounter(kSize,kmersPerPartition,broadcastKmersAndIntervals.getValue()).apply(readItr))
+                .mapToPair(kmerAndCount -> new Tuple2<>(kmerAndCount.getKey(), kmerAndCount.getValue()))
+                .reduceByKey(Integer::sum);
+        if ( params.kmerFile != null ) {
+            kmerCounts
+                .map(kc -> kc._1().toString(kSize)+"\t"+kc._2())
+                .saveAsTextFile(params.kmerFile+".genome");
+        }
         final List<SVKmer> ubiquitousKmers =
-                unfilteredReads
-                        .filter(filter::notJunk)
-                        .filter(filter::isPrimaryLine)
-                        .mapPartitions(readItr ->
-                            new KmerCounter(kSize,kmersPerPartition,broadcastKmersAndIntervals.getValue()).apply(readItr))
-                        .mapToPair(kmerAndCount -> new Tuple2<>(kmerAndCount.getKey(), kmerAndCount.getValue()))
-                        .reduceByKey(Integer::sum)
-                        .filter(pair -> pair._2() > maxQNamesPerKmer)
-                        .map(pair -> pair._1())
-                        .collect();
+            kmerCounts
+                .filter(pair -> pair._2() > maxQNamesPerKmer)
+                .map(pair -> pair._1())
+                .collect();
 
         for ( final SVKmer kmer : ubiquitousKmers ) {
             final Iterator<KmerAndInterval> entryItr = kmersAndIntervals.findEach(kmer);
@@ -688,7 +696,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int maxIntervals = params.cleanerMaxIntervals;
         final int kSize = params.kSize;
         final int maxDUSTScore = params.maxDUSTScore;
-        final List<KmerAndInterval> kmerIntervals =
+        final JavaPairRDD<KmerAndInterval, Integer> kmerIntervalCounts =
             unfilteredReads
                 .mapPartitionsToPair(readItr ->
                         new FlatMapGluer<>(
@@ -696,7 +704,24 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                         broadcastQNameAndIntervalsMultiMap.value(),
                                         broadcastKmerKillSet.value(), kSize, maxDUSTScore, filter),
                                 readItr), false)
-                .reduceByKey(Integer::sum)
+                .reduceByKey(Integer::sum);
+
+        // record the kmers with their interval IDs
+        if ( params.kmerFile != null ) {
+                kmerIntervalCounts
+                    .map(kic -> {
+                        final KmerAndInterval kmerAndInterval = kic._1();
+                        final String kmerChars = kmerAndInterval.toString(kSize);
+                        final SVDUSTFilteredKmerizer kmerizer =
+                                new SVDUSTFilteredKmerizer(kmerChars, kSize, Integer.MAX_VALUE, new SVKmerLong());
+                        kmerizer.next();
+                        return kmerAndInterval.getIntervalId() + "\t" + kmerChars + "\t" +
+                                        kmerizer.getCurrentDUSTScore() + "\t" + kic._2(); })
+                    .saveAsTextFile(params.kmerFile);
+        }
+
+        final List<KmerAndInterval> kmerIntervals =
+            kmerIntervalCounts
                 .mapPartitions(itr ->
                         new KmerCleaner(itr, kmersPerPartitionGuess, minKmers, maxKmers, maxIntervals).iterator())
                 .collect();
@@ -722,18 +747,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final List<KmerAndInterval> filteredKmerIntervals = kmerIntervals.stream()
                 .filter(kmerAndInterval -> !intervalsToKill.contains(kmerAndInterval.getIntervalId()))
                 .collect(SVUtils.arrayListCollector(kmerIntervals.size()));
-
-        // record the kmers with their interval IDs
-        if ( params.kmerFile != null ) {
-            try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                    BucketUtils.createFile(params.kmerFile)))) {
-                for (final KmerAndInterval kmerAndInterval : filteredKmerIntervals) {
-                    writer.write(kmerAndInterval.toString(kSize) + " " + kmerAndInterval.getIntervalId() + "\n");
-                }
-            } catch (final IOException ioe) {
-                throw new GATKException("Can't write kmer intervals file " + params.kmerFile, ioe);
-            }
-        }
 
         return new Tuple2<>(intervalDispositions, filteredKmerIntervals);
     }
