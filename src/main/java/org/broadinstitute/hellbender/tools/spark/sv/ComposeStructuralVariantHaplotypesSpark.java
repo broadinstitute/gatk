@@ -379,7 +379,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         final SAMReadGroupRecord contigsReadGroup = new SAMReadGroupRecord(CONTIG_READ_GROUP);
         contigsReadGroup.setSample(sample);
         final SAMReadGroupRecord haplotypesReadGroup = new SAMReadGroupRecord(HAPLOTYPE_READ_GROUP);
-        contigsReadGroup.setSample(sample);
+        haplotypesReadGroup.setSample(sample);
         outputHeader.addReadGroup(haplotypesReadGroup);
         outputHeader.addReadGroup(contigsReadGroup);
         return outputHeader;
@@ -396,6 +396,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         outputRecord.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue);
         outputRecord.setAttribute(REFERENCE_SCORE_TAG, "" + referenceScore);
         outputRecord.setAttribute(ALTERNATIVE_SCORE_TAG, "" + alternativeScore);
+        outputRecord.setAttribute(SAMTag.SA.name(), "" + composeSupplementaryLikeString(originalContig) + ';');
         outputRecord.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignment) + ';');
         outputRecord.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignment) + ';');
         outputRecord.setAttribute(VARIANT_CONTEXT_TAG, vc.getUniqueID());
