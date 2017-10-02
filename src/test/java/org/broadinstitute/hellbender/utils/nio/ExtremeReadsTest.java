@@ -13,10 +13,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.samples.PedReaderUnitTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 import org.testng.Assert;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Stress test for reading lots of data from the cloud using a very small prefetch buffer.
@@ -24,10 +27,11 @@ import org.testng.Assert;
  */
 public final class ExtremeReadsTest extends BaseTest {
 
-    static String fname = GCS_GATK_TEST_RESOURCES + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
+    static final String fname = GCS_GATK_TEST_RESOURCES + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
+    static final int THREAD_COUNT = 1000;
+    static final int CHANNELS_PER_THREAD = 1000;
+    private static Logger logger = LogManager.getLogger(ExtremeReadsTest.class);
 
-    static int THREAD_COUNT = 1000;
-    static int CHANNELS_PER_THREAD = 1000;
     static volatile int errors = 0;
 
     private static class Runner implements Runnable {
@@ -59,15 +63,14 @@ public final class ExtremeReadsTest extends BaseTest {
                     // EOF
                     long position = chan.position();
                     if (size != position) {
-                        System.out.println("Done at wrong position! " + position + " != " + size);
+                        logger.info("Done at wrong position! " + position + " != " + size);
                         ExtremeReadsTest.errors++;
                     }
                 }
             } catch (Exception x) {
                 ExtremeReadsTest.errors++;
-                System.out.println("Caught: " + x.getMessage());
+                logger.info("Caught: " + x.getMessage());
                 x.printStackTrace();
-                System.out.println();
             }
         }
     }
@@ -90,17 +93,16 @@ public final class ExtremeReadsTest extends BaseTest {
             });
         Stopwatch sw = Stopwatch.createStarted();
         errors = 0;
-        final Runner runner = new Runner();
         for (int i=0; i<THREAD_COUNT; i++) {
-            executor.execute(runner);
+            executor.execute(new Runner());
         }
         long parallel_reads = THREAD_COUNT * CHANNELS_PER_THREAD;
-        System.out.println(parallel_reads + " parallel reads via " + THREAD_COUNT + " threads (this will take a while).");
+        logger.info(parallel_reads + " parallel reads via " + THREAD_COUNT + " threads (this will take a while).");
         executor.shutdown();
         executor.awaitTermination(1, TimeUnit.DAYS);
         sw.stop();
-        System.out.println("All done. Elapsed: " + sw.elapsed(TimeUnit.MINUTES) + " min.");
-        System.out.println("There were " + errors + " error(s).");
+        logger.info("All done. Elapsed: " + sw.elapsed(TimeUnit.MINUTES) + " min.");
+        logger.info("There were " + errors + " error(s).");
         Assert.assertEquals(errors, 0);
     }
 }
