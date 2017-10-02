@@ -36,7 +36,7 @@ public class VariantAnnotationArgumentCollection implements Serializable {
     /**
      * Which annotations to include in variant calls in the output. These supplement annotations provided by annotation groups.
      */
-    @Argument(fullName=StandardArgumentDefinitions.ANNOTATION_LONG_NAME, shortName=StandardArgumentDefinitions.ANNOTATION_LONG_NAME, doc="One or more specific annotations to add to variant calls", optional=true)
+    @Argument(fullName=StandardArgumentDefinitions.ANNOTATION_LONG_NAME, shortName=StandardArgumentDefinitions.ANNOTATION_SHORT_NAME, doc="One or more specific annotations to add to variant calls", optional=true)
     public List<String> annotationsToUse = new ArrayList<>();
 
     /**
@@ -44,14 +44,14 @@ public class VariantAnnotationArgumentCollection implements Serializable {
      * -A or -G arguments, so these annotations will be excluded even if they are explicitly included with the other
      * options.
      */
-    @Argument(fullName=StandardArgumentDefinitions.ANNOTATIONS_TO_EXCLUDE_LONG_NAME, shortName=StandardArgumentDefinitions.ANNOTATIONS_TO_EXCLUDE_LONG_NAME, doc="One or more specific annotations to exclude from variant calls", optional=true)
+    @Argument(fullName=StandardArgumentDefinitions.ANNOTATIONS_TO_EXCLUDE_LONG_NAME, shortName=StandardArgumentDefinitions.ANNOTATIONS_TO_EXCLUDE_SHORT_NAME, doc="One or more specific annotations to exclude from variant calls", optional=true)
     public List<String> annotationsToExclude = new ArrayList<>();
 
     /**
      * Which groups of annotations to add to the output variant calls.
      * Any requirements that are not met (e.g. failing to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
      */
-    @Argument(fullName= StandardArgumentDefinitions.ANNOTATION_GROUP_LONG_NAME, shortName=StandardArgumentDefinitions.ANNOTATION_GROUP_LONG_NAME, doc="One or more groups of annotations to apply to variant calls", optional=true)
+    @Argument(fullName= StandardArgumentDefinitions.ANNOTATION_GROUP_LONG_NAME, shortName=StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, doc="One or more groups of annotations to apply to variant calls", optional=true)
     public List<String> annotationGroupsToUse = new ArrayList<>();
 
 }
