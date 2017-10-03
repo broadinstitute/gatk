@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
@@ -73,7 +72,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     protected void runTool( final JavaSparkContext ctx ) {
 
         final SAMFileHeader header = getHeaderForReads();
-        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
         // gather evidence, run assembly, and align
         final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults =

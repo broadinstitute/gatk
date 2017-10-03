@@ -33,8 +33,8 @@ public class SVVCFWriter {
      * FASTA and Broadcast references are both required because 2bit Broadcast references currently order their
      * sequence dictionaries in a scrambled order, see https://github.com/broadinstitute/gatk/issues/2037.
      */
-    public static void writeVCF(final String vcfFileName,
-                                final Logger logger, final List<VariantContext> localVariants, final SAMSequenceDictionary referenceSequenceDictionary) {
+    public static void writeVCF(final List<VariantContext> localVariants, final String vcfFileName,
+                                final SAMSequenceDictionary referenceSequenceDictionary, final Logger logger) {
 
         final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(localVariants, referenceSequenceDictionary);
 
@@ -87,7 +87,8 @@ public class SVVCFWriter {
         }
     }
 
-    private static VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
+    @VisibleForTesting
+    static VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(GATKSVVCFHeaderLines.getSymbAltAlleleLines());
         headerLines.addAll(GATKSVVCFHeaderLines.getInfoLines());
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));

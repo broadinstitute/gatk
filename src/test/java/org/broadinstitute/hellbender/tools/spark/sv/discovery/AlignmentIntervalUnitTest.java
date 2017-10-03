@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarTestUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.CigarUtilsUnitTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -16,11 +16,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class AlignmentIntervalUnitTest extends BaseTest {
@@ -31,54 +27,54 @@ public class AlignmentIntervalUnitTest extends BaseTest {
     Object[][] testDataFor() {
         final List<Object[]> data = new ArrayList<>(20);
 
-        AlignmentInterval ar1 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0, 100, false, false);
-        AlignmentInterval ar2 = new AlignmentInterval(new SimpleInterval("1",10,16), 5,10, TextCigarCodec.decode("4S6M"),true, 60, 0, 100, false, false);
+        AlignmentInterval ar1 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0, 100, AlnModType.NONE);
+        AlignmentInterval ar2 = new AlignmentInterval(new SimpleInterval("1",10,16), 5,10, TextCigarCodec.decode("4S6M"),true, 60, 0, 100, AlnModType.NONE);
 
         data.add(new Object[]{ar1, ar2, 1, 0});
 
-        ar1 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0, 100, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("1",11,16), 6,10, TextCigarCodec.decode("5S5M"),true, 60, 0, 100, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0, 100, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("1",11,16), 6,10, TextCigarCodec.decode("5S5M"),true, 60, 0, 100, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 0, 0});
 
         // overlaps on ref only
-        ar1 = new AlignmentInterval(new SimpleInterval("chr1",4938770,4939497), 1,728, TextCigarCodec.decode("728M61S"),true, 60, 0, 728, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr1",4939439,4939498), 730,789, TextCigarCodec.decode("729H60M"),true, 60, 2, 50, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr1",4938770,4939497), 1,728, TextCigarCodec.decode("728M61S"),true, 60, 0, 728, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr1",4939439,4939498), 730,789, TextCigarCodec.decode("729H60M"),true, 60, 2, 50, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 0, 59});
 
-        ar1 = new AlignmentInterval(new SimpleInterval("chr1",9170350,9171390), 1,1041, TextCigarCodec.decode("1041M1298H"),false, 60, 4, 1021, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr1",9169370,9170505), 1204,2239, TextCigarCodec.decode("1203S1136M"),false, 60, 22, 1026, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr1",9170350,9171390), 1,1041, TextCigarCodec.decode("1041M1298H"),false, 60, 4, 1021, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr1",9169370,9170505), 1204,2239, TextCigarCodec.decode("1203S1136M"),false, 60, 22, 1026, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 0, 505-350+1});
 
         // overlaps on read only
-        ar1 = new AlignmentInterval(new SimpleInterval("chr1",933803,934119), 1,317, TextCigarCodec.decode("317M302H"),true, 60, 7, 282, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr1",934806,935261), 164,619, TextCigarCodec.decode("163S456M"),true, 60, 8, 416, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr1",933803,934119), 1,317, TextCigarCodec.decode("317M302H"),true, 60, 7, 282, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr1",934806,935261), 164,619, TextCigarCodec.decode("163S456M"),true, 60, 8, 416, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 317-164+1, 0});
 
-        ar1 = new AlignmentInterval(new SimpleInterval("chr1",964783,965113), 1,331, TextCigarCodec.decode("331M1028H"),false, 60, 2, 321, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr1",963604,964692), 270,1359, TextCigarCodec.decode("269S69M1I1020M"),false, 60, 9, 1032, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr1",964783,965113), 1,331, TextCigarCodec.decode("331M1028H"),false, 60, 2, 321, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr1",963604,964692), 270,1359, TextCigarCodec.decode("269S69M1I1020M"),false, 60, 9, 1032, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 331-270+1, 0});
 
         // overlaps on read & ref
-        ar1 = new AlignmentInterval(new SimpleInterval("chr1",66659809,66660176), 1,354, TextCigarCodec.decode("124M10D106M3D16M2I75M3D31M241H"),true, 60, 35, 185, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr1",66659958,66660262), 301,595, TextCigarCodec.decode("300S179M10D116M"),true, 60, 24, 199, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr1",66659809,66660176), 1,354, TextCigarCodec.decode("124M10D106M3D16M2I75M3D31M241H"),true, 60, 35, 185, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr1",66659958,66660262), 301,595, TextCigarCodec.decode("300S179M10D116M"),true, 60, 24, 199, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 54, 66660176-66659958+1});
 
-        ar1 = new AlignmentInterval(new SimpleInterval("chr1",156328046,156328757), 1,712, TextCigarCodec.decode("712M444S"),false, 60, 2, 702, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr1",156327744,156328331), 588,1156, TextCigarCodec.decode("587H127M15I131M34D296M"),false, 60, 68, 378, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr1",156328046,156328757), 1,712, TextCigarCodec.decode("712M444S"),false, 60, 2, 702, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr1",156327744,156328331), 588,1156, TextCigarCodec.decode("587H127M15I131M34D296M"),false, 60, 68, 378, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 712-588+1, 331-46+1});
 
         // overlap with strand switch
-        ar1 = new AlignmentInterval(new SimpleInterval("chr6",148696358,148697176), 1,815, TextCigarCodec.decode("725M4D90M472S"),true, 60, 10, 765, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr6",4090017,4090739), 567,1287, TextCigarCodec.decode("566H80M2D641M"),false, 60, 7, 678, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr6",148696358,148697176), 1,815, TextCigarCodec.decode("725M4D90M472S"),true, 60, 10, 765, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr6",4090017,4090739), 567,1287, TextCigarCodec.decode("566H80M2D641M"),false, 60, 7, 678, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 815-567+1, 0});
 
-        ar1 = new AlignmentInterval(new SimpleInterval("chr5",180678871,180679093), 1,223, TextCigarCodec.decode("223M44S"),false, 60, 0, 223, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr5",180678907,180678954), 220,267, TextCigarCodec.decode("219H48M"),true, 60, 0, 48, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr5",180678871,180679093), 1,223, TextCigarCodec.decode("223M44S"),false, 60, 0, 223, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr5",180678907,180678954), 220,267, TextCigarCodec.decode("219H48M"),true, 60, 0, 48, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 4, 48});
 
         // different chr
-        ar1 = new AlignmentInterval(new SimpleInterval("chr1",9170350,9171390), 1,1041, TextCigarCodec.decode("1041M1298H"),false, 60, 4, 1021, false, false);
-        ar2 = new AlignmentInterval(new SimpleInterval("chr2",9169370,9170505), 1204,2239, TextCigarCodec.decode("1203S1136M"),false, 60, 22, 1026, false, false);
+        ar1 = new AlignmentInterval(new SimpleInterval("chr1",9170350,9171390), 1,1041, TextCigarCodec.decode("1041M1298H"),false, 60, 4, 1021, AlnModType.NONE);
+        ar2 = new AlignmentInterval(new SimpleInterval("chr2",9169370,9170505), 1204,2239, TextCigarCodec.decode("1203S1136M"),false, 60, 22, 1026, AlnModType.NONE);
         data.add(new Object[]{ar1, ar2, 0, 0});
 
         return data.toArray(new Object[data.size()][]);
@@ -114,7 +110,7 @@ public class AlignmentIntervalUnitTest extends BaseTest {
      * [5] expected end in assembled contig, 1-based, inclusive
      * [6] expected contig length,
      * [7] expected {@link AlignmentInterval} object (generated manually with all fields explicitly spell out and given to
-     *                                      {@link AlignmentInterval#AlignmentInterval(SimpleInterval, int, int, Cigar, boolean, int, int, int, boolean, boolean)}
+     *                                      {@link AlignmentInterval#AlignmentInterval(SimpleInterval, int, int, Cigar, boolean, int, int, int, AlnModType)}
      *                                      intended to be used for testing concordance between the two constructors)
      */
     @DataProvider(name = "AlignmentIntervalCtorTestForSimpleInversion")
@@ -144,7 +140,7 @@ public class AlignmentIntervalUnitTest extends BaseTest {
             final SimpleInterval referenceInterval = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[i]+1, bwaMemAlignment.getRefEnd());
             final AlignmentInterval alignmentInterval = new AlignmentInterval(referenceInterval, alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentEndsOnTig_0BasedExclusive[i],
                     strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]),
-                    strandedness[i], Math.max(SAMRecord.NO_MAPPING_QUALITY, bwaMemAlignment.getMapQual()), bwaMemAlignment.getNMismatches(), bwaMemAlignment.getAlignerScore(), false, false);
+                    strandedness[i], Math.max(SAMRecord.NO_MAPPING_QUALITY, bwaMemAlignment.getMapQual()), bwaMemAlignment.getNMismatches(), bwaMemAlignment.getAlignerScore(), AlnModType.NONE);
             data[i] = new Object[]{bwaMemAlignment, referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]),
                     strandedness[i], alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentEndsOnTig_0BasedExclusive[i], seqLen[i], mapQualForBwaMemAlgn[i], alignmentInterval};
         }
@@ -291,30 +287,30 @@ public class AlignmentIntervalUnitTest extends BaseTest {
     @DataProvider(name = "alignmentIntervalStrings")
     public Object[][] alignmentIntervalStrings() {
         final List<Object[]> result = new ArrayList<>();
-        result.add(new Object[]{ "chr1", 10, SVFastqUtils.Strand.NEGATIVE, "10M1I30M100H", 10, 3, 2 });
-        result.add(new Object[]{ "chrX", 10_000_000, SVFastqUtils.Strand.POSITIVE, "31H10S10M1I30M230N4M100H", 34, 31, 0 });
-        result.add(new Object[]{ "chr20", 3456, SVFastqUtils.Strand.POSITIVE, "31M", 3, 310, 5 });
+        result.add(new Object[]{ "chr1", 10, Strand.NEGATIVE, "10M1I30M100H", 10, 3, 2 });
+        result.add(new Object[]{ "chrX", 10_000_000, Strand.POSITIVE, "31H10S10M1I30M230N4M100H", 34, 31, 0 });
+        result.add(new Object[]{ "chr20", 3456, Strand.POSITIVE, "31M", 3, 310, 5 });
         return result.toArray(new Object[result.size()][]);
     }
 
     @Test(dataProvider = "alignmentIntervalStrings", groups = "sv")
-    public void testAlignmentIntervalStrings(final String contig, final int start, final SVFastqUtils.Strand strand, final String cigarString, final int mq, final int nm, final int as) {
-        final String fullStr = String.join(",", contig, "" + start, strand == SVFastqUtils.Strand.NEGATIVE ? "-" : "+", cigarString, "" + mq, "" + nm, "" + as);
+    public void testAlignmentIntervalStrings(final String contig, final int start, final Strand strand, final String cigarString, final int mq, final int nm, final int as) {
+        final String fullStr = String.join(",", contig, "" + start, strand == Strand.NEGATIVE ? "-" : "+", cigarString, "" + mq, "" + nm, "" + as);
         final AlignmentInterval fullInterval = new AlignmentInterval(fullStr);
         Assert.assertEquals(fullInterval.referenceSpan.getContig(), contig);
         Assert.assertEquals(fullInterval.referenceSpan.getStart(), start);
-        Assert.assertEquals(fullInterval.forwardStrand, strand == SVFastqUtils.Strand.POSITIVE);
+        Assert.assertEquals(fullInterval.forwardStrand, strand == Strand.POSITIVE);
         Assert.assertEquals(fullInterval.cigarAlong5to3DirectionOfContig,
                 fullInterval.forwardStrand ? TextCigarCodec.decode(cigarString) : CigarUtils.invertCigar(TextCigarCodec.decode(cigarString)));
         Assert.assertEquals(fullInterval.mapQual, mq);
         Assert.assertEquals(fullInterval.mismatches, nm);
         Assert.assertEquals(fullInterval.alnScore, as);
 
-        final String basicStr = String.join(",", contig, "" + start, strand == SVFastqUtils.Strand.NEGATIVE ? "-" : "+", cigarString, "" + mq);
+        final String basicStr = String.join(",", contig, "" + start, strand == Strand.NEGATIVE ? "-" : "+", cigarString, "" + mq);
         final AlignmentInterval basicInterval = new AlignmentInterval(basicStr);
         Assert.assertEquals(basicInterval.referenceSpan.getContig(), contig);
         Assert.assertEquals(basicInterval.referenceSpan.getStart(), start);
-        Assert.assertEquals(basicInterval.forwardStrand, strand == SVFastqUtils.Strand.POSITIVE);
+        Assert.assertEquals(basicInterval.forwardStrand, strand == Strand.POSITIVE);
         Assert.assertEquals(basicInterval.cigarAlong5to3DirectionOfContig,
                 basicInterval.forwardStrand ? TextCigarCodec.decode(cigarString) : CigarUtils.invertCigar(TextCigarCodec.decode(cigarString)));
         Assert.assertEquals(basicInterval.mapQual, mq);

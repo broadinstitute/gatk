@@ -3,6 +3,12 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFContigHeaderLine;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFIDHeaderLine;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -12,12 +18,13 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType.createBracketedSymbAlleleString;
 
-public class SVVCFWriterUnitTest extends BaseTest{
+public class SVVCFWriterUnitTest extends BaseTest {
 
-    @Test
+    @Test(groups = "sv")
     public void testSortVariantsByCoordinate(){
 
         final String insOne = "AAA";new String(SVDiscoveryTestDataProvider.makeDummySequence(100, (byte)'A'));
@@ -29,24 +36,24 @@ public class SVVCFWriterUnitTest extends BaseTest{
 
         final VariantContext inversionOne = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER))
+                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
         final VariantContext inversionTwo = new VariantContextBuilder()
                 .chr(contig).start(pos).stop(end)
-                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER))
+                .alleles("G", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insTwo)
                 .make();
 
         final VariantContext upstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos-50).stop(end)
-                .alleles("T", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER))
+                .alleles("T", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
 
         final VariantContext downstreamVariant = new VariantContextBuilder()
                 .chr(contig).start(pos+20).stop(end+20)
-                .alleles("C", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER))
+                .alleles("C", createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS))
                 .attribute(GATKSVVCFConstants.INSERTED_SEQUENCE, insOne)
                 .make();
 
@@ -59,5 +66,21 @@ public class SVVCFWriterUnitTest extends BaseTest{
         Assert.assertEquals(sortedVariants.get(1), inversionOne);
         Assert.assertEquals(sortedVariants.get(2), inversionTwo);
         Assert.assertEquals(sortedVariants.get(3), downstreamVariant);
+    }
+
+    @Test(groups = "sv")
+    public void testSetHeader() {
+        SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+                b37_2bit_reference_20_21 , ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+        final VCFHeader vcfHeader = SVVCFWriter.getVcfHeader(referenceSequenceDictionary);
+        Assert.assertNotNull(vcfHeader.getSequenceDictionary());
+        Assert.assertTrue(vcfHeader.getFilterLines().isEmpty());
+        final List<String> refContigs = vcfHeader.getContigLines().stream().map(VCFContigHeaderLine::getID).collect(Collectors.toList());
+        Assert.assertTrue(refContigs.size()==2);
+        Assert.assertTrue(vcfHeader.getFormatHeaderLines().isEmpty());
+        final List<String> headerKeys = vcfHeader.getIDHeaderLines().stream().map(VCFIDHeaderLine::getID).sorted().collect(Collectors.toList());
+        Assert.assertTrue(headerKeys.remove(VCFConstants.END_KEY));
+        Assert.assertTrue(headerKeys.removeAll(refContigs));
+        Assert.assertEquals(headerKeys, GATKSVVCFConstants.expectedHeaderLinesInVCF);
     }
 }

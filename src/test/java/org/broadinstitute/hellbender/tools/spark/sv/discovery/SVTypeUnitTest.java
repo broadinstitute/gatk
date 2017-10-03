@@ -57,53 +57,53 @@ public class SVTypeUnitTest {
     public void testAltAlleleSvLenAndIdProductions() throws IOException {
 
         // inversion
-        worker(SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER, 14644,
+        worker(SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_INV, 14644,
                 GATKSVVCFConstants.INV33);
-        worker(SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftPlus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_INV_IN_HEADER, 405,
+        worker(SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftPlus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_INV, 405,
                 GATKSVVCFConstants.INV55);
 
         // simple deletion
-        worker(SVDiscoveryTestDataProvider.forSimpleDeletion_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -20,
+        worker(SVDiscoveryTestDataProvider.forSimpleDeletion_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, -20,
                 SimpleSVType.TYPES.DEL.name());
 
         // simple insertion
-        worker(SVDiscoveryTestDataProvider.forSimpleInsertion_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_INS_IN_HEADER, 50,
+        worker(SVDiscoveryTestDataProvider.forSimpleInsertion_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_INS, 50,
                 SimpleSVType.TYPES.INS.name());
 
         // long range substitution (i.e. scarred deletion)
-        worker(SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -20,
+        worker(SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, -20,
                 SimpleSVType.TYPES.DEL.name());
 
         // simple deletion with homology
-        worker(SVDiscoveryTestDataProvider.forDeletionWithHomology_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -38,
+        worker(SVDiscoveryTestDataProvider.forDeletionWithHomology_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, -38,
                 SimpleSVType.TYPES.DEL.name());
 
         // simple tandem dup contraction from 2 units to 1 unit
-        worker(SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -10,
-                GATKSVVCFConstants.TANDUP_CONTRACTION_INTERNAL_ID_START_STRING);
+        worker(SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, -10,
+                GATKSVVCFConstants.DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING);
 
         // simple tandem dup expansion from 1 unit to 2 units
-        worker(SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 10,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+        worker(SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP, 10,
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        worker(SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 99,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+        worker(SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP, 99,
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
-        worker(SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 96,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+        worker(SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP, 96,
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
-        worker(SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -96,
-                GATKSVVCFConstants.TANDUP_CONTRACTION_INTERNAL_ID_START_STRING);
+        worker(SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, -96,
+                GATKSVVCFConstants.DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING);
 
         // tandem dup contraction from 3 units to 2 units
-        worker(SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER, -96,
-                GATKSVVCFConstants.TANDUP_CONTRACTION_INTERNAL_ID_START_STRING);
+        worker(SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL, -96,
+                GATKSVVCFConstants.DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING);
 
         // tandem dup expansion from 2 units to 3 units
-        worker(SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP_IN_HEADER, 96,
-                GATKSVVCFConstants.TANDUP_EXPANSION_INTERNAL_ID_START_STRING);
+        worker(SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus._3(), GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP, 96,
+                GATKSVVCFConstants.DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING);
     }
 }
