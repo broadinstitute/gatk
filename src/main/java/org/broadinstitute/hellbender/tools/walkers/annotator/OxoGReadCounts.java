@@ -76,9 +76,9 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
                 .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
                 .forEach(ba -> (isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
 
-        final int[] f1r2 = likelihoods.alleles().stream().mapToInt(a -> f1r2Counts.get(a).intValue()).toArray();
+        final int[] f1r2 = vc.getAlleles().stream().mapToInt(a -> f1r2Counts.get(a).intValue()).toArray();
 
-        final int[] f2r1 = likelihoods.alleles().stream().mapToInt(a -> f2r1Counts.get(a).intValue()).toArray();
+        final int[] f2r1 = vc.getAlleles().stream().mapToInt(a -> f2r1Counts.get(a).intValue()).toArray();
 
         gb.attribute(GATKVCFConstants.F1R2_KEY, f1r2);
         gb.attribute(GATKVCFConstants.F2R1_KEY, f2r1);
