@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -108,10 +109,10 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
 
         // Initialize the mappings
         final Map<Allele, MutableInt> f1r2Counts = variantAlleles.stream()
-                .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
+                .collect(Collectors.toMap(Function.identity(), a -> new MutableInt(0)));
 
         final Map<Allele, MutableInt> f2r1Counts = variantAlleles.stream()
-                .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
+                .collect(Collectors.toMap(Function.identity(), a -> new MutableInt(0)));
 
         final List<Allele> referenceAlleles = variantAlleles.stream().filter(a -> a.isReference() && !a.isSymbolic()).collect(Collectors.toList());
         final List<Allele> altAlleles = variantAlleles.stream().filter(a -> a.isNonReference() && !a.isSymbolic()).collect(Collectors.toList());
@@ -169,7 +170,6 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
                         pileupAllele = altAllele;
                     }
                 }
-
             }
 
         } else {

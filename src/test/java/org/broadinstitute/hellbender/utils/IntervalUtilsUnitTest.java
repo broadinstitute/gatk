@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-
+import com.google.common.collect.Sets;
 import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -1385,5 +1386,256 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     public void testToGatkIntervalString(){
             final SimpleInterval interval = new SimpleInterval("1",1,100);
             Assert.assertEquals(IntervalUtils.locatableToString(interval), "1:1-100");
+    }
+
+    @DataProvider(name = "unionIntervalsTesting")
+    public Object [][] unionIntervalsTesting() {
+
+        // Overlap where one fits in another and an interval that is totally disconnected
+        final List<Locatable> input1_1 = new ArrayList<>();
+        final List<Locatable> input1_2 = new ArrayList<>();
+        final List<Locatable> output1 = new ArrayList<>();
+        input1_1.add(new SimpleInterval("1", 1000, 2000));
+        input1_2.add(new SimpleInterval("1", 500, 2500));
+        input1_2.add(new SimpleInterval("1", 2501, 3000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        output1.add(new SimpleInterval("1", 500, 999));
+        output1.add(new SimpleInterval("1", 1000, 2000));
+        output1.add(new SimpleInterval("1", 2001, 2500));
+        output1.add(new SimpleInterval("1", 2501, 3000));
+        output1.add(new SimpleInterval("1", 4000, 5000));
+
+        // One is empty
+        final List<Locatable> input2_1 = new ArrayList<>();
+        final List<Locatable> input2_2 = new ArrayList<>();
+        final List<Locatable> output2 = new ArrayList<>();
+        input2_1.add(new SimpleInterval("1", 1000, 2000));
+        output2.add(input2_1.get(0));
+
+        // Other is empty
+        final List<Locatable> input3_1 = new ArrayList<>();
+        final List<Locatable> input3_2 = new ArrayList<>();
+        final List<Locatable> output3 = new ArrayList<>();
+        input3_2.add(new SimpleInterval("1", 1000, 2000));
+        output3.add(input3_2.get(0));
+
+        // Simple overlap
+        final List<Locatable> input4_1 = new ArrayList<>();
+        final List<Locatable> input4_2 = new ArrayList<>();
+        final List<Locatable> output4 = new ArrayList<>();
+        input4_1.add(new SimpleInterval("1", 500, 1000));
+        input4_2.add(new SimpleInterval("1", 750, 1500));
+        output4.add(new SimpleInterval("1", 500, 749));
+        output4.add(new SimpleInterval("1", 750, 1000));
+        output4.add(new SimpleInterval("1", 1001, 1500));
+
+        // No overlap
+        final List<Locatable> input5_1 = new ArrayList<>();
+        final List<Locatable> input5_2 = new ArrayList<>();
+        final List<Locatable> output5 = new ArrayList<>();
+        input5_1.add(new SimpleInterval("1", 500, 1000));
+        input5_2.add(new SimpleInterval("1", 2000, 3000));
+        output5.add(input5_1.get(0));
+        output5.add(input5_2.get(0));
+
+        // One is null
+        final List<Locatable> input6_1 = new ArrayList<>();
+        final List<Locatable> input6_2 = null;
+        final List<Locatable> output6 = new ArrayList<>();
+        input6_1.add(new SimpleInterval("1", 1000, 2000));
+        output6.add(input6_1.get(0));
+
+        // Other is null
+        final List<Locatable> input7_1 = null;
+        final List<Locatable> input7_2 = new ArrayList<>();
+        final List<Locatable> output7 = new ArrayList<>();
+        input7_2.add(new SimpleInterval("1", 1000, 2000));
+        output7.add(input7_2.get(0));
+
+        // single bp overlap at start
+        final List<Locatable> input8_1 = new ArrayList<>();
+        final List<Locatable> input8_2 = new ArrayList<>();
+        final List<Locatable> output8 = new ArrayList<>();
+        input8_1.add(new SimpleInterval("1", 500, 500));
+        input8_2.add(new SimpleInterval("1", 500, 3000));
+        output8.add(new SimpleInterval("1", 500, 500));
+        output8.add(new SimpleInterval("1", 501, 3000));
+
+        // single bp overlap at end
+        final List<Locatable> input9_1 = new ArrayList<>();
+        final List<Locatable> input9_2 = new ArrayList<>();
+        final List<Locatable> output9 = new ArrayList<>();
+        input9_1.add(new SimpleInterval("1", 3000, 3000));
+        input9_2.add(new SimpleInterval("1", 500, 3000));
+        output9.add(new SimpleInterval("1", 500, 2999));
+        output9.add(new SimpleInterval("1", 3000, 3000));
+
+        // single bp overlap in middle
+        final List<Locatable> input10_1 = new ArrayList<>();
+        final List<Locatable> input10_2 = new ArrayList<>();
+        final List<Locatable> output10 = new ArrayList<>();
+        input10_1.add(new SimpleInterval("1", 2000, 2000));
+        input10_2.add(new SimpleInterval("1", 500, 3000));
+        output10.add(new SimpleInterval("1", 500, 1999));
+        output10.add(new SimpleInterval("1", 2000, 2000));
+        output10.add(new SimpleInterval("1", 2001, 3000));
+
+        // One interval overlaps two entirely
+        final List<Locatable> input11_1 = new ArrayList<>();
+        final List<Locatable> input11_2 = new ArrayList<>();
+        final List<Locatable> output11 = new ArrayList<>();
+        input11_1.add(new SimpleInterval("1", 2000, 2000));
+        input11_1.add(new SimpleInterval("1", 2100, 2200));
+        input11_2.add(new SimpleInterval("1", 500, 3000));
+        output11.add(new SimpleInterval("1", 500, 1999));
+        output11.add(new SimpleInterval("1", 2000, 2000));
+        output11.add(new SimpleInterval("1", 2001, 2099));
+        output11.add(new SimpleInterval("1", 2100, 2200));
+        output11.add(new SimpleInterval("1", 2201, 3000));
+
+        // One interval overlaps two partly
+        final List<Locatable> input12_1 = new ArrayList<>();
+        final List<Locatable> input12_2 = new ArrayList<>();
+        final List<Locatable> output12 = new ArrayList<>();
+        input12_1.add(new SimpleInterval("1", 1000, 2000));
+        input12_1.add(new SimpleInterval("1", 3000, 4000));
+        input12_2.add(new SimpleInterval("1", 1500, 3500));
+        output12.add(new SimpleInterval("1", 1000, 1499));
+        output12.add(new SimpleInterval("1", 1500, 2000));
+        output12.add(new SimpleInterval("1", 2001, 2999));
+        output12.add(new SimpleInterval("1", 3000, 3500));
+        output12.add(new SimpleInterval("1", 3501, 4000));
+
+        // Two nulls going in should yield an empty list.
+        final List<Locatable> input13_1 = null;
+        final List<Locatable> input13_2 = null;
+        final List<Locatable> output13 = new ArrayList<>();
+
+        // One interval overlaps two partly then an empty space then a single bp interval
+        final List<Locatable> input14_1 = new ArrayList<>();
+        final List<Locatable> input14_2 = new ArrayList<>();
+        final List<Locatable> output14 = new ArrayList<>();
+        input14_1.add(new SimpleInterval("1", 1000, 2000));
+        input14_1.add(new SimpleInterval("1", 3000, 4000));
+        input14_1.add(new SimpleInterval("1", 5000, 5000));
+        input14_2.add(new SimpleInterval("1", 1500, 3500));
+        output14.add(new SimpleInterval("1", 1000, 1499));
+        output14.add(new SimpleInterval("1", 1500, 2000));
+        output14.add(new SimpleInterval("1", 2001, 2999));
+        output14.add(new SimpleInterval("1", 3000, 3500));
+        output14.add(new SimpleInterval("1", 3501, 4000));
+        output14.add(new SimpleInterval("1", 5000, 5000));
+
+        // One interval overlaps two partly, but not really, since different contig.
+        final List<Locatable> input15_1 = new ArrayList<>();
+        final List<Locatable> input15_2 = new ArrayList<>();
+        final List<Locatable> output15 = new ArrayList<>();
+        input15_1.add(new SimpleInterval("1", 1000, 2000));
+        input15_1.add(new SimpleInterval("1", 3000, 4000));
+        input15_1.add(new SimpleInterval("2", 5000, 5000));
+        input15_2.add(new SimpleInterval("2", 1500, 3500));
+        output15.addAll(input15_1.subList(0,2));
+        output15.addAll(input15_2);
+        output15.add(input15_1.get(2));
+
+        return new Object[][]{
+                {input1_1, input1_2, output1},
+                {input2_1, input2_2, output2},
+                {input3_1, input3_2, output3},
+                {input4_1, input4_2, output4},
+                {input5_1, input5_2, output5},
+                {input6_1, input6_2, output6},
+                {input7_1, input7_2, output7},
+                {input8_1, input8_2, output8},
+                {input9_1, input9_2, output9},
+                {input10_1, input10_2, output10},
+                {input11_1, input11_2, output11},
+                {input12_1, input12_2, output12},
+                {input13_1, input13_2, output13},
+                {input14_1, input14_2, output14},
+                {input15_1, input15_2, output15},
+        };
+    }
+
+    @Test(dataProvider = "unionIntervalsTesting")
+    public void testUnionIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
+        final List<Locatable> outputs = IntervalUtils.unionIntervals(locatables1, locatables2);
+        Assert.assertEquals(outputs.size(), gtOutput.size());
+        Assert.assertEquals(outputs, gtOutput);
+    }
+
+    @DataProvider(name = "overlappingData")
+    public Object [][] createOverlappingData() {
+        final List<SimpleInterval> k = Lists.newArrayList(new SimpleInterval("1", 100, 500));
+        final List<SimpleInterval> k3 = Lists.newArrayList(new SimpleInterval("1", 100, 500),
+                new SimpleInterval("2", 100, 500));
+        final List<SimpleInterval> k4 = Lists.newArrayList(new SimpleInterval("1", 100, 500),
+                new SimpleInterval("1", 800, 800),
+                new SimpleInterval("2", 300, 500));
+        final List<SimpleInterval> k5 = Lists.newArrayList(new SimpleInterval("1", 100, 300),
+                new SimpleInterval("1", 301, 400));
+
+        final List<SimpleInterval> k6 = Lists.newArrayList(
+                new SimpleInterval("1",10001,10500),
+                new SimpleInterval("1", 52500, 109750),
+                new SimpleInterval("1", 109751, 230500),
+                new SimpleInterval("1", 230501, 258500));
+
+        final List<SimpleInterval> vs = Lists.newArrayList(
+                new SimpleInterval("1", 100, 200),
+                new SimpleInterval("1", 300, 800)
+        );
+        final List<SimpleInterval> vs2 = Lists.newArrayList(
+                new SimpleInterval("1", 100, 200),
+                new SimpleInterval("1", 700, 800)
+        );
+        final List<SimpleInterval> vs3 = Lists.newArrayList(
+                new SimpleInterval("1", 800, 1200),
+                new SimpleInterval("2", 100, 800)
+        );
+        final List<SimpleInterval> vs5 = Lists.newArrayList(
+                new SimpleInterval("1", 100, 200),
+                new SimpleInterval("1", 201, 500)
+        );
+        final List<SimpleInterval> vs6 = Lists.newArrayList(
+                new SimpleInterval("1",5000, 60000),
+                new SimpleInterval("1",70000, 100000),
+                new SimpleInterval("1",120000, 220000),
+                new SimpleInterval("1",230000, 300000)
+        );
+
+        final List<SimpleInterval> vs7 = Lists.newArrayList(
+                new SimpleInterval("1",50, 200)
+        );
+
+        return new Object[][]{
+                // Simple tests
+                {k, vs, ImmutableMap.of(k.get(0), vs)},
+                {k, vs2, ImmutableMap.of(k.get(0), vs2.subList(0,1))},
+                {k, vs3, ImmutableMap.of(k.get(0), Collections.emptyList())},
+
+                // Slightly more sophisticated tests.
+                {k3, vs, ImmutableMap.of(k3.get(0), vs, k3.get(1), Collections.emptyList())},
+                {k4, vs, ImmutableMap.of(k4.get(0), vs, k4.get(1), vs.subList(1,2), k4.get(2), Collections.emptyList())},
+                {k5, vs5, ImmutableMap.of(k5.get(0), vs5, k5.get(1), vs5.subList(1,2))},
+                {k6, vs6, ImmutableMap.of(k6.get(0), vs6.subList(0,1), k6.get(1), vs6.subList(0,2), k6.get(2), vs6.subList(2,4), k6.get(3), vs6.subList(3,4))},
+                {k, vs7, ImmutableMap.of(k.get(0), vs7)},
+        };
+    }
+
+    @Test(dataProvider = "overlappingData")
+    public void testCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("1", 300000),
+                new SAMSequenceRecord("2", 5000)));
+
+        final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2, dictionary);
+        Assert.assertEquals(outputs.size(), gtOutput.size());
+        Assert.assertEquals(outputs.keySet().size(), new HashSet<>(locatables1).size());
+        Assert.assertTrue(Sets.difference(outputs.keySet(), gtOutput.keySet()).size() == 0);
+
+        for (final Map.Entry<Locatable, List<Locatable>> overlap : outputs.entrySet()) {
+            Assert.assertEquals(overlap.getValue(), gtOutput.get(overlap.getKey()));
+        }
+
     }
 }
