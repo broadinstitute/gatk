@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.utils.smithwaterman;
 
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.io.Closeable;
 import java.util.function.Supplier;
 
@@ -10,6 +12,7 @@ import java.util.function.Supplier;
  * Interface and factory for Smith-Waterman aligners
  */
 public interface SmithWatermanAligner extends Closeable {
+    Logger logger = LogManager.getLogger(SmithWatermanAligner.class);
 
     // match=1, mismatch = -1/3, gap=-(1+k/3)
     SWParameters ORIGINAL_DEFAULT = new SWParameters(3, -1, -4, -3);
@@ -39,9 +42,29 @@ public interface SmithWatermanAligner extends Closeable {
 
     enum Implementation {
         /**
-         * use the fastest Smith-Waterman aligner that runs on your hardware
+         * use the fastest available Smith-Waterman aligner that runs on your hardware
          */
-        FASTEST_AVAILABLE(SmithWatermanJavaAligner::getInstance),
+
+        FASTEST_AVAILABLE( () -> {
+            try {
+                final SmithWatermanIntelAligner aligner = new SmithWatermanIntelAligner();
+                logger.info("Using AVX acclerated SmithWaterman implementation");
+                return aligner;
+            } catch (UserException.HardwareFeatureException exception) {
+                logger.info(" AVX acclerated SmithWaterman implementation is not supported, falling back to Java implementation");
+                return SmithWatermanJavaAligner.getInstance();
+            }
+        }),
+
+        /**
+         * use the AVX enabled Smith-Waterman aligner
+         */
+        AVX_ENABLED( () -> {
+            final SmithWatermanIntelAligner aligner = new SmithWatermanIntelAligner();
+            logger.info("Using AVX acclerated SmithWaterman implementation");
+            return aligner;
+        }
+        ),
 
         /**
          * use the pure java implementation of Smith-Waterman, works on all hardware
