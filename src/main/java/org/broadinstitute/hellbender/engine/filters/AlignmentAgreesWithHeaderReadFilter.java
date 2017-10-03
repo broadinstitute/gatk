@@ -9,10 +9,13 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.io.Serializable;
 
 /**
- * Filter out reads where the alignment does not match the contents of the header:
+ * Filter out reads where the alignment does not match the contents of the header.
+ *
+ * <p>The read does not match the contents of the header if:</p>
+ *
  * <ul>
- *     <li>Read aligned to non-existent contig</li>
- *     <li>Read aligned to a point after the end of the contig</li>
+ *     <li>It is aligned to non-existent contig</li>
+ *     <li>It is aligned to a point after the end of the contig</li>
  * </ul>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filters out reads where the alignment does not match the contents of the header")

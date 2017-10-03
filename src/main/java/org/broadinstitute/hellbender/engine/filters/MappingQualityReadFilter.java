@@ -12,6 +12,7 @@ import java.io.Serializable;
  *
  * <p>Note: this filter is not designed to handle the unavailable mapping quality (255).
  * Use MappingQualityAvailableReadFilter to explicitly filter out reads with unavailable quality.
+ *
  * @see org.broadinstitute.hellbender.utils.QualityUtils#MAPPING_QUALITY_UNAVAILABLE
  * @see org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MappingQualityAvailableReadFilter
  */

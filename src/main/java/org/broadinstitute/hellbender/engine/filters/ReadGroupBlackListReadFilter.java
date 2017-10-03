@@ -18,8 +18,9 @@ import java.util.*;
 
 /**
  * Keep records not matching the read group tag and exact match string.
- * For example, this filter value:
- *   PU:1000G-mpimg-080821-1_1
+ *
+ * <p>For example, this filter value:
+ *   <code>PU:1000G-mpimg-080821-1_1</code>
  * would filter out a read with the read group PU:1000G-mpimg-080821-1_1
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
