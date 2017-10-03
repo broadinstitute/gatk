@@ -31,18 +31,34 @@ public final class BwaSparkEngine implements AutoCloseable {
     private static final String REFERENCE_INDEX_IMAGE_FILE_SUFFIX = ".img";
     private final JavaSparkContext ctx;
     private final String indexFileName;
+    private final boolean resolveIndexFileName;
     private final Broadcast<SAMFileHeader> broadcastHeader;
 
+    /**
+     * @param ctx           the Spark context
+     * @param referenceFile the path to the reference file named <i>_prefix_.fa</i>, which is used to find the image file with name <i>_prefix_.fa.img</i>.
+     *                      Can be <code>null</code> if the indexFileName is provided.
+     * @param indexFileName the index image file name that already exists, or <code>null</code> to have the image file automatically distributed.
+     * @param inputHeader   the SAM file header to use for reads
+     * @param refDictionary the sequence dictionary to use for reads if the SAM file header doesn't have one (or it's empty)
+     */
     public BwaSparkEngine(final JavaSparkContext ctx,
                           final String referenceFile,
+                          final String indexFileName,
                           SAMFileHeader inputHeader,
                           final SAMSequenceDictionary refDictionary) {
         Utils.nonNull(referenceFile);
         Utils.nonNull(inputHeader);
         this.ctx = ctx;
-        String indexFile = referenceFile + REFERENCE_INDEX_IMAGE_FILE_SUFFIX;
-        ctx.addFile(indexFile);
-        this.indexFileName = IOUtils.getPath(indexFile).getFileName().toString();
+        if (indexFileName != null) {
+            this.indexFileName = indexFileName;
+            this.resolveIndexFileName = false;
+        } else {
+            String indexFile = referenceFile + REFERENCE_INDEX_IMAGE_FILE_SUFFIX;
+            ctx.addFile(indexFile); // distribute index file to all executors
+            this.indexFileName = IOUtils.getPath(indexFile).getFileName().toString();
+            this.resolveIndexFileName = true;
+        }
 
         if (inputHeader.getSequenceDictionary() == null || inputHeader.getSequenceDictionary().isEmpty()) {
             Utils.nonNull(refDictionary);
@@ -82,7 +98,9 @@ public final class BwaSparkEngine implements AutoCloseable {
     public JavaRDD<GATKRead> align(final JavaRDD<GATKRead> unalignedReads, final boolean pairedAlignment) {
         final Broadcast<SAMFileHeader> broadcastHeader = this.broadcastHeader;
         final String indexFileName = this.indexFileName;
-        return unalignedReads.mapPartitions(itr -> new ReadAligner(indexFileName, broadcastHeader.value(), pairedAlignment).apply(itr));
+        final boolean resolveIndexFileName = this.resolveIndexFileName;
+        return unalignedReads.mapPartitions(itr ->
+                new ReadAligner(resolveIndexFileName ? SparkFiles.get(indexFileName) : indexFileName, broadcastHeader.value(), pairedAlignment).apply(itr));
     }
 
     @Override
@@ -100,7 +118,7 @@ public final class BwaSparkEngine implements AutoCloseable {
         private static final int READS_PER_PARTITION_GUESS = 1500000;
 
         ReadAligner( final String indexFileName, final SAMFileHeader readsHeader, final boolean alignsPairs) {
-            this.bwaMemIndex = BwaMemIndexCache.getInstance(SparkFiles.get(indexFileName));
+            this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
             this.readsHeader = readsHeader;
             this.alignsPairs = alignsPairs;
         }
