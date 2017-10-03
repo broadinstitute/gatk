@@ -1,17 +1,23 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import scala.Tuple2;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -105,6 +111,45 @@ public class AnnotatedVariantProducer implements Serializable {
         return vcBuilder.make();
     }
 
+    public static VariantContext produceAnnotatedVcFromEvidenceTargetLink(final EvidenceTargetLink e,
+                                                                          final SvType svType,
+                                                                          final SAMSequenceDictionary sequenceDictionary,
+                                                                          final ReferenceMultiSource reference) {
+        final String sequenceName = sequenceDictionary.getSequence(e.getPairedStrandedIntervals().getLeft().getInterval().getContig()).getSequenceName();
+        final int start = e.getPairedStrandedIntervals().getLeft().getInterval().midpoint();
+        final int end = e.getPairedStrandedIntervals().getRight().getInterval().midpoint();
+        try {
+            final VariantContextBuilder builder = new VariantContextBuilder()
+                    .chr(sequenceName)
+                    .start(start)
+                    .stop(end)
+                    .id(svType.variantId)
+                    .alleles(produceAlleles(new SimpleInterval(sequenceName, start, start), reference, svType))
+                    .attribute(VCFConstants.END_KEY, end)
+                    .attribute(GATKSVVCFConstants.SVLEN, svType.getSVLength())
+                    .attribute(GATKSVVCFConstants.SVTYPE, svType.toString())
+                    .attribute(GATKSVVCFConstants.IMPRECISE, true)
+                    .attribute(GATKSVVCFConstants.CIPOS, produceCIInterval(start, e.getPairedStrandedIntervals().getLeft().getInterval()))
+                    .attribute(GATKSVVCFConstants.CIEND, produceCIInterval(end, e.getPairedStrandedIntervals().getRight().getInterval()))
+                    .attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, e.getReadPairs())
+                    .attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, e.getSplitReads());
+            return builder.make();
+        } catch (IOException e1) {
+            throw new GATKException("error reading reference base for variant context " + svType.variantId, e1);
+        }
+    }
+
+    /**
+     * Produces the string representation of a VCF 4.2-style SV CI interval centered around 'point'.
+     */
+    @VisibleForTesting
+    static String produceCIInterval(final int point, final SVInterval ciInterval) {
+        Utils.validate(ciInterval.getStart() <= point && ciInterval.getEnd() >= point, "Interval must contain point");
+        return String.join(",",
+                String.valueOf(ciInterval.getStart() - point),
+                String.valueOf(ciInterval.getEnd() - point));
+    }
+
     // TODO: 12/13/16 again ignoring translocation
     @VisibleForTesting
     static List<Allele> produceAlleles(final SimpleInterval refLoc,
@@ -147,6 +192,39 @@ public class AnnotatedVariantProducer implements Serializable {
             }
         }
         return attributeMap;
+    }
+
+    static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,
+                                                             final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                             final SAMSequenceDictionary referenceSequenceDictionary,
+                                                             final ReadMetadata metadata,
+                                                             final int defaultUncertainty) {
+        if (variant.getStructuralVariantType() == StructuralVariantType.DEL) {
+            SVContext svc = SVContext.of(variant);
+            final int padding = (metadata == null) ? defaultUncertainty : (metadata.getMaxMedianFragmentSize() / 2);
+            PairedStrandedIntervals svcIntervals = svc.getPairedStrandedIntervals(referenceSequenceDictionary, padding);
+
+            final Iterator<Tuple2<PairedStrandedIntervals, EvidenceTargetLink>> overlappers = evidenceTargetLinks.overlappers(svcIntervals);
+            int readPairs = 0;
+            int splitReads = 0;
+            while (overlappers.hasNext()) {
+                final Tuple2<PairedStrandedIntervals, EvidenceTargetLink> next = overlappers.next();
+                readPairs += next._2.getReadPairs();
+                splitReads += next._2.getSplitReads();
+                overlappers.remove();
+            }
+            final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
+            if (readPairs > 0) {
+                variantContextBuilder.attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, readPairs);
+            }
+            if (splitReads > 0) {
+                variantContextBuilder.attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, splitReads);
+            }
+
+            return variantContextBuilder.make();
+        } else {
+            return variant;
+        }
     }
 
     /**

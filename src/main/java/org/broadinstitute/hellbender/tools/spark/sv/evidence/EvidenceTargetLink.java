@@ -11,6 +11,13 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Set;
 
+/**
+ * This class holds information about pairs of intervals on the reference that are connected by one or more
+ * BreakpointEvidence objects that have distal targets. Source and target are the stranded intervals pointed at by
+ * the breakpoint evidence, with strand defined as whether the putative breakpoint exists upstream of the interval
+ * start or downstream of the interval end, for + and -. The class also tracks the number of split reads and read pairs
+ * that contributed to the link, as well as the template names of the reads.
+ */
 @DefaultSerializer(EvidenceTargetLink.Serializer.class)
 public final class EvidenceTargetLink {
     private static final StrandedInterval.Serializer intervalSerializer = new StrandedInterval.Serializer();
@@ -72,25 +79,38 @@ public final class EvidenceTargetLink {
 
     public String toBedpeString(ReadMetadata readMetadata) {
         final SVInterval sourceInterval = source.getInterval();
-        final SVInterval targetInterval = source.getInterval();
+        final SVInterval targetInterval = target.getInterval();
         return readMetadata.getContigName(sourceInterval.getContig()) + "\t" + (sourceInterval.getStart() - 1) + "\t" + sourceInterval.getEnd() +
                 "\t" + readMetadata.getContigName(targetInterval.getContig()) + "\t" + (targetInterval.getStart() - 1) + "\t" + targetInterval.getEnd() +
                 "\t"  + getId(readMetadata) + "\t" +
-                (readPairs + splitReads) + "\t" + (source.getStrand() ? "+" : "-") + "\t" + (source.getStrand() ? "+" : "-")
+                (readPairs + splitReads) + "\t" + (source.getStrand() ? "+" : "-") + "\t" + (target.getStrand() ? "+" : "-")
                 + "\t" + "SR:" + Utils.join(",", splitReadTemplateNames) + "\t" + "RP:" + Utils.join(",", readPairTemplateNames);
     }
 
     private String getId(final ReadMetadata readMetadata) {
         final SVInterval sourceInterval = source.getInterval();
-        final SVInterval targetInterval = source.getInterval();
+        final SVInterval targetInterval = target.getInterval();
 
         return readMetadata.getContigName(sourceInterval.getContig()) + "_" + (sourceInterval.getStart() - 1) + "_" + sourceInterval.getEnd() +
                 "_" + readMetadata.getContigName(targetInterval.getContig()) + "_" + (targetInterval.getStart() - 1) + "_" + targetInterval.getEnd() +
                 "_" + (source.getStrand() ? "P" : "M")  + (target.getStrand() ? "P" : "M") + "_" + splitReads + "_" + readPairs;
     }
 
+    public int getSplitReads() {
+        return splitReads;
+    }
+
+    public int getReadPairs() {
+        return readPairs;
+    }
+
     public PairedStrandedIntervals getPairedStrandedIntervals() {
         return new PairedStrandedIntervals(source, target);
+    }
+
+    public static boolean isImpreciseDeletion(EvidenceTargetLink e) {
+        return e.getPairedStrandedIntervals().getLeft().getInterval().getContig() == e.getPairedStrandedIntervals().getRight().getInterval().getContig()
+                && e.getPairedStrandedIntervals().getLeft().getStrand() && !e.getPairedStrandedIntervals().getRight().getStrand();
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<EvidenceTargetLink> {

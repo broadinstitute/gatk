@@ -21,7 +21,9 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
             Arrays.asList(GATKSVVCFConstants.ALIGN_LENGTHS,
                     GATKSVVCFConstants.CONTIG_NAMES,
                     GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS,
-                    GATKSVVCFConstants.TOTAL_MAPPINGS);
+                    GATKSVVCFConstants.TOTAL_MAPPINGS,
+                    GATKSVVCFConstants.SPLIT_READ_SUPPORT,
+                    GATKSVVCFConstants.READ_PAIR_SUPPORT);
 
     private static final class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs {
         final String outputDir;

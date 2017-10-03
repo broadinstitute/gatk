@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
@@ -41,7 +43,9 @@ final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyCon
                         .map(noveltyTypeAndEvidence -> DiscoverVariantsFromContigAlignmentsSAMSpark.annotateVariant(noveltyTypeAndEvidence._1,
                                 noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2, broadcastReference));
 
-        SVVCFWriter.writeVCF(null, vcfOutputFileName, fastaReference, annotatedVariants, toolLogger);
+        final PipelineOptions pipelineOptions = null;
+        SVVCFWriter.writeVCF(vcfOutputFileName, toolLogger, annotatedVariants.collect(), new ReferenceMultiSource(pipelineOptions, fastaReference,
+                ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null));
     }
 
     /**

@@ -6,6 +6,14 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.utils.Utils;
 
+/**
+ * Represents an interval and strand from the reference genome. Users of this class can choose their own interpretation
+ * of what strand means. In the context of imprecise variant calling from unassembled breakpoint evidence, strand is set
+ * as defined in BreakpointEvidence.isEvidenceUpstreamOfBreakpoint():
+ *
+ * If true: the evidence suggests a breakpoint at a reference location upstream of the interval's start coordinate
+ * If false: the evidence suggests a breakpoint downstream of the interval's end coordinate
+ */
 @DefaultSerializer(StrandedInterval.Serializer.class)
 public class StrandedInterval {
     private static final SVInterval.Serializer intervalSerializer = new SVInterval.Serializer();

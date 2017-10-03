@@ -77,6 +77,10 @@ public final class SVInterval implements Comparable<SVInterval> {
         return new SVInterval(this.getContig(), Math.max(this.start, that.start), Math.min(this.end, that.end));
     }
 
+    public int midpoint() {
+        return (start + end) / 2;
+    }
+
     @Override
     public boolean equals( final Object obj ) {
         if ( !(obj instanceof SVInterval) ) return false;

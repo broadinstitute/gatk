@@ -1,13 +1,27 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.stream.Collectors;
 
+@DefaultSerializer(PairedStrandedIntervalTree.Serializer.class)
 public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStrandedIntervals, V>> {
 
     private SVIntervalTree<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean,V>>>> leftEnds = new SVIntervalTree<>();
+
+    public PairedStrandedIntervalTree() {}
+
+    @SuppressWarnings("unchecked")
+    public PairedStrandedIntervalTree(final Kryo kryo, final Input input) {
+        leftEnds = (SVIntervalTree<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>>>) kryo.readClassAndObject(input);
+    }
 
     public boolean put(PairedStrandedIntervals pair, V value) {
         if (contains(pair)) return false;
@@ -22,6 +36,10 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         }
 
         return true;
+    }
+
+    public int size() {
+        return Utils.stream(leftEnds).mapToInt(e -> e.getValue()._2.size()).sum();
     }
 
     public final class PairedStrandedIntervalTreeOverlapperIterator implements Iterator<Tuple2<PairedStrandedIntervals, V>> {
@@ -156,4 +174,19 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         return rightIndex != -1 && (pair.getRight().getStrand() == rightEnds.findByIndex(rightIndex).getValue()._1());
     }
 
+    public static final class Serializer<T> extends com.esotericsoftware.kryo.Serializer<PairedStrandedIntervalTree<T>> {
+        @Override
+        public void write(final Kryo kryo, final Output output, final PairedStrandedIntervalTree<T> tree ) {
+            tree.serialize(kryo, output);
+        }
+
+        @Override
+        public PairedStrandedIntervalTree<T> read(final Kryo kryo, final Input input, final Class<PairedStrandedIntervalTree<T>> klass ) {
+            return new PairedStrandedIntervalTree<>(kryo, input);
+        }
+    }
+
+    private void serialize(final Kryo kryo, final Output output) {
+        kryo.writeClassAndObject(output, this);
+    }
 }

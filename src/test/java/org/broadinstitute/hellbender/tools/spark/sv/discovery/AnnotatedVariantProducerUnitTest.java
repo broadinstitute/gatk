@@ -5,9 +5,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple4;
 
@@ -231,5 +233,30 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.TANDUP_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH).stream())
                 .sorted().collect(Collectors.toList()));
+    }
+
+
+    @DataProvider(name = "CIIntervals")
+    public Object[][] getCIIntervalTests() {
+        return new Object[][] {
+                new Object[] { 200, new SVInterval(1, 190, 225), "-10,25", null},
+                new Object[] { 200, new SVInterval(1, 200, 225), "0,25", null},
+                new Object[] { 200, new SVInterval(1, 201, 225), null, new IllegalStateException("Interval must contain point")}
+        };
+    }
+
+    @Test(dataProvider = "CIIntervals")
+    public void testProduceCIInterval(final int point, final SVInterval interval, final String expected, final Exception expectedException) throws Exception {
+        if (expectedException == null) {
+            Assert.assertEquals(AnnotatedVariantProducer.produceCIInterval(point, interval), expected);
+        } else {
+            try {
+                AnnotatedVariantProducer.produceCIInterval(point, interval);
+                Assert.fail("did not throw expected exception " + expectedException);
+            } catch (Throwable e) {
+                Assert.assertEquals(e.getClass(), expectedException.getClass());
+                Assert.assertEquals(e.getMessage(), expectedException.getMessage());
+            }
+        }
     }
 }

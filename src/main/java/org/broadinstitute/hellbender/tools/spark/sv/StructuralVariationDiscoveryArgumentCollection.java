@@ -175,6 +175,8 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public static final int MISSING_NM = Integer.MIN_VALUE;
         public static final int ARTIFICIAL_MISMATCH = MISSING_NM;
         public static final int DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
+        public static final int DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY = 100;
+        public static final int DEFAULT_IMPRECISE_EVIDENCE_VARIANT_CALLING_THRESHOLD = 7;
 
         // todo: document this better
         // Currently the discovery stage requires a reference parameter in 2bit format (to broadcast) and
@@ -186,6 +188,13 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
                 fullName = "minAlignLength", optional = true)
         public Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
+
+        @Argument(doc = "Uncertainty in overlap of assembled breakpoints and evidence target links.", fullName = "assemblyImpreciseEvidenceOverlapUncertainty")
+        public int assemblyImpreciseEvidenceOverlapUncertainty = DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY;
+
+        @Argument(doc = "Number of pieces of imprecise evidence necessary to call a variant in the absence of an assembled breakpoint.", fullName = "impreciseEvidenceVariantCallingThreshold")
+        public int impreciseEvidenceVariantCallingThreshold = DEFAULT_IMPRECISE_EVIDENCE_VARIANT_CALLING_THRESHOLD;
+
     }
 
 }

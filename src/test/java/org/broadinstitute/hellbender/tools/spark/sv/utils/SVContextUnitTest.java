@@ -153,7 +153,7 @@ public class SVContextUnitTest {
 
 
     /**
-     * Tests {@link SVContext#getBreakPointIntervals(int, SAMSequenceDictionary)}.
+     * Tests {@link SVContext#getBreakPointIntervals(int, SAMSequenceDictionary, boolean)}.
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
@@ -168,13 +168,13 @@ public class SVContextUnitTest {
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
         }
-        final List<SimpleInterval> breakPoints = svc.getBreakPointIntervals(paddingSize, reference.getReferenceSequenceDictionary(null));
+        final List<SimpleInterval> breakPoints = svc.getBreakPointIntervals(paddingSize, reference.getReferenceSequenceDictionary(null), false);
         final int contigLength = reference.getReferenceSequenceDictionary(null).getSequence(vc.getContig()).getSequenceLength();
         final List<Integer> expectedOffsets = new ArrayList<>();
         if (svc.getStructuralVariantType() == StructuralVariantType.INS) {
             expectedOffsets.add(vc.getStart());
         } else if (svc.getStructuralVariantType() == StructuralVariantType.DEL) {
-            expectedOffsets.add(vc.getStart());
+            expectedOffsets.add(vc.getStart() + 1);
             expectedOffsets.add(vc.getEnd());
         }
         final List<SimpleInterval> expectedBreakPoints = expectedOffsets.stream()

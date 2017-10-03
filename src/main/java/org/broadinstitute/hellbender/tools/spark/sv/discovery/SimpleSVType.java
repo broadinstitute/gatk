@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
 import java.util.Collections;
 import java.util.Map;
@@ -116,4 +119,35 @@ public abstract class SimpleSVType extends SvType {
                     + novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
         }
     }
+
+    public static final class ImpreciseDeletion extends SimpleSVType {
+
+        @Override
+        public String toString() {
+            return TYPES.DEL.name();
+        }
+
+        @SuppressWarnings("unchecked")
+        ImpreciseDeletion(final EvidenceTargetLink evidenceTargetLink, final SAMSequenceDictionary sequenceDictionary) {
+
+            super(getIDString(evidenceTargetLink, sequenceDictionary),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL_IN_HEADER)),
+                    (evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().midpoint() -
+                            evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().midpoint()),
+                    Collections.EMPTY_MAP);
+        }
+
+        private static String getIDString(final EvidenceTargetLink evidenceTargetLink, final SAMSequenceDictionary sequenceDictionary) {
+
+            return  TYPES.DEL.name()
+                    + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + GATKSVVCFConstants.IMPRECISE + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + sequenceDictionary.getSequence(evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().getContig()).getSequenceName() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().getStart() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().getEnd() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().getStart() + GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR
+                    + evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().getEnd();
+        }
+    }
+
 }
