@@ -62,7 +62,7 @@ workflow Mutect2 {
   # This value is added to every tasks disk in case the dynamic sizing isnt enough
   Int? emergency_extra_disk
 
-  # Disk sizes used for dynmaic sizing
+  # Disk sizes used for dynamic sizing
   Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fasta_index, "GB"))
   Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bam_index, "GB"))
   Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB") + size(gnomad_index, "GB")) else 0
@@ -122,8 +122,8 @@ workflow Mutect2 {
         preemptible_attempts = preemptible_attempts,
         m2_docker = m2_docker,
         m2_extra_args = m2_extra_args,
-		is_bamOut = is_bamOut,
-		disk_space_gb = m2_per_scatter_size,
+        is_bamOut = is_bamOut,
+        disk_space_gb = m2_per_scatter_size,
         auth = auth
     }
 
@@ -244,7 +244,7 @@ workflow Mutect2 {
   	File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
     Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * 2) + onco_tar_size + disk_pad
 
-    call Oncotate_m2 {
+    call OncotateM2 {
       input:
         m2_vcf = oncotate_vcf_input,
         case_id = tumor_sample_name,
@@ -272,7 +272,7 @@ workflow Mutect2 {
 
     # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
     File contamination_table = select_first([CalculateContam.contamination_table, "null"])
-    File oncotated_m2_maf = select_first([Oncotate_m2.oncotated_m2_maf, "null"])
+    File oncotated_m2_maf = select_first([OncotateM2.oncotated_m2_maf, "null"])
     File preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
     File bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
     File bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
@@ -299,7 +299,7 @@ task M2 {
 
   # Runtime parameters
   String m2_docker
-  Int preemptible_attempts
+  Int? preemptible_attempts
   Int disk_space_gb
   Int? mem
 
@@ -344,10 +344,10 @@ task M2 {
   >>>
 
   runtime {
-      docker: "${m2_docker}"
-      memory: machine_mem + " MB"
-      disks: "local-disk " + disk_space_gb + " HDD"
-      preemptible: select_first([preemptible_attempts, 5])
+    docker: "${m2_docker}"
+    memory: machine_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -367,7 +367,7 @@ task ProcessOptionalArguments {
   String? normal_sample_name
 
   # Runtime parameters
-  Int preemptible_attempts
+  Int? preemptible_attempts
   String docker
 
   command {
@@ -382,7 +382,7 @@ task ProcessOptionalArguments {
     docker: "${docker}"
     memory: "1 GB"
     disks: "local-disk " + 10 + " HDD"
-    preemptible: "${preemptible_attempts}"
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -396,7 +396,7 @@ task MergeVCFs {
   File? gatk4_jar_override
 
   # Runtime parameters
-  Int preemptible_attempts
+  Int? preemptible_attempts
   String m2_docker
   Int disk_space_gb
   Int? mem
@@ -413,7 +413,7 @@ task MergeVCFs {
     docker: "${m2_docker}"
     memory: machine_mem + " MB"
     disks: "local-disk " + disk_space_gb + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -431,7 +431,7 @@ task CollectSequencingArtifactMetrics {
 
   # Runtime parameters
   String m2_docker
-  Int preemptible_attempts
+  Int? preemptible_attempts
   Int disk_space_gb
   Int? mem
 
@@ -449,7 +449,7 @@ task CollectSequencingArtifactMetrics {
     docker: "${m2_docker}"
     memory: machine_mem + " MB"
     disks: "local-disk " + disk_space_gb + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -466,7 +466,7 @@ task CalculateContam {
   File? variants_for_contamination_index
 
   # Runtime parameters
-  Int preemptible_attempts
+  Int? preemptible_attempts
   String m2_docker
   Int disk_space_gb
   Int? mem
@@ -498,7 +498,7 @@ task CalculateContam {
     docker: "${m2_docker}"
     memory: command_mem + " MB"
     disks: "local-disk " + disk_space_gb + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -514,7 +514,7 @@ task Filter {
   File? contamination_table
 
   # Runtime parameters
-  Int preemptible_attempts
+  Int? preemptible_attempts
   String m2_docker
   Int disk_space_gb
   Int? mem
@@ -544,7 +544,7 @@ task Filter {
     docker: "${m2_docker}"
     memory: command_mem + " MB"
     disks: "local-disk " + disk_space_gb + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -561,7 +561,7 @@ task FilterByOrientationBias {
   Array[String]? artifact_modes
 
   # Runtime parameters
-  Int preemptible_attempts
+  Int? preemptible_attempts
   String m2_docker
   Int disk_space_gb
   Int? mem
@@ -594,7 +594,7 @@ task FilterByOrientationBias {
     docker: "${m2_docker}"
     memory: command_mem + " MB"
     disks: "local-disk " + disk_space_gb + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -610,11 +610,11 @@ task SplitIntervals {
   File ref_fasta_index
   File ref_dict
   File? gatk4_jar_override
-  Int preemptible_attempts
 
   # Runtime parameters
   String m2_docker
   Int disk_space_gb
+  Int? preemptible_attempts
   Int? mem
 
   # Mem is in units of GB but our command and memory runtime values are in MB
@@ -633,7 +633,7 @@ task SplitIntervals {
     docker: "${m2_docker}"
     memory: command_mem + " MB"
     disks: "local-disk " + disk_space_gb + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -674,7 +674,7 @@ task MergeBamOuts {
     docker: "${m2_docker}"
     memory: machine_mem + " MB"
     disks: "local-disk " + disk_space_gb + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 
   output {
@@ -683,7 +683,7 @@ task MergeBamOuts {
   }
 }
 
-task Oncotate_m2 {
+task OncotateM2 {
   File m2_vcf
   String case_id
   String? control_id
@@ -695,7 +695,7 @@ task Oncotate_m2 {
   File? default_config_file
 
   # Runtime parameters
-  Int preemptible_attempts
+  Int? preemptible_attempts
   String oncotator_docker
   Int disk_space_gb
   Int? mem
@@ -741,7 +741,7 @@ task Oncotate_m2 {
         docker: "${oncotator_docker}"
         memory: machine_mem + " MB"
         disks: "local-disk " + disk_space_gb + " HDD"
-        preemptible: select_first([preemptible_attempts, 5])
+        preemptible: select_first([preemptible_attempts, 10])
     }
 
     output {
@@ -765,6 +765,6 @@ task SumFloats {
   runtime {
     docker: "python:2.7"
     disks: "local-disk " + 10 + " HDD"
-    preemptible: select_first([preemptible_attempts, 5])
+    preemptible: select_first([preemptible_attempts, 10])
   }
 }
