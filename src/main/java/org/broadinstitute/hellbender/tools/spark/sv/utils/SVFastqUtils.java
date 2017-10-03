@@ -12,7 +12,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.Template;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.TemplateFragmentOrdinal;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
