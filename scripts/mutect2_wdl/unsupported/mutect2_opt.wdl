@@ -21,10 +21,7 @@
 #   independent of what is in the docker file.  See the README.md for more info.
 #
 
-
 workflow Mutect2 {
-  # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-  String gatk4_jar
   File? intervals
   File ref_fasta
   File ref_fasta_index
@@ -58,10 +55,25 @@ workflow Mutect2 {
   String? sequencing_center
   String? sequence_source
   File? default_config_file
+  File? tumor_sequencing_artifact_metrics
   Boolean is_bamOut = false
 
   # Do not populate unless you know what you are doing...
   File? auth
+  # This value is added to every tasks disk in case the dynamic sizing isnt enough
+  Int? emergency_extra_disk
+
+  # Disk sizes used for dynmaic sizing
+  Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fasta_index, "GB"))
+  Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bam_index, "GB"))
+  Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB") + size(gnomad_index, "GB")) else 0
+  Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bam_index, "GB")) else 0
+  Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
+  Int gatk4_override_size = if defined(gatk4_jar_override) then ceil(size(gatk4_jar_override, "GB")) else 0
+
+  # This is added to every task as padding, should increase if systematically you need more disk for every call
+  Int disk_pad = 10 + ceil(size(picard_jar, "GB")) + gatk4_override_size + select_first([emergency_extra_disk,0])
+
 
   call ProcessOptionalArguments {
     input:
@@ -72,10 +84,10 @@ workflow Mutect2 {
       docker = basic_bash_docker
   }
 
+  Int split_interval_size = ref_size + ceil(size(intervals, "GB") * 2) + disk_pad
 
   call SplitIntervals {
     input:
-      gatk4_jar = gatk4_jar,
       scatter_count = scatter_count,
       intervals = intervals,
       ref_fasta = ref_fasta,
@@ -83,14 +95,17 @@ workflow Mutect2 {
       ref_dict = ref_dict,
       gatk4_jar_override = gatk4_jar_override,
       preemptible_attempts = preemptible_attempts,
-      m2_docker = m2_docker
-
+      m2_docker = m2_docker,
+      disk_space_gb = split_interval_size
   }
+
+  # Size M2 differently based on if we are using NIO or not
+  Int m2_scattered_size = (tumor_bam_size + normal_bam_size) / scatter_count + ref_size + gnomad_vcf_size + disk_pad + 10
+  Int m2_per_scatter_size = if defined(auth) then m2_scattered_size else tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + disk_pad + 10
 
   scatter (subintervals in SplitIntervals.interval_files ) {
     call M2 {
-      input: 
-        gatk4_jar = gatk4_jar,
+      input:
         intervals = subintervals,
         ref_fasta = ref_fasta,
         ref_fasta_index = ref_fasta_index,
@@ -108,22 +123,42 @@ workflow Mutect2 {
         preemptible_attempts = preemptible_attempts,
         m2_docker = m2_docker,
         m2_extra_args = m2_extra_args,
-	is_bamOut = is_bamOut,
+		is_bamOut = is_bamOut,
+		disk_space_gb = m2_per_scatter_size,
         auth = auth
     }
+
+    Float sub_vcf_size = size(M2.output_vcf, "GB")
+    Float sub_bamout_size = size(M2.output_bamOut, "GB")
   }
+
+  call SumFloats as SumSubVcfs {
+    input:
+      sizes = sub_vcf_size,
+	  preemptible_attempts = preemptible_attempts,
+  }
+
+  Int merge_vcf_size = ceil(SumSubVcfs.total_size * 2.5) + disk_pad
 
   call MergeVCFs {
     input:
-      gatk4_jar = gatk4_jar,
       input_vcfs = M2.output_vcf,
       output_vcf_name = ProcessOptionalArguments.output_name,
       gatk4_jar_override = gatk4_jar_override,
       preemptible_attempts = preemptible_attempts,
+      disk_space_gb = merge_vcf_size,
       m2_docker = m2_docker
   }
 
   if (is_bamOut) {
+    call SumFloats as SumSubBamouts {
+      input:
+        sizes = sub_bamout_size,
+  	    preemptible_attempts = preemptible_attempts,
+    }
+
+    Int merge_bamout_size = ceil(SumSubBamouts.total_size * 2.5) + disk_pad
+
     call MergeBamOuts {
       input:
         bam_outs = M2.output_bamOut,
@@ -134,82 +169,118 @@ workflow Mutect2 {
         gatk4_jar = gatk4_jar,
         gatk4_jar_override = gatk4_jar_override,
         m2_docker = m2_docker,
-        output_vcf_name = ProcessOptionalArguments.output_name
+        output_vcf_name = ProcessOptionalArguments.output_name,
+        disk_space_gb = merge_bamout_size
     }
   }
 
-  if (is_run_orientation_bias_filter) {
-      call CollectSequencingArtifactMetrics {
-        input:
-            preemptible_attempts = preemptible_attempts,
-            m2_docker = m2_docker,
-            tumor_bam = tumor_bam,
-            tumor_bam_index = tumor_bam_index,
-            ref_fasta = ref_fasta,
-            ref_fasta_index = ref_fasta_index,
-            picard_jar = picard_jar
+  if (is_run_orientation_bias_filter && !defined(tumor_sequencing_artifact_metrics)) {
+    Int seq_artifact_metrcis_size = tumor_bam_size + ref_size + disk_pad
+    call CollectSequencingArtifactMetrics {
+      input:
+        preemptible_attempts = preemptible_attempts,
+        m2_docker = m2_docker,
+        tumor_bam = tumor_bam,
+        tumor_bam_index = tumor_bam_index,
+        ref_fasta = ref_fasta,
+        ref_fasta_index = ref_fasta_index,
+        picard_jar = picard_jar,
+        disk_space_gb = seq_artifact_metrcis_size
       }
   }
 
+  # If contamination vcf is defined, run CalculateContamination
+  if (defined(variants_for_contamination)) {
+    Int calculate_contam_size = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * 2) + disk_pad
+    call CalculateContam {
+      input:
+        gatk4_jar_override = gatk4_jar_override,
+        intervals = intervals,
+        preemptible_attempts = preemptible_attempts,
+        m2_docker = m2_docker,
+        tumor_bam = tumor_bam,
+        tumor_bam_index = tumor_bam_index,
+        variants_for_contamination = variants_for_contamination,
+        variants_for_contamination_index = variants_for_contamination_index,
+        disk_space_gb = calculate_contam_size,
+        auth = auth
+    }
+  }
+
+  Int filter_size = ceil(size(MergeVCFs.output_vcf, "GB") * 2) + disk_pad
+
   call Filter {
     input:
-      gatk4_jar = gatk4_jar,
       gatk4_jar_override = gatk4_jar_override,
       unfiltered_vcf = MergeVCFs.output_vcf,
       output_vcf_name = ProcessOptionalArguments.output_name,
-      intervals = intervals,
       m2_docker = m2_docker,
       preemptible_attempts = preemptible_attempts,
-      pre_adapter_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics,
-      tumor_bam = tumor_bam,
-      tumor_bam_index = tumor_bam_index,
-      ref_fasta = ref_fasta,
-      ref_fasta_index = ref_fasta_index,
-      artifact_modes = artifact_modes,
-      variants_for_contamination = variants_for_contamination,
-      variants_for_contamination_index = variants_for_contamination_index,
       m2_extra_filtering_args = m2_extra_filtering_args,
+      contamination_table = CalculateContam.contamination_table,
+      disk_space_gb = filter_size,
       auth = auth
   }
 
+  if (is_run_orientation_bias_filter) {
+    # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
+    File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
+    Int filter_by_orientation_bias_size = ceil(size(Filter.filtered_vcf, "GB") * 2) + ceil(size(input_artifact_metrics, "GB") * 2) + disk_pad
+
+    call FilterByOrientationBias {
+      input:
+        gatk4_jar_override = gatk4_jar_override,
+        input_vcf = Filter.filtered_vcf,
+        output_vcf_name = ProcessOptionalArguments.output_name,
+        m2_docker = m2_docker,
+        preemptible_attempts = preemptible_attempts,
+        pre_adapter_metrics = input_artifact_metrics,
+        artifact_modes = artifact_modes,
+        disk_space_gb = filter_by_orientation_bias_size,
+        auth = auth
+    }
+  }
 
   if (is_run_oncotator) {
-        call oncotate_m2 {
-            input:
-                m2_vcf = Filter.filtered_vcf,
-                case_id = tumor_sample_name,
-                control_id = normal_sample_name,
-                preemptible_attempts = preemptible_attempts,
-                oncotator_docker = oncotator_docker,
-                onco_ds_tar_gz = onco_ds_tar_gz,
-                onco_ds_local_db_dir = onco_ds_local_db_dir,
-                sequencing_center = sequencing_center,
-                sequence_source = sequence_source,
-                default_config_file = default_config_file
-        }
+  	File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+    Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * 2) + onco_tar_size + disk_pad
+
+    call Oncotate_m2 {
+      input:
+        m2_vcf = oncotate_vcf_input,
+        case_id = tumor_sample_name,
+        control_id = normal_sample_name,
+        preemptible_attempts = preemptible_attempts,
+        oncotator_docker = oncotator_docker,
+        onco_ds_tar_gz = onco_ds_tar_gz,
+        onco_ds_local_db_dir = onco_ds_local_db_dir,
+        sequencing_center = sequencing_center,
+        sequence_source = sequence_source,
+        default_config_file = default_config_file,
+        disk_space_gb = oncotate_size
+    }
   }
 
   output {
-        File unfiltered_vcf = MergeVCFs.output_vcf
-        File unfiltered_vcf_index = MergeVCFs.output_vcf_index
-        File filtered_vcf = Filter.filtered_vcf
-        File filtered_vcf_index = Filter.filtered_vcf_index
-        File contamination_table = Filter.contamination_table
-        Array[String] tumor_bam_sample_names = M2.tumor_bam_sample_name
-        String tumor_bam_sample_name = tumor_bam_sample_names[0]
-        Array[String] normal_bam_sample_names = M2.normal_bam_sample_name
-        String normal_bam_sample_name = normal_bam_sample_names[0]
+    File unfiltered_vcf = MergeVCFs.output_vcf
+    File unfiltered_vcf_index = MergeVCFs.output_vcf_index
+    File filtered_vcf = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+    File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+    Array[String] tumor_bam_sample_names = M2.tumor_bam_sample_name
+    String tumor_bam_sample_name = tumor_bam_sample_names[0]
+    Array[String] normal_bam_sample_names = M2.normal_bam_sample_name
+    String normal_bam_sample_name = normal_bam_sample_names[0]
 
-        # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
-        File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
-        File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
-        File bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
-        File bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
+    # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
+    File contamination_table = select_first([CalculateContam.contamination_table, "null"])
+    File oncotated_m2_maf = select_first([Oncotate_m2.oncotated_m2_maf, "null"])
+    File preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
+    File bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
+    File bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
   }
 }
 
 task M2 {
-  String gatk4_jar
   File? intervals
   File ref_fasta
   File ref_fasta_index
@@ -223,17 +294,24 @@ task M2 {
   File? gnomad
   File? gnomad_index
   String output_vcf_name
-  String m2_docker
   File? gatk4_jar_override
-  Int preemptible_attempts
   String? m2_extra_args
   Boolean? is_bamOut
-  
+
+  # Runtime parameters
+  String m2_docker
+  Int preemptible_attempts
+  Int disk_space_gb
+  Int? mem
+
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 3500
+  Int command_mem = machine_mem - 500
+
   # Do not populate this unless you know what you are doing...
   File? auth
 
   command <<<
-
   if [[ "${auth}" == *.json ]]; then
     gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
     GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
@@ -241,26 +319,19 @@ task M2 {
   fi
 
   # Use GATK Jar override if specified
-  GATK_JAR=${gatk4_jar}
-  if [[ "${gatk4_jar_override}" == *.jar ]]; then
-      GATK_JAR=${gatk4_jar_override}
-  fi
+  GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-  if [[ "_${normal_bam}" == *.bam ]]; then
-      java -Xmx4g -jar $GATK_JAR GetSampleName -I ${normal_bam} -O normal_name.txt
-      normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
-  else
-      # Note that normal_name.txt is always created, it's just empty if no normal sample was given.
-      #     This is done to allow an output parameter of the normal sample.
-      touch normal_name.txt
-  fi
+  # These two following commands will only be executed if normal_bam is defined, otherwise they will be blank
+  ${"java -Xmx" + command_mem + "m -jar $GATK_JAR GetSampleName -I " + normal_bam + " -O normal_name.txt"}
+  ${"normal_command_line=\"-I " + normal_bam + " -normal `cat normal_name.txt`\""}
 
-  java -Xmx4g -jar $GATK_JAR GetSampleName -I ${tumor_bam} -O tumor_name.txt
+  java -Xmx${command_mem}m -jar $GATK_JAR GetSampleName -I ${tumor_bam} -O tumor_name.txt
 
   # We need to create a file regardless, even if it stays empty
   touch bamout.bam
+  touch normal_name.txt
 
-  java -Xmx4g -jar $GATK_JAR Mutect2 \
+  java -Xmx${command_mem}m -jar $GATK_JAR Mutect2 \
     -R ${ref_fasta} \
     -I ${tumor_bam} \
     -tumor `cat tumor_name.txt` \
@@ -275,9 +346,9 @@ task M2 {
 
   runtime {
       docker: "${m2_docker}"
-      memory: "5 GB"
-      disks: "local-disk " + 200 + " HDD"
-      preemptible: "${preemptible_attempts}"
+      memory: machine_mem + " MB"
+      disks: "local-disk " + disk_space_gb + " HDD"
+      preemptible: select_first([preemptible_attempts, 5])
   }
 
   output {
@@ -295,6 +366,8 @@ task ProcessOptionalArguments {
   String tumor_sample_name
   String? normal_bam
   String? normal_sample_name
+
+  # Runtime parameters
   Int preemptible_attempts
   String docker
 
@@ -319,30 +392,29 @@ task ProcessOptionalArguments {
 }
 
 task MergeVCFs {
-  String gatk4_jar
   Array[File] input_vcfs
   String output_vcf_name
   File? gatk4_jar_override
+
+  # Runtime parameters
   Int preemptible_attempts
   String m2_docker
+  Int disk_space_gb
+  Int? mem
 
-  # using MergeVcfs instead of GatherVcfs so we can create indices
-  # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 3500
+  Int command_mem = machine_mem - 500
+
   command {
-    # Use GATK Jar override if specified
-    GATK_JAR=${gatk4_jar}
-    if [[ "${gatk4_jar_override}" == *.jar ]]; then
-        GATK_JAR=${gatk4_jar_override}
-    fi
-
-    java -Xmx2g -jar $GATK_JAR MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}.vcf
+    java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}.vcf
   }
 
   runtime {
     docker: "${m2_docker}"
-    memory: "3 GB"
-    disks: "local-disk " + 300 + " HDD"
-    preemptible: "${preemptible_attempts}"
+    memory: machine_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
   }
 
   output {
@@ -352,28 +424,33 @@ task MergeVCFs {
 }
 
 task CollectSequencingArtifactMetrics {
-  Int preemptible_attempts
-  String m2_docker
   File tumor_bam
   File tumor_bam_index
   File ref_fasta
   File ref_fasta_index
   File picard_jar
 
-  command {
-        set -e
-        java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="metrics" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
+  # Runtime parameters
+  String m2_docker
+  Int preemptible_attempts
+  Int disk_space_gb
+  Int? mem
 
-        # Convert to GATK format
-        sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
-            "metrics.pre_adapter_detail_metrics" > "gatk.pre_adapter_detail_metrics"
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 7000
+  Int command_mem = machine_mem - 500
+
+  command {
+    # Sed'ing of the metrics file to make it GATK compatitble has been moved to the FilterByOrientationBias task
+
+    java -Xmx${command_mem}m -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="gatk" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
   }
 
   runtime {
     docker: "${m2_docker}"
-    memory: "5 GB"
-    disks: "local-disk " + 700 + " HDD"
-    preemptible: "${preemptible_attempts}"
+    memory: machine_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
   }
 
   output {
@@ -381,26 +458,26 @@ task CollectSequencingArtifactMetrics {
   }
 }
 
-task Filter {
-  String gatk4_jar
+task CalculateContam {
   File? gatk4_jar_override
-  File unfiltered_vcf
-  String output_vcf_name
   File? intervals
-  Int preemptible_attempts
-  String m2_docker
-  File? pre_adapter_metrics
-  String? tumor_bam
-  String? tumor_bam_index
-  File? ref_fasta
-  File? ref_fasta_index
-  Array[String]? artifact_modes
+  String tumor_bam
+  String tumor_bam_index
   File? variants_for_contamination
   File? variants_for_contamination_index
-  String? m2_extra_filtering_args
+
+  # Runtime parameters
+  Int preemptible_attempts
+  String m2_docker
+  Int disk_space_gb
+  Int? mem
 
   # Do not populate this unless you know what you are doing...
   File? auth
+
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 7000
+  Int command_mem = machine_mem - 500
 
   command {
     set -e
@@ -412,48 +489,122 @@ task Filter {
     fi
 
     # Use GATK Jar override if specified
-    GATK_JAR=${gatk4_jar}
-    if [[ "${gatk4_jar_override}" == *.jar ]]; then
-        GATK_JAR=${gatk4_jar_override}
-    fi
+    GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-    touch contamination.table
-    if [[ "${variants_for_contamination}" == *.vcf ]]; then
-        java -Xmx6g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-        java -Xmx6g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
-        contamination_cmd="-contaminationTable contamination.table"
-    fi
-
-    java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V ${unfiltered_vcf} \
-      	    -O filtered.vcf $contamination_cmd \
-      	    ${m2_extra_filtering_args}
-
-    # FilterByOrientationBias must come after all of the other filtering.
-    if [[ ! -z "${pre_adapter_metrics}" ]]; then
-        java -Xmx6g -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
-            -V filtered.vcf -P ${pre_adapter_metrics} --output "${output_vcf_name}-filtered.vcf"
-    else
-        mv filtered.vcf "${output_vcf_name}-filtered.vcf"
-        mv filtered.vcf.idx "${output_vcf_name}-filtered.vcf.idx"
-    fi
+    java -Xmx${command_mem}m -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+    java -Xmx${command_mem}m -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
   }
 
   runtime {
     docker: "${m2_docker}"
-    memory: "7 GB"
-    disks: "local-disk " + 200 + " HDD"
-    preemptible: "${preemptible_attempts}"
+    memory: command_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
+  }
+
+  output {
+    File contamination_table = "contamination.table"
+  }
+}
+
+task Filter {
+  File? gatk4_jar_override
+  File unfiltered_vcf
+  String output_vcf_name
+  String? m2_extra_filtering_args
+  File? contamination_table
+
+  # Runtime parameters
+  Int preemptible_attempts
+  String m2_docker
+  Int disk_space_gb
+  Int? mem
+
+  # Do not populate this unless you know what you are doing...
+  File? auth
+
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 7000
+  Int command_mem = machine_mem - 500
+
+  command {
+    set -e
+
+    if [[ "${auth}" == *.json ]]; then
+      gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+      GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+    fi
+
+    java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} FilterMutectCalls -V ${unfiltered_vcf} \
+      	    -O ${output_vcf_name}-filtered.vcf ${"-contaminationTable " + contamination_table} \
+      	    ${m2_extra_filtering_args}
+  }
+
+  runtime {
+    docker: "${m2_docker}"
+    memory: command_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
   }
 
   output {
     File filtered_vcf = "${output_vcf_name}-filtered.vcf"
     File filtered_vcf_index = "${output_vcf_name}-filtered.vcf.idx"
-    File contamination_table = "contamination.table"
+  }
+}
+
+task FilterByOrientationBias {
+  File? gatk4_jar_override
+  File input_vcf
+  String output_vcf_name
+  File pre_adapter_metrics
+  Array[String]? artifact_modes
+
+  # Runtime parameters
+  Int preemptible_attempts
+  String m2_docker
+  Int disk_space_gb
+  Int? mem
+
+  # Do not populate this unless you know what you are doing...
+  File? auth
+
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 7000
+  Int command_mem = machine_mem - 500
+
+  command {
+    set -e
+
+    if [[ "${auth}" == *.json ]]; then
+      gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+      GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+    fi
+
+    # Convert to GATK format
+    sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
+     "${pre_adapter_metrics}" > "gatk.pre_adapter_detail_metrics"
+
+     java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
+        -V ${input_vcf} -P gatk.pre_adapter_detail_metrics --output "${output_vcf_name}-filtered.vcf"
+  }
+
+  runtime {
+    docker: "${m2_docker}"
+    memory: command_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
+  }
+
+  output {
+    File filtered_vcf = "${output_vcf_name}-filtered.vcf"
+    File filtered_vcf_index = "${output_vcf_name}-filtered.vcf.idx"
   }
 }
 
 task SplitIntervals {
-  String gatk4_jar
   Int scatter_count
   File? intervals
   File ref_fasta
@@ -461,28 +612,29 @@ task SplitIntervals {
   File ref_dict
   File? gatk4_jar_override
   Int preemptible_attempts
+
+  # Runtime parameters
   String m2_docker
+  Int disk_space_gb
+  Int? mem
+
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 3500
+  Int command_mem = machine_mem - 500
 
   command {
-    # fail if *any* command below (not just the last) doesn't return 0, in particular if GATK SplitIntervals fails
     set -e
 
-    # Use GATK Jar override if specified
-    GATK_JAR=${gatk4_jar}
-    if [[ "${gatk4_jar_override}" == *.jar ]]; then
-        GATK_JAR=${gatk4_jar_override}
-    fi
-
     mkdir interval-files
-    java -jar $GATK_JAR SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+    java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
     cp interval-files/*.intervals .
   }
 
   runtime {
     docker: "${m2_docker}"
-    memory: "3 GB"
-    disks: "local-disk " + 100 + " HDD"
-    preemptible: "${preemptible_attempts}"
+    memory: command_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
   }
 
   output {
@@ -504,22 +656,26 @@ task MergeBamOuts {
   Int? mem
   String m2_docker
   Int? preemptible_attempts
-  Int? disk_space_gb
+  Int disk_space_gb
+
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 7000
+  Int command_mem = machine_mem - 500
 
   command <<<
-          # This command block assumes that there is at least one file in bam_outs.
-          #  Do not call this task if len(bam_outs) == 0
-          set -e
-          java -Xmx4G -jar ${picard_jar} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
+    # This command block assumes that there is at least one file in bam_outs.
+    #  Do not call this task if len(bam_outs) == 0
+    set -e
 
-          samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
+    java -Xmx${command_mem}m -jar ${picard_jar} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
+    samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
   >>>
 
   runtime {
     docker: "${m2_docker}"
-    memory: select_first([mem, 3]) + " GB"
-    disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-    preemptible: select_first([preemptible_attempts, 2])
+    memory: machine_mem + " MB"
+    disks: "local-disk " + disk_space_gb + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
   }
 
   output {
@@ -528,60 +684,88 @@ task MergeBamOuts {
   }
 }
 
-task oncotate_m2 {
-    File m2_vcf
-    String case_id
-    String? control_id
-    Int preemptible_attempts
-    String oncotator_docker
-    File? onco_ds_tar_gz
-    String? onco_ds_local_db_dir
-    String? oncotator_exe
-    String? sequencing_center
-    String? sequence_source
-    File? default_config_file
-    command <<<
+task Oncotate_m2 {
+  File m2_vcf
+  String case_id
+  String? control_id
+  File? onco_ds_tar_gz
+  String? onco_ds_local_db_dir
+  String? oncotator_exe
+  String? sequencing_center
+  String? sequence_source
+  File? default_config_file
 
-          # fail if *any* command below (not just the last) doesn't return 0, in particular if wget fails
-          set -e
+  # Runtime parameters
+  Int preemptible_attempts
+  String oncotator_docker
+  Int disk_space_gb
+  Int? mem
 
-          # local db dir is a directory and has been specified
-          if [[ -d "${onco_ds_local_db_dir}" ]]; then
-              echo "Using local db-dir: ${onco_ds_local_db_dir}"
-              echo "THIS ONLY WORKS WITHOUT DOCKER!"
-              ln -s ${onco_ds_local_db_dir} onco_dbdir
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 3500
+  Int command_mem = machine_mem - 500
 
-          elif [[ "${onco_ds_tar_gz}" == *.tar.gz ]]; then
-              echo "Using given tar file: ${onco_ds_tar_gz}"
-              mkdir onco_dbdir
-              tar zxvf ${onco_ds_tar_gz} -C onco_dbdir --strip-components 1
+  command <<<
+    set -e
 
-          else
-              echo "Downloading and installing oncotator datasources from Broad FTP site..."
-              # Download and untar the db-dir
-              wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/oncotator/oncotator_v1_ds_April052016.tar.gz
-              tar zxvf oncotator_v1_ds_April052016.tar.gz
-              ln -s oncotator_v1_ds_April052016 onco_dbdir
-          fi
+    # local db dir is a directory and has been specified
+    if [[ -d "${onco_ds_local_db_dir}" ]]; then
+      echo "Using local db-dir: ${onco_ds_local_db_dir}"
+      echo "THIS ONLY WORKS WITHOUT DOCKER!"
+      ln -s ${onco_ds_local_db_dir} onco_dbdir
 
-        ${default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
-            -v ${m2_vcf} ${case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
-            -a Center:${default="Unknown" sequencing_center} \
-            -a source:${default="Unknown" sequence_source} \
-            -a normal_barcode:${default=" " control_id} \
-            -a tumor_barcode:${case_id} \
-            ${"--default_config " + default_config_file}
+    elif [[ "${onco_ds_tar_gz}" == *.tar.gz ]]; then
+      echo "Using given tar file: ${onco_ds_tar_gz}"
+      mkdir onco_dbdir
+      tar zxvf ${onco_ds_tar_gz} -C onco_dbdir --strip-components 1
+      rm ${onco_ds_tar_gz}
+
+    else
+      echo "Downloading and installing oncotator datasources from Broad FTP site..."
+      # Download and untar the db-dir
+      wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/oncotator/oncotator_v1_ds_April052016.tar.gz
+      tar zxvf oncotator_v1_ds_April052016.tar.gz
+      rm oncotator_v1_ds_April052016.tar.gz
+      ln -s oncotator_v1_ds_April052016 onco_dbdir
+    fi
+
+    ${default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
+      -v ${m2_vcf} ${case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
+      -a Center:${default="Unknown" sequencing_center} \
+      -a source:${default="Unknown" sequence_source} \
+      -a normal_barcode:${default=" " control_id} \
+      -a tumor_barcode:${case_id} \
+      ${"--default_config " + default_config_file}
     >>>
 
     runtime {
         docker: "${oncotator_docker}"
-        memory: "3 GB"
-        bootDiskSizeGb: 12
-        disks: "local-disk 100 HDD"
-        preemptible: "${preemptible_attempts}"
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk_space_gb + " HDD"
+        preemptible: select_first([preemptible_attempts, 5])
     }
 
     output {
         File oncotated_m2_maf="${case_id}.maf.annotated"
     }
+}
+
+# Calculates sum of a list of floats
+task SumFloats {
+  Array[Float] sizes
+
+  # Runtime parameters
+  Int? preemptible_attempts
+
+  command <<<
+  python -c "print ${sep="+" sizes}"
+  >>>
+  output {
+    Float total_size = read_float(stdout())
+  }
+  runtime {
+    docker: "python:2.7"
+    disks: "local-disk " + 10 + " HDD"
+    preemptible: select_first([preemptible_attempts, 5])
+  }
 }
