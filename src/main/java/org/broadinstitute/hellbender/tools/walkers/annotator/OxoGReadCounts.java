@@ -5,8 +5,8 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -150,6 +150,10 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
 
         final Map<Allele, MutableInt> countMap = isF2R1(pileupElement.getRead()) ? f2r1Counts : f1r2Counts;
 
+        incrementAlleleCountMap(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff, countMap);
+    }
+
+    public static void incrementAlleleCountMap(PileupElement pileupElement, Allele referenceAllele, List<Allele> altAlleles, int minBaseQualityCutoff, Map<Allele, MutableInt> countMap) {
         final boolean isRef = referenceAllele.basesMatch(getBasesForAlleleInRead(pileupElement, referenceAllele))
                 && !pileupElement.isBeforeDeletionStart() && !pileupElement.isBeforeInsertion();
 
@@ -233,7 +237,7 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
     }
 
 
-    protected static boolean isUsableRead(final GATKRead read) {
+    public static boolean isUsableRead(final GATKRead read) {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
 

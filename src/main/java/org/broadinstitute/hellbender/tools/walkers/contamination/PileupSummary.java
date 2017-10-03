@@ -6,8 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.OxoGReadCounts;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -20,6 +19,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Created by David Benjamin on 2/14/17.
@@ -31,6 +31,8 @@ public class PileupSummary implements Locatable {
     private final int altCount;
     private final int otherAltsCount;
     private final int totalCount;
+    private Allele altAllele = Allele.NO_CALL;
+    private Allele refAllele = Allele.NO_CALL;
 
     private final double alleleFrequency;
     private final Map<Allele, MutableInt> alleleCountMap = new HashMap<>();
@@ -45,17 +47,36 @@ public class PileupSummary implements Locatable {
         this.alleleFrequency = alleleFrequency;
     }
 
-    public PileupSummary(final VariantContext vc, final ReadPileup pileup) {
+    //TODO: Refactor the static calls to OxoGCount into a utility.
+    //TODO: Does altAlelle attribute need to be the one with the max count?
+    // TODO: Other altcount will be messed up if minBaseQualityCutoff != 0
+    public PileupSummary(final VariantContext vc, final ReadPileup pileup, int minBaseQualityCutoff) {
         contig = vc.getContig();
         position = vc.getStart();
         alleleFrequency = vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, 0);
-        final byte altBase = vc.getAlternateAllele(0).getBases()[0];
-        final byte refBase = vc.getReference().getBases()[0];
-        final int[] baseCounts = pileup.getBaseCounts();
-        altCount = baseCounts[BaseUtils.simpleBaseToBaseIndex(altBase)];
-        refCount = baseCounts[BaseUtils.simpleBaseToBaseIndex(refBase)];
-        totalCount = (int) MathUtils.sum(baseCounts);
+
+        refAllele = vc.getAlleles().get(0);
+        final List<Allele> altAlleles = vc.getAlleles().stream().filter(a -> a.isNonReference() && !a.isSymbolic()).collect(Collectors.toList());
+
+        // We MUST have a non-symbolic reference allele and a read pileup,
+        // TODO: Important, we cannot enforce the min base quality cutoff for this, since it would throw off the total count below.
+        if ((pileup != null) && !refAllele.isSymbolic()) {
+            Utils.stream(pileup)
+                    .filter(pe -> OxoGReadCounts.isUsableRead(pe.getRead()))
+                    .forEach(pe -> OxoGReadCounts.incrementAlleleCountMap(pe, refAllele, altAlleles, minBaseQualityCutoff, alleleCountMap));
+        }
+
+        altAllele = vc.getAlternateAllele(0);
+        altCount = alleleCountMap.get(altAllele).intValue();
+        refCount = alleleCountMap.get(refAllele).intValue();
+
+        // Need to capture alternates that are not in the variant context as well.
+        totalCount = pileup.size();
         otherAltsCount = totalCount - altCount - refCount;
+    }
+
+    public PileupSummary(final VariantContext vc, final ReadPileup pileup) {
+        this(vc, pileup, 0);
     }
 
     @Override
