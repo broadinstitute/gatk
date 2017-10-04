@@ -341,4 +341,12 @@ public final class SimpleInterval implements Locatable, Serializable {
 
          return expandWithinContig(padding, contigRecord.getSequenceLength());
      }
+
+     /**
+      * Returns an interval that expands only the first base of this interval.
+      * @return never {@code null}.
+      */
+     public SimpleInterval getStartInterval() {
+         return new SimpleInterval(contig, start, start);
+     }
  }

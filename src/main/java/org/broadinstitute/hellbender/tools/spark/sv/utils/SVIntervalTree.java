@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
@@ -117,6 +118,18 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
         }
 
         return result;
+    }
+
+    /**
+     * Put all the elements in another tree into this one.
+     * @param other the other tree.
+     * @throws IllegalArgumentException if {@code other} is {@code null}.
+     */
+    public void putAll(final SVIntervalTree<V> other) {
+        Utils.nonNull(other);
+        for (final Entry<V> entry : other) {
+            put(entry.getInterval(), entry.getValue());
+        }
     }
 
     /**
