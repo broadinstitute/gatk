@@ -14,7 +14,7 @@ import java.util.Set;
 /**
  * Keep only reads where the the Read Group platform attribute (RG:PL tag) contains the given string.
  *
- * <p>Note: Matching is done by case-insensitive substring matching.
+ * <p>Note: Matching is done by case-insensitive substring matching.</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with matching Read Group platform")
 public final class PlatformReadFilter extends ReadFilter implements Serializable{

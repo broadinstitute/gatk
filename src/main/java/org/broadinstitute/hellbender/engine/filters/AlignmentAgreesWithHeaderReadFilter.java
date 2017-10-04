@@ -14,7 +14,7 @@ import java.io.Serializable;
  * <p>The read does not match the contents of the header if:</p>
  *
  * <ul>
- *     <li>It is aligned to non-existent contig</li>
+ *     <li>It is aligned to a non-existing contig</li>
  *     <li>It is aligned to a point after the end of the contig</li>
  * </ul>
  */

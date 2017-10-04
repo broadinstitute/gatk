@@ -16,8 +16,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * of aligned bases and additionally many soft-clipped bases. This filter is intended
  * to remove such reads.</p>
  *
- * <p>Note: Consecutive soft-clipped blocks are treated as a single block. For example, 1S2S10M1S2S is treated as 3S10M3S
- *
+ * <p>Note: Consecutive soft-clipped blocks are treated as a single block. For example, 1S2S10M1S2S is treated as 3S10M3S</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads that are over-soft-clipped")
 public final class OverclippedReadFilter extends ReadFilter{
