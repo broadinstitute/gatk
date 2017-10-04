@@ -452,18 +452,6 @@ public final class PSScorer {
     }
 
     /**
-     * Returns scoring metrics given the mapped read set and total number of reads
-     */
-    public static PSScoreMetrics getScoreMetrics(final JavaRDD<GATKRead> reads, final long numReads) {
-        final long numUnmappedReads = reads.filter(read -> !read.hasAttribute(PSScorer.HITS_TAG)).count();
-        final long numMappedReads = numReads - numUnmappedReads;
-        final PSScoreMetrics metrics = new PSScoreMetrics();
-        metrics.UNMAPPED_READS = numUnmappedReads;
-        metrics.MAPPED_READS = numMappedReads;
-        return metrics;
-    }
-
-    /**
      * Helper class for storing alignment hit information
      */
     private static final class PSPathogenHitAlignment {

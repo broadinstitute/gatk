@@ -14,7 +14,7 @@ import java.io.File;
 
 public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
-    static final String baseResourcePath = "src/test/resources/" + PathSeqPipelineSpark.class.getPackage().getName().replace(".", "/");
+    static final String baseResourcePath = publicTestDir + PathSeqPipelineSpark.class.getPackage().getName().replace(".", "/");
     static final String kmerLibraryPath = baseResourcePath + "/hg19mini.hss";
     static final String filterImagePath =  baseResourcePath + "/hg19mini.fasta.img";
 

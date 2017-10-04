@@ -13,42 +13,42 @@ import java.io.File;
 
 public class PathSeqFilterSparkIntegrationTest extends CommandLineProgramTest {
 
-    static final String imagePath = "src/test/resources/" + PathSeqFilterSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
-    static final String libraryPath = "src/test/resources/" + PathSeqFilterSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
+    static final String imagePath = publicTestDir + PathSeqFilterSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
+    static final String libraryPath = publicTestDir + PathSeqFilterSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
 
     @DataProvider(name = "pathseqFilterTestData")
     public Object[][] getTestData() {
         return new Object[][]{
                 {"basic_input.bam",
-                        "basic_output.paired.bam",
-                        "basic_output.unpaired.bam",
-                        "basic_filter.metrics",
-                        false, false, false, false, false},
+                    "basic_output.paired.bam",
+                    "basic_output.unpaired.bam",
+                    "basic_filter.metrics",
+                    false, false, false, false, false},
                 {"basic_input.bam",
-                        "dup_output.paired.bam",
-                        "dup_output.unpaired.bam",
-                        "dup_filter.metrics",
-                        false, true, true, false, false},
+                    "dup_output.paired.bam",
+                    "dup_output.unpaired.bam",
+                    "dup_filter.metrics",
+                    false, true, true, false, false},
                 {"basic_input.bam",
-                        "kmer_output.paired.bam",
-                        "kmer_output.unpaired.bam",
-                        "kmer_filter.metrics",
-                        false, true, false, true, false},
+                    "kmer_output.paired.bam",
+                    "kmer_output.unpaired.bam",
+                    "kmer_filter.metrics",
+                    false, true, false, true, false},
                 {"basic_input.bam",
-                        "bwa_output.paired.bam",
-                        "bwa_output.unpaired.bam",
-                        "bwa_filter.metrics",
-                        false, true, false, false, true},
+                    "bwa_output.paired.bam",
+                    "bwa_output.unpaired.bam",
+                    "bwa_filter.metrics",
+                    false, true, false, false, true},
                 {"aligned_input.bam",
-                        "aligned_output.paired.bam",
-                        null,
-                        "aligned_filter.metrics",
-                        true, true, false, false, false},
+                    "aligned_output.paired.bam",
+                    null,
+                    "aligned_filter.metrics",
+                    true, true, false, false, false},
                 {"basic_input.bam",
-                        "all_output.paired.bam",
-                        "all_output.unpaired.bam",
-                        "all_filter.metrics",
-                        false, false, true, true, true},
+                    "all_output.paired.bam",
+                    "all_output.unpaired.bam",
+                    "all_filter.metrics",
+                    false, false, true, true, true},
         };
     }
 

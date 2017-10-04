@@ -1,11 +1,11 @@
-package org.broadinstitute.hellbender.tools.spark.pathseq;
+package org.broadinstitute.hellbender.tools.spark.pathseq.loggers;
 
 import htsjdk.samtools.metrics.MetricBase;
 
 import java.io.Serializable;
 
 /**
- * Metrics that are calculated during the PathSeq filter
+ * Metrics that are calculated during the PathSeq scoring
  */
 @SuppressWarnings("serial")
 public final class PSScoreMetrics extends MetricBase implements Serializable {

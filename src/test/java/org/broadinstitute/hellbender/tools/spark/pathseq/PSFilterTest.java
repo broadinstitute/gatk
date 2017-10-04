@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.fastq.FastqReader;
+import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.LineIterator;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -13,70 +14,47 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.testng.Assert;
-import org.testng.TestException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class PSFilterTest extends CommandLineProgramTest {
 
-    private final String BWA_IMAGE_PATH = "src/test/resources/" + PSFilter.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
+    private static final String BWA_IMAGE_PATH = publicTestDir + PSFilter.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
 
-    static final List<List<String>> readFastq(final File fastqFile) {
-        try {
-            final LineIterator itr = IOUtils.lineIterator(new FileReader(fastqFile));
-            final List<List<String>> seqs = new ArrayList<>(100);
-            while (itr.hasNext()) {
-                final List<String> read = new ArrayList<>(3);
-                String readName = itr.next();
-                if (readName.endsWith("/1") || readName.endsWith("/2")) {
-                    readName = readName.substring(0, readName.length() - 2);
-                }
-                read.add(readName);
-                read.add(itr.next());
-                itr.next();
-                read.add(itr.next());
-                seqs.add(read);
-            }
-            return seqs;
-        } catch (IOException e) {
-            logger.error("Could not open test file " + fastqFile.getAbsolutePath(), e);
-        }
-        throw new TestException("Invalid fastq test file " + fastqFile);
+    static final GATKRead fastqRecordToGATKRead(final FastqRecord rec) {
+        final GATKRead read = new SAMRecordToGATKReadAdapter(new SAMRecord(null));
+        read.setName(rec.getReadName());
+        read.setBaseQualities(rec.getBaseQualities());
+        read.setBases(rec.getReadBases());
+        return read;
     }
 
     static final List<GATKRead> getReadsFromFastq(final File fastqFile) {
-        final List<List<String>> fastqList = readFastq(fastqFile);
-        return fastqList.stream().map(list -> {
-            final String name = list.get(0);
-            final byte[] bases = list.get(1).getBytes();
-            final byte[] qual = list.get(2).getBytes();
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, qual, "*");
-            read.setName(name);
-            return read;
-        }).collect(Collectors.toList());
+        final FastqReader reader = new FastqReader(fastqFile);
+        final List<GATKRead> readList = new ArrayList<>();
+        reader.forEachRemaining(read -> readList.add(fastqRecordToGATKRead(read)));
+        return readList;
     }
 
     static final List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
         final List<GATKRead> readList1 = getReadsFromFastq(fastqFile1);
         final List<GATKRead> readList2 = getReadsFromFastq(fastqFile2);
-        readList1.forEach(read -> {
-            read.setIsPaired(true);
-            read.setIsFirstOfPair();
-        });
-        readList2.forEach(read -> {
-            read.setIsPaired(true);
-            read.setIsSecondOfPair();
-        });
+        for (GATKRead gatkRead : readList1) {
+            gatkRead.setIsPaired(true);
+            gatkRead.setIsFirstOfPair();
+        }
+        for (GATKRead gatkRead : readList2) {
+            gatkRead.setIsPaired(true);
+            gatkRead.setIsSecondOfPair();
+        }
         readList1.addAll(readList2);
         readList1.sort(Comparator.comparing(GATKRead::getName));
         return readList1;
@@ -240,14 +218,6 @@ public class PSFilterTest extends CommandLineProgramTest {
         }
         Assert.assertEquals(numDup_1, 1);
         Assert.assertEquals(numDup_2, 1);
-    }
-
-    @Test(expectedExceptions = Exception.class)
-    public void testGetFilterMetricsException() {
-        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final PSFilter filter = new PSFilter(ctx, new PSFilterArgumentCollection(), null);
-        //Can't get metrics from a filter that has not been run
-        filter.getFilterMetrics();
     }
 
 }

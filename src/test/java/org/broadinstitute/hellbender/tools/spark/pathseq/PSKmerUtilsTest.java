@@ -41,7 +41,7 @@ public class PSKmerUtilsTest extends CommandLineProgramTest {
             }
         }
 
-        final String expectedFile = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
+        final String expectedFile = publicTestDir + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
 
         final Input expectedInput = new Input(FileUtils.openInputStream(new File(expectedFile)));
         final Kryo kryo = new Kryo();

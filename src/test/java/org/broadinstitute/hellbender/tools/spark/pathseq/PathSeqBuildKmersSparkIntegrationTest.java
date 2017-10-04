@@ -28,7 +28,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
     @Test
     public void testHopscotchSetFromFasta() throws Exception {
 
-        final String libraryPath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
+        final String libraryPath = publicTestDir + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
         final File expectedFile = new File(libraryPath);
         final File ref = new File(hg19MiniReference);
         final File output = createTempFile("test", ".hss");
@@ -54,7 +54,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
     @Test
     public void testBloomFilterFromFasta() throws Exception {
 
-        final String libraryPath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
+        final String libraryPath = publicTestDir + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
         final File expectedFile = new File(libraryPath);
         final File ref = new File(hg19MiniReference);
         final File output = createTempFile("test", ".bfi");

@@ -11,8 +11,8 @@ import java.io.File;
 
 public class PathSeqBwaSparkIntegrationTest extends CommandLineProgramTest {
 
-    private final String IMAGE_PATH = "src/test/resources/" + PathSeqBwaSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
-    private final String REF_PATH = "src/test/resources/hg19mini.fasta";
+    private final String IMAGE_PATH = publicTestDir + PathSeqBwaSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
+    private final String REF_PATH = publicTestDir + "/hg19mini.fasta";
 
     @DataProvider(name = "pathseqBwaTestData")
     public Object[][] getTestData() {

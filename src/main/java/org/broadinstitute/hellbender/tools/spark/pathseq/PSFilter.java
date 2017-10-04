@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTag;
-import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.spark.HashPartitioner;
@@ -12,6 +11,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.filters.AmbiguousBaseReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterLogger;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadFilterSparkifier;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadTransformerSparkifier;
@@ -33,7 +33,6 @@ public final class PSFilter implements AutoCloseable {
     private final JavaSparkContext ctx;
     private final PSFilterArgumentCollection filterArgs;
     private final SAMFileHeader header;
-    private PSFilterMetrics metrics;
 
     private static final List<String> ADAPTER_SEQUENCES = CollectionUtil.makeList(
             IlluminaAdapterPair.SINGLE_END.get5PrimeAdapter(),
@@ -204,19 +203,16 @@ public final class PSFilter implements AutoCloseable {
      * Returns a tuple containing the paired reads and unpaired reads as separate RDDs.
      * If metricsFile is null, read count metrics will not be collected.
      */
-    public Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> doFilter(JavaRDD<GATKRead> reads, final MetricsFile<PSFilterMetrics, Long> metricsFile) {
+    public Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> doFilter(JavaRDD<GATKRead> reads, final PSFilterLogger filterLogger) {
 
         Utils.nonNull(reads, "Input reads cannot be null");
-        metrics = new PSFilterMetrics();
         reads = PSUtils.primaryReads(reads);
-        metrics.PRIMARY_READS = getReadCountIfLogging(metricsFile, reads);
+        filterLogger.logPrimaryReads(reads);
 
         if (filterArgs.alignedInput) {
             reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minIdentity)));
-            metrics.READS_AFTER_PREALIGNED_HOST_FILTER = getReadCountIfLogging(metricsFile, reads);
-        } else {
-            metrics.READS_AFTER_PREALIGNED_HOST_FILTER = metrics.PRIMARY_READS;
         }
+        filterLogger.logReadsAfterPrealignedHostFilter(reads);
 
         //Clear alignment data from the reads
         reads = clearAllAlignments(reads, header);
@@ -248,10 +244,8 @@ public final class PSFilter implements AutoCloseable {
 
             //Filter reads with too many 'N's
             reads = reads.filter(new ReadFilterSparkifier(new AmbiguousBaseReadFilter(filterArgs.maxAmbiguousBases)));
-            metrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER = getReadCountIfLogging(metricsFile, reads);
-        } else {
-            metrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER = metrics.READS_AFTER_PREALIGNED_HOST_FILTER;
         }
+        filterLogger.logReadsAfterQualityFilter(reads);
 
         //Kmer filtering
         if (filterArgs.kmerLibPath != null) {
@@ -268,22 +262,14 @@ public final class PSFilter implements AutoCloseable {
             reads = doBwaFilter(reads, filterArgs.indexImageFile, filterArgs.minSeedLength,
                     filterArgs.bwaThreads, filterArgs.minIdentity);
         }
-
-        //Log filtered host reads if either kmer or bwa host filtering were used
-        if (filterArgs.kmerLibPath != null || filterArgs.indexImageFile != null) {
-            metrics.READS_AFTER_HOST_FILTER = getReadCountIfLogging(metricsFile, reads);
-        } else {
-            metrics.READS_AFTER_HOST_FILTER = metrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER;
-        }
+        filterLogger.logReadsAfterHostFilter(reads);
 
         //Filter duplicates
         if (filterArgs.filterDuplicates) {
             reads = setPairFlags(reads, filterArgs.readsPerPartition);
             reads = filterDuplicateSequences(reads);
-            metrics.READS_AFTER_DEDUPLICATION = getReadCountIfLogging(metricsFile, reads);
-        } else {
-            metrics.READS_AFTER_DEDUPLICATION = metrics.READS_AFTER_HOST_FILTER;
         }
+        filterLogger.logReadsAfterDeduplication(reads);
 
         //Sets pairedness flags properly
         reads = setPairFlags(reads, filterArgs.readsPerPartition);
@@ -293,28 +279,9 @@ public final class PSFilter implements AutoCloseable {
         final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.readsPerPartition, false);
         final JavaRDD<GATKRead> pairedReads = splitter.getPairedReads();
         final JavaRDD<GATKRead> unpairedReads = splitter.getUnpairedReads();
-        metrics.FINAL_PAIRED_READS = getReadCountIfLogging(metricsFile, pairedReads);
-        if (metricsFile != null) {
-            metrics.computeDerivedMetrics();
-        }
+        filterLogger.logFinalPairedReads(pairedReads);
 
         return new Tuple2<>(pairedReads, unpairedReads);
-    }
-
-    /**
-     * Calculates and returns filter metrics
-     */
-    public PSFilterMetrics getFilterMetrics() {
-        Utils.nonNull(metrics, "Attempted to get PSFilter metrics, but it is null");
-        Utils.nonNull(metrics.PRIMARY_READS, "Attempted to get PSFilter metrics, but they were not enabled");
-        return metrics;
-    }
-
-    /**
-     * Gets read count if loggerEnabled is true, otherwise null
-     */
-    private static Long getReadCountIfLogging(final MetricsFile<PSFilterMetrics, Long> metricsFile, final JavaRDD<GATKRead> reads) {
-        return metricsFile != null ? reads.count() : null;
     }
 
     /**

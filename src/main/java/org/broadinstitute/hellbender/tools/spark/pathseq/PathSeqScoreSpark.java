@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -17,7 +16,8 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.metrics.MetricsUtils;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreFileLogger;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreLogger;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -153,7 +153,6 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         }
 
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
-        final MetricsFile<PSScoreMetrics, Long> metricsFile = metricsFileUri != null ? getMetricsFile() : null;
 
         //Load reads
         final Tuple2<JavaRDD<GATKRead>, SAMFileHeader> pairedData = readInputWithHeader(pairedInput, readsSource);
@@ -175,9 +174,9 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         final PSScorer scorer = new PSScorer(scoreArgs);
         final JavaRDD<GATKRead> readsFinal = scorer.scoreReads(ctx, pairedReads, unpairedReads, header);
         if (metricsFileUri != null) {
-            final long numReads = readsFinal.count();
-            metricsFile.addMetric(PSScorer.getScoreMetrics(readsFinal, numReads));
-            MetricsUtils.saveMetrics(metricsFile, metricsFileUri);
+            final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), metricsFileUri);
+            scoreLogger.logReadCounts(readsFinal);
+            scoreLogger.writeFile();
         }
 
         //Write reads to BAM, if specified
