@@ -39,7 +39,8 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 /**
- * Tool to run the sv pipeline up to and including variant discovery
+ * Tool to run the sv pipeline up to and including variant discovery.
+ * Expected input is a BAM with around 30x coverage.  Coverage much lower than that probably won't work well.
  */
 @CommandLineProgramProperties(summary="Master tool to run the structural variation discovery pipeline",
         oneLineSummary="Master tool to run the structural variation discovery pipeline",

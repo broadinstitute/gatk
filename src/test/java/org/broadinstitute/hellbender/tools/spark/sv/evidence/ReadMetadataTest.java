@@ -20,7 +20,7 @@ import java.util.Set;
 public class ReadMetadataTest extends GATKBaseTest {
     private final static LibraryStatistics LIBRARY_STATISTICS =
             new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
-                    60000000000L, 600000000L, 3000000000L);
+                    60000000000L, 600000000L, 1200000000000L, 3000000000L);
 
     @Test(groups = "sv")
     void testEverything() {

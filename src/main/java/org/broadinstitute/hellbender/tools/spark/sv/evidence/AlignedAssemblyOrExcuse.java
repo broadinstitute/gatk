@@ -243,27 +243,6 @@ public final class AlignedAssemblyOrExcuse {
 
     // =================================================================================================================
 
-    public static Stream<SAMRecord> toSAMStreamForOneContig(final SAMFileHeader header, final List<String> refNames,
-                                                            final SAMReadGroupRecord contigAlignmentsReadGroup,
-                                                            final int assemblyId, final int contigIdx,
-                                                            final byte[] contigSequence, final List<BwaMemAlignment> alignments) {
-        if ( alignments.isEmpty() ) return Stream.empty();
-
-        final String readName = formatContigName(assemblyId, contigIdx);
-        final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
-
-        return alignments.stream()
-                .map(alignment -> {
-                    final SAMRecord samRecord =
-                            BwaMemAlignmentUtils.applyAlignment(readName, contigSequence, null, null, alignment,
-                                    refNames, header, false, false);
-                    final String saTag = saTagMap.get(alignment);
-                    if ( saTag != null ) samRecord.setAttribute(SAMTag.SA.name(), saTag);
-                    if (contigAlignmentsReadGroup != null) samRecord.setAttribute( SAMTag.RG.name(), contigAlignmentsReadGroup.getId());
-                    return samRecord;
-                });
-    }
-
     private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames,
                                                                      final SAMReadGroupRecord contigAlignmentsReadGroup) {
         return IntStream.range(0, contigAlignments.size()).boxed()

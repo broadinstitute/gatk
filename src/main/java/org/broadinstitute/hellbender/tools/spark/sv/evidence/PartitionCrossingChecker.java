@@ -31,7 +31,7 @@ public class PartitionCrossingChecker {
             if ( beginningContigID == ReadMetadata.PartitionBounds.UNMAPPED ) {
                 beginningPosition = -1;
             } else {
-                beginningPosition = bounds.getLastStart() + boundaryWidth;
+                beginningPosition = bounds.getLastEnd() + boundaryWidth;
             }
         }
 

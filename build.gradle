@@ -238,7 +238,7 @@ dependencies {
     }
 
     compile 'org.broadinstitute:gatk-bwamem-jni:1.0.3'
-    compile 'org.broadinstitute:gatk-fermilite-jni:1.0.0'
+    compile 'org.broadinstitute:gatk-fermilite-jni:1.0.0-rc6'
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'

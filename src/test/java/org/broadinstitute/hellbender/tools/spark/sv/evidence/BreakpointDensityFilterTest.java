@@ -25,12 +25,12 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
 
     private static ReadMetadata initMetadata() {
         final ReadMetadata.PartitionBounds[] partitionBounds = new ReadMetadata.PartitionBounds[3];
-        partitionBounds[0] = new ReadMetadata.PartitionBounds(0, 1, 0, 10000);
-        partitionBounds[1] = new ReadMetadata.PartitionBounds(0, 10001, 0, 20000);
-        partitionBounds[2] = new ReadMetadata.PartitionBounds(0, 20001, 0, 30000);
+        partitionBounds[0] = new ReadMetadata.PartitionBounds(0, 1, 0, 10000, 9999);
+        partitionBounds[1] = new ReadMetadata.PartitionBounds(0, 10001, 0, 20000, 9999);
+        partitionBounds[2] = new ReadMetadata.PartitionBounds(0, 20001, 0, 30000, 9999);
         return new ReadMetadata(Collections.emptySet(), artificialSamHeader,
                                 new LibraryStatistics(IntHistogramTest.genLogNormalSample(350, 40, 10000).getCDF(),
-                                        60000000000L, 600000000L, 3000000000L),
+                                        60000000000L, 600000000L, 1200000000000L, 3000000000L),
                                 partitionBounds, 100, 10, 30);
     }
 
@@ -69,7 +69,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
     @Test(dataProvider = "simpleEvidenceClusters", groups = "sv")
     public void testGetBreakpointClusters(final List<BreakpointEvidence> evidenceList) {
 
-        BreakpointDensityFilter breakpointDensityFilter =
+        final BreakpointDensityFilter breakpointDensityFilter =
                 new BreakpointDensityFilter(evidenceList.iterator(), readMetadata, 3,
                         3, emptyCrossingChecker, 20);
 
@@ -91,7 +91,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
     @Test(dataProvider = "simpleEvidenceClusters", groups = "sv")
     public void testGetBreakpointClustersWithCoherentEvidence(final List<BreakpointEvidence> evidenceList) {
 
-        BreakpointDensityFilter breakpointDensityFilter =
+        final BreakpointDensityFilter breakpointDensityFilter =
                 new BreakpointDensityFilter(evidenceList.iterator(), readMetadata, 5,
                         3, emptyCrossingChecker, 20);
 
@@ -184,7 +184,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
         allPartitions.addAll(actualList0Clustered);
         allPartitions.addAll(actualList1Clustered);
         allPartitions.addAll(actualList2Clustered);
-        BreakpointDensityFilter breakpointDensityFilter =
+        final BreakpointDensityFilter breakpointDensityFilter =
                 new BreakpointDensityFilter(allPartitions.iterator(), readMetadata, 3,
                         3, emptyCrossingChecker, 20);
         final List<BreakpointEvidence> actualAllPartitions = new ArrayList<>();
@@ -211,12 +211,12 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
         final int fragmentLength = readMetadata.getMaxMedianFragmentSize();
         final PartitionCrossingChecker partitionCrossingChecker = partitionIdx < 0 ? new PartitionCrossingChecker() :
                 new PartitionCrossingChecker(partitionIdx,readMetadata,2*fragmentLength);
-        BreakpointEvidenceClusterer breakpointEvidenceClusterer =
+        final BreakpointEvidenceClusterer breakpointEvidenceClusterer =
                 new BreakpointEvidenceClusterer(fragmentLength, partitionCrossingChecker);
         final BreakpointEvidence sentinel = new BreakpointEvidence(new SVInterval(1,1,1),0,false);
-        FlatMapGluer<BreakpointEvidence, BreakpointEvidence> gluer =
+        final FlatMapGluer<BreakpointEvidence, BreakpointEvidence> gluer =
                 new FlatMapGluer<>(breakpointEvidenceClusterer,inputList.iterator(),sentinel);
-        List<BreakpointEvidence> outputList = new ArrayList<>();
+        final List<BreakpointEvidence> outputList = new ArrayList<>();
         while ( gluer.hasNext() ) {
             outputList.add(gluer.next());
         }
@@ -226,7 +226,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
     private List<BreakpointEvidence> filterList( final int partitionIdx, final List<BreakpointEvidence> inputList )  {
         final PartitionCrossingChecker crossingChecker =
                 new PartitionCrossingChecker(partitionIdx, readMetadata, readMetadata.getMaxMedianFragmentSize());
-        BreakpointDensityFilter breakpointDensityFilter =
+        final BreakpointDensityFilter breakpointDensityFilter =
                 new BreakpointDensityFilter(inputList.iterator(), readMetadata, 3,
                         3, crossingChecker, 20);
         final List<BreakpointEvidence> actualList = new ArrayList<>();

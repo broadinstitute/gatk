@@ -14,19 +14,21 @@ public final class LibraryStatistics {
     private final int median;
     private final float negativeMAD;
     private final float positiveMAD;
-    private int coverage;
-    private long nReads;
-    private float readStartFrequency; // measured in read starts per reference base
+    private final float coverage;
+    private final float meanBaseQuality;
+    private final long nReads;
+    private final float readStartFrequency; // measured in read starts per reference base
 
     public LibraryStatistics( final IntHistogram.CDF fragmentSizeCDF,
-                              final long nBases, final long nReads, final long nRefBases ) {
+                              final long nBases, final long nReads, final long totalBaseQuality, final long nRefBases ) {
         this.fragmentSizeCDF = fragmentSizeCDF;
         median = this.fragmentSizeCDF.median();
         negativeMAD = this.fragmentSizeCDF.leftMedianDeviation(median);
         positiveMAD = this.fragmentSizeCDF.rightMedianDeviation(median);
-        coverage = (int)((nBases+nRefBases/2)/nRefBases);
+        coverage = (float)nBases / nRefBases;
+        meanBaseQuality = (float)totalBaseQuality / nBases;
         this.nReads = nReads;
-        readStartFrequency = 1.f*nReads/nRefBases;
+        readStartFrequency = (float)nReads / nRefBases;
     }
 
     private LibraryStatistics( final Kryo kryo, final Input input ) {
@@ -34,14 +36,16 @@ public final class LibraryStatistics {
         median = fragmentSizeCDF.median();
         negativeMAD = fragmentSizeCDF.leftMedianDeviation(median);
         positiveMAD = fragmentSizeCDF.rightMedianDeviation(median);
-        coverage = input.readInt();
+        coverage = input.readFloat();
+        meanBaseQuality = input.readFloat();
         nReads = input.readLong();
         readStartFrequency = input.readFloat();
     }
 
     private void serialize( final Kryo kryo, final Output output ) {
         new IntHistogram.CDF.Serializer().write(kryo, output, fragmentSizeCDF);
-        output.writeInt(coverage);
+        output.writeFloat(coverage);
+        output.writeFloat(meanBaseQuality);
         output.writeLong(nReads);
         output.writeFloat(readStartFrequency);
     }
@@ -50,7 +54,8 @@ public final class LibraryStatistics {
     public int getMedian() { return median; }
     public float getNegativeMAD() { return negativeMAD; }
     public float getPositiveMAD() { return positiveMAD; }
-    public int getCoverage() { return coverage; }
+    public float getCoverage() { return coverage; }
+    public float getMeanBaseQuality() { return meanBaseQuality; }
     public long getNReads() { return nReads; }
     public float getReadStartFrequency() { return readStartFrequency; }
     public float getZishScore( final int fragmentSize ) {
