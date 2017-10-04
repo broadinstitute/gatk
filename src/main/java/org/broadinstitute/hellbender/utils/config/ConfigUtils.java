@@ -5,6 +5,7 @@ import org.aeonbits.owner.*;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -63,20 +64,24 @@ public final class ConfigUtils {
         // Grab the environment properties:
         final Map<String, String> environmentProperties = System.getenv();
 
-        // Make sure that if our property isn't in the system and environment
+        // Make sure that if our property isn't in the system, environment, and ConfigFactory
         // properties, that we set it to a neutral value that will not contain
         // anything (so that the property will fall back into the next value).
         for (final String property : filenameProperties) {
 
-            if ((!environmentProperties.keySet().contains(property)) &&
-                    (!systemProperties.containsKey(property))) {
-
-                logger.warn("Config path variable not found: " + property +
-                            " - setting value to default empty variable: " + NO_PATH_VARIABLE_VALUE);
-                ConfigFactory.setProperty(property, NO_PATH_VARIABLE_VALUE);
+            if ( environmentProperties.keySet().contains(property) ) {
+                logger.info("Config path variable found in Environment Properties: " + property + "=" + environmentProperties.get(property) + " - will search for config here.");
+            }
+            else if ( systemProperties.keySet().contains(property) ) {
+                logger.info("Config path variable found in System Properties: " + property + "=" + systemProperties.get(property) + " - will search for config here.");
+            }
+            else if ( ConfigFactory.getProperties().keySet().contains(property) ) {
+                logger.info("Config path variable found in Config Factory Properties(probably from the command-line): " + property + "=" + ConfigFactory.getProperty(property) + " - will search for config here.");
             }
             else {
-                logger.info("Config path variable found: " + property + " - will search for config here.");
+                logger.warn("Config path variable not found: " + property +
+                        " - setting value to default empty variable: " + NO_PATH_VARIABLE_VALUE);
+                ConfigFactory.setProperty(property, NO_PATH_VARIABLE_VALUE);
             }
         }
     }
@@ -417,9 +422,8 @@ public final class ConfigUtils {
         for ( int i = 0 ; i < args.length ; ++i ) {
             if (args[i].equals(configFileOption)) {
 
+                // Get the config file name:
                 if ( (i+1) < args.length ) {
-
-                    // Get and remove the specified config file:
                     configFileName = args[i+1];
                     break;
                 }
@@ -435,9 +439,52 @@ public final class ConfigUtils {
     }
 
     /**
+     * Removes the configuration file option, {@link StandardArgumentDefinitions#GATK_CONFIG_FILE_OPTION}, and the
+     * corresponding config file path from the given {@code args}.
+     * If the config file option is given and the file is not specified, throws a {@link UserException.BadInput}.
+     * Assumes that if {@code configFileOption} is given in {@code args}, the following item is the config file path.
+     * @param args The argument list from which to remove the config file option and config file path.
+     * @return An {@code Array} of {@link String} containing all arguments without the config file option and path.
+     */
+    public static String[] removeConfigOptionAndFileFromArgs( final String[] args ) {
+        return removeConfigOptionAndFileFromArgs(args, StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+    }
+
+    /**
+     * Removes the given {@code configFileOption}, and the corresponding config file path from the given {@code args}.
+     * If the config file option is given and the file is not specified, throws a {@link UserException.BadInput}.
+     * Assumes that if {@code configFileOption} is given in {@code args}, the following item is the config file path.
+     * @param args The argument list from which to remove the config file option and config file path.
+     * @param configFileOption The name of the option specifying a config file.
+     * @return An {@code Array} of {@link String} containing all arguments without the config file option and path.
+     */
+    public static String[] removeConfigOptionAndFileFromArgs( final String[] args, final String configFileOption ) {
+        final List<String> cleanArgs = new ArrayList<>(((args.length - 2) >= 0) ? args.length-2 : args.length);
+
+        for ( int i = 0; i < args.length; ++i) {
+            if ( args[i].equals(configFileOption) ) {
+                if ( (i + 1) < args.length ) {
+                    // Skip the config file:
+                    ++i;
+                }
+                else {
+                    // Option was provided, but no file was specified.
+                    // We cannot work under these conditions:
+                    throw new UserException.BadInput("ERROR: Configuration file not given after config file option specified: " + configFileOption);
+                }
+            }
+            else {
+                // Add our argument to the list:
+                cleanArgs.add( args[i] );
+            }
+        }
+
+        return cleanArgs.toArray(new String[cleanArgs.size()]);
+    }
+
+    /**
      * Get the configuration filename from the command-line (if it exists) and create a configuration for it.
      * Configuration type defaults to {@link GATKConfig}
-     * Removes the configuration filenames and configuration file options from the given {@code argList}.
      * Also sets system-level properties from the system config file.
      * @param argList The list of arguments from which to read the config file.
      * @param configFileOption The command-line option specifying the main configuration file.
@@ -453,7 +500,6 @@ public final class ConfigUtils {
 
     /**
      * Get the configuration from filename the command-line (if it exists) and create a configuration for it of the given type.
-     * Removes the configuration filenames and configuration file options from the given {@code argList}.
      * Also sets system-level properties from the system config file.
      * @param argList The list of arguments from which to read the config file.
      * @param configFileOption The command-line option specifying the main configuration file.
@@ -464,6 +510,7 @@ public final class ConfigUtils {
                                                                                       final Class<? extends T> configClass) {
         Utils.nonNull(argList);
         Utils.nonNull(configFileOption);
+        Utils.nonNull(configClass);
 
         // Get main config from args:
         final String configFileName = getConfigFilenameFromArgs( argList, configFileOption );

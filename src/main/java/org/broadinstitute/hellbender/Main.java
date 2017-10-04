@@ -103,7 +103,6 @@ public class Main {
     /**
      * Reads from the given command-line arguments, pulls out configuration options,
      * and initializes the configuration for this instance of Main.
-     * Returns the list of arguments without the config file option and config file path.
      *
      * Suggested use for this is to handle downstream project configuration options and overrides.
      * For example this would allow:
@@ -114,12 +113,15 @@ public class Main {
      * @param args The Array of command-line arguments.
      * @return A new Array of command-line arguments with the config file option and config file path removed.
      */
-    protected void parseArgsForConfigSetupAndGetNewArgs(final String[] args) {
+    protected static String[] parseArgsForConfigSetupAndGetNewArgs(final String[] args) {
         // Now we setup our configurations:
         // This method will modify the given argArrayList to remove the gatkConfigFileOption and value
         // if they are specified.  This is so that the later validation of commandline arguments can still
         // happen properly and so that we can have the configuration initialized as early as possible.
-        ConfigUtils.initializeConfigurationsFromCommandLineArgs(args, StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+        ConfigUtils.initializeConfigurationsFromCommandLineArgs(args, "--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+
+        return ConfigUtils.removeConfigOptionAndFileFromArgs( args, "--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION );
+
     }
 
     /**
@@ -144,8 +146,15 @@ public class Main {
      *
      */
     public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
-        return runCommandLineProgram(program, args);
+
+        // Parse our config file path from our arguments and
+        // create an arg array for the other methods to use that does
+        // not contain the config file entries (if they exist).
+        // Note: this must be here because the integration tests insert into main here.
+        final String[] cleanArgs = parseArgsForConfigSetupAndGetNewArgs(args);
+
+        final CommandLineProgram program = extractCommandLineProgram(cleanArgs, packageList, classList, commandLineName);
+        return runCommandLineProgram(program, cleanArgs);
     }
 
     /**
@@ -179,13 +188,16 @@ public class Main {
      */
     protected final void mainEntry(final String[] args) {
 
-        // Create an arg array for the other methods to use that does
+        // Parse our config file path from our arguments and
+        // create an arg array for the other methods to use that does
         // not contain the config file entries (if they exist):
-        parseArgsForConfigSetupAndGetNewArgs(args);
+        // Note: this must be here because the command-line invocation inserts into here:
+        final String[] cleanArgs = parseArgsForConfigSetupAndGetNewArgs(args);
 
-        final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
+        final CommandLineProgram program = extractCommandLineProgram(cleanArgs, getPackageList(), getClassList(), getCommandLineName());
+
         try {
-            final Object result = runCommandLineProgram(program, args);
+            final Object result = runCommandLineProgram(program, cleanArgs);
             handleResult(result);
             //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){

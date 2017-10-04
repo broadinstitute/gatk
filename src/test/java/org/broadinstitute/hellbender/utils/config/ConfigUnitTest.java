@@ -4,6 +4,7 @@ import org.aeonbits.owner.Accessible;
 import org.aeonbits.owner.Config;
 import org.aeonbits.owner.ConfigCache;
 import org.aeonbits.owner.ConfigFactory;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -87,6 +88,52 @@ public class ConfigUnitTest extends BaseTest {
                 {
                         new String[] {"--config"},
                         "--config",
+                },
+        };
+    }
+
+    @DataProvider
+    Object[][] createArgsAndConfigFileOptionsWithExpectedArgs() {
+        return new Object[][] {
+                {
+                        new String[] {"main","--zonfigurati","DUMMY_FILE","END"},
+                        "--config",
+                        new String[] {"main","--zonfigurati","DUMMY_FILE","END"},
+                },
+                {
+                        new String[] {"main","--config","DUMMY_FILE","END"},
+                        "--config",
+                        new String[] {"main","END"},
+                },
+                {
+                        new String[] {"main","END","--config","DUMMY_FILE"},
+                        "--config",
+                        new String[] {"main","END"},
+                },
+                {
+                        new String[] {"--config","DUMMY_FILE","main","END"},
+                        "--config",
+                        new String[] {"main","END"},
+                },
+                {
+                        new String[] {"main","--zonfigurati","DUMMY_FILE","END"},
+                        null,
+                        new String[] {"main","--zonfigurati","DUMMY_FILE","END"},
+                },
+                {
+                        new String[] {"main", StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,"DUMMY_FILE","END"},
+                        null,
+                        new String[] {"main","END"},
+                },
+                {
+                        new String[] {"main","END",StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,"DUMMY_FILE"},
+                        null,
+                        new String[] {"main","END"},
+                },
+                {
+                        new String[] {StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, "DUMMY_FILE","main","END"},
+                        null,
+                        new String[] {"main","END"},
                 },
         };
     }
@@ -580,5 +627,24 @@ public class ConfigUnitTest extends BaseTest {
         // This is `assertTrue` because of conflicting type comparisons:
         Assert.assertTrue(ConfigCache.get(ChildClassConfig.class) == null);
         Assert.assertTrue(ConfigCache.get(BasicTestConfigWithClassPathOverridesAndVariableFile.class) == null);
+    }
+
+    @Test(dataProvider = "createArgsAndConfigFileOptionsWithExpectedArgs")
+    void testRemoveConfigOptionAndFileFromArgs(final String[] args, final String configFileOption, final String[] expectedArgs) {
+
+        final String[] newArgs;
+
+        if ( configFileOption == null ) {
+            newArgs = ConfigUtils.removeConfigOptionAndFileFromArgs(args);
+        }
+        else {
+            newArgs = ConfigUtils.removeConfigOptionAndFileFromArgs(args, configFileOption);
+        }
+
+        Assert.assertEquals( newArgs, expectedArgs );
+    }
+    @Test(expectedExceptions = UserException.BadInput.class)
+    void testRemoveConfigOptionAndFileFromArgsWithException() {
+        ConfigUtils.removeConfigOptionAndFileFromArgs(new String[] {"main","END",StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION});
     }
 }
