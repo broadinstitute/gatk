@@ -409,7 +409,9 @@ task MergeVCFs {
   Int command_mem = machine_mem - 500
 
   command {
-    java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}.vcf
+    java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} MergeVcfs \
+      -I ${sep=' -I ' input_vcfs} \
+      -O ${output_vcf_name}.vcf
   }
 
   runtime {
