@@ -67,6 +67,7 @@ workflow Mutect2 {
   Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bam_index, "GB"))
   Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB") + size(gnomad_index, "GB")) else 0
   Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bam_index, "GB")) else 0
+  # If no tar is provided, the task downloads one from broads ftp server
   Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
   Int gatk4_override_size = if defined(gatk4_jar_override) then ceil(size(gatk4_jar_override, "GB")) else 0
 
@@ -105,7 +106,7 @@ workflow Mutect2 {
 
   # Size M2 differently based on if we are using NIO or not
   Int m2_output_size = tumor_bam_size / scatter_count
-  Int m2_nio_disk_size = (tumor_bam_size + normal_bam_size) / scatter_count + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
+  Int m2_nio_disk_size = ((tumor_bam_size + normal_bam_size) / scatter_count) + ref_size + (gnomad_vcf_size / scatter_count) + m2_output_size + disk_pad
   Int m2_no_nio_disk_size = tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
   Int m2_per_scatter_size = if defined(auth) then m2_nio_disk_size else m2_no_nio_disk_size
 
