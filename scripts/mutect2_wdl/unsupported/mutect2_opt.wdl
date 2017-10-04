@@ -99,8 +99,10 @@ workflow Mutect2 {
   }
 
   # Size M2 differently based on if we are using NIO or not
-  Int m2_scattered_size = (tumor_bam_size + normal_bam_size) / scatter_count + ref_size + gnomad_vcf_size + disk_pad + 10
-  Int m2_per_scatter_size = if defined(auth) then m2_scattered_size else tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + disk_pad + 10
+  Int m2_output_size = tumor_bam_size / scatter_count
+  Int m2_nio_disk_size = (tumor_bam_size + normal_bam_size) / scatter_count + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
+  Int m2_no_nio_disk_size = tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
+  Int m2_per_scatter_size = if defined(auth) then m2_nio_disk_size else m2_no_nio_disk_size
 
   scatter (subintervals in SplitIntervals.interval_files ) {
     call M2 {
