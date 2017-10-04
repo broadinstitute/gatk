@@ -2,12 +2,10 @@ package org.broadinstitute.hellbender.tools.spark.pathseq.loggers;
 
 import htsjdk.samtools.metrics.MetricBase;
 
-import java.io.Serializable;
-
 /**
  * Metrics that are calculated during the PathSeq filter
  */
-public final class PSFilterMetrics extends MetricBase implements Serializable {
+public final class PSFilterMetrics extends MetricBase {
 
     /**
      * Number of input reads that are not secondary or supplementary alignments

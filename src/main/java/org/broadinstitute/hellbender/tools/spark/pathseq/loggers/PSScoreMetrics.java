@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.tools.spark.pathseq.loggers;
 
 import htsjdk.samtools.metrics.MetricBase;
 
-import java.io.Serializable;
-
 /**
  * Metrics that are calculated during the PathSeq scoring
  */
 @SuppressWarnings("serial")
-public final class PSScoreMetrics extends MetricBase implements Serializable {
+public final class PSScoreMetrics extends MetricBase {
 
     /**
      * The number of non-host reads mapped to a pathogen
