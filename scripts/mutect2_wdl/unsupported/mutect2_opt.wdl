@@ -445,7 +445,11 @@ task CollectSequencingArtifactMetrics {
   command {
     # Sed'ing of the metrics file to make it GATK compatitble has been moved to the FilterByOrientationBias task
 
-    java -Xmx${command_mem}m -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="gatk" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
+    java -Xmx${command_mem}m -jar ${picard_jar} CollectSequencingArtifactMetrics \
+      I=${tumor_bam} \
+      O="gatk" \
+      R=${ref_fasta} \
+      VALIDATION_STRINGENCY=LENIENT
   }
 
   runtime {
