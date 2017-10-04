@@ -312,7 +312,7 @@ task M2 {
   # Do not populate this unless you know what you are doing...
   File? auth
 
-  command <<<
+  command {
   if [[ "${auth}" == *.json ]]; then
     gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
     GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
@@ -343,7 +343,7 @@ task M2 {
     -O "${output_vcf_name}.vcf" \
     ${true='--bamOutput bamout.bam' false='' is_bamOut} \
     ${m2_extra_args}
-  >>>
+  }
 
   runtime {
     docker: "${m2_docker}"
