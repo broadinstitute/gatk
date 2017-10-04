@@ -73,6 +73,9 @@ workflow Mutect2 {
   # This is added to every task as padding, should increase if systematically you need more disk for every call
   Int disk_pad = 10 + ceil(size(picard_jar, "GB")) + gatk4_override_size + select_first([emergency_extra_disk,0])
 
+  # These are multipliers to multipler inputs by to make sure we have enough disk to accomadate for possible output sizez
+  Float large_input_to_output_mulitplier = 2.5
+  Float small_input_to_output_mulitplier = 2
 
   call ProcessOptionalArguments {
     input:
@@ -83,7 +86,7 @@ workflow Mutect2 {
       docker = basic_bash_docker
   }
 
-  Int split_interval_size = ref_size + ceil(size(intervals, "GB") * 2) + disk_pad
+  Int split_interval_size = ref_size + ceil(size(intervals, "GB") * small_input_to_output_mulitplier) + disk_pad
 
   call SplitIntervals {
     input:
@@ -139,7 +142,7 @@ workflow Mutect2 {
 	  preemptible_attempts = preemptible_attempts,
   }
 
-  Int merge_vcf_size = ceil(SumSubVcfs.total_size * 2.5) + disk_pad
+  Int merge_vcf_size = ceil(SumSubVcfs.total_size * large_input_to_output_mulitplier) + disk_pad
 
   call MergeVCFs {
     input:
@@ -158,7 +161,7 @@ workflow Mutect2 {
   	    preemptible_attempts = preemptible_attempts,
     }
 
-    Int merge_bamout_size = ceil(SumSubBamouts.total_size * 2.5) + disk_pad
+    Int merge_bamout_size = ceil(SumSubBamouts.total_size * large_input_to_output_mulitplier) + disk_pad
 
     call MergeBamOuts {
       input:
@@ -192,7 +195,7 @@ workflow Mutect2 {
 
   # If contamination vcf is defined, run CalculateContamination
   if (defined(variants_for_contamination)) {
-    Int calculate_contam_size = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * 2) + disk_pad
+    Int calculate_contam_size = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_mulitplier) + disk_pad
     call CalculateContam {
       input:
         gatk4_jar_override = gatk4_jar_override,
@@ -208,7 +211,7 @@ workflow Mutect2 {
     }
   }
 
-  Int filter_size = ceil(size(MergeVCFs.output_vcf, "GB") * 2) + disk_pad
+  Int filter_size = ceil(size(MergeVCFs.output_vcf, "GB") * small_input_to_output_mulitplier) + disk_pad
 
   call Filter {
     input:
@@ -226,7 +229,7 @@ workflow Mutect2 {
   if (is_run_orientation_bias_filter) {
     # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
     File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
-    Int filter_by_orientation_bias_size = ceil(size(Filter.filtered_vcf, "GB") * 2) + ceil(size(input_artifact_metrics, "GB") * 2) + disk_pad
+    Int filter_by_orientation_bias_size = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_mulitplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad
 
     call FilterByOrientationBias {
       input:
@@ -243,8 +246,8 @@ workflow Mutect2 {
   }
 
   if (is_run_oncotator) {
-  	File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-    Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * 2) + onco_tar_size + disk_pad
+    File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+    Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_mulitplier) + onco_tar_size + disk_pad
 
     call OncotateM2 {
       input:
@@ -373,11 +376,11 @@ task ProcessOptionalArguments {
   String docker
 
   command {
-      if [[ "_${normal_bam}" == *.bam ]]; then
-        echo "${tumor_sample_name}-vs-${normal_sample_name}" > name.tmp
-      else
-        echo "${tumor_sample_name}-tumor-only" > name.tmp
-      fi
+    if [[ "_${normal_bam}" == *.bam ]]; then
+      echo "${tumor_sample_name}-vs-${normal_sample_name}" > name.tmp
+    else
+      echo "${tumor_sample_name}-tumor-only" > name.tmp
+    fi
   }
 
   runtime {
@@ -538,8 +541,8 @@ task Filter {
     fi
 
     java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} FilterMutectCalls -V ${unfiltered_vcf} \
-      	    -O ${output_vcf_name}-filtered.vcf ${"-contaminationTable " + contamination_table} \
-      	    ${m2_extra_filtering_args}
+      -O ${output_vcf_name}-filtered.vcf ${"-contaminationTable " + contamination_table} \
+      ${m2_extra_filtering_args}
   }
 
   runtime {
@@ -586,10 +589,10 @@ task FilterByOrientationBias {
 
     # Convert to GATK format
     sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
-     "${pre_adapter_metrics}" > "gatk.pre_adapter_detail_metrics"
+      "${pre_adapter_metrics}" > "gatk.pre_adapter_detail_metrics"
 
      java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
-        -V ${input_vcf} -P gatk.pre_adapter_detail_metrics --output "${output_vcf_name}-filtered.vcf"
+       -V ${input_vcf} -P gatk.pre_adapter_detail_metrics --output "${output_vcf_name}-filtered.vcf"
   }
 
   runtime {
@@ -627,7 +630,13 @@ task SplitIntervals {
     set -e
 
     mkdir interval-files
-    java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+
+    java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} SplitIntervals \
+      -R ${ref_fasta} \
+      ${"-L " + intervals} \
+      -scatter ${scatter_count} \
+      -O interval-files
+
     cp interval-files/*.intervals .
   }
 
@@ -668,7 +677,11 @@ task MergeBamOuts {
     #  Do not call this task if len(bam_outs) == 0
     set -e
 
-    java -Xmx${command_mem}m -jar ${picard_jar} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
+    java -Xmx${command_mem}m -jar ${picard_jar} GatherBamFiles \
+      I=${sep=" I=" bam_outs} \
+      O=${output_vcf_name}.out.bam \
+      R=${ref_fasta}
+
     samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
   >>>
 
