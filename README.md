@@ -214,7 +214,7 @@ You can download and run pre-built versions of GATK4 from the following places:
     in the [Google Developer's console](https://console.developers.google.com). You may need to have the "Allow API access to all Google Cloud services in the same project" option enabled (settable when you create a cluster).
   * You need to have installed the Google Cloud SDK from [here](https://cloud.google.com/sdk/), since
     `gatk-launch` invokes the `gcloud` tool behind-the-scenes. As part of the installation, be sure
-      that you follow the `gcloud` setup instructions [here](https://cloud.google.com/sdk/gcloud/).
+      that you follow the `gcloud` setup instructions [here](https://cloud.google.com/sdk/gcloud/). As this library is frequently updated by Google, we recommend updating your copy regularly to avoid any version-related difficulties.
   * Your inputs to the GATK when running on dataproc are typically in Google Cloud Storage buckets, and should be specified on
     your GATK command line using the syntax `gs://my-gcs-bucket/path/to/my-file`
   * You can run GATK4 jobs on Dataproc from your local computer or from the VM (master node) on the cloud.
