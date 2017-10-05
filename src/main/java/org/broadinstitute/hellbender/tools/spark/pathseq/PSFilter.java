@@ -228,6 +228,9 @@ public final class PSFilter implements AutoCloseable {
         //Clear alignment data from the reads
         reads = clearAllAlignments(reads, header);
 
+        //Remove /1 and /2 from read names
+        reads = reads.map(new ReadTransformerSparkifier(new StripMateNumberTransformer()));
+
         if (!filterArgs.skipFilters) {
 
             //Adapter trimming
