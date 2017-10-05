@@ -378,15 +378,25 @@ public final class SamAssertionUtils {
     private static void sortSam(final File input, final File output, final File reference, final ValidationStringency stringency) {
         final SortSam sort = new SortSam();
 
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-
-        args.addInput(input);
-        args.addOutput(output);
+        // We can't use ArgumentsBuilder since it assumes GATK argument names, but we're running a Picard
+        // tool, which uses upper case argument names.
+        final List<String> args = new ArrayList<>(6);
+        args.add("--INPUT");
+        args.add(input.getAbsolutePath());
+        args.add("--OUTPUT");
+        args.add(output.getAbsolutePath());
+        args.add("--SORT_ORDER");
+        args.add(SAMFileHeader.SortOrder.coordinate.name());
+        args.add("--VALIDATION_STRINGENCY");
+        args.add(stringency.name());
         if (reference != null) {
-            args.addReference(reference);
+            args.add("--REFERENCE_SEQUENCE");
+            args.add(reference.getAbsolutePath());
         }
 
-        args.addArgument("VALIDATION_STRINGENCY", stringency.name());
-        sort.instanceMain(args.getArgsArray());
+        int returnCode  = sort.instanceMain(args.toArray(new String[args.size()]));
+        if (returnCode != 0) {
+            throw new RuntimeException("Failure running SortSam on inputs");
+        }
     }
 }
