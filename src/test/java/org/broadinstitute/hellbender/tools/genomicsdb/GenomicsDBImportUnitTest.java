@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.mockito.internal.util.io.IOUtil;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,9 +13,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.SortedMap;
 
 public class GenomicsDBImportUnitTest extends BaseTest{
 
@@ -56,7 +55,7 @@ public class GenomicsDBImportUnitTest extends BaseTest{
         expected.put("Sample1", Paths.get("file1"));
         expected.put("Sample2", Paths.get("file2"));
         expected.put("Sample3", Paths.get("file3"));
-        final LinkedHashMap<String, Path> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        final SortedMap<String, Path> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
     }

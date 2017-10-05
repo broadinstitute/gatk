@@ -152,4 +152,8 @@ public final class ArgumentsBuilder {
         return String.join(" ", args);
     }
 
+    @Override
+    public String toString(){
+        return getString();
+    }
 }
