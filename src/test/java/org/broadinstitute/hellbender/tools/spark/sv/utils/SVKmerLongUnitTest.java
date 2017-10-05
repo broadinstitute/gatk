@@ -16,18 +16,18 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
  * Unit tests for SVKmerLong and SVKmerizer.
  */
 public class SVKmerLongUnitTest extends GATKBaseTest {
-    @Test
+    @Test(groups = "sv")
     public void testDefaultConstruction() {
         Assert.assertEquals(new SVKmerLong(10).toString(10), "AAAAAAAAAA");
         Assert.assertEquals(new SVKmerLong(11).toString(11), "AAAAAAAAAAA");
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = "sv")
     public void testDefaultConstructionWithTooLargeK() {
         final SVKmerLong tooBigK = new SVKmerLong(64);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = "sv")
     public void testDefaultConstructionWithTooSmallK() {
         final SVKmerLong tooSmallK = new SVKmerLong(0);
     }
@@ -39,13 +39,13 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "sequenceStrings")
+    @Test(dataProvider = "sequenceStrings", groups = "sv")
     public void testConstructionAndToString( final String str ) {
         Assert.assertEquals(str, SVKmerizer.toKmer(str,new SVKmerLong(str.length())).toString(str.length()));
         Assert.assertEquals(str, SVKmerizer.toKmer(str.getBytes(),new SVKmerLong(str.length())).toString(str.length()));
     }
 
-    @Test(dataProvider = "sequenceStrings")
+    @Test(dataProvider = "sequenceStrings", groups = "sv")
     public void testSuccessor( final String str ) {
         final int K = str.length();
         final StringBuilder sb = new StringBuilder(str);
@@ -61,7 +61,7 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
         Assert.assertEquals(sb.toString(), kkk.successor(SVKmerLong.Base.T, K).toString(K));
     }
 
-    @Test(dataProvider = "sequenceStrings")
+    @Test(dataProvider = "sequenceStrings", groups = "sv")
     public void testPredecessor( final String str ) {
         final int K = str.length();
         final StringBuilder sb = new StringBuilder(str);
@@ -77,7 +77,7 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
         Assert.assertEquals(sb.toString(), kkk.predecessor(SVKmerLong.Base.T, K).toString(K));
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testReverseComplementation() {
         Assert.assertEquals(SVKmerizer.toKmer("ACGTACGA",new SVKmerLong(8)).reverseComplement(8), SVKmerizer.toKmer("TCGTACGT",new SVKmerLong(8)));
         Assert.assertEquals(SVKmerizer.toKmer("ACGTACGTC",new SVKmerLong(9)).reverseComplement(9), SVKmerizer.toKmer("GACGTACGT",new SVKmerLong(9)));
@@ -86,13 +86,13 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
         Assert.assertEquals(SVKmerizer.toKmer("ACGTTCGTC",new SVKmerLong(9)).reverseComplement(9), SVKmerizer.toKmer("GACGAACGT",new SVKmerLong(9)));
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testCanonicalization() {
         Assert.assertEquals(SVKmerizer.toKmer("ACGTACGTC",new SVKmerLong(9)).canonical(9), SVKmerizer.toKmer("ACGTACGTC",new SVKmerLong(9)));
         Assert.assertEquals(SVKmerizer.toKmer("GACGTACGT",new SVKmerLong(9)).canonical(9), SVKmerizer.toKmer("ACGTACGTC",new SVKmerLong(9)));
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testComparison() {
         final SVKmerLong kkk1 = (SVKmerLong)SVKmerizer.toKmer("ACGTA",new SVKmerLong(5));
         final SVKmerLong kkk2 = (SVKmerLong)SVKmerizer.toKmer("ACGTC",new SVKmerLong(5));
@@ -102,13 +102,13 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
         Assert.assertTrue(kkk2.compareTo(kkk1) > 0);
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testHashCode() {
         Assert.assertNotEquals(SVKmerizer.toKmer("TAGCGTA",new SVKmerLong(7)).hashCode(), SVKmerizer.toKmer("TAGCGTC",new SVKmerLong(7)).hashCode());
         Assert.assertEquals(SVKmerizer.toKmer("TAGGGTC",new SVKmerLong(7)).hashCode(), SVKmerizer.toKmer("TAGGGTC",new SVKmerLong(7)).hashCode());
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testKmerization() {
         final SVKmerizer kmerizer = new SVKmerizer("AAAAATT", 5, 1, new SVKmerLong(7));
         Assert.assertTrue(kmerizer.hasNext());
@@ -120,7 +120,7 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
         Assert.assertTrue(!kmerizer.hasNext());
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testKmerizationAcrossN() {
         final SVKmerizer kmerizer = new SVKmerizer("AAAAANTTTTT", 5, 1, new SVKmerLong(11));
         Assert.assertTrue(kmerizer.hasNext());
@@ -131,7 +131,7 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
     }
 
 
-    @Test
+    @Test(groups = "sv")
     public void testLowComplexityFilteredKmerization() {
         final byte[] seq =
                 "CATAAAGCCTAAATAGCCCACACGTTCCCCTTAAATAAGACTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGGATCACGATGGATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGCAT".getBytes();

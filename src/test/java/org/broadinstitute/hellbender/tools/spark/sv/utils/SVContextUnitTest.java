@@ -41,7 +41,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * Tests {@link SVContext#of}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts")
+    @Test(dataProvider="validVariantContexts", groups = "sv")
     public void testCreate(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         Assert.assertNotNull(svc);
@@ -51,7 +51,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * Tests {@link SVContext#getStructuralVariantLength()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testLength(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final int length = svc.getStructuralVariantLength();
@@ -66,7 +66,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * Tests {@link SVContext#getStructuralVariantType()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testType(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final StructuralVariantType type = svc.getStructuralVariantType();
@@ -80,7 +80,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * Tests {@link SVContext#getInsertedSequence()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final byte[] actual = svc.getInsertedSequence();
@@ -91,7 +91,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * Tests {@link SVContext#getEnd()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testEnd(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         Assert.assertEquals(svc.getEnd(), vc.getEnd());
@@ -102,7 +102,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         final int paddingSize = 10;
@@ -120,7 +120,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testComposeAlternativeHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
@@ -154,7 +154,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testGetBreakPoints(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         testGetBreakPoints(vc, reference, 0);
         testGetBreakPoints(vc, reference, 10);
@@ -185,7 +185,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * Tests {@link SVContext#getSupportingContigIds()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testContigNames(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final List<String> actual = svc.getSupportingContigIds();
@@ -193,7 +193,7 @@ public class SVContextUnitTest extends GATKBaseTest {
         Assert.assertEquals(actual, expected);
     }
 
-    @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testTestOutputFileContent(final VariantContext vc, final ReferenceMultiSource reference, final String file) throws IOException {
         testCreate(vc, reference);
         testLength(vc, reference);

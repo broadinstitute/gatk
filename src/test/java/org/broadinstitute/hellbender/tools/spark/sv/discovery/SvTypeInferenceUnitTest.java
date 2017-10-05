@@ -26,7 +26,7 @@ public class SvTypeInferenceUnitTest extends GATKBaseTest {
 
     private static void seeIfItWorks_typeInference(final NovelAdjacencyReferenceLocations breakpoints,
                                                    final String expectedTypeString,
-                                                   final Set<String> expectedFlags) throws IOException {
+                                                   final Set<String> expectedFlags) {
 
         final SvType variant = SvTypeInference.inferFromNovelAdjacency(breakpoints);
         Assert.assertEquals(variant.toString(), expectedTypeString);

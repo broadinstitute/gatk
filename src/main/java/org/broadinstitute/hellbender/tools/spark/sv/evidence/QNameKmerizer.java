@@ -43,8 +43,7 @@ public final class QNameKmerizer implements Function<GATKRead, Iterator<Tuple2<K
         tupleList.clear();
         while ( names.hasNext() ) {
             final int intervalId = names.next().getIntervalId();
-            SVDUSTFilteredKmerizer.stream(read.getBases(), kSize, maxDUSTScore, new SVKmerLong())
-                    .map(kmer -> kmer.canonical(kSize))
+            SVDUSTFilteredKmerizer.canonicalStream(read.getBases(), kSize, maxDUSTScore, new SVKmerLong())
                     .filter(kmer -> !kmersToIgnore.contains(kmer))
                     .map(kmer -> new KmerAndInterval(kmer, intervalId))
                     .forEach(kmerCountAndInterval -> tupleList.add(new Tuple2<>(kmerCountAndInterval, 1)));

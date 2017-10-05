@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
+import org.broadinstitute.hellbender.tools.spark.sv.utils.KmerAndCount;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;

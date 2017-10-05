@@ -451,7 +451,7 @@ public final class CigarUtilsUnitTest {
         }
     }
 
-        @Test(dataProvider = "randomValidCigars")
+    @Test(dataProvider = "randomValidCigars")
     public void testReadLength(final Cigar cigar) {
         final int actual = CigarUtils.countUnclippedReadBases(cigar);
         final int expected = cigar.getCigarElements().stream()
@@ -476,5 +476,13 @@ public final class CigarUtilsUnitTest {
         return CigarTestUtils.randomValidCigars(new Random(13), 1_000,
                 10, 100, new Cigar()).stream()
                 .map(x -> new Object[] { x }).toArray(Object[][]::new);
+    }
+
+    @Test
+    public void testCountAlignedBases() {
+        Assert.assertEquals(CigarUtils.countAlignedBases(TextCigarCodec.decode("548M1215H")), 548);
+        Assert.assertEquals(CigarUtils.countAlignedBases(TextCigarCodec.decode("545H252M966H")), 252);
+        Assert.assertEquals(CigarUtils.countAlignedBases(TextCigarCodec.decode("797S966M")), 966);
+        Assert.assertEquals(CigarUtils.countAlignedBases(TextCigarCodec.decode("79H113M14D15M16D16M3I17M2I117M797H")), 278);
     }
 }

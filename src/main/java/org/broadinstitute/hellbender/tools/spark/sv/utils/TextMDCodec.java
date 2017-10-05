@@ -1,11 +1,11 @@
-package org.broadinstitute.hellbender.tools.spark.sv.evidence;
+package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class TextMDCodec {
+public final class TextMDCodec {
 
     /**
      * Regexp for MD string. Copied from htsjdk.samtools.util.SequenceUtil
@@ -21,7 +21,7 @@ public class TextMDCodec {
      */
     static final Pattern mdPat = Pattern.compile("\\G(?:([0-9]+)|([ACTGNactgn])|(\\^[ACTGNactgn]+))");
 
-    static List<MDElement> parseMDString(final String mdString) {
+    public static List<MDElement> parseMDString(final String mdString) {
         final List<MDElement> results = new ArrayList<>();
         final Matcher match = mdPat.matcher(mdString);
         while (match.find()) {
@@ -40,7 +40,7 @@ public class TextMDCodec {
         return results;
     }
 
-    abstract static class MDElement {
+    public abstract static class MDElement {
         final int length;
 
         public MDElement(final int length) {
@@ -65,7 +65,7 @@ public class TextMDCodec {
         }
     }
 
-    static class MatchMDElement extends MDElement {
+    public static class MatchMDElement extends MDElement {
 
 
         public MatchMDElement(final int length) {
@@ -78,7 +78,7 @@ public class TextMDCodec {
         }
     }
 
-    static class MismatchMDElement extends MDElement {
+    public static class MismatchMDElement extends MDElement {
 
         public MismatchMDElement() {
             super(1);
@@ -90,7 +90,7 @@ public class TextMDCodec {
         }
     }
 
-    static class DeletionMDElement extends MDElement {
+    public static class DeletionMDElement extends MDElement {
 
         public DeletionMDElement(final int length) {
             super(length);

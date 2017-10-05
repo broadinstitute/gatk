@@ -5,8 +5,11 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
@@ -18,9 +21,10 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.UncheckedIOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -34,6 +38,34 @@ public final class AlignedAssemblyOrExcuse {
     private final FermiLiteAssembly assembly;
     private final List<List<BwaMemAlignment>> contigAlignments;
     private final int secondsInAssembly;
+
+    public int getSecondsInAssembly() { return secondsInAssembly; }
+
+    public int getAssemblyId() {
+        return assemblyId;
+    }
+
+    /**
+     * Either this is null, or the assembly and list of alignments is null.
+     */
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public boolean isNotFailure() {
+        return errorMessage==null;
+    }
+
+    public FermiLiteAssembly getAssembly() {
+        return assembly;
+    }
+
+    /**
+     * List is equal in length to the number of contigs in the assembly.
+     */
+    public List<List<BwaMemAlignment>> getContigAlignments() {
+        return contigAlignments;
+    }
 
     public AlignedAssemblyOrExcuse( final int assemblyId, final String errorMessage ) {
         this.assemblyId = assemblyId;
@@ -89,123 +121,6 @@ public final class AlignedAssemblyOrExcuse {
                 contigAlignments.add(alignments);
             }
             this.contigAlignments = contigAlignments;
-        }
-    }
-
-    public int getSecondsInAssembly() { return secondsInAssembly; }
-
-    /**
-     * write a SAM file containing records for each aligned contig
-     */
-    static void writeSAMFile( final String samFile,
-                              final SAMFileHeader header,
-                              final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
-                              final boolean preOrdered ) {
-        try ( final SAMFileWriter writer = createSAMFileWriter(samFile, header, preOrdered) ) {
-            final List<String> refNames = getRefNames(header);
-            final String readGroup = getReadGroup(header);
-            alignedAssemblyOrExcuseList.stream()
-                    .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                    .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(header,refNames,readGroup))
-                    .forEach(writer::addAlignment);
-        } catch ( final UncheckedIOException ie) {
-            throw new GATKException("Can't write SAM file of aligned contigs.", ie);
-        }
-    }
-
-    private static String getReadGroup(final SAMFileHeader header) {
-        Set<String> readGroupIds = header.getReadGroups().stream().map(SAMReadGroupRecord::getId).collect(Collectors.toSet());
-        Utils.validate(readGroupIds.size() == 1, "SAM header for contig alignments should contain a single read group definition");
-        return readGroupIds.iterator().next();
-    }
-
-    private static SAMFileWriter createSAMFileWriter(final String samFile, final SAMFileHeader header, final boolean preOrdered) {
-        final SAMFileWriterFactory factory = new SAMFileWriterFactory();
-        final int lastDotIndex = samFile.lastIndexOf('.');
-        if (lastDotIndex >= 0) {
-            final String extension = samFile.substring(lastDotIndex).toLowerCase();
-            if (extension.equals(BamFileIoUtils.BAM_FILE_EXTENSION)) {
-                return factory.makeBAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
-            } else {
-                // default to writing sam
-                return factory.makeSAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
-            }
-        } else {
-            throw new GATKException("cannot determine the alignment file format from its name: " + samFile);
-        }
-    }
-
-    public static List<String> getRefNames(final SAMFileHeader header) {
-        return header.getSequenceDictionary().getSequences().stream()
-                .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
-    }
-
-    public static Stream<SAMRecord> toSAMStreamForOneContig(final SAMFileHeader header, final List<String> refNames,
-                                                            final String readGroup, final int assemblyId, final int contigIdx,
-                                                            final byte[] contigSequence, final List<BwaMemAlignment> alignments) {
-        if ( alignments.isEmpty() ) return Stream.empty();
-
-        final String readName = formatContigName(assemblyId, contigIdx);
-        final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
-
-        return alignments.stream()
-                .map(alignment -> {
-                    final SAMRecord samRecord =
-                            BwaMemAlignmentUtils.applyAlignment(readName, contigSequence, null, null, alignment,
-                                    refNames, header, false, false);
-                    final String saTag = saTagMap.get(alignment);
-                    if ( saTag != null ) samRecord.setAttribute("SA", saTag);
-                    if (readGroup != null) samRecord.setAttribute( "RG", readGroup);
-                    return samRecord;
-                });
-    }
-
-    public static String formatContigName(final int assemblyId, final int contigIdx) {
-        return formatAssemblyID(assemblyId) + ":" + formatContigID(contigIdx);
-    }
-
-    public static String formatAssemblyID(final int assemblyId) {
-        return String.format("asm%06d", assemblyId);
-    }
-
-    private static String formatContigID(final int contigIdx) {
-        return String.format("tig%05d", contigIdx);
-    }
-
-    /**
-     * write a file describing each interval
-     */
-    public static void writeIntervalFile( final String intervalFile,
-                                          final SAMFileHeader header,
-                                          final List<SVInterval> intervals,
-                                          final List<AlignedAssemblyOrExcuse> intervalDispositions ) {
-        final Map<Integer, AlignedAssemblyOrExcuse> resultsMap = new HashMap<>();
-        intervalDispositions.forEach(alignedAssemblyOrExcuse ->
-                resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
-
-        try ( final OutputStreamWriter writer =
-                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile))) ) {
-            final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
-            final int nIntervals = intervals.size();
-            for ( int intervalId = 0; intervalId != nIntervals; ++intervalId ) {
-                final SVInterval interval = intervals.get(intervalId);
-                final String seqName = contigs.get(interval.getContig()).getSequenceName();
-                final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse = resultsMap.get(intervalId);
-                final String disposition;
-                if ( alignedAssemblyOrExcuse == null ) {
-                    disposition = "unknown";
-                } else if ( alignedAssemblyOrExcuse.getErrorMessage() != null ) {
-                    disposition = alignedAssemblyOrExcuse.getErrorMessage();
-                } else {
-                    disposition = "produced " + alignedAssemblyOrExcuse.getAssembly().getNContigs() +
-                            " contigs in " + alignedAssemblyOrExcuse.getSecondsInAssembly() + " secs.";
-                }
-                writer.write(intervalId + "\t" +
-                        seqName + ":" + interval.getStart() + "-" + interval.getEnd() + "\t" +
-                        disposition + "\n");
-            }
-        } catch ( final IOException ioe ) {
-            throw new GATKException("Can't write intervals file " + intervalFile, ioe);
         }
     }
 
@@ -285,40 +200,6 @@ public final class AlignedAssemblyOrExcuse {
                 mateRefId, mateRefStart, templateLen);
     }
 
-    public int getAssemblyId() {
-        return assemblyId;
-    }
-
-    /**
-     * Either this is null, or the assembly and list of alignments is null.
-     */
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public boolean isNotFailure() {
-        return errorMessage==null;
-    }
-
-    public FermiLiteAssembly getAssembly() {
-        return assembly;
-    }
-
-    /**
-     * List is equal in length to the number of contigs in the assembly.
-     */
-    public List<List<BwaMemAlignment>> getContigAlignments() {
-        return contigAlignments;
-    }
-
-    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames, final String readGroup) {
-        Utils.validate(isNotFailure(), "Can't stream SAM records from a failed assembly.");
-        return IntStream.range(0, contigAlignments.size()).boxed()
-                .flatMap(contigIdx ->
-                        toSAMStreamForOneContig(header, refNames, readGroup, assemblyId, contigIdx,
-                                assembly.getContig(contigIdx).getSequence(), contigAlignments.get(contigIdx)));
-    }
-
     private void serialize( final Kryo kryo, final Output output ) {
         output.writeInt(assemblyId);
         output.writeString(errorMessage);
@@ -358,5 +239,115 @@ public final class AlignedAssemblyOrExcuse {
         public AlignedAssemblyOrExcuse read( final Kryo kryo, final Input input, final Class<AlignedAssemblyOrExcuse> klass ) {
             return new AlignedAssemblyOrExcuse(kryo, input);
         }
+    }
+
+    // =================================================================================================================
+
+    public static Stream<SAMRecord> toSAMStreamForOneContig(final SAMFileHeader header, final List<String> refNames,
+                                                            final SAMReadGroupRecord contigAlignmentsReadGroup,
+                                                            final int assemblyId, final int contigIdx,
+                                                            final byte[] contigSequence, final List<BwaMemAlignment> alignments) {
+        if ( alignments.isEmpty() ) return Stream.empty();
+
+        final String readName = formatContigName(assemblyId, contigIdx);
+        final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
+
+        return alignments.stream()
+                .map(alignment -> {
+                    final SAMRecord samRecord =
+                            BwaMemAlignmentUtils.applyAlignment(readName, contigSequence, null, null, alignment,
+                                    refNames, header, false, false);
+                    final String saTag = saTagMap.get(alignment);
+                    if ( saTag != null ) samRecord.setAttribute(SAMTag.SA.name(), saTag);
+                    if (contigAlignmentsReadGroup != null) samRecord.setAttribute( SAMTag.RG.name(), contigAlignmentsReadGroup.getId());
+                    return samRecord;
+                });
+    }
+
+    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames,
+                                                                     final SAMReadGroupRecord contigAlignmentsReadGroup) {
+        return IntStream.range(0, contigAlignments.size()).boxed()
+                .flatMap(contigIdx ->
+                        BwaMemAlignmentUtils.toSAMStreamForRead(formatContigName(assemblyId, contigIdx),
+                                assembly.getContig(contigIdx).getSequence(), contigAlignments.get(contigIdx),
+                                header, refNames, contigAlignmentsReadGroup)
+                        );
+    }
+
+    public static String formatContigName( final int assemblyId, final int contigIdx ) {
+        return formatAssemblyID(assemblyId) + ":" + formatContigID(contigIdx);
+    }
+
+    public static String formatAssemblyID( final int assemblyId ) {
+        return String.format("asm%06d", assemblyId);
+    }
+
+    private static String formatContigID( final int contigIdx ) {
+        return String.format("tig%05d", contigIdx);
+    }
+
+    /**
+     * write a file describing each interval
+     */
+    public static void writeIntervalFile( final String intervalFile,
+                                          final SAMFileHeader header,
+                                          final List<SVInterval> intervals,
+                                          final List<AlignedAssemblyOrExcuse> intervalDispositions ) {
+        Utils.validate(intervalFile != null && header != null && intervals != null && intervalDispositions != null,
+                "At least one of the arguments is null.");
+
+        final Map<Integer, AlignedAssemblyOrExcuse> resultsMap = new HashMap<>();
+        intervalDispositions.forEach(alignedAssemblyOrExcuse ->
+                resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
+
+        try ( final OutputStreamWriter writer =
+                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile))) ) {
+            final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
+            final int nIntervals = intervals.size();
+            for ( int intervalIdx = 0; intervalIdx != nIntervals; ++intervalIdx ) {
+                final SVInterval interval = intervals.get(intervalIdx);
+                Utils.nonNull(interval, "interval is null for " + intervalIdx);
+                final String seqName = contigs.get(interval.getContig()).getSequenceName();
+                final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse = resultsMap.get(intervalIdx);
+                final String disposition;
+                if ( alignedAssemblyOrExcuse == null ) {
+                    disposition = "unknown";
+                } else if ( alignedAssemblyOrExcuse.getErrorMessage() != null ) {
+                    disposition = alignedAssemblyOrExcuse.getErrorMessage();
+                } else {
+                    disposition = "produced " + alignedAssemblyOrExcuse.getAssembly().getNContigs() +
+                            " contigs in " + alignedAssemblyOrExcuse.getSecondsInAssembly() + " secs.";
+                }
+                writer.write(intervalIdx + "\t" +
+                        seqName + ":" + interval.getStart() + "-" + interval.getEnd() + "\t" +
+                        disposition + "\n");
+            }
+        } catch ( final IOException ioe ) {
+            throw new UserException.CouldNotCreateOutputFile("Can't write intervals file " + intervalFile, ioe);
+        }
+    }
+
+    /**
+     * write a SAM file containing records for each aligned contig
+     */
+    static void writeAssemblySAMFile(final String outputAssembliesFile,
+                                     final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
+                                     final SAMFileHeader header,
+                                     final SAMFileHeader.SortOrder assemblyAlnSortOrder) {
+
+        final String sampleId = SVUtils.getSampleId(header);
+        final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
+        contigAlignmentsReadGroup.setSample(sampleId);
+
+        final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
+        cleanHeader.addReadGroup(contigAlignmentsReadGroup);
+        cleanHeader.setSortOrder(assemblyAlnSortOrder);
+
+        final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(cleanHeader.getSequenceDictionary());
+        final Stream<SAMRecord> samRecordStream =
+                alignedAssemblyOrExcuseList.stream().filter(AlignedAssemblyOrExcuse::isNotFailure)
+                        .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(cleanHeader, refNames, contigAlignmentsReadGroup));
+        SVFileUtils.writeSAMFile(outputAssembliesFile, samRecordStream.iterator(), cleanHeader,
+                assemblyAlnSortOrder == SAMFileHeader.SortOrder.queryname);
     }
 }

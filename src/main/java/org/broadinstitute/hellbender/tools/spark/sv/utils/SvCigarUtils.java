@@ -377,4 +377,5 @@ public final class SvCigarUtils {
 
         return readWalkDist;
     }
+
 }

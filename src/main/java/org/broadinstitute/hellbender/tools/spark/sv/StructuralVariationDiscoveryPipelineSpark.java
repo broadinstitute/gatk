@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,6 +24,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvide
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
@@ -90,7 +92,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults =
                 FindBreakpointEvidenceSpark
                         .gatherEvidenceAndWriteContigSamFile(ctx,
-                                sampleId,
                                 evidenceAndAssemblyArgs,
                                 header,
                                 getUnfilteredReads(),
@@ -182,7 +183,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                                                                    final JavaSparkContext ctx) {
 
             final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-            final List<String> refNames = AlignedAssemblyOrExcuse.getRefNames(header);
+            final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(header.getSequenceDictionary());
 
             return ctx.parallelize(alignedAssemblyOrExcuseList)
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
@@ -193,9 +194,13 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                 final int nContigs = assembly.getNContigs();
                                 return IntStream.range(0, nContigs)
                                         .mapToObj(contigIdx ->
-                                                AlignedAssemblyOrExcuse.toSAMStreamForOneContig(cleanHeader, refNames,
-                                                        SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID, assemblyId, contigIdx, assembly.getContig(contigIdx).getSequence(),
-                                                        allAlignmentsOfThisAssembly.get(contigIdx))
+                                                BwaMemAlignmentUtils.toSAMStreamForRead(
+                                                        AlignedAssemblyOrExcuse.formatContigName(assemblyId, contigIdx),
+                                                        assembly.getContig(contigIdx).getSequence(),
+                                                        allAlignmentsOfThisAssembly.get(contigIdx),
+                                                        cleanHeader, refNames,
+                                                        new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID)
+                                                )
                                         ).iterator();
                             }
                     )
