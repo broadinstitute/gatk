@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -11,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkPipelineProgramG
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.bwa.BwaArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -41,10 +43,8 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
     @Override
     public boolean requiresReference() { return true; }
 
-    @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
-            fullName = "bwamemIndexImage",
-            optional = true)
-    private String indexImageFile;
+    @ArgumentCollection
+    public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
     @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
@@ -55,7 +55,7 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        try (final BwaSparkEngine engine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary())) {
+        try (final BwaSparkEngine engine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary())) {
             final JavaRDD<GATKRead> alignedReads = engine.alignPaired(getReads());
             final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, engine.getHeader(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
             final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);

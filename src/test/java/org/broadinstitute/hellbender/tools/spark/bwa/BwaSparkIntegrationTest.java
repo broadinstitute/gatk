@@ -32,7 +32,7 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         args.addArgument("shardedOutput", "true");
         args.add("numReducers=1");
         args.addOutput(output);
-        args.addFileArgument( BwaSpark.BWA_MEM_INDEX_IMAGE_FULL_NAME, getTestFile("ref.fa.img"));
+        args.addFileArgument(BwaArgumentCollection.BWA_MEM_INDEX_IMAGE_FULL_NAME, getTestFile("ref.fa.img"));
         this.runCommandLine(args.getArgsArray());
 
         SamAssertionUtils.assertSamsEqual(new File(output, "part-r-00000.bam"), expectedSam);
@@ -54,7 +54,7 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         args.addArgument("shardedOutput", "true");
         args.add("numReducers=1");
         args.addOutput(output);
-        args.add("--" + BwaSpark.SINGLE_END_ALIGNMENT_FULL_NAME);
+        args.add("--" + BwaArgumentCollection.SINGLE_END_ALIGNMENT_FULL_NAME);
         this.runCommandLine(args.getArgsArray());
 
         SamAssertionUtils.assertSamsEqual(new File(output, "part-r-00000.bam"), expectedSam);
