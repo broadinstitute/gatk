@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
+import com.google.common.collect.Lists;
 import com.intel.genomicsdb.GenomicsDBImporter;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -13,9 +14,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.SortedMap;
+import java.util.*;
+import java.util.stream.Collectors;
+
 
 public class GenomicsDBImportUnitTest extends BaseTest{
 
@@ -55,7 +56,7 @@ public class GenomicsDBImportUnitTest extends BaseTest{
         expected.put("Sample1", Paths.get("file1"));
         expected.put("Sample2", Paths.get("file2"));
         expected.put("Sample3", Paths.get("file3"));
-        final SortedMap<String, Path> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        final Map<String, Path> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
     }

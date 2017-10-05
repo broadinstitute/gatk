@@ -268,7 +268,7 @@ public final class GenomicsDBImport extends GATKTool {
             mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
         } else {
             // --sampleNameMap was specified
-            sampleNameToVcfPath = loadSampleNameMapFile(IOUtils.getPath(sampleNameMapFile));
+            sampleNameToVcfPath = new TreeMap<>(loadSampleNameMapFile(IOUtils.getPath(sampleNameMapFile)));
             final Path firstHeaderPath = sampleNameToVcfPath.entrySet().iterator().next().getValue();
             final VCFHeader header = getHeaderFromPath(firstHeaderPath);
             mergedHeaderLines = header.getMetaDataInInputOrder();
@@ -297,14 +297,14 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     @VisibleForTesting
-    static SortedMap<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
+    public static Map<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
         try {
             final List<String> lines = Files.readAllLines(sampleToFileMapPath);
             if (lines.isEmpty()) {
                 throw new UserException.BadInput( "At least 1 sample is required but none were found in the sample mapping file");
             }
 
-            final SortedMap<String, Path> sampleToFilename = new TreeMap<>();
+            final Map<String, Path> sampleToFilename = new LinkedHashMap<>();
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
                 if (split.length != 2
