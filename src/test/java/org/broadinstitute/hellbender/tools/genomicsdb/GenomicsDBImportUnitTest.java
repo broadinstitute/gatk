@@ -17,6 +17,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.SortedMap;
 
 public class GenomicsDBImportUnitTest extends BaseTest{
 
@@ -56,7 +57,7 @@ public class GenomicsDBImportUnitTest extends BaseTest{
         expected.put("Sample1", Paths.get("file1"));
         expected.put("Sample2", Paths.get("file2"));
         expected.put("Sample3", Paths.get("file3"));
-        final LinkedHashMap<String, Path> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        final SortedMap<String, Path> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
     }

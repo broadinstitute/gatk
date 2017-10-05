@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.intel.genomicsdb.ChromosomeInterval;
 import com.intel.genomicsdb.GenomicsDBCallsetsMapProto;
 import com.intel.genomicsdb.GenomicsDBImportConfiguration;
@@ -29,7 +30,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -197,8 +197,8 @@ public final class GenomicsDBImport extends GATKTool {
     // Intervals from command line (singleton for now)
     private List<ChromosomeInterval> intervals;
 
-    // Linked hash map between sample names and corresponding GVCF file name
-    private LinkedHashMap<String, Path> sampleNameToVcfPath = new LinkedHashMap<>();
+    // Sorted mapping between sample names and corresponding GVCF file name
+    private SortedMap<String, Path> sampleNameToVcfPath = new TreeMap<>();
 
     // Needed as smartMergeHeaders() returns a set of VCF header lines
     private Set<VCFHeaderLine> mergedHeaderLines = null;
@@ -291,14 +291,14 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     @VisibleForTesting
-    static LinkedHashMap<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
+    static SortedMap<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
         try {
             final List<String> lines = Files.readAllLines(sampleToFileMapPath);
             if (lines.isEmpty()) {
                 throw new UserException.BadInput( "At least 1 sample is required but none were found in the sample mapping file");
             }
 
-            final LinkedHashMap<String, Path> sampleToFilename = new LinkedHashMap<>(lines.size());
+            final SortedMap<String, Path> sampleToFilename = new TreeMap<>();
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
                 if (split.length != 2
@@ -345,10 +345,7 @@ public final class GenomicsDBImport extends GATKTool {
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
         logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
-        // Passing in false here so that sample names will be sorted.
-        // This is needed for consistent ordering across partitions/machines
-        callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfPath.keySet()), false);
-
+        callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfPath.keySet()), true);
         initializeInputPreloadExecutorService();
     }
 
@@ -449,9 +446,9 @@ public final class GenomicsDBImport extends GATKTool {
      * @param lowerSampleIndex  0-based Lower bound of sample index -- inclusive
      * @return  Feature readers to be imported in the current batch
      */
-    private Map<String, FeatureReader<VariantContext>> getFeatureReadersInParallel(final LinkedHashMap<String, Path> sampleNametoPath,
+    private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersInParallel(final SortedMap<String, Path> sampleNametoPath,
                                                                                    final int batchSize, final int lowerSampleIndex) {
-        final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
+        final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap = new TreeMap<>();
         logger.info("Starting batch input file preload");
         final List<Future<FeatureReader<VariantContext>>> futures = new ArrayList<>();
         final List<String> sampleNames = new ArrayList<>(sampleNametoPath.keySet());

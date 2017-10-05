@@ -199,33 +199,35 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testSampleMappingFileInsteadOfVCFs() throws IOException {
-        final File sampleNameFile = createTempSampleMapFile();
+    public void testSampleMappingFileInsteadOfVCFsWithMultipleBatches() throws IOException {
+        final File sampleNameFile = createOutOfOrderTempSampleMapFile();
 
         final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleNameFile.getAbsolutePath())
                 .addArgument("L", IntervalUtils.locatableToString(INTERVAL))
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace);
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace)
+                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, "2");
 
         runCommandLine(args);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED);
     }
 
-    private static File createTempSampleMapFile() {
+    private static File createOutOfOrderTempSampleMapFile() {
         final String sampleFileContents =
-                "HG00096\t" + HG_00096 +"\n" +
                 "HG00268\t"+ HG_00268 + "\n" +
-                "NA19625\t"+ NA_19625;
+                "NA19625\t"+ NA_19625 + "\n" +
+                "HG00096\t" +HG_00096;
+
         return IOUtils.writeTempFile(sampleFileContents, "sampleNameMap", ".txt");
     }
 
     @Test(expectedExceptions = CommandLineException.class)
     public void testCantSpecifyVCFAndSampleNameFile(){
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createTempSampleMapFile().getAbsolutePath())
+                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createOutOfOrderTempSampleMapFile().getAbsolutePath())
                 .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, HG_00096)
                 .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, createTempDir("workspace").getAbsolutePath())
                 .addArgument("L",  IntervalUtils.locatableToString(INTERVAL));
