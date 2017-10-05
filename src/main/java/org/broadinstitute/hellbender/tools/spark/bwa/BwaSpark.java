@@ -35,7 +35,8 @@ public final class BwaSpark extends GATKSparkTool {
 
     @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
             fullName = BWA_MEM_INDEX_IMAGE_FULL_NAME,
-            shortName = BWA_MEM_INDEX_IMAGE_SHORT_NAME )
+            shortName = BWA_MEM_INDEX_IMAGE_SHORT_NAME,
+            optional = true)
     private String indexImageFile;
 
     @Argument(doc = "run single end instead of paired-end alignment",
@@ -57,7 +58,7 @@ public final class BwaSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         try ( final BwaSparkEngine engine =
-                      new BwaSparkEngine(ctx, indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
+                      new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
             final JavaRDD<GATKRead> reads = !singleEndAlignment ? engine.alignPaired(getReads()) : engine.alignUnpaired(getReads());
 
             try {

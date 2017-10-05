@@ -54,7 +54,6 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         args.addArgument("shardedOutput", "true");
         args.add("numReducers=1");
         args.addOutput(output);
-        args.addFileArgument("bwaMemIndexImage", getTestFile("ref.fa.img"));
         args.add("--" + BwaSpark.SINGLE_END_ALIGNMENT_FULL_NAME);
         this.runCommandLine(args.getArgsArray());
 
