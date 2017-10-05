@@ -199,7 +199,7 @@ public final class GenomicsDBImport extends GATKTool {
 
     // Sorted mapping between sample names and corresponding GVCF file name
     //
-    // This must be sorted or it will result in sample name swaps in the output database.
+    // IMPORTANT: This must be sorted or it will result in sample name swaps in the output database.
     // This happens because the callset json is generated independently from the import process
     // each imported batch is then sorted, so if we have an unsorted list we'll end up with different global vs batch
     // sorting.
@@ -351,7 +351,7 @@ public final class GenomicsDBImport extends GATKTool {
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
         logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
-        //use the given order so this is consistent with the batch importing
+        //Pass in true here to use the given ordering, since sampleNameToVcfPath is already sorted
         callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfPath.keySet()), true);
         initializeInputPreloadExecutorService();
     }

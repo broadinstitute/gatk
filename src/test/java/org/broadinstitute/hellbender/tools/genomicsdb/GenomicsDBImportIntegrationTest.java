@@ -230,12 +230,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             results.add(new Object[] {new ArgumentsBuilder()
                     .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
                     .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)});
+
+            //out of order sample map with multiple threads
+            results.add(new Object[] {new ArgumentsBuilder()
+                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                    .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)
+                    .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, "2")});
         }
         return results.iterator();
     }
 
     @Test(dataProvider = "getOrderingTests")
-    public void testOrdering(final ArgumentsBuilder args) throws IOException {
+    public void testSampleNameOrdering(final ArgumentsBuilder args) throws IOException {
         final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
 
         args.addArgument("L", IntervalUtils.locatableToString(INTERVAL))
