@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.utils.reference;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequence;
-import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -17,10 +16,8 @@ import org.testng.annotations.Test;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
@@ -58,8 +55,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
     public void testEmptyReference() throws IOException {
         final File testOutput = createTempFile("fwr-test", ".fasta");
         Assert.assertTrue(testOutput.delete());
-        try {
-            new FastaReferenceWriter(testOutput.toPath(), false, false).close();
+        try (final FastaReferenceWriter writer = new FastaReferenceWriter(testOutput.toPath(), false, false)) {
         } finally {
             Assert.assertTrue(testOutput.delete());
         }
@@ -70,7 +66,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         final File testOutput = createTempFile("fwr-test", ".fasta");
         Assert.assertTrue(testOutput.delete());
         final FastaReferenceWriter writer = new FastaReferenceWriter(testOutput.toPath(), false, false);
-        writer.startSequence("seq1").appendBases(new byte[]{'A', 'C', 'G', 'T'});
+        writer.startSequence("seq1").appendBases(new byte[] { 'A', 'C', 'G', 'T'});
         writer.close();
         try {
             writer.startSequence("seq2");
@@ -84,7 +80,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         final File testOutput = createTempFile("fwr-test", ".fasta");
         Assert.assertTrue(testOutput.delete());
         final FastaReferenceWriter writer = new FastaReferenceWriter(testOutput.toPath(), false, false);
-        writer.startSequence("seq1").appendBases(new byte[]{'A', 'C', 'G', 'T'});
+        writer.startSequence("seq1").appendBases(new byte[] { 'A', 'C', 'G', 'T'});
         writer.close();
         try {
             writer.appendBases(new byte[]{'A', 'A', 'A'});
@@ -96,16 +92,12 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
     @Test(dataProvider = "invalidBplData", expectedExceptions = IllegalArgumentException.class)
     public void testBadDefaultBasesPerLine(final int invalidBpl) throws IOException {
         final File testOutput = createTempFile("fwr-test", ".fasta");
-        final File testIndexOutput = ReferenceSequenceFileFactory.getFastaIndexFileName(testOutput.toPath()).toFile();
-        final File testDictOutput = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(testOutput);
         Assert.assertTrue(testOutput.delete());
         try {
-            new FastaReferenceWriter(testOutput.toPath(), invalidBpl, true, true);
+            new FastaReferenceWriter(testOutput.toPath(), invalidBpl, false, false);
         } finally {
-            // make sure that no output file was created:
-            Assert.assertFalse(testOutput.delete());
-            Assert.assertFalse(testIndexOutput.delete());
-            Assert.assertFalse(testDictOutput.delete());
+            @SuppressWarnings("unused")  // it might create it or it might not.
+            final boolean dummy = testOutput.delete();
         }
     }
 
@@ -199,25 +191,27 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
     @DataProvider(name = "invalidBplData")
     public Object[][] invalidBplData() {
         return IntStream.of(0, -1, -110)
-                .mapToObj(i -> new Object[]{i}).toArray(Object[][]::new);
+                .mapToObj(i -> new Object[] { i }).toArray(Object[][]::new);
     }
 
     @DataProvider(name = "invalidNameData")
     public Object[][] invalidNameData() {
         return Stream.of("seq with spaces", "seq\twith\ttabs", "with blank", " ", "", "nnn\n", "rrr\r", null)
-                .map(s -> new Object[]{s}).toArray(Object[][]::new);
+                .map(s -> new Object[] {s}).toArray(Object[][]::new);
     }
 
     @DataProvider(name = "invalidDescriptionData")
     public Object[][] invalidDescriptionData() {
         return Stream.of("\nwith control chars\nthat are not\0tabs\r", "with the null\0", "with nl\n")
-                .map(s -> new Object[]{s}).toArray(Object[][]::new);
+                .map(s -> new Object[] {s}).toArray(Object[][]::new);
     }
+
+
 
     @Test(dataProvider = "testData")
     public void testWriter(final SAMSequenceDictionary dictionary, final boolean withIndex, final boolean withDictionary,
                            final boolean withDescriptions, final int defaultBpl,
-                           final int minBpl, final int maxBpl, final int seed)
+                                        final int minBpl, final int maxBpl, final int seed)
             throws IOException, GeneralSecurityException, URISyntaxException {
         final Map<String, byte[]> bases = new LinkedHashMap<>(dictionary.getSequences().size());
         final Map<String, Integer> bpl = new LinkedHashMap<>(dictionary.getSequences().size());
@@ -241,71 +235,6 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         Assert.assertEquals(dictFile.delete(), withDictionary);
     }
 
-    @Test
-    public void testSingleSequenceStatic() throws IOException, GeneralSecurityException, URISyntaxException {
-        final File testOutputFile = createTempFile("fwr-test", ".random0.fasta");
-        final Map<String, byte[]> seqs = Collections.singletonMap("seqA", new RandomDNA(1341).nextBases(100));
-        final Map<String, Integer> bpls = Collections.singletonMap("seqA", 42);
-        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(
-                Collections.singletonList(new SAMSequenceRecord("seqA", 100))
-        );
-        FastaReferenceWriter.writeSingleSequenceReference(testOutputFile.toPath(), 42,
-                true, true, "seqA", null, seqs.get("seqA"));
-        assertOutput(testOutputFile.toPath(), true, true, false, dictionary, 42, seqs, bpls);
-        Assert.assertTrue(testOutputFile.delete());
-        Assert.assertTrue(ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(testOutputFile).delete());
-        Assert.assertTrue(ReferenceSequenceFileFactory.getFastaIndexFileName(testOutputFile.toPath()).toFile().delete());
-    }
-
-    @Test
-    public void testAlternativeIndexAndDictFileNames() throws IOException, GeneralSecurityException, URISyntaxException {
-        final File testOutputFile = createTempFile("fwr-test", ".random0.fasta");
-        final File testIndexOutputFile = createTempFile("fwr-test", ".random1.fai");
-        final File testDictOutputFile = createTempFile("fwr-test", ".random2.dict");
-        final SAMSequenceDictionary testDictionary = new SAMSequenceDictionary(
-                Collections.singletonList(new SAMSequenceRecord("seq1", 100))
-        );
-        final Map<String, byte[]> seqs = Collections.singletonMap("seq1", new RandomDNA(1341).nextBases(100));
-        final Map<String, Integer> bpls = Collections.singletonMap("seq1", -1);
-        try (final FastaReferenceWriter writer = new FastaReferenceWriter(testOutputFile.toPath(), testIndexOutputFile.toPath(), testDictOutputFile.toPath())) {
-            writer.startSequence("seq1");
-            writer.appendBases(seqs.get("seq1"));
-        }
-        assertFastaContent(testOutputFile.toPath(), false, testDictionary, -1, seqs, bpls);
-        assertFastaIndexContent(testOutputFile.toPath(), testIndexOutputFile.toPath(), testDictionary, seqs);
-        assertFastaDictionaryContent(testDictOutputFile.toPath(), testDictionary);
-        Assert.assertTrue(testOutputFile.delete());
-        Assert.assertTrue(testIndexOutputFile.delete());
-        Assert.assertTrue(testDictOutputFile.delete());
-    }
-
-    @Test
-    public void testDirectOutputStreams() throws IOException, GeneralSecurityException, URISyntaxException {
-        final File testOutputFile = createTempFile("fwr-test", ".random0.fasta");
-        final File testIndexOutputFile = createTempFile("fwr-test", ".random1.fai");
-        final File testDictOutputFile = createTempFile("fwr-test", ".random2.dict");
-        final SAMSequenceDictionary testDictionary = new SAMSequenceDictionary(
-                Collections.singletonList(new SAMSequenceRecord("seq1", 100))
-        );
-        final Map<String, byte[]> seqs = Collections.singletonMap("seq1", new RandomDNA(1341).nextBases(100));
-        final Map<String, Integer> bpls = Collections.singletonMap("seq1", -1);
-        try (final OutputStream testOutputStream = new FileOutputStream(testOutputFile);
-             final OutputStream testIndexOutputStream = new FileOutputStream(testIndexOutputFile);
-             final OutputStream testDictOutputStream = new FileOutputStream(testDictOutputFile)) {
-            try (final FastaReferenceWriter writer = new FastaReferenceWriter(testOutputStream, 50, testIndexOutputStream, testDictOutputStream)) {
-                writer.startSequence("seq1");
-                writer.appendBases(seqs.get("seq1"));
-            }
-        }
-        assertFastaContent(testOutputFile.toPath(), false, testDictionary, 50, seqs, bpls);
-        assertFastaIndexContent(testOutputFile.toPath(), testIndexOutputFile.toPath(), testDictionary, seqs);
-        assertFastaDictionaryContent(testDictOutputFile.toPath(), testDictionary);
-        Assert.assertTrue(testOutputFile.delete());
-        Assert.assertTrue(testIndexOutputFile.delete());
-        Assert.assertTrue(testDictOutputFile.delete());
-    }
-
-
     private void generateRandomBasesAndBpls(SAMSequenceDictionary dictionary, int minBpl, int maxBpl, Map<String, byte[]> bases, Map<String, Integer> bpl, Random rdn) {
         final RandomDNA rdnDNA = new RandomDNA(rdn.nextLong());
         // We avoid to use the obvious first choice {@link RandomDNA#nextFasta} as these may actually use
@@ -321,31 +250,32 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
     }
 
     private void writeReference(final FastaReferenceWriter writer, final boolean withDescriptions,
-                                final Random rdn, final SAMSequenceDictionary dictionary,
-                                final Map<String, byte[]> seqs,
-                                final Map<String, Integer> basesPerLine)
-            throws IOException {
+                               final Random rdn, final SAMSequenceDictionary dictionary,
+                               final Map<String, byte[]> seqs,
+                               final Map<String, Integer> basesPerLine)
+        throws IOException
+    {
         for (final SAMSequenceRecord sequence : dictionary.getSequences()) {
             final int bpl = basesPerLine.get(sequence.getSequenceName());
             if (withDescriptions) {
-                final String description = String.format("index=%d\tlength=%d",
-                        dictionary.getSequenceIndex(sequence.getSequenceName()),
-                        sequence.getSequenceLength());
-                if (bpl < 0) {
-                    Assert.assertSame(writer.startSequence(sequence.getSequenceName(), description), writer);
-                } else {
-                    Assert.assertSame(writer.startSequence(sequence.getSequenceName(), description, bpl), writer);
-                }
+               final String description = String.format("index=%d\tlength=%d",
+                            dictionary.getSequenceIndex(sequence.getSequenceName()),
+                            sequence.getSequenceLength());
+               if (bpl < 0) {
+                   writer.startSequence(sequence.getSequenceName(), description);
+               } else {
+                   writer.startSequence(sequence.getSequenceName(), description, bpl);
+               }
             } else {
                 if (bpl < 0) {
-                    Assert.assertSame(writer.startSequence(sequence.getSequenceName()), writer);
+                    writer.startSequence(sequence.getSequenceName());
                 } else {
-                    Assert.assertSame(writer.startSequence(sequence.getSequenceName(), bpl), writer);
+                    writer.startSequence(sequence.getSequenceName(), bpl);
                 }
             }
             final boolean onOneGo = rdn.nextDouble() < 0.25; // 25% of times we just write the whole sequence of one go.
             if (onOneGo) {
-                Assert.assertSame(writer.appendBases(seqs.get(sequence.getSequenceName())), writer);
+                writer.appendBases(seqs.get(sequence.getSequenceName()));
             } else {
                 int done = 0;
                 while (done < seqs.get(sequence.getSequenceName()).length) {
@@ -374,24 +304,25 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
             throws GeneralSecurityException, IOException, URISyntaxException {
         assertFastaContent(path, withDescriptions, dictionary, defaultBpl, bases, basesPerLine);
         if (mustHaveDictionary) {
-            assertFastaDictionaryContent(ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(path), dictionary);
+            assertFastaDictionaryContent(path, dictionary);
         }
         if (mustHaveIndex) {
-            assertFastaIndexContent(path, ReferenceSequenceFileFactory.getFastaIndexFileName(path), dictionary, bases);
+            assertFastaIndexContent(path, dictionary, bases, basesPerLine);
         }
     }
 
 
     private void assertFastaContent(final Path path, final boolean withDescriptions, final SAMSequenceDictionary dictionary, final int defaultBpl,
                                     final Map<String, byte[]> bases, final Map<String, Integer> basesPerLine)
-            throws IOException {
+        throws IOException
+    {
         try (final BufferedReader reader = new BufferedReader(new InputStreamReader(path.getFileSystem().provider().newInputStream(path)))) {
             for (final SAMSequenceRecord sequence : dictionary.getSequences()) {
                 final String description = String.format("index=%d\tlength=%d",
                         dictionary.getSequenceIndex(sequence.getSequenceName()), sequence.getSequenceLength());
                 final String expectedHeader =
                         FastaReferenceWriter.HEADER_START_CHAR + sequence.getSequenceName()
-                                + ((withDescriptions) ? FastaReferenceWriter.HEADER_NAME_AND_DESCRIPTION_SEPARATOR + description : "");
+                        + ((withDescriptions) ? FastaReferenceWriter.HEADER_NAME_AND_DESCRIPTION_SEPARATOR + description : "");
                 Assert.assertEquals(reader.readLine(), expectedHeader);
                 final byte[] expectedBases = bases.get(sequence.getSequenceName());
                 final int bpl_ = basesPerLine.get(sequence.getSequenceName());
@@ -399,7 +330,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
                 int offset = 0;
                 while (offset < expectedBases.length) {
                     final int expectedLength = Math.min(expectedBases.length - offset, bpl);
-                    final byte[] expectedBaseLine = SequenceUtil.upperCase(Arrays.copyOfRange(expectedBases, offset, offset + expectedLength));
+                    final byte[] expectedBaseLine = SequenceUtil.upperCase(Arrays.copyOfRange(expectedBases, offset , offset + expectedLength));
                     final byte[] actualBaseLine = SequenceUtil.upperCase(reader.readLine().getBytes());
                     Assert.assertEquals(actualBaseLine, expectedBaseLine);
                     offset += expectedLength;
@@ -408,11 +339,11 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         }
     }
 
-    private void assertFastaIndexContent(final Path path, final Path indexPath, final SAMSequenceDictionary dictionary,
-                                         final Map<String, byte[]> bases)
-            throws IOException {
-        final FastaSequenceIndex index = new FastaSequenceIndex(indexPath);
-        final IndexedFastaSequenceFile indexedFasta = new IndexedFastaSequenceFile(path, index);
+    private void assertFastaIndexContent(final Path path, final SAMSequenceDictionary dictionary,
+                                    final Map<String, byte[]> bases, final Map<String, Integer> basesPerLine)
+        throws IOException
+    {
+        final IndexedFastaSequenceFile indexedFasta = new IndexedFastaSequenceFile(path);
         for (final SAMSequenceRecord sequence : dictionary.getSequences()) {
             final String name = sequence.getSequenceName();
             final int length = sequence.getSequenceLength();
@@ -422,19 +353,20 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
             final ReferenceSequence middle = indexedFasta.getSubsequenceAt(name, middlePos, Math.min(middlePos + 29, length));
             Assert.assertEquals(start.getBases(), Arrays.copyOfRange(bases.get(name), 0, start.length()));
             Assert.assertEquals(end.getBases(), Arrays.copyOfRange(bases.get(name), Math.max(0, length - 30), length));
-            Assert.assertEquals(middle.getBases(), Arrays.copyOfRange(bases.get(name), middlePos - 1, middlePos - 1 + middle.length()));
+            Assert.assertEquals(middle.getBases(), Arrays.copyOfRange(bases.get(name), middlePos - 1, middlePos -1 + middle.length()));
         }
     }
 
-    private void assertFastaDictionaryContent(final Path dictPath, final SAMSequenceDictionary dictionary)
+    private void assertFastaDictionaryContent(final Path path, final SAMSequenceDictionary dictionary)
             throws IOException, GeneralSecurityException, URISyntaxException {
+        final Path dictPath = path.resolveSibling(path.getFileName().toString().replaceAll("\\.(fa|fasta)",".dict"));
         final ReadsDataSource readsDataSource = new ReadsDataSource(dictPath);
         final SAMFileHeader actualHeader = readsDataSource.getHeader();
         final SAMSequenceDictionary actualDictionary = actualHeader.getSequenceDictionary();
         dictionary.assertSameDictionary(actualDictionary);
     }
 
-    @DataProvider(name = "testData")
+    @DataProvider(name="testData")
     public Object[][] testData() {
         // data-signature: (SAMSequenceDictionary dictionary, boolean withDescriptions, int defaultBpl, int minBpl, int maxBpl, int seed
         // defaultBpl == -1 means to use the default {@link FastaReferenceWriter#DEFAULT_BASE_PER_LINE}.
@@ -442,17 +374,17 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
         final Random rdn = new Random(113);
         final SAMSequenceDictionary typicalDictionary = new SAMSequenceDictionary(
                 Arrays.asList(new SAMSequenceRecord("chr1", 10_000),
-                        new SAMSequenceRecord("chr2", 20_000),
-                        new SAMSequenceRecord("chr3", 20_000),
-                        new SAMSequenceRecord("chr4", 2_000),
-                        new SAMSequenceRecord("chr5", 200),
-                        new SAMSequenceRecord("chr6", 3_010),
-                        new SAMSequenceRecord("X", 1_000)
-                ));
+                              new SAMSequenceRecord("chr2", 20_000),
+                              new SAMSequenceRecord("chr3", 20_000),
+                              new SAMSequenceRecord("chr4", 2_000),
+                              new SAMSequenceRecord("chr5", 200),
+                              new SAMSequenceRecord("chr6", 3_010),
+                              new SAMSequenceRecord("X", 1_000)
+        ));
 
         final SAMSequenceDictionary manyBPLMatchingSequences = new SAMSequenceDictionary(
                 IntStream.range(0, 100)
-                        .mapToObj(i -> new SAMSequenceRecord("" + (i + 1), FastaReferenceWriter.DEFAULT_BASES_PER_LINE * (rdn.nextInt(10) + 1)))
+                        .mapToObj(i -> new SAMSequenceRecord("" + (i + 1), FastaReferenceWriter.DEFAULT_BASES_PER_LINE * (rdn.nextInt(10) + 1) ))
                         .collect(Collectors.toList())
         );
 
@@ -465,12 +397,12 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
                 new SAMSequenceRecord("MT", 1))
         );
 
-        final SAMSequenceDictionary[] testDictionaries = new SAMSequenceDictionary[]{typicalDictionary, manyBPLMatchingSequences, singleSequence, oneBaseSequencesContaining};
-        final int[] testBpls = new int[]{-1, FastaReferenceWriter.DEFAULT_BASES_PER_LINE, 1, 100, 51, 63};
-        final boolean[] testWithDescriptions = new boolean[]{true, false};
-        final boolean[] testWithIndex = new boolean[]{true, false};
-        final boolean[] testWithDictionary = new boolean[]{true, false};
-        final int[] testSeeds = new int[]{31, 113, 73};
+        final SAMSequenceDictionary[] testDictionaries = new SAMSequenceDictionary[] {typicalDictionary, manyBPLMatchingSequences, singleSequence, oneBaseSequencesContaining};
+        final int[] testBpls = new int[] { -1 , FastaReferenceWriter.DEFAULT_BASES_PER_LINE, 1, 100, 51, 63};
+        final boolean[] testWithDescriptions = new boolean[] { true, false};
+        final boolean[] testWithIndex = new boolean[] { true, false};
+        final boolean[] testWithDictionary = new boolean[] { true, false};
+        final int[] testSeeds = new int [] { 31, 113, 73 };
         final List<Object[]> result = new ArrayList<>();
         for (final SAMSequenceDictionary dictionary : testDictionaries) {
             for (final boolean withIndex : testWithIndex) {
@@ -485,7 +417,7 @@ public class FastaReferenceWriterUnitTest extends GATKBaseTest {
                 }
             }
         }
-        return result.toArray(new Object[result.size()][]);
+        return result.stream().toArray(Object[][]::new);
     }
 
 }
