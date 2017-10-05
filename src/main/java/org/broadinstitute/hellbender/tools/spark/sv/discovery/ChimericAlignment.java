@@ -8,10 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
 
@@ -104,8 +101,8 @@ public class ChimericAlignment {
 
         this.strandSwitch = determineStrandSwitch(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig);
 
-        this.isForwardStrandRepresentation = isForwardStrandRepresentation(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig,
-                this.strandSwitch, involvesRefPositionSwitch(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig));
+        this.isForwardStrandRepresentation =
+                isForwardStrandRepresentation(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig, strandSwitch);
 
         this.insertionMappings = insertionMappings;
     }
@@ -210,18 +207,26 @@ public class ChimericAlignment {
     }
 
     /**
-     * Determine if the region that maps to a lower coordinate on the contig also maps to a lower coordinate on the reference.
+     * An SV event could be detected from a contig that seem originate from the forward or reverse strand of the reference,
+     * besides the annotation that the alignment flanking regions might flank either side of the two breakpoints.
      */
     @VisibleForTesting
-    static boolean involvesRefPositionSwitch(final AlignmentInterval regionWithLowerCoordOnContig,
-                                             final AlignmentInterval regionWithHigherCoordOnContig) {
+    static boolean isForwardStrandRepresentation(final AlignmentInterval regionWithLowerCoordOnContig,
+                                                 final AlignmentInterval regionWithHigherCoordOnContig,
+                                                 final StrandSwitch strandSwitch) {
 
-        return regionWithHigherCoordOnContig.referenceSpan.getStart() < regionWithLowerCoordOnContig.referenceSpan.getStart();
+        switch (strandSwitch) {
+            case NO_SWITCH: return regionWithLowerCoordOnContig.forwardStrand;
+            case FORWARD_TO_REVERSE: return regionWithLowerCoordOnContig.referenceSpan.getEnd() < regionWithHigherCoordOnContig.referenceSpan.getEnd();
+            case REVERSE_TO_FORWARD: return regionWithLowerCoordOnContig.referenceSpan.getStart() < regionWithHigherCoordOnContig.referenceSpan.getStart();
+            default: throw new IllegalArgumentException("Seeing unexpected strand switch case: " + strandSwitch.name());
+        }
     }
 
-    // TODO: 12/15/16 simple translocations are defined here and at this time as inter-chromosomal ones and
-    //                intra-chromosomal translocations that involve strand switch
-    //                to get the 2nd case right, we need evidence flanking both sides of the inversion, and that could be difficult
+    // TODO: 12/15/16 simple translocations are defined here and at this time as
+    //                1) inter-chromosomal ones and
+    //                2) intra-chromosomal translocations that DOES NOT involve strand switch
+    //                To get the 2nd case right, we need evidence flanking both sides of the inversion, and that could be difficult
     // TODO: 1/17/17 this is used for filtering out possible translocations that we are not currently handling,
     //                but it overkills some insertions where the inserted sequence maps to chromosomes other than that of the flanking regions
     /**
@@ -229,40 +234,27 @@ public class ChimericAlignment {
      * DOES NOT involve a strand switch.
      */
     @VisibleForTesting
-    public static boolean isNotSimpleTranslocation(final AlignmentInterval regionWithLowerCoordOnContig,
-                                                   final AlignmentInterval regionWithHigherCoordOnContig,
-                                                   final StrandSwitch strandSwitch,
-                                                   final boolean involvesReferenceIntervalSwitch) {
-        // logic is: must be the same reference chromosome for it not to be an inter-chromosomal translocation
-        //           and when regions are mapped to the same reference chromosome, there cannot be reference position swap
-        final boolean sameChromosome = regionWithLowerCoordOnContig.referenceSpan.getContig()
-                                       .equals(regionWithHigherCoordOnContig.referenceSpan.getContig());
-        return sameChromosome
-                &&
-                (strandSwitch!=StrandSwitch.NO_SWITCH
-                        || involvesReferenceIntervalSwitch == !regionWithLowerCoordOnContig.forwardStrand);
-    }
+    static boolean isLikelySimpleTranslocation(final AlignmentInterval regionWithLowerCoordOnContig,
+                                               final AlignmentInterval regionWithHigherCoordOnContig,
+                                               final StrandSwitch strandSwitch) {
 
-    /**
-     * An SV event could be detected from a contig that seem originate from the forward or reverse strand of the reference,
-     * besides the annotation that the alignment flanking regions might flank either side of the two breakpoints.
-     */
-    @VisibleForTesting
-    static boolean isForwardStrandRepresentation(final AlignmentInterval regionWithLowerCoordOnContig,
-                                                 final AlignmentInterval regionWithHigherCoordOnContig,
-                                                 final StrandSwitch strandSwitch,
-                                                 final boolean involvesReferenceIntervalSwitch) {
+        if (!regionWithLowerCoordOnContig.referenceSpan.getContig()
+                .equals(regionWithHigherCoordOnContig.referenceSpan.getContig()))
+            return true;
 
-        if (strandSwitch == StrandSwitch.NO_SWITCH) {
-            return regionWithLowerCoordOnContig.forwardStrand && regionWithHigherCoordOnContig.forwardStrand;
+        if (strandSwitch.equals(StrandSwitch.NO_SWITCH)) {
+            if (regionWithLowerCoordOnContig.forwardStrand) {
+                return regionWithLowerCoordOnContig.referenceSpan.getStart() > regionWithHigherCoordOnContig.referenceSpan.getStart();
+            } else {
+                return regionWithLowerCoordOnContig.referenceSpan.getEnd() < regionWithHigherCoordOnContig.referenceSpan.getEnd();
+            }
         } else {
-            return !involvesReferenceIntervalSwitch;
+            return false;
         }
     }
 
     public boolean isNotSimpleTranslocation() {
-        return isNotSimpleTranslocation(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig, strandSwitch,
-                                        involvesRefPositionSwitch(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig));
+        return !isLikelySimpleTranslocation(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig, strandSwitch);
     }
 
     Tuple2<SimpleInterval, SimpleInterval> getCoordSortedReferenceSpans() {
