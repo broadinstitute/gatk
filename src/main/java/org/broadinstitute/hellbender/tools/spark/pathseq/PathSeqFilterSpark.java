@@ -102,17 +102,4 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         filter.close();
     }
 
-    private void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads,
-                            final SAMFileHeader header) {
-        try {
-            ReadsSparkSink.writeReads(ctx, outputFile,
-                    hasReference() ? referenceArguments.getReferenceFile().getAbsolutePath() : null,
-                    reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                    getRecommendedNumReducers());
-        } catch (IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile,"writing failed", e);
-        }
-    }
-
-
 }

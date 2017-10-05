@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.bwa;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -23,27 +24,13 @@ public final class BwaSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
-    public static final String SINGLE_END_ALIGNMENT_FULL_NAME = "singleEndAlignment";
-    public static final String SINGLE_END_ALIGNMENT_SHORT_NAME = "SE";
-    public static final String BWA_MEM_INDEX_IMAGE_FULL_NAME = "bwaMemIndexImage";
-    public static final String BWA_MEM_INDEX_IMAGE_SHORT_NAME = "image";
-
     @Argument(doc = "the output bam",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String output;
 
-    @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
-            fullName = BWA_MEM_INDEX_IMAGE_FULL_NAME,
-            shortName = BWA_MEM_INDEX_IMAGE_SHORT_NAME,
-            optional = true)
-    private String indexImageFile;
-
-    @Argument(doc = "run single end instead of paired-end alignment",
-              fullName = SINGLE_END_ALIGNMENT_FULL_NAME,
-              shortName = SINGLE_END_ALIGNMENT_SHORT_NAME,
-              optional = true)
-    private boolean singleEndAlignment = false;
+    @ArgumentCollection
+    public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
     @Override
     public boolean requiresReference() {
@@ -58,8 +45,8 @@ public final class BwaSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         try ( final BwaSparkEngine engine =
-                      new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
-            final JavaRDD<GATKRead> reads = !singleEndAlignment ? engine.alignPaired(getReads()) : engine.alignUnpaired(getReads());
+                      new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
+            final JavaRDD<GATKRead> reads = !bwaArgs.singleEndAlignment ? engine.alignPaired(getReads()) : engine.alignUnpaired(getReads());
 
             try {
                 ReadsSparkSink.writeReads(ctx, output, null, reads, engine.getHeader(),

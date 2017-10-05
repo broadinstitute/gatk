@@ -42,6 +42,8 @@ public abstract class GATKBaseTest extends BaseTest {
 
     public static final String b37_2bit_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.2bit";
 
+    public static final String b37_reference_20_21_img = largeFileTestDir + "human_g1k_v37.20.21.fasta.img";
+
     // All of chromosomes 20 and 21 from the b38 reference
     public static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
 
