@@ -203,7 +203,7 @@ public final class GenomicsDBImport extends GATKTool {
     // This happens because the callset json is generated independently from the import process
     // each imported batch is then sorted, so if we have an unsorted list we'll end up with different global vs batch
     // sorting.
-    // We presumptively sort here so we will have consistent sorting.
+    // We preemptively sort here so we will have consistent sorting.
     private SortedMap<String, Path> sampleNameToVcfPath = new TreeMap<>();
 
     // Needed as smartMergeHeaders() returns a set of VCF header lines
