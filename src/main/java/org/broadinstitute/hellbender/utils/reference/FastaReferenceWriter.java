@@ -60,7 +60,7 @@ import java.util.stream.Collectors;
  *     </ul>
  * </p>
  */
-public class FastaReferenceWriter implements AutoCloseable {
+public final class FastaReferenceWriter implements AutoCloseable {
 
     /**
      * Default number of bases per line.
@@ -295,7 +295,8 @@ public class FastaReferenceWriter implements AutoCloseable {
             return "";
         } else {
             for (int i = 0; i < description.length(); i++) {
-                Utils.validateArg(Character.isISOControl(description.charAt(i)), "the input name contains control characters: '" + StringUtils.escape(description) + "'");
+                final char c = description.charAt(i);
+                Utils.validateArg(!Character.isISOControl(c) || c == '\t', "the input name contains non-tap control characters: '" + StringUtils.escape(description) + "'");
             }
             return description;
         }
@@ -304,7 +305,6 @@ public class FastaReferenceWriter implements AutoCloseable {
     private static int checkBasesPerLine(final int value) {
         return ParamUtils.isPositive(value, "base per line must be 1 or greater");
     }
-
 
     /**
      * Starts the input of the bases of a new sequence.
@@ -440,9 +440,9 @@ public class FastaReferenceWriter implements AutoCloseable {
      * @param description optional description for that sequence.
      * @param basesPerLine number of bases per line for this sequence.
      * @return this instance.
-     * @throws IllegalArgumentException if any argument does not comply with requirements listed above or if a sequence
-     *  with the same name has already been added to the writer.
-     * @throws IllegalStateException if no base was added to the previous base or the writer is already closed.
+     * @throws IllegalArgumentException if any argument does not comply with requirements listed above.
+     * @throws IllegalStateException if no base was added to the previous base or the writer is already closed of
+     *         the sequence has been already added.
      * @throws IOException if such exception is thrown when writing into the output resources.
      */
     public FastaReferenceWriter startSequence(final String sequenceName, final String description, final int basesPerLine)
@@ -454,8 +454,8 @@ public class FastaReferenceWriter implements AutoCloseable {
         final String nonNullDescription = checkDescription(description);
         checkBasesPerLine(basesPerLine);
         closeSequence();
-        if (sequenceNamesAndSizes.containsKey(currentSequenceName)) {
-            throw new IllegalArgumentException("the input sequence name '" + sequenceName + "' has already been added");
+        if (sequenceNamesAndSizes.containsKey(sequenceName)) {
+            throw new IllegalStateException("the input sequence name '" + sequenceName + "' has already been added");
         }
         currentSequenceName = sequenceName;
         currentBasesPerLine = basesPerLine;
@@ -481,6 +481,7 @@ public class FastaReferenceWriter implements AutoCloseable {
             sequenceNamesAndSizes.put(currentSequenceName, currentBasesCount);
             fastaStream.write(LINE_SEPARATOR);
             currentBasesCount = 0;
+            currentLineBasesCount = 0;
         }
     }
 
@@ -490,7 +491,9 @@ public class FastaReferenceWriter implements AutoCloseable {
         indexWriter.append(currentSequenceName).append('\t')
                      .append(String.valueOf(currentBasesCount)).append('\t')
                      .append(String.valueOf(currentSequenceOffset)).append('\t')
+                     .append(String.valueOf(currentBasesPerLine)).append('\t')
                      .append(String.valueOf(currentBasesPerLine + LINE_SEPARATOR.length)).append(System.lineSeparator());
+        indexWriter.flush();
     }
 
     /**
@@ -532,8 +535,8 @@ public class FastaReferenceWriter implements AutoCloseable {
         ParamUtils.isPositiveOrZero(offset, "the input offset cannot be negative");
         ParamUtils.isPositiveOrZero(length, "the input length must not be negative");
         final int to = offset + length;
-        Utils.validateArg(to >= bases.length, "the length + offset goes beyond the end of " +
-                "the input base array: '" + to + "' >= '" + bases.length + "'");
+        Utils.validateArg(to <= bases.length, "the length + offset goes beyond the end of " +
+                "the input base array: '" + to + "' > '" + bases.length + "'");
 
         int next = offset;
         while (next < to) {
@@ -541,7 +544,7 @@ public class FastaReferenceWriter implements AutoCloseable {
                 fastaStream.write(LINE_SEPARATOR);
                 currentLineBasesCount = 0;
             }
-            int nextLength = Math.min(to - next, currentBasesPerLine);
+            final int nextLength = Math.min(to - next, currentBasesPerLine - currentLineBasesCount);
             fastaStream.write(bases, next, nextLength);
             currentLineBasesCount += nextLength;
             next += nextLength;
@@ -574,6 +577,9 @@ public class FastaReferenceWriter implements AutoCloseable {
     {
         if (!closed) {
             closeSequence();
+            if (sequenceNamesAndSizes.isEmpty()) {
+                throw new IllegalStateException("no sequences where added to the reference");
+            }
             fastaStream.close();
             indexWriter.close();
             if (dictOutput != null) {
@@ -597,7 +603,7 @@ public class FastaReferenceWriter implements AutoCloseable {
         // use a empty try-resource results in compilation warnings due to the empty
         // try body, so I do the traditional try-catch here.
         try {
-            new SAMFileWriterFactory().makeSAMWriter(header, false, dictOutput);
+            new SAMFileWriterFactory().makeSAMWriter(header, false, dictOutput).close();
         } catch (final SAMException ex) {
             throw new GATKException(ex.getMessage(), ex);
         }
