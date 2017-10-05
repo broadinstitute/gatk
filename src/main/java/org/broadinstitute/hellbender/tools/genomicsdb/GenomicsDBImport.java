@@ -198,6 +198,12 @@ public final class GenomicsDBImport extends GATKTool {
     private List<ChromosomeInterval> intervals;
 
     // Sorted mapping between sample names and corresponding GVCF file name
+    //
+    // This must be sorted or it will result in sample name swaps in the output database.
+    // This happens because the callset json is generated independently from the import process
+    // each imported batch is then sorted, so if we have an unsorted list we'll end up with different global vs batch
+    // sorting.
+    // We presumptively sort here so we will have consistent sorting.
     private SortedMap<String, Path> sampleNameToVcfPath = new TreeMap<>();
 
     // Needed as smartMergeHeaders() returns a set of VCF header lines
@@ -345,6 +351,7 @@ public final class GenomicsDBImport extends GATKTool {
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
         logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
+        //use the given order so this is consistent with the batch importing
         callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfPath.keySet()), true);
         initializeInputPreloadExecutorService();
     }
@@ -378,7 +385,7 @@ public final class GenomicsDBImport extends GATKTool {
 
         for (int i = 0, batchCount = 1; i < sampleCount; i += updatedBatchSize, ++batchCount) {
 
-            final Map<String, FeatureReader<VariantContext>> sampleToReaderMap =
+            final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap =
                     inputPreloadExecutorService != null
                             ? getFeatureReadersInParallel(sampleNameToVcfPath, updatedBatchSize, i)
                             : getFeatureReadersSerially(sampleNameToVcfPath, updatedBatchSize, i);
@@ -444,7 +451,7 @@ public final class GenomicsDBImport extends GATKTool {
      * @param sampleNametoPath  Sample name to file name mapping
      * @param batchSize  Current batch size
      * @param lowerSampleIndex  0-based Lower bound of sample index -- inclusive
-     * @return  Feature readers to be imported in the current batch
+     * @return  Feature readers to be imported in the current batch, sorted by sample name
      */
     private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersInParallel(final SortedMap<String, Path> sampleNametoPath,
                                                                                    final int batchSize, final int lowerSampleIndex) {
@@ -481,9 +488,9 @@ public final class GenomicsDBImport extends GATKTool {
         return sampleToReaderMap;
     }
 
-    private Map<String, FeatureReader<VariantContext>> getFeatureReadersSerially(final Map<String, Path> sampleNameToPath,
+    private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersSerially(final Map<String, Path> sampleNameToPath,
                                                                                  final int batchSize, final int lowerSampleIndex){
-        final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
+        final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap = new TreeMap<>();
         final List<String> sampleNames = new ArrayList<>(sampleNameToPath.keySet());
         for(int i = lowerSampleIndex; i < sampleNameToPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);

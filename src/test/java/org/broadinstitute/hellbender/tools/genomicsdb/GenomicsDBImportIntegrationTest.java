@@ -26,9 +26,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
@@ -198,36 +196,75 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         }
     }
 
-    @Test
-    public void testSampleMappingFileInsteadOfVCFsWithMultipleBatches() throws IOException {
-        final File sampleNameFile = createOutOfOrderTempSampleMapFile();
 
+    @DataProvider
+    public Iterator<Object[]> getOrderingTests(){
+        final File outOfOrderSampleMap = getSampleMapFile(
+                        "HG00268\t" + HG_00268 + "\n" +
+                        "NA19625\t" + NA_19625 + "\n" +
+                        "HG00096\t" + HG_00096);
+
+        final List<Integer> batchSizes = Arrays.asList(0, 1, 2, 3, 4);
+        final List<Object[]> results = new ArrayList<>();
+        for( final Integer batchSize: batchSizes){
+            // -V in order
+            results.add(new Object[] {new ArgumentsBuilder()
+                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                    .addVCF(new File(HG_00096))
+                    .addVCF(new File(HG_00268))
+                    .addVCF(new File(NA_19625))});
+
+            // -V out of order
+            results.add(new Object[] {new ArgumentsBuilder()
+                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                    .addVCF(new File(HG_00268))
+                    .addVCF(new File(NA_19625))
+                    .addVCF(new File(HG_00096))});
+
+            //in order sample map
+            results.add(new Object[] {new ArgumentsBuilder()
+                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                    .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createInOrderSampleMap())});
+
+            //out of order sample map
+            results.add(new Object[] {new ArgumentsBuilder()
+                    .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                    .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)});
+        }
+        return results.iterator();
+    }
+
+    @Test(dataProvider = "getOrderingTests")
+    public void testOrdering(final ArgumentsBuilder args) throws IOException {
         final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
 
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleNameFile.getAbsolutePath())
-                .addArgument("L", IntervalUtils.locatableToString(INTERVAL))
-                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace)
-                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, "2");
+        args.addArgument("L", IntervalUtils.locatableToString(INTERVAL))
+            .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace);
 
         runCommandLine(args);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED);
     }
 
-    private static File createOutOfOrderTempSampleMapFile() {
+    private static File createInOrderSampleMap() {
         final String sampleFileContents =
+                "HG00096\t" +HG_00096 +"\n" +
                 "HG00268\t"+ HG_00268 + "\n" +
-                "NA19625\t"+ NA_19625 + "\n" +
-                "HG00096\t" +HG_00096;
+                "NA19625\t"+ NA_19625;
 
-        return IOUtils.writeTempFile(sampleFileContents, "sampleNameMap", ".txt");
+        return getSampleMapFile(sampleFileContents);
+    }
+
+    private static File getSampleMapFile(String sampleFileContents) {
+        final File sampleNameMap = IOUtils.writeTempFile(sampleFileContents, "sampleNameMap", ".txt");
+        sampleNameMap.deleteOnExit();
+        return sampleNameMap;
     }
 
     @Test(expectedExceptions = CommandLineException.class)
     public void testCantSpecifyVCFAndSampleNameFile(){
         final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createOutOfOrderTempSampleMapFile().getAbsolutePath())
+                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createInOrderSampleMap().getAbsolutePath())
                 .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, HG_00096)
                 .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, createTempDir("workspace").getAbsolutePath())
                 .addArgument("L",  IntervalUtils.locatableToString(INTERVAL));
