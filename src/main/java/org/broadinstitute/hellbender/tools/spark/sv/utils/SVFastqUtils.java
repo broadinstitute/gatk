@@ -173,7 +173,7 @@ public class SVFastqUtils {
          */
         public static String toString(final GATKRead read) {
             Utils.nonNull(read);
-            if (read.isUnmapped()) {
+            if ( read.isUnmapped() || read.getCigar().getPaddedReferenceLength() == 0 ) {
                 return UNMAPPED_STR;
             } else {
                 final StringBuilder builder = new StringBuilder(100);
