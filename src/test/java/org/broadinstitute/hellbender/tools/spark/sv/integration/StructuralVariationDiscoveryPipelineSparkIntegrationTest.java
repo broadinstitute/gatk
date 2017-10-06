@@ -49,7 +49,6 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + bamLoc +
                     " -O " + outputDir        + "/variants.vcf" +
-                    " --fastaReference " + SVIntegrationTestDataProvider.reference +
                     " --alignerIndexImage " + alignerRefIndexImgLoc +
                     " --kmersToIgnore " + kmerIgnoreListLoc +
                     " --contigSAMFile "       + outputDir + "/assemblies.sam" +
@@ -113,22 +112,11 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--fastaReference");
-            path = new Path(workingDirectory, "reference.fasta");
-            file = new File(argsToBeModified.get(idx+1));
-            cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
-            argsToBeModified.set(idx+1, path.toUri().toString());
-
             idx = argsToBeModified.indexOf("--kmersToIgnore");
             path = new Path(workingDirectory, "dummy.kill.kmers");
             file = new File(argsToBeModified.get(idx+1));
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
-
-            path = new Path(workingDirectory, "reference.fasta.fai");
-            cluster.getFileSystem().copyFromLocalFile(new Path(SVIntegrationTestDataProvider.reference_fai.toURI()), path);
-            path = new Path(workingDirectory, "reference.dict");
-            cluster.getFileSystem().copyFromLocalFile(new Path(SVIntegrationTestDataProvider.reference_dict.toURI()), path);
 
             // outputs, prefix with hdfs address
             idx = argsToBeModified.indexOf("-O");
@@ -149,7 +137,8 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             argsToBeModified.set(idx+1, path.toUri().toString());
 
             runCommandLine(argsToBeModified);
-            svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, true);
+            svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
+                    annotationsToIgnoreWhenComparingVariants, true);
         });
     }
 
