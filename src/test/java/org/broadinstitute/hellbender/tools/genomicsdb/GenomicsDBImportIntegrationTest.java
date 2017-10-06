@@ -10,6 +10,7 @@ import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -284,6 +285,31 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 .addArgument("L", "1:1-10");
 
         runCommandLine(args);
+    }
+
+    @Test
+    public void testCommandIncludedInOutputHeader() throws IOException {
+        final List<String> vcfInputs = LOCAL_GVCFS;
+        final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
+
+        writeToGenomicsDB(vcfInputs, INTERVAL, workspace, 0, false, 0, 1);
+        try(final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+                new GenomicsDBFeatureReader<>(
+                        new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
+                        new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
+                        workspace,
+                        GenomicsDBConstants.DEFAULT_ARRAY_NAME,
+                        b38_reference_20_21, null, new BCF2Codec()))
+        {
+            final VCFHeader header = (VCFHeader) genomicsDBFeatureReader.getHeader();
+            final Optional<VCFHeaderLine> commandLineHeaderLine = header.getMetaDataInSortedOrder().stream()
+                    .filter(line -> line.getValue().contains(GenomicsDBImport.class.getSimpleName()))
+                    .findAny();
+
+            Assert.assertTrue(commandLineHeaderLine.isPresent(), "no headerline was present containing information about the GenomicsDBImport command");
+        }
+
+
     }
 
     @Test
