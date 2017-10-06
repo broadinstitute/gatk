@@ -280,6 +280,8 @@ public final class GenomicsDBImport extends GATKTool {
             mergedHeaderSequenceDictionary = header.getSequenceDictionary();
         }
 
+        mergedHeaderLines.addAll(getDefaultToolVCFHeaderLines());
+
         if ( mergedHeaderSequenceDictionary == null) {
             throw new UserException("The merged vcf header has no sequence dictionary. Please provide a header that contains a sequence dictionary.");
         }
