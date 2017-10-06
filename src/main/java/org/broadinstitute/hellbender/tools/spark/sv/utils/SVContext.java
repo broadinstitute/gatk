@@ -306,18 +306,18 @@ public final class SVContext extends VariantContext {
 
     }
 
-    public PairedStrandedIntervals getPairedStrandedIntervals(final SAMSequenceDictionary samSequenceDictionary, final int padding) {
+    public PairedStrandedIntervals getPairedStrandedIntervals(final ReadMetadata metadata, final SAMSequenceDictionary referenceSequenceDictionary, final int padding) {
         final StructuralVariantType type = getStructuralVariantType();
         if (type == StructuralVariantType.DEL) {
-            final List<SimpleInterval> breakPointIntervals = getBreakPointIntervals(padding, samSequenceDictionary, true);
+            final List<SimpleInterval> breakPointIntervals = getBreakPointIntervals(padding, referenceSequenceDictionary, true);
             final SimpleInterval leftBreakpointSimpleInterval = breakPointIntervals.get(0);
             final SVInterval leftBreakpointInterval = new SVInterval(
-                    samSequenceDictionary.getSequenceIndex(leftBreakpointSimpleInterval.getContig()),
+                    metadata.getContigID(leftBreakpointSimpleInterval.getContig()),
                     leftBreakpointSimpleInterval.getStart(),
                     leftBreakpointSimpleInterval.getEnd() + 1);
             final SimpleInterval rightBreakpointSimpleInterval = breakPointIntervals.get(1);
             final SVInterval rightBreakpointInterval = new SVInterval(
-                    samSequenceDictionary.getSequenceIndex(rightBreakpointSimpleInterval.getContig()),
+                    metadata.getContigID(rightBreakpointSimpleInterval.getContig()),
                     rightBreakpointSimpleInterval.getStart(),
                     rightBreakpointSimpleInterval.getEnd() + 1);
 

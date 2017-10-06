@@ -191,6 +191,9 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                                    final ReadMetadata metadata,
                                                    final SAMSequenceDictionary sequenceDictionary) {
 
+        Utils.validate(! (evidenceTargetLinks != null && metadata == null),
+                "Must supply read metadata when incorporating evidence target links");
+
         JavaRDD<VariantContext> annotatedVariants =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
                         .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
@@ -216,8 +219,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                     collectedAnnotatedVariants, broadcastReference.getValue());
         }
 
-        SVVCFWriter.writeVCF(collectedAnnotatedVariants, vcfOutputFileName, sequenceDictionary, localLogger
-        );
+        SVVCFWriter.writeVCF(collectedAnnotatedVariants, vcfOutputFileName, sequenceDictionary, localLogger);
     }
 
     /**
@@ -248,7 +250,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                         .map(p -> p._2)
                         .filter(EvidenceTargetLink::isImpreciseDeletion)
                         .filter(e -> e.getReadPairs() + e.getSplitReads() > parameters.impreciseEvidenceVariantCallingThreshold)
-                        .map(e -> createImpreciseDeletionVariant(e, reference.getReferenceSequenceDictionary(null), reference))
+                        .map(e -> createImpreciseDeletionVariant(e, metadata, reference))
                         .collect(Collectors.toList());
 
         localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
@@ -257,11 +259,11 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     }
 
     private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,
-                                                                 final SAMSequenceDictionary sequenceDictionary,
+                                                                 final ReadMetadata metadata,
                                                                  final ReferenceMultiSource reference) {
-        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, sequenceDictionary);
+        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, metadata);
         return AnnotatedVariantProducer
-                .produceAnnotatedVcFromEvidenceTargetLink(e, svType, sequenceDictionary, reference);
+                .produceAnnotatedVcFromEvidenceTargetLink(e, svType, metadata, reference);
     }
 
     // TODO: 7/6/17 interface to be changed in the new implementation, where one contig produces a set of NARL's.
