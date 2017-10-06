@@ -126,7 +126,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest extends BaseTe
 
         ReadMetadata metadata = Mockito.mock(ReadMetadata.class);
         when(metadata.getMaxMedianFragmentSize()).thenReturn(300);
-
+        when(metadata.getContigName(0)).thenReturn("20");
 
         PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTree = new PairedStrandedIntervalTree<>();
         etls.forEach(e -> evidenceTree.put(e.getPairedStrandedIntervals(), e));

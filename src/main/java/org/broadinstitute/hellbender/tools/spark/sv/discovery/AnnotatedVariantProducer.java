@@ -119,9 +119,9 @@ public class AnnotatedVariantProducer implements Serializable {
 
     public static VariantContext produceAnnotatedVcFromEvidenceTargetLink(final EvidenceTargetLink e,
                                                                           final SvType svType,
-                                                                          final SAMSequenceDictionary sequenceDictionary,
+                                                                          final ReadMetadata metadata,
                                                                           final ReferenceMultiSource reference) {
-        final String sequenceName = sequenceDictionary.getSequence(e.getPairedStrandedIntervals().getLeft().getInterval().getContig()).getSequenceName();
+        final String sequenceName = metadata.getContigName(e.getPairedStrandedIntervals().getLeft().getInterval().getContig());
         final int start = e.getPairedStrandedIntervals().getLeft().getInterval().midpoint();
         final int end = e.getPairedStrandedIntervals().getRight().getInterval().midpoint();
         try {
@@ -212,7 +212,7 @@ public class AnnotatedVariantProducer implements Serializable {
         if (variant.getStructuralVariantType() == StructuralVariantType.DEL) {
             SVContext svc = SVContext.of(variant);
             final int padding = (metadata == null) ? defaultUncertainty : (metadata.getMaxMedianFragmentSize() / 2);
-            PairedStrandedIntervals svcIntervals = svc.getPairedStrandedIntervals(referenceSequenceDictionary, padding);
+            PairedStrandedIntervals svcIntervals = svc.getPairedStrandedIntervals(metadata, referenceSequenceDictionary, padding);
 
             final Iterator<Tuple2<PairedStrandedIntervals, EvidenceTargetLink>> overlappers = evidenceTargetLinks.overlappers(svcIntervals);
             int readPairs = 0;
