@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.reference;
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.io.CountingOutputStream;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -78,9 +77,14 @@ public final class FastaReferenceWriter implements AutoCloseable {
     public static final char HEADER_NAME_AND_DESCRIPTION_SEPARATOR = ' ';
 
     /**
+     * The line separator string.
+     */
+    private static final String LINE_SEPARATOR_STR = System.lineSeparator();
+
+    /**
      * Convenient cached {@code byte[]} representation of the line separator.
      */
-    private static final byte[] LINE_SEPARATOR = System.lineSeparator().getBytes();
+    private static final byte[] LINE_SEPARATOR = LINE_SEPARATOR_STR.getBytes();
 
     /**
      * Output stream to the main FASTA output.
@@ -235,38 +239,43 @@ public final class FastaReferenceWriter implements AutoCloseable {
     public FastaReferenceWriter(final Path fastaFile, final int basesPerLine, final Path indexFile, final Path dictFile)
         throws IOException
     {
-        this(BucketUtils.createFile(fastaFile.toString()),
-             basesPerLine,
-             indexFile == null ? null : BucketUtils.createFile(indexFile.toString()),
-             dictFile == null ? null : BucketUtils.createFile(dictFile.toString()));
+        // This code is a slight repeat of {@link #FastaReferenceWriter(OutputStream,int,OutputStream,OutputStream)
+        // for the sake of avoiding creating output if basesPerLine is invalid.
+        this.defaultBasePerLine = checkBasesPerLine(basesPerLine);
+        this.fastaStream = new CountingOutputStream(BucketUtils.createFile(Utils.nonNull(fastaFile).toString()));
+        this.indexWriter = indexFile == null ? new NullWriter() : new OutputStreamWriter(BucketUtils.createFile((indexFile).toString()));
+        this.dictOutput = dictFile == null ? null : BucketUtils.createFile(Utils.nonNull(dictFile).toString());
+        this.sequenceNamesAndSizes = new LinkedHashMap<>();
     }
 
-    // The actual common constructor, all other constructor delegate on this one:
-    private FastaReferenceWriter(final OutputStream fastaOutput,
+    /**
+     * Creates a reference FASTA file writer.
+     * <p>
+     *     You can specify a specific output stream to each file: the main fasta output, its index and its dictionary.
+     * </p>
+     *
+     * @param fastaOutput the output fasta file path.
+     * @param indexOutput the output stream to the index file, if requested, {@code null} if none should be generated.
+     * @param dictOutput the output stream to the dictFile, if requested, {@code null} if none should be generated.
+     * @throws IllegalArgumentException if {@code fastaFile} is {@code null} or {@code basesPerLine} is 0 or negative.
+     */
+    public FastaReferenceWriter(final OutputStream fastaOutput,
                                  final int basesPerLine,
                                  final OutputStream indexOutput,
                                  final OutputStream dictOutput) {
         this.defaultBasePerLine = checkBasesPerLine(basesPerLine);
-        this.fastaStream = new CountingOutputStream(fastaOutput);
+        this.fastaStream = new CountingOutputStream(Utils.nonNull(fastaOutput));
         this.indexWriter = indexOutput == null ? new NullWriter() : new OutputStreamWriter(indexOutput);
         this.dictOutput = dictOutput;
         this.sequenceNamesAndSizes = new LinkedHashMap<>();
     }
 
     private static Path defaultFaiFile(final boolean makeFaiFile, final Path fastaFile) {
-        if (makeFaiFile) {
-            return ReferenceSequenceFileFactory.getFastaIndexFileName(fastaFile);
-        } else {
-            return null;
-        }
+        return makeFaiFile ? ReferenceSequenceFileFactory.getFastaIndexFileName(fastaFile) : null;
     }
 
     private static Path defaultDictFile(final boolean makeDictFile, final Path fastaFile) {
-        if (makeDictFile) {
-            return ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(fastaFile);
-        } else {
-            return null;
-        }
+        return makeDictFile ? ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(fastaFile) : null;
     }
 
     // checks that a sequence name is valid.
@@ -275,7 +284,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
         Utils.validateArg(!name.isEmpty(), "the input sequence name cannot be null");
         for (int i = 0; i < name.length(); i++) {
             final char ch = name.charAt(i);
-            Utils.validateArg(!Character.isWhitespace(ch), "the input name contains a blank characters: '" + StringUtils.escape(name) + "'");
+            Utils.validateArg(!Character.isWhitespace(ch), "the input name contains blank characters: '" + StringUtils.escape(name) + "'");
             Utils.validateArg(!Character.isISOControl(ch), "the input name contains control characters: '" + StringUtils.escape(name) + "'");
         }
         return name;
@@ -492,7 +501,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
                      .append(String.valueOf(currentBasesCount)).append('\t')
                      .append(String.valueOf(currentSequenceOffset)).append('\t')
                      .append(String.valueOf(currentBasesPerLine)).append('\t')
-                     .append(String.valueOf(currentBasesPerLine + LINE_SEPARATOR.length)).append(System.lineSeparator());
+                     .append(String.valueOf(currentBasesPerLine + LINE_SEPARATOR.length)).append(LINE_SEPARATOR_STR);
         indexWriter.flush();
     }
 
