@@ -75,6 +75,7 @@ public abstract class BaseTest {
 
     // ~600,000 reads from chromosomes 20 and 21 of an NA12878 WGS bam aligned to b37, plus ~50,000 unmapped reads
     public static final String NA12878_20_21_WGS_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
+    public static final String NA12878_20_21_WGS_cram = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram";
 
     // Variants from a DBSNP 138 VCF overlapping the reads in NA12878_20_21_WGS_bam
     public static final String dbsnp_138_b37_20_21_vcf = largeFileTestDir + "dbsnp_138.b37.20.21.vcf";
