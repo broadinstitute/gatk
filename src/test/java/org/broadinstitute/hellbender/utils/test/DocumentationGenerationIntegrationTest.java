@@ -24,8 +24,6 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
             "org.broadinstitute.hellbender.cmdline.GATKPlugin",
             "org.broadinstitute.hellbender.engine.filters",
             "org.broadinstitute.hellbender.tools",
-            "org.broadinstitute.hellbender.metrics.analysis",
-            "org.broadinstitute.hellbender.metrics.analysis.directed",
             "org.broadinstitute.hellbender.tools.spark",
             "org.broadinstitute.hellbender.tools.spark.pipelines",
             "org.broadinstitute.hellbender.tools.spark.pipelines.metrics",

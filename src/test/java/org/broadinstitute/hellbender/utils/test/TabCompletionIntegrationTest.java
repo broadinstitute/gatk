@@ -32,7 +32,7 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public static void documentationSmokeTest() throws IOException, InterruptedException {
+    public static void tabCompleteSmokeTest() throws IOException, InterruptedException {
         final File tabCompletionTestTarget = createTempDir("tabCompletionTest");
 
         // Setup rote input arguments:

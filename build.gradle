@@ -56,6 +56,7 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.12.0')
+final picardVersion = System.getProperty('picard.version','2.12.2')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.7.0-proto-3.0.0-beta-1')
@@ -101,6 +102,35 @@ compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror', '-Xdiags:verbose']
 }
 
+// Dependency change for including MLLib
+configurations {
+    compile.exclude module: 'jul-to-slf4j'
+    compile.exclude module: 'javax.servlet'
+    compile.exclude module: 'servlet-api'
+    compile.exclude group: 'com.esotericsoftware.kryo'
+
+    externalSourceConfiguration {
+        // External sources we need for doc and tab completion generation tasks (i.e., Picard sources)
+        transitive false
+    }
+
+    sparkConfiguration {
+        extendsFrom runtime
+        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
+        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
+        exclude group: 'org.apache.hadoop'
+        exclude module: 'spark-core_2.11'
+        exclude group: 'org.slf4j'
+        exclude module: 'jul-to-slf4j'
+        exclude module: 'javax.servlet'
+        exclude module: 'servlet-api'
+        exclude group: 'com.esotericsoftware.kryo'
+        exclude module: 'spark-mllib_2.11'
+        exclude group: 'org.scala-lang'
+        exclude module: 'kryo'
+    }
+}
+
 // Get the jdk files we need to run javaDoc. We need to use these during compile, testCompile,
 // test execution, and gatkDoc generation, but we don't want them as part of the runtime
 // classpath and we don't want to redistribute them in the uber jar.
@@ -112,7 +142,8 @@ dependencies {
     testCompile(javadocJDKFiles)
 
     compile 'org.broadinstitute:barclay:1.2.1'
-    compile 'com.github.broadinstitute:picard:2.12.2'
+    compile 'com.github.broadinstitute:picard:' + picardVersion
+    externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
     compile ('com.intel:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j'
         exclude module: 'spark-core_2.10'
@@ -366,30 +397,6 @@ tasks.withType(ShadowJar) {
 
 
 
-// Dependency change for including MLLib
-configurations {
-    compile.exclude module: 'jul-to-slf4j'
-    compile.exclude module: 'javax.servlet'
-    compile.exclude module: 'servlet-api'
-    compile.exclude group: 'com.esotericsoftware.kryo'
-
-    sparkConfiguration {
-        extendsFrom runtime
-        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
-        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
-        exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.11'
-        exclude group: 'org.slf4j'
-        exclude module: 'jul-to-slf4j'
-        exclude module: 'javax.servlet'
-        exclude module: 'servlet-api'
-        exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.11'
-        exclude group: 'org.scala-lang'
-        exclude module: 'kryo'
-    }
-}
-
 shadowJar {
     configurations = [project.configurations.runtime]
     classifier = 'local'
@@ -462,6 +469,8 @@ javadoc {
     // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
     // We only want to do this for the javadoc task, not gatkDoc
     options.addStringOption('Xdoclint:none', '-quiet')
+    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
+    include '**/*.java'
 }
 
 // Generate GATK Online Doc
@@ -480,7 +489,10 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
             into gatkDocDir
         }
     }
-    source = sourceSets.main.allJava
+    // Include the Picard source jar, which contains various .R, .sh, .css, .html, .xml and .MF files and
+    // other resources, but we only want the files that javadoc can handle, so just take the .java files.
+    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
+    include '**/*.java'
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
     // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
@@ -514,10 +526,13 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
                     it.name));
         }
     }
-    source = sourceSets.main.allJava
+    // Include the Picard source jar, which contains various .R, .sh, .css, .html, .xml and .MF files and
+    // other resources, but we only want the files that javadoc can handle, so just take the .java files.
+    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
+    include '**/*.java'
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
-    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
+    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives, and Picard.
     classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
 
     options.docletpath = classpath.asType(List)
