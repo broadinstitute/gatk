@@ -12,6 +12,7 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -28,9 +29,11 @@ import java.util.stream.Collectors;
 public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramTest{
 
     private static final String SAMPLE_NAME_KEY = "SN";
+    private static final String REVERSE_ORDERED_SAMPLE_MAP = "reverseOrdered.sample_map";
+    private static final String BADLY_SORTED1000_BATCH_SIZE50_VCF = "badlySorted1000-batch-size50.vcf";
 
     private static File writeManyVCFs(int howMany) throws IOException {
-        Map<String,File> nameToFileMap = new LinkedHashMap<>();
+        final Map<String,File> nameToFileMap = new LinkedHashMap<>();
         final String contig = "chr20";
         final SAMSequenceDictionary dict = new SAMSequenceDictionary(
                 Collections.singletonList(new SAMSequenceRecord(contig, 64444167)));
@@ -61,36 +64,48 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
             }
         }
 
-        final File mapping = IOUtils.writeTempFile(
+        return IOUtils.writeTempFile(
                 nameToFileMap.entrySet().stream()
                         .map(pair -> pair.getKey() + "\t" + pair.getValue())
                         .sorted(Comparator.reverseOrder())
                         .collect(Collectors.joining("\n")), "mapping", ".sample_map");
-     //   mapping.deleteOnExit();
-        return mapping;
     }
 
+    @DataProvider
+    public Object[][] getBadInputs() {
+        return new Object[][]{
+                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 10000}, //larger batch size than number of samples
+                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 0}, // batch size 0
+                {getTestFile("mismatched.sample_map"), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 50} //larger batch size than number of samples
+        };
+    }
+
+
+    /**
+     * this was used to generate the vcf files files used in {@link #testUnshufflingRestoresCorrectSamples(File, File, int)}
+     * it's kept around in case we need to generate new test cases or examine how they were made
+     */
     @Test(enabled = false)
     public void generateVCFs() throws IOException {
         final File file = writeManyVCFs(1000);
         System.out.println(file);
     }
 
+    /**
+     *   test files were created by generating mangled files using the {@link #writeManyVCFs(int)} with parameter 1000
+     *   these were then imported to GenomicsDB using GATK 4.beta.5-66-g9609cb3-SNAPSHOT which is before the fix for GenomicsDBImport
+     *   sample name ordering was applied
+     *
+     *   the combined vcfs were then extracted using SelectVariants, these are the badlySorted1000 files
+     *   each vcf contains a single record with 1000 genotypes that have a single format field "SN: sample name"
+     *   these were created with SN's that matched their assigned sample names, but the badly sorted versions are shuffled
+     */
     @DataProvider
     public Object[][] getBadlySortedFiles(){
         return new Object[][]{
-                /**
-                 *   test files were created by generating mangled files using the {@link #writeManyVCFs(1000)
-                 *   these were then imported to GenomicsDB using GATK 4.beta.5-66-g9609cb3-SNAPSHOT which is before the fix for GenomicsDBImport
-                 *   sample name ordering was applied
-                 *
-                 *   the combined vcfs were then extracted using SelectVariants, these are the badlySorted1000 files
-                 *   each vcf contains a single record with 1000 genotypes that have a single format field "SN: sample name"
-                 *   these were created with SN's that matched their assigned sample names, but the badly sorted versions are shuffled
-                */
-
-                {getTestFile("reverseOrdered.sample_map"), getTestFile("badlySorted1000-batch-size-50.vcf"), 50},
-                {getTestFile("reverseOrdered.sample_map"), getTestFile("badlySorted1000-batch-size13.vcf"), 13},
+                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 50},
+                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile("badlySorted1000-batch-size50.vcf.gz"), 50},
+                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile("badlySorted1000-batch-size13.vcf"), 13},
         };
     }
 
@@ -101,6 +116,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
         args.addVCF(shuffled)
                 .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMap)
                 .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                .addBooleanArgument(FixCallSetSampleOrdering.SKIP_PROMPT_LONG_NAME, true)
                 .addOutput(fixed);
         runCommandLine(args);
 
@@ -111,6 +127,17 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
                     Assert.assertEquals(g.getSampleName(), g.getAnyAttribute(SAMPLE_NAME_KEY))
             );
         }
+    }
 
+    @Test(expectedExceptions = UserException.class, dataProvider = "getBadInputs")
+    public void testErrorConditions(final File sampleMap, final File shuffled, final int batchSize){
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        final File fixed = createTempFile("fixed_", ".vcf");
+        args.addVCF(shuffled)
+                .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMap)
+                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                .addBooleanArgument(FixCallSetSampleOrdering.SKIP_PROMPT_LONG_NAME, true)
+                .addOutput(fixed);
+        runCommandLine(args);
     }
 }

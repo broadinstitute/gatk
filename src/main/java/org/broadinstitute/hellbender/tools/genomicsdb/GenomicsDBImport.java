@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.intel.genomicsdb.ChromosomeInterval;
 import com.intel.genomicsdb.GenomicsDBCallsetsMapProto;
@@ -268,7 +267,11 @@ public final class GenomicsDBImport extends GATKTool {
             mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
         } else {
             // --sampleNameMap was specified
-            sampleNameToVcfPath = new TreeMap<>(loadSampleNameMapFile(IOUtils.getPath(sampleNameMapFile)));
+
+            //it's VERY IMPORTANT that this map is Sorted according to String's natural ordering, if it is not
+            //the resulting database will have incorrect sample names
+            //see https://github.com/broadinstitute/gatk/issues/3682 for more information
+            sampleNameToVcfPath = loadSampleNameMapFileInSortedOrder(IOUtils.getPath(sampleNameMapFile));
             final Path firstHeaderPath = sampleNameToVcfPath.entrySet().iterator().next().getValue();
             final VCFHeader header = getHeaderFromPath(firstHeaderPath);
             mergedHeaderLines = header.getMetaDataInInputOrder();
@@ -296,15 +299,26 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
-    @VisibleForTesting
-    public static Map<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
+    /**
+     * load a tab delimited new line separated file of sample name to URI mapping:
+     * ex:
+     *
+     * Sample1\tpathToSample1.vcf\n
+     * Sample2\tpathTosample2.vcf\n
+     * ...
+     *
+     * The sample names must be unique.
+     * @param sampleToFileMapPath path to the mapping file
+     * @return map of sample name to corresponding file, the map will be ordered according to the order in the input file
+     */
+    public static LinkedHashMap<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
         try {
             final List<String> lines = Files.readAllLines(sampleToFileMapPath);
             if (lines.isEmpty()) {
                 throw new UserException.BadInput( "At least 1 sample is required but none were found in the sample mapping file");
             }
 
-            final Map<String, Path> sampleToFilename = new LinkedHashMap<>();
+            final LinkedHashMap<String, Path> sampleToFilename = new LinkedHashMap<>();
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
                 if (split.length != 2
@@ -324,6 +338,22 @@ public final class GenomicsDBImport extends GATKTool {
         } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(sampleToFileMapPath, "exception while reading sample->filename mapping file",  e);
         }
+    }
+
+    /**
+     * load a tab delimited new line separated file of sample name to URI mapping:
+     *
+     * ex:
+     * Sample1\tpathToSample1.vcf\n
+     * Sample2\tpathTosample2.vcf\n
+     * ...
+     *
+     * The sample names must be unique.
+     * @param sampleToFileMapPath path to the mapping file
+     * @return map of sample name to corresponding file, sorted by sample name
+     */
+    public static SortedMap<String, Path> loadSampleNameMapFileInSortedOrder(final Path sampleToFileMapPath){
+        return new TreeMap<>(loadSampleNameMapFile(sampleToFileMapPath));
     }
 
     private static boolean containsWhitespace(final String s){
