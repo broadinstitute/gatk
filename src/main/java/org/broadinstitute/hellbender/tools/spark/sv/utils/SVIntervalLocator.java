@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SerializableToIntFunction;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
@@ -18,7 +19,7 @@ public final class SVIntervalLocator implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private static SerializableToIntFunction<String> contigToIndex;
+    private final SerializableToIntFunction<String> contigToIndex;
 
     public SVIntervalLocator(final SerializableToIntFunction<String> contigToIndex) {
         this.contigToIndex = Utils.nonNull(contigToIndex);

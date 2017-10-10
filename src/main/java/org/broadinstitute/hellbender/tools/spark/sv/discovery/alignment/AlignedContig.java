@@ -109,7 +109,7 @@ public final class AlignedContig {
                 final List<AlignmentInterval> alignmentIntervals = new ArrayList<>(5);
                 final int length;
                 final byte[] bases;
-                if (!first.isUnmapped()) {
+                if (first.isUnmapped()) {
                     length = first.getLength();
                     bases = Utils.nonNull(first.getBases(), "an unmapped record must have bases");
                     if (length != bases.length) {
@@ -122,7 +122,6 @@ public final class AlignedContig {
                     } else {
                         length = CigarUtils.countUnclippedReadBases(cigar);
                     }
-                    alignmentIntervals.add(new AlignmentInterval(first));
                     bases = new byte[length];
                 }
                 GATKRead next = first;
@@ -160,7 +159,8 @@ public final class AlignedContig {
                 }
                 from = 0; to = bases.length;
             } else {
-                final Cigar cigar = next.getCigar();
+                final Cigar readCigar = next.getCigar();
+                final Cigar cigar = next.isReverseStrand() ? CigarUtils.invertCigar(readCigar) : readCigar;
                 if (cigar == null || cigar.isEmpty()) {
                     throw new IllegalArgumentException("mapped records must have a non-empty cigar");
                 }
@@ -177,11 +177,11 @@ public final class AlignedContig {
     private static int mergeBases(final byte[] src, final byte[] target, final int from, final int to) {
         int newlyDefined = 0;
         for (int i = from, j = 0; i < to; i++, j++) {
-            final byte s = src[i], t = target[j];
-            if (t == 0) {
+            final byte s = src[j], t = target[i];
+            if (s == 0) {
                 throw new IllegalArgumentException("a record contain null bases");
-            } else if (s == 0) {
-                src[i] = t;
+            } else if (t == 0) {
+                target[i] = s;
                 newlyDefined++;
             } else if (s != t) {
                 throw new IllegalArgumentException("a record contains mismatching bases");
@@ -195,7 +195,7 @@ public final class AlignedContig {
         Utils.nonNull(name);
         final byte[] bases = haplotype.getBases();
         final Cigar cigar = haplotype.getCigar();
-        Utils.validateArg(cigar != null && bases.length != cigar.getReadLength(), "invalid haplotype cigar");
+        Utils.validateArg(cigar != null && bases.length == cigar.getReadLength(), "invalid haplotype cigar");
         final Locatable loc = haplotype.getGenomeLocation();
         Utils.validateArg(loc != null && loc.getContig() != null && loc.getStart() <= loc.getEnd(), "invalid haplotype location");
         this.contigName = name;
@@ -204,6 +204,7 @@ public final class AlignedContig {
                 new SimpleInterval(loc.getContig(), loc.getStart(), loc.getStart() + cigar.getReferenceLength() - 1),
                         1, bases.length, cigar, false, SAMRecord.UNKNOWN_MAPPING_QUALITY,
                         AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, false, false));
+        this.hasEquallyGoodAlnConfigurations = false;
     }
 
     public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals,
