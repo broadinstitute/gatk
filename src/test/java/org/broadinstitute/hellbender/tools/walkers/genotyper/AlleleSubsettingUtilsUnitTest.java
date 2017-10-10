@@ -38,8 +38,7 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         final GenotypesContext actual = selectedVCwithGTs.getNAlleles() == originalVC.getNAlleles() ? oldGs :
                                         AlleleSubsettingUtils.subsetAlleles(oldGs, 0, originalVC.getAlleles(),
                                                                             selectedVCwithGTs.getAlleles(),
-                                                                            GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES,
-                                                                            originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                                                                            GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
 
         Assert.assertEquals(actual.size(), expectedGenotypes.size());
         for ( final Genotype expected : expectedGenotypes ) {
@@ -49,15 +48,38 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         }
     }
 
+    @Test(dataProvider = "updatePLsSACsAndADData")
+    public void testUpdatePLsAndADData2(final VariantContext originalVC,
+                                       final VariantContext selectedVC,
+                                       final List<Genotype> expectedGenotypes) {
+        // initialize cache of allele anyploid indices
+        for (final Genotype genotype : originalVC.getGenotypes()) {
+            GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(originalVC.getNAlleles() - 1, genotype.getPloidy());
+        }
+
+        final GenotypesContext  computedGenotypes = AlleleSubsettingUtils.subsetAlleles(originalVC.getGenotypes(), 0, originalVC.getAlleles(),
+                selectedVC.getAlleles(),
+                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
+
+        Assert.assertEquals(computedGenotypes.size(), expectedGenotypes.size());
+        for ( final Genotype expected : expectedGenotypes ) {
+            final Genotype actualGT = computedGenotypes.get(expected.getSampleName());
+            Assert.assertNotNull(actualGT);
+            VariantContextTestUtils.assertGenotypesAreEqual(actualGT, expected);
+        }
+    }
+
+
     @DataProvider(name = "updatePLsSACsAndADData")
     public Object[][] makeUpdatePLsSACsAndADData() {
         List<Object[]> tests = new ArrayList<>();
 
         final List<Allele> AA = Arrays.asList(Aref, Aref);
-        final List<Allele> AC = Arrays.asList(Aref,C);
-        final List<Allele> CC = Arrays.asList(C,C);
-        final List<Allele> AG = Arrays.asList(Aref,G);
-        final List<Allele> ACG = Arrays.asList(Aref,C,G);
+        final List<Allele> AC = Arrays.asList(Aref, C);
+        final List<Allele> CC = Arrays.asList(C, C);
+        final List<Allele> GG = Arrays.asList(G, G);
+        final List<Allele> AG = Arrays.asList(Aref, G);
+        final List<Allele> ACG = Arrays.asList(Aref, C, G);
 
         final VariantContext vcBase = new VariantContextBuilder("test", "20", 10, 10, AC).make();
 
@@ -88,14 +110,12 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         final double[] hetRefC3AllelesPL = new double[]{-10, 0, -20, -30, -40, -50};
         final double[] homC3AllelesPL = new double[]{-20, -10, 0, -30, -40, -50};
         final double[] hetRefG3AllelesPL = new double[]{-20, -10, -30, 0, -40, -50};
-        final double[] hetCG3AllelesPL = new double[]{-20, -10, -30, -40, 0, -50}; // AA, AC, CC, AG, CG, GG
         final double[] homG3AllelesPL = new double[]{-20, -10, -30, -40, -50, 0};  // AA, AC, CC, AG, CG, GG
 
         final int[] homRef3AllelesAD = new int[]{20, 0, 1};
         final int[] hetRefC3AllelesAD = new int[]{10, 10, 1};
         final int[] homC3AllelesAD = new int[]{0, 20, 1};
         final int[] hetRefG3AllelesAD = new int[]{10, 0, 11};
-        final int[] hetCG3AllelesAD = new int[]{0, 12, 11}; // AA, AC, CC, AG, CG, GG
         final int[] homG3AllelesAD = new int[]{0, 1, 21};  // AA, AC, CC, AG, CG, GG
 
         final double[] haploidRef3AllelesPL = new double[]{0, -10, -20};
@@ -138,7 +158,6 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         final int[] hetRefC3AllelesSAC = new int[]{10, 9, 10, 9, 1, 1};
         final int[] homC3AllelesSAC = new int[]{0, 0, 20, 20, 1, 1};
         final int[] hetRefG3AllelesSAC = new int[]{10, 10, 0, 0, 11, 11};
-        final int[] hetCG3AllelesSAC = new int[]{0, 0, 12, 12, 11, 11}; // AA, AC, CC, AG, CG, GG
         final int[] homG3AllelesSAC = new int[]{0, 0, 1, 1, 21, 21};  // AA, AC, CC, AG, CG, GG
 
         tests.add(new Object[]{
@@ -149,38 +168,33 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{20, 19, 0, 1}).GQ(100).make())});
 
         tests.add(new Object[]{
-                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AA).AD(hetRefC3AllelesAD).PL(hetRefC3AllelesPL).
+                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AC).AD(hetRefC3AllelesAD).PL(hetRefC3AllelesPL).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, hetRefC3AllelesSAC).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AC).make(),
-                Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{-10, 0, -20}).AD(new int[]{10, 10}).
+                Collections.singletonList(new GenotypeBuilder(base).alleles(AC).PL(new double[]{-10, 0, -20}).AD(new int[]{10, 10}).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{10, 9, 10, 9}).GQ(100).make())});
 
         tests.add(new Object[]{
-                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AA).AD(homC3AllelesAD).PL(homC3AllelesPL).
+                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(CC).AD(homC3AllelesAD).PL(homC3AllelesPL).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, homC3AllelesSAC).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AC).make(),
-                Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{-20, -10, 0}).AD(new int[]{0, 20}).
+                Collections.singletonList(new GenotypeBuilder(base).alleles(CC).PL(new double[]{-20, -10, 0}).AD(new int[]{0, 20}).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{0, 0, 20, 20}).GQ(100).make())});
 
         tests.add(new Object[]{
-                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AA).AD(hetRefG3AllelesAD).PL(hetRefG3AllelesPL).
+                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AG).AD(hetRefG3AllelesAD).PL(hetRefG3AllelesPL).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, hetRefG3AllelesSAC).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AG).make(),
-                Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{-20, 0, -50}).AD(new int[]{10, 11}).
+                Collections.singletonList(new GenotypeBuilder(base).alleles(AG).PL(new double[]{-20, 0, -50}).AD(new int[]{10, 11}).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{10, 10, 11, 11}).GQ(200).make())});
 
-        tests.add(new Object[]{
-                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AA).AD(hetCG3AllelesAD).PL(hetCG3AllelesPL).
-                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, hetCG3AllelesSAC).make()).make(),
-                new VariantContextBuilder(vcBase).alleles(AG).make(),
-                Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{0, -20, -30}).AD(new int[]{0, 11}).
-                        attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{0, 0, 11, 11}).GQ(200).make())});
+            //should fail, as one of the alleles must be reference
 
         tests.add(new Object[]{
-                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(AA).AD(homG3AllelesAD).PL(homG3AllelesPL).
+                new VariantContextBuilder(vcBase).alleles(ACG).genotypes(new GenotypeBuilder(base).alleles(GG).AD(homG3AllelesAD).PL(homG3AllelesPL).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, homG3AllelesSAC).make()).make(),
                 new VariantContextBuilder(vcBase).alleles(AG).make(),
-                Collections.singletonList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{-20, -40, 0}).AD(new int[]{0, 21}).
+                Collections.singletonList(new GenotypeBuilder(base).alleles(GG).PL(new double[]{-20, -40, 0}).AD(new int[]{0, 21}).
                         attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{0, 0, 21, 21}).GQ(200).make())});
 
         return tests.toArray(new Object[][]{});
@@ -194,6 +208,9 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
                 .genotypes(Arrays.asList(new GenotypeBuilder("sample1", Arrays.asList(C,G)).PL( new double[]{5, 5, 5, 5, 0, 5}).make())).make();
         Assert.assertEquals(AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 1), Arrays.asList(Aref,C)) ;
     }
+
+
+
 
     @DataProvider
     public Object[][] getAllelesWithScores(){
@@ -227,7 +244,7 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         final List<Allele> alleles = Arrays.asList(Aref);
         final Genotype uniformativePL = new GenotypeBuilder("sample", alleles).PL(new int[] {0}).make();
         final GenotypesContext result  = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(uniformativePL), 2,
-                                                                      alleles, alleles, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, 10 );
+                                                                      alleles, alleles, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
         final Genotype genotype = result.get(0);
         Assert.assertTrue(genotype.hasPL());
         Assert.assertEquals(genotype.getPL(), new int[]{0});
@@ -312,7 +329,7 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
 
         final GenotypesContext newGs = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(g5),
                 2, threeAlleles, threeAllelesSorted,
-                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, 10);
+                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
 
         Assert.assertEquals(newGs.get(0).getPL(), new int[] {50, 20, 0, 40, 10, 30});
     }

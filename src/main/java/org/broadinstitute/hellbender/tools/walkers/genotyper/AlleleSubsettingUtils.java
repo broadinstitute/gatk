@@ -45,8 +45,7 @@ public final class AlleleSubsettingUtils {
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
                                                  final List<Allele> originalAlleles,
                                                  final List<Allele> allelesToKeep,
-                                                 final GenotypeAssignmentMethod assignmentMethod,
-                                                 final int depth) {
+                                                 final GenotypeAssignmentMethod assignmentMethod) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -76,10 +75,9 @@ public final class AlleleSubsettingUtils {
                     final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
                     newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
                 }
-
             }
 
-            final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
+            final boolean useNewLikelihoods = newLikelihoods != null;
             final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ) : new GenotypeBuilder(g).noPL().noGQ();
 
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
@@ -297,3 +295,4 @@ public final class AlleleSubsettingUtils {
         return  result;
     }
 }
+
