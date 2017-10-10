@@ -72,8 +72,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     @Argument(
             doc = "target file -- not a BED file.  Should be formatted as a tsv with at least the following header columns: contig, start, stop, name.",
             shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
-            fullName = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
-            optional = true
+            fullName = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME
     )
     protected File targetFile;
 
