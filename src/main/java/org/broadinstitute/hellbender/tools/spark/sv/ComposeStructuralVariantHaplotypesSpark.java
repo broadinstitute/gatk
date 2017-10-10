@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.sun.javafx.scene.control.skin.VirtualFlow;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
@@ -24,8 +26,6 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
@@ -35,7 +35,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.StructuralVariantConte
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.SupplementaryAlignments;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -43,14 +42,12 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.gcs.BamBucketIoUtils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
 import scala.Tuple2;
 
 import java.io.*;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -137,8 +134,6 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     public static final int DEFAULT_SHARD_SIZE = 10_000;
     public static final int DEFAULT_PADDING_SIZE = 50;
     public static final String DEFAULT_SAMPLE = "sample";
-
-    private static final int FASTA_BASES_PER_LINE = 60;
 
     public static final String HAPLOTYPE_READ_GROUP = "HAP";
     public static final String CONTIG_READ_GROUP = "CTG";
@@ -288,12 +283,32 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 // JavaPairRDD<SVContext, List<GATKRead>> -> <SVContext, List<AlignedContig>> :
                 .mapValues(readList -> readList.stream()
                            .collect(Collectors.groupingBy(GATKRead::getName)).values().stream() //: Stream<List<GATKRead>>.
-                                .map(AlignedContig::of) // AlignmentContig.of(Iterable<GATKRead>) : AlignedContig.
+                                .map(ll -> AlignedContig.of(removeRepeatedReads(ll))) // AlignmentContig.of(Iterable<GATKRead>) : AlignedContig.
                                 .collect(Collectors.toList()));
 
         processVariants(ctx, result, getReferenceSequenceDictionary(), alignedContigs);
 
     }
+
+    private static List<GATKRead> removeRepeatedReads(final List<GATKRead> original) {
+        if (original.size() < 1) {
+            return original;
+        } else if (original.size() == 2 && GATK_WITHIN_READ_RECORD_COMPARATOR.compare(original.get(0), original.get(1)) == 0) {
+            return Collections.singletonList(original.get(0));
+        } else {
+            final List<GATKRead> result = new ArrayList<>(original.size());
+            original.stream().sorted(GATK_WITHIN_READ_RECORD_COMPARATOR).forEach(r -> {
+                if (result.isEmpty() || GATK_WITHIN_READ_RECORD_COMPARATOR.compare(result.get(result.size() - 1), r) != 0) {
+                    result.add(r);
+                }
+            });
+            return result;
+        }
+    }
+
+    private static final Comparator<GATKRead> GATK_WITHIN_READ_RECORD_COMPARATOR =
+            Comparator.comparing(GATKRead::getContig).thenComparingInt(GATKRead::getStart);
+
 
     private static boolean supportedVariant(final VariantContext vc) {
         final StructuralVariantType type = vc.getStructuralVariantType();
@@ -474,11 +489,10 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                                    final ReadsSparkSource readSource) {
 
         final SAMFileHeader outputHeader = composeOutputHeader(dictionary);
-        final SAMFileWriter outputWriter = BamBucketIoUtils.makeWriter(outputFileName, outputHeader, false);
-        final SAMFileWriter alignedOutputWriter = alignedOutputFileName == null
-                ? null : BamBucketIoUtils.makeWriter(alignedOutputFileName, outputHeader, false);
-        variantsAndOverlappingUniqueContigs.mapPartitions(it -> Utils.stream(it)
-                    .map(tuple -> {
+        try (final SAMFileWriter outputWriter = BamBucketIoUtils.makeWriter(outputFileName, outputHeader, false);
+             final SAMFileWriter alignedOutputWriter = alignedOutputFileName == null
+                ? null : BamBucketIoUtils.makeWriter(alignedOutputFileName, outputHeader, false)) {
+            final JavaPairRDD<StructuralVariantContext, VariantHaplotypesAndContigsComposite> alignedContigs = variantsAndOverlappingUniqueContigs.mapToPair(tuple -> {
                         final StructuralVariantContext vc = tuple._1();
                         final List<AlignedContig> contigs = tuple._2();
                         final int maxLength = contigs.stream()
@@ -492,57 +506,27 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                         haplotypeAndContigs.add(referenceContig);
                         haplotypeAndContigs.add(alternativeContig);
                         haplotypeAndContigs.addAll(contigs);
-                        final Map<String, AlignedContig> referenceAlignedContigs = alignContigsAgainstHaplotype(referenceContig, haplotypeAndContigs);
-                        final Map<String, AlignedContig> alternativeAlignedContigs = alignContigsAgainstHaplotype(alternativeContig, haplotypeAndContigs);
-                        contigs.forEach(contig -> {
-                            final AlignedContig referenceAlignment = referenceAlignedContigs.get(contig.contigName);
-                            final AlignedContig alternativeAlignment = alternativeAlignedContigs.get(contig.contigName);
-                            final AlignedContigScore referenceScore = calculateAlignedContigScore(referenceAlignment);
-                            final AlignedContigScore alternativeScore = calculateAlignedContigScore(alternativeAlignment);
-                            final String hpTagValue = calculateHPTag(referenceScore.getValue(), alternativeScore.getValue());
-                            final double hpQualTagValue = calculateHPQualTag(referenceScore.getValue(), alternativeScore.getValue());
-
-                            final SAMRecord outputRecord = convertToUnmappedSAMRecord(outputHeader, vc, contig, referenceScore, alternativeScore, referenceAlignment, alternativeAlignment, hpTagValue, hpQualTagValue);
-                            outputWriter.addAlignment(outputRecord);
-                            if (alignedOutputWriter != null && !referenceAlignment.alignmentIntervals.isEmpty()) {
-                                final List<SAMRecord> records = convertToSAMRecords(referenceAlignment, outputHeader, vc, referenceHaplotype.getGenomeLocation().getStart(), hpTagValue, hpQualTagValue, referenceScore, alternativeScore, referenceAlignment, alternativeAlignment);
-                                records.forEach(alignedOutputWriter::addAlignment);
-                            }
-                        });
-                    })
-        );
-s        Utils.stream(variantsAndOverlappingUniqueContigs.toLocalIterator())
-                .map(t -> resolvePendingContigs(t, readSource))
-                .forEach(t -> {
-                    final StructuralVariantContext vc = t._1();
-                    final List<AlignedContig> contigs = t._2();
-                    final int maxLength =
-                    final Haplotype referenceHaplotype = vc.composeHaplotypeBasedOnReference(0, maxLength * 2, getReference());
-                    //referenceHaplotype.setGenomeLocation(null);
-                    final Haplotype alternativeHaplotype = vc.composeHaplotypeBasedOnReference(1, maxLength * 2, getReference());
-                    //alternativeHaplotype.setGenomeLocation(null);
-                    outputHaplotypesAsSAMRecords(outputHeader, outputWriter, alignedOutputWriter, referenceHaplotype, alternativeHaplotype, vc);
-                    final Map<String, AlignedContig> referenceAlignedContigs = alignContigsAgainstHaplotype(ctx, referenceHaplotype, REF_CONTIG_NAME, contigs);
-                    final Map<String, AlignedContig> alternativeAlignedContigs = alignContigsAgainstHaplotype(ctx, alternativeHaplotype, ALT_CONTIG_NAME, contigs);
-
-
-                    contigs.forEach(contig -> {
-                        final AlignedContig referenceAlignment = referenceAlignedContigs.get(contig.contigName);
-                        final AlignedContig alternativeAlignment = alternativeAlignedContigs.get(contig.contigName);
-                        final AlignedContigScore referenceScore = calculateAlignedContigScore(referenceAlignment);
-                        final AlignedContigScore alternativeScore = calculateAlignedContigScore(alternativeAlignment);
-                        final String hpTagValue = calculateHPTag(referenceScore.getValue(), alternativeScore.getValue());
-                        final double hpQualTagValue = calculateHPQualTag(referenceScore.getValue(), alternativeScore.getValue());
-                        final SAMRecord outputRecord = convertToUnmappedSAMRecord(outputHeader, vc, contig, referenceScore, alternativeScore, referenceAlignment, alternativeAlignment, hpTagValue, hpQualTagValue);
-                        outputWriter.addAlignment(outputRecord);
-                        if (alignedOutputWriter != null && !referenceAlignment.alignmentIntervals.isEmpty()) {
-                            final List<SAMRecord> records = convertToSAMRecords(referenceAlignment, outputHeader, vc, referenceHaplotype.getGenomeLocation().getStart(), hpTagValue, hpQualTagValue, referenceScore, alternativeScore, referenceAlignment, alternativeAlignment);
-                            records.forEach(alignedOutputWriter::addAlignment);
+                        final List<AlignedContig> referenceAlignedContigs = alignContigsAgainstHaplotype(referenceContig, haplotypeAndContigs);
+                        final List<AlignedContig> alternativeAlignedContigs = alignContigsAgainstHaplotype(alternativeContig, haplotypeAndContigs);
+                        return new Tuple2<>(vc, new VariantHaplotypesAndContigsComposite(referenceContig, alternativeContig, haplotypeAndContigs, referenceAlignedContigs, alternativeAlignedContigs));
+            });
+            alignedContigs.toLocalIterator().forEachRemaining(tuple -> {
+                final StructuralVariantContext variant = tuple._1();
+                final VariantHaplotypesAndContigsComposite haplotypesAndContigs = tuple._2();
+                final int numberOfContigs = haplotypesAndContigs.numberOfContigs();
+                for (int i = 0; i < numberOfContigs; i++) {
+                    outputWriter.addAlignment(haplotypesAndContigs.composeOutputSAMRecord(outputHeader, variant, i));
+                }
+                if (alignedOutputWriter != null) {
+                    for (int i = 0; i < numberOfContigs; i++) {
+                        final List<SAMRecord> alignedRecords = haplotypesAndContigs.composeAlignedOutputSAMRecords(outputHeader, variant, i);
+                        for (final SAMRecord record : alignedRecords) {
+                            alignedOutputWriter.addAlignment(record);
                         }
-                    });
-                });
-        outputWriter.close();
-        if (alignedOutputWriter != null) alignedOutputWriter.close();
+                    }
+                }
+            });
+        }
     }
 
     private SAMFileHeader composeOutputHeader(SAMSequenceDictionary dictionary) {
@@ -559,90 +543,6 @@ s        Utils.stream(variantsAndOverlappingUniqueContigs.toLocalIterator())
         outputHeader.addReadGroup(haplotypesReadGroup);
         outputHeader.addReadGroup(contigsReadGroup);
         return outputHeader;
-    }
-
-    private SAMRecord convertToUnmappedSAMRecord(final SAMFileHeader outputHeader, final StructuralVariantContext vc,
-                                                 final AlignedContig originalContig, final AlignedContigScore referenceScore,
-                                                 final AlignedContigScore alternativeScore,
-                                                 final AlignedContig referenceAlignment, final AlignedContig alternativeAlignment,
-                                                 final String hpTagValue, double hpQualTagValue) {
-        final SAMRecord outputRecord = new SAMRecord(outputHeader);
-        outputRecord.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
-        outputRecord.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue);
-        outputRecord.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue);
-        outputRecord.setAttribute(REFERENCE_SCORE_TAG, "" + referenceScore);
-        outputRecord.setAttribute(ALTERNATIVE_SCORE_TAG, "" + alternativeScore);
-        outputRecord.setAttribute(SAMTag.SA.name(), "" + composeSupplementaryLikeString(originalContig) + ';');
-        outputRecord.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignment) + ';');
-        outputRecord.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignment) + ';');
-        outputRecord.setAttribute(VARIANT_CONTEXT_TAG, vc.getUniqueID());
-        outputRecord.setReadName(originalContig.contigName);
-        outputRecord.setReadPairedFlag(false);
-        outputRecord.setDuplicateReadFlag(false);
-        outputRecord.setSecondOfPairFlag(false);
-        outputRecord.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
-        outputRecord.setReadNegativeStrandFlag(false);
-        final byte[] bases = originalContig.contigSequence;
-        outputRecord.setReadBases(bases);
-        outputRecord.setReferenceName(vc.getContig());
-        outputRecord.setAlignmentStart(vc.getStart());
-        outputRecord.setMappingQuality(SAMRecord.NO_MAPPING_QUALITY);
-        outputRecord.setReadUnmappedFlag(true);
-        return outputRecord;
-    }
-
-    private static String composeSupplementaryLikeString(final AlignedContig referenceAlignment) {
-        if (referenceAlignment.alignmentIntervals.isEmpty()) {
-            return new Cigar().toString();
-        } else {
-            return referenceAlignment.alignmentIntervals.stream()
-                    .map(AlignmentInterval::toSumpplementaryAlignmentString)
-                    .collect(Collectors.joining(";"));
-        }
-    }
-
-    private static List<SAMRecord> convertToSAMRecords(final AlignedContig alignment, final SAMFileHeader header,
-                                                       final StructuralVariantContext vc, final int referenceHaplotypeStart,
-                                                       final String hpTagValue, final double hpQualTagValue,
-                                                       final AlignedContigScore referenceScore,
-                                                       final AlignedContigScore alternativeScore,
-                                                       final AlignedContig referenceAlignment,
-                                                       final AlignedContig alternativeAlignment) {
-        final List<SAMRecord> result = new ArrayList<>(alignment.alignmentIntervals.size());
-        result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence, false, 0, Collections.emptyList()));
-        for (int i = 1; i < alignment.alignmentIntervals.size(); i++) {
-            result.add(alignment.alignmentIntervals.get(i).toSAMRecord(header, alignment.contigName, alignment.contigSequence, true, SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(), Collections.emptyList()));
-        }
-        for (final SAMRecord record : result) {
-            record.setReadName(alignment.contigName);
-            record.setReferenceName(vc.getContig());
-            record.setAlignmentStart(record.getAlignmentStart() + referenceHaplotypeStart - 1);
-            record.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
-            record.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue);
-            record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue);
-            record.setAttribute(REFERENCE_SCORE_TAG, "" + referenceScore);
-            record.setAttribute(ALTERNATIVE_SCORE_TAG, "" + alternativeScore);
-            record.setAttribute(VARIANT_CONTEXT_TAG, vc.getUniqueID());
-            record.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignment) + ';');
-            record.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignment) + ';');
-
-        }
-        final List<String> saTagValues = result.stream()
-                .map(record ->
-                    Utils.join(",", record.getReferenceName(), record.getAlignmentStart(), record.getReadNegativeStrandFlag() ? "+" : "-", record.getCigarString(), record.getMappingQuality(), "" + record.getAttribute(SAMTag.NM.name()))
-                )
-                .collect(Collectors.toList());
-        if (result.size() > 1) {
-            for (int i = 0; i < result.size(); i++) {
-                final int idx = i;
-                result.get(i).setAttribute(SAMTag.SA.name(),
-                        IntStream.range(0, result.size())
-                        .filter(ii -> ii != idx)
-                        .mapToObj(saTagValues::get)
-                        .collect(Collectors.joining(";")) + ";");
-            }
-        }
-        return result;
     }
 
     /**
@@ -684,341 +584,347 @@ s        Utils.stream(variantsAndOverlappingUniqueContigs.toLocalIterator())
         }
     }
 
-    private AlignedContigScore calculateAlignedContigScore(final AlignedContig ctg) {
-        final List<AlignmentInterval> intervals = ctg.alignmentIntervals.stream()
-                .sorted(Comparator.comparing(ai -> ai.startInAssembledContig))
-                .collect(Collectors.toList());
-        int totalReversals = 0;
-        int totalIndels = 0;
-        int totalMatches = 0;
-        int totalMismatches = 0;
-        int totalIndelLength = 0;
-        for (int i = 0; i < intervals.size(); i++) {
-            final AlignmentInterval ai = intervals.get(i);
-            if (i > 0) {
-                final AlignmentInterval prev = intervals.get(i - 1);
-                if (prev.forwardStrand != ai.forwardStrand) {
-                    totalReversals++;
-                } else {
-                    final AlignmentInterval left = ai.forwardStrand ? prev : ai;
-                    final AlignmentInterval right = ai.forwardStrand ? ai : prev;
-                    if (left.referenceSpan.getEnd() < right.referenceSpan.getStart()) {
-                        totalIndels++;
-                        totalIndelLength += right.referenceSpan.getStart() - left.referenceSpan.getEnd();
-                    }
-                    if (left.endInAssembledContig < right.startInAssembledContig) {
-                        totalIndels++;
-                        totalIndelLength += right.startInAssembledContig - left.endInAssembledContig - 1;
-                    }
-                }
-            }
-            final int matches = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator().isAlignment())
-                    .mapToInt(CigarElement::getLength).sum();
-            final int misMatches = ai.mismatches;
-            final int indelCount = (int) ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator().isIndel())
-                    .count();
-            final int indelLengthSum = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                    .filter(ce -> ce.getOperator().isIndel())
-                    .mapToInt(CigarElement::getLength).sum();
-            totalIndels += indelCount;
-            totalMatches += matches;
-            totalMismatches += misMatches;
-            totalIndelLength += indelLengthSum;
-        }
-        if (intervals.isEmpty()) {
-            totalIndelLength += ctg.contigSequence.length;
-            totalIndels++;
-        } else {
-            if (intervals.get(0).startInAssembledContig > 1) {
-                totalIndelLength += intervals.get(0).startInAssembledContig - 1;
-                totalIndels++;
-            }
-            if (intervals.get(intervals.size() - 1).endInAssembledContig < ctg.contigSequence.length) {
-                totalIndelLength += ctg.contigSequence.length - intervals.get(intervals.size() - 1).endInAssembledContig;
-                totalIndels++;
-            }
-        }
-        return new AlignedContigScore(totalReversals, totalIndels, totalMatches, totalMismatches, totalIndelLength);
-    }
-
-    private String calculateHPTag(final double referenceScore, final double alternativeScore) {
-        if (Double.isNaN(referenceScore) && Double.isNaN(alternativeScore)) {
-            return VCFConstants.EMPTY_INFO_FIELD;
-        } else if (Double.isNaN(referenceScore)) {
-            return ALT_CONTIG_NAME;
-        } else if (Double.isNaN(alternativeScore)) {
-            return REF_CONTIG_NAME;
-        } else {
-            switch (Double.compare(alternativeScore, referenceScore)) {
-                case 0: return VCFConstants.EMPTY_INFO_FIELD;
-                case -1: return REF_CONTIG_NAME;
-                default: return ALT_CONTIG_NAME;
-            }
-        }
-    }
-
-    private double calculateHPQualTag(final double referenceScore, final double alternativeScore) {
-        if (Double.isNaN(referenceScore) || Double.isNaN(alternativeScore)) {
-            return Double.NaN;
-        } else {
-            switch (Double.compare(alternativeScore, referenceScore)) {
-                case 0: return 0;
-                case -1: return referenceScore - alternativeScore;
-                default: return alternativeScore - referenceScore;
-            }
-        }
-    }
-
-    private final Map<String,AlignedContig> alignContigsAgainstHaplotype(final AlignedContig haplotype,
+    private final List<AlignedContig> alignContigsAgainstHaplotype(final AlignedContig haplotype,
                                                                          final List<AlignedContig> contigs) {
-        File fastaFile = null;
-        File imageFile = null;
-        final SAMFileHeader alignmentHeader = new SAMFileHeader();
-        alignmentHeader.addSequence(new SAMSequenceRecord(haplotypeName, haplotype.length()));
-        try {
+        final File imageFile = createTemporalHaplotypeIndexFile(haplotype);
+        try (final BwaMemIndex index = new BwaMemIndex(imageFile.getAbsolutePath());
+             final BwaMemAligner aligner = new BwaMemAligner(index)) {
+            final List<String> haplotypeNameList = Collections.singletonList(haplotype.contigName);
+            final Set<String> haplotypeNameSet = Collections.singleton(haplotype.contigName);
+            final List<List<BwaMemAlignment>> alignedContigSegments = aligner.alignSeqs(contigs, ac -> ac.contigSequence);
+            final List<AlignedContig> result = new ArrayList<>(contigs.size());
 
-            fastaFile = createFastaFromHaplotype(haplotype, haplotypeName);
-            imageFile = createImageFileFromFasta(fastaFile);
-            final Stream<AlignedContig> alignedContigSegments;
-            if (contigs.size() > 10) { // just bother to sparkify it if there is a decent number of contigs.
-                final Map<String, GATKRead> contigsByName = contigs.stream()
-                        .collect(Collectors.toMap(contig -> contig.contigName, contig -> convertToUnmappedGATKRead(contig, alignmentHeader)));
-                final BwaMemAligner bwa = new BwaMemAligner(ctx, imageFile.getPath(), alignmentHeader, alignmentHeader.getSequenceDictionary());
-                alignedContigSegments = bwa.alignUnpaired(ctx.parallelize(new ArrayList<>(contigsByName.values())))
-                        .mapToPair(r -> new Tuple2<>(r.getName(), r))
-                        .groupByKey()
-                        .map(t -> Utils.stream(t._2()).collect(Collectors.toList()))
-                        .collect()
-                        .stream()
-                        .map(l ->  l.stream()
-                                    .map(ComposeStructuralVariantHaplotypesSpark::convertToAlignedContig)
-                                    .reduce(ComposeStructuralVariantHaplotypesSpark::mergeAlignedContigs).get());
-                bwa.close();
-            } else {
-                final BwaMemIndex index = new BwaMemIndex(imageFile.getPath());
-                final BwaMemAligner aligner = new BwaMemAligner(index);
-                final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(contigs, a -> a.contigSequence);
-                final List<String> refNames = alignmentHeader.getSequenceDictionary().getSequences().stream()
-                        .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
-                alignedContigSegments = IntStream.range(0, contigs.size())
-                        .mapToObj(i -> new Tuple2<>(contigs.get(i), alignments.get(i)))
-                        .map(t -> new Tuple2<>(t._1(), t._2().stream()
-                                .filter(bwa -> bwa.getRefId() >= 0) // remove unmapped reads.
-                                .filter(bwa -> SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwa.getSamFlag())) // ignore secondary alignments.
-                                .map(bma -> new AlignmentInterval(Utils.nonNull(bma), refNames, t._1().contigSequence.length))
-                                .collect(Collectors.toList())))
-                        .map(t -> new AlignedContig(t._1().contigName, t._1().contigSequence, t._2(), false));
+            for (int i = 0; i < contigs.size(); i++) {
+                final List<BwaMemAlignment> bmas = alignedContigSegments.get(i);
+                final AlignedContig input = contigs.get(i);
+                final List<AlignmentInterval> intervals = bmas.stream()
+                        .filter(bma -> bma.getRefId() >= 0)
+                        .filter(bwa -> SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwa.getSamFlag())) // ignore secondary alignments.
+                        .map(bma -> new AlignmentInterval(bma, haplotypeNameList, input.contigSequence.length))
+                        .collect(Collectors.toList());
+                final AlignedContig allCombos = new AlignedContig(input.contigName, input.contigSequence, intervals, false);
+                final List<AlignmentInterval> bestComboIntervals =
+                        FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(allCombos, haplotypeNameSet).get(0);
+                final AlignedContig bestCombo = new AlignedContig(input.contigName, input.contigSequence,
+                        bestComboIntervals, false);
+                result.add(bestCombo);
             }
-            return alignedContigSegments
-                    .map(a -> {
-                        final List<List<AlignmentInterval>> bestConfigurations =
-                                FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(a, Collections.singleton(haplotypeName));
-                        if (bestConfigurations.isEmpty()) {
-                            throw new IllegalArgumentException("no configuration found for " + a.contigName);
-                        } else {
-                            return new AlignedContig(a.contigName, a.contigSequence, bestConfigurations.get(0), bestConfigurations.size() > 1);
-                        }
-                    }).collect(Collectors.toMap(a -> a.contigName, a -> a));
+            return result;
         } finally {
-            Stream.of(fastaFile, imageFile)
-                    .filter(Objects::nonNull)
-                    .forEach(File::delete);
+            imageFile.delete();
         }
     }
 
-    private File createFastaFromHaplotype(final Haplotype haplotype, final String seqName) {
-        final File result;
+    private File createTemporalHaplotypeIndexFile(final AlignedContig haplotype) {
+
+        File fastaFile = null;
         try {
-            result = File.createTempFile("gatk-sv-bwa-tmp-ref-", ".fasta");
+            fastaFile = File.createTempFile("csvh-tmp", ".fasta");
+            final File indexFile = File.createTempFile("csvh-tmp", ".img");
+            fastaFile.deleteOnExit();
+            indexFile.deleteOnExit();
+            FastaReferenceWriter.writeSingleSequenceReference(fastaFile.toPath(), false, false, haplotype.contigName, null, haplotype.contigSequence);
+            BwaMemIndex.createIndexImageFromFastaFile(fastaFile.getAbsolutePath(), indexFile.getAbsolutePath());
+            return indexFile;
         } catch (final IOException ex) {
-            throw new GATKException("could not obtain a file location for a temporary haplotype reference fasta file", ex);
+            throw new GATKException("could not create index for haplotype " + haplotype.contigName);
+        } finally {
+            if (fastaFile != null) { fastaFile.delete(); }
         }
-        result.deleteOnExit();
-        try (final PrintWriter fastaWriter = new PrintWriter(new FileWriter(result))) {
 
-            fastaWriter.println(">" + seqName);
-            final byte[] bases = haplotype.getBases();
-            int nextIdx = 0;
-            while (nextIdx < bases.length) {
-                fastaWriter.println(new String(bases, nextIdx, Math.min(bases.length - nextIdx, FASTA_BASES_PER_LINE)));
-                nextIdx += FASTA_BASES_PER_LINE;
-            }
-        } catch (final IOException ex) {
-            throw new GATKException("could not write haplotype reference fasta file '" + result + "'", ex);
-        }
-        return result;
     }
 
-    private File createImageFileFromFasta(final File fasta) {
-        final File result = new File(fasta.getPath().replaceAll("\\.*$",".img"));
-        try {
-            BwaMemIndex.createIndexImageFromFastaFile(fasta.getPath(), result.getPath());
-        } catch (final Throwable ex) {
-            throw new GATKException("problems indexing fasta file '" + fasta + "' into '" + result + "'", ex);
-        }
-        result.deleteOnExit();
-        return result;
-    }
+//    private File createFastaFromHaplotype(final Haplotype haplotype, final String seqName) {
+//        final File result;
+//        try {
+//            result = File.createTempFile("gatk-sv-bwa-tmp-ref-", ".fasta");
+//        } catch (final IOException ex) {
+//            throw new GATKException("could not obtain a file location for a temporary haplotype reference fasta file", ex);
+//        }
+//        result.deleteOnExit();
+//        try (final PrintWriter fastaWriter = new PrintWriter(new FileWriter(result))) {
+//
+//            fastaWriter.println(">" + seqName);
+//            final byte[] bases = haplotype.getBases();
+//            int nextIdx = 0;
+//            while (nextIdx < bases.length) {
+//                fastaWriter.println(new String(bases, nextIdx, Math.min(bases.length - nextIdx, FASTA_BASES_PER_LINE)));
+//                nextIdx += FASTA_BASES_PER_LINE;
+//            }
+//        } catch (final IOException ex) {
+//            throw new GATKException("could not write haplotype reference fasta file '" + result + "'", ex);
+//        }
+//        return result;
+//    }
 
-    private void outputHaplotypesAsSAMRecords(final SAMFileHeader outputHeader,
-                                              final SAMFileWriter outputWriter,
-                                              final SAMFileWriter alignedOutputWriter,
-                                              final Haplotype referenceHaplotype,
-                                              final Haplotype alternativeHaplotype,
-                                              final StructuralVariantContext svc) {
-        final Consumer<SAMRecord> haplotypeExtraSetup = r -> {
-            r.setAttribute(SAMTag.RG.name(), HAPLOTYPE_READ_GROUP);
-            r.setMappingQuality(0);
-            r.setAttribute(VARIANT_CONTEXT_TAG, svc.getUniqueID());
-            r.setAttribute(REFERENCE_ALIGNMENT_TAG, supplementaryAlignmentLikeString(r));
-        };
-        final SAMRecord referenceRecord = referenceHaplotype.toSAMRecord(outputHeader, REF_CONTIG_NAME,
-                haplotypeExtraSetup);
-        final SAMRecord alternativeRecord = alternativeHaplotype.toSAMRecord(outputHeader, ALT_CONTIG_NAME,
-                haplotypeExtraSetup);
-        if (alignedOutputWriter != null) {
-            alignedOutputWriter.addAlignment(referenceRecord);
-            alignedOutputWriter.addAlignment(alternativeRecord);
-        }
-        final SAMRecord unmappedReferenceRecord  = unmapAndPointToVariant(referenceRecord.deepCopy(), svc);
-        final SAMRecord unmappedAlternativeRecord = unmapAndPointToVariant(alternativeRecord.deepCopy(), svc);
-        outputWriter.addAlignment(unmappedReferenceRecord);
-        outputWriter.addAlignment(unmappedAlternativeRecord);
-    }
+    /**
+     * Represent the information derived of collecting contigs and haplotypes that are relevant to a variant context
+     * and align them versus the reference and alternative haplotype.
+     */
+    @DefaultSerializer(VariantHaplotypesAndContigsComposite.Serializer.class)
+    static class VariantHaplotypesAndContigsComposite implements Serializable {
 
-    private String supplementaryAlignmentLikeString(final SAMRecord record) {
-        if (record.getReadUnmappedFlag()) {
-            return new Cigar().toString();
-        } else {
-            return Utils.join(",", record.getReferenceName(), record.getStart(), record.getReadNegativeStrandFlag() ? "-" : "+",
-                                             record.getCigar().toString(), record.getMappingQuality()) + ";";
-        }
-    }
+        private static final long serialVersionUID = 1L;
+        private final AlignedContig referenceHaplotype;
+        private final AlignedContig alternativeHaplotype;
+        private final AlignedContig[] originalAlignments;
+        private final AlignedContig[] referenceAlignments;
+        private final AlignedContig[] alternativeAlignments;
+        private final String[] referenceScoreTagValue;
+        private final String[] alternativeScoreTagValue;
+        private final String[] hpTagValue;
+        private final double[] hpQualTagValue;
 
-    private SAMRecord unmapAndPointToVariant(final SAMRecord input, final StructuralVariantContext svc) {
-        final SAMRecord record = input.deepCopy();
-        if (record.getReadNegativeStrandFlag()) {
-            record.setReadNegativeStrandFlag(false);
-            final byte[] bases = record.getReadBases();
-            if (bases != null) {
-                SequenceUtil.reverseComplement(bases);
-                record.setReadBases(bases);
-            }
-            final byte[] quals = record.getBaseQualities();
-            if (quals != null) {
-                SequenceUtil.reverseQualities(quals);
-                record.setBaseQualities(quals);
+        VariantHaplotypesAndContigsComposite(final AlignedContig referenceHaplotype, final AlignedContig alternativeHaplotype,
+                                             final List<AlignedContig> originalAlignment, final List<AlignedContig> referenceAlignedContigs,
+                                             final List<AlignedContig> alternativeAlignedContigs) {
+            final int numberOfContigs = referenceAlignedContigs.size();
+            this.referenceHaplotype = referenceHaplotype;
+            this.alternativeHaplotype = alternativeHaplotype;
+            this.originalAlignments = new AlignedContig[numberOfContigs];
+            this.referenceAlignments = new AlignedContig[numberOfContigs];
+            this.alternativeAlignments = new AlignedContig[numberOfContigs];
+            this.referenceScoreTagValue = new String[numberOfContigs];
+            this.alternativeScoreTagValue = new String[numberOfContigs];
+            this.hpTagValue = new String[numberOfContigs];
+            this.hpQualTagValue = new double[numberOfContigs];
+            for (int i = 0; i < numberOfContigs; i++) {
+                this.originalAlignments[i] = originalAlignment.get(i);
+                referenceAlignments[i] = referenceAlignedContigs.get(i);
+                alternativeAlignments[i] = alternativeAlignedContigs.get(i);
+                final AlignedContigScore referenceScore = calculateAlignedContigScore(referenceAlignments[i]
+                        = referenceAlignedContigs.get(i));
+                final AlignedContigScore alternativeScore = calculateAlignedContigScore(alternativeAlignments[i]
+                        = alternativeAlignedContigs.get(i));
+                referenceScoreTagValue[i] = referenceScore.toString();
+                alternativeScoreTagValue[i] = alternativeScore.toString();
+                hpTagValue[i] = calculateHPTag(referenceScore.getValue(), alternativeScore.getValue());
+                hpQualTagValue[i] = calculateHPQualTag(referenceScore.getValue(), alternativeScore.getValue());
             }
         }
-        record.setReadUnmappedFlag(true);
-        record.setReferenceName(svc.getContig());
-        record.setAlignmentStart(svc.getStart());
-        record.setCigar(new Cigar());
-        return record;
-    }
 
-    private <V extends VariantContext> Tuple2<V, List<AlignedContig>> resolvePendingContigs(final Tuple2<V, List<AlignedContig>> vc, final ReadsSparkSource s) {
-        logger.debug("VC " + vc._1().getContig() + ":" + vc._1().getStart() + "-" + vc._1().getEnd());
-        final List<AlignedContig> updatedList = vc._2().stream()
-                .map(a -> {
-                    if (a.contigSequence[0] != 0 && a.contigSequence[a.contigSequence.length - 1] != 0) {
-                        return a;
+        public VariantHaplotypesAndContigsComposite(final Kryo kryo, final Input input) {
+            final int numberOfContigs = input.readInt();
+            this.originalAlignments = new AlignedContig[numberOfContigs];
+            this.referenceAlignments = new AlignedContig[numberOfContigs];
+            this.alternativeAlignments = new AlignedContig[numberOfContigs];
+            this.referenceScoreTagValue = new String[numberOfContigs];
+            this.alternativeScoreTagValue = new String[numberOfContigs];
+            this.hpTagValue = new String[numberOfContigs];
+            this.hpQualTagValue = new double[numberOfContigs];
+            this.referenceHaplotype = kryo.readObject(input, AlignedContig.class);
+            this.alternativeHaplotype = kryo.readObject(input, AlignedContig.class);
+            for (int i = 0; i < numberOfContigs; i++) {
+                this.originalAlignments[i] = kryo.readObject(input, AlignedContig.class);
+                this.referenceAlignments[i] = kryo.readObject(input, AlignedContig.class);
+                this.alternativeAlignments[i] = kryo.readObject(input, AlignedContig.class);
+                this.referenceScoreTagValue[i] = input.readString();
+                this.alternativeScoreTagValue[i] = input.readString();
+                this.hpTagValue[i] = input.readString();
+                this.hpQualTagValue[i] = input.readDouble();
+            }
+        }
+
+        private int numberOfContigs() {
+            return referenceAlignments.length;
+        }
+
+        private static AlignedContigScore calculateAlignedContigScore(final AlignedContig ctg) {
+            final List<AlignmentInterval> intervals = ctg.alignmentIntervals.stream()
+                    .sorted(Comparator.comparing(ai -> ai.startInAssembledContig))
+                    .collect(Collectors.toList());
+            int totalReversals = 0;
+            int totalIndels = 0;
+            int totalMatches = 0;
+            int totalMismatches = 0;
+            int totalIndelLength = 0;
+            for (int i = 0; i < intervals.size(); i++) {
+                final AlignmentInterval ai = intervals.get(i);
+                if (i > 0) {
+                    final AlignmentInterval prev = intervals.get(i - 1);
+                    if (prev.forwardStrand != ai.forwardStrand) {
+                        totalReversals++;
                     } else {
-                        final String targetName = a.contigName;
-                        final List<SimpleInterval> locations = a.alignmentIntervals.stream()
-                                .map(ai -> ai.referenceSpan).collect(Collectors.toList());
-                        final List<GATKRead> candidate = s.getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(),
-                                        new TraversalParameters(locations, false))
-                                .filter(rr -> rr.getName().equals(targetName))
-                                .filter(rr -> !rr.getCigar().containsOperator(CigarOperator.H))
-                                .top(1);
-                        final AlignedContig result = candidate.isEmpty() ? a  : addAlignment(a, candidate.get(0));
-                        if (result.contigSequence[0] == 0 || result.contigSequence[result.contigSequence.length - 1] == 0) {
-                            logger.warn("Contig " + result.contigName + " " + " "
-                                    + a.alignmentIntervals.stream().map(AlignmentInterval::toSumpplementaryAlignmentString).collect(Collectors.joining(",")) + " gave-up!");
-                            return null;
-                        } else {
-                            return result;
+                        final AlignmentInterval left = ai.forwardStrand ? prev : ai;
+                        final AlignmentInterval right = ai.forwardStrand ? ai : prev;
+                        if (left.referenceSpan.getEnd() < right.referenceSpan.getStart()) {
+                            totalIndels++;
+                            totalIndelLength += right.referenceSpan.getStart() - left.referenceSpan.getEnd();
                         }
-                    }})
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        return new Tuple2<>(vc._1, updatedList);
-    }
-
-    private static AlignedContig convertToAlignedContig(final GATKRead read) {
-        if (read.isUnmapped()) {
-            return new AlignedContig(read.getName(), read.getBases(), Collections.emptyList(), false);
-        } else {
-            final int contigLength = CigarUtils.countUnclippedReadBases(read.getCigar());
-            final byte[] contigBases = new byte[contigLength];
-            final byte[] readBases = read.getBases();
-            if (read.isReverseStrand()) {
-                SequenceUtil.reverseComplement(readBases);
+                        if (left.endInAssembledContig < right.startInAssembledContig) {
+                            totalIndels++;
+                            totalIndelLength += right.startInAssembledContig - left.endInAssembledContig - 1;
+                        }
+                    }
+                }
+                final int matches = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
+                        .filter(ce -> ce.getOperator().isAlignment())
+                        .mapToInt(CigarElement::getLength).sum();
+                final int misMatches = ai.mismatches;
+                final int indelCount = (int) ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
+                        .filter(ce -> ce.getOperator().isIndel())
+                        .count();
+                final int indelLengthSum = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
+                        .filter(ce -> ce.getOperator().isIndel())
+                        .mapToInt(CigarElement::getLength).sum();
+                totalIndels += indelCount;
+                totalMatches += matches;
+                totalMismatches += misMatches;
+                totalIndelLength += indelLengthSum;
             }
-            final int startPosition = 1 + (read.isReverseStrand()
-                    ? CigarUtils.countRightHardClippedBases(read.getCigar())
-                    : CigarUtils.countLeftHardClippedBases(read.getCigar()));
-            final int endPosition = contigLength - (read.isReverseStrand()
-                    ? CigarUtils.countLeftHardClippedBases(read.getCigar())
-                    : CigarUtils.countRightHardClippedBases(read.getCigar()));
-            for (int contigIdx = startPosition - 1, readIdx = 0; contigIdx < endPosition; contigIdx++, readIdx++) {
-                if (contigBases[contigIdx] == 0) {
-                    contigBases[contigIdx] = readBases[readIdx];
-                } else if (contigBases[contigIdx] != readBases[readIdx]) {
-                    throw new IllegalArgumentException("it seems that there is a base call conflict between "
-                            + "overlapping alternative read alignments: " + read.getName() + " at " + (contigIdx + 1));
+            if (intervals.isEmpty()) {
+                totalIndelLength += ctg.contigSequence.length;
+                totalIndels++;
+            } else {
+                if (intervals.get(0).startInAssembledContig > 1) {
+                    totalIndelLength += intervals.get(0).startInAssembledContig - 1;
+                    totalIndels++;
+                }
+                if (intervals.get(intervals.size() - 1).endInAssembledContig < ctg.contigSequence.length) {
+                    totalIndelLength += ctg.contigSequence.length - intervals.get(intervals.size() - 1).endInAssembledContig;
+                    totalIndels++;
                 }
             }
-            return new AlignedContig(read.getName(), contigBases,
-                    Stream.concat(Collections.singletonList(new AlignmentInterval(read)).stream(),
-                                SupplementaryAlignments.of(read).stream()).collect(Collectors.toList()), false);
+            return new AlignedContigScore(totalReversals, totalIndels, totalMatches, totalMismatches, totalIndelLength);
         }
-    }
 
-    private static GATKRead convertToUnmappedGATKRead(final AlignedContig contig, final SAMFileHeader header) {
-        final SAMRecord record = new SAMRecord(header);
-        record.setReadBases(contig.contigSequence);
-        record.setReadName(contig.contigName);
-        record.setReadUnmappedFlag(true);
-        return new SAMRecordToGATKReadAdapter(record);
-    }
-
-    private static AlignedContig addAlignment(final AlignedContig contig, final GATKRead read) {
-        return mergeAlignedContigs(contig, convertToAlignedContig(read));
-    }
-
-    private static AlignedContig mergeAlignedContigs(final AlignedContig a, final AlignedContig b) {
-        if (!a.contigName.equals(b.contigName)) {
-            throw new IllegalArgumentException("trying to merge contigs with different names");
-        }
-        final byte[] aBases = a.contigSequence;
-        final byte[] bBases = b.contigSequence;
-        if (aBases.length != bBases.length) {
-            throw new IllegalArgumentException("same contig cannot have different lengths!");
-        }
-        final byte[] cBases = new byte[aBases.length];
-        for (int i = 0; i < aBases.length; i++) {
-            final byte aBase = aBases[i];
-            final byte bBase = bBases[i];
-            if (aBase == bBase) {
-                cBases[i] = aBase;
-            } else if (aBase == 0) {
-                cBases[i] = bBase;
-            } else if (bBase == 0) {
-                cBases[i] = aBase;
+        private static String calculateHPTag(final double referenceScore, final double alternativeScore) {
+            if (Double.isNaN(referenceScore) && Double.isNaN(alternativeScore)) {
+                return VCFConstants.EMPTY_INFO_FIELD;
+            } else if (Double.isNaN(referenceScore)) {
+                return ComposeStructuralVariantHaplotypesSpark.ALT_CONTIG_NAME;
+            } else if (Double.isNaN(alternativeScore)) {
+                return ComposeStructuralVariantHaplotypesSpark.REF_CONTIG_NAME;
             } else {
-                throw new IllegalStateException("conflict between read calls on the same contig " + a.contigName);
+                switch (Double.compare(alternativeScore, referenceScore)) {
+                    case 0:
+                        return VCFConstants.EMPTY_INFO_FIELD;
+                    case -1:
+                        return ComposeStructuralVariantHaplotypesSpark.REF_CONTIG_NAME;
+                    default:
+                        return ComposeStructuralVariantHaplotypesSpark.ALT_CONTIG_NAME;
+                }
             }
         }
-        return new AlignedContig(a.contigName, cBases,
-                Stream.concat(a.alignmentIntervals.stream(), b.alignmentIntervals.stream())
-                      .collect(Collectors.groupingBy(ai -> ai.startInAssembledContig)).values().stream()
-                      .map(l -> l.get(0))
-                      .sorted(Comparator.comparingInt(ai -> ai.startInAssembledContig))
-                      .collect(Collectors.toList()), false);
+
+        private static double calculateHPQualTag(final double referenceScore, final double alternativeScore) {
+            if (Double.isNaN(referenceScore) || Double.isNaN(alternativeScore)) {
+                return Double.NaN;
+            } else {
+                switch (Double.compare(alternativeScore, referenceScore)) {
+                    case 0:
+                        return 0;
+                    case -1:
+                        return referenceScore - alternativeScore;
+                    default:
+                        return alternativeScore - referenceScore;
+                }
+            }
+        }
+
+        private SAMRecord composeOutputSAMRecord(final SAMFileHeader outputHeader, final StructuralVariantContext vc, final int index) {
+
+            final AlignedContig originalContig = originalAlignments[index];
+            final SAMRecord outputRecord = new SAMRecord(outputHeader);
+            final boolean isHaplotype = originalContig.contigName.equals(ALT_CONTIG_NAME) || originalContig.contigName.equals(REF_CONTIG_NAME);
+            final String group = isHaplotype ? HAPLOTYPE_READ_GROUP : CONTIG_READ_GROUP;
+            outputRecord.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
+            outputRecord.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue[index]);
+            outputRecord.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue[index]);
+            outputRecord.setAttribute(REFERENCE_SCORE_TAG, referenceScoreTagValue[index]);
+            outputRecord.setAttribute(ALTERNATIVE_SCORE_TAG, alternativeScoreTagValue[index]);
+            outputRecord.setAttribute(SAMTag.SA.name(), composeSupplementaryLikeString(originalContig) + ';');
+            outputRecord.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignments[index]) + ';');
+            outputRecord.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignments[index]) + ';');
+            outputRecord.setAttribute(VARIANT_CONTEXT_TAG, vc.getUniqueID());
+            outputRecord.setReadName(originalContig.contigName);
+            outputRecord.setReadPairedFlag(false);
+            outputRecord.setDuplicateReadFlag(false);
+            outputRecord.setSecondOfPairFlag(false);
+            outputRecord.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
+            outputRecord.setReadNegativeStrandFlag(false);
+            final byte[] bases = originalContig.contigSequence;
+            outputRecord.setReadBases(bases);
+            outputRecord.setReferenceName(vc.getContig());
+            outputRecord.setAlignmentStart(vc.getStart());
+            outputRecord.setMappingQuality(SAMRecord.NO_MAPPING_QUALITY);
+            outputRecord.setReadUnmappedFlag(true);
+            return outputRecord;
+        }
+
+        private static String composeSupplementaryLikeString(final AlignedContig referenceAlignment) {
+            if (referenceAlignment.alignmentIntervals.isEmpty()) {
+                return new Cigar().toString();
+            } else {
+                return referenceAlignment.alignmentIntervals.stream()
+                        .map(AlignmentInterval::toSumpplementaryAlignmentString)
+                        .collect(Collectors.joining(";"));
+            }
+        }
+
+        private List<SAMRecord> composeAlignedOutputSAMRecords(final SAMFileHeader header,
+                                                           final StructuralVariantContext vc, final int index) {
+            final AlignedContig alignment = originalAlignments[index];
+            final List<SAMRecord> result = new ArrayList<>(alignment.alignmentIntervals.size());
+            result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence, false, 0, Collections.emptyList()));
+            final boolean isHaplotype = alignment.contigName.equals(ALT_CONTIG_NAME) || alignment.contigName.equals(REF_CONTIG_NAME);
+            final String readGroup = isHaplotype ? HAPLOTYPE_READ_GROUP : CONTIG_READ_GROUP;
+            final String vcUID = vc.getUniqueID();
+            for (int i = 1; i < alignment.alignmentIntervals.size(); i++) {
+                result.add(alignment.alignmentIntervals.get(i).toSAMRecord(header, alignment.contigName, alignment.contigSequence, true, SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(), Collections.emptyList()));
+            }
+            for (final SAMRecord record : result) {
+                record.setReadName(alignment.contigName);
+                record.setAttribute(SAMTag.RG.name(), readGroup);
+                record.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue[index]);
+                record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue[index]);
+                record.setAttribute(REFERENCE_SCORE_TAG, referenceScoreTagValue[index]);
+                record.setAttribute(ALTERNATIVE_SCORE_TAG, alternativeScoreTagValue[index]);
+                record.setAttribute(VARIANT_CONTEXT_TAG, vcUID);
+                record.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignments[index]) + ';');
+                record.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignments[index]) + ';');
+            }
+            final List<String> saTagValues = alignment.alignmentIntervals.stream()
+                    .map(AlignmentInterval::toSumpplementaryAlignmentString)
+                    .collect(Collectors.toList());
+
+            if (result.size() > 1) {
+                for (int i = 0; i < result.size(); i++) {
+                    final int idx = i;
+                    result.get(i).setAttribute(SAMTag.SA.name(),
+                            IntStream.range(0, result.size())
+                                    .filter(ii -> ii != idx)
+                                    .mapToObj(saTagValues::get)
+                                    .collect(Collectors.joining(";")) + ";");
+                }
+            }
+            return result;
+        }
+
+        public static class Serializer extends com.esotericsoftware.kryo.Serializer<VariantHaplotypesAndContigsComposite> {
+
+            @Override
+            public void write(final Kryo kryo, final Output output, final VariantHaplotypesAndContigsComposite object) {
+                final int numberOfContigs = object.numberOfContigs();
+                output.writeInt(numberOfContigs);
+                kryo.writeObject(output, object.referenceHaplotype);
+                kryo.writeObject(output, object.alternativeHaplotype);
+                for (int i = 0; i < numberOfContigs; i++) {
+                    kryo.writeObject(output, object.originalAlignments[i]);
+                    kryo.writeObject(output, object.referenceAlignments[i]);
+                    kryo.writeObject(output, object.alternativeAlignments[i]);
+                    output.writeString(object.referenceScoreTagValue[i]);
+                    output.writeString(object.alternativeScoreTagValue[i]);
+                    output.writeString(object.hpTagValue[i]);
+                    output.writeDouble(object.hpQualTagValue[i]);
+                }
+            }
+
+            @Override
+            public VariantHaplotypesAndContigsComposite read(final Kryo kryo, final Input input, Class<VariantHaplotypesAndContigsComposite> type) {
+                return new VariantHaplotypesAndContigsComposite(kryo, input);
+            }
+        }
     }
 }
 
