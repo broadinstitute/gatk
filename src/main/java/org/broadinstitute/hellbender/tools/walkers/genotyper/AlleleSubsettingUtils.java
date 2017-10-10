@@ -39,7 +39,6 @@ public final class AlleleSubsettingUtils {
      * @param originalAlleles          the original alleles
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
      * @param assignmentMethod         assignment strategy for the (subsetted) PLs
-     * @param depth                    the original variant DP or 0 if there was no DP
      * @return                         a new non-null GenotypesContext
      */
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
@@ -77,10 +76,10 @@ public final class AlleleSubsettingUtils {
                 }
             }
 
-            final boolean useNewLikelihoods = newLikelihoods != null;
+            final boolean useNewLikelihoods = newLikelihoods != null && newLikelihoods.length > 1;
             final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ) : new GenotypeBuilder(g).noPL().noGQ();
 
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
+            GATKVariantContextUtils.makeGenotypeCall(ploidy, gb, assignmentMethod, newLikelihoods, allelesToKeep);
 
             // restrict SAC to the new allele subset
             if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {
