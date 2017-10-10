@@ -61,7 +61,7 @@ public class GenomicsDBImportUnitTest extends BaseTest{
     @DataProvider
     public Object[][] getSampleMaps(){
         return new Object[][]{
-                {ORDERED_SAMPLE_MAP, },
+                {ORDERED_SAMPLE_MAP},
                 {UNORDERED_SAMPLE_MAP}
         };
     }

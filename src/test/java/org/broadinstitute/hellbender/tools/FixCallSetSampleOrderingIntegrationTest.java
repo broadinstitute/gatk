@@ -71,16 +71,6 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
                         .collect(Collectors.joining("\n")), "mapping", ".sample_map");
     }
 
-    @DataProvider
-    public Object[][] getBadInputs() {
-        return new Object[][]{
-                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 10000}, //larger batch size than number of samples
-                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 0}, // batch size 0
-                {getTestFile("mismatched.sample_map"), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 50} //larger batch size than number of samples
-        };
-    }
-
-
     /**
      * this was used to generate the vcf files files used in {@link #testUnshufflingRestoresCorrectSamples(File, File, int)}
      * it's kept around in case we need to generate new test cases or examine how they were made
@@ -123,13 +113,23 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
         try(final FeatureReader<VariantContext> reader =
                 AbstractFeatureReader.getFeatureReader(fixed.getAbsolutePath(), new VCFCodec(), true)){
             final VariantContext vc = reader.iterator().next();
+            Assert.assertEquals(vc.getGenotypes().size(), 1000);
             vc.getGenotypes().iterator().forEachRemaining( g ->
                     Assert.assertEquals(g.getSampleName(), g.getAnyAttribute(SAMPLE_NAME_KEY))
             );
         }
     }
 
-    @Test(expectedExceptions = UserException.class, dataProvider = "getBadInputs")
+    @DataProvider
+    public Object[][] getBadInputs() {
+        return new Object[][]{
+                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 10000}, // smaller batch size than number of samples
+                {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 0}, // batch size 0
+                {getTestFile("mismatched.sample_map"), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 1} // samples in sample map don't match badly vcf
+        };
+    }
+
+    @Test(expectedExceptions = FixCallSetSampleOrdering.SampleNameFixingCannotProceedException.class, dataProvider = "getBadInputs")
     public void testErrorConditions(final File sampleMap, final File shuffled, final int batchSize){
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File fixed = createTempFile("fixed_", ".vcf");

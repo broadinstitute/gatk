@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
@@ -12,11 +12,13 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-
 
 import java.io.File;
 import java.nio.file.Path;
@@ -24,10 +26,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @BetaFeature
-@CommandLineProgramProperties(summary = "fix the sample names in a vcf that ran through the GenomicsDBImport when " +
+@CommandLineProgramProperties(summary = "Fix the sample names in a vcf that ran through the GenomicsDBImport when " +
         "the batch ordering bug was present, this will restore the correct sample names provided it is given the exact sample name mapping / vcf ordering" +
-        "and batch sized that was used in the initial import" +
-        "see https://github.com/broadinstitute/gatk/issues/3682 for more information",
+        "and batch sized that was used in the initial import. " +
+        "See https://github.com/broadinstitute/gatk/issues/3682 for more information",
         oneLineSummary = "fix sample names in a shuffled callset",
         programGroup = VariantProgramGroup.class,
         omitFromCommandLine = true)
@@ -64,7 +66,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
         assertThatTheyReallyWantToProceed();
 
         if (batchSize == 0) {
-            throw new UserException("your callset is not affected by the bug if you ran with "+ GenomicsDBImport.BATCHSIZE_ARG_NAME +" 0");
+            throw new SampleNameFixingCannotProceedException("your callset is not affected by the bug if you ran with --"+ GenomicsDBImport.BATCHSIZE_ARG_NAME +" 0");
         }
 
         final VCFHeader originalHeader = getHeaderForVariants();
@@ -74,7 +76,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
 
         final List<String> sampleNamesOriginalOrdering = getSampleNamesInInputOrder(sampleNameMapPath);
         if( sampleNamesOriginalOrdering.size() <= batchSize ){
-            throw new UserException("you are not affected by the sample name ordering bug if your batch size is >= the number of samples in your callset. \n"
+            throw new SampleNameFixingCannotProceedException("you are not affected by the sample name ordering bug if your batch size is >= the number of samples in your callset. \n"
                                             + "batch size: " + batchSize + "\n"
                                             + "number of samples: " + sampleNamesOriginalOrdering.size());
         }
@@ -91,7 +93,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
 
     private static void assertSampleNamesMatchInputVCF(final ArrayList<String> sampleNamesFromVCF, final List<String> sampleNameFromSampleMapFile) {
         if(!CollectionUtils.isEqualCollection(sampleNamesFromVCF, sampleNameFromSampleMapFile)){
-            throw new UserException("The sample names in the provided sample name map file do not match the sample names in the provided vcf.\n" +
+            throw new SampleNameFixingCannotProceedException("The sample names in the provided sample name map file do not match the sample names in the provided vcf.\n" +
                     "It is important this tool is run with exactly the same sample name map file that was used to create the vcf.");
         }
     }
@@ -103,30 +105,39 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
 
     @Override
     public void closeTool() {
-        logger.info("Finished writing the new vcf with corrected sampled names.");
+        logger.info("Finished writing the new vcf with corrected sample names.");
         if( writer != null) {
             writer.close();
         }
     }
     private void assertThatTheyReallyWantToProceed(){
-        if( !skipCommandLinePrompt ){
-            final Scanner scanner = new Scanner(System.in);
-            System.out.println(
-                    "\n\nYou are about to create a new VCF that has it's header corrected for the sample swapping bug described in https://github.com/broadinstitute/gatk/issues/3682.\n"+ "" +
-                            "You should be certain you want to do this before proceeding.\n" +
-                            "If the following description does not apply to your VCF then the newly generated vcf will be \n\n \t\tHORRIBLY CORRUPTED\n\n" +
-                            "1: your vcf was generated using a GenomicsDBImport released before gatk version 4.beta.6\n" +
-                            "2: you set --batchSize != 0 when running GenomicsDBImport\n" +
-                            "3: your callset was imported in multiple batches, i.e. your number of samples > batchSize\n" +
-                            "4: you supplied the exact same sampleNameMap file and batch size you used in the initial GenomicsDBImport\n\n" +
+        if( !skipCommandLinePrompt ) {
+            try (final Scanner scanner = new Scanner(System.in)) {
+                System.out.println(
+                        "\n\nYou are about to create a new VCF that has its header corrected for the sample swapping bug described in https://github.com/broadinstitute/gatk/issues/3682.\n" + "" +
+                                "You should be certain you want to do this before proceeding.\n" +
+                                "If the following description does not apply to your VCF then the newly generated vcf will be \n\n \t\tHORRIBLY CORRUPTED: by having its sample names shuffled so that the genotypes don't correspond to the correct samples\n\n" +
+                                "1: your vcf was generated using a GenomicsDBImport released before gatk version 4.beta.6\n" +
+                                "2: you set --batchSize != 0 when running GenomicsDBImport\n" +
+                                "3: your callset was imported in multiple batches, i.e. your number of samples > batchSize\n" +
+                                "4: you supplied the exact same sampleNameMap file and batch size you used in the initial GenomicsDBImport\n\n" +
 
-                            "If you don't know if this applies to you, please contact GATK support at https://gatkforums.broadinstitute.org/gatk/ for assistance\n" +
-                            "Would you like to proceed? You can rerun with --"+SKIP_PROMPT_LONG_NAME+" to skip this check (y/N)");
-            final String next = scanner.next();
-            if (!next.equalsIgnoreCase("y")){
-                System.out.println("Aborting");
-                System.exit(0);
+                                "If you don't know if this applies to you, please contact GATK support at https://gatkforums.broadinstitute.org/gatk/ for assistance\n" +
+                                "Would you like to proceed? You can rerun with --" + SKIP_PROMPT_LONG_NAME + " to skip this check (y/N)");
+                final String next = scanner.nextLine();
+                if (!next.equalsIgnoreCase("y")) {
+                    System.out.println("Aborting");
+                    System.exit(1);
+                }
             }
+        }
+    }
+
+    @VisibleForTesting
+    static class SampleNameFixingCannotProceedException extends UserException {
+        private static final long serialVersionUID = 1L;
+        SampleNameFixingCannotProceedException(final String message){
+            super(message);
         }
     }
 

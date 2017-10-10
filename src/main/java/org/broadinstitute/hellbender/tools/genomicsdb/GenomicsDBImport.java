@@ -301,6 +301,11 @@ public final class GenomicsDBImport extends GATKTool {
 
     /**
      * load a tab delimited new line separated file of sample name to URI mapping:
+     * this maintains the keys in the same order that they appeared in the file
+     *
+     * this tool should only call {@link #loadSampleNameMapFileInSortedOrder(Path)},
+     * this version is exposed for the benefit of {@link org.broadinstitute.hellbender.tools.FixCallSetSampleOrdering}
+     *
      * ex:
      *
      * Sample1\tpathToSample1.vcf\n
