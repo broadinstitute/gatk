@@ -177,7 +177,7 @@ public class ChimericAlignmentUnitTest extends BaseTest {
 
     private static void testSerialization(final AlignmentInterval region1, final AlignmentInterval region2) {
 
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "dummyName");
+        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "dummyName", SVDiscoveryTestDataProvider.seqDict);
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();

@@ -13,8 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
-
 public final class GappedAlignmentSplitter {
 
     /**
@@ -114,8 +112,7 @@ public final class GappedAlignmentSplitter {
 
                     final AlignmentInterval split = new AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd,
                             cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ,
-                            DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.ARTIFICIAL_MISMATCH,
-                            oneRegion.alnScore, AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT);
+                            AlignmentInterval.NO_NM, oneRegion.alnScore, AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT);
 
                     result.add(split);
 
@@ -158,8 +155,7 @@ public final class GappedAlignmentSplitter {
         result.add(new AlignmentInterval(lastReferenceInterval,
                 contigIntervalStart, unclippedContigLen-clippedNBasesFromEnd, lastForwardStrandCigar,
                 oneRegion.forwardStrand, originalMapQ,
-                DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.ARTIFICIAL_MISMATCH,
-                oneRegion.alnScore, AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT));
+                AlignmentInterval.NO_NM, oneRegion.alnScore, AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT));
 
 
         return result;

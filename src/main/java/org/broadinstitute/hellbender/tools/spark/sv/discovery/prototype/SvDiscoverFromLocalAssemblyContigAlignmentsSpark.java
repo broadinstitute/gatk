@@ -23,14 +23,15 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.FileUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.RDDUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
 /**
@@ -95,7 +96,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         // filter alignments and split the gaps
         final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed =
-                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, headerForReads, nonCanonicalChromosomeNamesFile, localLogger)
+                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, headerForReads, nonCanonicalChromosomeNamesFile, localLogger, 0.0)
                         .filter(lr -> lr.alignmentIntervals.size()>1).cache();
 
         // divert the long reads by their possible type of SV
@@ -111,6 +112,12 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         }
 
         final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast = ctx.broadcast(getReference());
+        dispatchJobs( contigsByPossibleRawTypes, referenceMultiSourceBroadcast, refSequenceDictionary);
+    }
+
+    private void dispatchJobs(final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes,
+                              final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast,
+                              final SAMSequenceDictionary refSequenceDictionary) {
 
         new InsDelVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), outputDir+"/"+RawTypes.InsDel.name()+".vcf",
@@ -118,6 +125,14 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         new SimpleStrandSwitchVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Inv), outputDir+"/"+RawTypes.Inv.name()+".vcf",
+                        referenceMultiSourceBroadcast, refSequenceDictionary, localLogger);
+
+        // here contigs supporting cpx having only 2 alignments could be handled easily together with ref block order switch ones
+        final JavaRDD<AlignedContig> diffChrTrans =
+                contigsByPossibleRawTypes.get(RawTypes.Cpx).filter(tig -> tig.alignmentIntervals.size() == 2);
+        new SuspectedTransLocDetector()
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.DispersedDupOrMEI).union(diffChrTrans),
+                        outputDir+"/"+ RawTypes.DispersedDupOrMEI.name()+".vcf",
                         referenceMultiSourceBroadcast, refSequenceDictionary, localLogger);
     }
 
@@ -132,7 +147,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     private static boolean isSameChromosomeMapping(final AlignedContig contigWithOnlyOneConfigAnd2Aln) {
         Utils.validateArg(hasOnly2Alignments(contigWithOnlyOneConfigAnd2Aln),
                 "assumption that input contig has only 2 alignments is violated. \n" +
-                        onErrorStringRepForAlignedContig(contigWithOnlyOneConfigAnd2Aln));
+                        contigWithOnlyOneConfigAnd2Aln.toString());
         return contigWithOnlyOneConfigAnd2Aln.alignmentIntervals.get(0).referenceSpan.getContig()
                 .equals(contigWithOnlyOneConfigAnd2Aln.alignmentIntervals.get(1).referenceSpan.getContig());
     }
@@ -140,7 +155,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     static boolean isLikelyInvBreakpointOrInsInv(final AlignedContig contigWithOnlyOneConfigAnd2AlnToSameChr) {
         Utils.validateArg(isSameChromosomeMapping(contigWithOnlyOneConfigAnd2AlnToSameChr),
                 "assumption that input contig's 2 alignments map to the same chr is violated. \n" +
-                        onErrorStringRepForAlignedContig(contigWithOnlyOneConfigAnd2AlnToSameChr));
+                        contigWithOnlyOneConfigAnd2AlnToSameChr.toString());
         return contigWithOnlyOneConfigAnd2AlnToSameChr.alignmentIntervals.get(0).forwardStrand
                 ^
                 contigWithOnlyOneConfigAnd2AlnToSameChr.alignmentIntervals.get(1).forwardStrand;
@@ -149,21 +164,26 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     private static boolean isSuggestingRefBlockOrderSwitch(final AlignedContig contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch) {
         Utils.validateArg(isSameChromosomeMapping(contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch),
                 "assumption that input contig's 2 alignments map to the same chr is violated. \n" +
-                        onErrorStringRepForAlignedContig(contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch));
+                        contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.toString());
         Utils.validateArg( !isLikelyInvBreakpointOrInsInv(contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch),
                 "assumption that input contig's 2 alignments map to the same chr is violated. \n" +
-                        onErrorStringRepForAlignedContig(contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch));
+                        contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.toString());
 
-        final AlignmentInterval intervalOne = contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.alignmentIntervals.get(0),
-                                intervalTwo = contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.alignmentIntervals.get(1);
+        final AlignmentInterval one = contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.alignmentIntervals.get(0),
+                                two = contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.alignmentIntervals.get(1);
+        if (one.referenceSpan.contains(two.referenceSpan) || two.referenceSpan.contains(one.referenceSpan))
+            return false;
+        final List<AlignmentInterval> deOverlappedTempAlignments =
+                ContigAlignmentsModifier.removeOverlap(one, two, null);
 
-        return intervalOne.referenceSpan.getStart() > intervalTwo.referenceSpan.getStart() == intervalOne.forwardStrand;
+        return deOverlappedTempAlignments.get(0).referenceSpan.getStart() > deOverlappedTempAlignments.get(1).referenceSpan.getStart()
+                == deOverlappedTempAlignments.get(0).forwardStrand;
     }
 
     private static boolean isLikelyCpx(final AlignedContig contigWithOnlyOneConfig) {
         Utils.validateArg(!contigWithOnlyOneConfig.hasEquallyGoodAlnConfigurations,
                 "assumption that input contig has one unique best alignment configuration is violated: " +
-                        onErrorStringRepForAlignedContig(contigWithOnlyOneConfig));
+                        contigWithOnlyOneConfig.toString());
 
         return !hasOnly2Alignments(contigWithOnlyOneConfig) || !isSameChromosomeMapping(contigWithOnlyOneConfig);
     }
@@ -182,34 +202,30 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 contigsWithAlignmentsReconstructed.filter(lr -> !lr.hasEquallyGoodAlnConfigurations).cache();
 
         // divert away those likely suggesting cpx sv (more than 2 alignments after gap split, or 2 alignments to diff chr)
-        contigsByRawTypes.put(RawTypes.Cpx,
-                contigsWithOnlyOneBestConfig.filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyCpx));
+        final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> cpxAndNot =
+                RDDUtils.split(contigsWithOnlyOneBestConfig, SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyCpx, true);
+
+        contigsByRawTypes.put(RawTypes.Cpx, cpxAndNot._1);
 
         // long reads with only 1 best configuration and having only 2 alignments mapped to the same chromosome
-        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChr =
-                contigsWithOnlyOneBestConfig
-                        .filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::hasOnly2Alignments)
-                        .filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSameChromosomeMapping).cache();
+        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChr = cpxAndNot._2;
 
         // divert away those with strand switch
-        contigsByRawTypes.put(RawTypes.Inv,
-                contigsWithOnlyOneBestConfigAnd2AIToSameChr.filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyInvBreakpointOrInsInv));
+        final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> strandSwitchAndNot =
+                RDDUtils.split(contigsWithOnlyOneBestConfigAnd2AIToSameChr, SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyInvBreakpointOrInsInv, true);
+
+        contigsByRawTypes.put(RawTypes.Inv, strandSwitchAndNot._1);
 
         // 2 AI, same chr, no strand switch, then only 2 cases left
-        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch =
-                contigsWithOnlyOneBestConfigAnd2AIToSameChr.filter(tig -> !isLikelyInvBreakpointOrInsInv(tig)).cache();
+        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch = strandSwitchAndNot._2;
 
         // case 1: dispersed duplication, or MEI (that is, reference blocks seemingly switched their orders)
-        contigsByRawTypes.put(RawTypes.DispersedDupOrMEI,
-                contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch.filter(SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSuggestingRefBlockOrderSwitch));
+        final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> x =
+                RDDUtils.split(contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch, SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSuggestingRefBlockOrderSwitch, true);
+        contigsByRawTypes.put(RawTypes.DispersedDupOrMEI, x._1);
 
         // case 2: no order switch: ins, del, or tandem dup
-        contigsByRawTypes.put(RawTypes.InsDel,
-                contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch.filter(tig -> !isSuggestingRefBlockOrderSwitch(tig)));
-
-        contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch.unpersist();
-        contigsWithOnlyOneBestConfigAnd2AIToSameChr.unpersist();
-        contigsWithOnlyOneBestConfig.unpersist();
+        contigsByRawTypes.put(RawTypes.InsDel, x._2);
 
         return contigsByRawTypes;
     }
@@ -226,9 +242,4 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 outputDir+"/"+rawTypeString+".sam", false);
     }
 
-    static String onErrorStringRepForAlignedContig(final AlignedContig contig) {
-        return FilterLongReadAlignmentsSAMSpark.formatContigInfo(
-                new Tuple2<>(contig.contigName ,
-                        contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())));
-    }
 }

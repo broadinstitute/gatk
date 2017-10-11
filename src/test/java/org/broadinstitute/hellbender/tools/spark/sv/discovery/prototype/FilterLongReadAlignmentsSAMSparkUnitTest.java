@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,7 +21,7 @@ public class FilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
     private static final Set<String> canonicalChromosomes = getCanonicalChromosomes(null, null);
 
     @DataProvider(name = "contigAlignmentsHeuristicFilter")
-    private Object[][] createTestData() throws IOException {
+    private Object[][] createTestData() {
 
         final List<Object[]> data = new ArrayList<>(20);
 
@@ -54,42 +53,39 @@ public class FilterLongReadAlignmentsSAMSparkUnitTest extends BaseTest {
                 Arrays.asList(intervalOne, intervalTwo, intervalThree, intervalFour), false);
         data.add(new Object[]{contig, Arrays.asList(intervalOne, intervalFour), Arrays.asList(intervalThree, intervalFour), 2, 2});
 
+        // this is a case where {intervalOne} is equally good with {intervalOne, intervalTwo}, but somehow the score for latter case is tiny bit better than the first
+        intervalOne = new AlignmentInterval(new SimpleInterval("chr6", 60230348, 60231029),
+                1, 682, TextCigarCodec.decode("682M"), false, 57, 68, 342, AlnModType.NONE);
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chrUn_JTFH01001804v1_decoy", 3674, 4300),
+                1, 627, TextCigarCodec.decode("627M55H"), true, 60, 1, 622, AlnModType.NONE);
+        contig = new AlignedContig("asm005003:tig00056", "AAAACTGCTCTATCAGAAGAAAGGTTAAGCTCTGAGAGTTGAACGCACACATCACAAAGTAGTTTCTAAGAATCATTCTGTCTGGTTTTCCTATGAAGATATTGCCTTTTCTACCATAGGCCTCAAACGGCACTAAATATCCTCTTTGAAATCCTTCAAAAAGAGACTCTCAAAACTTCTCTATCGAAAGGAAGGTTCAACACCGTGAGTTGAAAGCACACATCAGAAAGAAGTTTCTGAGAAGTATTCTGTCTAGTTTTATAGGAAGAAATCACGTTTCAAAAGAAGGCCACAAAGAGGTCCAAATATCCACTTGCAGATTCTACAAAAAGAGTGTTTCAAAACTGCTCTATCAAGAGAAATGTTCATCTCCGTGAGGTGAATGCAAATATTTCAATGTAGTTTCTGACAGTGCTTCTGTCTAGTTTTTATGTGAAGATATTTCCTTTTCTACCGTAGGCCTCAAAACACTCTCAATATACACTTGCAAATTCCACAAAAAGAGTGATTCAAAACTGCTCTATCAAAAGAAATTTTAAACGCTGTAAGCTGAATGCACACATCACAAAGTAGTTTCTGAGAATGATTCTGTCTAGTTTTTCTATGAAGATATTTCCTTTTCTACCATAGGCCTTGAAGCGCTCTAAATATCCACTTGGAAATTCTACAAAAAGAGTATTTC".getBytes(),
+                Arrays.asList(intervalOne, intervalTwo), true);
+        data.add(new Object[]{contig, Arrays.asList(intervalOne, intervalTwo), Arrays.asList(intervalOne), 2, 1});
+
         return data.toArray(new Object[data.size()][]);
     }
 
     @Test(dataProvider = "contigAlignmentsHeuristicFilter", groups = "sv")
-    public void testScoreComputation(final AlignedContig contig,
-                                     final List<AlignmentInterval> configuration,
-                                     final List<AlignmentInterval> configurationEquallyGoodOrBetter,
-                                     final int expectedConfigurationCount,
-                                     final int expectedAICount) {
+    public void testSuite(final AlignedContig contig,
+                                final List<AlignmentInterval> configuration,
+                                final List<AlignmentInterval> configurationEquallyGoodOrBetter,
+                                final int expectedConfigurationCount,
+                                final int expectedAICount) {
 
         final double scoreOne = FilterLongReadAlignmentsSAMSpark.computeScoreOfConfiguration(configuration, canonicalChromosomes, 60);
         final double equallyGoodOrBetterScore = FilterLongReadAlignmentsSAMSpark.computeScoreOfConfiguration(configurationEquallyGoodOrBetter, canonicalChromosomes, 60);
-        assertTrue( scoreOne <= equallyGoodOrBetterScore);
-    }
+        assertTrue( scoreOne < equallyGoodOrBetterScore || scoreOne - equallyGoodOrBetterScore <= Math.ulp(equallyGoodOrBetterScore));
 
-    @Test(dataProvider = "contigAlignmentsHeuristicFilter", groups = "sv")
-    public void testNewFiltering(final AlignedContig contig,
-                                 final List<AlignmentInterval> configurationBetter,
-                                 final List<AlignmentInterval> configurationWorse,
-                                 final int expectedConfigurationCount,
-                                 final int expectedAICount) {
+        assertEquals(FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(contig, canonicalChromosomes, 0.0).size(), expectedConfigurationCount);
 
-        assertEquals(FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(contig, canonicalChromosomes).size(), expectedConfigurationCount);
-    }
+        if (expectedConfigurationCount == 1) {
+            final AlignedContig tig =
+                    FilterLongReadAlignmentsSAMSpark.filterAndSplitGappedAI(
+                            SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig))
+                            , null, null, 0.0).collect().get(0);
+            assertEquals(tig.alignmentIntervals.size(), expectedAICount,
+                    tig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()).toString());
+        }
 
-    @Test(dataProvider = "contigAlignmentsHeuristicFilter", groups = "sv")
-    public void testIntegrative(final AlignedContig contig,
-                                final List<AlignmentInterval> configurationBetter,
-                                final List<AlignmentInterval> configurationWorse,
-                                final int expectedConfigurationCount,
-                                final int expectedAICount) {
-        final AlignedContig tig =
-                FilterLongReadAlignmentsSAMSpark.filterAndSplitGappedAI(
-                        SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig))
-                , null, null).collect().get(0);
-        assertEquals(tig.alignmentIntervals.size(), expectedAICount,
-                tig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()).toString());
     }
 }

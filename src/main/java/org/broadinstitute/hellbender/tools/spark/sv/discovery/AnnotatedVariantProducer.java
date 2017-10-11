@@ -34,29 +34,24 @@ public class AnnotatedVariantProducer implements Serializable {
     /**
      * Given novel adjacency and inferred BND variant types, produce annotated (and mate-connected) VCF BND records.
      * @param novelAdjacencyReferenceLocations  novel adjacency suggesting BND records
-     * @param inferredType                      BND variants of mates to each other, assumed to be of size 2
+     * @param breakendMates                     BND variants of mates to each other, assumed to be of size 2
      * @param contigAlignments                  chimeric alignments of supporting contig
      * @param broadcastReference                reference
-     * @throws IOException
+     * @throws IOException                      due to reference retrieval
      */
     public static List<VariantContext> produceAnnotatedBNDmatesVcFromNovelAdjacency(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations,
-                                                                                    final List<SvType> inferredType,
+                                                                                    final Tuple2<BreakEndVariantType, BreakEndVariantType> breakendMates,
                                                                                     final Iterable<ChimericAlignment> contigAlignments,
                                                                                     final Broadcast<ReferenceMultiSource> broadcastReference)
             throws IOException {
 
-        Utils.validateArg(inferredType.size() == 2,
-                "Input novel adjacency doesn't seem to suggest mated BND records: \n" +
-                        novelAdjacencyReferenceLocations.toString() + "\n" +
-                        Utils.stream(contigAlignments).map(ChimericAlignment::onErrStringRep).collect(Collectors.toList()));
-
         final VariantContext firstMate =
                 produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc, -1,
-                        novelAdjacencyReferenceLocations.complication, inferredType.get(0), null, contigAlignments, broadcastReference);
+                        novelAdjacencyReferenceLocations.complication, breakendMates._1, null, contigAlignments, broadcastReference);
 
         final VariantContext secondMate =
                 produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc, -1,
-                        novelAdjacencyReferenceLocations.complication, inferredType.get(1), null, contigAlignments, broadcastReference);
+                        novelAdjacencyReferenceLocations.complication, breakendMates._2, null, contigAlignments, broadcastReference);
 
         final VariantContextBuilder builder0 = new VariantContextBuilder(firstMate);
         builder0.attribute(GATKSVVCFConstants.BND_MATEID_STR, secondMate.getID());
@@ -67,7 +62,6 @@ public class AnnotatedVariantProducer implements Serializable {
         return Arrays.asList(builder0.make(), builder1.make());
     }
 
-    // TODO: 12/12/16 does not handle translocation yet
     /**
      * Produces a VC from a {@link NovelAdjacencyReferenceLocations}
      * (consensus among different assemblies if they all point to the same breakpoint).
@@ -158,8 +152,7 @@ public class AnnotatedVariantProducer implements Serializable {
 
     // TODO: 12/13/16 again ignoring translocation
     @VisibleForTesting
-    static List<Allele> produceAlleles(final SimpleInterval refLoc,
-                                       final ReferenceMultiSource reference, final SvType SvType)
+    static List<Allele> produceAlleles(final SimpleInterval refLoc, final ReferenceMultiSource reference, final SvType SvType)
             throws IOException {
 
         final byte[] refBases = reference.getReferenceBases(null, refLoc).getBases();

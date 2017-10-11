@@ -95,13 +95,11 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         DiscoverVariantsFromContigAlignmentsSAMSpark
                 .discoverVariantsAndWriteVCF(
                         parsedAlignments,
-                        discoverStageArgs,
+                        evidenceLinkTree, assembledEvidenceResults.getReadMetadata(), discoverStageArgs,
                         ctx.broadcast(getReference()),
-                        vcfOutputFileName,
-                        localLogger,
-                        evidenceLinkTree,
-                        assembledEvidenceResults.getReadMetadata(),
-                        header.getSequenceDictionary());
+                        header.getSequenceDictionary(), vcfOutputFileName,
+                        localLogger
+                );
     }
 
     /**

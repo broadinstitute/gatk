@@ -5,10 +5,15 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.ContigAlignmentsModifier;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -26,14 +31,15 @@ public class NovelAdjacencyReferenceLocations {
     public final StrandSwitch strandSwitch;
     public final BreakpointComplications complication;
 
-    public NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence) {
+    public NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence,
+                                            final SAMSequenceDictionary referenceDictionary) {
 
         // first get strand switch type, then get complications, finally use complications to justify breakpoints
         strandSwitch = chimericAlignment.strandSwitch;
 
         complication = new BreakpointComplications(chimericAlignment, contigSequence);
 
-        final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = leftJustifyBreakpoints(chimericAlignment, complication);
+        final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = leftJustifyBreakpoints(chimericAlignment, complication, referenceDictionary);
         leftJustifiedLeftRefLoc = leftJustifiedBreakpoints._1();
         leftJustifiedRightRefLoc = leftJustifiedBreakpoints._2();
     }
@@ -52,23 +58,108 @@ public class NovelAdjacencyReferenceLocations {
         this.complication = kryo.readObject(input, BreakpointComplications.class);
     }
 
-    // TODO: 12/11/16 again this does not deal with inter-chromosome translocation yet
     /**
-     * Returns the reference coordinates of the left and right breakpoints implied by this chimeric alignment.
-     * If there is homologous sequence represented in the alignments, it will be assigned to the side of the breakpoint
-     * with higher reference coordinates.
+     * Infers exact position of breakpoints based on characteristics of input {@link ChimericAlignment}.
+     *
+     * <p>
+     *     If there is homologous sequence represented in the {@link ChimericAlignment}, it will be assigned to
+     *     the side of the breakpoint with higher reference coordinates (as judged by {@link SAMSequenceDictionary}),
+     *     i.e. we follow left alignment convention.
+     * </p>
      */
-    @VisibleForTesting
-    static Tuple2<SimpleInterval, SimpleInterval> leftJustifyBreakpoints(final ChimericAlignment ca,
-                                                                         final BreakpointComplications complication) {
+    private abstract static class BreakpointsInference {
 
-        final int homologyLen = complication.getHomologyForwardStrandRep().length();
+        protected String upstreamBreakpointRefContig;
+        protected String downstreamBreakpointRefContig;
+        protected int upstreamBreakpointRefPos;
+        protected int downstreamBreakpointRefPos;
 
-        final String leftBreakpointRefContig, rightBreakpointRefContig;
-        final int leftBreakpointCoord, rightBreakpointCoord;
-        if (complication.hasDuplicationAnnotation()) {
-            if (complication.hasDupSeqButNoStrandSwitch()) { // simple duplication not involving inverted repeats
-                leftBreakpointRefContig = rightBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
+        final Tuple2<SimpleInterval, SimpleInterval> getLeftJustifiedBreakpoints() {
+            return new Tuple2<>(new SimpleInterval(upstreamBreakpointRefContig, upstreamBreakpointRefPos, upstreamBreakpointRefPos),
+                                new SimpleInterval(downstreamBreakpointRefContig, downstreamBreakpointRefPos, downstreamBreakpointRefPos));
+        }
+
+        static final BreakpointsInference getInferenceClass(final ChimericAlignment chimericAlignment,
+                                                            final BreakpointComplications complication,
+                                                            final SAMSequenceDictionary referenceDictionary) {
+            final boolean sameChromosome = chimericAlignment.regionWithLowerCoordOnContig.referenceSpan.getContig()
+                    .equals(chimericAlignment.regionWithHigherCoordOnContig.referenceSpan.getContig());
+            if (sameChromosome) {
+                if (complication.hasDuplicationAnnotation()) {
+                    if (complication.hasDupSeqButNoStrandSwitch()) { // tandem duplication
+                        return new BreakpointsInference.TanDupBreakpointsInference(chimericAlignment, complication);
+                    } else { // inverted duplication
+                        return new BreakpointsInference.InvDupBreakpointsInference(chimericAlignment, complication);
+                    }
+                } else { // no explicit dup annotation (ins/del, dispersed dup, inv)
+                    return new BreakpointsInference.NoExplicitDupAnnotationBreakpointsInference(chimericAlignment, complication);
+                }
+            } else {
+                return new BreakpointsInference.TransLocBreakpointsAligner(chimericAlignment, complication, referenceDictionary);
+            }
+        }
+
+        ///////////////
+        abstract static class SameChrEventsBreakpointsInference extends BreakpointsInference {
+            protected SameChrEventsBreakpointsInference(final ChimericAlignment ca) {
+                upstreamBreakpointRefContig = downstreamBreakpointRefContig
+                        = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
+            }
+        }
+
+        /**
+         * For simple insertion/deletion, inversion, and (suspected) dispersed duplications without explicit duplication annotation
+         */
+        final static class NoExplicitDupAnnotationBreakpointsInference extends SameChrEventsBreakpointsInference {
+            NoExplicitDupAnnotationBreakpointsInference(final ChimericAlignment ca, final BreakpointComplications complication) {
+
+                super(ca);
+
+                final int homologyLen = complication.getHomologyForwardStrandRep().length();
+                final AlignmentInterval one = ca.regionWithLowerCoordOnContig,
+                                        two = ca.regionWithHigherCoordOnContig;
+                final SimpleInterval leftReferenceInterval, rightReferenceInterval;
+                if (ca.isForwardStrandRepresentation) {
+                    leftReferenceInterval  = one.referenceSpan;
+                    rightReferenceInterval = two.referenceSpan;
+                } else {
+                    leftReferenceInterval  = two.referenceSpan;
+                    rightReferenceInterval = one.referenceSpan;
+                }
+                if (ca.strandSwitch == StrandSwitch.NO_SWITCH) {
+
+                    final List<AlignmentInterval> deOverlappedTempAlignments = ContigAlignmentsModifier.removeOverlap(one, two, null);
+                    final AlignmentInterval deOverlappedOne = deOverlappedTempAlignments.get(0),
+                                            deOverlappedTwo = deOverlappedTempAlignments.get(1);
+                    final boolean isLikelyDispersedDuplication =
+                            deOverlappedOne.referenceSpan.getStart() > deOverlappedTwo.referenceSpan.getStart() == deOverlappedOne.forwardStrand;
+                    if (isLikelyDispersedDuplication) { // left and right seem to be flipped but that's the feature of dispersed duplication
+                        upstreamBreakpointRefPos = rightReferenceInterval.getStart();
+                        downstreamBreakpointRefPos = leftReferenceInterval.getEnd() - homologyLen;
+                    } else {
+                        upstreamBreakpointRefPos = leftReferenceInterval.getEnd() - homologyLen;
+                        downstreamBreakpointRefPos = rightReferenceInterval.getStart() - 1;
+                    }
+
+                } else if (ca.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE){
+                    upstreamBreakpointRefPos = leftReferenceInterval.getEnd() - homologyLen;
+                    downstreamBreakpointRefPos = rightReferenceInterval.getEnd();
+                } else {
+                    upstreamBreakpointRefPos = leftReferenceInterval.getStart() - 1;
+                    downstreamBreakpointRefPos = rightReferenceInterval.getStart() + homologyLen - 1;
+                }
+
+            }
+        }
+
+        final static class TanDupBreakpointsInference extends SameChrEventsBreakpointsInference {
+
+            TanDupBreakpointsInference(final ChimericAlignment ca,
+                                       final BreakpointComplications complication) {
+                super(ca);
+
+                final int homologyLen = complication.getHomologyForwardStrandRep().length();
+
                 final SimpleInterval leftReferenceInterval, rightReferenceInterval;
                 if (ca.isForwardStrandRepresentation) {
                     leftReferenceInterval  = ca.regionWithLowerCoordOnContig.referenceSpan;
@@ -78,49 +169,152 @@ public class NovelAdjacencyReferenceLocations {
                     rightReferenceInterval = ca.regionWithLowerCoordOnContig.referenceSpan;
                 }
                 if (complication.getDupSeqRepeatNumOnCtg() > complication.getDupSeqRepeatNumOnRef()) {
-                    leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen
+                    upstreamBreakpointRefPos = leftReferenceInterval.getEnd() - homologyLen
                             - (complication.getDupSeqRepeatNumOnCtg() - complication.getDupSeqRepeatNumOnRef()) * complication.getDupSeqRepeatUnitRefSpan().size();
                 } else {
-                    leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen;
+                    upstreamBreakpointRefPos = leftReferenceInterval.getEnd() - homologyLen;
                 }
-                rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
-            } else {
-                leftBreakpointRefContig = rightBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
-                leftBreakpointCoord     = complication.getDupSeqRepeatUnitRefSpan().getStart() - 1;
-                rightBreakpointCoord    = complication.getDupSeqRepeatUnitRefSpan().getEnd();
-            }
-        } else { // inversion and simple deletion & insertion
-            final SimpleInterval leftReferenceInterval, rightReferenceInterval;
-            if (ca.isForwardStrandRepresentation) {
-                leftReferenceInterval  = ca.regionWithLowerCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithHigherCoordOnContig.referenceSpan;
-            } else {
-                leftReferenceInterval  = ca.regionWithHigherCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithLowerCoordOnContig.referenceSpan;
-            }
-            leftBreakpointRefContig  = leftReferenceInterval.getContig();
-            rightBreakpointRefContig = rightReferenceInterval.getContig();
-            if (ca.strandSwitch == StrandSwitch.NO_SWITCH) {
-                leftBreakpointCoord  = leftReferenceInterval.getEnd() - homologyLen;
-                rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
-            } else if (ca.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE){
-                leftBreakpointCoord  = leftReferenceInterval.getEnd() - homologyLen;
-                rightBreakpointCoord = rightReferenceInterval.getEnd();
-            } else {
-                leftBreakpointCoord  = leftReferenceInterval.getStart() - 1;
-                rightBreakpointCoord = rightReferenceInterval.getStart() + homologyLen - 1;
+                downstreamBreakpointRefPos = rightReferenceInterval.getStart() - 1;;
             }
         }
 
-        Utils.validate(leftBreakpointCoord <= rightBreakpointCoord,
-                "Inferred novel adjacency reference locations have left location after right location : " +
-                        leftBreakpointCoord + "\t" + rightBreakpointCoord + ca.onErrStringRep() + "\n" + complication.toString());
+        final static class InvDupBreakpointsInference extends SameChrEventsBreakpointsInference {
+            InvDupBreakpointsInference(final ChimericAlignment ca,
+                                       final BreakpointComplications complication) {
+                super(ca);
+                upstreamBreakpointRefPos = complication.getDupSeqRepeatUnitRefSpan().getStart() - 1;
+                downstreamBreakpointRefPos = complication.getDupSeqRepeatUnitRefSpan().getEnd();
+            }
+        }
 
-        final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
-        final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);
-        return new Tuple2<>(leftBreakpoint, rightBreakpoint);
+        ///////////////
+
+        /**
+         * For computing exact and left-adjusted breakpoint locations of inter-chromosome novel adjacency,
+         * with or without strand switch.
+         */
+        final static class TransLocBreakpointsAligner extends BreakpointsInference {
+
+            TransLocBreakpointsAligner(final ChimericAlignment ca,
+                                       final BreakpointComplications complication,
+                                       final SAMSequenceDictionary referenceDictionary) {
+
+
+                determineRefContigs(ca, referenceDictionary);
+
+                extractRefPositions(ca, complication, referenceDictionary);
+            }
+
+            private void extractRefPositions(final ChimericAlignment ca, final BreakpointComplications complication,
+                                             final SAMSequenceDictionary referenceDictionary) {
+                final int homologyLen = complication.getHomologyForwardStrandRep().length();
+                final boolean firstInPartner = isFirstInPartner(ca, referenceDictionary);
+                if (firstInPartner) {
+                    switch (ca.strandSwitch) {
+                        case NO_SWITCH:
+                            if (ca.isForwardStrandRepresentation) {
+                                upstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getEnd() - homologyLen;
+                                downstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getStart();
+                            } else {
+                                upstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getStart();
+                                downstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getEnd() - homologyLen;
+                            }
+                            break;
+                        case FORWARD_TO_REVERSE:
+                            upstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getEnd() - homologyLen;
+                            downstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getEnd();
+                            break;
+                        case REVERSE_TO_FORWARD:
+                            upstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getStart();
+                            downstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getStart() + homologyLen;
+                            break;
+                        default: throw new GATKException("Unseen strand switch case for: " + ca.onErrStringRep());
+                    }
+                } else {
+                    switch (ca.strandSwitch) {
+                        case NO_SWITCH:
+                            if (ca.isForwardStrandRepresentation) {
+                                upstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getStart();
+                                downstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getEnd() - homologyLen;
+                            } else {
+                                upstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getEnd() - homologyLen;
+                                downstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getStart();
+                            }
+                            break;
+                        case FORWARD_TO_REVERSE:
+                            upstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getEnd() - homologyLen;
+                            downstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getEnd();
+                            break;
+                        case REVERSE_TO_FORWARD:
+                            upstreamBreakpointRefPos = ca.regionWithHigherCoordOnContig.referenceSpan.getStart();
+                            downstreamBreakpointRefPos = ca.regionWithLowerCoordOnContig.referenceSpan.getStart() + homologyLen;
+                            break;
+                        default: throw new GATKException("Unseen strand switch case for: " + ca.onErrStringRep());
+                    }
+                }
+            }
+
+            private void determineRefContigs(ChimericAlignment ca, SAMSequenceDictionary referenceDictionary) {
+                final boolean firstInPartner = isFirstInPartner(ca, referenceDictionary);
+                if (firstInPartner) {
+                    upstreamBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
+                    downstreamBreakpointRefContig = ca.regionWithHigherCoordOnContig.referenceSpan.getContig();
+                } else {
+                    upstreamBreakpointRefContig = ca.regionWithHigherCoordOnContig.referenceSpan.getContig();
+                    downstreamBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
+                }
+            }
+
+            private static boolean isFirstInPartner(final ChimericAlignment ca, final SAMSequenceDictionary referenceDictionary) {
+                switch (ca.strandSwitch) {
+                    case NO_SWITCH: return 0 > IntervalUtils.compareContigs(ca.regionWithLowerCoordOnContig.referenceSpan,
+                            ca.regionWithHigherCoordOnContig.referenceSpan, referenceDictionary);
+                    case FORWARD_TO_REVERSE: case REVERSE_TO_FORWARD:
+                        return ca.isForwardStrandRepresentation;
+                    default:
+                        throw new GATKException("Unseen strand switch case for: " + ca.onErrStringRep());
+                }
+            }
+        }
     }
 
+    /**
+     * Returns the reference coordinates of the upstream and downstream breakpoints implied by input {@code chimericAlignment}.
+     * If there is homologous sequence represented in the alignments, it will be assigned to the side of the breakpoint
+     * with higher reference coordinates, i.e. we follow left alignment convention here.
+     */
+    @VisibleForTesting
+    static Tuple2<SimpleInterval, SimpleInterval> leftJustifyBreakpoints(final ChimericAlignment chimericAlignment,
+                                                                         final BreakpointComplications complication,
+                                                                         final SAMSequenceDictionary referenceDictionary) {
+
+        final Tuple2<SimpleInterval, SimpleInterval> leftAdjustedBreakpoints =
+                BreakpointsInference.getInferenceClass(chimericAlignment, complication, referenceDictionary)
+                        .getLeftJustifiedBreakpoints();
+
+        validateInferredLocations(leftAdjustedBreakpoints._1, leftAdjustedBreakpoints._2, referenceDictionary, chimericAlignment, complication);
+
+        return leftAdjustedBreakpoints;
+    }
+
+    private static void validateInferredLocations(final SimpleInterval leftBreakpoint, final SimpleInterval rightBreakpoint,
+                                                  final SAMSequenceDictionary referenceSequenceDictionary,
+                                                  final ChimericAlignment ca, final BreakpointComplications complication) {
+
+        Utils.validate(IntervalUtils.isBefore(leftBreakpoint, rightBreakpoint, referenceSequenceDictionary) ||
+                        leftBreakpoint.equals(rightBreakpoint),
+                "Inferred novel adjacency reference locations have left location after right location : left " +
+                        leftBreakpoint + "\tright " + rightBreakpoint + "\t"  + ca.onErrStringRep() + "\n" + complication.toString());
+
+        Utils.validate(leftBreakpoint.getEnd() <= referenceSequenceDictionary.getSequence(leftBreakpoint.getContig()).getSequenceLength(),
+                "Inferred breakpoint beyond reference sequence length: inferred location: " + leftBreakpoint +
+                        "\tref contig length: " + referenceSequenceDictionary.getSequence(leftBreakpoint.getContig()).getSequenceLength() + "\n"
+                        + ca.onErrStringRep() + "\n" + complication.toString());
+        Utils.validate(rightBreakpoint.getEnd() <= referenceSequenceDictionary.getSequence(rightBreakpoint.getContig()).getSequenceLength(),
+                "Inferred breakpoint beyond reference sequence length: inferred location: " + rightBreakpoint +
+                        "\tref contig length: " + referenceSequenceDictionary.getSequence(rightBreakpoint.getContig()).getSequenceLength() + "\n"
+                        + ca.onErrStringRep() + "\n" + complication.toString());
+    }
 
     @VisibleForTesting
     @Override
