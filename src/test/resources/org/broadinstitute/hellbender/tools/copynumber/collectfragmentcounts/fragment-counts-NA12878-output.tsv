@@ -1,0 +1,9 @@
+##fileFormat  = tsv
+##commandLine = CollectFragmentCounts  --output /var/folders/pf/6x1gd30j5mz1hq14v69m1bwwsrvm5x/T/fragment-counts-test-file5908043734605627153.tsv --intervals /Users/asmirnov/Desktop/repos/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/collectfragmentcounts/read-counts-test.interval_list --input /Users/asmirnov/Desktop/repos/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/collectfragmentcounts/exome-read-counts-NA12878.bam --verbosity ERROR  --interval_set_rule UNION --interval_padding 0 --interval_exclusion_padding 0 --interval_merging_rule ALL --readValidationStringency SILENT --secondsBetweenProgressUpdates 10.0 --disableSequenceDictionaryValidation false --createOutputBamIndex true --createOutputBamMD5 false --createOutputVariantIndex true --createOutputVariantMD5 false --lenient false --addOutputSAMProgramRecord true --addOutputVCFCommandLine true --cloudPrefetchBuffer 40 --cloudIndexPrefetchBuffer -1 --disableBamIndexCaching false --help false --version false --showHidden false --QUIET false --use_jdk_deflater false --use_jdk_inflater false --gcs_max_retries 20 --disableToolDefaultReadFilters false
+##title       = Fragment read counts per interval
+contig	start	stop	name	NA12878
+20	68099	68660	target_20_68099_68660	8
+20	123018	123579	target_20_123018_123579	5
+20	137934	138486	target_20_137934_138486	6
+20	168275	169011	target_20_168275_169011	9
+20	207678	208239	target_20_207678_208239	3
