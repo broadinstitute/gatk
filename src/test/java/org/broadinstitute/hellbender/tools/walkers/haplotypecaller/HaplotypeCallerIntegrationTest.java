@@ -23,19 +23,26 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     public static final String TEST_FILES_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
 
+    @DataProvider(name="HaplotypeCallerTestInputs")
+    public Object[][] getHaplotypCallerTestInputs() {
+        return new Object[][] {
+                {NA12878_20_21_WGS_bam, b37_reference_20_21},
+                {NA12878_20_21_WGS_cram, b37_reference_20_21}
+        };
+    }
     /*
      * Test that in VCF mode we're consistent with past GATK4 results
      */
-    @Test
-    public void testVCFModeIsConsistentWithPastResults() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testVCFModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
         final File expected = new File(TEST_FILES_DIR, "expected.testVCFMode.gatk4.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
@@ -54,8 +61,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      *
      * Test currently throws an exception due to lack of support for allele-specific annotations in VCF mode
      */
-    @Test(expectedExceptions = UserException.class)
-    public void testVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs", expectedExceptions = UserException.class)
+    public void testVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         //NOTE: AlleleSpecific support in the VCF mode is implemented but bogus for now.
@@ -64,8 +71,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.alleleSpecific.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -84,8 +91,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that in VCF mode we're >= 99% concordant with GATK3.8 results
      */
-    @Test
-    public void testVCFModeIsConcordantWithGATK3_8Results() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testVCFModeIsConcordantWithGATK3_8Results(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testVCFModeIsConcordantWithGATK3Results", ".vcf");
@@ -99,8 +106,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.8-4-g7b0250253.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
@@ -117,8 +124,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      *
      * Test currently throws an exception due to lack of support for allele-specific annotations in VCF mode
      */
-    @Test(expectedExceptions = UserException.class)
-    public void testVCFModeIsConcordantWithGATK3_8ResultsAlleleSpecificAnnotations() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs", expectedExceptions = UserException.class)
+    public void testVCFModeIsConcordantWithGATK3_8ResultsAlleleSpecificAnnotations(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testVCFModeIsConcordantWithGATK3.8ResultsAlleleSpecificAnnotations", ".vcf");
@@ -133,8 +140,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.8-4-g7b0250253f.alleleSpecific.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -152,16 +159,16 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that in GVCF mode we're consistent with past GATK4 results
      */
-    @Test
-    public void testGVCFModeIsConsistentWithPastResults() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testGVCFModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
         final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -178,16 +185,16 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that in GVCF mode we're consistent with past GATK4 results using AS_ annotations
      */
-    @Test
-    public void testGVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testGVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testGVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations", ".g.vcf");
         final File expected = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk4.alleleSpecific.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -207,8 +214,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that in GVCF mode we're >= 99% concordant with GATK3 results
      */
-    @Test
-    public void testGVCFModeIsConcordantWithGATK3_8Results() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testGVCFModeIsConcordantWithGATK3_8Results(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testGVCFModeIsConcordantWithGATK3Results", ".g.vcf");
@@ -222,8 +229,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testGVCFMode.3.8-4-g7b0250253f.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -236,8 +243,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
-    @Test
-    public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults() throws Exception {
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
         final File output = createTempFile("testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults", ".g.vcf");
 
@@ -251,8 +258,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk3.8-4-g7b0250253f.alleleSpecific.g.vcf");
 
         final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
+                "-I", inputFileName,
+                "-R", referenceFileName,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
