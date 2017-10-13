@@ -113,15 +113,12 @@ public class Main {
      * @param args The Array of command-line arguments.
      * @return A new Array of command-line arguments with the config file option and config file path removed.
      */
-    protected static String[] parseArgsForConfigSetupAndGetNewArgs(final String[] args) {
+    protected static void parseArgsForConfigSetupAndGetNewArgs(final String[] args) {
         // Now we setup our configurations:
         // This method will modify the given argArrayList to remove the gatkConfigFileOption and value
         // if they are specified.  This is so that the later validation of commandline arguments can still
         // happen properly and so that we can have the configuration initialized as early as possible.
         ConfigUtils.initializeConfigurationsFromCommandLineArgs(args, "--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
-
-        return ConfigUtils.removeConfigOptionAndFileFromArgs( args, "--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION );
-
     }
 
     /**
@@ -147,22 +144,28 @@ public class Main {
      */
     public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
 
-        // Parse our config file path from our arguments and
-        // create an arg array for the other methods to use that does
-        // not contain the config file entries (if they exist).
-        // Note: this must be here because the integration tests insert into main here.
-        final String[] cleanArgs = parseArgsForConfigSetupAndGetNewArgs(args);
+        // Parse our config file path from our arguments and initialize the configuration file.
+        // Note: this must be here because the command-line invocation inserts into here:
+        parseArgsForConfigSetupAndGetNewArgs(args);
 
-        final CommandLineProgram program = extractCommandLineProgram(cleanArgs, packageList, classList, commandLineName);
-        return runCommandLineProgram(program, cleanArgs);
+        // Get the index of the tool name:
+        final int toolIndex = getIndexOfToolName(args);
+
+        // Get our command-line program:
+        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName, toolIndex);
+
+        // Get the arguments to run the command-line program:
+        final List<String> mainArgs = reorderArgumentsToHandleConfigFileOptions(args);
+
+        return runCommandLineProgram(program, mainArgs.toArray(new String[mainArgs.size()]));
     }
 
     /**
      * Run the given command line program with the raw arguments from the command line
-     * @param rawArgs thes are the raw arguments from the command line, the first will be stripped off
+     * @param rawArgs these are the raw arguments from the command line, the first will be stripped off
      * @return the result of running  {program} with the given args, possibly null
      */
-    protected static Object runCommandLineProgram(CommandLineProgram program, String[] rawArgs) {
+    protected static Object runCommandLineProgram(final CommandLineProgram program, final String[] rawArgs) {
 
         if (null == program) return null; // no program found!  This will happen if help was specified with no other arguments
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
@@ -188,16 +191,22 @@ public class Main {
      */
     protected final void mainEntry(final String[] args) {
 
-        // Parse our config file path from our arguments and
-        // create an arg array for the other methods to use that does
-        // not contain the config file entries (if they exist):
+        // Parse our config file path from our arguments and initialize the configuration file.
         // Note: this must be here because the command-line invocation inserts into here:
-        final String[] cleanArgs = parseArgsForConfigSetupAndGetNewArgs(args);
+        parseArgsForConfigSetupAndGetNewArgs(args);
 
-        final CommandLineProgram program = extractCommandLineProgram(cleanArgs, getPackageList(), getClassList(), getCommandLineName());
+        // Now we check to see if we have given the argument for a config file as the first option.
+        // If we have then we need to go past it (and the option for the file itself) to get to the tool
+        // that we're going to run:
+        int toolIndex = getIndexOfToolName(args);
+
+        final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName(), toolIndex);
+
+        // Get the arguments to run the command-line program:
+        final List<String> mainArgs = reorderArgumentsToHandleConfigFileOptions(args);
 
         try {
-            final Object result = runCommandLineProgram(program, cleanArgs);
+            final Object result = runCommandLineProgram(program, mainArgs.toArray(new String[mainArgs.size()]));
             handleResult(result);
             //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){
@@ -287,7 +296,11 @@ public class Main {
     /**
      * Returns the command line program specified, or prints the usage and exits with exit code 1 *
      */
-    private static CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
+    private static CommandLineProgram extractCommandLineProgram(final String[] args,
+                                                                final List<String> packageList,
+                                                                final List<Class<? extends CommandLineProgram>> classList,
+                                                                final String commandLineName,
+                                                                final int toolNameArgIndex) {
 
         /** Get the set of classes that are our command line programs **/
         final ClassFinder classFinder = new ClassFinder();
@@ -331,8 +344,9 @@ public class Main {
             if (args[0].equals("-h") || args[0].equals("--help")) {
                 printUsage(classes, commandLineName);
             } else {
-                if (simpleNameToClass.containsKey(args[0])) {
-                    final Class<?> clazz = simpleNameToClass.get(args[0]);
+
+                if (simpleNameToClass.containsKey(args[toolNameArgIndex])) {
+                    final Class<?> clazz = simpleNameToClass.get(args[toolNameArgIndex]);
                     try {
                         final Object commandLineProgram = clazz.newInstance();
                         // wrap Picard CommandLinePrograms in a PicardCommandLineProgramExecutor
@@ -344,10 +358,74 @@ public class Main {
                     }
                 }
                 printUsage(classes, commandLineName);
-                throw new UserException(getUnknownCommandMessage(classes, args[0]));
+                throw new UserException(getUnknownCommandMessage(classes, args[toolNameArgIndex]));
             }
         }
         return null;
+    }
+
+    /**
+     * Get the index of the tool name.
+     * This is usually index 0, except when the user has specified the config file as the first option - then it is index 2.
+     *
+     * This is designed to be overridden by downstream projects to handle their own config file options.
+     * When overriding this method, it is highly recommended that {@link Main#reorderArgumentsToHandleConfigFileOptions(String[])} be overridden as well.
+     *
+     * @param args Command-line arguments given to this run of the GATK.
+     * @return The index of the tool name, adjusted for whether the user specified a config file.
+     */
+    protected int getIndexOfToolName(final String[] args) {
+        int toolIndex = 0;
+
+        // We check to see if we have given the argument to specify that a config file should be used as the first option.
+        // If that option exists, then we need to go past it (and the option specifying file itself) to get to the tool
+        // that we're going to run:
+        if ( args[toolIndex].equals("--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION) ) {
+            toolIndex += 2;
+        }
+
+        return toolIndex;
+    }
+
+    /**
+     * Get the arguments for running the tool named in the given {@code args}.
+     *
+     * This is designed to be overridden by downstream projects to handle their own config file options.
+     * When overriding this method, it is highly recommended that {@link Main#getIndexOfToolName(String[])} be overridden as well.
+     *
+     * @param args Command-line arguments given to the GATK to run.
+     * @return A list of arguments for the tool specified in the given command-line.
+     */
+    protected List<String> reorderArgumentsToHandleConfigFileOptions(final String[] args) {
+
+        final List<String> mainArgs = new ArrayList<>(args.length);
+
+        int configIndex = -1;
+
+        // Now we construct a new list of options by removing the tool option and the config options:
+        for (int i = 0; i < args.length; ++i) {
+            // Check to see if we have the config file specification:
+            if ( args[i].equals("--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION) ) {
+                // We found the config option.  Save it and advance to the option after the file itself:
+                configIndex = i;
+                ++i;
+            }
+            else {
+                // Add a regular argument to our argument list:
+                mainArgs.add( args[i] );
+            }
+        }
+
+        // If we found the config in the arg list, we need to add it back in after the tool name:
+        if ( configIndex != -1 ) {
+            // Add in the config file option:
+            mainArgs.add( 1, args[configIndex] );
+
+            //Add in the config file itself:
+            mainArgs.add( 2, args[configIndex + 1] );
+        }
+
+        return mainArgs;
     }
 
     public static CommandLineProgramProperties getProgramProperty(Class<?> clazz) {

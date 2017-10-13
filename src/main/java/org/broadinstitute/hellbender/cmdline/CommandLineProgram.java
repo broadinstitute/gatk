@@ -91,8 +91,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     // (Some of the CommandLinePrograms have default values set to config values, and these are loaded
     // at class load time as static initializers).
     @Argument(fullName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
-              shortName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
-              doc = "A configuration file to use with the GATK.")
+              doc = "A configuration file to use with the GATK.",
+                common = true,
+                optional = true)
     public String GATK_CONFIG_FILE = "/dev/null";
 
     private CommandLineParser commandLineParser;
