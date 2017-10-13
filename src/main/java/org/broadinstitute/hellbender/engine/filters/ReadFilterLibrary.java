@@ -36,7 +36,10 @@ public final class ReadFilterLibrary {
             return read.isFirstOfPair();}}
 
     /**
-     * Keep only reads containing good CIGAR strings:
+     * Keep only reads containing good CIGAR strings.
+     *
+     * <p>Good CIGAR strings have the following properties:</p>
+     *
      * <ul>
      *     <li>Valid according to the <a href="http://samtools.github.io/hts-specs/SAMv1.pdf">SAM specifications.</a></li>
      *     <li>Does not start or end with deletions (with or without preceding clips).</li>
@@ -71,7 +74,9 @@ public final class ReadFilterLibrary {
             return read.getReadGroup() != null;}}
 
     /**
-     * Filter out unmapped reads. Umapped reads are defined by three criteria:
+     * Filter out unmapped reads.
+     *
+     * <p>Unmapped reads are defined by three criteria:</p>
      *
      * <ul>
      *     <li>SAM flag value 0x4</li>
@@ -102,7 +107,7 @@ public final class ReadFilterLibrary {
     /**
      * Keep only reads that have a mate that maps to the same contig (RNEXT is "="), is single ended (not 0x1) or has an unmapped mate (0x8).
      *
-     * See MappedReadFilter for criteria defining an unmapped read.
+     * <p>See MappedReadFilter for criteria defining an unmapped read.</p>
      */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads whose mate maps to the same contig or is unmapped", extraDocs = MappedReadFilter.class)
     public static class MateOnSameContigOrNoMappedMateReadFilter extends ReadFilter {
@@ -116,7 +121,7 @@ public final class ReadFilterLibrary {
      * For paired reads (0x1), keep only reads that are mapped, have a mate that is mapped (read is not 0x8), and both
      * the read and its mate are on different strands (when read is 0x20, it is not 0x10), as is the typical case.
      *
-     * See MappedReadFilter for criteria defining an mapped read.
+     * <p>See MappedReadFilter for criteria defining an mapped read.</p>
      */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with mates mapped on the different strand", extraDocs = MappedReadFilter.class)
     public static class MateDifferentStrandReadFilter extends ReadFilter {
@@ -184,12 +189,12 @@ public final class ReadFilterLibrary {
      * NotSupplementaryAlignment filters, or in terms of SAM flag values, must have neither of the 0x100 or
      * 0x800 flags set).
      *
-     * Note that this filter represents a stronger criteria for "primary alignment" than the
-     * SAM flag 0x100 (representing ""not primary alignment" in some contexts).
+     * <p>Note that this filter represents a stronger criteria for "primary alignment" than the
+     * SAM flag 0x100 (representing ""not primary alignment" in some contexts).</p>
      *
-     * For example, a read that has only the supplementary flag (0x800) set, but not the secondary (0x100)
+     * <p>For example, a read that has only the supplementary flag (0x800) set, but not the secondary (0x100)
      * flag will be filtered out from processing by the PrimaryLineReadFilter, but would NOT be filtered out by
-     * other software that uses the looser notion of "not primary" that only depends on the "secondary" flag being set.
+     * other software that uses the looser notion of "not primary" that only depends on the "secondary" flag being set.</p>
      */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
     public static class PrimaryLineReadFilter extends ReadFilter {
@@ -200,7 +205,7 @@ public final class ReadFilterLibrary {
     /**
      * Filter out reads where the read and CIGAR do not match in length.
      *
-     * <p>Note: unmapped reads pass this filter. See MappedReadFilter for criteria defining an unmapped read.
+     * <p>Note: unmapped reads pass this filter. See MappedReadFilter for criteria defining an unmapped read.</p>
      */
     //Note: do not call getCigar to avoid creation of new Cigar objects
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads  where the read and CIGAR do not match in length", extraDocs = MappedReadFilter.class)
@@ -226,7 +231,8 @@ public final class ReadFilterLibrary {
 
     /**
      * Keep only reads with a valid alignment start (POS larger than 0) or is unmapped.
-     * See MappedReadFilter for criteria defining an unmapped read.
+     *
+     * <p>See MappedReadFilter for criteria defining an unmapped read.</p>
      */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with a valid alignment start", extraDocs = MappedReadFilter.class)
     public static class ValidAlignmentStartReadFilter extends ReadFilter {
@@ -236,7 +242,9 @@ public final class ReadFilterLibrary {
 
     /**
      * Keep only reads where the read end corresponds to a proper alignment -- that is, the read ends after the start
-     * (non-negative number of bases in the reference), calculated as:
+     * (non-negative number of bases in the reference).
+     *
+     * <p>This is calculated as:</p>
      *
      * <p>
      * <code>
@@ -245,8 +253,9 @@ public final class ReadFilterLibrary {
      *  start = 1-based inclusive leftmost position of the clipped sequence (0 if no position)<br>
      *  end = 1-based inclusive rightmost position of the clipped sequence (0 if unmapped)<br>
      * </code>
+     * </p>
      *
-     * <p>Note: keep also unmapped reads (align to zero bases in the reference). See MappedReadFilter for criteria defining an unmapped read.
+     * <p>Note: keep also unmapped reads (align to zero bases in the reference). See MappedReadFilter for criteria defining an unmapped read.</p>
      */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads where the read end is properly aligned", extraDocs = MappedReadFilter.class)
     public static class ValidAlignmentEndReadFilter extends ReadFilter {

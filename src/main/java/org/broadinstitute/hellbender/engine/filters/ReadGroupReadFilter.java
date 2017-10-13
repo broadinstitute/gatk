@@ -9,7 +9,8 @@ import java.io.Serializable;
 
 /**
  * Keep only reads from the specified read group. Discards reads lacking an RG tag.
- * Matching is done by case-sensitive exact match.
+ *
+ * <p>Matching is done by case-sensitive exact match.</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads from the specified read group")
 public final class ReadGroupReadFilter extends ReadFilter implements Serializable{

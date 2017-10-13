@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * Filter out reads where the the platform unit attribute (PU tag) contains the given string.
  *
- * <p>Note: Matching is done by exact case-sensitive text matching.
+ * <p>Note: Matching is done by exact case-sensitive text matching.</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with matching platform unit attribute")
 public final class PlatformUnitReadFilter extends ReadFilter implements Serializable {
