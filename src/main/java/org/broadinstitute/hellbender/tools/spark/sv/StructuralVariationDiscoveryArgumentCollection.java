@@ -178,13 +178,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public static final int DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY = 100;
         public static final int DEFAULT_IMPRECISE_EVIDENCE_VARIANT_CALLING_THRESHOLD = 7;
 
-        // todo: document this better
-        // Currently the discovery stage requires a reference parameter in 2bit format (to broadcast) and
-        // a reference in FASTA format (to get a good sequence dictionary for sorting variants).
-        @Argument(doc = "FASTA formatted reference", shortName = "fastaReference",
-                fullName = "fastaReference")
-        public String fastaReference;
-
         @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
                 fullName = "minAlignLength", optional = true)
         public Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;

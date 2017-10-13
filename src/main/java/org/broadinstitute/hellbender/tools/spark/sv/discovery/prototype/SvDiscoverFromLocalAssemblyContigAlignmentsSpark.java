@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
         usageExample = "SvDiscoverFromLocalAssemblyContigAlignmentsSpark \\" +
                 "-I /path/to/my/dir/localAssemblies.sam \\" +
                 "-O /path/to/my/dir/outputDir \\" +
-                "-R /path/to/my/reference/reference.2bit --fastaReference /path/to/my/reference/reference.fasta",
+                "-R /path/to/my/reference/reference.2bit",
         omitFromCommandLine = true,
         programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
@@ -89,11 +90,12 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     protected void runTool(final JavaSparkContext ctx) {
 
         final JavaRDD<GATKRead> reads = getReads();
-        final SAMFileHeader header = getHeaderForReads();
+        final SAMFileHeader headerForReads = getHeaderForReads();
+        final SAMSequenceDictionary refSequenceDictionary = headerForReads.getSequenceDictionary();
 
         // filter alignments and split the gaps
         final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed =
-                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, header, nonCanonicalChromosomeNamesFile, localLogger)
+                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, headerForReads, nonCanonicalChromosomeNamesFile, localLogger)
                         .filter(lr -> lr.alignmentIntervals.size()>1).cache();
 
         // divert the long reads by their possible type of SV
@@ -104,7 +106,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             throw new GATKException("Could not create directory " + outputDir + " to write results to.");
 
         if (writeSAMFiles) {
-            final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
+            final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(headerForReads);
             contigsByPossibleRawTypes.forEach((k, v) -> writeSAM(v, k.name(), reads, headerBroadcast, outputDir, localLogger));
         }
 
@@ -112,11 +114,11 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         new InsDelVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), outputDir+"/"+RawTypes.InsDel.name()+".vcf",
-                        referenceMultiSourceBroadcast, discoverStageArgs.fastaReference, localLogger);
+                        referenceMultiSourceBroadcast, refSequenceDictionary, localLogger);
 
         new SimpleStrandSwitchVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Inv), outputDir+"/"+RawTypes.Inv.name()+".vcf",
-                        referenceMultiSourceBroadcast, discoverStageArgs.fastaReference, localLogger);
+                        referenceMultiSourceBroadcast, refSequenceDictionary, localLogger);
     }
 
     private enum RawTypes {

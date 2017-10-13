@@ -9,7 +9,7 @@ cat << EOF
 Manage the SV discovery pipeline on Google Cloud Services (GCS) cluster
 Syntax
   manage_sv_pipeline.sh [Options] GATK_Folder Project_Name \\
-                        GCS_BAM_File GCS_FASTA_File \\
+                        GCS_BAM_File GCS_REFERENCE_File \\
                         [args to SV discovery pipeline]
   Options:
     -h or --help:
@@ -36,7 +36,7 @@ Syntax
     Project_Name: name of GCS project
     GCS_BAM_File: path to .bam file hosted in GCS
                   (e.g. gs://bucket/path/to/file.bam)
-    GCS_FASTA_File: path to reference .fasta file hosted in GCS
+    GCS_REFERENCE_File: path to reference .2bit file hosted in GCS
 
   Optional Positional Arguments:
     [args to SV discovery pipeline]: additional arguments will be passed
@@ -161,7 +161,7 @@ CLUSTER_MAX_IDLE_MINUTES=${CLUSTER_MAX_IDLE_MINUTES:-60m}
 GATK_DIR="$1"
 PROJECT_NAME="$2"
 GCS_BAM="$3"
-GCS_REFERENCE_FASTA="$4"
+GCS_REFERENCE_2BIT="$4"
 shift $(($# < 4 ? $# : 4))
 SV_ARGS=${*:-${SV_ARGS:-""}} && SV_ARGS=${SV_ARGS:+" ${SV_ARGS}"}
 
@@ -190,16 +190,16 @@ else
 fi
 
 # for now assume the reference image is just the reference fasta + ".img"
-GCS_REFERENCE_IMAGE="${GCS_REFERENCE_FASTA}.img"
+GCS_REFERENCE_IMAGE="$(echo "${GCS_REFERENCE_2BIT}" | sed 's/.2bit$/.fasta.img/')"
 # monkey around with variables to put them in form used by gatk/sv/scripts
 GCS_BAM_DIR="$(dirname ${GCS_BAM})"
 GCS_BAM="/data/$(basename ${GCS_BAM})"
-GCS_REFERENCE_DIR="$(dirname ${GCS_REFERENCE_FASTA})"
+GCS_REFERENCE_DIR="$(dirname ${GCS_REFERENCE_2BIT})"
 if [ "$(dirname ${GCS_REFERENCE_IMAGE})" != "$(dirname ${GCS_REFERENCE_IMAGE})" ]; then
     echo "Reference fasta and reference image must be in same folder"
     exit -1
 fi
-GCS_REFERENCE_FASTA="/reference/$(basename ${GCS_REFERENCE_FASTA})"
+GCS_REFERENCE_2BIT="/reference/$(basename ${GCS_REFERENCE_2BIT})"
 GCS_REFERENCE_IMAGE="/mnt/1/reference/$(basename ${GCS_REFERENCE_IMAGE})"
 
 # store run log in this file
@@ -269,8 +269,8 @@ while true; do
     fi
     case $yn in
         [Yy]*)  SECONDS=0
-                echo "runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_BAM} ${GCS_REFERENCE_FASTA} ${GCS_REFERENCE_IMAGE}${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-                runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_BAM} ${GCS_REFERENCE_FASTA} ${GCS_REFERENCE_IMAGE}${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
+                echo "runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_BAM} ${GCS_REFERENCE_2BIT} ${GCS_REFERENCE_IMAGE}${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+                runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_BAM} ${GCS_REFERENCE_2BIT} ${GCS_REFERENCE_IMAGE}${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
                 printf 'Pipeline completed in %02dh:%02dm:%02ds\n' $((${SECONDS}/3600)) $((${SECONDS}%3600/60)) $((${SECONDS}%60))
                 break
                 ;;
