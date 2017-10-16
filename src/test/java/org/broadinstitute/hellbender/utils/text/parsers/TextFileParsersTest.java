@@ -6,6 +6,9 @@ import htsjdk.samtools.util.RuntimeIOException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.util.TabbedInputParser;
+import picard.util.BasicInputParser;
+import picard.util.AbstractInputParser;
 
 import java.io.BufferedReader;
 import java.io.File;

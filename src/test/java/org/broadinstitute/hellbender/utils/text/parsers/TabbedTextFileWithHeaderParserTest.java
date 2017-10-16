@@ -4,6 +4,7 @@ import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.BufferedWriter;
 import java.io.File;
