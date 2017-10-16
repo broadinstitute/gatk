@@ -208,23 +208,31 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      */
     public static List<List<AlignmentInterval>> pickBestConfigurations(final AlignedContig alignedContig,
                                                                 final Set<String> canonicalChromosomes) {
+        return pickBestConfigurations(alignedContig.contigName, alignedContig.alignmentIntervals, canonicalChromosomes);
 
-        // group 1: get max aligner score of mappings to canonical chromosomes and speed up in case of too many mappings
-        final int maxCanonicalChrAlignerScore = alignedContig.alignmentIntervals.stream()
+    }
+
+    public static List<List<AlignmentInterval>> pickBestConfigurations(final String contigName,
+                                                                       final List<AlignmentInterval> intervals,
+        final Set<String> canonicalChromosomes) {
+
+
+            // group 1: get max aligner score of mappings to canonical chromosomes and speed up in case of too many mappings
+        final int maxCanonicalChrAlignerScore = intervals.stream()
                 .filter(alignmentInterval -> canonicalChromosomes.contains(alignmentInterval.referenceSpan.getContig()))
                 .mapToInt(ai -> ai.alnScore).max().orElse(0); // possible that no mapping to canonical chromosomes
 
         // speed up if number of alignments is too high (>10)
         // if mapped to canonical chromosomes, MQ must be >10; otherwise, must have AS higher than max canonical aligner score
         final List<AlignmentInterval> alignmentIntervals;
-        if (alignedContig.alignmentIntervals.size() > 10) {
-            alignmentIntervals = alignedContig.alignmentIntervals.stream()
+        if (intervals.size() > 10) {
+            alignmentIntervals = intervals.stream()
                     .filter(alignmentInterval -> (!canonicalChromosomes.contains(alignmentInterval.referenceSpan.getContig())
                                                                            && alignmentInterval.alnScore > maxCanonicalChrAlignerScore)
                                                  || alignmentInterval.mapQual>10)
                     .collect(Collectors.toList());
         } else {
-            alignmentIntervals = alignedContig.alignmentIntervals;
+            alignmentIntervals = intervals;
         }
 
         final int newMaxCanonicalChrAlignerScore = alignmentIntervals.stream()
@@ -244,7 +252,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
 
         // group 3: pick the best-scored configuration(s) (if multiple configurations have equally good scores, return all of them)
         final double maxScore = scores.stream().mapToDouble(Double::doubleValue).max()
-                .orElseThrow(() -> new GATKException("Cannot find best-scoring configuration on alignments of contig: " + alignedContig.contigName));
+                .orElseThrow(() -> new GATKException("Cannot find best-scoring configuration on alignments of contig: " + contigName));
 
         return IntStream.range(0, allConfigurations.size())
                 .filter(i -> scores.get(i) >= maxScore)

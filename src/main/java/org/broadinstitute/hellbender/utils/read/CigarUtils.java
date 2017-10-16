@@ -7,6 +7,7 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
@@ -480,6 +481,73 @@ public final class CigarUtils {
                 }
             }
             throw new IllegalArgumentException("the input cigar only have clipping operations");
+        }
+    }
+
+    public static Cigar reciprocal(Cigar cigar, final int leftClipping, final int rightClipping, final CigarOperator clippingOperator) {
+        Utils.nonNull(cigar);
+        Utils.nonNull(clippingOperator);
+        Utils.validateArg(clippingOperator.isClipping(), "the clipping operation provided is not in fact a clipping operator");
+        ParamUtils.isPositiveOrZero(leftClipping, "left clipping cannot be negative");
+        ParamUtils.isPositiveOrZero(rightClipping, "right clipping cannot be negative");
+        final ArrayDeque<CigarElement> resultElements = new ArrayDeque<>(cigar.numCigarElements() + 2);
+        if (leftClipping > 0) {
+            resultElements.add(new CigarElement(leftClipping, clippingOperator));
+        }
+
+        final List<CigarElement> inputElements = cigar.getCigarElements();
+        final int numberOfInputElements = inputElements.size();
+        boolean seenAlignment = false;
+        int additionalLeftClipping = 0;
+        int additionalRightClipping = 0;
+        for (int i = 0; i < numberOfInputElements; i++) {
+            final CigarElement element = inputElements.get(i);
+            final CigarOperator operator = element.getOperator();
+            final int length = element.getLength();
+            if (operator.isAlignment()) {
+                seenAlignment = true;
+                resultElements.add(element);
+            } else if (operator.consumesReferenceBases() && !operator.consumesReadBases() && seenAlignment) {
+                if (resultElements.getLast().getOperator() == CigarOperator.I) {
+                    final CigarElement previousLast = resultElements.removeLast();
+                    resultElements.add(new CigarElement(previousLast.getLength() + length, CigarOperator.I));
+                } else {
+                    resultElements.add(new CigarElement(length, CigarOperator.I));
+                }
+            } else if (!operator.consumesReferenceBases() && operator.consumesReadBases() && seenAlignment) {
+                if (resultElements.getLast().getOperator() == CigarOperator.D) {
+                    final CigarElement previousLast = resultElements.removeLast();
+                    resultElements.add(new CigarElement(previousLast.getLength() + length, CigarOperator.D));
+                } else {
+                    resultElements.add(new CigarElement(length, CigarOperator.D));
+                }
+            } else if (operator.consumesReferenceBases() && !seenAlignment) {
+               additionalLeftClipping += length;
+            }
+
+        }
+        if (!seenAlignment) {
+            return new Cigar();
+        } else {
+            while (!resultElements.getLast().getOperator().isAlignment()) {
+                final CigarElement last = resultElements.removeLast();
+                if (last.getOperator() == CigarOperator.I) {
+                    additionalRightClipping += last.getLength();
+                }
+            }
+            if (additionalLeftClipping > 0) {
+                if (leftClipping == 0) {
+                    resultElements.addFirst(new CigarElement(additionalLeftClipping, clippingOperator));
+                } else {
+                    resultElements.addFirst(new CigarElement(additionalLeftClipping + resultElements.removeFirst().getLength(), clippingOperator));
+                }
+            }
+            final int totalRightClipping = additionalRightClipping + rightClipping;
+            if (totalRightClipping > 0) {
+                resultElements.addLast(new CigarElement(totalRightClipping, clippingOperator));
+            }
+            return new Cigar(Arrays.asList(resultElements.toArray(new CigarElement[resultElements.size()])));
+
         }
     }
 }
