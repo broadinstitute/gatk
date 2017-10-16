@@ -16,7 +16,6 @@ plugins {
     id "jacoco"
     id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
     id "com.github.johnrengelman.shadow" version "1.2.3"    //used to build the shadow and sparkJars
-    id "com.github.kt3k.coveralls" version "2.6.3"  // report coverage data to coveralls
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
@@ -89,7 +88,7 @@ jacocoTestReport {
     additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
 
     reports {
-        xml.enabled = true // coveralls plugin depends on xml format report
+        xml.enabled = true
         html.enabled = true
     }
 }
