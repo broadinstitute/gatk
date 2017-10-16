@@ -19,7 +19,8 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
     summary = "Example of how to use Spark on Google Cloud Storage directly, without using the GCS Hadoop Connector",
     oneLineSummary = "Example of how to use Spark on Google Cloud Storage directly, without using the GCS Hadoop Connector",
-    programGroup = ExampleProgramGroup.class
+    programGroup = ExampleProgramGroup.class,
+    omitFromCommandLine = true
 )
 public class ExampleNioCountReads extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;

@@ -24,7 +24,8 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) along with overlapping variants (if a source of variants is provided) to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with overlapping variants",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public final class ExampleReadWalkerWithVariants extends ReadWalker {
 
