@@ -5,11 +5,16 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Various utility functions helping calling structural variants.
@@ -378,4 +383,60 @@ public final class SvCigarUtils {
         return readWalkDist;
     }
 
+    /**
+     * Creates a cigar that encompasses a list of aligned intervals that makes reference to the same
+     * query sequence.
+     * <p>
+     *     Notice that some combinations of intervals cannot result in a unique cigar, namely when intervals
+     *     overlap and map the same bases to different locations in the reference, when the make reference
+     *     to different contigs or when they map on alternative strands. In such cases this method will return
+     *     {@code null}.
+     * </p>
+     * @param intervals the input intervals
+     *
+     * @throws IllegalArgumentException if {@code intervals} is {@code null}.
+     * @return returns {@code null} only for intervals list that cannot be summarized in a single cigar.
+     */
+    public static Cigar composeCigar(final List<AlignmentInterval> intervals) {
+        if (intervals.isEmpty()) {
+            return new Cigar();
+        } else if (intervals.size() == 1) {
+            return intervals.get(0).cigarAlongReference();
+        } else {
+            final AlignmentInterval exampleInterval = intervals.get(0);
+            int lastStart = exampleInterval.startInAssembledContig;
+            final String contig = exampleInterval.referenceSpan.getContig();
+            boolean intervalsAreSorted = true;
+            for (int i = 1; i < intervals.size(); i++) {
+                final AlignmentInterval nextInterval = intervals.get(i);
+                if (exampleInterval.forwardStrand != nextInterval.forwardStrand) {
+                    return null; // "we can only generate a cigar for interval lists where all intervals are placed on the same strand";
+                } else if (!nextInterval.referenceSpan.getContig().equals(contig)) {
+                    return null;
+                } else if (intervalsAreSorted) { // check whether still sorted.
+                    if (nextInterval.startInAssembledContig <= lastStart) {
+                        intervalsAreSorted = false;
+                    } else {
+                        lastStart = nextInterval.startInAssembledContig;
+                    }
+                }
+            }
+            final List<AlignmentInterval> sorted = intervalsAreSorted ? intervals :
+                    intervals.stream().sorted(Comparator.comparingInt(iv -> iv.startInAssembledContig)).collect(Collectors.toList());
+            AlignmentInterval previous = sorted.get(0);
+            final List<CigarElement> elements = new ArrayList<>();
+            for (int i = 1; i < sorted.size(); i++) {
+                final AlignmentInterval next = sorted.get(i);
+                if (previous.referenceSpan.getStart() < next.referenceSpan.getStart() != exampleInterval.forwardStrand) {
+                    return null; // the alignemnt intervals imply jumps back in the reference.
+                } else if (previous.endInAssembledContig <= next.startInAssembledContig){ // in there are overlaps in the contig sequence they must map on the same base on the reference.
+                    if (!previous.compatibleWith(next)) {
+                        return null; // there are base mapping conflicts between alignment intervals therefore there is no single cigar.
+                    }
+                }
+                previous = next;
+            }
+            return null;
+        }
+    }
 }

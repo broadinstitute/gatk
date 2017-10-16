@@ -11,6 +11,7 @@ import org.apache.avro.ipc.MD5;
 import org.apache.hadoop.io.MD5Hash;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -153,7 +154,7 @@ public final class SVContext extends VariantContext {
      * @param reference the reference to use as source.
      * @return never {@code null}.
      */
-    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
+    public SVHaplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
         Utils.nonNull(reference, "the input reference cannot be null");
         ParamUtils.isPositiveOrZero(paddingSize, "the input padding must be 0 or greater");
         ParamUtils.inRange(index, 0, 1, "the input allele index must be 0 or 1");
@@ -180,10 +181,8 @@ public final class SVContext extends VariantContext {
             throw new GATKException("could not read reference file");
         }
         if (index == 0) {
-            final Haplotype result = new Haplotype(bases.getBases(), true);
-            result.setCigar(new Cigar(Collections.singletonList(new CigarElement(referenceInterval.size(), CigarOperator.M))));
-            result.setGenomeLocation(referenceInterval);
-            return result;
+            final Cigar cigar = new Cigar(Collections.singletonList(new CigarElement(referenceInterval.size(), CigarOperator.M)));
+            return new ShortSVHaplotype(SVHaplotype.REF_HAPLOTYPE_NAME, Collections.singletonList(new AlignmentInterval(referenceInterval.getContig(), referenceInterval.getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)), bases.getBases());
         } else { //index == 1
             switch (getStructuralVariantType()) {
                 case INS:
@@ -196,7 +195,7 @@ public final class SVContext extends VariantContext {
         }
     }
 
-    private Haplotype composeDeletionHaplotype(final ReferenceBases referenceBases) {
+    private SVHaplotype composeDeletionHaplotype(final ReferenceBases referenceBases) {
         final int deletionSize = getStructuralVariantLength();
         final byte[] resultBases = new byte[referenceBases.getInterval().size() - deletionSize];
         final int leftPaddingSize = getStart() - referenceBases.getInterval().getStart() + 1;
@@ -207,13 +206,13 @@ public final class SVContext extends VariantContext {
         final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(leftPaddingSize, CigarOperator.M),
                 new CigarElement(deletionSize, CigarOperator.D),
                 new CigarElement(rightPaddingSize, CigarOperator.M)));
-        final Haplotype result = new Haplotype(resultBases, false);
-        result.setCigar(cigar);
-        result.setGenomeLocation(referenceBases.getInterval());
-        return result;
+        final SimpleInterval referenceBasesInterval = referenceBases.getInterval();
+        return new ShortSVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME,
+                Collections.singletonList(new AlignmentInterval(referenceBasesInterval.getContig(), referenceBasesInterval.getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)),
+                resultBases);
     }
 
-    private Haplotype composeInsertionHaplotype(final ReferenceBases referenceBases) {
+    private SVHaplotype composeInsertionHaplotype(final ReferenceBases referenceBases) {
         final byte[] insertedSequence = getInsertedSequence();
         final byte[] referenceBaseBytes = referenceBases.getBases();
         final byte[] resultBases = new byte[referenceBases.getInterval().size() + insertedSequence.length];
@@ -225,10 +224,10 @@ public final class SVContext extends VariantContext {
         final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(leftPaddingSize, CigarOperator.M),
                 new CigarElement(insertedSequence.length, CigarOperator.I),
                 new CigarElement(rightPaddingSize, CigarOperator.M)));
-        final Haplotype result = new Haplotype(resultBases, false);
-        result.setCigar(cigar);
-        result.setGenomeLocation(referenceBases.getInterval());
-        return result;
+        final SimpleInterval referenceBasesInterval = referenceBases.getInterval();
+        return new ShortSVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME,
+                Collections.singletonList(new AlignmentInterval(referenceBasesInterval.getContig(), referenceBasesInterval.getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)),
+                resultBases);
     }
 
     /**
@@ -262,6 +261,15 @@ public final class SVContext extends VariantContext {
             length = Math.abs(getAttributeAsInt(GATKSVVCFConstants.SVLEN, NO_LENGTH));
         }
         return length;
+    }
+
+    public static int getStructuralVariantLength(final VariantContext vc) {
+        Utils.nonNull(vc);
+        if (vc.hasAttribute(GATKSVVCFConstants.SVLEN)) {
+            return Math.abs(vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, NO_LENGTH));
+        } else {
+            return NO_LENGTH;
+        }
     }
 
     /**

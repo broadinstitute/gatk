@@ -10,6 +10,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
@@ -190,20 +191,12 @@ public final class AlignedContig {
         return newlyDefined;
     }
 
-    public AlignedContig(final Haplotype haplotype, final String name) {
+    public AlignedContig(final SVHaplotype haplotype, final String name) {
         Utils.nonNull(haplotype);
         Utils.nonNull(name);
-        final byte[] bases = haplotype.getBases();
-        final Cigar cigar = haplotype.getCigar();
-        Utils.validateArg(cigar != null && bases.length == cigar.getReadLength(), "invalid haplotype cigar");
-        final Locatable loc = haplotype.getGenomeLocation();
-        Utils.validateArg(loc != null && loc.getContig() != null && loc.getStart() <= loc.getEnd(), "invalid haplotype location");
         this.contigName = name;
-        this.contigSequence = bases.clone();
-        this.alignmentIntervals = Collections.singletonList(new AlignmentInterval(
-                new SimpleInterval(loc.getContig(), loc.getStart(), loc.getStart() + cigar.getReferenceLength() - 1),
-                        1, bases.length, cigar, false, SAMRecord.UNKNOWN_MAPPING_QUALITY,
-                        AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, false, false));
+        this.contigSequence = haplotype.getBases();
+        this.alignmentIntervals = haplotype.getReferenceAlignmentIntervals();
         this.hasEquallyGoodAlnConfigurations = false;
     }
 

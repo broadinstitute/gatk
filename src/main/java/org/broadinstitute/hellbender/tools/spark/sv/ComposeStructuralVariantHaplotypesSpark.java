@@ -4,7 +4,9 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.cloud.dataflow.sdk.transforms.SerializableComparator;
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
@@ -14,6 +16,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
+import org.apache.spark.storage.StorageLevel;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -29,10 +32,12 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalLocator;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.StructuralVariantContext;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -41,9 +46,10 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.gcs.BamBucketIoUtils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 import scala.Tuple2;
 
 import java.io.*;
@@ -202,26 +208,32 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         final List<SimpleInterval> intervals = hasIntervals()
                 ? IntervalUtils.getAllIntervalsForReference(getReferenceSequenceDictionary())
                 : getIntervals();
-        final JavaRDD<StructuralVariantContext> variants = variantsSource
+
+
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        final Broadcast<SAMSequenceDictionary> sequenceDictionaryBroadcast = ctx.broadcast(sequenceDictionary);
+        final Broadcast<IntervalsSkipList<SimpleInterval>> shardIntervalsBroadcast = composeShardBroadcastWholeReference(ctx, sequenceDictionary);
+
+        final int paddingSize = this.paddingSize;
+        final JavaRDD<SVContext> variants = variantsSource
                 .getParallelVariantContexts(variantsFileName, getIntervals())
-                .filter(ComposeStructuralVariantHaplotypesSpark::supportedVariant)
-                .map(StructuralVariantContext::of);
+                .filter(vc -> supportedVariant(vc,paddingSize))
+                .map(SVContext::of);
         final JavaRDD<GATKRead> contigs = alignedContigs
                 .getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(),
                         new TraversalParameters(intervals, false));
-        final JavaPairRDD<StructuralVariantContext, Tuple2<List<String>, List<SimpleInterval>>> variantsAndRelevantContigIntervals =
-                composeVariantAndRelevantContigsIntervals(ctx, contigs, variants);
+        final JavaPairRDD<SVContext, Tuple2<List<String>, List<SimpleInterval>>> variantsAndRelevantContigIntervals =
+                composeVariantAndRelevantContigsIntervals(ctx, shardIntervalsBroadcast, sequenceDictionaryBroadcast, contigs, variants);
 
-        final JavaPairRDD<StructuralVariantContext, List<GATKRead>> variantOverlappingContigs
+        final JavaPairRDD<SVContext, List<GATKRead>> variantOverlappingContigs
                 = composeOverlappingContigRecordsPerVariant(ctx, contigs, variants);
 
-        final Map<String, StructuralVariantContext> variantsByUID =
+        final Map<String, SVContext> variantsByUID =
                 variants.mapToPair(v -> new Tuple2<>(v.getUniqueID(), v)).collectAsMap();
         final Map<String, List<String>> variantUIDByContigName = variantsAndRelevantContigIntervals.flatMapToPair(
                 t -> t._2()._1().stream().map(readName -> new Tuple2<>(readName, (List<String>) new ArrayList<>(Collections.singleton(t._1().getUniqueID())))).iterator())
                 .reduceByKey((a, b) -> {a.addAll(b); return a; }).collectAsMap();
 
-        final SAMSequenceDictionary sequenceDictionary = getReferenceSequenceDictionary();
         final SVIntervalLocator locator = new SVIntervalLocator(sequenceDictionary);
         final SVIntervalTree<ShardBoundary> shardTree = intervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardSize, 0, sequenceDictionary).stream())
@@ -250,21 +262,21 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 .map(ShardBoundary::getInterval).collect(Collectors.toList());
 
         final Broadcast<Map<String, List<String>>> variantUIDByContigNameBCast = ctx.broadcast(variantUIDByContigName);
-        final Broadcast<Map<String, StructuralVariantContext>> variantsByUIDBCast = ctx.broadcast(variantsByUID);
+        final Broadcast<Map<String, SVContext>> variantsByUIDBCast = ctx.broadcast(variantsByUID);
 
         final JavaRDD<GATKRead> primaryContings = alignedContigs
                 .getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(),
                         new TraversalParameters(relevantShardIntervals, false));
-        final JavaPairRDD<StructuralVariantContext, List<AlignedContig>> result =
+        final JavaPairRDD<SVContext, List<AlignedContig>> result =
                 primaryContings.mapPartitionsToPair(it -> {
                     final Map<String, List<String>> mapVariantUIDByContigName = variantUIDByContigNameBCast.getValue();
-                    final Map<String, StructuralVariantContext> variantByUID = variantsByUIDBCast.getValue();
-                    final Map<StructuralVariantContext, List<GATKRead>> accumulator = new LinkedHashMap<>();
+                    final Map<String, SVContext> variantByUID = variantsByUIDBCast.getValue();
+                    final Map<SVContext, List<GATKRead>> accumulator = new LinkedHashMap<>();
                     while (it.hasNext()) {
                         final GATKRead read = it.next();
                         final List<String> uids = mapVariantUIDByContigName.getOrDefault(read.getName(), Collections.emptyList());
                         for (final String uid : uids) {
-                            final StructuralVariantContext svc = variantByUID.get(uid);
+                            final SVContext svc = variantByUID.get(uid);
                             if (svc != null) {
                                 final List<GATKRead> alignedContig = accumulator.computeIfAbsent(svc, (key) -> new ArrayList<>());
                                 alignedContig.add(read);
@@ -279,14 +291,14 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 .reduceByKey((t1, t2) -> {
                     t1._2().addAll(t2._2());
                     return t1;
-                }).mapToPair(t -> t._2())
+                }).mapToPair(Tuple2::_2)
                 // JavaPairRDD<SVContext, List<GATKRead>> -> <SVContext, List<AlignedContig>> :
                 .mapValues(readList -> readList.stream()
                            .collect(Collectors.groupingBy(GATKRead::getName)).values().stream() //: Stream<List<GATKRead>>.
                                 .map(ll -> AlignedContig.of(removeRepeatedReads(ll))) // AlignmentContig.of(Iterable<GATKRead>) : AlignedContig.
                                 .collect(Collectors.toList()));
 
-        processVariants(ctx, result, getReferenceSequenceDictionary(), alignedContigs);
+        processVariants(result, sequenceDictionary, sequenceDictionaryBroadcast, shardIntervalsBroadcast);
 
     }
 
@@ -310,12 +322,14 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             Comparator.comparing(GATKRead::getContig).thenComparingInt(GATKRead::getStart);
 
 
-    private static boolean supportedVariant(final VariantContext vc) {
+    private static boolean supportedVariant(final VariantContext vc, final int paddingSize) {
         final StructuralVariantType type = vc.getStructuralVariantType();
         if (type == null) {
             return false;
+        } else if (vc.getAlternateAlleles().size() != 1) {
+            return false;
         } else if (type == StructuralVariantType.INS || type == StructuralVariantType.DEL) {
-            return vc.getAlternateAlleles().size() == 1;
+            return SVContext.getStructuralVariantLength(vc) > 4 * paddingSize;
         } else  {
             return false;
         }
@@ -323,37 +337,25 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
     private static final Pattern SA_SPLIT_PATTERN = Pattern.compile(";");
 
-    private JavaPairRDD<StructuralVariantContext, Tuple2<List<String>, List<SimpleInterval>>> composeVariantAndRelevantContigsIntervals(
-            final JavaSparkContext ctx, final JavaRDD<GATKRead> contigs, final JavaRDD<StructuralVariantContext> variants) {
-        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        final List<SimpleInterval> intervals = hasIntervals()
-                ? getIntervals()
-                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        // use unpadded shards (padding is only needed for reference bases)
-        final List<ShardBoundary> shardBoundaries = intervals.stream()
-                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardSize, 0, sequenceDictionary).stream())
-                .collect(Collectors.toList());
-        final IntervalsSkipList<SimpleInterval> shardIntervals = new IntervalsSkipList<>(shardBoundaries.stream()
-                .map(ShardBoundary::getPaddedInterval)
-                .collect(Collectors.toList()));
-        final Broadcast<SAMSequenceDictionary> dictionaryBroadcast = ctx.broadcast(sequenceDictionary);
-
-        final Broadcast<IntervalsSkipList<SimpleInterval>> shardIntervalsBroadcast = ctx.broadcast(shardIntervals);
+    private JavaPairRDD<SVContext, Tuple2<List<String>, List<SimpleInterval>>> composeVariantAndRelevantContigsIntervals(
+            final JavaSparkContext ctx, final Broadcast<IntervalsSkipList<SimpleInterval>> shardIntervalsBroadcast,
+                                        final Broadcast<SAMSequenceDictionary> sequenceDictionaryBroadcast,
+            final JavaRDD<GATKRead> contigs, final JavaRDD<SVContext> variants) {
 
         final JavaPairRDD<SimpleInterval, List<Tuple2<SimpleInterval,GATKRead>>> contigsInShards =
                 groupInShards(contigs, ComposeStructuralVariantHaplotypesSpark::readIntervalList, shardIntervalsBroadcast);
         final int paddingSize = this.paddingSize;
 
-        final JavaPairRDD<SimpleInterval, List<Tuple2<SimpleInterval, StructuralVariantContext>>> variantsInShards =
-                groupInShards(variants, (v) -> v.getBreakPointIntervals(paddingSize, dictionaryBroadcast.getValue()), shardIntervalsBroadcast);
+        final JavaPairRDD<SimpleInterval, List<Tuple2<SimpleInterval, SVContext>>> variantsInShards =
+                groupInShards(variants, (v) -> v.getBreakPointIntervals(paddingSize, sequenceDictionaryBroadcast.getValue(), true), shardIntervalsBroadcast);
 
         final JavaPairRDD<SimpleInterval, Tuple2<List<Tuple2<SimpleInterval, GATKRead>>,
-                List<Tuple2<SimpleInterval, StructuralVariantContext>>>> contigAndVariantsInShards
+                List<Tuple2<SimpleInterval, SVContext>>>> contigAndVariantsInShards
                 = contigsInShards.join(variantsInShards);
 
-        final JavaPairRDD<StructuralVariantContext, Tuple2<List<String>, List<SimpleInterval>>> contigsPerVariantInterval
+        final JavaPairRDD<SVContext, Tuple2<List<String>, List<SimpleInterval>>> contigsPerVariantInterval
                 = contigAndVariantsInShards.flatMapToPair(t -> {
-            final List<Tuple2<SimpleInterval, StructuralVariantContext>> vars = t._2()._2();
+            final List<Tuple2<SimpleInterval, SVContext>> vars = t._2()._2();
             final List<Tuple2<SimpleInterval, GATKRead>> ctgs = t._2()._1();
 
             return vars.stream()
@@ -376,6 +378,19 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         return contigsPerVariantInterval;
     }
 
+    private Broadcast<IntervalsSkipList<SimpleInterval>> composeShardBroadcastWholeReference(final JavaSparkContext ctx, SAMSequenceDictionary sequenceDictionary) {
+        final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        // use unpadded shards (padding is only needed for reference bases)
+        final List<ShardBoundary> shardBoundaries = intervals.stream()
+                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardSize, 0, sequenceDictionary).stream())
+                .collect(Collectors.toList());
+        final IntervalsSkipList<SimpleInterval> shardIntervals = new IntervalsSkipList<>(shardBoundaries.stream()
+                .map(ShardBoundary::getPaddedInterval)
+                .collect(Collectors.toList()));
+
+        return ctx.broadcast(shardIntervals);
+    }
+
     private static final SerializableFunction<GATKRead, Stream<SimpleInterval>> GATKREAD_TO_ALL_ALIGNMENT_STARTS =
             ComposeStructuralVariantHaplotypesSpark::primaryAlignmentInterval;
 
@@ -393,8 +408,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
     }
 
-    private JavaPairRDD<StructuralVariantContext, List<GATKRead>> composeOverlappingContigRecordsPerVariant(
-            final JavaSparkContext ctx, final JavaRDD<GATKRead> contigs, final JavaRDD<StructuralVariantContext> variants) {
+    private JavaPairRDD<SVContext, List<GATKRead>> composeOverlappingContigRecordsPerVariant(
+            final JavaSparkContext ctx, final JavaRDD<GATKRead> contigs, final JavaRDD<SVContext> variants) {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         final List<SimpleInterval> intervals = hasIntervals()
                 ? getIntervals()
@@ -414,17 +429,17 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             groupInShards(contigs, ComposeStructuralVariantHaplotypesSpark::readIntervalList, shardIntervalsBroadcast);
         final int paddingSize = this.paddingSize;
 
-        final JavaPairRDD<SimpleInterval, List<Tuple2<SimpleInterval, StructuralVariantContext>>> variantsInShards =
-            groupInShards(variants, (v) -> v.getBreakPointIntervals(paddingSize, dictionaryBroadcast.getValue()), shardIntervalsBroadcast);
+        final JavaPairRDD<SimpleInterval, List<Tuple2<SimpleInterval, SVContext>>> variantsInShards =
+            groupInShards(variants, (v) -> v.getBreakPointIntervals(paddingSize, dictionaryBroadcast.getValue(), true), shardIntervalsBroadcast);
 
         final JavaPairRDD<SimpleInterval, Tuple2<List<Tuple2<SimpleInterval, GATKRead>>,
-                    List<Tuple2<SimpleInterval, StructuralVariantContext>>>> contigAndVariantsInShards
+                    List<Tuple2<SimpleInterval, SVContext>>>> contigAndVariantsInShards
                 = contigsInShards.join(variantsInShards);
 
 
-        final JavaPairRDD<StructuralVariantContext, List<GATKRead>> contigsPerVariantInterval
+        final JavaPairRDD<SVContext, List<GATKRead>> contigsPerVariantInterval
                 = contigAndVariantsInShards.flatMapToPair(t -> {
-                    final List<Tuple2<SimpleInterval, StructuralVariantContext>> vars = t._2()._2();
+                    final List<Tuple2<SimpleInterval, SVContext>> vars = t._2()._2();
                     final List<Tuple2<SimpleInterval, GATKRead>> ctgs = t._2()._1();
                     return vars.stream()
                             .map(v -> {
@@ -437,21 +452,21 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                             .collect(Collectors.toList()).iterator();
                 });
 
-        final Function<StructuralVariantContext, String> variantId =
-                (SerializableFunction<StructuralVariantContext, String>) ComposeStructuralVariantHaplotypesSpark::variantId;
+        final Function<SVContext, String> variantId =
+                (SerializableFunction<SVContext, String>) ComposeStructuralVariantHaplotypesSpark::variantId;
         final Function2<List<GATKRead>, List<GATKRead>, List<GATKRead>> readListMerger
                 = (a, b) -> Stream.concat(a.stream(), b.stream()).collect(Collectors.toList());
 
         // Merge contig lists on the same variant-context coming from different intervals
         // into one.
-        final JavaPairRDD<StructuralVariantContext, List<GATKRead>> contigsPerVariant = contigsPerVariantInterval
+        final JavaPairRDD<SVContext, List<GATKRead>> contigsPerVariant = contigsPerVariantInterval
                 .mapToPair(t -> new Tuple2<>(variantId.apply(t._1()), t))
                 .reduceByKey((a, b) -> new Tuple2<>(a._1(), readListMerger.call(a._2(), b._2())))
                 .mapToPair(Tuple2::_2);
         return contigsPerVariant;
     }
 
-    private static String variantId(final StructuralVariantContext variant) {
+    private static String variantId(final SVContext variant) {
         if (variant.getID() != null && !variant.getID().isEmpty()) {
             return variant.getID();
         } else {
@@ -483,50 +498,85 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                         (l1, l2) -> {l1.addAll(l2); return l1;});
     }
 
-    protected void processVariants(final JavaSparkContext ctx,
-                                   final JavaPairRDD<StructuralVariantContext, List<AlignedContig>> variantsAndOverlappingUniqueContigs,
+    protected void processVariants(final JavaPairRDD<SVContext, List<AlignedContig>> variantsAndOverlappingUniqueContigs,
                                    final SAMSequenceDictionary dictionary,
-                                   final ReadsSparkSource readSource) {
+                                   final Broadcast<SAMSequenceDictionary> broadcastDictionary,
+                                   final Broadcast<IntervalsSkipList<SimpleInterval>> shardBroadcast) {
 
         final SAMFileHeader outputHeader = composeOutputHeader(dictionary);
-        try (final SAMFileWriter outputWriter = BamBucketIoUtils.makeWriter(outputFileName, outputHeader, false);
+        try (final SAMFileWriter outputWriter = BamBucketIoUtils.makeWriter(outputFileName, outputHeader, true);
              final SAMFileWriter alignedOutputWriter = alignedOutputFileName == null
-                ? null : BamBucketIoUtils.makeWriter(alignedOutputFileName, outputHeader, false)) {
-            final JavaPairRDD<StructuralVariantContext, VariantHaplotypesAndContigsComposite> alignedContigs = variantsAndOverlappingUniqueContigs.mapToPair(tuple -> {
-                        final StructuralVariantContext vc = tuple._1();
+                ? null : BamBucketIoUtils.makeWriter(alignedOutputFileName, outputHeader, true)) {
+            final JavaPairRDD<SVContext, VariantHaplotypesAndContigsComposite> alignedContigs = variantsAndOverlappingUniqueContigs.mapToPair(tuple -> {
+                        final SVContext vc = tuple._1();
                         final List<AlignedContig> contigs = tuple._2();
                         final int maxLength = contigs.stream()
                                 .mapToInt(a -> a.contigSequence.length)
                                 .max().orElse(paddingSize);
-                        final Haplotype referenceHaplotype = vc.composeHaplotypeBasedOnReference(0, maxLength * 2, getReference());
-                        final Haplotype alternativeHaplotype = vc.composeHaplotypeBasedOnReference(1, maxLength * 2, getReference());
-                        final AlignedContig referenceContig = new AlignedContig(referenceHaplotype, REF_CONTIG_NAME);
-                        final AlignedContig alternativeContig = new AlignedContig(alternativeHaplotype, ALT_CONTIG_NAME);
-                        final List<AlignedContig> haplotypeAndContigs = new ArrayList<>(contigs.size() + 2);
-                        haplotypeAndContigs.add(referenceContig);
-                        haplotypeAndContigs.add(alternativeContig);
-                        haplotypeAndContigs.addAll(contigs);
-                        final List<AlignedContig> referenceAlignedContigs = alignContigsAgainstHaplotype(referenceContig, haplotypeAndContigs);
-                        final List<AlignedContig> alternativeAlignedContigs = alignContigsAgainstHaplotype(alternativeContig, haplotypeAndContigs);
-                        return new Tuple2<>(vc, new VariantHaplotypesAndContigsComposite(referenceContig, alternativeContig, haplotypeAndContigs, referenceAlignedContigs, alternativeAlignedContigs));
+                        final SVHaplotype referenceHaplotype = vc.composeHaplotypeBasedOnReference(0, maxLength * 2, getReference());
+                        final SVHaplotype alternativeHaplotype = vc.composeHaplotypeBasedOnReference(1, maxLength * 2, getReference());
+                        final List<AlignedContig> referenceAlignedContigs = referenceHaplotype.alignContigs(contigs);
+                        final List<AlignedContig> alternativeAlignedContigs = alternativeHaplotype.alignContigs(contigs);
+                        return new Tuple2<>(vc, new VariantHaplotypesAndContigsComposite(referenceHaplotype, alternativeHaplotype, contigs, referenceAlignedContigs, alternativeAlignedContigs));
             });
-            alignedContigs.toLocalIterator().forEachRemaining(tuple -> {
-                final StructuralVariantContext variant = tuple._1();
+
+            final SerializableComparator<SVContext> svContextSorter = createLocatableSparkSorter(broadcastDictionary);
+            final SerializableComparator<SimpleInterval> shardSorter = createLocatableSparkSorter(broadcastDictionary);
+
+            final JavaPairRDD<SVContext, VariantHaplotypesAndContigsComposite> cachedIfNeededAlignedContigs
+                    = alignedOutputWriter == null ? alignedContigs : alignedContigs.persist(StorageLevel.MEMORY_AND_DISK());
+
+            cachedIfNeededAlignedContigs.sortByKey(svContextSorter).toLocalIterator().forEachRemaining(tuple -> {
+                final SVContext variant = tuple._1();
                 final VariantHaplotypesAndContigsComposite haplotypesAndContigs = tuple._2();
                 final int numberOfContigs = haplotypesAndContigs.numberOfContigs();
+                outputWriter.addAlignment(haplotypesAndContigs.composeOutputReferenceHaplotypeRecord(outputHeader, variant));
+                outputWriter.addAlignment(haplotypesAndContigs.composeOutputAlternativeHaplotypeRecord(outputHeader, variant));
                 for (int i = 0; i < numberOfContigs; i++) {
                     outputWriter.addAlignment(haplotypesAndContigs.composeOutputSAMRecord(outputHeader, variant, i));
                 }
-                if (alignedOutputWriter != null) {
-                    for (int i = 0; i < numberOfContigs; i++) {
-                        final List<SAMRecord> alignedRecords = haplotypesAndContigs.composeAlignedOutputSAMRecords(outputHeader, variant, i);
-                        for (final SAMRecord record : alignedRecords) {
-                            alignedOutputWriter.addAlignment(record);
-                        }
-                    }
-                }
             });
+
+            if (alignedOutputWriter != null) {
+                cachedIfNeededAlignedContigs.flatMapToPair(tuple -> {
+                    final SVContext variant = tuple._1();
+                    final VariantHaplotypesAndContigsComposite haplotypesAndContigs = tuple._2();
+                    final List<SAMRecord> result = new ArrayList<>();
+
+                    result.addAll(haplotypesAndContigs.composeAlignedOutputReferenceHaplotypeSAMRecords(null, variant));
+                    result.addAll(haplotypesAndContigs.composeAlignedOutputAlternativeHaplotypeSAMRecords(null, variant));
+                    for (int i = 0; i < haplotypesAndContigs.numberOfContigs(); i++) {
+                        result.addAll(haplotypesAndContigs.composeAlignedOutputSAMRecords(null, variant, i));
+                    }
+                    final IntervalsSkipList<SimpleInterval> shards = shardBroadcast.getValue();
+                    return result.stream()
+                            .map(r -> new Tuple2<>(shards.getOverlapping(new SimpleInterval(r.getContig(), r.getStart(), r.getStart())).get(0), r)).iterator();
+                })
+                .combineByKey((v) -> {final List<SAMRecord> result = new ArrayList<>(1); result.add(v); return result; },
+                                (l, v) -> { l.add(v); return l; }, (l1, l2) -> { l1.addAll(l2); return l1; } )
+                .sortByKey(shardSorter)
+                .mapValues(unsorted -> { unsorted.sort(Comparator.comparingInt(SAMRecord::getAlignmentStart)); return unsorted; })
+                .values()
+                .flatMap(List::iterator)
+                .toLocalIterator().forEachRemaining(record -> {
+                    record.setHeader(outputHeader);
+                    alignedOutputWriter.addAlignment(record);
+                });
+            };
         }
+    }
+
+    private <T extends Locatable> SerializableComparator<T> createLocatableSparkSorter(final Broadcast<SAMSequenceDictionary> broadcastDictionary) {
+        return (SerializableComparator<T>) (a, b) -> {
+            final String aContig = a.getContig();
+            final String bContig = b.getContig();
+            if (aContig.equals(bContig)) {
+                return Integer.compare(a.getStart(), b.getStart());
+            } else {
+                final SAMSequenceDictionary myDictionary = broadcastDictionary.getValue();
+                return Integer.compare(myDictionary.getSequenceIndex(aContig), myDictionary.getSequenceIndex(bContig));
+            }
+        };
     }
 
     private SAMFileHeader composeOutputHeader(SAMSequenceDictionary dictionary) {
@@ -665,8 +715,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     static class VariantHaplotypesAndContigsComposite implements Serializable {
 
         private static final long serialVersionUID = 1L;
-        private final AlignedContig referenceHaplotype;
-        private final AlignedContig alternativeHaplotype;
+        private final SVHaplotype referenceHaplotype;
+        private final SVHaplotype alternativeHaplotype;
         private final AlignedContig[] originalAlignments;
         private final AlignedContig[] referenceAlignments;
         private final AlignedContig[] alternativeAlignments;
@@ -675,7 +725,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         private final String[] hpTagValue;
         private final double[] hpQualTagValue;
 
-        VariantHaplotypesAndContigsComposite(final AlignedContig referenceHaplotype, final AlignedContig alternativeHaplotype,
+        VariantHaplotypesAndContigsComposite(final SVHaplotype referenceHaplotype, final SVHaplotype alternativeHaplotype,
                                              final List<AlignedContig> originalAlignment, final List<AlignedContig> referenceAlignedContigs,
                                              final List<AlignedContig> alternativeAlignedContigs) {
             final int numberOfContigs = referenceAlignedContigs.size();
@@ -712,8 +762,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             this.alternativeScoreTagValue = new String[numberOfContigs];
             this.hpTagValue = new String[numberOfContigs];
             this.hpQualTagValue = new double[numberOfContigs];
-            this.referenceHaplotype = kryo.readObject(input, AlignedContig.class);
-            this.alternativeHaplotype = kryo.readObject(input, AlignedContig.class);
+            this.referenceHaplotype = (SVHaplotype) kryo.readClassAndObject(input);
+            this.alternativeHaplotype = (SVHaplotype) kryo.readClassAndObject(input);
             for (int i = 0; i < numberOfContigs; i++) {
                 this.originalAlignments[i] = kryo.readObject(input, AlignedContig.class);
                 this.referenceAlignments[i] = kryo.readObject(input, AlignedContig.class);
@@ -822,12 +872,10 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             }
         }
 
-        private SAMRecord composeOutputSAMRecord(final SAMFileHeader outputHeader, final StructuralVariantContext vc, final int index) {
+        private SAMRecord composeOutputSAMRecord(final SAMFileHeader outputHeader, final SVContext vc, final int index) {
 
             final AlignedContig originalContig = originalAlignments[index];
             final SAMRecord outputRecord = new SAMRecord(outputHeader);
-            final boolean isHaplotype = originalContig.contigName.equals(ALT_CONTIG_NAME) || originalContig.contigName.equals(REF_CONTIG_NAME);
-            final String group = isHaplotype ? HAPLOTYPE_READ_GROUP : CONTIG_READ_GROUP;
             outputRecord.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
             outputRecord.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue[index]);
             outputRecord.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue[index]);
@@ -853,29 +901,74 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
         private static String composeSupplementaryLikeString(final AlignedContig referenceAlignment) {
-            if (referenceAlignment.alignmentIntervals.isEmpty()) {
+            return composeSupplementaryLikeString(referenceAlignment.alignmentIntervals);
+        }
+
+        private static String composeSupplementaryLikeString(final AlignmentInterval interval) {
+            return composeSupplementaryLikeString(Collections.singletonList(interval));
+        }
+
+        private static String composeSupplementaryLikeString(final List<AlignmentInterval> intervals) {
+            if (intervals.isEmpty()) {
                 return new Cigar().toString();
             } else {
-                return referenceAlignment.alignmentIntervals.stream()
+                return intervals.stream()
                         .map(AlignmentInterval::toSumpplementaryAlignmentString)
                         .collect(Collectors.joining(";"));
             }
         }
 
+        private List<SAMRecord> composeAlignedOutputReferenceHaplotypeSAMRecords(final SAMFileHeader header, final SVContext variant) {
+            return composeAlignedOutputHaplotypeSAMRecords(header, variant, referenceHaplotype);
+        }
+
+        private List<SAMRecord> composeAlignedOutputAlternativeHaplotypeSAMRecords(final SAMFileHeader header, final SVContext variant) {
+            return composeAlignedOutputHaplotypeSAMRecords(header, variant, alternativeHaplotype);
+        }
+
+        private List<SAMRecord> composeAlignedOutputHaplotypeSAMRecords(SAMFileHeader header, SVContext variant, SVHaplotype haplotype) {
+            final List<AlignmentInterval> intervals = haplotype.getReferenceAlignmentIntervals();
+            final List<SAMRecord> result = new ArrayList<>(intervals.size());
+            final String vcUID = variant.getUniqueID();
+            for (int i = 0; i < intervals.size(); i++) {
+                final AlignmentInterval interval = intervals.get(i);
+                final SAMRecord record = intervals.get(i).toSAMRecord(header, haplotype.getName(), haplotype.getBases(), i != 0, 0, null);
+                record.setReadNegativeStrandFlag(!interval.forwardStrand);
+                record.setReadName(haplotype.getName());
+                record.setAttribute(SAMTag.RG.name(), HAPLOTYPE_READ_GROUP);
+                record.setAttribute(HAPLOTYPE_CALL_TAG, haplotype.getName());
+                record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + 60);
+                record.setAttribute(VARIANT_CONTEXT_TAG, vcUID);
+                record.setSupplementaryAlignmentFlag(i != 0);
+            }
+            final List<String> saTagValues = intervals.stream()
+                    .map(AlignmentInterval::toSumpplementaryAlignmentString)
+                    .collect(Collectors.toList());
+            if (result.size() > 1) {
+                for (int i = 0; i < result.size(); i++) {
+                    final int idx = i;
+                    result.get(i).setAttribute(SAMTag.SA.name(),
+                            IntStream.range(0, result.size())
+                                    .filter(ii -> ii != idx)
+                                    .mapToObj(saTagValues::get)
+                                    .collect(Collectors.joining(";")) + ";");
+                }
+            }
+            return result;
+        }
+
         private List<SAMRecord> composeAlignedOutputSAMRecords(final SAMFileHeader header,
-                                                           final StructuralVariantContext vc, final int index) {
+                                                           final SVContext vc, final int index) {
             final AlignedContig alignment = originalAlignments[index];
             final List<SAMRecord> result = new ArrayList<>(alignment.alignmentIntervals.size());
             result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence, false, 0, Collections.emptyList()));
-            final boolean isHaplotype = alignment.contigName.equals(ALT_CONTIG_NAME) || alignment.contigName.equals(REF_CONTIG_NAME);
-            final String readGroup = isHaplotype ? HAPLOTYPE_READ_GROUP : CONTIG_READ_GROUP;
             final String vcUID = vc.getUniqueID();
             for (int i = 1; i < alignment.alignmentIntervals.size(); i++) {
                 result.add(alignment.alignmentIntervals.get(i).toSAMRecord(header, alignment.contigName, alignment.contigSequence, true, SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(), Collections.emptyList()));
             }
             for (final SAMRecord record : result) {
                 record.setReadName(alignment.contigName);
-                record.setAttribute(SAMTag.RG.name(), readGroup);
+                record.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
                 record.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue[index]);
                 record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue[index]);
                 record.setAttribute(REFERENCE_SCORE_TAG, referenceScoreTagValue[index]);
@@ -901,14 +994,48 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             return result;
         }
 
+        private SAMRecord composeOutputReferenceHaplotypeRecord(final SAMFileHeader outputHeader, final SVContext variant) {
+            return composeOutputReferenceHaplotypeRecord(outputHeader, referenceHaplotype, variant);
+        }
+
+        private SAMRecord composeOutputAlternativeHaplotypeRecord(final SAMFileHeader outputHeader, final SVContext variant) {
+            return composeOutputReferenceHaplotypeRecord(outputHeader, alternativeHaplotype, variant);
+        }
+
+        private SAMRecord composeOutputReferenceHaplotypeRecord(final SAMFileHeader outputHeader, final SVHaplotype haplotype,
+                                                                final SVContext variant) {
+                final SAMRecord result = new SAMRecord(outputHeader);
+            result.setReadName(haplotype.getName());
+            result.setReadName(haplotype.getName());
+            result.setReadUnmappedFlag(true);
+            result.setReferenceName(variant.getContig());
+            result.setAlignmentStart(variant.getStart());
+            result.setAttribute(SAMTag.RG.name(), HAPLOTYPE_READ_GROUP);
+            result.setAttribute(HAPLOTYPE_CALL_TAG, haplotype.getName());
+            result.setAttribute(HAPLOTYPE_QUAL_TAG, "" + 60);
+            result.setAttribute(REFERENCE_SCORE_TAG, "" + 0);
+            result.setAttribute(ALTERNATIVE_SCORE_TAG, "" + 60);
+            result.setAttribute(SAMTag.SA.name(), composeSupplementaryLikeString(haplotype.getReferenceAlignmentIntervals()) + ';');
+            result.setAttribute(VARIANT_CONTEXT_TAG, variant.getUniqueID());
+            result.setReadPairedFlag(false);
+            result.setDuplicateReadFlag(false);
+            result.setSecondOfPairFlag(false);
+            result.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
+            result.setReadNegativeStrandFlag(false);
+            final byte[] bases = haplotype.getBases();
+            result.setReadBases(bases);
+            result.setMappingQuality(SAMRecord.NO_MAPPING_QUALITY);
+            return result;
+        }
+
         public static class Serializer extends com.esotericsoftware.kryo.Serializer<VariantHaplotypesAndContigsComposite> {
 
             @Override
             public void write(final Kryo kryo, final Output output, final VariantHaplotypesAndContigsComposite object) {
                 final int numberOfContigs = object.numberOfContigs();
                 output.writeInt(numberOfContigs);
-                kryo.writeObject(output, object.referenceHaplotype);
-                kryo.writeObject(output, object.alternativeHaplotype);
+                kryo.writeClassAndObject(output, object.referenceAlignments);
+                kryo.writeClassAndObject(output, object.alternativeAlignments);
                 for (int i = 0; i < numberOfContigs; i++) {
                     kryo.writeObject(output, object.originalAlignments[i]);
                     kryo.writeObject(output, object.referenceAlignments[i]);
