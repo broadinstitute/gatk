@@ -23,7 +23,8 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
         summary = "Example AssemblyRegionWalker that prints out the bounds of each assembly region with and without padding, as well as the number of reads in each region",
         oneLineSummary = "Example AssemblyRegionWalker",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
 

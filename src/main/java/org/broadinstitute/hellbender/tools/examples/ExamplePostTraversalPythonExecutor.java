@@ -28,7 +28,8 @@ import java.util.Arrays;
 @CommandLineProgramProperties(
         summary = "Example/toy program that uses a Python script.",
         oneLineSummary = "Example/toy program that uses a Python script.",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public class ExamplePostTraversalPythonExecutor extends ReadWalker {
 

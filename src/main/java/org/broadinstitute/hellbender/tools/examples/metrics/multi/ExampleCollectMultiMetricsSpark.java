@@ -33,7 +33,8 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary        = "Program to collect example multi-level metrics in SAM/BAM/CRAM file(s)",
         oneLineSummary = "Collect example multi-level metrics on Spark",
-        programGroup   = ExampleProgramGroup.class)
+        programGroup   = ExampleProgramGroup.class,
+        omitFromCommandLine = true)
 public final class ExampleCollectMultiMetricsSpark
         extends MetricsCollectorSparkTool<ExampleMultiMetricsArgumentCollection> {
 
