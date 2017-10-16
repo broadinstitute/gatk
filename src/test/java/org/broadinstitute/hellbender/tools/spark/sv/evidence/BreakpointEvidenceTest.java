@@ -36,7 +36,8 @@ public class BreakpointEvidenceTest extends BaseTest {
         read.setIsPaired(false);
         read.setIsReverseStrand(false);
         read.setReadGroup(groupName);
-        final BreakpointEvidence.ReadEvidence evidence1 = new BreakpointEvidence.ReadEvidence(read, readMetadata);
+        final int readWeight = 1;
+        final BreakpointEvidence.ReadEvidence evidence1 = new BreakpointEvidence.ReadEvidence(read, readMetadata, readWeight);
 
         final int evidenceWidth = readMetadata.getFragmentLengthStatistics(groupName).getMaxNonOutlierFragmentSize() - readSize;
         final int uncertainty = evidenceWidth /2;
@@ -48,14 +49,14 @@ public class BreakpointEvidenceTest extends BaseTest {
         Assert.assertEquals(evidence1.getFragmentOrdinal(), TemplateFragmentOrdinal.UNPAIRED);
 
         read.setIsReverseStrand(true);
-        final BreakpointEvidence evidence2 = new BreakpointEvidence.ReadEvidence(read, readMetadata);
+        final BreakpointEvidence evidence2 = new BreakpointEvidence.ReadEvidence(read, readMetadata, readWeight);
 
         final int evidenceLocus2 = read.getStart() - 1 - uncertainty;
         Assert.assertEquals(evidence2.getLocation(), new SVInterval(0,evidenceLocus2-uncertainty,evidenceLocus2+ uncertainty + (evidenceWidth % 2 == 0 ? 0 : 1)));
         Assert.assertEquals(evidence2.getLocation().getLength(), 2*uncertainty + (evidenceWidth % 2 == 0 ? 0 : 1));
 
         read.setAttribute("MD", "149AT");
-        final BreakpointEvidence evidence3 = new BreakpointEvidence.ReadEvidence(read, readMetadata);
+        final BreakpointEvidence evidence3 = new BreakpointEvidence.ReadEvidence(read, readMetadata, readWeight);
         Assert.assertEquals(evidence2.getLocation().getStart(), evidence3.getLocation().getStart());
 
 
