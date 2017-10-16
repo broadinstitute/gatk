@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -29,7 +30,8 @@ public class ReadMetadataTest extends BaseTest {
         final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
         crossContigIgnoreSet.add(1);
         final ReadMetadata readMetadata =
-                new ReadMetadata(crossContigIgnoreSet, header, LIBRARY_STATISTICS, null, 1L, 1L, 1);
+                new ReadMetadata(crossContigIgnoreSet, header, LIBRARY_STATISTICS, new ReadMetadata.PartitionBounds[0],
+                                1L, 1L, 1);
         Assert.assertEquals(readMetadata.getContigID(chr1Name), 0);
         Assert.assertEquals(readMetadata.getContigID(chr2Name), 1);
         Assert.assertFalse(readMetadata.ignoreCrossContigID(0));
@@ -38,6 +40,9 @@ public class ReadMetadataTest extends BaseTest {
         Assert.assertEquals(readMetadata.getLibraryStatistics(readMetadata.getLibraryName(groupName)),
                 LIBRARY_STATISTICS);
         Assert.assertThrows(() -> readMetadata.getLibraryName("not a real name"));
+
+        final File metadataFile = BaseTest.createTempFile("metadata", "");
+        ReadMetadata.writeMetadata(readMetadata, metadataFile.toString());
     }
 
     @Test(groups = "sv")
