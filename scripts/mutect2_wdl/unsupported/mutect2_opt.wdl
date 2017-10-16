@@ -59,7 +59,7 @@ workflow Mutect2 {
 
   # Do not populate unless you know what you are doing...
   File? auth
-  # This value is added to every tasks disk in case the dynamic sizing isnt enough
+  # Use as a last resort to increase the disk given to every task in case of ill behaving data
   Int? emergency_extra_disk
 
   # Disk sizes used for dynamic sizing
