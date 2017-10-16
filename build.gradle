@@ -251,9 +251,9 @@ processResources {
 }
 
 processTestResources {
-    //Don't waste time packaging our test data into the test jar
-    exclude "**/large/**"
-    exclude "**/org/broadinstitute/hellbender/**"
+    //Don't waste time packaging unnecessary test data into the test jar:
+    include "**/org/broadinstitute/hellbender/utils/config/*"
+    include "*"
 }
 
 sourceCompatibility = 1.8
