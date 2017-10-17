@@ -1425,4 +1425,11 @@ public final class ReadUtils {
     public static boolean isF1R2(final GATKRead read) {
         return read.isReverseStrand() != read.isFirstOfPair();
     }
+
+    /**
+     * Used to be called isUsableRead()
+     **/
+    public static boolean readHasReasonableMQ(final GATKRead read){
+        return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
+    }
 }

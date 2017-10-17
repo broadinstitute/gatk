@@ -24,10 +24,10 @@ import java.util.Map;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotate with local reference bases (REF_BASES)")
-public class ReferenceBases extends InfoFieldAnnotation {
+public class ReferenceBases extends InfoFieldAnnotation implements StandardMutectAnnotation {
     public static final String REFERENCE_BASES_KEY = "REF_BASES";
 
-    public static final int NUM_BASES_ON_EITHER_SIDE = 3;
+    public static final int NUM_BASES_ON_EITHER_SIDE = 1;
 
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
@@ -44,7 +44,7 @@ public class ReferenceBases extends InfoFieldAnnotation {
         }
         final int basesToDiscardInFront = Math.max(vc.getStart() - ref.getWindow().getStart() - NUM_BASES_ON_EITHER_SIDE, 0);
         final String allBases = new String(ref.getBases());
-        final String localBases = allBases.substring(basesToDiscardInFront, basesToDiscardInFront + 2 * NUM_BASES_ON_EITHER_SIDE);
+        final String localBases = allBases.substring(basesToDiscardInFront, basesToDiscardInFront + 2 * NUM_BASES_ON_EITHER_SIDE + 1);
         return Collections.singletonMap(REFERENCE_BASES_KEY, localBases );
     }
 

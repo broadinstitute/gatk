@@ -3,11 +3,8 @@ package org.broadinstitute.hellbender.utils;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
-<<<<<<< d995947a8d4df3348bf3ad083191600a964c58db
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
-=======
->>>>>>> data collection walker for the read orientation artifact filter
 import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
@@ -1464,8 +1461,12 @@ public final class MathUtils {
      * @return probability density function evaluated at k
      */
     public static double log10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta){
-        Utils.validateArg(k <= n, "k must be less than or equal to n");
+        Utils.validateArg(k <= n, String.format("k must be less than or equal to n but got k = %d, n = %d", k, n));
         return log10BinomialCoefficient(n, k) + Beta.logBeta(k + alpha, n - k + beta) * LOG10_OF_E -
                 Beta.logBeta(alpha, beta) * LOG10_OF_E;
+    }
+
+    public static boolean isAProbability(final double p){
+        return p >= 0 && p <= 1;
     }
 }

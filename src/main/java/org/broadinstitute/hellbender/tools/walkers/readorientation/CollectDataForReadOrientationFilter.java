@@ -4,12 +4,15 @@ import com.google.common.primitives.Ints;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -32,7 +35,7 @@ import java.util.stream.IntStream;
 @CommandLineProgramProperties(
         summary = "Collect data from a tumor bam for Mutect2 Read Orientation Filter",
         oneLineSummary = "Data collection for Mutect2 Read Orientation Filter",
-        programGroup = VariantProgramGroup.class
+        programGroup = CoverageAnalysisProgramGroup.class
 )
 
 public class CollectDataForReadOrientationFilter extends LocusWalker {
@@ -67,18 +70,24 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
             doc = "a metrics file with overall summary metrics and reference context-specific depth histograms")
     private static File refMetricsOutput = null;
 
-    private static final int REFERENCE_CONTEXT_PADDING_ON_EACH_SIDE = 1;
+    public static final int REF_CONTEXT_PADDING_ON_EACH_SIDE = 1;
 
-    private static final int REFERENCE_CONTEXT_SIZE = 2 * REFERENCE_CONTEXT_PADDING_ON_EACH_SIDE + 1; // aka 3
+    public static final int REFERENCE_CONTEXT_SIZE = 2 * REF_CONTEXT_PADDING_ON_EACH_SIDE + 1; // aka 3
 
-    private static final int MIDDLE_INDEX = REFERENCE_CONTEXT_PADDING_ON_EACH_SIDE;
+    public static final int MIDDLE_INDEX = REF_CONTEXT_PADDING_ON_EACH_SIDE;
 
     // we put reference site depths above this value in the last bin of the histogram
     public static final int MAX_REF_DEPTH = 200;
 
     // the list of all possible kmers, where k = REFERENCE_CONTEXT_SIZE
-    private static final List<String> ALL_KMERS = SequenceUtil.generateAllKmers(REFERENCE_CONTEXT_SIZE).stream()
+    static final List<String> ALL_KMERS = SequenceUtil.generateAllKmers(REFERENCE_CONTEXT_SIZE).stream()
             .map(String::new).collect(Collectors.toList());
+    static final List<String> ALL_KMERS_MODULO_REVERSE_COMPLEMENT = ALL_KMERS.stream()
+            .map(context -> new TreeSet<>(Arrays.asList(context, SequenceUtil.reverseComplement(context))))
+            .distinct()
+            .map(s -> s.first().compareTo(s.last()) < 0 ? s.first() : s.last())
+            .collect(Collectors.toList());
+
 
     // for computational efficiency, for each reference context, we build a depth histogram over ref sites
     private static Map<String, Histogram<Integer>> refSiteHistograms = new HashMap<>(ALL_KMERS.size());
@@ -87,7 +96,7 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
 
     private final MetricsFile<?, Integer> refMetricsFile = getMetricsFile();
 
-    private final List<Nucleotide> regularBases = Arrays.asList(Nucleotide.A, Nucleotide.C, Nucleotide.G, Nucleotide.T);
+    public static final List<Nucleotide> REGULAR_BASES = Arrays.asList(Nucleotide.A, Nucleotide.C, Nucleotide.G, Nucleotide.T);
 
     @Override
     public boolean requiresReference(){
@@ -123,10 +132,9 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
         // manually expand the window and get the 3-mer for now.
         // TODO: implement getBasesInInterval() in referenceContext. Maybe simplify to getKmer(int k)?
         // TODO: this is still relevant (10/2). I shouldn't mess with the internal state of the ref context object
-        referenceContext.setWindow(REFERENCE_CONTEXT_PADDING_ON_EACH_SIDE, REFERENCE_CONTEXT_PADDING_ON_EACH_SIDE);
+        referenceContext.setWindow(REF_CONTEXT_PADDING_ON_EACH_SIDE, REF_CONTEXT_PADDING_ON_EACH_SIDE);
         final String refContext = new String(referenceContext.getBases());
-        Utils.validate(refContext.length() == REFERENCE_CONTEXT_SIZE, "kmer must have length " + REFERENCE_CONTEXT_SIZE); // or should we return?
-        if (refContext.contains("N")) {
+        if (refContext.contains("N") || refContext.length() != REFERENCE_CONTEXT_SIZE) {
             return;
         }
 
@@ -161,11 +169,12 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
         // if we got here, we have an alt site
         final Nucleotide altBase = Nucleotide.valueOf(BaseUtils.baseIndexToSimpleBase(altBaseIndex));
 
-        final int[] altF1R2Counts = regularBases.stream().mapToInt(base -> pileup.getNumberOfElements(
+        final int[] altF1R2Counts = REGULAR_BASES.stream().mapToInt(base -> pileup.getNumberOfElements(
                 pe -> Nucleotide.valueOf(pe.getBase()) == base && ReadUtils.isF1R2(pe.getRead()))).toArray();
 
         try {
-            altTableWriter.writeRecord(new AltSiteRecord(refContext, baseCounts, altF1R2Counts, depth, altBase));
+            altTableWriter.writeRecord(new AltSiteRecord(alignmentContext.getContig(), alignmentContext.getStart(),
+                    refContext, baseCounts, altF1R2Counts, depth, altBase));
         } catch (IOException e) {
             throw new UserException("Encountered an IO Exception writing to the alt data table", e);
         }

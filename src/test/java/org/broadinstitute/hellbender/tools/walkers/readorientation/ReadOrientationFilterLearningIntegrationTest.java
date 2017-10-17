@@ -7,7 +7,10 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
+import org.apache.spark.sql.catalyst.expressions.aggregate.Collect;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -28,7 +31,7 @@ import java.util.*;
 /**
  * Created by tsato on 8/1/17.
  */
-public class CollectDataForReadOrientationFilterIntegrationTest extends CommandLineProgramTest {
+public class ReadOrientationFilterLearningIntegrationTest extends CommandLineProgramTest {
     /**
      * Test the tool on a real bam to make sure that it does not crash
      */
@@ -37,18 +40,31 @@ public class CollectDataForReadOrientationFilterIntegrationTest extends CommandL
         final File refMetrics = createTempFile("ref", ".table");
         final File altTable = createTempFile("alt", ".table");
 
-        final String[] args = {
-                "-R", v37_chr17_1Mb_Reference,
-                "-I", NA12878_chr17_1k_BAM,
-                "-" + CollectDataForReadOrientationFilter.ALT_DATA_TABLE_SHORT_NAME, altTable.getAbsolutePath(),
-                "-" + CollectDataForReadOrientationFilter.REF_SITE_METRICS_SHORT_NAME, refMetrics.getAbsolutePath()
-        };
+        new Main().instanceMain(makeCommandLineArgs(
+                Arrays.asList(
+                        "-R", v37_chr17_1Mb_Reference,
+                        "-I", NA12878_chr17_1k_BAM,
+                        "-" + CollectDataForReadOrientationFilter.ALT_DATA_TABLE_SHORT_NAME, altTable.getAbsolutePath(),
+                        "-" + CollectDataForReadOrientationFilter.REF_SITE_METRICS_SHORT_NAME, refMetrics.getAbsolutePath()),
+                CollectDataForReadOrientationFilter.class.getSimpleName()));
 
-        runCommandLine(args);
         int lineCount = (int) Files.lines(Paths.get(refMetrics.getAbsolutePath())).filter(l -> l.matches("^[0-9].+")).count();
 
         // Ensure that we print every bin, even when the count is 0
         Assert.assertEquals(lineCount, CollectDataForReadOrientationFilter.MAX_REF_DEPTH);
+
+        // Run LearnHyperparameter
+        final File hyperparameters = createTempFile("hyperparameters", ".tsv");
+        new Main().instanceMain(makeCommandLineArgs(
+                Arrays.asList(
+                        "-alt-table", altTable.getAbsolutePath(),
+                        "-ref-table", refMetrics.getAbsolutePath(),
+                        "-O", hyperparameters.getAbsolutePath()),
+                LearnHyperparameters.class.getSimpleName()));
+
+        int d = 3;
+
+
 
     }
 
@@ -179,7 +195,7 @@ public class CollectDataForReadOrientationFilterIntegrationTest extends CommandL
         final String sampleName = "samthreetree";
         final SampleList sampleList = new IndexedSampleList(sampleName);
 
-        // specify chracteristics of reads
+        // specify characteristics of reads
         final int depth = numAltReads + numRefReads;
 
         final byte[] refReadBases = "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();

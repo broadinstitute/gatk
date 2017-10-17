@@ -1386,7 +1386,8 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     public Object[][] getLog10BetaBinomialData() {
         return new Object[][] {
                 { 2, 20, 3.0, 7.0, -1.09347}, // log10[PDF[BetaBinomialDistribution[3, 7, 20], 2]] in Wolfram alpha
-                { 1, 3, 8.7, 9.5, -0.433171} // log10[PDF[BetaBinomialDistribution[8.7, 9.5, 3], 1]]
+                { 1, 3, 8.7, 9.5, -0.433171}, // log10[PDF[BetaBinomialDistribution[8.7, 9.5, 3], 1]]
+                { 0, 30, 5, 15, 0.0}
         };
     }
 
