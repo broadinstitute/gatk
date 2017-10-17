@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
+import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -78,7 +79,8 @@ public class ShortSVHaplotype extends SVHaplotype {
             final Path tempFasta = Files.createTempFile("ssvh-ref", ".fasta");
             try {
                 final Path tempImg = Files.createTempFile("ssvh-ref", ".img");
-                BwaMemIndex.createIndexImageFromFastaFile(tempFasta.toString());
+                FastaReferenceWriter.writeSingleSequenceReference(tempFasta, false, false, name, null, bases);
+                BwaMemIndex.createIndexImageFromFastaFile(tempFasta.toString(), tempImg.toString());
                 try (final BwaMemIndex index = new BwaMemIndex(tempImg.toString());
                      final BwaMemAligner aligner = new BwaMemAligner(index)) {
                     final List<String> haplotypeNames = Collections.singletonList(name);
@@ -86,7 +88,7 @@ public class ShortSVHaplotype extends SVHaplotype {
                     final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(seqs);
                     final List<List<AlignmentInterval>> result = new ArrayList<>(alignments.size());
 
-                    for (int i = 0; i < intervals.size(); i++) {
+                    for (int i = 0; i < alignments.size(); i++) {
                          final int queryLength = seqs.get(i).length;
                          final List<AlignmentInterval> intervals = alignments.get(i).stream()
                                  .filter(bwa -> bwa.getRefId() >= 0)
@@ -95,6 +97,7 @@ public class ShortSVHaplotype extends SVHaplotype {
                                  .collect(Collectors.toList()); // ignore secondary alignments.
                          result.add(intervals);
                     }
+                    return result;
                 } finally {
                     tempImg.getFileSystem().provider().deleteIfExists(tempImg);
                 }
@@ -106,7 +109,6 @@ public class ShortSVHaplotype extends SVHaplotype {
         } catch (final IOException ex) {
             throw new GATKException("could not create temporal fasta file.");
         }
-        return null;
     }
 
     public static class Serializer extends com.esotericsoftware.kryo.Serializer<ShortSVHaplotype> {
