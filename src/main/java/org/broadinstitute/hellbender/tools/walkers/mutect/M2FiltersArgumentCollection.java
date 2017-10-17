@@ -60,4 +60,10 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(shortName = "unique", fullName = "uniqueAltReadCount", optional = true, doc = "Filter a variant if a site contains fewer than this many unique (i.e. deduplicated) reads supporting the alternate allele")
     public int uniqueAltReadCount = 0;
 
+    @Argument(shortName = "ro", fullName = "read_orientation", optional = true, doc = "the tsv table of hyperparameters for the read orientation artifact filter model (output of LearnHyperparameters)")
+    public File hyperparameterTable = null;
+
+    @Argument(shortName = "", fullName = "", optional = true, doc = "")
+    public double readOrientationFilterThreshold = 0.2;
+
 }

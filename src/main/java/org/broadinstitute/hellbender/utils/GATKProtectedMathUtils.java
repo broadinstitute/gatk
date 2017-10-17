@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -339,7 +340,7 @@ public class GATKProtectedMathUtils implements Serializable {
     // sum of int -> double[] function mapped to an index range
     public static double[] sumArrayFunction(final int min, final int max, final IntToDoubleArrayFunction function) {
         Utils.validateArg(max >= min, "max must be at least as great as min");
-        final double[] result = function.apply(min);
+        final double[] result = Arrays.copyOf(function.apply(min), function.apply(min).length);
         for (int n = min + 1; n < max; n++) {
             final double[] newValues = function.apply(n);
             Utils.validateArg(newValues.length == result.length, "array function returns different sizes for different inputs!");

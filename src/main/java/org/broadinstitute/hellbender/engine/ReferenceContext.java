@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 /**
@@ -307,10 +308,36 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * @param contig
+     * @return the length/end position of the contig
+     */
+    private int getContigLength(final String contig){
+        return dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();
+    }
+
+
+    /**
      * Get the base at the given locus.
      * @return The base at the given locus from the reference.
      */
     public byte getBase() {
         return getBases()[interval.getStart() - window.getStart()];
+    }
+
+    /**
+     * Get a kmer around a position in reference without altering the internal state of the object
+     * The position must lie within the window
+     *
+     */
+    public byte[] getKmerAround(final int position, final int k){
+        // TODO: REVISIT
+        Utils.validateArg(position >= 1, () -> "start position must be positive");
+        Utils.validateArg(window.getStart() <= position && position <= window.getEnd(), "position must be smaller than end position");
+
+        final int index = position - window.getStart();
+        // Must consider the case when the position falls right on the edges of window - should we return fewer than k bases?
+        // Should the caller check for it, and should this mehtod simply fail?
+        final byte[] kmer =  Arrays.copyOfRange(getBases(), index - k/2, index + k/2 + 1);
+        return kmer;
     }
 }

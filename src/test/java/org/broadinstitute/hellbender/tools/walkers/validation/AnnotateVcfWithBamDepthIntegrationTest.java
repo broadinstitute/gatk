@@ -17,9 +17,6 @@ import java.util.stream.StreamSupport;
  * Created by davidben on 1/31/17.
  */
 public class AnnotateVcfWithBamDepthIntegrationTest extends CommandLineProgramTest {
-    private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
-    private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
-
     // test on the DREAM bam 1 and accompanying variants
     // depths verified manually in IGV
     @Test

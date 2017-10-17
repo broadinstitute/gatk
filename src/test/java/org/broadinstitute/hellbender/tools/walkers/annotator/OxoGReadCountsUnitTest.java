@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -30,13 +31,13 @@ public final class OxoGReadCountsUnitTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, 76);
 
         read.setMappingQuality(60);
-        Assert.assertTrue(OxoGReadCounts.isUsableRead(read));
+        Assert.assertTrue(ReadUtils.readHasReasonableMQ(read));
 
         read.setMappingQuality(0);
-        Assert.assertFalse(OxoGReadCounts.isUsableRead(read));
+        Assert.assertFalse(ReadUtils.readHasReasonableMQ(read));
 
         read.setMappingQuality(QualityUtils.MAPPING_QUALITY_UNAVAILABLE);
-        Assert.assertFalse(OxoGReadCounts.isUsableRead(read));
+        Assert.assertFalse(ReadUtils.readHasReasonableMQ(read));
     }
 
     @Test

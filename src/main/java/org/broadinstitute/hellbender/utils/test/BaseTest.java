@@ -60,6 +60,8 @@ public abstract class BaseTest {
     public static final String GCS_b37_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "benchmark/human_g1k_v37.2bit";
     public static final String GCS_b37_CHR20_21_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "human_g1k_v37.20.21.2bit";
 
+    public static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
+
     /**
      * LARGE FILES FOR TESTING (MANAGED BY GIT LFS)
      */
@@ -85,6 +87,8 @@ public abstract class BaseTest {
 
     public static final String WGS_B37_CH20_1M_1M1K_BAM = "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
     public static final String DBSNP_138_B37_CH20_1M_1M1K_VCF = "dbsnp_138.b37.excluding_sites_after_129.ch20.1m-1m1k.vcf";
+
+    public static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
 
     /**
      * END OF LARGE FILES FOR TESTING
