@@ -104,12 +104,13 @@ public final class GATKVCFConstants {
     public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "N_ART_LOD";
     public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POP_AF";
     public static final String GERMLINE_POSTERIORS_VCF_ATTRIBUTE =  "P_GERMLINE";
+    public static final String REFERENCE_CONTEXT_KEY =              "REF_CONTEXT"; // Orientation Bias Filter
     public static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(NORMAL_LOD_KEY, TUMOR_LOD_KEY, NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_POSTERIORS_VCF_ATTRIBUTE);
+            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_POSTERIORS_VCF_ATTRIBUTE, REFERENCE_CONTEXT_KEY);
 
-    //FORMAT keys
+
+    // FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
-    public static final String ALLELE_FRACTION_KEY =                "AF"; //M2
     public static final String PL_FOR_ALL_SNP_ALLELES_KEY =         "APL";
     public static final String RBP_HAPLOTYPE_KEY =                  "HP"; //ReadBackedPhasing
     public static final String AVG_INTERVAL_DP_BY_SAMPLE_KEY =      "IDP"; //DiagnoseTargets
@@ -126,6 +127,13 @@ public final class GATKVCFConstants {
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
     public static final String ZERO_COVERAGE_LOCI =                 "ZL"; //DiagnoseTargets
+
+    // M2-specific FORMAT keys
+    public static final String ALLELE_FRACTION_KEY =                "AF";
+    public static final String POSTERIOR_PROBABILITIES_KEY =        "SA_POST_PROB"; // Strand Artifact Filter
+    public static final String MAP_ALLELE_FRACTIONS_KEY =           "SA_MAP_AF"; // Strand Artifact Filter
+    public static final String ALT_READ_F1R2_COUNT_KEY =            "ALT_F1R2"; // Orientation Bias Filter
+
 
     //FILTERS
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,
@@ -146,6 +154,7 @@ public final class GATKVCFConstants {
     public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment_length";
     public final static String READ_POSITION_FILTER_NAME =                      "read_position";
     public final static String CONTAMINATION_FILTER_NAME =                      "contamination";
+    public final static String READ_ORIENTATION_FILTER_NAME =                   "read_orientation";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(STR_CONTRACTION_FILTER_NAME,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_LOD_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,

@@ -82,7 +82,7 @@ public class GermlineProbabilityCalculator {
         final double log10OneMinusPriorProbSomatic = MathUtils.log10OneMinusPow10(log10PriorProbOfSomaticEvent);
 
         // the following is log10(p_het + p_homvar)
-        final double log10PriorInNormal = Math.log10(2*populationAlleleFrequency*(1-populationAlleleFrequency + MathUtils.square(populationAlleleFrequency)));
+        final double log10PriorInNormal = Math.log10(2*populationAlleleFrequency*(1-populationAlleleFrequency) + MathUtils.square(populationAlleleFrequency));
 
         // log10(p_homref)
         final double log10PriorNotInNormal = Math.log10(MathUtils.square(1 - populationAlleleFrequency));
