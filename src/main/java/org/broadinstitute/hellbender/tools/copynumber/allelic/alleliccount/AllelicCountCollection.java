@@ -1,16 +1,16 @@
 package org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount;
 
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SampleLocatableCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 /**
  * Simple data structure to pass and read/write a List of {@link AllelicCount} objects.
@@ -19,73 +19,43 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class AllelicCountCollection {
-    private final List<AllelicCount> counts;
+public final class AllelicCountCollection extends SampleLocatableCollection<AllelicCount> {
+    enum AllelicCountTableColumn {
+        CONTIG,
+        POSITION,
+        REF_COUNT,
+        ALT_COUNT,
+        REF_NUCLEOTIDE,
+        ALT_NUCLEOTIDE;
 
-    public AllelicCountCollection() {
-        counts = new ArrayList<>();
+        static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
+    
+    private static final Function<DataLine, AllelicCount> ALLELIC_COUNT_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
+        final String contig = dataLine.get(AllelicCountTableColumn.CONTIG);
+        final int position = dataLine.getInt(AllelicCountTableColumn.POSITION);
+        final int refReadCount = dataLine.getInt(AllelicCountTableColumn.REF_COUNT);
+        final int altReadCount = dataLine.getInt(AllelicCountTableColumn.ALT_COUNT);
+        final Nucleotide refNucleotide = Nucleotide.valueOf(dataLine.get(AllelicCountTableColumn.REF_NUCLEOTIDE.name()).getBytes()[0]);
+        final Nucleotide altNucleotide = Nucleotide.valueOf(dataLine.get(AllelicCountTableColumn.ALT_NUCLEOTIDE.name()).getBytes()[0]);
+        final SimpleInterval interval = new SimpleInterval(contig, position, position);
+        return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide);
+    };
 
-    /**
-     * Constructor from file. All {@link AllelicCount} fields must be specified (including ref/alt nucleotide).
-     * @param inputFile file to read from
-     * @throws UserException.BadInput if not all {@link AllelicCount} fields are specified
-     * @throws UserException.CouldNotReadInputFile if input file cannot be read
-     */
+    private static final BiConsumer<AllelicCount, DataLine> ALLELIC_COUNT_RECORD_AND_DATA_LINE_BI_CONSUMER = (allelicCount, dataLine) ->
+            dataLine.append(allelicCount.getInterval().getContig())
+                    .append(allelicCount.getInterval().getEnd())
+                    .append(allelicCount.getRefReadCount())
+                    .append(allelicCount.getAltReadCount())
+                    .append(allelicCount.getRefNucleotide().name())
+                    .append(allelicCount.getAltNucleotide().name());
+
     public AllelicCountCollection(final File inputFile) {
-        Utils.nonNull(inputFile);
-        IOUtils.canReadFile(inputFile);
-
-        try (final AllelicCountReader reader = new AllelicCountReader(inputFile)) {
-            counts = reader.stream().collect(Collectors.toList());
-        } catch (final IOException | UncheckedIOException e) {
-            throw new UserException.CouldNotReadInputFile(inputFile, e);
-        }
+        super(inputFile, AllelicCountCollection.AllelicCountTableColumn.COLUMNS, ALLELIC_COUNT_DATA_LINE_TO_RECORD_FUNCTION, ALLELIC_COUNT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 
-    /**
-     * Adds a new {@link AllelicCount}.
-     */
-    public void add(final AllelicCount allelicCount) {
-        counts.add(Utils.nonNull(allelicCount));
-    }
-
-    /**
-     * Returns an unmodifiable view of the list of {@link AllelicCount}s.
-     */
-    public List<AllelicCount> getCounts() {
-        return Collections.unmodifiableList(counts);
-    }
-
-    /**
-     * Writes counts to specified file.  All {@link AllelicCount} fields must be specified (including ref/alt nucleotide).
-     * @param outputFile    file to write to (if it exists, it will be overwritten)
-     * @throws IllegalArgumentException if not all {@link AllelicCount} fields are specified
-     * @throws UserException.CouldNotCreateOutputFile if output file cannot be created
-     */
-    public void write(final File outputFile) {
-        try (final AllelicCountWriter writer = new AllelicCountWriter(outputFile)) {
-            writer.writeAllRecords(counts);
-        } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
-        }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof AllelicCountCollection)) {
-            return false;
-        }
-
-        final AllelicCountCollection allelicCountCollection = (AllelicCountCollection) o;
-        return counts.equals(allelicCountCollection.counts);
-    }
-
-    @Override
-    public int hashCode() {
-        return counts.hashCode();
+    public AllelicCountCollection(final SampleMetadata sampleMetadata,
+                                  final List<AllelicCount> AllelicCounts) {
+        super(sampleMetadata, AllelicCounts, AllelicCountCollection.AllelicCountTableColumn.COLUMNS, ALLELIC_COUNT_DATA_LINE_TO_RECORD_FUNCTION, ALLELIC_COUNT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 }
