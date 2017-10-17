@@ -3,20 +3,30 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFRecordCodec;
+import org.apache.avro.ipc.MD5;
+import org.apache.hadoop.io.MD5Hash;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import scala.tools.cmd.gen.AnyVals;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Variant context with additional method to mine the structural variant specific information from structural
@@ -40,6 +50,12 @@ public final class SVContext extends VariantContext {
      * Indicates that the variant does not have a length or this could not be determined.
      */
     public static final int NO_LENGTH = -1;
+
+    /**
+     * Holds the unique id for this structural variant. A {@link null} indicates that the ID has not yet been
+     * calculated.
+     */
+    public String uid = null;
 
     private int end = MISSING_END;
     private int length = MISSING_LENGTH;
@@ -139,7 +155,7 @@ public final class SVContext extends VariantContext {
      * @param reference the reference to use as source.
      * @return never {@code null}.
      */
-    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
+    public SVHaplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
         Utils.nonNull(reference, "the input reference cannot be null");
         ParamUtils.isPositiveOrZero(paddingSize, "the input padding must be 0 or greater");
         ParamUtils.inRange(index, 0, 1, "the input allele index must be 0 or 1");
@@ -166,10 +182,8 @@ public final class SVContext extends VariantContext {
             throw new GATKException("could not read reference file");
         }
         if (index == 0) {
-            final Haplotype result = new Haplotype(bases.getBases(), true);
-            result.setCigar(new Cigar(Collections.singletonList(new CigarElement(referenceInterval.size(), CigarOperator.M))));
-            result.setGenomeLocation(referenceInterval);
-            return result;
+            final Cigar cigar = new Cigar(Collections.singletonList(new CigarElement(referenceInterval.size(), CigarOperator.M)));
+            return new ShortSVHaplotype(SVHaplotype.REF_HAPLOTYPE_NAME, Collections.singletonList(new AlignmentInterval(referenceInterval.getContig(), referenceInterval.getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)), bases.getBases());
         } else { //index == 1
             switch (getStructuralVariantType()) {
                 case INS:
@@ -182,7 +196,7 @@ public final class SVContext extends VariantContext {
         }
     }
 
-    private Haplotype composeDeletionHaplotype(final ReferenceBases referenceBases) {
+    private SVHaplotype composeDeletionHaplotype(final ReferenceBases referenceBases) {
         final int deletionSize = getStructuralVariantLength();
         final byte[] resultBases = new byte[referenceBases.getInterval().size() - deletionSize];
         final int leftPaddingSize = getStart() - referenceBases.getInterval().getStart() + 1;
@@ -193,13 +207,13 @@ public final class SVContext extends VariantContext {
         final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(leftPaddingSize, CigarOperator.M),
                 new CigarElement(deletionSize, CigarOperator.D),
                 new CigarElement(rightPaddingSize, CigarOperator.M)));
-        final Haplotype result = new Haplotype(resultBases, false);
-        result.setCigar(cigar);
-        result.setGenomeLocation(referenceBases.getInterval());
-        return result;
+        final SimpleInterval referenceBasesInterval = referenceBases.getInterval();
+        return new ShortSVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME,
+                Collections.singletonList(new AlignmentInterval(referenceBasesInterval.getContig(), referenceBasesInterval.getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)),
+                resultBases);
     }
 
-    private Haplotype composeInsertionHaplotype(final ReferenceBases referenceBases) {
+    private SVHaplotype composeInsertionHaplotype(final ReferenceBases referenceBases) {
         final byte[] insertedSequence = getInsertedSequence();
         final byte[] referenceBaseBytes = referenceBases.getBases();
         final byte[] resultBases = new byte[referenceBases.getInterval().size() + insertedSequence.length];
@@ -211,10 +225,10 @@ public final class SVContext extends VariantContext {
         final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(leftPaddingSize, CigarOperator.M),
                 new CigarElement(insertedSequence.length, CigarOperator.I),
                 new CigarElement(rightPaddingSize, CigarOperator.M)));
-        final Haplotype result = new Haplotype(resultBases, false);
-        result.setCigar(cigar);
-        result.setGenomeLocation(referenceBases.getInterval());
-        return result;
+        final SimpleInterval referenceBasesInterval = referenceBases.getInterval();
+        return new ShortSVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME,
+                Collections.singletonList(new AlignmentInterval(referenceBasesInterval.getContig(), referenceBasesInterval.getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)),
+                resultBases);
     }
 
     /**
@@ -225,8 +239,8 @@ public final class SVContext extends VariantContext {
      * @return {@code null} if there is no inserted sequence.
      */
     public byte[] getInsertedSequence() {
-        if (hasAttribute(GATKSVVCFConstants.INSERTED_SEQUENCE)) {
-            final String asString = getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, null);
+        if (hasAttribute("INSERTED_SEQUENCE")) {
+            final String asString = getAttributeAsString("INSERTED_SEQUENCE", null);
             return asString == null ? null : asString.getBytes();
         } else {
             return null;
@@ -244,10 +258,19 @@ public final class SVContext extends VariantContext {
      * @return {@link #NO_LENGTH} if there is no SVLEN annotation and the length could not be inferred, 0 or greater otherwise.
      */
     public int getStructuralVariantLength() {
-        if (length == MISSING_END && hasAttribute(GATKSVVCFConstants.SVLEN)) {
-            length = Math.abs(getAttributeAsInt(GATKSVVCFConstants.SVLEN, NO_LENGTH));
+        if (length == MISSING_END) {
+            length = getStructuralVariantLength(this);
         }
         return length;
+    }
+
+    public static int getStructuralVariantLength(final VariantContext vc) {
+        Utils.nonNull(vc);
+        if (vc.hasAttribute(GATKSVVCFConstants.SVLEN)) {
+            return Math.abs(vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, NO_LENGTH));
+        } else {
+            return NO_LENGTH;
+        }
     }
 
     /**
@@ -326,5 +349,37 @@ public final class SVContext extends VariantContext {
         } else {
             throw new UnsupportedOperationException("currently only supported for DELs");
         }
+    }
+
+    /**
+     * Returns a unique id for this structural variant based on its location, type and
+     * attributes.
+     * @return never {@code null}.
+     */
+    public String getUniqueID() {
+        if (uid == null) {
+            uid = composeUniqueID();
+        }
+        return uid;
+    }
+
+    private String composeUniqueID() {
+        final StringBuilder builder = new StringBuilder(50);
+        builder.append("sv/");
+        if (hasID()) {
+            builder.append(getID()).append('/');
+        }
+
+        builder.append(getStructuralVariantType().name().toLowerCase()).append('/');
+        final String attributeString = getAttributes().entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + String.valueOf(entry.getValue()))
+                .sorted()
+                .collect(Collectors.joining(";"));
+        builder.append("dg:").append(Integer.toHexString(MD5Hash.digest(attributeString).quarterDigest()));
+        return builder.toString();
+    }
+
+    public SimpleInterval getStartPositionInterval() {
+        return new SimpleInterval(getContig(), getStart(), getStart());
     }
 }

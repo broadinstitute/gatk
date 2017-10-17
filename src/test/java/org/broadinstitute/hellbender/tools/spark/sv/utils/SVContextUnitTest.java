@@ -26,8 +26,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class SVContextUnitTest extends BaseTest {
@@ -42,7 +45,7 @@ public class SVContextUnitTest extends BaseTest {
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts")
-    public void testCreate(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+    public void testOf(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         Assert.assertNotNull(svc);
     }
@@ -51,7 +54,7 @@ public class SVContextUnitTest extends BaseTest {
      * Tests {@link SVContext#getStructuralVariantLength()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf"})
     public void testLength(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final int length = svc.getStructuralVariantLength();
@@ -66,7 +69,7 @@ public class SVContextUnitTest extends BaseTest {
      * Tests {@link SVContext#getStructuralVariantType()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf"})
     public void testType(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final StructuralVariantType type = svc.getStructuralVariantType();
@@ -80,7 +83,7 @@ public class SVContextUnitTest extends BaseTest {
      * Tests {@link SVContext#getInsertedSequence()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf"})
     public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final byte[] actual = svc.getInsertedSequence();
@@ -91,7 +94,7 @@ public class SVContextUnitTest extends BaseTest {
      * Tests {@link SVContext#getEnd()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf"})
     public void testEnd(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         Assert.assertEquals(svc.getEnd(), vc.getEnd());
@@ -102,7 +105,7 @@ public class SVContextUnitTest extends BaseTest {
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf", "testType", "testLength"})
     public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         final int paddingSize = 10;
@@ -120,7 +123,7 @@ public class SVContextUnitTest extends BaseTest {
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf", "testType", "testLength"})
     public void testComposeAlternativeHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
@@ -154,7 +157,7 @@ public class SVContextUnitTest extends BaseTest {
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf", "testType", "testLength"})
     public void testGetBreakPoints(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         testGetBreakPoints(vc, reference, 0);
         testGetBreakPoints(vc, reference, 10);
@@ -185,7 +188,7 @@ public class SVContextUnitTest extends BaseTest {
      * Tests {@link SVContext#getSupportingContigIds()}.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testOf"})
     public void testContigNames(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
         final SVContext svc = SVContext.of(vc);
         final List<String> actual = svc.getSupportingContigIds();
@@ -193,9 +196,9 @@ public class SVContextUnitTest extends BaseTest {
         Assert.assertEquals(actual, expected);
     }
 
-    @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"})
+    @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testOf"})
     public void testTestOutputFileContent(final VariantContext vc, final ReferenceMultiSource reference, final String file) throws IOException {
-        testCreate(vc, reference);
+        testOf(vc, reference);
         testLength(vc, reference);
         testEnd(vc, reference);
         testType(vc, reference);
@@ -206,6 +209,29 @@ public class SVContextUnitTest extends BaseTest {
         try { testComposeAlternativeHaplotype(vc, reference); } catch (final SkipException ex) {}
         try { testComposeReferenceHaplotype(vc, reference); } catch (final SkipException ex) {}
     }
+
+    @Test(dependsOnMethods = {"testOf"})
+    public void testUniqueID() {
+        final Object[][] validVariantContexts = validVariantContexts();
+        final List<String> ids = Stream.of(validVariantContexts)
+                .map(oo -> (VariantContext) oo[0])
+                .map(SVContext::of)
+                .map(SVContext::getUniqueID)
+                .collect(Collectors.toList());
+        final List<String> secondTake = Stream.of(validVariantContexts)
+                .map(oo -> (VariantContext) oo[0])
+                .map(SVContext::of)
+                .map(SVContext::getUniqueID)
+                .collect(Collectors.toList());
+        for(final String id : ids) {
+            Assert.assertNotNull(id);
+        }
+        Assert.assertEquals(ids, secondTake);
+        final Set<String> idSet = new HashSet<>(ids.size());
+        for (final String id : ids) {
+            Assert.assertTrue(idSet.add(id), "duplicated id: " + id);
+        }
+     }
 
     @DataProvider(name="validVariantContexts")
     public Object[][] validVariantContexts(){
