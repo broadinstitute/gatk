@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.cloud.dataflow.sdk.transforms.SerializableComparator;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.StructuralVariantType;
@@ -507,6 +508,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         try (final SAMFileWriter outputWriter = BamBucketIoUtils.makeWriter(outputFileName, outputHeader, true);
              final SAMFileWriter alignedOutputWriter = alignedOutputFileName == null
                 ? null : BamBucketIoUtils.makeWriter(alignedOutputFileName, outputHeader, true)) {
+
+            final SerializableComparator<SimpleInterval> shardSorter = createLocatableSparkSorter(broadcastDictionary);
+
             final JavaPairRDD<SVContext, VariantHaplotypesAndContigsComposite> alignedContigs = variantsAndOverlappingUniqueContigs.mapToPair(tuple -> {
                         final SVContext vc = tuple._1();
                         final List<AlignedContig> contigs = tuple._2();
@@ -520,50 +524,61 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                         return new Tuple2<>(vc, new VariantHaplotypesAndContigsComposite(referenceHaplotype, alternativeHaplotype, contigs, referenceAlignedContigs, alternativeAlignedContigs));
             });
 
-            final SerializableComparator<SVContext> svContextSorter = createLocatableSparkSorter(broadcastDictionary);
-            final SerializableComparator<SimpleInterval> shardSorter = createLocatableSparkSorter(broadcastDictionary);
 
             final JavaPairRDD<SVContext, VariantHaplotypesAndContigsComposite> cachedIfNeededAlignedContigs
                     = alignedOutputWriter == null ? alignedContigs : alignedContigs.persist(StorageLevel.MEMORY_AND_DISK());
 
-            cachedIfNeededAlignedContigs.sortByKey(svContextSorter).toLocalIterator().forEachRemaining(tuple -> {
+            cachedIfNeededAlignedContigs
+                    .mapToPair(tuple -> new Tuple2<>(shardBroadcast.getValue().getOverlapping(tuple._1().getStartPositionInterval()).get(0), tuple))
+                    .combineByKey(v -> Stream.of(v).collect(Collectors.toList()),
+                            (l, v) -> {l.add(v); return l;} , (l1, l2) -> { l1.addAll(l2); return l1; })
+                    .sortByKey(shardSorter)
+                    .mapValues(l -> { l.sort(Comparator.comparingInt(v -> v._1().getStart())); return l; })
+                    .values()
+                    .flatMap(List<Tuple2<SVContext, VariantHaplotypesAndContigsComposite>>::iterator)
+                    .toLocalIterator().forEachRemaining(tuple -> {
+                        final SVContext variant = tuple._1();
+                        final VariantHaplotypesAndContigsComposite haplotypesAndContigs = tuple._2();
+                        final int numberOfContigs = haplotypesAndContigs.numberOfContigs();
+                        outputWriter.addAlignment(haplotypesAndContigs.composeOutputReferenceHaplotypeRecord(outputHeader, variant));
+                        outputWriter.addAlignment(haplotypesAndContigs.composeOutputAlternativeHaplotypeRecord(outputHeader, variant));
+                        for (int i = 0; i < numberOfContigs; i++) {
+                            outputWriter.addAlignment(haplotypesAndContigs.composeOutputSAMRecord(outputHeader, variant, i));
+                        }
+                    });
+
+            composeAlignedOutput(shardBroadcast, outputHeader, alignedOutputWriter, shardSorter, cachedIfNeededAlignedContigs);
+        }
+    }
+
+    private void composeAlignedOutput(Broadcast<IntervalsSkipList<SimpleInterval>> shardBroadcast, SAMFileHeader outputHeader, SAMFileWriter alignedOutputWriter, SerializableComparator<SimpleInterval> shardSorter, JavaPairRDD<SVContext, VariantHaplotypesAndContigsComposite> cachedIfNeededAlignedContigs) {
+        if (alignedOutputWriter != null) {
+            cachedIfNeededAlignedContigs.flatMapToPair(tuple -> {
                 final SVContext variant = tuple._1();
                 final VariantHaplotypesAndContigsComposite haplotypesAndContigs = tuple._2();
-                final int numberOfContigs = haplotypesAndContigs.numberOfContigs();
-                outputWriter.addAlignment(haplotypesAndContigs.composeOutputReferenceHaplotypeRecord(outputHeader, variant));
-                outputWriter.addAlignment(haplotypesAndContigs.composeOutputAlternativeHaplotypeRecord(outputHeader, variant));
-                for (int i = 0; i < numberOfContigs; i++) {
-                    outputWriter.addAlignment(haplotypesAndContigs.composeOutputSAMRecord(outputHeader, variant, i));
+                final List<SAMRecord> result = new ArrayList<>();
+
+                result.addAll(haplotypesAndContigs.composeAlignedOutputReferenceHaplotypeSAMRecords(null, variant));
+                result.addAll(haplotypesAndContigs.composeAlignedOutputAlternativeHaplotypeSAMRecords(null, variant));
+                for (int i = 0; i < haplotypesAndContigs.numberOfContigs(); i++) {
+                    result.addAll(haplotypesAndContigs.composeAlignedOutputSAMRecords(null, variant, i));
                 }
+                final IntervalsSkipList<SimpleInterval> shards = shardBroadcast.getValue();
+                return result.stream()
+                        .map(r -> new Tuple2<>(shards.getOverlapping(new SimpleInterval(r.getContig(), r.getStart(), r.getStart())).get(0), r)).iterator();
+            })
+            .combineByKey((v) -> Stream.of(v).collect(Collectors.toList()) ,
+                            (l, v) -> { l.add(v); return l; }, (l1, l2) -> { l1.addAll(l2); return l1; } )
+            .sortByKey(shardSorter)
+            .mapValues(unsorted -> { unsorted.sort(Comparator.comparingInt(SAMRecord::getAlignmentStart)); return unsorted; })
+            .values()
+            .flatMap(List::iterator)
+            .toLocalIterator().forEachRemaining(record -> {
+                record.setHeader(outputHeader);
+                alignedOutputWriter.addAlignment(record);
             });
-
-            if (alignedOutputWriter != null) {
-                cachedIfNeededAlignedContigs.flatMapToPair(tuple -> {
-                    final SVContext variant = tuple._1();
-                    final VariantHaplotypesAndContigsComposite haplotypesAndContigs = tuple._2();
-                    final List<SAMRecord> result = new ArrayList<>();
-
-                    result.addAll(haplotypesAndContigs.composeAlignedOutputReferenceHaplotypeSAMRecords(null, variant));
-                    result.addAll(haplotypesAndContigs.composeAlignedOutputAlternativeHaplotypeSAMRecords(null, variant));
-                    for (int i = 0; i < haplotypesAndContigs.numberOfContigs(); i++) {
-                        result.addAll(haplotypesAndContigs.composeAlignedOutputSAMRecords(null, variant, i));
-                    }
-                    final IntervalsSkipList<SimpleInterval> shards = shardBroadcast.getValue();
-                    return result.stream()
-                            .map(r -> new Tuple2<>(shards.getOverlapping(new SimpleInterval(r.getContig(), r.getStart(), r.getStart())).get(0), r)).iterator();
-                })
-                .combineByKey((v) -> {final List<SAMRecord> result = new ArrayList<>(1); result.add(v); return result; },
-                                (l, v) -> { l.add(v); return l; }, (l1, l2) -> { l1.addAll(l2); return l1; } )
-                .sortByKey(shardSorter)
-                .mapValues(unsorted -> { unsorted.sort(Comparator.comparingInt(SAMRecord::getAlignmentStart)); return unsorted; })
-                .values()
-                .flatMap(List::iterator)
-                .toLocalIterator().forEachRemaining(record -> {
-                    record.setHeader(outputHeader);
-                    alignedOutputWriter.addAlignment(record);
-                });
-            };
         }
+        ;
     }
 
     private <T extends Locatable> SerializableComparator<T> createLocatableSparkSorter(final Broadcast<SAMSequenceDictionary> broadcastDictionary) {
@@ -940,6 +955,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + 60);
                 record.setAttribute(VARIANT_CONTEXT_TAG, vcUID);
                 record.setSupplementaryAlignmentFlag(i != 0);
+                result.add(record);
             }
             final List<String> saTagValues = intervals.stream()
                     .map(AlignmentInterval::toSumpplementaryAlignmentString)
@@ -1034,8 +1050,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             public void write(final Kryo kryo, final Output output, final VariantHaplotypesAndContigsComposite object) {
                 final int numberOfContigs = object.numberOfContigs();
                 output.writeInt(numberOfContigs);
-                kryo.writeClassAndObject(output, object.referenceAlignments);
-                kryo.writeClassAndObject(output, object.alternativeAlignments);
+                kryo.writeClassAndObject(output, object.referenceHaplotype);
+                kryo.writeClassAndObject(output, object.alternativeHaplotype);
                 for (int i = 0; i < numberOfContigs; i++) {
                     kryo.writeObject(output, object.originalAlignments[i]);
                     kryo.writeObject(output, object.referenceAlignments[i]);

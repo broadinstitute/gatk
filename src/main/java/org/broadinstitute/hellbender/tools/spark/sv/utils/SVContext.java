@@ -238,8 +238,8 @@ public final class SVContext extends VariantContext {
      * @return {@code null} if there is no inserted sequence.
      */
     public byte[] getInsertedSequence() {
-        if (hasAttribute(GATKSVVCFConstants.INSERTED_SEQUENCE)) {
-            final String asString = getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, null);
+        if (hasAttribute("INSERTED_SEQUENCE")) {
+            final String asString = getAttributeAsString("INSERTED_SEQUENCE", null);
             return asString == null ? null : asString.getBytes();
         } else {
             return null;
@@ -376,5 +376,9 @@ public final class SVContext extends VariantContext {
                 .collect(Collectors.joining(";"));
         builder.append("dg:").append(Integer.toHexString(MD5Hash.digest(attributeString).quarterDigest()));
         return builder.toString();
+    }
+
+    public SimpleInterval getStartPositionInterval() {
+        return new SimpleInterval(getContig(), getStart(), getStart());
     }
 }

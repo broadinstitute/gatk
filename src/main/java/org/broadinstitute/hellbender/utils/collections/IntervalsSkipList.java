@@ -50,5 +50,4 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
         }
         return result.getOverlapping(query);
     }
-
 }
