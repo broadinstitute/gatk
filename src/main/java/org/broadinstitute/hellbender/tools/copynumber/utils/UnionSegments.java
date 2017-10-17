@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @CommandLineProgramProperties(
-        oneLineSummary = "Do a breakpoint union of two segment files and annotate with chosen columns from each file.",
+        oneLineSummary = "(EXPERIMENTAL) Do a breakpoint union of two segment files and annotate with chosen columns from each file.",
         summary = "Breakpoint union of two segment files while preserving annotations.\n" +
                 "This tool will load all segments into RAM.",
         programGroup = CopyNumberProgramGroup.class)

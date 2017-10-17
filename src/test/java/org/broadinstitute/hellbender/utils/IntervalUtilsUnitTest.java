@@ -1636,6 +1636,5 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         for (final Map.Entry<Locatable, List<Locatable>> overlap : outputs.entrySet()) {
             Assert.assertEquals(overlap.getValue(), gtOutput.get(overlap.getKey()));
         }
-
     }
 }
