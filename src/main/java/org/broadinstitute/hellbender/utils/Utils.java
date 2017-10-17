@@ -1128,4 +1128,20 @@ public final class Utils {
     public static void forceJVMLocaleToUSEnglish() {
         Locale.setDefault(Locale.US);
     }
+
+
+    /**
+     *  Converts an int array to a comma-separated string without surrounding brackets
+     *  Compare to Arrays.toString(), which includes brackets and therefore is inferior
+     *  Almost duplicates {@code doubleArrayToString} in {@code Hyperparameters.java}
+     *  TODO: can we use generics here?
+     */
+    public static String intArrayToString(final int[] xs){
+        Utils.validateArg(xs.length > 0, "xs must not be an empty (uninitialized?) array");
+        StringBuilder sb = new StringBuilder(String.valueOf(xs[0]));
+        for (int i = 1; i < xs.length ; i++){
+            sb.append("," + String.valueOf(xs[i]));
+        }
+        return sb.toString();
+    }
 }
