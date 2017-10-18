@@ -141,13 +141,4 @@ public final class AlignmentContext implements Locatable, HasGenomeLocation {
                 ", hasPileupBeenDownsampled=" + hasPileupBeenDownsampled +
                 '}';
     }
-
-    /**
-     * FIXME: this is potentially wasteful as we create a new AlignmentContext object
-     * @param filter
-     * @return
-     */
-    public AlignmentContext filter(Predicate<PileupElement> filter){
-        return new AlignmentContext(loc, basePileup.makeFilteredPileup(filter));
-    }
 }

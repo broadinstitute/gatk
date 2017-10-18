@@ -3,8 +3,11 @@ package org.broadinstitute.hellbender.utils;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
+<<<<<<< d995947a8d4df3348bf3ad083191600a964c58db
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
+=======
+>>>>>>> data collection walker for the read orientation artifact filter
 import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
@@ -1435,10 +1438,10 @@ public final class MathUtils {
 
     /**
      *
-     * @param array
+     * @param array array of integers
      * @return index of the max. In case of a tie, return the smallest index
      */
-    public static int argmax(final int[] array){
+    public static int maxElementIndex(final int[] array){
         int maxIndex = 0;
         int currentMax = Integer.MIN_VALUE;
         for (int i = 0; i < array.length; i++){
@@ -1452,15 +1455,15 @@ public final class MathUtils {
 
     /**
      *
-     * computes the log10 probability density of BetaBinomial(k|n, alpha, beta)
+     * Computes the log10 probability density of BetaBinomial(k|n, alpha, beta)
      *
      * @param alpha pseudocount of number of heads
      * @param beta pseudocount of number of tails
      * @param k value to evaluate
      * @param n number of coin flips
-     * @return probability density function evlauated at k
+     * @return probability density function evaluated at k
      */
-    public static double log10BetaBinomialDensity(final int k, final int n, final double alpha, final double beta){
+    public static double log10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta){
         Utils.validateArg(k <= n, "k must be less than or equal to n");
         return log10BinomialCoefficient(n, k) + Beta.logBeta(k + alpha, n - k + beta) * LOG10_OF_E -
                 Beta.logBeta(alpha, beta) * LOG10_OF_E;

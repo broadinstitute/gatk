@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.tools.exome.FilterByOrientationBias;
 import org.broadinstitute.hellbender.tools.walkers.contamination.CalculateContamination;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.tools.walkers.readorientation.Hyperparameters;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 

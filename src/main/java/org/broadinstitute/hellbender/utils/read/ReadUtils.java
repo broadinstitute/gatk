@@ -1411,35 +1411,18 @@ public final class ReadUtils {
     }
 
     /**
-     * This method is used when we go through reads in the likelihood object. Used to be called isUsableRead()
-     **/
-    public static boolean readHasReasonableMQ(final GATKRead read){
-        return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
-    }
-
-    // TODO: duplicate method in OxoGReadCounts.java
+     * @param read a GATK read
+     * @return true if the read is F2R1, false otherwise
+     */
     public static boolean isF2R1(final GATKRead read) {
         return read.isReverseStrand() == read.isFirstOfPair();
     }
 
     /**
-     * Creates a list of standard filters. Override getDefaultFilters() in e.g. LocusWalker and call this method
-     * TODO: ReadFilterLibrary may be a more suitable home for this method
+     * @param read a GATK read
+     * @return true if the read is F1R2, false otherwise
      */
-    public static List<ReadFilter> makeStandardReadFilters() {
-        final int READ_QUALITY_FILTER_THRESHOLD = 20;
-
-        List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
-        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
-        filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
-        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
-        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
-        filters.add(ReadFilterLibrary.GOOD_CIGAR);
-        filters.add(new WellformedReadFilter());
-
-        return filters;
+    public static boolean isF1R2(final GATKRead read) {
+        return read.isReverseStrand() != read.isFirstOfPair();
     }
 }

@@ -1355,17 +1355,18 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testSumArrayFunction(){
+    public void testSumArrayFunction() {
         final int min = 0;
         final int max = 5;
 
         // use 1 + 2 + ... + n = n(n+1)/2
         // [0,1,2] + [1,2,3] + ... + [4,5,6] = [0 + 1 + ... + 4, 1 + ... + 5, 2 + ... + 6] = [10, 15, 21 - 1] = [10, 15, 20]
-        final double[] array1 = { 10, 15, 20 };
-        ArrayAsserts.assertArrayEquals(MathUtils.sumArrayFunction(min, max, i -> new double[]{ (double)i, i + 1.0, i + 2.0 }), array1, 1e-8);
+        final double[] array1 = {10, 15, 20};
+        ArrayAsserts.assertArrayEquals(MathUtils.sumArrayFunction(min, max, i -> new double[]{(double) i, i + 1.0, i + 2.0}), array1, 1e-8);
+    }
 
     @Test
-    public void testArgMax(){
+    public void testMaxElementIndex(){
         final int[] array1 = new int[]{ 1, 2, 3, 4, 5, 6};
         final int expected1 = 5;
         final int[] array2 = new int[]{ 6, 5, 4, 3, 2, 1};
@@ -1375,24 +1376,24 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         final int[] array4 = new int[]{ 3, 3, 3, 5, 5, 5};
         final int expected4 = 3;
 
-        Assert.assertEquals(MathUtils.argmax(array1), expected1);
-        Assert.assertEquals(MathUtils.argmax(array2), expected2);
-        Assert.assertEquals(MathUtils.argmax(array3), expected3);
-        Assert.assertEquals(MathUtils.argmax(array4), expected4);
+        Assert.assertEquals(MathUtils.maxElementIndex(array1), expected1);
+        Assert.assertEquals(MathUtils.maxElementIndex(array2), expected2);
+        Assert.assertEquals(MathUtils.maxElementIndex(array3), expected3);
+        Assert.assertEquals(MathUtils.maxElementIndex(array4), expected4);
     }
 
     @DataProvider(name = "log10BetaBinomialData")
     public Object[][] getLog10BetaBinomialData() {
         return new Object[][] {
-                { 2, 20, 3, 7, -0.804103},
-                { 1, 3, 8.7, 9.5, -0.1169066}
+                { 2, 20, 3.0, 7.0, -1.09347}, // log10[PDF[BetaBinomialDistribution[3, 7, 20], 2]] in Wolfram alpha
+                { 1, 3, 8.7, 9.5, -0.433171} // log10[PDF[BetaBinomialDistribution[8.7, 9.5, 3], 1]]
         };
     }
 
-    @Test
-    public void testLog10BetaBinomialDensity(final int k, final int n, final double alpha, final double beta,
+    @Test(dataProvider = "log10BetaBinomialData")
+    public void testLog10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta,
                                              final double expected){
         final double EPSILON = 1e-3;
-        Assert.assertEquals(MathUtils.log10BetaBinomialDensity(k, n, alpha, beta), expected, EPSILON);
+        Assert.assertEquals(MathUtils.log10BetaBinomialProbability(k, n, alpha, beta), expected, EPSILON);
     }
 }

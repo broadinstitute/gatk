@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
+import avro.shaded.com.google.common.primitives.Ints;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -79,8 +80,8 @@ public class AltSiteRecord {
             // Note that allele fraction f is not allele-specific, thus the same f array will be printed
             // four times for each context
             dataLine.set(AltSiteRecordTableColumn.CONTEXT.toString(), record.getReferenceContext())
-                    .set(AltSiteRecordTableColumn.BASE_COUNTS.toString(), Utils.intArrayToString(record.getBaseCounts()))
-                    .set(AltSiteRecordTableColumn.F1R2_COUNTS.toString(), Utils.intArrayToString(record.getF1R2Counts()))
+                    .set(AltSiteRecordTableColumn.BASE_COUNTS.toString(), Ints.join(",", record.getBaseCounts()))
+                    .set(AltSiteRecordTableColumn.F1R2_COUNTS.toString(), Ints.join(",", record.getF1R2Counts()))
                     .set(AltSiteRecordTableColumn.DEPTH.toString(), record.getDepth())
                     .set(AltSiteRecordTableColumn.ALT_ALLELE.toString(), record.getAltAllele().toString());
         }
@@ -105,13 +106,12 @@ public class AltSiteRecord {
         }
     }
 
-    /** Code for reading hyperparameters from a table **/
+
+    /** Code for reading alt site records from a table **/
     public static List<AltSiteRecord> readAltSiteRecords(final File table, final int initialListSize) {
         List<AltSiteRecord> designMatrix = new ArrayList<>(initialListSize);
         try (AltSiteRecordTableReader reader = new AltSiteRecordTableReader(table)) {
-            for (AltSiteRecord record : reader){
-                designMatrix.add(record);
-            }
+            reader.forEach(designMatrix::add);
         } catch (IOException e) {
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", table), e);
         }
