@@ -511,7 +511,6 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
     }
     options.addStringOption("absolute-version", getVersion())
     options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
-    options.addStringOption("verbose")
 }
 
 // Generate GATK Bash Tab Completion File
@@ -563,8 +562,6 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("caller-post-alias-args", "")
     options.addStringOption("caller-post-arg-min-occurs", "0 0 0 0 0 0 0 0 0 0")
     options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
-
-    options.addStringOption("verbose", "-verbose")
 }
 
 /**
