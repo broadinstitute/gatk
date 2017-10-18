@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -19,14 +20,18 @@ public class ApplyNeuralNetUnitTest extends BaseTest {
     public void testExecuteAsScriptWithScriptArguments() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final Resource pythonScriptResource = new Resource("ApplyNeuralNetModel.py", NeuralNetExecutor.class);
+        final Resource cnnSerializedResource = new Resource("cnn_1d_annotations.hd5", NeuralNetExecutor.class);
+        final String inputFile = largeFileTestDir + "VQSR/phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf";
+        final File tempResourceFile = IOUtils.writeTempResource(cnnSerializedResource);
+
         final boolean pythonReturnCode = pythonExecutor.executeScript(
                 pythonScriptResource,
                 null,
                 Arrays.asList(
                         "--architecture",
-                        "/dsde/working/sam/palantir_cnn/Analysis/vqsr_cnn/weights/m__base_quality_mode_phot__channels_last_False__id_g94982_no_qual_train2__window_size_128__read_limit_128__random_seed_12878__tensor_map_2d_mapping_quality__mode_ref_read_anno.hd5",
-                        "--tensors",
-                        "/Users/sam/vqsr_data/tensors/not_indel_subset/"
+                        tempResourceFile.getAbsolutePath(),
+                        "--input_vcf",
+                        inputFile
                 )
         );
 
