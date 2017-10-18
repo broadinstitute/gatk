@@ -26,17 +26,17 @@ public final class HDF5Utils {
     //so we instead store a map from integer indices to contig strings and
     //store (index, start, end) in a double matrix;
     //these are stored in the following sub-paths
-    private static final String INTERVAL_CONTIG_NAMES_SUB_PATH = "/indexed_contig_names";
-    private static final String INTERVAL_MATRIX_SUB_PATH = "/transposed_index_start_end";
+    public static final String INTERVAL_CONTIG_NAMES_SUB_PATH = "/indexed_contig_names";
+    public static final String INTERVAL_MATRIX_SUB_PATH = "/transposed_index_start_end";
 
     //Java HDF5 has a hard limit on the number of elements in a matrix given by the following
-    private static final int MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX = Integer.MAX_VALUE / Byte.SIZE;
+    public static final int MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX = Integer.MAX_VALUE / Byte.SIZE;
     //this limit requires us to write matrices exceeding the limit as sets of submatrix chunks;
     //we use the following sub-paths to store the necessary information
-    private static final String NUMBER_OF_ROWS_SUB_PATH = "/num_rows";
-    private static final String NUMBER_OF_COLUMNS_SUB_PATH = "/num_columns";
-    private static final String NUMBER_OF_CHUNKS_SUB_PATH = "/num_chunks";
-    private static final String CHUNK_INDEX_PATH_SUFFIX = "/chunk_";
+    public static final String NUMBER_OF_ROWS_SUB_PATH = "/num_rows";
+    public static final String NUMBER_OF_COLUMNS_SUB_PATH = "/num_columns";
+    public static final String NUMBER_OF_CHUNKS_SUB_PATH = "/num_chunks";
+    public static final String CHUNK_INDEX_PATH_SUFFIX = "/chunk_";
 
     private enum IntervalField {
         CONTIG_INDEX (0),

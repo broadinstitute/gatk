@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class PreprocessIntervalsIntegrationTest extends CommandLineProgramTest {
+    private static final String TEST_SUB_DIR = toolsTestDir + "copynumber/";
+    private static final File INTERVAL_LIST_FILE = new File(TEST_SUB_DIR, "preprocess-intervals-test.interval_list");
     private static final File REFERENCE_FILE = new File(b37_reference_20_21);
 
     @DataProvider(name = "intervalInputsFromCommandLine")
@@ -107,7 +109,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File outputFile = createTempFile(outputFileName[0], outputFileName[1]);
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(PreprocessIntervals.LENGTH_OF_BINS_SHORT_NAME, Integer.toString(binLength))
+                .addArgument(PreprocessIntervals.BIN_LENGTH_SHORT_NAME, Integer.toString(binLength))
                 .addArgument(PreprocessIntervals.PADDING_SHORT_NAME, Integer.toString(paddingLength))
                 .addOutput(outputFile);
         inputIntervals.forEach(i -> argsBuilder.addArgument("L", i.getContig() + ":" + i.getStart() + "-" + i.getEnd()));
@@ -122,13 +124,13 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
     public void singleFileTest() {
         final int binLength = 10_000;
         final int paddingLength = 5_000;
-        final File outputFile = createTempFile("GATK-preprocess-intervals-test", ".tmp");
+        final File outputFile = createTempFile("preprocess-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(PreprocessIntervals.LENGTH_OF_BINS_SHORT_NAME, Integer.toString(binLength))
+                .addArgument(PreprocessIntervals.BIN_LENGTH_SHORT_NAME, Integer.toString(binLength))
                 .addArgument(PreprocessIntervals.PADDING_SHORT_NAME, Integer.toString(paddingLength))
+                .addArgument("L",  INTERVAL_LIST_FILE.getAbsolutePath())
                 .addOutput(outputFile);
-        argsBuilder.addArgument("L",  GATKBaseTest.packageRootTestDir + "tools/copynumber/preprocess-intervals-test.interval_list");
         runCommandLine(argsBuilder);
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
 

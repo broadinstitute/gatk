@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.DenoiseReadCounts;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.copyratio.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
@@ -21,7 +22,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Plots the results of read-count denoising.
+ * Plots the results of {@link DenoiseReadCounts}.
  *
  * <p>The order and representation of contigs in plots follows the contig ordering within the required reference sequence dictionary. </p>
  *

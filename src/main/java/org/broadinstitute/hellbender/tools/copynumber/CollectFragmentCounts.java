@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.SimpleCount;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
@@ -112,15 +113,7 @@ public final class CollectFragmentCounts extends ReadWalker {
         final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
         sampleMetadata = new SimpleSampleMetadata(sampleName);
 
-        //validate that the interval-argument collection parameters minimally modify the input intervals
-        Utils.validateArg(intervalArgumentCollection.getIntervalSetRule() == IntervalSetRule.UNION,
-                "Interval set rule must be set to UNION.");
-        Utils.validateArg(intervalArgumentCollection.getIntervalExclusionPadding() == 0,
-                "Interval exclusion padding must be set to 0.");
-        Utils.validateArg(intervalArgumentCollection.getIntervalPadding() == 0,
-                "Interval padding must be set to 0.");
-        Utils.validateArg(intervalArgumentCollection.getIntervalMergingRule() == IntervalMergingRule.OVERLAPPING_ONLY,
-                "Interval merging rule must be set to OVERLAPPING_ONLY.");
+        CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
 
         logger.info("Initializing and validating intervals...");
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();

@@ -59,16 +59,16 @@ import java.util.List;
 )
 @DocumentedFeature
 public final class PreprocessIntervals extends GATKTool {
-    public static final String LENGTH_OF_BINS_SHORT_NAME = "BL";
-    public static final String LENGTH_OF_BINS_LONG_NAME = "binLength";
+    public static final String BIN_LENGTH_LONG_NAME = "binLength";
+    public static final String BIN_LENGTH_SHORT_NAME = "BL";
 
+    public static final String PADDING_LONG_NAME = "padding";
     public static final String PADDING_SHORT_NAME = "P";
-    public static final String PADDING_LONG_NAME = "paddingLength";
 
     @Argument(
             doc = "Length (in bp) of the bins.",
-            fullName = LENGTH_OF_BINS_LONG_NAME,
-            shortName = LENGTH_OF_BINS_SHORT_NAME,
+            fullName = BIN_LENGTH_LONG_NAME,
+            shortName = BIN_LENGTH_SHORT_NAME,
             optional = true,
             minValue = 1
     )
@@ -92,18 +92,19 @@ public final class PreprocessIntervals extends GATKTool {
 
     @Override
     public void onTraversalStart() {
-        prepareIntervalsGenerateAndWriteBins();
-    }
-
-    private void prepareIntervalsGenerateAndWriteBins() {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
         // if the user didn't add any intervals, we assume that they wanted to do whole genome sequencing
         final List<SimpleInterval> inputIntervals = hasIntervals() ? intervalArgumentCollection.getIntervals(sequenceDictionary)
-               : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+
+        logger.info("Padding and merging intervals...");
         final IntervalList preparedIntervalList = padAndMergeIntervals(inputIntervals, padding, sequenceDictionary);
+
+        logger.info("Generating bins...");
         final IntervalList bins = generateBins(preparedIntervalList, binLength, sequenceDictionary);
 
+        logger.info(String.format("Writing bins to %s...", outputFile));
         bins.write(outputFile);
     }
 
@@ -130,5 +131,5 @@ public final class PreprocessIntervals extends GATKTool {
     }
 
     @Override
-    public void traverse() { }  // no traversal for this tool
+    public void traverse() {}  // no traversal for this tool
 }

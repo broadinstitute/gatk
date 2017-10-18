@@ -30,25 +30,25 @@ public final class ReCapSegCallerUnitTest extends GATKBaseTest {
         final List<SimpleInterval> intervals = new ArrayList<>();
         final List<Double> testData = new ArrayList<>();
 
-        //add amplification targets
+        //add amplification intervals
         for (int i = 0; i < 10; i++) {
             final SimpleInterval interval = new SimpleInterval("chr", 101 + i, 101 + i);
             intervals.add(interval);
             testData.add(ParamUtils.log2(2.0));
         }
-        //add deletion targets
+        //add deletion intervals
         for (int i = 0; i < 10; i++) {
             final SimpleInterval interval = new SimpleInterval("chr", 201 + i, 201 + i);
             intervals.add(interval);
             testData.add(ParamUtils.log2(0.5));
         }
-        //add obviously neutral targets with some small spread
+        //add obviously neutral intervals with some small spread
         for (int i = 0; i < 10; i++) {
             final SimpleInterval interval = new SimpleInterval("chr", 301 + i, 301 + i);
             intervals.add(interval);
             testData.add(ParamUtils.log2(0.01 * (i - 5) + 1));
         }
-        //add spread-out targets to a neutral segment (mean near zero)
+        //add spread-out intervals to a neutral segment (mean near zero)
         for (int i = 0; i < 10; i++) {
             final SimpleInterval interval = new SimpleInterval("chr", 401 + i, 401 + i);
             intervals.add(interval);
@@ -59,8 +59,8 @@ public final class ReCapSegCallerUnitTest extends GATKBaseTest {
         denoisedCopyRatioValues.setRow(0, testData.stream().mapToDouble(x -> x).toArray());
         final CopyRatioCollection denoisedCopyRatios = new CopyRatioCollection(
                 sampleMetadata,
-                IntStream.range(0, intervals.size()).boxed()
-                        .map(i -> new CopyRatio(intervals.get(i), denoisedCopyRatioValues.getEntry(0, i)))
+                IntStream.range(0, intervals.size())
+                        .mapToObj(i -> new CopyRatio(intervals.get(i), denoisedCopyRatioValues.getEntry(0, i)))
                         .collect(Collectors.toList()));
 
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(sampleMetadata,

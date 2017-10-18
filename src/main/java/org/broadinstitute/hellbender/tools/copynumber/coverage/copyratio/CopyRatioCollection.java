@@ -52,9 +52,8 @@ public final class CopyRatioCollection extends SampleLocatableCollection<CopyRat
     }
 
     /**
-     * The midpoint is used to characterize the interval for the purposes of determining overlaps when combining
-     * copy-ratio and allele-fraction segmentations, so that each copy-ratio interval will be uniquely contained
-     * in a single segment.
+     * The midpoint is used to characterize the interval for the purposes of determining overlaps
+     * so that each copy-ratio interval will be uniquely contained in a single segment.
      */
     public OverlapDetector<CopyRatio> getMidpointOverlapDetector() {
         return OverlapDetector.create(getRecords().stream()

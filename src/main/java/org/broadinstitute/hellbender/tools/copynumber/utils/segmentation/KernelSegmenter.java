@@ -207,7 +207,7 @@ public final class KernelSegmenter<DATA> {
         logger.info(String.format("Subsampling %d points from data to find kernel approximation...", numSubsample));
         final List<DATA> dataSubsample = numSubsample == data.size()
                 ? data
-                : IntStream.range(0, numSubsample).boxed().map(i -> data.get(rng.nextInt(data.size()))).collect(Collectors.toList());
+                : IntStream.range(0, numSubsample).mapToObj(i -> data.get(rng.nextInt(data.size()))).collect(Collectors.toList());
 
         //calculate (symmetric) kernel matrix of subsampled data
         logger.info(String.format("Calculating kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
@@ -299,8 +299,8 @@ public final class KernelSegmenter<DATA> {
 
         //calculate penalties as a function of the number of changepoints
         final int numData = reducedObservationMatrix.getRowDimension();
-        final List<Double> changepointPenalties = IntStream.range(0, maxNumChangepoints + 1).boxed()
-                .map(numChangepoints -> calculateChangepointPenalty(
+        final List<Double> changepointPenalties = IntStream.range(0, maxNumChangepoints + 1)
+                .mapToObj(numChangepoints -> calculateChangepointPenalty(
                         numChangepoints, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, numData))
                 .collect(Collectors.toList());
 
@@ -311,18 +311,18 @@ public final class KernelSegmenter<DATA> {
         final List<Integer> candidateEnds = changepointCandidates.stream().sorted().distinct().collect(Collectors.toList());
         candidateEnds.add(numData - 1);
         final int numSegments = candidateStarts.size();
-        final List<Segment> segments = IntStream.range(0, numSegments).boxed()
-                .map(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i), reducedObservationMatrix, kernelApproximationDiagonal))
+        final List<Segment> segments = IntStream.range(0, numSegments)
+                .mapToObj(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i), reducedObservationMatrix, kernelApproximationDiagonal))
                 .collect(Collectors.toList());
         final List<Double> totalSegmentationCosts = new ArrayList<>(Collections.singletonList(segments.stream().mapToDouble(s -> s.cost).sum()));
-        final List<Double> costsForSegmentPairs = IntStream.range(0, numSegments - 1).boxed()
-                .map(i -> segments.get(i).cost + segments.get(i + 1).cost)
+        final List<Double> costsForSegmentPairs = IntStream.range(0, numSegments - 1)
+                .mapToObj(i -> segments.get(i).cost + segments.get(i + 1).cost)
                 .collect(Collectors.toList());  //sum of the costs for the segments in each adjacent pair
-        final List<Double> costsForMergedSegmentPairs = IntStream.range(0, numSegments - 1).boxed()
-                .map(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i + 1), reducedObservationMatrix, kernelApproximationDiagonal).cost)
+        final List<Double> costsForMergedSegmentPairs = IntStream.range(0, numSegments - 1)
+                .mapToObj(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i + 1), reducedObservationMatrix, kernelApproximationDiagonal).cost)
                 .collect(Collectors.toList());  //cost of each adjacent pair when considered as a single segment
-        final List<Double> costsForMergingSegmentPairs = IntStream.range(0, numSegments - 1).boxed()
-                .map(i -> costsForSegmentPairs.get(i) - costsForMergedSegmentPairs.get(i))
+        final List<Double> costsForMergingSegmentPairs = IntStream.range(0, numSegments - 1)
+                .mapToObj(i -> costsForSegmentPairs.get(i) - costsForMergedSegmentPairs.get(i))
                 .collect(Collectors.toList());  //cost for merging each adjacent pair into a single segment
 
         //iteratively merge the segment pair with greatest merge cost and update all costs until only a single segment remains
@@ -361,8 +361,8 @@ public final class KernelSegmenter<DATA> {
 
         //find optimal number of changepoints according to penalty function
         final int effectiveMaxNumChangepoints = Math.min(maxNumChangepoints, changepoints.size());
-        final List<Double> totalSegmentationCostsPlusPenalties = IntStream.range(0, effectiveMaxNumChangepoints + 1).boxed()
-                .map(i -> totalSegmentationCosts.get(i) + changepointPenalties.get(i))
+        final List<Double> totalSegmentationCostsPlusPenalties = IntStream.range(0, effectiveMaxNumChangepoints + 1)
+                .mapToObj(i -> totalSegmentationCosts.get(i) + changepointPenalties.get(i))
                 .collect(Collectors.toList());
         final int numChangepointsOptimal = totalSegmentationCostsPlusPenalties.indexOf(Collections.min(totalSegmentationCostsPlusPenalties));
 

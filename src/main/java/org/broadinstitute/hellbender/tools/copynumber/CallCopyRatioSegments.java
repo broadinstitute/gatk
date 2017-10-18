@@ -26,7 +26,7 @@ import java.io.File;
  * <pre>
  * gatk-launch --javaOptions "-Xmx4g" CallCopyRatioSegments \
  *   --denoisedCopyRatios tumor.denoisedCR.tsv \
- *   --segments tumor.craf.seg \
+ *   --segments tumor.cr.seg \
  *   --output tumor.called
  * </pre>
  */
@@ -46,7 +46,7 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     private File inputDenoisedCopyRatiosFile;
 
     @Argument(
-            doc = "Input file containing copy-ratio segments (.craf.seg output of ModelSegments).",
+            doc = "Input file containing copy-ratio segments (.cr.seg output of ModelSegments).",
             fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
             shortName = CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME
     )
