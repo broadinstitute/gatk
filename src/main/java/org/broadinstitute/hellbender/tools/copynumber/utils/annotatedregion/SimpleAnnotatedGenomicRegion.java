@@ -49,7 +49,13 @@ public class SimpleAnnotatedGenomicRegion implements Locatable {
         if (o == null || getClass() != o.getClass()) return false;
         final SimpleAnnotatedGenomicRegion that = (SimpleAnnotatedGenomicRegion) o;
         return this.interval.equals(that.getInterval()) && this.getAnnotations().equals(that.getAnnotations());
+    }
 
+    @Override
+    public int hashCode() {
+        int result = interval.hashCode();
+        result = 31 * result + annotations.hashCode();
+        return result;
     }
 
     @Override

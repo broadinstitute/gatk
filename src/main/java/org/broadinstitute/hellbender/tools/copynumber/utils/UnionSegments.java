@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -73,7 +72,7 @@ public class UnionSegments extends GATKTool {
             final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
             final List<SimpleAnnotatedGenomicRegion> segments1 = parser.readAnnotatedRegions(segmentsFile.get(0), columnsOfInterest);
             final List<SimpleAnnotatedGenomicRegion> segments2 = parser.readAnnotatedRegions(segmentsFile.get(1), columnsOfInterest);
-            final List<List<SimpleAnnotatedGenomicRegion>> inputSegmentsLists = Lists.newArrayList(segments1, segments2);
+            final List<List<SimpleAnnotatedGenomicRegion>> inputSegmentsLists = Arrays.asList(segments1,segments2);
 
             if (segmentsFileLabels.size() == 0) {
                 segmentsFileLabels = IntStream.range(0, inputSegmentsLists.size()).mapToObj(i -> String.valueOf(i+1)).collect(Collectors.toList());
@@ -112,7 +111,7 @@ public class UnionSegments extends GATKTool {
                             .collect(Collectors.toList()));
 
             final List<SimpleAnnotatedGenomicRegion> finalList = annotateUnionedIntervals(segments1, segments2,
-                    sequenceDictionary, Lists.newArrayList(input1ToOutputHeaderMap, input2ToOutputHeaderMap));
+                    sequenceDictionary, Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap));
 
             // TODO: Capture sample names in the comments if possible.
             // TODO:  Allow choice in output names of interval headers.
@@ -142,7 +141,7 @@ public class UnionSegments extends GATKTool {
     private List<SimpleAnnotatedGenomicRegion> annotateUnionedIntervals(final List<SimpleAnnotatedGenomicRegion> segments1, final List<SimpleAnnotatedGenomicRegion> segments2,
                                                                         final SAMSequenceDictionary dictionary, final List<Map<String, String>> inputToOutputHeaderMaps) {
 
-        final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Lists.newArrayList(segments1, segments2);
+        final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Arrays.asList(segments1, segments2);
 
         // We assume that the union'ed intervals are sorted.
         // TODO: This needs to be sorted if we want to support more than two sets of regions at once.
