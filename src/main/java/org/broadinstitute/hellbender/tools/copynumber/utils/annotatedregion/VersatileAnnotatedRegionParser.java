@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion;
 
 import com.google.common.collect.Sets;
 import org.apache.commons.collections4.list.UnmodifiableList;
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.utils.Utils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -92,13 +93,16 @@ public class VersatileAnnotatedRegionParser {
 
     private void validateInputHeader(Set<String> contigHeaders, Set<String> startHeaders, Set<String> endHeaders) {
         if (contigHeaders.size() != 1) {
-            throw new UserException.BadInput("Wrong number of headers that could be used for contig.  Must be one.  Found: " + contigHeaders.toString());
+            throw new UserException.BadInput("Wrong number of headers that could be used for contig.  Must be one.  Found: " + contigHeaders.toString() + ".  Valid column headers are: "
+            + StringUtils.join(CONTIG_HEADERS, ", "));
         }
         if (startHeaders.size() != 1) {
-            throw new UserException.BadInput("Wrong number of headers that could be used for start.  Must be one.  Found: " + startHeaders.toString());
+            throw new UserException.BadInput("Wrong number of headers that could be used for start.  Must be one.  Found: " + startHeaders.toString() + ".  Valid column headers are: "
+                    + StringUtils.join(START_HEADERS, ", "));
         }
         if (endHeaders.size() != 1) {
-            throw new UserException.BadInput("Wrong number of headers that could be used for end.  Must be one.  Found: " + endHeaders.toString());
+            throw new UserException.BadInput("Wrong number of headers that could be used for end.  Must be one.  Found: " + endHeaders.toString() + ".  Valid column headers are: "
+                    + StringUtils.join(END_HEADERS, ", "));
         }
     }
 
