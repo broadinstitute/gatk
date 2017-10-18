@@ -987,10 +987,10 @@ public final class MathUtils {
 
     /**
      *
-     * @param array
+     * @param array array of integers
      * @return index of the max. In case of a tie, return the smallest index
      */
-    public static int argmax(final int[] array){
+    public static int maxElementIndex(final int[] array){
         int maxIndex = 0;
         int currentMax = Integer.MIN_VALUE;
         for (int i = 0; i < array.length; i++){
@@ -1004,13 +1004,13 @@ public final class MathUtils {
 
     /**
      *
-     * computes the log10 probability density of BetaBinomial(k|n, alpha, beta)
+     * Computes the log10 probability density of BetaBinomial(k|n, alpha, beta)
      *
      * @param alpha pseudocount of number of heads
      * @param beta pseudocount of number of tails
      * @param k value to evaluate
      * @param n number of coin flips
-     * @return probability density function evlauated at k
+     * @return probability density function evaluated at k
      */
     public static double log10BetaBinomialDensity(final int k, final int n, final double alpha, final double beta){
         Utils.validateArg(k <= n, "k must be less than or equal to n");

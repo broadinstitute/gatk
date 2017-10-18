@@ -1065,7 +1065,7 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testArgMax(){
+    public void testMaxElementIndex(){
         final int[] array1 = new int[]{ 1, 2, 3, 4, 5, 6};
         final int expected1 = 5;
         final int[] array2 = new int[]{ 6, 5, 4, 3, 2, 1};
@@ -1075,10 +1075,10 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         final int[] array4 = new int[]{ 3, 3, 3, 5, 5, 5};
         final int expected4 = 3;
 
-        Assert.assertEquals(MathUtils.argmax(array1), expected1);
-        Assert.assertEquals(MathUtils.argmax(array2), expected2);
-        Assert.assertEquals(MathUtils.argmax(array3), expected3);
-        Assert.assertEquals(MathUtils.argmax(array4), expected4);
+        Assert.assertEquals(MathUtils.maxElementIndex(array1), expected1);
+        Assert.assertEquals(MathUtils.maxElementIndex(array2), expected2);
+        Assert.assertEquals(MathUtils.maxElementIndex(array3), expected3);
+        Assert.assertEquals(MathUtils.maxElementIndex(array4), expected4);
     }
 
 
@@ -1095,7 +1095,5 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
                                              final double expected){
         final double EPSILON = 1e-3;
         Assert.assertEquals(MathUtils.log10BetaBinomialDensity(k, n, alpha, beta), expected, EPSILON);
-
-
     }
 }
