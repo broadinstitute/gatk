@@ -73,29 +73,6 @@ workflow Mutect2 {
       gatk_docker = gatk_docker
   }
 
-  call GetSampleName as GetTumorSample {
-        input:
-          gatk4_jar = gatk4_jar,
-          bam = tumor_bam,
-          bam_index = tumor_bam_index,
-          gatk4_jar_override = gatk4_jar_override,
-          preemptible_attempts = preemptible_attempts,
-          gatk_docker = gatk_docker
-  }
-
-  if (defined(normal_bam)) {
-      call GetSampleName as GetNormalSample {
-            input:
-              gatk4_jar = gatk4_jar,
-              bam = select_first([normal_bam, "placeholder"]),
-              bam_index = select_first([normal_bam_index, "placeholder"]),
-              gatk4_jar_override = gatk4_jar_override,
-              preemptible_attempts = preemptible_attempts,
-              gatk_docker = gatk_docker
-      }
-  }
-
-
   scatter (subintervals in SplitIntervals.interval_files ) {
 
     call M2 {
@@ -107,10 +84,8 @@ workflow Mutect2 {
         ref_dict = ref_dict,
         tumor_bam = tumor_bam,
         tumor_bam_index = tumor_bam_index,
-        tumor_sample = GetTumorSample.sample,
         normal_bam = normal_bam,
         normal_bam_index = normal_bam_index,
-        normal_sample = GetNormalSample.sample,
         pon = pon,
         pon_index = pon_index,
         gnomad = gnomad,
@@ -120,7 +95,6 @@ workflow Mutect2 {
         gatk_docker = gatk_docker,
         m2_extra_args = m2_extra_args,
         is_bamOut = is_bamOut,
-        output_name = GetTumorSample.sample + (if defined(normal_bam) then ("-vs-" + GetNormalSample.sample) else "-tumor-only"),
         preemptible_attempts = preemptible_attempts,
         gatk_docker = gatk_docker
     }
@@ -194,8 +168,8 @@ workflow Mutect2 {
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 default_config_file = default_config_file,
-                case_id = GetTumorSample.sample,
-                control_id = GetNormalSample.sample
+                case_id = M2.tumor_sample[0],
+                control_id = M2.normal_sample[0]
         }
   }
 
@@ -205,48 +179,14 @@ workflow Mutect2 {
         File filtered_vcf = Filter.filtered_vcf
         File filtered_vcf_index = Filter.filtered_vcf_index
         File contamination_table = Filter.contamination_table
-        String tumor_sample = GetTumorSample.sample
-        String? normal_sample = GetNormalSample.sample
+        String tumor_sample = M2.tumor_sample[0]
+        String? normal_sample = M2.normal_sample[0]
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
         File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
         File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
         File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
-  }
-}
-
-task GetSampleName {
-  String gatk4_jar
-  File bam
-  File bam_index
-  File? gatk4_jar_override
-
-  # Runtime parameters
-  Int? mem
-  String gatk_docker
-  Int? preemptible_attempts
-  Int? disk_space_gb
-
-  command <<<
-      # Use GATK Jar override if specified
-      GATK_JAR=${gatk4_jar}
-      if [[ "${gatk4_jar_override}" == *.jar ]]; then
-          GATK_JAR=${gatk4_jar_override}
-      fi
-
-      java -Xmx4g -jar $GATK_JAR GetSampleName -I ${bam} -O sample.txt
-  >>>
-
-  runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
-  }
-
-  output {
-    String sample = read_string("sample.txt")
   }
 }
 
@@ -258,10 +198,8 @@ task M2 {
   File ref_dict
   File tumor_bam
   File tumor_bam_index
-  String tumor_sample
   File? normal_bam
   File? normal_bam_index
-  String? normal_sample
   File? pon
   File? pon_index
   File? gnomad
@@ -269,7 +207,6 @@ task M2 {
   File? gatk4_jar_override
   String? m2_extra_args
   Boolean? is_bamOut
-  String output_name
 
   # Runtime parameters
   Int? mem
@@ -288,15 +225,28 @@ task M2 {
    # We need to create a file regardless, even if it stays empty
    touch bamout.bam
 
+   java -Xmx4g -jar $GATK_JAR GetSampleName -I ${tumor_bam} -O tumor_name.txt
+   tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
+
+   if [[ "_${normal_bam}" == *.bam ]]; then
+         java -Xmx4g -jar $GATK_JAR GetSampleName -I ${normal_bam} -O normal_name.txt
+         normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
+         echo `cat tumor_name.txt`-vs-`cat normal_name.txt`.vcf > vcf_name.txt
+   else
+         # Note that normal_name.txt is always created, it's just empty if no normal sample was given.
+         #     This is done to allow an output parameter of the normal sample.
+         touch normal_name.txt
+         echo `cat tumor_name.txt`-tumor-only.vcf > vcf_name.txt
+   fi
+
   java -Xmx4g -jar $GATK_JAR Mutect2 \
     -R ${ref_fasta} \
-    -I ${tumor_bam} \
-    -tumor ${tumor_sample} \
-    ${"-I " + normal_bam} ${"-normal " + normal_sample} \
+    $tumor_command_line \
+    $normal_command_line \
     ${"--germline-resource " + gnomad} \
     ${"-pon " + pon} \
     ${"-L " + intervals} \
-    -O "${output_name}.vcf" \
+    -O `cat vcf_name.txt` \
     ${true='--bamOutput bamout.bam' false='' is_bamOut} \
     ${m2_extra_args}
   >>>
@@ -309,8 +259,10 @@ task M2 {
   }
 
   output {
-    File output_vcf = "${output_name}.vcf"
+    File output_vcf = read_string("vcf_name.txt")
     File output_bamOut = "bamout.bam"
+    String tumor_sample = read_string("tumor_name.txt")
+    String normal_sample = read_string("normal_name.txt")
   }
 }
 
