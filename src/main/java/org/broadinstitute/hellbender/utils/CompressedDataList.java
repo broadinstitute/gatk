@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.annotator;
+package org.broadinstitute.hellbender.utils;
 
 import java.util.Arrays;
 import java.util.HashMap;

@@ -1,5 +1,6 @@
-package org.broadinstitute.hellbender.tools.walkers.annotator;
+package org.broadinstitute.hellbender.utils;
 
+import org.broadinstitute.hellbender.utils.CompressedDataList;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

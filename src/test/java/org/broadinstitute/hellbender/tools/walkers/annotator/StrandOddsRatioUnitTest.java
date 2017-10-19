@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
@@ -9,6 +8,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_S
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -122,7 +122,7 @@ public final class StrandOddsRatioUnitTest {
         final List<GATKRead> refReads = Arrays.asList(makeRead(true), makeRead(true));
         final List<GATKRead> altReads = Arrays.asList(makeRead(false), makeRead(true));
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final VariantContext vc= makeVC(REF, ALT);
 
@@ -144,7 +144,7 @@ public final class StrandOddsRatioUnitTest {
         final List<GATKRead> refReads = Arrays.asList(makeRead(true), makeRead(true));
         final List<GATKRead> altReads = Arrays.asList(makeRead(false), makeRead(true));
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
         final VariantContext vc= makeVC(REF, ALT);
 
         final Map<String, Object> annotatedMapRaw = ann.annotateRawData(null, vc, likelihoods);

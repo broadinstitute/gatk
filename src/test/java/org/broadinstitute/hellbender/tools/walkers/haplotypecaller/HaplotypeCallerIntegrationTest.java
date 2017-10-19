@@ -6,10 +6,12 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsIntegrationTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,6 +19,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
@@ -184,6 +187,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     /*
      * Test that in GVCF mode we're consistent with past GATK4 results using AS_ annotations
+     *
+     * Updated on 09/01/17 to account for changes to AS_RankSum annotations the annotations were checked against GATK3
      */
     @Test(dataProvider="HaplotypeCallerTestInputs")
     public void testGVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations(final String inputFileName, final String referenceFileName) throws Exception {

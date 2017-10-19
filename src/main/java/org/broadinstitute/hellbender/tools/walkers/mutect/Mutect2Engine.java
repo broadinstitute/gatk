@@ -158,7 +158,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
 
         // all annotation fields from VariantAnnotatorEngine
-        headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions());
+        headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerInfo.addAll(defaultToolHeaderLines);
 
         // all callers need to add these standard FORMAT field header lines

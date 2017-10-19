@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -10,6 +11,21 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class ReducibleAnnotationDataUnitTest extends BaseTest {
+    @Test(expectedExceptions = GATKException.class)
+    public void testValidateAllelesListMultipleReferenceAlleles() throws Exception {
+        final Allele Aref= Allele.create("A", true);
+        final Allele T= Allele.create("T", false);
+        final Allele Gref= Allele.create("G", true);
+        String rawData= "1|2";
+        final ReducibleAnnotationData<Integer> asad = new ReducibleAnnotationData<>(rawData);
+        final Map<Allele, Integer> map= new HashMap<>();
+        map.put(Aref, 10);
+        map.put(T, 11);
+        map.put(Gref, 10);
+        asad.setAttributeMap(map);
+        asad.validateAllelesList();
+    }
+
     @Test
     public void testCreate() throws Exception {
         final Allele Aref= Allele.create("A", true);
@@ -35,5 +51,7 @@ public final class ReducibleAnnotationDataUnitTest extends BaseTest {
         Assert.assertEquals(asad.getAttribute(T), (Integer)19);
 
     }
+
+
 
 }
