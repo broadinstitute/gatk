@@ -10,7 +10,6 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import org.aeonbits.owner.ConfigCache;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -267,7 +266,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return The cloud prefetch buffer size as set in {@link GATKConfig}
      */
     public int getCloudPrefetchBufferSize() {
-        return ConfigCache.getOrCreate(GATKConfig.class).cloudPrefetchBuffer();
+        return ConfigUtils.getOrCreate(GATKConfig.class).cloudPrefetchBuffer();
     }
 
     /**

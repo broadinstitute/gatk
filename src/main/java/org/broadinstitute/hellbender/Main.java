@@ -111,7 +111,6 @@ public class Main {
      *      Custom config file loading and initialization
      *
      * @param args The Array of command-line arguments.
-     * @return A new Array of command-line arguments with the config file option and config file path removed.
      */
     protected static void parseArgsForConfigSetupAndGetNewArgs(final String[] args) {
         // Now we setup our configurations:

@@ -11,7 +11,6 @@ import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockGunzipper;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-import org.aeonbits.owner.ConfigCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -22,7 +21,6 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.barclay.argparser.CommandLinePluginProvider;
 import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
-import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
@@ -153,9 +151,6 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         this.defaultHeaders.add(new StringHeader("Started on: " + Utils.getDateTimeForDisplay(startDateTime)));
 
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
-
-        // Log the configuration options:
-        ConfigUtils.logConfigFields(ConfigUtils.getOrCreate(GATKConfig.class));
 
         for (final File f : TMP_DIR) {
             // Intentionally not checking the return values, because it may be that the program does not
@@ -319,6 +314,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                     logger.info("HTSJDK " + Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
             );
         }
+
+        // Log the configuration options:
+        ConfigUtils.logConfigFields(ConfigUtils.getOrCreate(GATKConfig.class));
 
         final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
         logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
