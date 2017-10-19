@@ -1128,4 +1128,13 @@ public final class Utils {
     public static void forceJVMLocaleToUSEnglish() {
         Locale.setDefault(Locale.US);
     }
+
+    /**
+     * Streams and sorts a collection of objects and returns the integer median entry of the sorted list
+     * @param values List of sortable entries from which to select the median
+     */
+    public static <T extends Comparable<?>> T getMedianValue(List<T> values) {
+        final List<T> sorted = values.stream().sorted().collect(Collectors.toList());
+        return sorted.get(sorted.size() / 2);
+    }
 }

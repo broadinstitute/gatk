@@ -4,10 +4,13 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.FisherStrand;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,4 +62,20 @@ public class AS_FisherStrand extends AS_StrandBiasTest implements AS_StandardAnn
     private Map<String, Object> annotationForOneTable(final double pValue) {
         return Collections.singletonMap(getKeyNames().get(0), FisherStrand.makeValueObjectForAnnotation(pValue));
     }
+
+    @Override
+    protected Map<Allele,Double> calculateReducedData(AlleleSpecificAnnotationData<List<Integer>> combinedData) {
+        final Map<Allele,Double> annotationMap = new HashMap<>();
+        final Map<Allele,List<Integer>> perAlleleData = combinedData.getAttributeMap();
+        final List<Integer> refStrandCounts = perAlleleData.get(combinedData.getRefAllele());
+        for (final Allele a : perAlleleData.keySet()) {
+            if(a.equals(combinedData.getRefAllele(),true))
+                continue;
+            final List<Integer> altStrandCounts = combinedData.getAttribute(a);
+            final int[][] refAltTable = new int[][] {new int[]{refStrandCounts.get(0),refStrandCounts.get(1)},new int[]{altStrandCounts.get(0),altStrandCounts.get(1)}};
+            annotationMap.put(a, QualityUtils.phredScaleErrorRate(Math.max(FisherStrand.pValueForContingencyTable(refAltTable), MIN_PVALUE)));
+        }
+        return annotationMap;
+    }
+
 }

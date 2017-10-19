@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -31,7 +32,7 @@ public final class DepthPerAlleleBySampleUnitTest extends BaseTest {
     private static final String SAMPLE = "sample1";
 
     private GATKRead makeRead() {
-        return AnnotationArtificialData.makeRead(30, 50);
+        return ArtificialAnnotationUtils.makeRead(30, 50);
     }
 
     @Test
@@ -60,7 +61,7 @@ public final class DepthPerAlleleBySampleUnitTest extends BaseTest {
         final List<GATKRead> refReads = IntStream.range(0, refDepth).mapToObj(i -> makeRead()).collect(Collectors.toList());
         final List<GATKRead> altReads = IntStream.range(0, altDepth).mapToObj(i -> makeRead()).collect(Collectors.toList());
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(SAMPLE, refReads, altReads, -100.0, -100.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods(SAMPLE, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
 

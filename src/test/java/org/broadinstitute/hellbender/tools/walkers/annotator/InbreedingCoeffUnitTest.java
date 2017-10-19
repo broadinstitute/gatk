@@ -237,33 +237,6 @@ public final class InbreedingCoeffUnitTest extends BaseTest {
     }
 
 
-    @Test
-    public void testSingletonVsCommonAllele_AS() {
-
-        final List<Genotype> allGTs = new ArrayList<>();
-        final int numHomRefGTs = 10000;
-        allGTs.add(makeG("het0", Aref, T, hetPLs));
-
-        for ( int i = 0; i < numHomRefGTs; i++ )
-            allGTs.add(makeG("ref" + i, Aref, Aref, homRefPLs));
-
-        int numHetGTs = 1;
-
-        final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-
-        AS_InbreedingCoeff testClass = new AS_InbreedingCoeff();
-        final double ICsingleton = testClass.calculateIC(singleton, T);
-
-        final int targetNumHetGTs = 20;
-        for ( int i = numHetGTs; i < targetNumHetGTs; i++ )
-            allGTs.add(makeG("het" + i, Aref, T, hetPLs));
-
-        final VariantContext common = makeVC("common", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        testClass = new AS_InbreedingCoeff();
-        final double ICcommon = testClass.calculateIC(common, T);
-
-        Assert.assertTrue(Math.abs(ICsingleton) < Math.abs(ICcommon), String.format("singleton=%f common=%f", ICsingleton, ICcommon));
-    }
 
     @Test
     public void testSingletonVsCommonAllele_refAltFlip() {
@@ -344,42 +317,6 @@ public final class InbreedingCoeffUnitTest extends BaseTest {
 
 
     @Test
-    public void testLargeCohorts_AS() {
-
-        final List<Genotype> allGTs = new ArrayList<>();
-        final int numHomRefGTs = 1000000;
-        for ( int i = 0; i < numHomRefGTs; i++ )
-            allGTs.add(makeG("ref" + i, Aref, Aref, homRefPLs));
-
-        allGTs.add(makeG("het0", Aref, T, hetPLs));
-        int numHetGTs = 1;
-
-        final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        AS_InbreedingCoeff testClass = new AS_InbreedingCoeff();
-        final double ICsingleton = testClass.calculateIC(singleton, T);
-
-        for ( int i = numHetGTs; i < 100; i++ ) {
-            allGTs.add(makeG("het" + i, Aref, T, hetPLs));
-            numHetGTs++;
-        }
-
-        final VariantContext hundredton = makeVC("hundredton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        testClass = new AS_InbreedingCoeff();
-        final double IChundredton = testClass.calculateIC(hundredton, T);
-
-        Assert.assertTrue(Math.abs(ICsingleton) < Math.abs(IChundredton), String.format("singleton=%f hundredton=%f", ICsingleton, IChundredton));
-
-        for ( int i = numHetGTs; i < numHomRefGTs; i++ )
-            allGTs.add(makeG("het" + i, Aref, T, hetPLs));
-
-        final VariantContext common = makeVC("common", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        testClass = new AS_InbreedingCoeff();
-        final double ICcommon = testClass.calculateIC(common, T);
-
-        Assert.assertTrue(Math.abs(IChundredton) < Math.abs(ICcommon), String.format("hundredton=%f common=%f", IChundredton, ICcommon));
-    }
-
-    @Test
     public void testAllHetsForLargeCohorts() {
 
         final int numGTs = 1000000;
@@ -399,31 +336,6 @@ public final class InbreedingCoeffUnitTest extends BaseTest {
 
         final VariantContext allHet = makeVC("allHet", Arrays.asList(Aref, T), allHetGTs.toArray(new Genotype[allHetGTs.size()]));
         final double ICHets = InbreedingCoeff.calculateIC(allHet, allHet.getGenotypes()).getRight();
-
-        Assert.assertTrue(Math.abs(ICsingleton) < Math.abs(ICHets), String.format("singleton=%f allHets=%f", ICsingleton, ICHets));
-    }
-
-    @Test
-    public void testAllHetsForLargeCohorts_AS() {
-
-        final int numGTs = 1000000;
-
-        final List<Genotype> singletonGTs = new ArrayList<>();
-        for ( int i = 0; i < numGTs; i++ )
-            singletonGTs.add(makeG("ref" + i, Aref, Aref, homRefPLs));
-
-        singletonGTs.add(makeG("het0", Aref, T, hetPLs));
-
-        final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), singletonGTs.toArray(new Genotype[singletonGTs.size()]));
-        AS_InbreedingCoeff testClass = new AS_InbreedingCoeff();
-        final double ICsingleton = testClass.calculateIC(singleton, T);
-
-        final List<Genotype> allHetGTs = new ArrayList<>();
-        for ( int i = 0; i < numGTs; i++ )
-            allHetGTs.add(makeG("het" + i, Aref, T, hetPLs));
-
-        final VariantContext allHet = makeVC("allHet", Arrays.asList(Aref, T), allHetGTs.toArray(new Genotype[allHetGTs.size()]));
-        final double ICHets = testClass.calculateIC(allHet, T);
 
         Assert.assertTrue(Math.abs(ICsingleton) < Math.abs(ICHets), String.format("singleton=%f allHets=%f", ICsingleton, ICHets));
     }
