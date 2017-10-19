@@ -9,7 +9,7 @@ optparseUrl="http://cran.r-project.org/src/contrib/Archive/optparse/optparse_1.3
 if (!("optparse" %in% rownames(installed.packages()))) {
   install.packages(optparseUrl, repos=NULL, type="source")
 }
-datatableUrl="http://cran.r-project.org/src/contrib/data.table_1.10.4.tar.gz"
+datatableUrl="http://cran.r-project.org/src/contrib/data.table_1.10.4-2.tar.gz"
 if (!("data.table" %in% rownames(installed.packages()))) {
     install.packages(datatableUrl, repos=NULL, type="source")
 }
