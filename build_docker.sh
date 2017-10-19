@@ -105,8 +105,13 @@ if [ -n "$STAGING_DIR" ]; then
 fi
 
 # Build
+if [ -n "${IS_PUSH}" ]; then
+    RELEASE=true
+else
+    RELEASE=false
+fi
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} .
+docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg DRELEASE=$RELEASE .
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
