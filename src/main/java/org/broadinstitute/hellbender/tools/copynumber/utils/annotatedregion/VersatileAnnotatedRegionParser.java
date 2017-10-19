@@ -1,30 +1,27 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion;
 
 import com.google.common.collect.Sets;
-import org.apache.commons.collections4.list.UnmodifiableList;
-import org.apache.commons.lang.StringUtils;
-import org.broadinstitute.barclay.utils.Utils;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.supercsv.io.CsvMapReader;
-import org.supercsv.io.ICsvMapReader;
-import org.supercsv.prefs.CsvPreference;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import org.testng.collections.Lists;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Generally a good idea to create a new instance for each file being read or written.
  */
 public class VersatileAnnotatedRegionParser {
-    protected final static Set<String> CONTIG_HEADERS = Sets.newHashSet("Chromosome", "contig", "chr", "CONTIG");
-    protected final static Set<String> START_HEADERS = Sets.newHashSet("Start_position", "Start_Position", "start", "START");
-    protected final static Set<String> END_HEADERS = Sets.newHashSet("End_position", "End_Position", "end", "stop", "END");
-
+    protected final static String CONTIG_HEADER = "CONTIG";
+    protected final static String START_HEADER = "START";
+    protected final static String END_HEADER = "END";
     protected final HashCommentMatcher hashCommentMatcher = new HashCommentMatcher();
 
     /**
@@ -37,77 +34,19 @@ public class VersatileAnnotatedRegionParser {
      * @return annotated regions with one line in the input file for each entry of the list.  Never {@code null}
      * @throws IOException
      */
-    public List<SimpleAnnotatedGenomicRegion> readAnnotatedRegions(final File tsvRegionFile, final Set<String> headersOfInterest) throws IOException {
+    public static List<SimpleAnnotatedGenomicRegion> readAnnotatedRegions(final File tsvRegionFile, final Set<String> headersOfInterest) throws IOException {
+        final TableReader<SimpleAnnotatedGenomicRegion> reader = new TableReader<SimpleAnnotatedGenomicRegion>(tsvRegionFile) {
 
-        Utils.nonNull(tsvRegionFile);
-        Utils.nonNull(headersOfInterest);
-
-        ICsvMapReader mapReader = null;
-        final List<SimpleAnnotatedGenomicRegion> result = new ArrayList<>();
-        try {
-            mapReader = new CsvMapReader(new FileReader(tsvRegionFile), getTsvPreference());
-
-            // the header columns are used as the keys to the Map
-            final String[] headers = mapReader.getHeader(true);
-
-            // Create mapping to get the contig, start, and end.
-            final Set<String> headerSet = new HashSet<>(Arrays.asList(headers));
-            final Set<String> contigHeaders = Sets.intersection(headerSet, CONTIG_HEADERS);
-            final Set<String> startHeaders = Sets.intersection(headerSet, START_HEADERS);
-            final Set<String> endHeaders = Sets.intersection(headerSet, END_HEADERS);
-
-            validateInputHeader(contigHeaders, startHeaders, endHeaders);
-
-            final Set<String> otherHeaders = Sets.intersection(headerSet, headersOfInterest);
-            final String contigHeader = contigHeaders.iterator().next();
-            final String startHeader = startHeaders.iterator().next();
-            final String endHeader = endHeaders.iterator().next();
-
-            Map<String, String> segmentInfoMap;
-            while ((segmentInfoMap = mapReader.read(headers)) != null) {
-                final Map<String, String> annotations = segmentInfoMap.entrySet().stream()
-                        .filter(e -> otherHeaders.contains(e.getKey()))
-                        .collect(Collectors.toMap(e -> e.getKey(), e -> (e.getValue() == null? "" : e.getValue()) ));
-
-                result.add(new SimpleAnnotatedGenomicRegion(
-                        new SimpleInterval(segmentInfoMap.get(contigHeader),
-                                Integer.parseInt(segmentInfoMap.get(startHeader)),
-                                Integer.parseInt(segmentInfoMap.get(endHeader))),
-                        annotations));
+            @Override
+            protected SimpleAnnotatedGenomicRegion createRecord(DataLine dataLine) {
+                final Set<String> headersOfInterestPresent = Sets.intersection(headersOfInterest, new HashSet<>(this.columns().names()));
+                final Map<String, String> annotationMap = Utils.stream(headersOfInterestPresent.iterator())
+                        .collect(Collectors.toMap(Function.identity(), s -> dataLine.get(s)));
+                return new SimpleAnnotatedGenomicRegion( new SimpleInterval(dataLine.get(CONTIG_HEADER), dataLine.getInt(START_HEADER), dataLine.getInt(END_HEADER)),
+                        annotationMap);
             }
-
-        } finally {
-            if (mapReader != null) {
-                mapReader.close();
-            }
-        }
-
-        return result;
-    }
-
-    private CsvPreference getTsvPreference() {
-        // Tab-delimited text file with comments on lines starting with "#"
-        return new CsvPreference.Builder('"', '\t', "\n")
-                .skipComments(hashCommentMatcher).build();
-    }
-
-    private void validateInputHeader(Set<String> contigHeaders, Set<String> startHeaders, Set<String> endHeaders) {
-        if (contigHeaders.size() != 1) {
-            throw new UserException.BadInput("Wrong number of headers that could be used for contig.  Must be one.  Found: " + contigHeaders.toString() + ".  Valid column headers are: "
-            + StringUtils.join(CONTIG_HEADERS, ", "));
-        }
-        if (startHeaders.size() != 1) {
-            throw new UserException.BadInput("Wrong number of headers that could be used for start.  Must be one.  Found: " + startHeaders.toString() + ".  Valid column headers are: "
-                    + StringUtils.join(START_HEADERS, ", "));
-        }
-        if (endHeaders.size() != 1) {
-            throw new UserException.BadInput("Wrong number of headers that could be used for end.  Must be one.  Found: " + endHeaders.toString() + ".  Valid column headers are: "
-                    + StringUtils.join(END_HEADERS, ", "));
-        }
-    }
-
-    public UnmodifiableList<String> getComments() {
-        return hashCommentMatcher.getComments();
+        };
+        return reader.toList();
     }
 
     /**
@@ -116,28 +55,32 @@ public class VersatileAnnotatedRegionParser {
      * @param regions list of locatables and associated annotations for writing.  One per line.
      * @param outputFile location of the output file.
      * @param comments list of comments to prepend to the tsv.  Each line will be prepended with "#"
-     * @param contigHeader header name to use for the contig
-     * @param startHeader header name to use for the start position (inclusive)
-     * @param endHeader header name to use for the end position (inclusive)
      */
     public void writeAnnotatedRegionsAsTsv(final List<SimpleAnnotatedGenomicRegion> regions, final File outputFile,
-                                           final List<String> comments, final String contigHeader, final String startHeader, final String endHeader) {
-        final List<String> headersAsList = Lists.newArrayList(contigHeader, startHeader, endHeader);
-        final List<String> additionalAnnotations = new ArrayList<>(regions.get(0).getAnnotations().keySet());
-        additionalAnnotations.sort(String::compareTo);
-        headersAsList.addAll(additionalAnnotations);
+                                           final List<String> comments)  throws IOException {
 
-        final List<Map<String, String>> lines = regions.stream()
-                .map(r -> VersatileAnnotatedRegionParser.convertSimpleAnnotatedGenomicRegionToStringMap(r, contigHeader, startHeader, endHeader))
-                .collect(Collectors.toList());
-        BasicTsvWriter.writeLines(headersAsList.toArray(new String[headersAsList.size()]), lines, outputFile, comments, getTsvPreference());
-    }
+        // TODO: Put into try resource block
+        final List<String> columnHeaders = Lists.newArrayList(CONTIG_HEADER, START_HEADER, END_HEADER);
+        final List<String> otherHeaders = new ArrayList<>(regions.get(0).getAnnotations().keySet());
+        otherHeaders.sort(String::compareTo);
 
-    private static Map<String, String> convertSimpleAnnotatedGenomicRegionToStringMap(final SimpleAnnotatedGenomicRegion region, final String contigHeader, final String startHeader, final String endHeader) {
-        final Map<String, String> result = new HashMap<>(region.getAnnotations());
-        result.put(contigHeader, region.getContig());
-        result.put(startHeader, String.valueOf(region.getStart()));
-        result.put(endHeader, String.valueOf(region.getEnd()));
-        return result;
+        columnHeaders.addAll(otherHeaders);
+        TableColumnCollection outputColumns = new TableColumnCollection(columnHeaders);
+        TableWriter<SimpleAnnotatedGenomicRegion> writer = new TableWriter<SimpleAnnotatedGenomicRegion>(outputFile, outputColumns) {
+            @Override
+            protected void composeLine(SimpleAnnotatedGenomicRegion record, DataLine dataLine) {
+                dataLine.set(CONTIG_HEADER, record.getContig());
+                dataLine.set(START_HEADER, record.getStart());
+                dataLine.set(END_HEADER, record.getEnd());
+                otherHeaders.forEach(h -> dataLine.set(h, record.getAnnotations().getOrDefault(h, "")));
+            }
+        };
+
+        for (final String comment: comments) {
+            writer.writeComment(comment);
+        }
+        writer.writeHeaderIfApplies();
+        writer.writeAllRecords(regions);
+        writer.close();
     }
 }

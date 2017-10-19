@@ -32,50 +32,56 @@ import java.util.stream.IntStream;
                 "This tool will load all segments into RAM.",
         programGroup = CopyNumberProgramGroup.class)
 @BetaFeature
-public class UnionSegments extends GATKTool {
+public class UnionSegmentBreakpoints extends GATKTool {
 
-    static final String COLUMNS_OF_INTEREST_LONG_NAME = "columnsOfInterest";
-    static final String COLUMNS_OF_INTEREST_SHORT_NAME = "cols";
-    static final String LABELS_LONG_NAME = "labels";
-    static final String LABELS_SHORT_NAME = "lbls";
+    public static final String COLUMNS_OF_INTEREST_LONG_NAME = "columnsOfInterest";
+    public static final String COLUMNS_OF_INTEREST_SHORT_NAME = "cols";
+    public static final String LABELS_LONG_NAME = "labels";
+    public static final String LABELS_SHORT_NAME = "lbls";
+
     @Argument(
             doc = "Input segment files -- must be specified twice, but order does not matter.",
             fullName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME,
-            maxElements = 2, minElements = 2
+            maxElements = 2,
+            minElements = 2
     )
-    protected List<File> segmentsFile;
+    private List<File> segmentFiles = new ArrayList<>();
     @Argument(
             doc = "Input segment file labels -- these will appear as suffixes in case of collisions.  The specification order must correspond to the input segment files.",
             fullName = LABELS_LONG_NAME,
             shortName = LABELS_SHORT_NAME,
-            maxElements = 2, minElements = 2, optional = true
+            maxElements = 2,
+            minElements = 2,
+            optional = true
     )
-    protected List<String> segmentsFileLabels = new ArrayList<>();
+    private List<String> segmentFileLabels = new ArrayList<>();
 
     @Argument(
-            doc="List of columns in either segment file that should be reported in the output file.  If the column header exists in both, it will have an append.",
-            fullName = COLUMNS_OF_INTEREST_LONG_NAME, shortName = COLUMNS_OF_INTEREST_SHORT_NAME, minElements = 1
+            doc = "List of columns in either segment file that should be reported in the output file.  If the column header exists in both, it will have the appropriate label appended as a suffix.",
+            fullName = COLUMNS_OF_INTEREST_LONG_NAME,
+            shortName = COLUMNS_OF_INTEREST_SHORT_NAME,
+            minElements = 1
     )
-    protected Set<String> columnsOfInterest = new HashSet<>();
+    private Set<String> columnsOfInterest = new HashSet<>();
 
     @Argument(
-            doc="Output tsv file with union'ed segments",
+            doc = "Output TSV file with unioned segment breakpoints",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    protected File outputFile;
+    private File outputFile;
 
     @Override
     public void traverse() {
         try {
 
             final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
-            final List<SimpleAnnotatedGenomicRegion> segments1 = parser.readAnnotatedRegions(segmentsFile.get(0), columnsOfInterest);
-            final List<SimpleAnnotatedGenomicRegion> segments2 = parser.readAnnotatedRegions(segmentsFile.get(1), columnsOfInterest);
+            final List<SimpleAnnotatedGenomicRegion> segments1 = parser.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);
+            final List<SimpleAnnotatedGenomicRegion> segments2 = parser.readAnnotatedRegions(segmentFiles.get(1), columnsOfInterest);
             final List<List<SimpleAnnotatedGenomicRegion>> inputSegmentsLists = Arrays.asList(segments1,segments2);
 
-            if (segmentsFileLabels.size() == 0) {
-                segmentsFileLabels = IntStream.range(0, inputSegmentsLists.size()).mapToObj(i -> String.valueOf(i+1)).collect(Collectors.toList());
+            if (segmentFileLabels.size() == 0) {
+                segmentFileLabels = IntStream.range(0, inputSegmentsLists.size()).mapToObj(i -> String.valueOf(i+1)).collect(Collectors.toList());
             }
 
             // Check to see if we should warn the user that one or more columns of interest were not seen in any input file.
@@ -95,11 +101,11 @@ public class UnionSegments extends GATKTool {
             // These are mappings that take the header name from the segment files and map to an output header to avoid conflicts.
             final Map<String, String> input1ToOutputHeaderMap = Utils.stream(segments1.get(0).getAnnotations().keySet().iterator()).filter(a -> !intersectingAnnotations.contains(a))
                     .collect(Collectors.toMap(Function.identity(), Function.identity()));
-            Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentsFileLabels.get(0)));
+            Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(0)));
 
             final Map<String, String> input2ToOutputHeaderMap = Utils.stream(segments2.get(0).getAnnotations().keySet().iterator()).filter(a -> !intersectingAnnotations.contains(a))
                     .collect(Collectors.toMap(Function.identity(), Function.identity()));
-            Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentsFileLabels.get(1)));
+            Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
 
             // Use the best available sequence dictionary, but if that is not available (i.e. null),
             //   create one from the segment files.
@@ -116,8 +122,7 @@ public class UnionSegments extends GATKTool {
             // TODO: Capture sample names in the comments if possible.
             // TODO:  Allow choice in output names of interval headers.
             final VersatileAnnotatedRegionParser writer = new VersatileAnnotatedRegionParser();
-            writer.writeAnnotatedRegionsAsTsv(finalList, outputFile, Collections.emptyList(),
-                    "contig", "start", "end");
+            writer.writeAnnotatedRegionsAsTsv(finalList, outputFile, Collections.emptyList());
 
         } catch (final IOException ioe) {
             throw new UserException.BadInput("Could not parse input file", ioe);

@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class UnionSegmentsIntegrationTest extends CommandLineProgramTest {
+public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/copynumber/utils/");
     public static final String SEG1 = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg1.tsv";
     public static final String SEG_GT = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg_fake_gt.tsv";
@@ -37,7 +37,7 @@ public class UnionSegmentsIntegrationTest extends CommandLineProgramTest {
         arguments.add(SEG1_DIFFERENT_HEADERS);
 
         Utils.stream(columnSet.iterator()).forEach(s -> {
-            arguments.add("-" + UnionSegments.COLUMNS_OF_INTEREST_SHORT_NAME);
+            arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
             arguments.add(s);
         });
 
@@ -64,9 +64,9 @@ public class UnionSegmentsIntegrationTest extends CommandLineProgramTest {
         arguments.add(SEG1);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG1);
-        arguments.add("-" + UnionSegments.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("MEAN_LOG2_COPY_RATIO");
-        arguments.add("-" + UnionSegments.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("CALL");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
@@ -74,8 +74,7 @@ public class UnionSegmentsIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
 
-        final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
-        final List<SimpleAnnotatedGenomicRegion> regions = parser.readAnnotatedRegions(outputFile, Sets.newHashSet("MEAN_LOG2_COPY_RATIO_1", "CALL_1", "MEAN_LOG2_COPY_RATIO_2", "CALL_2"));
+        final List<SimpleAnnotatedGenomicRegion> regions = VersatileAnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet("MEAN_LOG2_COPY_RATIO_1", "CALL_1", "MEAN_LOG2_COPY_RATIO_2", "CALL_2"));
 
         final Set<String> gtColumnSet = Sets.newHashSet("MEAN_LOG2_COPY_RATIO_1", "CALL_1", "MEAN_LOG2_COPY_RATIO_2", "CALL_2");
         Assert.assertEquals(regions.size(), 4);
@@ -94,21 +93,20 @@ public class UnionSegmentsIntegrationTest extends CommandLineProgramTest {
         arguments.add(SEG1_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG_GT);
-        arguments.add("-" + UnionSegments.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Mean");
-        arguments.add("-" + UnionSegments.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Call");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
         runCommandLine(arguments);
 
         Assert.assertTrue(outputFile.exists());
-        final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
         final String SEGMENT_CALL_1 = "Segment_Call_1";
         final String SEGMENT_MEAN_1 = "Segment_Mean_1";
         final String SEGMENT_MEAN_2 = "Segment_Mean_2";
         final String SEGMENT_CALL_2 = "Segment_Call_2";
-        final List<SimpleAnnotatedGenomicRegion> regions = parser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
+        final List<SimpleAnnotatedGenomicRegion> regions = VersatileAnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
         Assert.assertEquals(regions.size(), 13);
         Assert.assertTrue(regions.stream().allMatch(r -> r.getAnnotations().size() == 4));
         assertUnionedSegFiles(SEGMENT_CALL_1, SEGMENT_MEAN_1, SEGMENT_MEAN_2, SEGMENT_CALL_2, regions);
@@ -158,13 +156,13 @@ public class UnionSegmentsIntegrationTest extends CommandLineProgramTest {
         arguments.add(SEG1_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG_GT);
-        arguments.add("-" + UnionSegments.LABELS_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.LABELS_SHORT_NAME);
         arguments.add(TEST);
-        arguments.add("-" + UnionSegments.LABELS_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.LABELS_SHORT_NAME);
         arguments.add(GT);
-        arguments.add("-" + UnionSegments.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Mean");
-        arguments.add("-" + UnionSegments.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Call");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
@@ -172,12 +170,11 @@ public class UnionSegmentsIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
 
-        final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
         final String SEGMENT_CALL_1 = "Segment_Call_" + TEST;
         final String SEGMENT_MEAN_1 = "Segment_Mean_" + TEST;
         final String SEGMENT_MEAN_2 = "Segment_Mean_" + GT;
         final String SEGMENT_CALL_2 = "Segment_Call_" + GT;
-        final List<SimpleAnnotatedGenomicRegion> regions = parser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
+        final List<SimpleAnnotatedGenomicRegion> regions = VersatileAnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
         Assert.assertEquals(regions.size(), 13);
         Assert.assertTrue(regions.stream().allMatch(r -> r.getAnnotations().size() == 4));
         assertUnionedSegFiles(SEGMENT_CALL_1, SEGMENT_MEAN_1, SEGMENT_MEAN_2, SEGMENT_CALL_2, regions);
