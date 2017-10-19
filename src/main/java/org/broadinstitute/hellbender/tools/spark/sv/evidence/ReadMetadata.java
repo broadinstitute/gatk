@@ -441,7 +441,7 @@ public class ReadMetadata {
             }
             GATKRead mappedRead = mappedReadItr.next();
             firstContig = mappedRead.getContig();
-            firstLocation = mappedRead.getUnclippedStart();
+            firstLocation = mappedRead.getStart();
             while ( true ) {
                 final String libraryName = readGroupToLibraryMap.get(mappedRead.getReadGroup());
                 final boolean isTestable = filter.isTemplateLenTestable(mappedRead);
@@ -453,7 +453,7 @@ public class ReadMetadata {
             }
 
             lastContig = mappedRead.getContig();
-            lastLocation = mappedRead.getUnclippedEnd() + 1;
+            lastLocation = mappedRead.getEnd() + 1;
         }
 
         private PartitionStatistics( final Kryo kryo, final Input input ) {
