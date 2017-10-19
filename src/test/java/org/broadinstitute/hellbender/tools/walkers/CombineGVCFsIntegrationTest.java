@@ -38,11 +38,6 @@ import java.util.stream.Collectors;
 public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
 
-    private static String ANNOTATOR_TEST_RESOURCES = getTestDataDir() + "/walkers/annotator/";
-
-    private final File NA12878_Alllele_Specific = new File(ANNOTATOR_TEST_RESOURCES + "alleleSpecific/NA12878.AS.chr20snippet.g.vcf");
-    private final File NA12892_Alllele_Specific = new File(ANNOTATOR_TEST_RESOURCES + "alleleSpecific/NA12892.AS.chr20snippet.g.vcf");
-
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
         Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists:\n"
                 + actual.stream().map(Object::toString).collect(Collectors.joining("\n","actual:\n","\n"))
@@ -76,9 +71,9 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 // Testing mismatched reference bases
                 {new File[]{getTestFile("combine-gvcf-wrong-ref-input1.vcf"),getTestFile("combine-gvcf-wrong-ref-input2.vcf"),}, getTestFile("testWrongReferenceBaseBugFix.vcf"), Arrays.asList("-A", "ClippingRankSumTest"), b37_reference_20_21},
                 //Testing allele-specific annotations
-                {new File[]{NA12878_Alllele_Specific, NA12892_Alllele_Specific}, getTestFile("testAlleleSpecificAnnotations.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
+                {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotations.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
                 //Testing allele-specific annotations missing AS_Standard Group
-                {new File[]{NA12878_Alllele_Specific, NA12892_Alllele_Specific}, getTestFile("testAlleleSpecificAnnotationsNoGroup.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},};
+                {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotationsNoGroup.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},};
     }
 
 
