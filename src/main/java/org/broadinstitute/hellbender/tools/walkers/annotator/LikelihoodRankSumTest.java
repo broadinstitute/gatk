@@ -45,6 +45,7 @@ public final class LikelihoodRankSumTest extends RankSumTest {
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
-        throw new IllegalStateException("This method should never have been called as getElementForRead(read,refloc,mostLikelyAllele) was overriden");
+        //throw new IllegalStateException("This method should never have been called as getElementForRead(read,refloc,mostLikelyAllele) was overriden");
+        return OptionalDouble.empty();
     }
 }

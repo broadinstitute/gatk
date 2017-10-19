@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -56,6 +57,43 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         // make sure that there's a meaningful relationship between the alleles in the likelihoods and our VariantContext
         Utils.validateArg(likelihoods.alleles().containsAll(alleles), () -> "VC alleles " + alleles + " not a  subset of ReadLikelihoods alleles " + likelihoods.alleles());
 
+        int[] counts;
+        if (likelihoods.hasFilledLikelihoods()) {
+            counts = annotateWithLikelihoods(vc, g, alleles, likelihoods);
+        } else if (likelihoods.readCount()==0) {
+            return;
+        } else if (vc.isSNP()) {
+            counts = annotateWithPileup(vc, likelihoods.getStratifiedPileups(vc).get(g.getSampleName()));
+        } else {
+            counts = new int[vc.getNAlleles()];
+        }
+
+        gb.AD(counts);
+    }
+
+    private int[] annotateWithPileup(final VariantContext vc, List<PileupElement> pileupElements) {
+
+        final HashMap<Byte, Integer> alleleCounts = new HashMap<>();
+        for ( final Allele allele : vc.getAlleles() ) {
+            alleleCounts.put(allele.getBases()[0], 0);
+        }
+        for ( final PileupElement p : pileupElements) {
+            if ( alleleCounts.containsKey(p.getBase()) ) {
+                alleleCounts.put(p.getBase(), alleleCounts.get(p.getBase()) + 1);
+            }
+        }
+
+        // we need to add counts in the correct order
+        final int[] counts = new int[alleleCounts.size()];
+        counts[0] = alleleCounts.get(vc.getReference().getBases()[0]);
+        for (int i = 0; i < vc.getAlternateAlleles().size(); i++) {
+            counts[i + 1] = alleleCounts.get(vc.getAlternateAllele(i).getBases()[0]);
+        }
+        return counts;
+    }
+
+    private int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, ReadLikelihoods<Allele> likelihoods) {
+
         final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {
             alleleCounts.put(allele, 0);
@@ -72,7 +110,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
             counts[i + 1] = alleleCounts.get(vc.getAlternateAllele(i));
         }
 
-        gb.AD(counts);
+        return counts;
     }
 
     @Override

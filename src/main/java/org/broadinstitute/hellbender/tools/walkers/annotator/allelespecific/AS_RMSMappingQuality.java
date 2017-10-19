@@ -4,18 +4,15 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
@@ -49,7 +46,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
 
     private final String printFormat = "%.2f";
 
-    private static final Logger logger = Logger.getLogger(AS_RMSMappingQuality.class);
+    private static final OneShotLogger logger = new OneShotLogger(AS_RMSMappingQuality.class);
     public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String PRINT_DELIM = "|";
 
@@ -58,25 +55,50 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
-        return annotateRawData(ref, vc, likelihoods);
+        Utils.nonNull(vc);
+        if ( likelihoods == null) {
+            return Collections.emptyMap();
+        }
+        final Map<String, Object> annotations = new HashMap<>();
+        final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
+        getRMSDataFromLikelihoods(likelihoods, myData);
+        final String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
+        annotations.put(getKeyNames().get(0), annotationString);
+        return annotations;
     }
+
 
     @Override
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
                                                final ReadLikelihoods<Allele> likelihoods ) {
         Utils.nonNull(vc);
-        if ( likelihoods == null) {
+        if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
             return Collections.emptyMap();
         }
 
         final Map<String, Object> annotations = new LinkedHashMap<>();
         final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
-        calculateRawData(vc, likelihoods, myData);
+        getRMSDataFromLikelihoods(likelihoods, myData);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
         annotations.put(getRawKeyName(), annotationString);
         return annotations;
     }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
+    public void calculateRawData(final VariantContext vc,
+                                 final ReadLikelihoods<Allele> likelihoods,
+                                 final ReducibleAnnotationData myData){
+        //For the raw data here, we're only keeping track of the sum of the squares of our values
+        //When we go to reduce, we'll use the AD info to get the number of reads
+
+        //must use likelihoods for allele-specific annotations
+        if (likelihoods == null) {
+            return;
+        }
+        getRMSDataFromLikelihoods(likelihoods, myData);
+    }
+
 
     /**
      * For AS_RMSMappingQuality annotations, the annotations will simply consist of a list of the total value for
@@ -152,19 +174,6 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         return annotations;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
-    public void calculateRawData(final VariantContext vc,
-                                 final ReadLikelihoods<Allele> likelihoods,
-                                 final ReducibleAnnotationData myData){
-        //For the raw data here, we're only keeping track of the sum of the squares of our values
-        //When we go to reduce, we'll use the AD info to get the number of reads
-
-        //must use likelihoods for allele-specific annotations
-        if (likelihoods == null) {
-            return;
-        }
-        getRMSDataFromLikelihoods(likelihoods, myData);
-    }
 
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY); }

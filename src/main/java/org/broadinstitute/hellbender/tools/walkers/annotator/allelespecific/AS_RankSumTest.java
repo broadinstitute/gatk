@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.log4j.Logger;
@@ -9,6 +11,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.utils.CompressedDataList;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 
 import java.util.*;
@@ -27,7 +30,40 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
-        return annotateRawData(ref, vc, likelihoods);
+        Utils.nonNull(vc, "vc is null");
+
+        final GenotypesContext genotypes = vc.getGenotypes();
+        if (genotypes == null || genotypes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        final List<Double> refQuals = new ArrayList<>();
+        final List<Double> altQuals = new ArrayList<>();
+
+        final int refLoc = vc.getStart();
+
+        if( likelihoods != null) {
+            // Default to using the likelihoods to calculate the rank sum
+            if (likelihoods.hasFilledLikelihoods()) {
+                fillQualsFromLiklihood(vc, likelihoods, refQuals, altQuals, refLoc);
+            }
+        }
+
+        if ( refQuals.isEmpty() && altQuals.isEmpty() ) {
+            return Collections.emptyMap();
+        }
+
+        final MannWhitneyU mannWhitneyU = new MannWhitneyU();
+
+        // we are testing that set1 (the alt bases) have lower quality scores than set2 (the ref bases)
+        final MannWhitneyU.Result result = mannWhitneyU.test(Doubles.toArray(altQuals), Doubles.toArray(refQuals), MannWhitneyU.TestType.FIRST_DOMINATES);
+        final double zScore = result.getZ();
+
+        if (Double.isNaN(zScore)) {
+            return Collections.emptyMap();
+        } else {
+            return Collections.singletonMap(getKeyNames().get(0), String.format("%.3f", zScore));
+        }
     }
 
     /**
@@ -45,7 +81,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
                                                final ReadLikelihoods<Allele> likelihoods ) {
-        if ( likelihoods == null) {
+        if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
             return Collections.emptyMap();
         }
 
@@ -112,7 +148,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
     // Generates as CompressedDataList over integer values over each read
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
-    public void calculateRawData(VariantContext vc, final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData myData) {
+    private void calculateRawData(VariantContext vc, final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData myData) {
         if( vc.getGenotypes().getSampleNames().size() != 1) {
             throw new IllegalStateException("Calculating raw data for allele-specific rank sums requires variant context input with exactly one sample, as in a gVCF.");
         }

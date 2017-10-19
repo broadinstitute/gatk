@@ -85,8 +85,11 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
                         ADrestrictedDepth += totalADdepth;
                     }
                     depth += totalADdepth;
+                    continue;
                 }
-            } else if (likelihoods != null) {
+            }
+
+            if (likelihoods != null) {
                 depth += likelihoods.sampleReadCount(likelihoods.indexOfSample(genotype.getSampleName()));
             } else if ( genotype.hasDP() ) {
                 depth += genotype.getDP();

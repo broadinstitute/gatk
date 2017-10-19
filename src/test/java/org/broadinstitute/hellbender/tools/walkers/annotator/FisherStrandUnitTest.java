@@ -198,9 +198,7 @@ public final class FisherStrandUnitTest {
 
     @Test
     public void testUsingLikelihoods_Raw() {
-        final AS_StrandBiasTest ann = new AS_FisherStrand();
-        final String key = GATKVCFConstants.AS_SB_TABLE_KEY;
-
+        final AS_FisherStrand ann = new AS_FisherStrand();
         final int[][] table = {{4, 0},  // ref: 4 reads fwd, 0 reads back
                 {2, 2}}; // alt: two reads in each direction
 
@@ -214,13 +212,14 @@ public final class FisherStrandUnitTest {
         final Map<String, Object> annotatedMapRaw = ann.annotateRawData(null, vc, likelihoods);
         final Map<String, Object> annotatedMapNonRaw = ann.annotate(null, vc, likelihoods);
         Assert.assertNotNull(annotatedMapRaw, vc.toString());
-        final String actualStringRaw = (String) annotatedMapRaw.get(key);
+        final String actualStringRaw = (String) annotatedMapRaw.get(GATKVCFConstants.AS_SB_TABLE_KEY);
         Assert.assertNotNull(annotatedMapNonRaw, vc.toString());
-        final String actualStringNonRaw = (String) annotatedMapNonRaw.get(key);
+        final String actualStringNonRaw = (String) annotatedMapNonRaw.get(ann.getKeyNames().get(0));
 
-        final String expectedString = AS_StrandBiasTest.rawValueAsString(table);
-        Assert.assertEquals(actualStringRaw, expectedString);
-        Assert.assertEquals(actualStringNonRaw, expectedString);
+        final String expectedRawString = AS_StrandBiasTest.rawValueAsString(table);
+        final String expectedFullStringString = "3.680";
+        Assert.assertEquals(actualStringRaw, expectedRawString);
+        Assert.assertEquals(actualStringNonRaw, expectedFullStringString);
     }
 
     @Test

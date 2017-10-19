@@ -96,10 +96,10 @@ public final class RMSMappingQualityUnitTest {
         final ReferenceContext referenceContext= null;
         final Map<String, Object> annotate = new RMSMappingQuality().annotate(referenceContext, vc, likelihoods);
         Assert.assertEquals(annotate.size(), 1, "size");
-        Assert.assertEquals(annotate.keySet(), Collections.singleton(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY), "annots");
+        Assert.assertEquals(annotate.keySet(), Collections.singleton(VCFConstants.RMS_MAPPING_QUALITY_KEY), "annots");
         final double rms= MathUtils.sumOfSquares(MQsListOK); //only those are MQ0
-        Assert.assertNull(annotate.get(VCFConstants.RMS_MAPPING_QUALITY_KEY));
-        Assert.assertEquals(annotate.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY), String.format("%.2f", rms));
+        Assert.assertNull(annotate.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
+        Assert.assertEquals(annotate.get(VCFConstants.RMS_MAPPING_QUALITY_KEY), String.format("%.2f", Math.sqrt(rms/(reads.size()-1))));
     }
 
     @Test
@@ -186,7 +186,7 @@ public final class RMSMappingQualityUnitTest {
 
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
-        final Map<String, Object> annotate = new AS_RMSMappingQuality().annotate(referenceContext, vc, likelihoods);
+        final Map<String, Object> annotate = new AS_RMSMappingQuality().annotateRawData(referenceContext, vc, likelihoods);
         final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
         Assert.assertEquals(split.length, 2);
         Assert.assertEquals(split[0], String.format("%.2f", 0.0));

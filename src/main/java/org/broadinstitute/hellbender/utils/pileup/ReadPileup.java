@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
@@ -57,7 +58,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Create a new pileup without any aligned reads
      */
     public ReadPileup(final Locatable loc) {
-        this(loc, Collections.emptyList());
+        this(loc, new ArrayList<>());
     }
 
     /**
@@ -106,6 +107,17 @@ public class ReadPileup implements Iterable<PileupElement> {
      */
     private static List<PileupElement> readsOffsetsToPileup(final List<GATKRead> reads, final int offset) {
         return reads.stream().map(r -> PileupElement.createPileupForReadAndOffset(r, offset)).collect(Collectors.toList());
+    }
+
+    /**
+     * Helper routine for converting reads and a single offset to a PileupElement list.
+     */
+    public static List<PileupElement> locToReadsPileup(final List<GATKRead> reads, final Locatable loc) {
+        Utils.nonNull(reads, "Illegal null read list");
+        return reads.stream().filter(r -> !r.isUnmapped())
+                .filter(r -> r.getStart()<=loc.getStart() && r.getEnd()>=loc.getEnd() )
+                .map(r -> PileupElement.createPileupForReadAndOffset(r, loc))
+                .collect(Collectors.toList());
     }
 
     /**

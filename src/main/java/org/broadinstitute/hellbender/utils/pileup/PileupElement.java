@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils.pileup;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -89,6 +91,31 @@ public final class PileupElement {
         throw new IllegalStateException("Tried to create a pileup for read " + read + " with offset " + offset +
                 " but we never saw such an offset in the alignment state machine");
     }
+
+    /**
+     * Create a pileup element for read at offset.
+     *
+     * offset must correspond to a valid read offset given the read's cigar, or an IllegalStateException will be throw
+     *
+     * @param read a read
+     * @param loc A one base location you want to generate your genome
+     * @return a valid PileupElement with read and at offset
+     */
+    public static PileupElement createPileupForReadAndOffset(final GATKRead read, final Locatable loc) {
+        Utils.nonNull(read, "read is null");
+
+        final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
+
+        while ( stateMachine.stepForwardOnGenome() != null ) {
+            if ( stateMachine.getGenomePosition() == loc.getStart()) {
+                return stateMachine.makePileupElement();
+            }
+        }
+
+        throw new IllegalStateException("Tried to create a pileup for read " + read + " with genome loc " + loc +
+                " but we never saw such an offset in the alignment state machine");
+    }
+
 
     /**
      * Is this element a deletion w.r.t. the reference genome?

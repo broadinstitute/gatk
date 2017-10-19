@@ -6,8 +6,10 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -41,12 +43,21 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         }
 
         if (likelihoods != null) {
-            return calculateAnnotationFromLikelihoods(likelihoods, vc);
+            if (vc.isSNP() && !likelihoods.hasFilledLikelihoods() && (likelihoods.readCount() != 0)) {
+                return calculateAnnotationFromStratifiedContexts(likelihoods.getStratifiedPileups(vc), vc);
+            }
+
+            if (likelihoods.hasFilledLikelihoods()) {
+                return calculateAnnotationFromLikelihoods(likelihoods, vc);
+            }
         }
         return Collections.emptyMap();
     }
 
     protected abstract Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes);
+
+    protected abstract Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                                                     final VariantContext vc);
 
     protected abstract Map<String, Object> calculateAnnotationFromLikelihoods(final ReadLikelihoods<Allele> likelihoods,
                                                                               final VariantContext vc);
@@ -222,4 +233,55 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         table[1][1] = array[3];
         return table;
     }
+
+    /**
+     Allocate and fill a 2x2 strand contingency table.  In the end, it'll look something like this:
+     *             fw      rc
+     *   allele1   #       #
+     *   allele2   #       #
+     * @return a 2x2 contingency table over SNP sites
+     */
+    protected static int[][] getPileupContingencyTable(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                       final Allele ref,
+                                                       final List<Allele> allAlts,
+                                                       final int minQScoreToConsider,
+                                                       final int minCount ) {
+        int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
+
+        for (final Map.Entry<String, List<PileupElement>> sample : stratifiedContexts.entrySet() ) {
+            final int[] myTable = new int[ARRAY_SIZE];
+            for (final PileupElement p : sample.getValue()) {
+
+                if ( ! isUsableBase(p) ) // ignore deletions and bad MQ
+                    continue;
+
+                if ( p.getQual() < minQScoreToConsider || p.getMappingQual() < minQScoreToConsider )
+                    continue;
+
+                updateTable(myTable, Allele.create(p.getBase(), false), p.getRead(), ref, allAlts);
+            }
+
+            if ( passesMinimumThreshold( myTable, minCount ) ) {
+                copyToMainTable(myTable, table);
+            }
+
+        }
+
+        return table;
+    }
+
+    /**
+     * Can the base in this pileup element be used in comparative tests?
+     *
+     * @param p the pileup element to consider
+     *
+     * @return true if this base is part of a meaningful read for comparison, false otherwise
+     */
+    private static boolean isUsableBase(final PileupElement p) {
+        return !( p.isDeletion() ||
+                p.getMappingQual() == 0 ||
+                p.getMappingQual() == QualityUtils.MAPPING_QUALITY_UNAVAILABLE ||
+                ((int) p.getQual()) < QualityUtils.MIN_USABLE_Q_SCORE);
+    }
+
 }
