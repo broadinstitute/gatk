@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -13,18 +12,16 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedRegionParser;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.VersatileAnnotatedRegionParser;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @CommandLineProgramProperties(
         oneLineSummary = "(EXPERIMENTAL) Do a breakpoint union of two segment files and annotate with chosen columns from each file.",
@@ -55,7 +52,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
             minElements = 2,
             optional = true
     )
-    private List<String> segmentFileLabels = new ArrayList<>();
+    private List<String> segmentFileLabels = Lists.newArrayList("1", "2");
 
     @Argument(
             doc = "List of columns in either segment file that should be reported in the output file.  If the column header exists in both, it will have the appropriate label appended as a suffix.",
@@ -73,60 +70,38 @@ public class UnionSegmentBreakpoints extends GATKTool {
 
     @Override
     public void traverse() {
-        try {
 
-            final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
-            final List<SimpleAnnotatedGenomicRegion> segments1 = parser.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);
-            final List<SimpleAnnotatedGenomicRegion> segments2 = parser.readAnnotatedRegions(segmentFiles.get(1), columnsOfInterest);
-            final List<List<SimpleAnnotatedGenomicRegion>> inputSegmentsLists = Arrays.asList(segments1,segments2);
+        final List<SimpleAnnotatedGenomicRegion> segments1 = AnnotatedRegionParser.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);
+        final List<SimpleAnnotatedGenomicRegion> segments2 = AnnotatedRegionParser.readAnnotatedRegions(segmentFiles.get(1), columnsOfInterest);
 
-            if (segmentFileLabels.size() == 0) {
-                segmentFileLabels = IntStream.range(0, inputSegmentsLists.size()).mapToObj(i -> String.valueOf(i+1)).collect(Collectors.toList());
-            }
-
-            // Check to see if we should warn the user that one or more columns of interest were not seen in any input file.
-            final Set<String> allSeenAnnotations = Sets.union(segments1.get(0).getAnnotations().keySet(), segments2.get(0).getAnnotations().keySet());
-            final Set<String> unusedColumnsOfInterest = Sets.difference(columnsOfInterest, allSeenAnnotations);
-            if (unusedColumnsOfInterest.size() > 0) {
-                final List<String> missingColumns = new ArrayList<>(unusedColumnsOfInterest);
-                logger.warn("Some columns of interest specified by the user were not seen in any input files: " + StringUtils.join(missingColumns, ", "));
-            }
-
-            // Create a map of input to output headers.  I.e. the annotation in the segment1 to the output that should be written in the final file.
-            //  This assumes that the keys in each entry of the list is the same.
-            // TODO: If we want to support more than two segment files, this is the only bit that requires thinking.  Once this is solved, then this logic can go into a utility class.
-            final Set<String> intersectingAnnotations = Sets.intersection(segments1.get(0).getAnnotations().keySet(), segments2.get(0).getAnnotations().keySet());
-
-            // Create the obvious mappings that are identity then tack on new annotations for conflicts.
-            // These are mappings that take the header name from the segment files and map to an output header to avoid conflicts.
-            final Map<String, String> input1ToOutputHeaderMap = Utils.stream(segments1.get(0).getAnnotations().keySet().iterator()).filter(a -> !intersectingAnnotations.contains(a))
-                    .collect(Collectors.toMap(Function.identity(), Function.identity()));
-            Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(0)));
-
-            final Map<String, String> input2ToOutputHeaderMap = Utils.stream(segments2.get(0).getAnnotations().keySet().iterator()).filter(a -> !intersectingAnnotations.contains(a))
-                    .collect(Collectors.toMap(Function.identity(), Function.identity()));
-            Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
-
-            // Use the best available sequence dictionary, but if that is not available (i.e. null),
-            //   create one from the segment files.
-
-            final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary() != null ?
-                    getBestAvailableSequenceDictionary() :
-                    createSAMSequenceDictionaryFromIntervals(inputSegmentsLists.stream()
-                            .flatMap(List::stream)
-                            .collect(Collectors.toList()));
-
-            final List<SimpleAnnotatedGenomicRegion> finalList = annotateUnionedIntervals(segments1, segments2,
-                    sequenceDictionary, Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap));
-
-            // TODO: Capture sample names in the comments if possible.
-            // TODO:  Allow choice in output names of interval headers.
-            final VersatileAnnotatedRegionParser writer = new VersatileAnnotatedRegionParser();
-            writer.writeAnnotatedRegionsAsTsv(finalList, outputFile, Collections.emptyList());
-
-        } catch (final IOException ioe) {
-            throw new UserException.BadInput("Could not parse input file", ioe);
+        // Check to see if we should warn the user that one or more columns of interest were not seen in any input file.
+        final Set<String> allSeenAnnotations = Sets.union(segments1.get(0).getAnnotations().keySet(), segments2.get(0).getAnnotations().keySet());
+        final Set<String> unusedColumnsOfInterest = Sets.difference(columnsOfInterest, allSeenAnnotations);
+        if (unusedColumnsOfInterest.size() > 0) {
+            final List<String> missingColumns = new ArrayList<>(unusedColumnsOfInterest);
+            throw new UserException.BadInput("Some columns of interest specified by the user were not seen in any input files: " + StringUtils.join(missingColumns, ", "));
         }
+
+        // Create a map of input to output headers.  I.e. the annotation in the segment1 to the output that should be written in the final file.
+        //  This assumes that the keys in each entry of the list is the same.
+        // TODO: If we want to support more than two segment files, this is the only bit that requires thinking.  Once this is solved, then this logic can go into a utility class.
+        final Set<String> intersectingAnnotations = Sets.intersection(segments1.get(0).getAnnotations().keySet(), segments2.get(0).getAnnotations().keySet());
+
+        // Create the obvious mappings that are identity then tack on new annotations for conflicts.
+        // These are mappings that take the header name from the segment files and map to an output header to avoid conflicts.
+        final Map<String, String> input1ToOutputHeaderMap = segments1.get(0).getAnnotations().keySet().stream().filter(a -> !intersectingAnnotations.contains(a))
+                .collect(Collectors.toMap(Function.identity(), Function.identity()));
+        Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(0)));
+
+        final Map<String, String> input2ToOutputHeaderMap = segments2.get(0).getAnnotations().keySet().stream().filter(a -> !intersectingAnnotations.contains(a))
+                .collect(Collectors.toMap(Function.identity(), Function.identity()));
+        Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
+
+        final List<SimpleAnnotatedGenomicRegion> finalList = annotateUnionedIntervals(segments1, segments2,
+                Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap));
+
+        // TODO: Capture sample names in the comments if possible.
+        AnnotatedRegionParser.writeAnnotatedRegionsAsTsv(finalList, outputFile, Collections.emptyList());
     }
 
     /**
@@ -135,7 +110,6 @@ public class UnionSegmentBreakpoints extends GATKTool {
      *
      * @param segments1 a list of simple annotated regions
      * @param segments2 a list of simple annotated regions
-     * @param dictionary a sequence dictionary
      * @param inputToOutputHeaderMaps a list of maps (of length 2) for segments1 and segments2 respectively.
      *                                Each maps the annotation name as it appears in the segment list to the output annotation name it should get.
      *                                This is required typically to avoid conflicts in the output annotation names.
@@ -144,7 +118,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
      *  in inputToOutputHeaderMaps.
      */
     private List<SimpleAnnotatedGenomicRegion> annotateUnionedIntervals(final List<SimpleAnnotatedGenomicRegion> segments1, final List<SimpleAnnotatedGenomicRegion> segments2,
-                                                                        final SAMSequenceDictionary dictionary, final List<Map<String, String>> inputToOutputHeaderMaps) {
+                                                                        final List<Map<String, String>> inputToOutputHeaderMaps) {
 
         final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Arrays.asList(segments1, segments2);
 
@@ -158,7 +132,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
 
         // Create a list of maps where each entry corresponds to union'ed intervals to the regions in segmentList_i
         final List<Map<Locatable, List<SimpleAnnotatedGenomicRegion>>> unionIntervalsToSegmentsMaps = segmentLists.stream()
-                .map(segs -> IntervalUtils.createOverlapMap(unionIntervals, segs, dictionary)).collect(Collectors.toList());
+                .map(segs -> IntervalUtils.createOverlapMap(unionIntervals, segs)).collect(Collectors.toList());
 
         final List<SimpleAnnotatedGenomicRegion> result = new ArrayList<>();
 
@@ -184,17 +158,5 @@ public class UnionSegmentBreakpoints extends GATKTool {
             result.add(new SimpleAnnotatedGenomicRegion(new SimpleInterval(interval), intervalAnnotationMap));
         }
         return result;
-    }
-
-    private SAMSequenceDictionary createSAMSequenceDictionaryFromIntervals(final List<Locatable> locatables) {
-        final Map<String, Integer> contigsToLengthMap = Utils.stream(locatables.stream().map(Locatable::getContig).collect(Collectors.toSet()).iterator())
-                .collect(Collectors.toMap(Function.identity(), l -> 0));
-        locatables.forEach(l -> {
-            if (contigsToLengthMap.get(l.getContig()) < l.getEnd())
-                contigsToLengthMap.put(l.getContig(), l.getEnd());
-        });
-
-        return new SAMSequenceDictionary(contigsToLengthMap.entrySet().stream()
-                .map(e -> new SAMSequenceRecord(e.getKey(), e.getValue())).collect(Collectors.toList()));
     }
 }

@@ -12,6 +12,7 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.SimpleFeature;
+import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -23,6 +24,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,6 +36,7 @@ import java.util.stream.Stream;
 public final class IntervalUtilsUnitTest extends BaseTest {
     public static final String INTERVAL_TEST_DATA = publicTestDir + "org/broadinstitute/hellbender/utils/interval/";
     public static final String emptyIntervals = BaseTest.publicTestDir + "empty_intervals.list";
+    public static final String FULL_HG19_DICT = BaseTest.publicTestDir + "Homo_sapiens_assembly19.dict";
     private List<GenomeLoc> hg19ReferenceLocs;
     private List<GenomeLoc> hg19exomeIntervals;
 
@@ -1564,6 +1567,21 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertEquals(outputs, gtOutput);
     }
 
+    /**
+     * Tests the sorting as well when using union intervals
+     */
+    @Test(dataProvider = "unionIntervalsTesting")
+    public void testUnionIntervalsWithShuffling(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
+
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(
+                Arrays.asList(new SAMSequenceRecord("1", 100000),
+                        new SAMSequenceRecord("2", 100000)));
+
+        final List<Locatable> outputs = IntervalUtils.unionIntervalsWithSorting(locatables1, locatables2, dictionary);
+        Assert.assertEquals(outputs.size(), gtOutput.size());
+        Assert.assertEquals(outputs, gtOutput);
+    }
+
     @DataProvider(name = "overlappingData")
     public Object [][] createOverlappingData() {
         final List<SimpleInterval> k = Lists.newArrayList(new SimpleInterval("1", 100, 500));
@@ -1625,10 +1643,8 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test(dataProvider = "overlappingData")
     public void testCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
-        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("1", 300000),
-                new SAMSequenceRecord("2", 5000)));
 
-        final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2, dictionary);
+        final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs.keySet().size(), new HashSet<>(locatables1).size());
         Assert.assertTrue(Sets.difference(outputs.keySet(), gtOutput.keySet()).size() == 0);
@@ -1636,5 +1652,49 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         for (final Map.Entry<Locatable, List<Locatable>> overlap : outputs.entrySet()) {
             Assert.assertEquals(overlap.getValue(), gtOutput.get(overlap.getKey()));
         }
+    }
+
+    @Test(dataProvider = "genomicSortingTests")
+    public void basicGenomicSortOfLocatable(final List<Locatable> testList, final List<Locatable> gtList) throws IOException {
+
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        testList.sort(new IntervalUtils.GenomicLocatableComparator(dictionary));
+        Assert.assertEquals(testList, gtList);
+    }
+
+    @DataProvider(name="genomicSortingTests")
+    public Object[][] createGenomicSortTests() {
+        final List<Locatable> list1 = Arrays.asList(
+                new SimpleInterval("2", 1500, 2000),
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 1500, 2000),
+                new SimpleInterval("10", 1500, 2000)
+        );
+        final List<Locatable> gtList1 = Arrays.asList(
+                list1.get(1), list1.get(2), list1.get(0), list1.get(3));
+
+        final List<Locatable> list2 = Arrays.asList(
+                new SimpleInterval("2", 1500, 2000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("1", 1500, 2000),
+                new SimpleInterval("10", 1500, 2000),
+                new SimpleInterval("10", 2500, 3000),
+                new SimpleInterval("X", 2500, 3000),
+                new SimpleInterval("X", 3500, 4000),
+                new SimpleInterval("MT", 3500, 4000),
+                new SimpleInterval("AL1234.123NOT_IN_DICT", 3500, 4000),
+                new SimpleInterval("GL000207.1", 3500, 4000),
+                new SimpleInterval("Y", 3500, 4000),
+                new SimpleInterval("GL1234.123NOT_IN_DICT", 3700, 4000),
+                new SimpleInterval("GL1234.123NOT_IN_DICT", 3500, 4000)
+        );
+        final List<Locatable> gtList2 = Arrays.asList(
+                list2.get(2), list2.get(0), list2.get(3), list2.get(4), list2.get(1), list2.get(5),
+                list2.get(6), list2.get(10), list2.get(7), list2.get(9), list2.get(8), list2.get(12), list2.get(11));
+
+        return new Object[][]{
+                {list1, gtList1},
+                {list2, gtList2}
+        };
     }
 }

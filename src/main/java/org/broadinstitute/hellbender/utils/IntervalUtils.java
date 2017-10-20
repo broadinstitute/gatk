@@ -10,6 +10,7 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.tribble.Feature;
+import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -57,6 +58,21 @@ public final class IntervalUtils {
      */
     public static final Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR =
             Comparator.comparing(Locatable::getContig, Comparator.nullsLast(String::compareTo))
+                    .thenComparingInt(Locatable::getStart)
+                    .thenComparingInt(Locatable::getEnd);
+
+    /**
+     * Please see:  https://github.com/gpanther/java-nat-sort
+     *
+     * Also called alpha numerical sorting.
+     *
+     * Ensures that sorting would be:
+     * 1,2,3,10,11,X,Y
+     *
+     * Please note that {@link Comparator::naturalOrder} does not do this.
+     */
+    public static final Comparator<Locatable> NATURAL_ORDER_COMPARATOR =
+            Comparator.comparing(Locatable::getContig, Comparator.nullsLast(CaseInsensitiveSimpleNaturalComparator.getInstance()))
                     .thenComparingInt(Locatable::getStart)
                     .thenComparingInt(Locatable::getEnd);
 
@@ -1249,6 +1265,34 @@ public final class IntervalUtils {
     }
 
     /**
+     *  Same as {@link IntervalUtils::unionIntervals}, but sorts the inputs first.  Sorted versions are kept in a new list.
+     *
+     * Sorts using natural sort.
+     *
+     * @param locatables1 See {@link IntervalUtils::unionIntervals}, but can be unsorted.
+     * @param locatables2 See {@link IntervalUtils::unionIntervals}, but can be unsorted.
+     * @param <T> See {@link IntervalUtils::unionIntervals}
+     * @return See {@link IntervalUtils::unionIntervals}.  Please note that the output will be sorted.  Never {@code null}
+     */
+    static public <T extends Locatable> List<Locatable> unionIntervalsWithSorting(final List<T> locatables1, final List<T> locatables2,
+                                                                                  final SAMSequenceDictionary dictionary) {
+
+        final GenomicLocatableComparator comparator = new GenomicLocatableComparator(dictionary);
+
+
+        final List<T> sortedLocatables1 = (locatables1 == null? null: new ArrayList<>(locatables1));
+        if (sortedLocatables1 != null) {
+            sortedLocatables1.sort(comparator);
+        }
+
+        final List<T> sortedLocatables2 = (locatables2 == null? null: new ArrayList<>(locatables2));
+        if (sortedLocatables2 != null) {
+            sortedLocatables2.sort(comparator);
+        }
+        return unionIntervals(sortedLocatables1, sortedLocatables2);
+    }
+
+    /**
      * Creates a map of which locatables (keys) overlap the other list of locatables (vals)
      *
      * Input lists are assumed sorted by interval.  These are lists solely because we need the ordering to make
@@ -1263,8 +1307,7 @@ public final class IntervalUtils {
      * @return a mapping of intervals from keys to the list of overlapping intervals in vals.  All item in keys will
      * have a key.  Never {@code null}
      */
-    public static <T extends Locatable, U extends Locatable> Map<T, List<U>> createOverlapMap(final List<T> keys, final List<U> vals,
-                                                                                        final SAMSequenceDictionary dictionary) {
+    public static <T extends Locatable, U extends Locatable> Map<T, List<U>> createOverlapMap(final List<T> keys, final List<U> vals) {
         Utils.nonNull(keys);
         Utils.nonNull(vals);
 
@@ -1305,5 +1348,61 @@ public final class IntervalUtils {
 
         return result;
     }
+
+    static class GenomicLocatableComparator implements Comparator<Locatable> {
+
+        private SAMSequenceDictionary dictionary;
+        private Comparator<Locatable> positionOnlyComparator;
+
+        public SAMSequenceDictionary getDictionary() {
+            return dictionary;
+        }
+
+        public Comparator<Locatable> getPositionOnlyComparator() {
+            return positionOnlyComparator;
+        }
+
+        public GenomicLocatableComparator(final SAMSequenceDictionary dictionary) {
+            this.dictionary = dictionary;
+            positionOnlyComparator = Comparator.comparing(Locatable::getStart)
+                    .thenComparingInt(Locatable::getEnd);
+        }
+
+        @Override
+        public int compare(Locatable o1, Locatable o2) {
+            int o1index = dictionary.getSequenceIndex(o1.getContig());
+            int o2index = dictionary.getSequenceIndex(o2.getContig());
+
+            // Make sure when neither contig is seen in the index, the locatables are put last, but sorted naturally.
+            final boolean isNeitherContigInDictionary = (o1index == -1) && (o2index == -1);
+            if (isNeitherContigInDictionary) {
+                return NATURAL_ORDER_COMPARATOR.compare(o1, o2);
+            }
+
+            // if one locatable is seen in the dictionary, but not the other....
+            if (o1index == -1) return 1;
+            if (o2index == -1) return -1;
+
+            if (o1index != o2index) {
+                return o1index - o2index;
+            } else {
+                return positionOnlyComparator.compare(o1, o2);
+            }
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof GenomicLocatableComparator)) return false;
+
+            final GenomicLocatableComparator o = (GenomicLocatableComparator) obj;
+            if (!(dictionary.isSameDictionary(o.getDictionary()) &&
+              (positionOnlyComparator.equals(o.getPositionOnlyComparator()))))
+                return false;
+            return true;
+        }
+    }
 }
+
+
 

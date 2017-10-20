@@ -5,8 +5,8 @@ import com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedRegionParser;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.VersatileAnnotatedRegionParser;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
@@ -47,8 +47,7 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
 
         Assert.assertTrue(outputFile.exists());
 
-        final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
-        final List<SimpleAnnotatedGenomicRegion> regions = parser.readAnnotatedRegions(outputFile, Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", "Segment_Mean", "Segment_Call"));
+        final List<SimpleAnnotatedGenomicRegion> regions = AnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", "Segment_Mean", "Segment_Call"));
         Assert.assertEquals(regions.size(), 4);
         Assert.assertTrue(regions.stream().allMatch(r -> r.getAnnotations().size() == columnSet.size()));
         Assert.assertTrue(regions.stream().allMatch(r -> r.getAnnotations().keySet().containsAll(columnSet)));
@@ -74,7 +73,7 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
 
         Assert.assertTrue(outputFile.exists());
 
-        final List<SimpleAnnotatedGenomicRegion> regions = VersatileAnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet("MEAN_LOG2_COPY_RATIO_1", "CALL_1", "MEAN_LOG2_COPY_RATIO_2", "CALL_2"));
+        final List<SimpleAnnotatedGenomicRegion> regions = AnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet("MEAN_LOG2_COPY_RATIO_1", "CALL_1", "MEAN_LOG2_COPY_RATIO_2", "CALL_2"));
 
         final Set<String> gtColumnSet = Sets.newHashSet("MEAN_LOG2_COPY_RATIO_1", "CALL_1", "MEAN_LOG2_COPY_RATIO_2", "CALL_2");
         Assert.assertEquals(regions.size(), 4);
@@ -106,7 +105,7 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
         final String SEGMENT_MEAN_1 = "Segment_Mean_1";
         final String SEGMENT_MEAN_2 = "Segment_Mean_2";
         final String SEGMENT_CALL_2 = "Segment_Call_2";
-        final List<SimpleAnnotatedGenomicRegion> regions = VersatileAnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
+        final List<SimpleAnnotatedGenomicRegion> regions = AnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
         Assert.assertEquals(regions.size(), 13);
         Assert.assertTrue(regions.stream().allMatch(r -> r.getAnnotations().size() == 4));
         assertUnionedSegFiles(SEGMENT_CALL_1, SEGMENT_MEAN_1, SEGMENT_MEAN_2, SEGMENT_CALL_2, regions);
@@ -174,7 +173,7 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
         final String SEGMENT_MEAN_1 = "Segment_Mean_" + TEST;
         final String SEGMENT_MEAN_2 = "Segment_Mean_" + GT;
         final String SEGMENT_CALL_2 = "Segment_Call_" + GT;
-        final List<SimpleAnnotatedGenomicRegion> regions = VersatileAnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
+        final List<SimpleAnnotatedGenomicRegion> regions = AnnotatedRegionParser.readAnnotatedRegions(outputFile, Sets.newHashSet(SEGMENT_MEAN_1, SEGMENT_CALL_1, SEGMENT_MEAN_2, SEGMENT_CALL_2));
         Assert.assertEquals(regions.size(), 13);
         Assert.assertTrue(regions.stream().allMatch(r -> r.getAnnotations().size() == 4));
         assertUnionedSegFiles(SEGMENT_CALL_1, SEGMENT_MEAN_1, SEGMENT_MEAN_2, SEGMENT_CALL_2, regions);

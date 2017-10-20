@@ -13,12 +13,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
-public class VersatileAnnotatedRegionParserUnitTest extends BaseTest {
+public class AnnotatedRegionParserUnitTest extends BaseTest {
     private final String TEST_FILE = publicTestDir + "org/broadinstitute/hellbender/tools/coveragemodel/learning_combined_copy_number.tsv";
 
     @Test
     public void basicTest() throws IOException {
-        final VersatileAnnotatedRegionParser parser = new VersatileAnnotatedRegionParser();
+        final AnnotatedRegionParser parser = new AnnotatedRegionParser();
         final Set<String> headersOfInterest = Sets.newHashSet(Lists.newArrayList("name", "learning_SAMPLE_0"));
         final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
                 parser.readAnnotatedRegions(new File(TEST_FILE), headersOfInterest);
