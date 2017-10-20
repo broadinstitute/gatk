@@ -27,12 +27,7 @@ public final class PSFilterFileLogger implements PSFilterLogger {
     public void logReadsAfterDeduplication(final JavaRDD<GATKRead> reads) { metrics.READS_AFTER_DEDUPLICATION = reads.count(); }
     public void logFinalPairedReads(final JavaRDD<GATKRead> reads) { metrics.FINAL_PAIRED_READS = reads.count(); }
 
-    public void writeFile() {
-        if (metrics.PRIMARY_READS == null || metrics.READS_AFTER_PREALIGNED_HOST_FILTER == null
-                || metrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER == null || metrics.READS_AFTER_HOST_FILTER == null
-                || metrics.READS_AFTER_DEDUPLICATION == null || metrics.FINAL_PAIRED_READS == null) {
-            throw new IllegalStateException("Cannot write metrics if primary, pre-aligned host, quality, host, duplicate, or final paired read counts are not logged");
-        }
+    public void close() {
         metrics.computeDerivedMetrics();
         metricsFile.addMetric(metrics);
         MetricsUtils.saveMetrics(metricsFile, metricsOutputPath);

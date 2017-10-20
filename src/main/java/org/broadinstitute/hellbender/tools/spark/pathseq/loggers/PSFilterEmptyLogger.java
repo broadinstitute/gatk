@@ -14,6 +14,6 @@ public final class PSFilterEmptyLogger implements PSFilterLogger {
     public void logReadsAfterHostFilter(final JavaRDD<GATKRead> reads) {}
     public void logReadsAfterDeduplication(final JavaRDD<GATKRead> reads) {}
     public void logFinalPairedReads(final JavaRDD<GATKRead> reads) {}
-    public void writeFile() {}
+    public void close() {}
 
 }

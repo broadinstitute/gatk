@@ -176,7 +176,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         if (metricsFileUri != null) {
             final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), metricsFileUri);
             scoreLogger.logReadCounts(readsFinal);
-            scoreLogger.writeFile();
+            scoreLogger.close();
         }
 
         //Write reads to BAM, if specified

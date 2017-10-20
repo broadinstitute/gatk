@@ -102,7 +102,7 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> result = filter.doFilter(reads, filterLogger);
         final JavaRDD<GATKRead> pairedReads = result._1;
         final JavaRDD<GATKRead> unpairedReads = result._2;
-        filterLogger.writeFile();
+        filterLogger.close();
 
         if (!pairedReads.isEmpty()) {
             header.setSortOrder(SAMFileHeader.SortOrder.queryname);

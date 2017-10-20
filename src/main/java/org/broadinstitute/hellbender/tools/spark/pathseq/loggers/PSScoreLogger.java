@@ -9,6 +9,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 public interface PSScoreLogger {
 
     void logReadCounts(final JavaRDD<GATKRead> reads);
-    void writeFile();
+    void close();
 
 }

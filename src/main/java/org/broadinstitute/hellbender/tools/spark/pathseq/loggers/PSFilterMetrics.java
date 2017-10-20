@@ -66,6 +66,11 @@ public final class PSFilterMetrics extends MetricBase {
      * Computes number of reads filtered at each step and total final reads.
      */
     public void computeDerivedMetrics() {
+        if (PRIMARY_READS == null || READS_AFTER_PREALIGNED_HOST_FILTER == null
+                || READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER == null || READS_AFTER_HOST_FILTER == null
+                || READS_AFTER_DEDUPLICATION == null || FINAL_PAIRED_READS == null) {
+            throw new IllegalStateException("Cannot compute metrics if primary, pre-aligned host, quality, host, duplicate, or final paired read counts are not initialized");
+        }
         FINAL_TOTAL_READS = READS_AFTER_DEDUPLICATION;
         FINAL_UNPAIRED_READS = FINAL_TOTAL_READS - FINAL_PAIRED_READS;
         LOW_QUALITY_OR_LOW_COMPLEXITY_READS_FILTERED = READS_AFTER_PREALIGNED_HOST_FILTER - READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER;

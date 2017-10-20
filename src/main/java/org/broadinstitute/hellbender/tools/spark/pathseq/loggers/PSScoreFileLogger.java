@@ -29,10 +29,7 @@ public final class PSScoreFileLogger implements PSScoreLogger {
         metrics.MAPPED_READS = numMappedReads;
     }
 
-    public void writeFile() {
-        if (metrics.MAPPED_READS == null || metrics.UNMAPPED_READS == null) {
-            throw new IllegalStateException("Cannot write metrics if mapped or unmapped read counts are not logged");
-        }
+    public void close() {
         metricsFile.addMetric(metrics);
         MetricsUtils.saveMetrics(metricsFile, metricsOutputPath);
     }

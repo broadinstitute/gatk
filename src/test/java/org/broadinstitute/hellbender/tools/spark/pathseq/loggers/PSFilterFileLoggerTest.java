@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.pathseq.loggers;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -36,27 +35,9 @@ public class PSFilterFileLoggerTest  extends BaseTest {
         filterLogger.logReadsAfterHostFilter(ctx.parallelize(Collections.nCopies(numReadsAfterHost, read)));
         filterLogger.logReadsAfterDeduplication(ctx.parallelize(Collections.nCopies(numReadsAfterDuplicate, read)));
         filterLogger.logFinalPairedReads(ctx.parallelize(Collections.nCopies(numFinalPaired, read)));
-        filterLogger.writeFile();
+        filterLogger.close();
 
-        final MetricsFile<PSFilterMetrics, Long> expectedMetricsFile = new MetricsFile<>();
-        final PSFilterMetrics expectedFilterMetrics = new PSFilterMetrics();
-        expectedFilterMetrics.PRIMARY_READS = (long) numPrimaryReads;
-        expectedFilterMetrics.READS_AFTER_PREALIGNED_HOST_FILTER = (long) numReadsAfterPrealign;
-        expectedFilterMetrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER = (long) numReadsAfterQuality;
-        expectedFilterMetrics.READS_AFTER_HOST_FILTER = (long) numReadsAfterHost;
-        expectedFilterMetrics.READS_AFTER_DEDUPLICATION = (long) numReadsAfterDuplicate;
-        expectedFilterMetrics.FINAL_PAIRED_READS = (long) numFinalPaired;
-
-        //Derived metrics
-        expectedFilterMetrics.FINAL_TOTAL_READS = expectedFilterMetrics.READS_AFTER_DEDUPLICATION;
-        expectedFilterMetrics.FINAL_UNPAIRED_READS = expectedFilterMetrics.FINAL_TOTAL_READS - expectedFilterMetrics.FINAL_PAIRED_READS;
-        expectedFilterMetrics.LOW_QUALITY_OR_LOW_COMPLEXITY_READS_FILTERED = expectedFilterMetrics.READS_AFTER_PREALIGNED_HOST_FILTER - expectedFilterMetrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER;
-        expectedFilterMetrics.HOST_READS_FILTERED = expectedFilterMetrics.PRIMARY_READS - expectedFilterMetrics.READS_AFTER_PREALIGNED_HOST_FILTER + expectedFilterMetrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER - expectedFilterMetrics.READS_AFTER_HOST_FILTER;
-        expectedFilterMetrics.DUPLICATE_READS_FILTERED = expectedFilterMetrics.READS_AFTER_HOST_FILTER - expectedFilterMetrics.READS_AFTER_DEDUPLICATION;
-
-        expectedMetricsFile.addMetric(expectedFilterMetrics);
-        final File expectedOutputFile = createTempFile("expected_metrics", ".txt");
-        MetricsUtils.saveMetrics(expectedMetricsFile, expectedOutputFile.getAbsolutePath());
+        final File expectedOutputFile = getTestFile("expected.filter.metrics");
 
         Assert.assertTrue(MetricsFile.areMetricsEqual(metricsOutputFile, expectedOutputFile));
     }

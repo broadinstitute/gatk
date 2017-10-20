@@ -14,6 +14,6 @@ public interface PSFilterLogger {
     void logReadsAfterHostFilter(final JavaRDD<GATKRead> reads);
     void logReadsAfterDeduplication(final JavaRDD<GATKRead> reads);
     void logFinalPairedReads(final JavaRDD<GATKRead> reads);
-    void writeFile();
+    void close();
 
 }

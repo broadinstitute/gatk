@@ -29,7 +29,7 @@ public class PSFilterTest extends CommandLineProgramTest {
 
     private static final String BWA_IMAGE_PATH = publicTestDir + PSFilter.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
 
-    static final GATKRead fastqRecordToGATKRead(final FastqRecord rec) {
+    private static final GATKRead fastqRecordToGATKRead(final FastqRecord rec) {
         final GATKRead read = new SAMRecordToGATKReadAdapter(new SAMRecord(null));
         read.setName(rec.getReadName());
         read.setBaseQualities(rec.getBaseQualities());
@@ -37,14 +37,14 @@ public class PSFilterTest extends CommandLineProgramTest {
         return read;
     }
 
-    static final List<GATKRead> getReadsFromFastq(final File fastqFile) {
+    private static final List<GATKRead> getReadsFromFastq(final File fastqFile) {
         final FastqReader reader = new FastqReader(fastqFile);
         final List<GATKRead> readList = new ArrayList<>();
         reader.forEachRemaining(read -> readList.add(fastqRecordToGATKRead(read)));
         return readList;
     }
 
-    static final List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
+    private static final List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
         final List<GATKRead> readList1 = getReadsFromFastq(fastqFile1);
         final List<GATKRead> readList2 = getReadsFromFastq(fastqFile2);
         for (GATKRead gatkRead : readList1) {
@@ -60,7 +60,7 @@ public class PSFilterTest extends CommandLineProgramTest {
         return readList1;
     }
 
-    static final List<GATKRead> makeReadSet(final SAMFileHeader header) {
+    private static final List<GATKRead> makeReadSet(final SAMFileHeader header) {
         final List<GATKRead> readList = new ArrayList<>(3);
 
         final List<GATKRead> readPair1 = ArtificialReadUtils.createPair(header, "paired_1", 101, 1, 102, false, false);

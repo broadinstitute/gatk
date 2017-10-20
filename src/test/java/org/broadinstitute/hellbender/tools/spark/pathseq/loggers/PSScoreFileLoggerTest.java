@@ -4,7 +4,6 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.tools.spark.pathseq.PSScorer;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -40,15 +39,9 @@ public class PSScoreFileLoggerTest extends BaseTest {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final JavaRDD<GATKRead> readRdd = ctx.parallelize(reads);
         scoreLogger.logReadCounts(readRdd);
-        scoreLogger.writeFile();
+        scoreLogger.close();
 
-        final MetricsFile<PSScoreMetrics, Long> expectedMetricsFile = new MetricsFile<>();
-        final PSScoreMetrics expectedScoreMetrics = new PSScoreMetrics();
-        expectedScoreMetrics.UNMAPPED_READS = (long) numUnmappedReads;
-        expectedScoreMetrics.MAPPED_READS = (long) numMappedReads;
-        expectedMetricsFile.addMetric(expectedScoreMetrics);
-        final File expectedOutputFile = createTempFile("expected_metrics",".txt");
-        MetricsUtils.saveMetrics(expectedMetricsFile, expectedOutputFile.getAbsolutePath());
+        final File expectedOutputFile = getTestFile("expected.score.metrics");
 
         Assert.assertTrue(MetricsFile.areMetricsEqual(metricsOutputFile, expectedOutputFile));
     }

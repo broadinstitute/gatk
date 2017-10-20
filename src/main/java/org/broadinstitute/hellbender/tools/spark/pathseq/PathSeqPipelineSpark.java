@@ -133,7 +133,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> result = filter.doFilter(inputReads, filterLogger);
         JavaRDD<GATKRead> pairedReads = result._1;
         JavaRDD<GATKRead> unpairedReads = result._2;
-        filterLogger.writeFile();
+        filterLogger.close();
 
         //Counting forces an action on the RDDs to guarantee we're done with the Bwa image and kmer filter
         final long numPairedReads = pairedReads.count();
@@ -173,7 +173,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         if (scoreMetricsFileUri != null) {
             final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), scoreMetricsFileUri);
             scoreLogger.logReadCounts(readsFinal);
-            scoreLogger.writeFile();
+            scoreLogger.close();
         }
 
         //Write reads to BAM, if specified
