@@ -55,6 +55,12 @@ public final class BreakpointComplications {
 
     private SimpleInterval invertedTransInsertionRefSpan = null; // TODO: 10/2/17 see ticket 3647
 
+    // TODO: consider dups and inserts as well as micro-homology
+    /** The uncertainty in location due to complications. */
+    public int getLength() {
+        return homologyForwardStrandRep.length();
+    }
+
     /**
      * @return Intended for use in debugging and exception message only.
      */

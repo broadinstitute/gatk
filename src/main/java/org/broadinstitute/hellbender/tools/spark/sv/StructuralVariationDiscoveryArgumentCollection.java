@@ -183,6 +183,10 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = "minAlignLength", optional = true)
         public Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
 
+        @Argument(doc = "vcf containing the true breakpoints used only for evaluation (not generation) of calls",
+                fullName = "truthVCF", optional = true)
+        public String truthVCF;
+
         @Argument(doc = "Uncertainty in overlap of assembled breakpoints and evidence target links.", fullName = "assemblyImpreciseEvidenceOverlapUncertainty")
         public int assemblyImpreciseEvidenceOverlapUncertainty = DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY;
 
@@ -191,6 +195,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "External CNV calls file. Should be single sample VCF, and contain only confident autosomal non-reference CNV calls (for now).", fullName = "cnvCalls", optional = true)
         public String cnvCallsFile;
+
+        @Argument(doc = "Breakpoint padding for evaluation against truth data.", fullName = "truthIntervalPadding", optional = true)
+        public int truthIntervalPadding = 50;
     }
 
 }
