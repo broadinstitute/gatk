@@ -54,7 +54,7 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     @Override
     public List<VCFInfoHeaderLine> getRawDescriptions() {
         //We only have the finalized key name here because the raw key is internal to GenotypeGVCFs and won't get output in any VCF
-        return Collections.emptyList();
+        return getDescriptions();
     }
 
     @Override
