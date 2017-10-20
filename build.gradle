@@ -232,7 +232,7 @@ dependencies {
         exclude module: 'htsjdk'
     }
 
-    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.2'
+    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.3'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.0.0'
 
     //needed for DataflowAssert
