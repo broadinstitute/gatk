@@ -21,10 +21,6 @@ import java.util.List;
 public class LearnHyperparametersEngineUnitTest {
     private static final double EPSILON = 1e-4;
 
-    // the exact location of the site does not matter for this tool
-    private final SimpleInterval snpLocation = new SimpleInterval("20", 1_000_000, 1_000_000);
-    private final AlignmentContext alignmentContext = new AlignmentContext(snpLocation, new ReadPileup(snpLocation));
-
     final int DEPTH = 100;
     final int ALT_DEPTH = 20;
     final int[] altSiteDepthCounts = new int[]{0,0,0, ALT_DEPTH};

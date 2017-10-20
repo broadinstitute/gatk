@@ -17,11 +17,7 @@ import java.util.stream.IntStream;
  * Created by tsato on 7/26/17.
  */
 public class LearnHyperparametersEngine {
-
-
     public static final int NUM_STATES = State.values().length;
-
-    static final String[] ALL_ALLELES = new String[] { "A", "C", "G", "T" };
 
     // When the increase in likelihood falls under this value, we call the algorithm converged
     private final double convergenceThreshold;
@@ -237,40 +233,33 @@ public class LearnHyperparametersEngine {
             double[] log10UnnormalizedResponsibilities = new double[NUM_STATES];
 
             for (State z : State.values()){
-                // breaking Java's variable name convention to make clear how the variables relate to the docs
+                final int k = z.ordinal();
+                if (impossibleStates.contains(z)){
+                    // this state is impossible e.g. F1R2_G under context AGT and should get the normalized probability of 0
+                    log10UnnormalizedResponsibilities[k] = Double.NEGATIVE_INFINITY;
+                    continue;
+                }
+
+                // breaking Java's variable naming convention to make clear how the variables relate to the docs
                 final int m_nk;
                 final int x_nk;
-                final int k = z.ordinal();
-                // TODO: impossible states get the values of negative infinity in log space. Is that OK? Does that cause an issue when we normalize?
-                if (z == State.SOMATIC_HET){
+
+                if (State.artifactStates.contains(z)){
+                    // for an artifact state, use the corresponding alt base count of the transition in question
+                    // e.g. for z = F1R2_c use the count of C's
+                    final Nucleotide altAlleleOfTransition = State.getAltAlleleOfTransition(z);
+                    m_nk = baseCounts[altAlleleOfTransition.ordinal()];
+                    x_nk = f1r2Counts[altAlleleOfTransition.ordinal()];
+                } else {
+                    // we have a non-artifact state i.e. { germline het, hom ref, hom var, somatic het }
                     m_nk = depthOfMostLikelyAltAllele;
                     x_nk = f1r2DepthOfMostLikelyAltAllele;
-                    log10UnnormalizedResponsibilities[k] = Math.log10(pi[k]) +
-                            MathUtils.log10BetaBinomialDensity(m_nk, depth, alpha, beta) +
-                            MathUtils.log10BinomialProbability(m_nk, x_nk, Math.log10(theta[k]));
-                } else {
-                    if (impossibleStates.contains(z)){
-                        // this state is impossible e.g. F1R2_G under context AGT and should get the normalized probability of 0
-                        log10UnnormalizedResponsibilities[k] = Double.NEGATIVE_INFINITY;
-                        continue;
-                    }
-
-                    if (State.artifactStates.contains(z)){
-                        // we are in a valid artifact state F1R2_a or F2R1_a
-                        final Nucleotide altAlleleOfTransition = State.getAltAlleleOfTransition(z);
-                        m_nk = baseCounts[altAlleleOfTransition.ordinal()];
-                        x_nk = f1r2Counts[altAlleleOfTransition.ordinal()];
-                    } else {
-                        // we have a non-artifact state that's not somatic het i.e. { germline het, hom ref, hom var }
-                        m_nk = depthOfMostLikelyAltAllele;
-                        x_nk = f1r2DepthOfMostLikelyAltAllele;
-                    }
-
-                    log10UnnormalizedResponsibilities[k] = Math.log10(pi[k]) +
-                            MathUtils.log10BinomialProbability(depth, m_nk, Math.log10(f[k])) +
-                            MathUtils.log10BinomialProbability(m_nk, x_nk, Math.log10(theta[k]));
                 }
+
+                log10UnnormalizedResponsibilities[k] = computePosterior(z, m_nk, x_nk, depth, pi[k], f[k], theta[k]);
+
             }
+
 
             // TODO: maybe we don't need to keep the matrix of log10 alt responsibilities
             // we normalize responsibilities here because the M-step uses normalized responsibilities
@@ -337,8 +326,8 @@ public class LearnHyperparametersEngine {
             if (impossibleStates.contains(z)){
                 f[k] = 0;
             } else {
-                // if the effective alt count is essentially 0 it could still give us a believable allele fraction like 0.2
-                // if denominator is small too. In such a case we just fix the allele fraction to 0
+                // if the effective alt count is essentially 0 it could still give us a false but believable allele fraction
+                // like 0.2 if the denominator is small too. In such a case we just fix the allele fraction to 0
                 f[k] = weightedEffectiveAltDepth[k] < EPSILON ? 0.0 : weightedEffectiveAltDepth[k] / weightedEffectiveDepth[k];
             }
 
@@ -362,6 +351,25 @@ public class LearnHyperparametersEngine {
         assert  Math.abs(MathUtils.sum(pi) - 1.0) < EPSILON : "pi must be normalized";
 
         return;
+    }
+
+    // Compute the posterior probability of the state z given data. The caller is responsible for not calling
+    // this method on inconsistent states e.g. z = F1R2_C where the reference context is ACT
+    public static double computePosterior(final State z, final int altDepth, final int altF1R2Depth, final int depth,
+                                          final double pi, final double f, final double theta){
+        Utils.validate(MathUtils.isAProbability(f), String.format("f must be a probability but got %f", f));
+        Utils.validate(MathUtils.isAProbability(pi), String.format("pi must be a probability but got %f", pi));
+        Utils.validate(MathUtils.isAProbability(theta), String.format("theta must be a probability but got %f", theta));
+
+        if (z == State.SOMATIC_HET){
+            return Math.log10(pi) +
+                    MathUtils.log10BetaBinomialDensity(altDepth, depth, alpha, beta) +
+                    MathUtils.log10BinomialProbability(altDepth, altF1R2Depth, Math.log10(theta));
+        } else {
+            return Math.log10(pi) +
+                    MathUtils.log10BinomialProbability(depth, altDepth, Math.log10(f)) +
+                    MathUtils.log10BinomialProbability(altDepth, altF1R2Depth, Math.log10(theta));
+        }
     }
 
     private enum ObservedData {
@@ -444,7 +452,7 @@ public class LearnHyperparametersEngine {
             return Arrays.asList(HOM_REF, GERMLINE_HET, SOMATIC_HET, HOM_VAR);
         }
 
-        static List<State> getImpossibleStates(final Nucleotide refAllele){
+        public static List<State> getImpossibleStates(final Nucleotide refAllele){
             switch (refAllele){
                 case A : return Arrays.asList( F1R2_A, F2R1_A );
                 case C : return Arrays.asList( F1R2_C, F2R1_C );

@@ -1017,4 +1017,8 @@ public final class MathUtils {
         return log10BinomialCoefficient(n, k) + Beta.logBeta(k + alpha, n - k + beta) * LOG10_OF_E -
                 Beta.logBeta(alpha, beta) * LOG10_OF_E;
     }
+
+    public static boolean isAProbability(final double p){
+        return p >= 0 && p <= 1;
+    }
 }

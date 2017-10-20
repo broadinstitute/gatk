@@ -3,11 +3,18 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.Hyperparameters;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnHyperparametersEngine;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnHyperparametersEngine.State;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.*;
 
 /**
@@ -150,9 +157,9 @@ public class Mutect2FilteringEngine {
     private void applyStrandArtifactFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] posteriorProbabilities = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (StrandArtifact.POSTERIOR_PROBABILITIES_KEY), () -> null, -1);
+                tumorGenotype, (GATKVCFConstants.POSTERIOR_PROBABILITIES_KEY), () -> null, -1);
         final double[] mapAlleleFractionEstimates = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (StrandArtifact.MAP_ALLELE_FRACTIONS_KEY), () -> null, -1);
+                tumorGenotype, (GATKVCFConstants.MAP_ALLELE_FRACTIONS_KEY), () -> null, -1);
 
         if (posteriorProbabilities == null || mapAlleleFractionEstimates == null){
             return;
@@ -193,6 +200,99 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    /***
+     * This filter requires the INFO field annotation {@code REFERENCE_CONTEXT_KEY} and {@code F1R2_KEY}
+     */
+    private void applyReadOrientationFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters){
+        final int altAlleleIndex = 1;
+        final String referenceContext = vc.getAttributeAsString(GATKVCFConstants.REFERENCE_CONTEXT_KEY, "");
+        final int[] f1r2CountsByAllele = GATKProtectedVariantContextUtils.getAttributeAsIntArray(vc.getGenotype(tumorSample),
+                GATKVCFConstants.F1R2_KEY, () -> null, -1);
+        if (referenceContext.isEmpty() || f1r2CountsByAllele == null){
+            return;
+        }
+
+        final List<Hyperparameters> hyperparametersForReadOrientaitonModel =
+                Hyperparameters.readHyperparameters(MTFAC.hyperparameterTable);
+
+        // skip INDELs
+        if (vc.getAlternateAllele(0).length() > 1){
+            return;
+        }
+
+        Utils.validate(referenceContext.length() == 3, String.format("reference context must be of length 3 but got %s", referenceContext));
+
+        final Nucleotide refAllele = Nucleotide.valueOf(referenceContext.substring(1,1));
+        final Nucleotide altAllele = Nucleotide.valueOf(vc.getAlternateAllele(0).toString());
+        final State[] relevantArtifactStates;
+        switch (altAllele) {
+            case A : relevantArtifactStates = new State[]{ State.F1R2_A, State.F2R1_A }; break;
+            case C : relevantArtifactStates = new State[]{ State.F1R2_C, State.F2R1_C }; break;
+            case G : relevantArtifactStates = new State[]{ State.F1R2_G, State.F2R1_G }; break;
+            case T : relevantArtifactStates = new State[]{ State.F1R2_T, State.F2R1_T }; break;
+            default: throw new UserException(String.format("Alt allele must be in {A, C, G, T} but got %s", altAllele));
+        }
+
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final int depth = (int) MathUtils.sum(tumorGenotype.getAD());
+        final int altDepth = tumorGenotype.getAD()[altAlleleIndex]; // what about multiple alleles?
+        final int f1r2AltCount = f1r2CountsByAllele[altAlleleIndex];
+        final Hyperparameters hyps = hyperparametersForReadOrientaitonModel.stream()
+                .filter(h -> h.getReferenceContext().equals(referenceContext))
+                .findFirst()
+                .get();
+
+        // A by K matrix of prior probabilities over K latent states, given allele a \in A
+        // \pi_{ak} is the prior probability of state k given observed allele a.
+        final double[] pi = hyps.getPi();
+
+        // a vector of length K, the probability of drawing an alt read (i.e. allele fraction) given z
+        final double[] f = hyps.getF();
+
+        // a vector of length K, the probability of drawing an F1R2 alt read given z
+        final double[] theta = hyps.getTheta();
+
+        final double[] log10UnnormalizedPosteriorProbabilities = new double[LearnHyperparametersEngine.NUM_STATES];
+
+        List<State> impossibleStates = State.getImpossibleStates(refAllele);
+        for (State z : State.values()){
+            final int k = z.ordinal();
+            if (impossibleStates.contains(z)){
+                log10UnnormalizedPosteriorProbabilities[k] = Double.NEGATIVE_INFINITY;
+                continue;
+            }
+
+            final int m_nk; // alt depth for state k
+            final int x_nk; // alt f1r2 depth for state k
+            final int r = depth; // depth at this site
+
+            if (State.getNonArtifactStates().contains(z) || State.getAltAlleleOfTransition(z) == altAllele){
+                // We are in a non-artifact state {germline het, somatic het, hom ref, hom var}
+                // Or we are in an artifact state that matches the alternate allele
+                // e.g. z = F1R2_c when alt allele = C
+                m_nk = altDepth;
+                x_nk = f1r2AltCount;
+            } else {
+                // We approximate the counts of bases that are neither ref nor alt (if ref = A, alt = C, then {G, T})
+                // Although it would be better to use the exact count of each base, this would require
+                // making a new annotation and cluttering the vcf, and I doube that that will improve the results
+                m_nk = 0;
+                x_nk = 0;
+            }
+
+            log10UnnormalizedPosteriorProbabilities[k] =
+                    LearnHyperparametersEngine.computePosterior(z, m_nk, x_nk, r, pi[k], f[k], theta[k]);
+        }
+
+        final double[] posteriorProbabilties = MathUtils.normalizeFromLog10ToLinearSpace(log10UnnormalizedPosteriorProbabilities);
+
+        for (State z : relevantArtifactStates){
+            if (posteriorProbabilties[z.ordinal()] > MTFAC.readOrientationFilterThreshold){
+                filters.add(GATKVCFConstants.READ_ORIENTATION_FILTER_NAME);
+            }
+        }
+    }
+
     //TODO: building a list via repeated side effects is ugly
     public Set<String> calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc) {
         final Set<String> filters = new HashSet<>();
@@ -210,6 +310,7 @@ public class Mutect2FilteringEngine {
         applyMedianMappingQualityDifferenceFilter(MTFAC, vc, filters);
         applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, filters);
         applyReadPositionFilter(MTFAC, vc, filters);
+        applyReadOrientationFilter(MTFAC, vc, filters);
 
         return filters;
     }
