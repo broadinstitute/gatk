@@ -10,19 +10,23 @@ import java.util.List;
 
 public class SVIntegrationTestDataProvider extends CommandLineProgramTest {
 
+    public static final String THIS_TEST_FOLDER = getTestDataDir() + "/spark/sv/integration";
+
     public static final File reference = new File(b37_reference_20_21);
-    static final File reference_2bit = new File(b37_2bit_reference_20_21);
-    static final File reference_fai = new File(b37_reference_20_21+".fai");
-    static final File reference_dict = new File(b37_reference_20_21.replace(".fasta", ".dict"));
+    public static final File reference_2bit = new File(b37_2bit_reference_20_21);
+    public static final File reference_fai = new File(b37_reference_20_21+".fai");
+    public static final File reference_dict = new File(b37_reference_20_21.replace(".fasta", ".dict"));
+    public static final String KMER_KILL_LIST = THIS_TEST_FOLDER + "/dummy.kill.kmers";
+    public static final String ALIGNER_INDEX_IMG = largeFileTestDir + "human_g1k_v37.20.21.fasta.img";
 
-    private static final String THIS_TEST_FOLDER = getTestDataDir() + "/spark/sv/integration";
-    static final String TEST_BAM_NEW = "src/test/resources/large/SVIntegrationTest.bam";
-    static final String KMER_KILL_LIST = THIS_TEST_FOLDER + "/dummy.kill.kmers";
-    static final String ALIGNER_INDEX_IMG = largeFileTestDir + "human_g1k_v37.20.21.fasta.img";
-    static final String TEST_CONTIG_SAM = THIS_TEST_FOLDER + "/hg19_DEL_contigAssemblies.sam";
+    // inputs to tests
+    public static final String TEST_BAM_NEW = "src/test/resources/large/SVIntegrationTest.bam";
+    public static final String TEST_CONTIG_SAM = THIS_TEST_FOLDER + "/hg19_DEL_contigAssemblies.sam";
 
+    // expected outputs
     public static final String EXPECTED_SIMPLE_DEL_VCF = THIS_TEST_FOLDER + "/hg19_DEL.vcf";
     public static final String EXPECTED_SIMPLE_INV_VCF = THIS_TEST_FOLDER + "/hg19_INV.vcf";
+    public static final String EXPECTED_ALIGNED_CONTIGS = THIS_TEST_FOLDER + "/hg19_DEL_actualContigAssemblies.sam";
 
-    static final List<String> dummyExpectedFileNames = new ArrayList<>();
+    public static final List<String> dummyExpectedFileNames = new ArrayList<>();
 }

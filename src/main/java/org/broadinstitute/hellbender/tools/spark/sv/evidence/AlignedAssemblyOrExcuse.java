@@ -19,10 +19,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -106,13 +103,20 @@ public final class AlignedAssemblyOrExcuse {
                               final boolean preOrdered ) {
         try ( final SAMFileWriter writer = createSAMFileWriter(samFile, header, preOrdered) ) {
             final List<String> refNames = getRefNames(header);
+            final String readGroup = getReadGroup(header);
             alignedAssemblyOrExcuseList.stream()
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                    .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(header,refNames))
+                    .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(header,refNames,readGroup))
                     .forEach(writer::addAlignment);
         } catch ( final UncheckedIOException ie) {
             throw new GATKException("Can't write SAM file of aligned contigs.", ie);
         }
+    }
+
+    private static String getReadGroup(final SAMFileHeader header) {
+        Set<String> readGroupIds = header.getReadGroups().stream().map(SAMReadGroupRecord::getId).collect(Collectors.toSet());
+        Utils.validate(readGroupIds.size() == 1, "SAM header for contig alignments should contain a single read group definition");
+        return readGroupIds.iterator().next();
     }
 
     private static SAMFileWriter createSAMFileWriter(final String samFile, final SAMFileHeader header, final boolean preOrdered) {
@@ -122,10 +126,9 @@ public final class AlignedAssemblyOrExcuse {
             final String extension = samFile.substring(lastDotIndex).toLowerCase();
             if (extension.equals(BamFileIoUtils.BAM_FILE_EXTENSION)) {
                 return factory.makeBAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
-            } else if (extension.equals(".sam")) {
-                return factory.makeSAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
             } else {
-                throw new GATKException("unsupported read alignment file name extension (." + extension + ") in requested name: " + samFile);
+                // default to writing sam
+                return factory.makeSAMWriter(header, preOrdered, BucketUtils.createFile(samFile));
             }
         } else {
             throw new GATKException("cannot determine the alignment file format from its name: " + samFile);
@@ -138,7 +141,7 @@ public final class AlignedAssemblyOrExcuse {
     }
 
     public static Stream<SAMRecord> toSAMStreamForOneContig(final SAMFileHeader header, final List<String> refNames,
-                                                            final int assemblyId, final int contigIdx,
+                                                            final String readGroup, final int assemblyId, final int contigIdx,
                                                             final byte[] contigSequence, final List<BwaMemAlignment> alignments) {
         if ( alignments.isEmpty() ) return Stream.empty();
 
@@ -152,6 +155,7 @@ public final class AlignedAssemblyOrExcuse {
                                     refNames, header, false, false);
                     final String saTag = saTagMap.get(alignment);
                     if ( saTag != null ) samRecord.setAttribute("SA", saTag);
+                    if (readGroup != null) samRecord.setAttribute( "RG", readGroup);
                     return samRecord;
                 });
     }
@@ -307,11 +311,11 @@ public final class AlignedAssemblyOrExcuse {
         return contigAlignments;
     }
 
-    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames) {
+    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames, final String readGroup) {
         Utils.validate(isNotFailure(), "Can't stream SAM records from a failed assembly.");
         return IntStream.range(0, contigAlignments.size()).boxed()
                 .flatMap(contigIdx ->
-                        toSAMStreamForOneContig(header, refNames, assemblyId, contigIdx,
+                        toSAMStreamForOneContig(header, refNames, readGroup, assemblyId, contigIdx,
                                 assembly.getContig(contigIdx).getSequence(), contigAlignments.get(contigIdx)));
     }
 
