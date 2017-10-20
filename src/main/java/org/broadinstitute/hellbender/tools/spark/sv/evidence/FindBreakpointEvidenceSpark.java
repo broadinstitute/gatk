@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
@@ -34,7 +35,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import scala.Tuple2;
-import scala.Tuple3;
 
 import java.io.*;
 import java.util.*;
@@ -104,6 +104,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
                 "The reads must be coordinate sorted.");
 
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        final Set<String> sampleSet = readGroups.stream().map(SAMReadGroupRecord::getSample).collect(Collectors.toSet());
+
+        Utils.validate(sampleSet.size() == 1, "Read groups must contain reads from one and only one sample");
+
+        final String sample = sampleSet.iterator().next();
+
         final SVReadFilter filter = new SVReadFilter(params);
 
         // develop evidence, intervals, and, finally, a set of template names for each interval
@@ -143,6 +150,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // write the output file
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
+        final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
+        contigAlignmentsReadGroup.setSample(sample);
+        cleanHeader.addReadGroup(contigAlignmentsReadGroup);
         cleanHeader.setSortOrder(params.assembliesSortOrder);
 
         AlignedAssemblyOrExcuse.writeSAMFile(outputAssembliesFile, cleanHeader, alignedAssemblyOrExcuseList,

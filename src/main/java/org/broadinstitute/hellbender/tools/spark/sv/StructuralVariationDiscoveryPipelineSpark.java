@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrEx
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
@@ -173,7 +174,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                 return IntStream.range(0, nContigs)
                                         .mapToObj(contigIdx ->
                                                 AlignedAssemblyOrExcuse.toSAMStreamForOneContig(cleanHeader, refNames,
-                                                        assemblyId, contigIdx, assembly.getContig(contigIdx).getSequence(),
+                                                        SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID, assemblyId, contigIdx, assembly.getContig(contigIdx).getSequence(),
                                                         allAlignmentsOfThisAssembly.get(contigIdx))
                                         ).iterator();
                             }
