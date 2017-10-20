@@ -40,7 +40,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
 
         String getCommandLineNoApiKey() {
             return  " -I " + bamLoc +
-                    " -O "                    + outputDir + "/assemblies.sam" +
+                    " -O "                    + "%s" +
                     " --alignerIndexImage " + alignerRefIndexImgLoc +
                     " --kmersToIgnore " + kmerIgnoreListLoc +
                     " --breakpointIntervals " + outputDir + "/intervals" +
@@ -74,9 +74,11 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
     @Test(dataProvider = "findBreakpointEvidenceSparkIntegrationTest", groups = "sv")
     public void testFindBreakpointRunnableLocal(final FindBreakpointEvidenceSparkIntegrationTestArgs params) throws IOException {
 
+        final ArrayList<String> expectedFiles = new ArrayList<>();
+        expectedFiles.add(SVIntegrationTestDataProvider.EXPECTED_ALIGNED_CONTIGS);
         new IntegrationTestSpec(
                 new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getString(),
-                SVIntegrationTestDataProvider.dummyExpectedFileNames)
+                expectedFiles)
                 .executeTest("testFindBreakpointEvidenceSparkRunnableLocal-", this);
     }
 

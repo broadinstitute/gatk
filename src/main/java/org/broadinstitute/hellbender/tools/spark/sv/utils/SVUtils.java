@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
  */
 public final class SVUtils {
 
+    public static final String GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID = "GATKSVContigAlignments";
+
     private static final String REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT = "#";
 
     //Workaround for seed 14695981039346656037 that doesn't fit in a signed long
