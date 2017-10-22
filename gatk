@@ -38,11 +38,17 @@ EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                    "-Dsamjdk.use_async_io_write_samtools=false " \
                    "-Dsamjdk.use_async_io_write_tribble=false " \
                    "-Dsamjdk.compression_level=2 "
+                   "-Dspark.executor.cores=1 " \
+                   "-Dspark.executor.instances=1 " \
+                   "-Dspark.dynamicAllocation.enabled=false "
 
 PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
                   "-Dsamjdk.use_async_io_write_samtools=true",
                   "-Dsamjdk.use_async_io_write_tribble=false",
-                  "-Dsamjdk.compression_level=2"]
+                  "-Dsamjdk.compression_level=2",
+                  "-Dspark.executor.cores=1",
+                  "-Dspark.executor.instances=1",
+                  "-Dspark.dynamicAllocation.enabled=false"]
 
 DEFAULT_SPARK_ARGS_PREFIX = '--conf'
 DEFAULT_SPARK_ARGS = {

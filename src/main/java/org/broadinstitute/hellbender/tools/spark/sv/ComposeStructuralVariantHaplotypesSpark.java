@@ -33,6 +33,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalLocator;
@@ -139,7 +140,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     public static final String SAMPLE_FULL_NAME = "sampleName";
 
     public static final int DEFAULT_SHARD_SIZE = 10_000;
-    public static final int DEFAULT_PADDING_SIZE = 50;
+    public static final int DEFAULT_PADDING_SIZE = 150; // ideally a read length.
     public static final String DEFAULT_SAMPLE = "sample";
 
     public static final String HAPLOTYPE_READ_GROUP = "HAP";
@@ -206,9 +207,11 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         final ReadsSparkSource alignedContigs = new ReadsSparkSource(ctx);
         final VariantsSparkSource variantsSource = new VariantsSparkSource(ctx);
 
-        final List<SimpleInterval> intervals = hasIntervals()
-                ? IntervalUtils.getAllIntervalsForReference(getReferenceSequenceDictionary())
-                : getIntervals();
+        final List<SimpleInterval> wholeGenomeIntervals = IntervalUtils.getAllIntervalsForReference(getReferenceSequenceDictionary());
+
+        final List<SimpleInterval> targetIntervals = hasIntervals()
+                ? getIntervals()
+                : wholeGenomeIntervals;
 
 
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -222,12 +225,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 .map(SVContext::of);
         final JavaRDD<GATKRead> contigs = alignedContigs
                 .getParallelReads(alignedContigsFileName, referenceArguments.getReferenceFileName(),
-                        new TraversalParameters(intervals, false));
+                        new TraversalParameters(targetIntervals, false));
         final JavaPairRDD<SVContext, Tuple2<List<String>, List<SimpleInterval>>> variantsAndRelevantContigIntervals =
                 composeVariantAndRelevantContigsIntervals(ctx, shardIntervalsBroadcast, sequenceDictionaryBroadcast, contigs, variants);
-
-        final JavaPairRDD<SVContext, List<GATKRead>> variantOverlappingContigs
-                = composeOverlappingContigRecordsPerVariant(ctx, contigs, variants);
 
         final Map<String, SVContext> variantsByUID =
                 variants.mapToPair(v -> new Tuple2<>(v.getUniqueID(), v)).collectAsMap();
@@ -236,7 +236,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 .reduceByKey((a, b) -> {a.addAll(b); return a; }).collectAsMap();
 
         final SVIntervalLocator locator = new SVIntervalLocator(sequenceDictionary);
-        final SVIntervalTree<ShardBoundary> shardTree = intervals.stream()
+        final SVIntervalTree<ShardBoundary> shardTree = wholeGenomeIntervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardSize, 0, sequenceDictionary).stream())
                 .collect(locator.toTreeCollector(Function.identity()));
 
@@ -251,7 +251,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                     while (it.hasNext()) {
                         final List<SimpleInterval> list = it.next()._2()._2();
                         for (final SimpleInterval interval : list) {
-                            final Iterator<SVIntervalTree.Entry<ShardBoundary>> entryIt = mapShardTree.overlappers(mapLocator.toSVInterval(interval));
+                            final Iterator<SVIntervalTree.Entry<ShardBoundary>> entryIt =
+                                        mapShardTree.overlappers(mapLocator.toSVInterval(interval));
                             while (entryIt.hasNext()) {
                                 bundaries.add(entryIt.next().getValue());
                             }
@@ -330,7 +331,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         } else if (vc.getAlternateAlleles().size() != 1) {
             return false;
         } else if (type == StructuralVariantType.INS || type == StructuralVariantType.DEL) {
-            return SVContext.getStructuralVariantLength(vc) > 4 * paddingSize;
+            return vc.hasAttribute(GATKSVVCFConstants.SVLEN); // for now we skip indels without SVLEN... there are some, perhaps a bug
         } else  {
             return false;
         }
@@ -514,11 +515,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             final JavaPairRDD<SVContext, VariantHaplotypesAndContigsComposite> alignedContigs = variantsAndOverlappingUniqueContigs.mapToPair(tuple -> {
                         final SVContext vc = tuple._1();
                         final List<AlignedContig> contigs = tuple._2();
-                        final int maxLength = contigs.stream()
-                                .mapToInt(a -> a.contigSequence.length)
-                                .max().orElse(paddingSize);
-                        final SVHaplotype referenceHaplotype = vc.composeHaplotypeBasedOnReference(0, maxLength * 2, getReference());
-                        final SVHaplotype alternativeHaplotype = vc.composeHaplotypeBasedOnReference(1, maxLength * 2, getReference());
+                        final List<SVHaplotype> haplotypes = vc.composeHaplotypesBasedOnReference(paddingSize, getReference(), contigs);
+                        final SVHaplotype referenceHaplotype = haplotypes.get(0);
+                        final SVHaplotype alternativeHaplotype = haplotypes.get(1);
                         final List<AlignedContig> referenceAlignedContigs = referenceHaplotype.alignContigs(contigs);
                         final List<AlignedContig> alternativeAlignedContigs = alternativeHaplotype.alignContigs(contigs);
                         return new Tuple2<>(vc, new VariantHaplotypesAndContigsComposite(referenceHaplotype, alternativeHaplotype, contigs, referenceAlignedContigs, alternativeAlignedContigs));

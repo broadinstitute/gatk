@@ -5,9 +5,11 @@ import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
 import org.apache.commons.math3.util.MathUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
+import java.util.List;
 
 /**
  * This class should eventually be merged into Utils, which is in hellbender, and then this class should be deleted.
@@ -296,5 +298,40 @@ public class ParamUtils {
                     prefix, value, validRange.getMinimumInteger(), validRange.getMaximumInteger()));
         }
         return value;
+    }
+
+    /**
+     * Checks that the input {@link Iterable} does not contain any {@code null}.
+     * <p>
+     *     Notice that this check won't fail if the input passed is itself a {@code null}, since a {@code null}
+     *     doesn't in fact contain any {@code null}.
+     * </p>
+     * <p>
+     *     If you want to customize the error message if the input is itself a null then you should use
+     *     {@link Utils#nonNull} to that effect:
+     *     <pre>
+     *         Utils.nonNull(input, "the input cannot be null");
+     *         ParamUtils.isNullFree(input, "the input must not contain any nulls");
+     *     </pre>
+     * </p>
+     * @param input the input iterable.
+     * @param message the error message for the exception in any null is is in the input.
+     * @param <E> the input iterable type.
+     * @return the same reference as the input iterable.
+     * @throws IllegalArgumentException if either the input does not contain any null.
+     */
+    public static <E extends Iterable<?>> E doesNotContainNulls(final E input, final String message) {
+        if (input != null) {
+            for (final Object obj : input) {
+                if (obj == null) {
+                    throw new IllegalArgumentException(message);
+                }
+            }
+        }
+        return input;
+    }
+
+    public static <E extends Iterable<?>> E doesNotContainNulls(final E input) {
+        return doesNotContainNulls(input, null);
     }
 }

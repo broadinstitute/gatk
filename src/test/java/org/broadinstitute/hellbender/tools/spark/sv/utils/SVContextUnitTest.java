@@ -101,7 +101,7 @@ public class SVContextUnitTest extends GATKBaseTest {
     }
 
     /**
-     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
+     * Tests {@link SVContext#composeHaplotypesBasedOnReference(int, ReferenceMultiSource, List)}} when used
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
@@ -109,17 +109,16 @@ public class SVContextUnitTest extends GATKBaseTest {
     public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         final int paddingSize = 10;
-        final Haplotype refHaplotype = svc.composeHaplotypeBasedOnReference(0, paddingSize, reference);
+        final SVHaplotype refHaplotype = svc.composeHaplotypesBasedOnReference(paddingSize, reference, Collections.emptyList()).get(0);
         Assert.assertNotNull(refHaplotype);
-        Assert.assertTrue(refHaplotype.isReference());
         final SimpleInterval expectedInterval = new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getEnd() + paddingSize);
-        Assert.assertEquals(new SimpleInterval(refHaplotype.getGenomeLocation()), expectedInterval, svc.getContig() + ":" + svc.getStart() + " " + svc.getStructuralVariantType() + " " + svc.getStructuralVariantLength());
+        Assert.assertEquals(refHaplotype.getReferenceSpan(), expectedInterval, svc.getContig() + ":" + svc.getStart() + " " + svc.getStructuralVariantType() + " " + svc.getStructuralVariantLength());
         Assert.assertEquals(refHaplotype.getBases(), reference.getReferenceBases(expectedInterval).getBases());
         Assert.assertEquals(refHaplotype.getCigar(), new Cigar(Collections.singletonList(new CigarElement(expectedInterval.size(), CigarOperator.M))));
     }
 
     /**
-     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
+     * Tests {@link SVContext#composeHaplotypesBasedOnReference(int, ReferenceMultiSource, List)}} when used
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
@@ -130,11 +129,10 @@ public class SVContextUnitTest extends GATKBaseTest {
             throw new SkipException("unsupported type; skipped for now");
         }
         final int paddingSize = 10;
-        final Haplotype altHaplotype = svc.composeHaplotypeBasedOnReference(1, paddingSize, reference);
+        final SVHaplotype altHaplotype = svc.composeHaplotypesBasedOnReference(paddingSize, reference, Collections.emptyList()).get(1);
         Assert.assertNotNull(altHaplotype);
-        Assert.assertFalse(altHaplotype.isReference());
         final SimpleInterval expectedInterval = new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getEnd() + paddingSize);
-        Assert.assertEquals(new SimpleInterval(altHaplotype.getGenomeLocation()), expectedInterval, svc.getContig() + ":" + svc.getStart() + " " + svc.getStructuralVariantType() + " " + svc.getStructuralVariantLength());
+        Assert.assertEquals(new SimpleInterval(altHaplotype.getReferenceSpan()), expectedInterval, svc.getContig() + ":" + svc.getStart() + " " + svc.getStructuralVariantType() + " " + svc.getStructuralVariantLength());
         final byte[] expectedBases;
         final Cigar expectedCigar;
         if (svc.getStructuralVariantType() == StructuralVariantType.INS) {

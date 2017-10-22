@@ -3,9 +3,11 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
+import org.broadinstitute.hellbender.utils.SerializableIntFunction;
 import org.broadinstitute.hellbender.utils.SerializableToIntFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
 import java.util.function.Function;
@@ -20,9 +22,11 @@ public final class SVIntervalLocator implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final SerializableToIntFunction<String> contigToIndex;
+    private final SerializableIntFunction<String> indexToContig;
 
-    public SVIntervalLocator(final SerializableToIntFunction<String> contigToIndex) {
+    public SVIntervalLocator(final SerializableToIntFunction<String> contigToIndex, final SerializableIntFunction<String> indexToContig) {
         this.contigToIndex = Utils.nonNull(contigToIndex);
+        this.indexToContig = Utils.nonNull(indexToContig);
     }
 
     /**
@@ -32,7 +36,8 @@ public final class SVIntervalLocator implements Serializable {
      * </p>
      */
     public SVIntervalLocator(final SAMSequenceDictionary dictionary) {
-        this(Utils.nonNull(dictionary, "the input dictionary cannot be null")::getSequenceIndex);
+        this(Utils.nonNull(dictionary, "the input dictionary cannot be null")::getSequenceIndex,
+                idx -> dictionary.getSequence(idx).getSequenceName());
     }
 
     /**
@@ -41,10 +46,15 @@ public final class SVIntervalLocator implements Serializable {
      * @return never {@code null}.
      */
     public SVInterval toSVInterval(final Locatable loc) {
+        return toSVInterval(loc, 0);
+    }
+
+    public SVInterval toSVInterval(final Locatable loc, final int padding) {
         Utils.nonNull(loc);
+        ParamUtils.isPositiveOrZero(padding, "padding must 0 or positive");
         final int index = contigToIndex.applyAsInt(loc.getContig());
-        final int start = loc.getStart();
-        final int end = loc.getEnd() + 1;
+        final int start = Math.max(1, loc.getStart() - padding);
+        final int end = loc.getEnd() + 1 + padding;
         return new SVInterval(index, start, end);
     }
 
@@ -63,4 +73,8 @@ public final class SVIntervalLocator implements Serializable {
                             (tree1, tree2) -> { tree1.putAll(tree2); return tree1; });
     }
 
+    public SimpleInterval toSimpleInterval(final SVInterval svInterval) {
+        Utils.nonNull(svInterval);
+        return new SimpleInterval(indexToContig.apply(svInterval.getContig()), svInterval.getStart(), svInterval.getEnd() - 1);
+    }
 }
