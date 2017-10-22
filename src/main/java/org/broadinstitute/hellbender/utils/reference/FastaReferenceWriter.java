@@ -294,7 +294,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
         Utils.nonNull(bases, "the input bases array cannot be null");
         final int to = offset + length;
         for (int i = offset; i < to; i++) {
-            Utils.validateArg(Nucleotide.valueOf(bases[i]) != Nucleotide.INVALID,
+            Utils.validateArg(Nucleotide.decode(bases[i]) != Nucleotide.INVALID,
                     "the input sequence contains invalid base calls like: " + StringUtils.escape(""+ (char) bases[i]));
         }
     }
@@ -511,7 +511,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
      * @param bases array containing the bases to be added.
      * @return this instance.
      * @throws IllegalArgumentException if {@bases} is {@code null} or
-     *              the input array contains invalid bases (as assessed by: {@link Nucleotide#valueOf(byte)}).
+     *              the input array contains invalid bases (as assessed by: {@link Nucleotide#decode(byte)}).
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */
@@ -530,7 +530,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
      * @return this instance.
      * @throws IllegalArgumentException if {@bases} is {@code null} or
      *              {@code offset} and {@code length} do not entail a valid range in {@code bases} or
-     *              that range in {@base} contain invalid bases (as assessed by: {@link Nucleotide#valueOf(byte)}).
+     *              that range in {@base} contain invalid bases (as assessed by: {@link Nucleotide#decode(byte)}).
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */
@@ -540,7 +540,6 @@ public final class FastaReferenceWriter implements AutoCloseable {
         assertIsNotClosed();
         assertSequenceOpen();
         checkSequenceBases(bases, offset, length);
-        Utils.nonNull(bases, "the input bases cannot be negative");
         ParamUtils.isPositiveOrZero(offset, "the input offset cannot be negative");
         ParamUtils.isPositiveOrZero(length, "the input length must not be negative");
         final int to = offset + length;

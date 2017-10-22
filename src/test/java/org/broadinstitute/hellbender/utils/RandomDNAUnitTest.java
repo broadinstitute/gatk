@@ -52,7 +52,7 @@ public final class RandomDNAUnitTest {
                         final String lineBases = line.trim();
                         final String nextLine = reader.readLine();
                         for (final byte base : lineBases.getBytes()) {
-                            final Nucleotide nuc = Nucleotide.valueOf(base);
+                            final Nucleotide nuc = Nucleotide.decode(base);
                             Assert.assertTrue(nuc.isConcrete());
                             frequencies.add(nuc);
                         }
