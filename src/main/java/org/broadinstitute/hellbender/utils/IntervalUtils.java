@@ -5,13 +5,11 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.*;
 import htsjdk.tribble.Feature;
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -1175,13 +1173,13 @@ public final class IntervalUtils {
      * @return Locatables from the unioned breakpoints of locatable1 and locatable2.  If both inputs are null, return an
      *   empty list.  Please note that returned values are new copies.
      */
-    static public <T extends Locatable> List<Locatable> unionIntervals(final List<T> locatables1, final List<T> locatables2, final SAMSequenceDictionary dictionary) {
+    static public <T extends Locatable> List<Locatable> unionBreakpoints(final List<T> locatables1, final List<T> locatables2) {
         if ((locatables1 == null) && (locatables2 == null)) {
             return Collections.emptyList();
         }
 
-        validateNoOverlappingIntervals(locatables1, dictionary);
-        validateNoOverlappingIntervals(locatables2, dictionary);
+        validateNoOverlappingIntervals(locatables1);
+        validateNoOverlappingIntervals(locatables2);
 
         if (CollectionUtils.isEmpty(locatables1)) {
             return locatables2.stream().map(SimpleInterval::new).collect(Collectors.toList());
@@ -1189,6 +1187,7 @@ public final class IntervalUtils {
         if (CollectionUtils.isEmpty(locatables2)) {
             return locatables1.stream().map(SimpleInterval::new).collect(Collectors.toList());
         }
+
         final List<Locatable> masterList = new ArrayList<>();
         masterList.addAll(locatables1);
         masterList.addAll(locatables2);
@@ -1196,13 +1195,14 @@ public final class IntervalUtils {
         final Set<String> contigs = masterList.stream()
                 .map(Locatable::getContig).collect(Collectors.toSet());
 
-        final Map<String, Set<Pair<Integer, Boolean>>> contigToBreakpoints = contigs.stream()
+        final Map<String, Set<Pair<Integer, IntervalBreakpointTypeEnum>>> contigToBreakpoints = contigs.stream()
                 .collect(Collectors.toMap(Function.identity(), l -> new HashSet<>()));
 
-        // Populate initialized maps with contigs to the break points.  Also, keep a contigs to start breakpoints.
+        // Populate initialized maps with contigs to the break points.  Also, keep a mapping of contigs
+        //  to start breakpoints.
         masterList.forEach(l -> {
-            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getStart(), true));
-            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getEnd(), false));
+            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getStart(), IntervalBreakpointTypeEnum.START_BREAKPOINT));
+            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getEnd(), IntervalBreakpointTypeEnum.END_BREAKPOINT));
         });
 
         final List<Locatable> result = new ArrayList<>();
@@ -1213,14 +1213,14 @@ public final class IntervalUtils {
             //  breakpoint that is a start and a breakpoint that is end, yet have the same position.  This is especially
             //  important for single base intervals.
             // TODO: Shorten the code here
-            final List<Pair<Integer, Boolean>> breakpoints = new ArrayList<>(contigToBreakpoints.get(contig));
+            final List<Pair<Integer, IntervalBreakpointTypeEnum>> breakpoints = new ArrayList<>(contigToBreakpoints.get(contig));
             breakpoints.sort((p1, p2) -> {
                 final int firstComparison = p1.getLeft().compareTo(p2.getLeft());
                 if (firstComparison != 0) {
                     return firstComparison;
                 } else {
-                    // We want true before false
-                    return p2.getRight().compareTo(p1.getRight());
+                    // We want start before end
+                    return p1.getRight().compareTo(p2.getRight());
                 }
             });
             int numCurrentStarts = 0;
@@ -1229,8 +1229,8 @@ public final class IntervalUtils {
                 final int currentBreakpoint = breakpoints.get(i).getLeft();
                 final int nextBreakpoint = breakpoints.get(i + 1).getLeft();
 
-                final boolean isCurrentBreakpointStart = breakpoints.get(i).getRight();
-                final boolean isNextBreakpointStart = breakpoints.get(i + 1).getRight();
+                final boolean isCurrentBreakpointStart = breakpoints.get(i).getRight() == IntervalBreakpointTypeEnum.START_BREAKPOINT;
+                final boolean isNextBreakpointStart = breakpoints.get(i + 1).getRight() == IntervalBreakpointTypeEnum.START_BREAKPOINT;
 
                 // if both breakpoints are starts of intervals, then the result is bp1, bp2-1
                 // if both breakpoints are ends of intervals, then the result is bp1+1, bp2
@@ -1265,71 +1265,105 @@ public final class IntervalUtils {
         return result;
     }
 
-    private static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables1, SAMSequenceDictionary dictionary) {
-        final int numLostIntervals1 = getNumLostIntervalsFromMerging(locatables1, dictionary);
-        if (numLostIntervals1 > 0) {
-            throw new UserException.BadInput("Overlap (or duplication) detected in input:  " + locatables1.size() + " intervals had " + (numLostIntervals1 + 1) +" overlapping intervals.");
+    /**
+     *  Throws Bad Input exception if any overlaps are detected within the list of locatables.
+     * @param locatables List of locatables to test.  {@code null} will never throw an exception.
+     * @param <T> Locatable class
+     */
+    private static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
+        // Do not throw an exception for empty or null lists.
+        if (CollectionUtils.isEmpty(locatables)) {
+            return;
+        }
+
+        final HashSet<T> locatablesSet = new HashSet<>(locatables);
+        if (locatablesSet.size() != locatables.size()) {
+            throw new UserException.BadInput("Duplicate(s) detected in input:  " + locatables.size() + " intervals had " + (locatables.size() - locatablesSet.size()) + " duplicates.");
+        }
+
+        final OverlapDetector<T> overlapDetector = OverlapDetector.create(locatables);
+
+        for (final Locatable locatable : locatables) {
+            final Set<T> overlaps = overlapDetector.getOverlaps(locatable);
+            if (overlaps.size() > 1) {
+                throw new UserException.BadInput("Overlap detected in input:  " + locatable + " overlapped " + StringUtils.join(overlaps, ", "));
+            }
         }
     }
 
-    private static <T extends Locatable> int getNumLostIntervalsFromMerging(List<T> locatables1, SAMSequenceDictionary dictionary) {
-        final GenomeLocParser parser = new GenomeLocParser(dictionary);
-        final List<GenomeLoc> genomeLocs1 = locatables1.stream().map(l -> parser.createGenomeLoc(l)).collect(Collectors.toList());
-        final int numMergedSegments = mergeIntervalLocations(genomeLocs1, IntervalMergingRule.OVERLAPPING_ONLY).size();
-        return locatables1.size() - numMergedSegments;
-    }
-
     /**
-     *  Same as {@link IntervalUtils::unionIntervals}, but sorts the inputs first.  Sorted versions are kept in a new list.
+     *  Same as {@link IntervalUtils::unionBreakpoints}, but sorts the inputs first.  Sorted versions are kept in a new list.
      *
      * Sorts using natural sort.
      *
-     * @param locatables1 See {@link IntervalUtils::unionIntervals}, but can be unsorted.
-     * @param locatables2 See {@link IntervalUtils::unionIntervals}, but can be unsorted.
+     * @param locatables1 See {@link IntervalUtils::unionBreakpoints}, but can be unsorted.
+     * @param locatables2 See {@link IntervalUtils::unionBreakpoints}, but can be unsorted.
      * @param dictionary Sequence dictionary to base the sort.  The order of contigs/sequences in the dictionary is the order of the sorting here.
      *                   Never {@code null}
-     * @param <T> See {@link IntervalUtils::unionIntervals}
-     * @return See {@link IntervalUtils::unionIntervals}.  Please note that the output will be sorted.  Never {@code null}
+     * @param <T> See {@link IntervalUtils::unionBreakpoints}
+     * @return See {@link IntervalUtils::unionBreakpoints}.  Please note that the output will be sorted.  Never {@code null}
      */
     static public <T extends Locatable> List<Locatable> unionIntervalsWithSorting(final List<T> locatables1, final List<T> locatables2,
                                                                                   final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary);
-        final GenomicLocatableComparator comparator = new GenomicLocatableComparator(dictionary);
 
-        final List<T> sortedLocatables1 = (locatables1 == null? null: new ArrayList<>(locatables1));
-        if (sortedLocatables1 != null) {
-            sortedLocatables1.sort(comparator);
-        }
+        final List<T> sortedLocatables1 = sortLocatablesBySequenceDictionary(locatables1, dictionary);
+        final List<T> sortedLocatables2 = sortLocatablesBySequenceDictionary(locatables2, dictionary);
 
-        final List<T> sortedLocatables2 = (locatables2 == null? null: new ArrayList<>(locatables2));
-        if (sortedLocatables2 != null) {
-            sortedLocatables2.sort(comparator);
+        return unionBreakpoints(sortedLocatables1, sortedLocatables2);
+    }
+
+    /**
+     * Sort by the contig then position as specified by the index order in the given sequence dictionary.
+     *
+     * @param locatables list of locatables.
+     * @param dictionary Never {@code null}
+     * @param <T> Locatable
+     * @return new list that is sorted using the sequence index of the given dictionary.  Returns {@code null} if locatables
+     *   is {@code null}.  Instances in the list are not copies of input.
+     */
+    public static <T extends Locatable> List<T> sortLocatablesBySequenceDictionary(List<T> locatables, SAMSequenceDictionary dictionary) {
+        Utils.nonNull(dictionary);
+
+        final List<T> result = (locatables == null? null: new ArrayList<>(locatables));
+
+        if (result != null) {
+            final GenomicLocatableComparator comparator = new GenomicLocatableComparator(dictionary);
+            result.sort(comparator);
         }
-        return unionIntervals(sortedLocatables1, sortedLocatables2, dictionary);
+        return result;
     }
 
     /**
      * Creates a map of which locatables (keys) overlap the other list of locatables (vals)
      *
-     * Input lists are assumed sorted by interval.  These are lists solely because we need the ordering to make
-     *  this run efficiently.
+     * Input lists will be sorted sorted by the input dictionary.
      *
-     *  Within a single input list, segments cannot overlap (or duplicate).  If this occurs, behavior is undefined.
+     *  Within a single input list, segments cannot overlap (or duplicate).  If this occurs, an exception is thrown.
      *
-     * No copies of inputs are created
+     * No copies of inputs are created.
      *
      * @param keys -- the intervals we wish to query.  Sorted by interval.  No intervals overlap.  Never {@code null}
      * @param vals -- the intervals that we wish to map to the keys.  Sorted by interval.  No intervals overlap.  Never {@code null}
+     * @param dictionary -- the SAMSequenceDictionary that the intervals (and sorting) derive from.  Never {@code null}
      * @return a mapping of intervals from keys to the list of overlapping intervals in vals.  All item in keys will
      * have a key.  Never {@code null}
      */
-    public static <T extends Locatable, U extends Locatable> Map<T, List<U>> createOverlapMap(final List<T> keys, final List<U> vals) {
+    public static <T extends Locatable, U extends Locatable> Map<T, List<U>> createOverlapMap(final List<T> keys, final List<U> vals,
+                                                                                              final SAMSequenceDictionary dictionary) {
         Utils.nonNull(keys);
         Utils.nonNull(vals);
+        Utils.nonNull(dictionary);
 
-        final PeekableIterator<T> keysIterator = new PeekableIterator<>(keys.iterator());
-        final PeekableIterator<U> valsIterator = new PeekableIterator<>(vals.iterator());
-        final Set<T> keysSet = new HashSet<>(keys);
+        validateNoOverlappingIntervals(keys);
+        validateNoOverlappingIntervals(vals);
+
+        final List<T> sortedKeys = sortLocatablesBySequenceDictionary(keys, dictionary);
+        final List<U> sortedVals = sortLocatablesBySequenceDictionary(vals, dictionary);
+
+        final PeekableIterator<T> keysIterator = new PeekableIterator<>(sortedKeys.iterator());
+        final PeekableIterator<U> valsIterator = new PeekableIterator<>(sortedVals.iterator());
+        final Set<T> keysSet = new HashSet<>(sortedKeys);
 
         // Inialize the entire map with key to empty list entries.
         final Map<T, List<U>> result = keysSet.stream().collect(Collectors.toMap(k -> k, k -> new ArrayList<>()));

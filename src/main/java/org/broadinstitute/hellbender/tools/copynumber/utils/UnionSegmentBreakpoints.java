@@ -106,7 +106,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
     }
 
     /**
-     *  Create a union of segments1 and segments2 as described in {@link IntervalUtils::unionIntervals} and annotate
+     *  Create a union of segments1 and segments2 as described in {@link IntervalUtils::unionBreakpoints} and annotate
      *   the union with annotations of interest in segments1 and segments2.
      *
      * @param segments1 a list of simple annotated regions
@@ -133,7 +133,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
 
         // Create a list of maps where each entry corresponds to unioned intervals to the regions in segmentList_i
         final List<Map<Locatable, List<SimpleAnnotatedGenomicRegion>>> unionIntervalsToSegmentsMaps = segmentLists.stream()
-                .map(segs -> IntervalUtils.createOverlapMap(unionIntervals, segs)).collect(Collectors.toList());
+                .map(segs -> IntervalUtils.createOverlapMap(unionIntervals, segs, dictionary)).collect(Collectors.toList());
 
         final List<SimpleAnnotatedGenomicRegion> result = new ArrayList<>();
 

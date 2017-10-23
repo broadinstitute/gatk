@@ -1541,6 +1541,30 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         output15.addAll(input15_2);
         output15.add(input15_1.get(2));
 
+        // Multiple contigs
+        final List<Locatable> input16_1 = new ArrayList<>();
+        final List<Locatable> input16_2 = new ArrayList<>();
+        final List<Locatable> output16 = new ArrayList<>();
+        input16_1.add(new SimpleInterval("1", 1000, 2000));
+        input16_1.add(new SimpleInterval("1", 3000, 4000));
+        input16_1.add(new SimpleInterval("2", 5000, 5000));
+        input16_1.add(new SimpleInterval("2", 15000, 16000));
+
+        input16_2.add(new SimpleInterval("1", 3500, 4500));
+        input16_2.add(new SimpleInterval("2", 1500, 3500));
+        input16_2.add(new SimpleInterval("2", 15000, 35000));
+
+        output16.addAll(input16_1.subList(0,1));
+        output16.add(new SimpleInterval("1", 3000, 3499));
+        output16.add(new SimpleInterval("1", 3500, 4000));
+        output16.add(new SimpleInterval("1", 4001, 4500));
+
+        output16.add(input16_2.get(1));
+        output16.add(input16_1.get(2));
+        output16.add(new SimpleInterval("2", 15000, 16000));
+        output16.add(new SimpleInterval("2", 16001, 35000));
+
+
         return new Object[][]{
                 {input1_1, input1_2, output1},
                 {input2_1, input2_2, output2},
@@ -1557,13 +1581,13 @@ public final class IntervalUtilsUnitTest extends BaseTest {
                 {input13_1, input13_2, output13},
                 {input14_1, input14_2, output14},
                 {input15_1, input15_2, output15},
+                {input16_1, input16_2, output16},
         };
     }
 
     @Test(dataProvider = "unionIntervalsTesting")
     public void testUnionIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
-        final List<Locatable> outputs = IntervalUtils.unionIntervals(locatables1, locatables2,
-                getSamSequenceDictionaryForIntervalUnionTests());
+        final List<Locatable> outputs = IntervalUtils.unionBreakpoints(locatables1, locatables2);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }
@@ -1577,8 +1601,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         input1_2.add(new SimpleInterval("1", 500, 2500));
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.unionIntervals(input1_1, input1_2,
-                getSamSequenceDictionaryForIntervalUnionTests());
+        IntervalUtils.unionBreakpoints(input1_1, input1_2);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -1590,10 +1613,8 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.unionIntervals(input1_1, input1_2,
-                getSamSequenceDictionaryForIntervalUnionTests());
+        IntervalUtils.unionBreakpoints(input1_1, input1_2);
     }
-
 
     /**
      * Tests the sorting as well when using union intervals
@@ -1617,8 +1638,8 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     private SAMSequenceDictionary getSamSequenceDictionaryForIntervalUnionTests() {
         return new SAMSequenceDictionary(
-                Arrays.asList(new SAMSequenceRecord("1", 100000),
-                        new SAMSequenceRecord("2", 100000)));
+                Arrays.asList(new SAMSequenceRecord("1", 500000),
+                        new SAMSequenceRecord("2", 500000)));
     }
 
     @DataProvider(name = "overlappingData")
@@ -1683,7 +1704,8 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     @Test(dataProvider = "overlappingData")
     public void testCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
 
-        final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2);
+        final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2,
+                getSamSequenceDictionaryForIntervalUnionTests());
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs.keySet().size(), new HashSet<>(locatables1).size());
         Assert.assertTrue(Sets.difference(outputs.keySet(), gtOutput.keySet()).size() == 0);
@@ -1694,14 +1716,14 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "genomicSortingTests")
-    public void basicGenomicSortOfLocatable(final List<Locatable> testList, final List<Locatable> gtList) throws IOException {
+    public void testBasicGenomicSortOfLocatable(final List<Locatable> testList, final List<Locatable> gtList) throws IOException {
 
         final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
         testList.sort(new IntervalUtils.GenomicLocatableComparator(dictionary));
         Assert.assertEquals(testList, gtList);
     }
 
-    @DataProvider(name="genomicSortingTests")
+    @DataProvider(name = "genomicSortingTests")
     public Object[][] createGenomicSortTests() {
         final List<Locatable> list1 = Arrays.asList(
                 new SimpleInterval("2", 1500, 2000),
