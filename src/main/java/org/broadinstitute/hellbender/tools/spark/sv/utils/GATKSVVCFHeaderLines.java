@@ -103,5 +103,7 @@ public final class GATKSVVCFHeaderLines {
 
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, 0, VCFHeaderLineType.Flag, "Tandem repeats contraction compared to reference"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, 0, VCFHeaderLineType.Flag, "Tandem repeats expansion compared to reference"));
+
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.EXTERNAL_CNV_CALLS, 1, VCFHeaderLineType.String, "Comma-delimited list of external copy number calls that overlap with this variant in format ID:CN:CNQ"));
     }
 }

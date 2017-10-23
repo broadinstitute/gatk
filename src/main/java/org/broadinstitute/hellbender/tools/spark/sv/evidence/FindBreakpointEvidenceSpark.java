@@ -82,7 +82,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
-        gatherEvidenceAndWriteContigSamFile(ctx, params, getHeaderForReads(),
+        final String sampleId = SVUtils.getSampleId(getHeaderForReads());
+
+        gatherEvidenceAndWriteContigSamFile(ctx, sampleId, params, getHeaderForReads(),
                 getUnfilteredReads(), outputAssemblyAlignments, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
 
     }
@@ -95,7 +97,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      */
     public static AssembledEvidenceResults gatherEvidenceAndWriteContigSamFile(
             final JavaSparkContext ctx,
-            final FindBreakpointEvidenceSparkArgumentCollection params,
+            final String sampleId, final FindBreakpointEvidenceSparkArgumentCollection params,
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
             final String outputAssembliesFile,
@@ -103,13 +105,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
                 "The reads must be coordinate sorted.");
-
-        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-        final Set<String> sampleSet = readGroups.stream().map(SAMReadGroupRecord::getSample).collect(Collectors.toSet());
-
-        Utils.validate(sampleSet.size() == 1, "Read groups must contain reads from one and only one sample");
-
-        final String sample = sampleSet.iterator().next();
 
         final SVReadFilter filter = new SVReadFilter(params);
 
@@ -151,7 +146,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         // write the output file
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
         final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
-        contigAlignmentsReadGroup.setSample(sample);
+        contigAlignmentsReadGroup.setSample(sampleId);
         cleanHeader.addReadGroup(contigAlignmentsReadGroup);
         cleanHeader.setSortOrder(params.assembliesSortOrder);
 

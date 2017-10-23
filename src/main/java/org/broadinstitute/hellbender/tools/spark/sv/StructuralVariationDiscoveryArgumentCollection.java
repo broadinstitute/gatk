@@ -189,6 +189,8 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Number of pieces of imprecise evidence necessary to call a variant in the absence of an assembled breakpoint.", fullName = "impreciseEvidenceVariantCallingThreshold")
         public int impreciseEvidenceVariantCallingThreshold = DEFAULT_IMPRECISE_EVIDENCE_VARIANT_CALLING_THRESHOLD;
 
+        @Argument(doc = "External CNV calls file. Should be single sample VCF, and contain only confident autosomal non-reference CNV calls (for now).", fullName = "cnvCalls", optional = true)
+        public String cnvCallsFile;
     }
 
 }

@@ -16,6 +16,7 @@
 ##INFO=<ID=DUP_SEQ_CIGARS,Number=.,Type=String,Description="CIGARs of the repeated sequence on the locally-assembled contigs when aligned to DUP_REPEAT_UNIT_REF_SPAN (currently only available for repeats when DUP_ANNOTATIONS_IMPRECISE is false)">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
 ##INFO=<ID=EXPANSION,Number=0,Type=Flag,Description="Tandem repeats expansion compared to reference">
+##INFO=<ID=EXTERNAL_CNV_CALLS,Number=.,Type=String,Description="Comma-delimited list of external copy number calls that overlap with this variant in format ID:CN:CNQ">
 ##INFO=<ID=HOMLEN,Number=1,Type=Integer,Description="Length of base pair identical micro-homology at event breakpoints">
 ##INFO=<ID=HOMSEQ,Number=.,Type=String,Description="Sequence of base pair identical micro-homology at event breakpoints">
 ##INFO=<ID=HQ_MAPPINGS,Number=1,Type=Integer,Description="Number of high-quality contig alignments that support the variant">

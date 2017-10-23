@@ -28,7 +28,7 @@ public class GATKSVVCFUtilsUnitTest extends BaseTest {
                         CONTIG_NAMES, TOTAL_MAPPINGS, MAPPING_QUALITIES, HQ_MAPPINGS, ALIGN_LENGTHS, MAX_ALIGN_LENGTH,
                         SEQ_ALT_HAPLOTYPE, INSERTED_SEQUENCE, INSERTED_SEQUENCE_MAPPINGS, HOMOLOGY, HOMOLOGY_LENGTH,
                         DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE,
-                        DUP_TAN_CONTRACTION_STRING, DUP_TAN_EXPANSION_STRING, DUP_INV_ORIENTATIONS, INV33, INV55)
+                        DUP_TAN_CONTRACTION_STRING, DUP_TAN_EXPANSION_STRING, DUP_INV_ORIENTATIONS, INV33, INV55, EXTERNAL_CNV_CALLS)
                         .sorted().collect(Collectors.toList()));
     }
 
@@ -45,7 +45,7 @@ public class GATKSVVCFUtilsUnitTest extends BaseTest {
     @DataProvider(name = "svVcfFiles")
     private Object[][] testDataForSVVCFFiles() throws IOException {
         final List<Object[]> data = new ArrayList<>(20);
-        final List<Path> vcfFiles = Files.walk(Paths.get(toolsTestDir + "spark/sv/"))
+        final List<Path> vcfFiles = Files.walk(Paths.get(toolsTestDir + "spark/sv/integration/outputs"))
                 .filter(filePath -> filePath.toString().endsWith(".vcf") || filePath.toString().endsWith(".vcf.gz"))
                 .collect(Collectors.toList());
         vcfFiles.forEach(p -> data.add( new Object[]{p}));

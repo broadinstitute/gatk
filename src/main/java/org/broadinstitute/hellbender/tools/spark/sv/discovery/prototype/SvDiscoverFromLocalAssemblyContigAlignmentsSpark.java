@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.FileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.RDDUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
@@ -94,6 +95,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final SAMFileHeader headerForReads = getHeaderForReads();
         final SAMSequenceDictionary refSequenceDictionary = headerForReads.getSequenceDictionary();
 
+        final String sampleId = SVUtils.getSampleId(headerForReads);
+
         // filter alignments and split the gaps
         final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed =
                 FilterLongReadAlignmentsSAMSpark.filterByScore(reads, headerForReads, nonCanonicalChromosomeNamesFile, localLogger, 0.0)
@@ -112,20 +115,22 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         }
 
         final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast = ctx.broadcast(getReference());
-        dispatchJobs( contigsByPossibleRawTypes, referenceMultiSourceBroadcast, refSequenceDictionary);
+        final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary = ctx.broadcast(refSequenceDictionary);
+
+        dispatchJobs( contigsByPossibleRawTypes, referenceMultiSourceBroadcast, broadcastSequenceDictionary, sampleId);
     }
 
     private void dispatchJobs(final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes,
                               final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast,
-                              final SAMSequenceDictionary refSequenceDictionary) {
+                              final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary, final String sampleId) {
 
         new InsDelVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), outputDir+"/"+RawTypes.InsDel.name()+".vcf",
-                        referenceMultiSourceBroadcast, refSequenceDictionary, localLogger);
+                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
         new SimpleStrandSwitchVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Inv), outputDir+"/"+RawTypes.Inv.name()+".vcf",
-                        referenceMultiSourceBroadcast, refSequenceDictionary, localLogger);
+                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
         // here contigs supporting cpx having only 2 alignments could be handled easily together with ref block order switch ones
         final JavaRDD<AlignedContig> diffChrTrans =
@@ -133,7 +138,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         new SuspectedTransLocDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.DispersedDupOrMEI).union(diffChrTrans),
                         outputDir+"/"+ RawTypes.DispersedDupOrMEI.name()+".vcf",
-                        referenceMultiSourceBroadcast, refSequenceDictionary, localLogger);
+                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
     }
 
     private enum RawTypes {
