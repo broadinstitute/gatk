@@ -1587,7 +1587,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test(dataProvider = "unionIntervalsTesting")
     public void testUnionIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
-        final List<Locatable> outputs = IntervalUtils.unionBreakpoints(locatables1, locatables2);
+        final List<Locatable> outputs = IntervalUtils.combineBreakpoints(locatables1, locatables2);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }
@@ -1601,7 +1601,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         input1_2.add(new SimpleInterval("1", 500, 2500));
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.unionBreakpoints(input1_1, input1_2);
+        IntervalUtils.combineBreakpoints(input1_1, input1_2);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -1613,7 +1613,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.unionBreakpoints(input1_1, input1_2);
+        IntervalUtils.combineBreakpoints(input1_1, input1_2);
     }
 
     /**
@@ -1631,7 +1631,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
         final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForIntervalUnionTests();
 
-        final List<Locatable> outputs = IntervalUtils.unionIntervalsWithSorting(locatables1, locatables2, dictionary);
+        final List<Locatable> outputs = IntervalUtils.combineBreakpointsWithSorting(locatables1, locatables2, dictionary);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }

@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTest {
+public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/copynumber/utils/");
     public static final String SEG1 = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg1.tsv";
     public static final String SEG_GT = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg_fake_gt.tsv";
@@ -37,7 +37,7 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
         arguments.add(SEG1_DIFFERENT_HEADERS);
 
         Utils.stream(columnSet.iterator()).forEach(s -> {
-            arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+            arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
             arguments.add(s);
         });
 
@@ -63,9 +63,9 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
         arguments.add(SEG1);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG1);
-        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("MEAN_LOG2_COPY_RATIO");
-        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("CALL");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
@@ -92,9 +92,9 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
         arguments.add(SEG1_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG_GT);
-        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Mean");
-        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Call");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
@@ -155,13 +155,13 @@ public class UnionSegmentBreakpointsIntegrationTest extends CommandLineProgramTe
         arguments.add(SEG1_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG_GT);
-        arguments.add("-" + UnionSegmentBreakpoints.LABELS_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
         arguments.add(TEST);
-        arguments.add("-" + UnionSegmentBreakpoints.LABELS_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
         arguments.add(GT);
-        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Mean");
-        arguments.add("-" + UnionSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Call");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());

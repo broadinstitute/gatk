@@ -26,11 +26,11 @@ import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         oneLineSummary = "(EXPERIMENTAL) Do a breakpoint union of two segment files and annotate with chosen columns from each file.",
-        summary = "Breakpoint union of two segment files while preserving annotations.\n" +
+        summary = "Combine the breakpoints of two segment files while preserving annotations.\n" +
                 "This tool will load all segments into RAM.",
         programGroup = CopyNumberProgramGroup.class)
 @BetaFeature
-public class UnionSegmentBreakpoints extends GATKTool {
+public class CombineSegmentBreakpoints extends GATKTool {
 
     public static final String COLUMNS_OF_INTEREST_LONG_NAME = "columnsOfInterest";
     public static final String COLUMNS_OF_INTEREST_SHORT_NAME = "cols";
@@ -64,7 +64,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
     private Set<String> columnsOfInterest = new HashSet<>();
 
     @Argument(
-            doc = "Output TSV file with unioned segment breakpoints",
+            doc = "Output TSV file with combined segment breakpoints",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private File outputFile;
@@ -98,7 +98,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
                 .collect(Collectors.toMap(Function.identity(), Function.identity()));
         Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
 
-        final List<SimpleAnnotatedGenomicRegion> finalList = annotateUnionedIntervals(segments1, segments2,
+        final List<SimpleAnnotatedGenomicRegion> finalList = annotateCombinedIntervals(segments1, segments2,
                 Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap), getBestAvailableSequenceDictionary());
 
         // TODO: Capture sample names in the comments if possible.
@@ -106,8 +106,8 @@ public class UnionSegmentBreakpoints extends GATKTool {
     }
 
     /**
-     *  Create a union of segments1 and segments2 as described in {@link IntervalUtils::unionBreakpoints} and annotate
-     *   the union with annotations of interest in segments1 and segments2.
+     *  Create intervals with breakpoints of segments1 and segments2 as described in {@link IntervalUtils::combineBreakpoints} and annotate
+     *   the new intervals with annotations of interest in segments1 and segments2.
      *
      * @param segments1 a list of simple annotated regions
      * @param segments2 a list of simple annotated regions
@@ -115,35 +115,34 @@ public class UnionSegmentBreakpoints extends GATKTool {
      *                                Each maps the annotation name as it appears in the segment list to the output annotation name it should get.
      *                                This is required typically to avoid conflicts in the output annotation names.
      *
-     * @return a list of simple annotated regions that is a union of segments1 and segments2 and contains all the annotations specified
+     * @return a list of simple annotated regions that is a breakpoint union of segments1 and segments2 and contains all the annotations specified
      *  in inputToOutputHeaderMaps.
      */
-    private List<SimpleAnnotatedGenomicRegion> annotateUnionedIntervals(final List<SimpleAnnotatedGenomicRegion> segments1, final List<SimpleAnnotatedGenomicRegion> segments2,
-                                                                        final List<Map<String, String>> inputToOutputHeaderMaps,
-                                                                        final SAMSequenceDictionary dictionary) {
+    private List<SimpleAnnotatedGenomicRegion> annotateCombinedIntervals(final List<SimpleAnnotatedGenomicRegion> segments1, final List<SimpleAnnotatedGenomicRegion> segments2,
+                                                                         final List<Map<String, String>> inputToOutputHeaderMaps,
+                                                                         final SAMSequenceDictionary dictionary) {
 
         final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Arrays.asList(segments1, segments2);
 
-        // We assume that the unioned intervals are sorted.
-        final List<Locatable> unionIntervals = IntervalUtils.unionIntervalsWithSorting(
+        final List<Locatable> combinedIntervals = IntervalUtils.combineBreakpointsWithSorting(
                 segmentLists.get(0).stream().map(SimpleAnnotatedGenomicRegion::getInterval)
                         .collect(Collectors.toList()),
                 segmentLists.get(1).stream().map(SimpleAnnotatedGenomicRegion::getInterval)
                         .collect(Collectors.toList()), dictionary);
 
-        // Create a list of maps where each entry corresponds to unioned intervals to the regions in segmentList_i
-        final List<Map<Locatable, List<SimpleAnnotatedGenomicRegion>>> unionIntervalsToSegmentsMaps = segmentLists.stream()
-                .map(segs -> IntervalUtils.createOverlapMap(unionIntervals, segs, dictionary)).collect(Collectors.toList());
+        // Create a list of maps where each entry corresponds to overlapping intervals of the combined intervals.
+        final List<Map<Locatable, List<SimpleAnnotatedGenomicRegion>>> combinedIntervalsToSegmentsMaps = segmentLists.stream()
+                .map(segs -> IntervalUtils.createOverlapMap(combinedIntervals, segs, dictionary)).collect(Collectors.toList());
 
         final List<SimpleAnnotatedGenomicRegion> result = new ArrayList<>();
 
-        for (final Locatable interval: unionIntervals) {
+        for (final Locatable interval: combinedIntervals) {
             final Map<String, String> intervalAnnotationMap = new HashMap<>();
 
-            for (int i = 0; i < unionIntervalsToSegmentsMaps.size(); i ++) {
-                final Map<Locatable, List<SimpleAnnotatedGenomicRegion>> unionIntervalsToSegmentsMap = unionIntervalsToSegmentsMaps.get(i);
+            for (int i = 0; i < combinedIntervalsToSegmentsMaps.size(); i ++) {
+                final Map<Locatable, List<SimpleAnnotatedGenomicRegion>> combinedIntervalsToSegmentsMap = combinedIntervalsToSegmentsMaps.get(i);
                 final Map<String, String> inputToOutputHeaderMap =  inputToOutputHeaderMaps.get(i);
-                final List<SimpleAnnotatedGenomicRegion> matchingSegments = unionIntervalsToSegmentsMap.get(interval);
+                final List<SimpleAnnotatedGenomicRegion> matchingSegments = combinedIntervalsToSegmentsMap.get(interval);
                 inputToOutputHeaderMap.forEach((k,v) -> {
                                 if (matchingSegments.size() > 1) {
                                     logger.warn(interval + " had more than one segment: " + matchingSegments + " only annotating with the first match.");

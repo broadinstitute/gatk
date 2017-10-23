@@ -40,7 +40,7 @@ public final class IntervalUtils {
      * Recognized extensions for interval files
      */
     public static final List<String> INTERVAL_FILE_EXTENSIONS = Collections.unmodifiableList(Arrays.asList(
-            ".list", ".interval_list", ".intervals", ".picard"
+        ".list", ".interval_list", ".intervals", ".picard"
     ));
 
     /**
@@ -58,7 +58,7 @@ public final class IntervalUtils {
      * </p>
      */
     public static final Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR =
-            Comparator.comparing(Locatable::getContig, Comparator.nullsLast(String::compareTo))
+            Comparator.comparing(Locatable::getContig,Comparator.nullsLast(String::compareTo))
                     .thenComparingInt(Locatable::getStart)
                     .thenComparingInt(Locatable::getEnd);
 
@@ -92,7 +92,7 @@ public final class IntervalUtils {
         Utils.nonNull(dictionary);
 
         int result = 0;
-        if (first != second) {
+        if(first != second) {
             // compare the contigs
             result = compareContigs(first, second, dictionary);
             if (result == 0) {
@@ -110,8 +110,8 @@ public final class IntervalUtils {
     /**
      * Tests whether the first Locatable ends before the start of the second Locatable
      *
-     * @param first      first Locatable
-     * @param second     second Locatable
+     * @param first first Locatable
+     * @param second second Locatable
      * @param dictionary sequence dictionary used to determine contig ordering
      * @return true if first ends before the start of second, otherwise false
      */
@@ -127,8 +127,8 @@ public final class IntervalUtils {
     /**
      * Tests whether the first Locatable starts after the end of the second Locatable
      *
-     * @param first      first Locatable
-     * @param second     second Locatable
+     * @param first first Locatable
+     * @param second second Locatable
      * @param dictionary sequence dictionary used to determine contig ordering
      * @return true if first starts after the end of second, otherwise false
      */
@@ -144,11 +144,11 @@ public final class IntervalUtils {
     /**
      * Determines the relative contig ordering of first and second using the provided sequence dictionary
      *
-     * @param first      first Locatable
-     * @param second     second Locatable
+     * @param first first Locatable
+     * @param second second Locatable
      * @param dictionary sequence dictionary used to determine contig ordering
      * @return 0 if the two contigs are the same, a negative value if first's contig comes before second's contig,
-     * or a positive value if first's contig comes after second's contig
+     *         or a positive value if first's contig comes after second's contig
      */
     public static int compareContigs(final Locatable first, final Locatable second, final SAMSequenceDictionary dictionary) {
         Utils.nonNull(first);
@@ -167,23 +167,22 @@ public final class IntervalUtils {
 
     /**
      * getSpanningInterval returns interval that covers all of the locations passed in.
-     *
      * @param locations the locations to be spanned (on a single contig)
      * @return the minimal span that covers all locations (could be null if no locations are passed in).
      * @throws IllegalArgumentException if the argument is null
-     *                                  or if the argument contains any null element
-     *                                  or if the locations are not all on the same contig (compared by String.equals)
+     * or if the argument contains any null element
+     * or if the locations are not all on the same contig (compared by String.equals)
      */
     public static SimpleInterval getSpanningInterval(final List<? extends Locatable> locations) {
         Utils.nonNull(locations);
         Utils.containsNoNull(locations, "locations must not contain a null");
-        if (locations.isEmpty()) {
+        if (locations.isEmpty()){
             return null;
         }
         final List<String> contigs = locations.stream().map(l -> l.getContig()).distinct().collect(Collectors.toList());
         Utils.validateArg(contigs.size() == 1, () -> "found different contigs from inputs:" + contigs);
         final int minStart = locations.stream().mapToInt(l -> l.getStart()).min().getAsInt();
-        final int maxEnd = locations.stream().mapToInt(l -> l.getEnd()).max().getAsInt();
+        final int maxEnd   = locations.stream().mapToInt(l -> l.getEnd()).max().getAsInt();
         return new SimpleInterval(contigs.get(0), minStart, maxEnd);
     }
 
@@ -193,10 +192,10 @@ public final class IntervalUtils {
      * @param genomeLocIntervals list of GenomeLoc intervals to convert
      * @return equivalent List of SimpleIntervals
      */
-    public static List<SimpleInterval> convertGenomeLocsToSimpleIntervals(final List<GenomeLoc> genomeLocIntervals) {
+    public static List<SimpleInterval> convertGenomeLocsToSimpleIntervals( final List<GenomeLoc> genomeLocIntervals ) {
         final List<SimpleInterval> convertedIntervals = new ArrayList<>(genomeLocIntervals.size());
-        for (final GenomeLoc genomeLoc : genomeLocIntervals) {
-            if (genomeLoc.isUnmapped()) {
+        for ( final GenomeLoc genomeLoc : genomeLocIntervals ) {
+            if ( genomeLoc.isUnmapped() ) {
                 throw new UserException("Unmapped intervals cannot be converted to SimpleIntervals");
             }
 
@@ -207,19 +206,19 @@ public final class IntervalUtils {
 
     /**
      * Converts an interval in SimpleInterval format into an htsjdk QueryInterval.
-     * <p>
+     *
      * In doing so, a header lookup is performed to convert from contig name to index
      *
-     * @param interval           interval to convert
+     * @param interval interval to convert
      * @param sequenceDictionary sequence dictionary used to perform the conversion
      * @return an equivalent interval in QueryInterval format
      */
-    public static QueryInterval convertSimpleIntervalToQueryInterval(final SimpleInterval interval, final SAMSequenceDictionary sequenceDictionary) {
+    public static QueryInterval convertSimpleIntervalToQueryInterval( final SimpleInterval interval, final SAMSequenceDictionary sequenceDictionary ) {
         Utils.nonNull(interval);
         Utils.nonNull(sequenceDictionary);
 
         final int contigIndex = sequenceDictionary.getSequenceIndex(interval.getContig());
-        if (contigIndex == -1) {
+        if ( contigIndex == -1 ) {
             throw new UserException("Contig " + interval.getContig() + " not present in reads sequence dictionary");
         }
 
@@ -234,11 +233,11 @@ public final class IntervalUtils {
             final GenomeLocParser genomeLocParser) {
         Utils.nonNull(intervalStrings);
         List<GenomeLoc> allIntervals = new ArrayList<>();
-        for (final String intervalString : intervalStrings) {
+        for ( final String intervalString : intervalStrings) {
             Utils.nonNull(intervalString);
             List<GenomeLoc> intervals = parseIntervalArguments(genomeLocParser, intervalString);
 
-            if (padding > 0) {
+            if ( padding > 0 ) {
                 intervals = getIntervalsWithFlanks(genomeLocParser, intervals, padding);
             }
 
@@ -255,7 +254,7 @@ public final class IntervalUtils {
      * 'all' can be supplied to indicate all possible intervals, but 'all' must be exclusive of all other interval
      * specifications.
      *
-     * @param parser  Genome loc parser.
+     * @param parser Genome loc parser.
      * @param argList A list of strings containing interval data.
      * @return an unsorted, unmerged representation of the given intervals.  Null is used to indicate that all intervals should be used.
      */
@@ -277,29 +276,31 @@ public final class IntervalUtils {
         Utils.nonNull(arg, "arg is null");
         final List<GenomeLoc> rawIntervals = new ArrayList<>();    // running list of raw GenomeLocs
 
-        if (arg.indexOf(';') != -1) {
+        if ( arg.indexOf(';') != -1 ) {
             throw new CommandLineException.BadArgumentValue("-L " + arg, "The legacy -L \"interval1;interval2\" syntax " +
                     "is no longer supported. Please use one -L argument for each " +
                     "interval or an interval file instead.");
         }
         // If it's a Feature-containing file, convert it to a list of intervals
-        else if (FeatureManager.isFeatureFile(new File(arg))) {
+        else if ( FeatureManager.isFeatureFile(new File(arg)) ) {
             rawIntervals.addAll(featureFileToIntervals(parser, arg));
         }
         // If it's an interval file, add its contents to the raw interval list
-        else if (isIntervalFile(arg)) {
+        else if ( isIntervalFile(arg) ) {
             try {
                 rawIntervals.addAll(intervalFileToList(parser, arg));
-            } catch (final UserException.MalformedGenomeLoc e) {
+            }
+            catch ( final UserException.MalformedGenomeLoc e ) {
                 throw e;
-            } catch (final Exception e) {
+            }
+            catch ( final Exception e ) {
                 throw new UserException.MalformedFile(new File(arg), "Interval file could not be parsed in any supported format.", e);
             }
         }
         // If it's neither a Feature-containing file nor an interval file, but is an existing file, throw an error.
         // Note that since contigs can contain periods in their names, we can't use the mere presence of an "extension"
         // as evidence that the user intended the String to be interpreted as a file.
-        else if (new File(arg).exists()) {
+        else if ( new File(arg).exists() ) {
             throw new UserException.CouldNotReadInputFile(arg, String.format("The file %s exists, but does not contain Features " +
                     "(ie., is not in a supported Feature file format such as vcf, bcf, or bed), " +
                     "and does not have one of the supported interval file extensions (" + INTERVAL_FILE_EXTENSIONS + "). " +
@@ -317,18 +318,18 @@ public final class IntervalUtils {
     /**
      * Converts a Feature-containing file to a list of intervals
      *
-     * @param parser          GenomeLocParser for creating intervals
+     * @param parser GenomeLocParser for creating intervals
      * @param featureFileName file containing Features to convert to intervals
      * @return a List of intervals corresponding to the locations of the Features in the provided file
      * @throws UserException.CouldNotReadInputFile if the provided file is not in a supported Feature file format
      */
-    public static List<GenomeLoc> featureFileToIntervals(final GenomeLocParser parser, final String featureFileName) {
+    public static List<GenomeLoc> featureFileToIntervals( final GenomeLocParser parser, final String featureFileName ) {
         final File featureFile = new File(featureFileName);
 
-        try (final FeatureDataSource<? extends Feature> dataSource = new FeatureDataSource<>(featureFile)) {
+        try ( final FeatureDataSource<? extends Feature> dataSource = new FeatureDataSource<>(featureFile) ) {
             final List<GenomeLoc> featureIntervals = new ArrayList<>();
 
-            for (final Feature feature : dataSource) {
+            for ( final Feature feature : dataSource ) {
                 featureIntervals.add(parser.createGenomeLoc(feature));
             }
             return featureIntervals;
@@ -339,8 +340,8 @@ public final class IntervalUtils {
      * Read a file of genome locations to process. The file may be in Picard
      * or GATK interval format.
      *
-     * @param glParser GenomeLocParser
-     * @param fileName interval file
+     * @param glParser   GenomeLocParser
+     * @param fileName  interval file
      * @return List<GenomeLoc> List of Genome Locs that have been parsed from file
      */
     public static List<GenomeLoc> intervalFileToList(final GenomeLocParser glParser, final String fileName) {
@@ -365,18 +366,19 @@ public final class IntervalUtils {
                 // need to tolerate intervals where the end is one before the start. We should remove this once a
                 // corrected version of the interval list is released. This is tracked in:
                 // https://github.com/broadinstitute/gatk/issues/2089
-                if (interval.getStart() - interval.getEnd() == 1) {
+                if (interval.getStart() - interval.getEnd() == 1 ) {
                     logger.warn("Ignoring possibly incorrectly converted length 1 interval : " + interval);
-                } else if (glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
+                }
+                else if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
                     ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
                 } else {
-                    throw new UserException(inputFile.getAbsolutePath() + " has an invalid interval : " + interval);
+                    throw new UserException(inputFile.getAbsolutePath() +  " has an invalid interval : " + interval) ;
                 }
             }
         }
         // if that didn't work, try parsing file as a GATK interval file
         catch (final Exception e) {
-            if (isPicardInterval) // definitely a picard file, but we failed to parse
+            if ( isPicardInterval ) // definitely a picard file, but we failed to parse
             {
                 throw new UserException.CouldNotReadInputFile(inputFile, e);
             } else {
@@ -386,13 +388,14 @@ public final class IntervalUtils {
                             ret.add(glParser.parseGenomeLoc(line));
                         }
                     }
-                } catch (final IOException e2) {
+                }
+                catch (final IOException e2) {
                     throw new UserException.CouldNotReadInputFile(inputFile, e2);
                 }
             }
         }
 
-        if (ret.isEmpty()) {
+        if ( ret.isEmpty() ) {
             throw new UserException.MalformedFile(new File(fileName), "It contains no intervals.");
         }
 
@@ -401,10 +404,9 @@ public final class IntervalUtils {
 
     /**
      * merge two interval lists, using an interval set rule
-     *
      * @param setOne a list of genomeLocs, in order (cannot be NULL)
      * @param setTwo a list of genomeLocs, also in order (cannot be NULL)
-     * @param rule   the rule to use for merging, i.e. union, intersection, etc
+     * @param rule the rule to use for merging, i.e. union, intersection, etc
      * @return a list, correctly merged using the specified rule
      */
     public static List<GenomeLoc> mergeListsBySetOperator(final List<GenomeLoc> setOne, final List<GenomeLoc> setTwo, final IntervalSetRule rule) {
@@ -429,7 +431,7 @@ public final class IntervalUtils {
 
         // merge the second into the first using the rule
         while (iTwo < setTwo.size() && iOne < setOne.size())
-        // if the first list is ahead, drop items off the second until we overlap
+            // if the first list is ahead, drop items off the second until we overlap
         {
             if (setTwo.get(iTwo).isBefore(setOne.get(iOne))) {
                 iTwo++;
@@ -461,8 +463,8 @@ public final class IntervalUtils {
      * all overlapping and abutting intervals into an interval that spans the union of all covered bases, and
      * OVERLAPPING_ONLY, which unions overlapping intervals but keeps abutting intervals separate.
      *
-     * @param parser      Genome loc parser for the intervals.
-     * @param intervals   A collection of intervals to merge.
+     * @param parser Genome loc parser for the intervals.
+     * @param intervals A collection of intervals to merge.
      * @param mergingRule A descriptor for the type of merging to perform.
      * @return A sorted, merged version of the intervals passed in.
      */
@@ -483,23 +485,23 @@ public final class IntervalUtils {
      * assumes that master genomelocs are all discontiguous (i.e., we don't have locs like 1-3 and 4-6 but
      * rather just 1-6).  In order to use this algorithm with contiguous genomelocs first merge them.  The algorithm
      * doesn't assume that test has discontinuous genomelocs.
-     * <p>
+     *
      * Returns a null string if there are no differences, otherwise returns a string describing the difference
      * (useful for UnitTests).  Assumes both lists are sorted
-     * </p>
+     *
      * @param masterArg sorted master genome locs
-     * @param testArg   sorted test genome locs
+     * @param testArg sorted test genome locs
      * @return null string if there are no difference, otherwise a string describing the difference
      */
     public static String equateIntervals(final List<GenomeLoc> masterArg, final List<GenomeLoc> testArg) {
         final LinkedList<GenomeLoc> master = new LinkedList<>(masterArg);
         final LinkedList<GenomeLoc> test = new LinkedList<>(testArg);
 
-        while (!master.isEmpty()) { // there's still unchecked bases in master
+        while ( ! master.isEmpty() ) { // there's still unchecked bases in master
             final GenomeLoc masterHead = master.pop();
             final GenomeLoc testHead = test.pop();
 
-            if (testHead.overlapsP(masterHead)) {
+            if ( testHead.overlapsP(masterHead) ) {
                 // remove the parts of test that overlap master, and push the remaining
                 // parts onto master for further comparison.
                 reverse(masterHead.subtract(testHead)).forEach(master::push);
@@ -510,7 +512,7 @@ public final class IntervalUtils {
             }
         }
 
-        if (test.isEmpty()) // everything is equal
+        if ( test.isEmpty() ) // everything is equal
         {
             return null; // no differences
         } else {
@@ -525,7 +527,6 @@ public final class IntervalUtils {
     /**
      * Check if string argument was intended as a file
      * Accepted file extensions: .bed .list, .picard, .interval_list, .intervals.
-     *
      * @param str token to identify as a filename.
      * @return true if the token looks like a filename, or false otherwise.
      */
@@ -536,8 +537,7 @@ public final class IntervalUtils {
     /**
      * Check if string argument was intended as a file
      * Accepted file extensions are defined in {@link #INTERVAL_FILE_EXTENSIONS}
-     *
-     * @param str         token to identify as a filename.
+     * @param str token to identify as a filename.
      * @param checkExists if true throws an exception if the file doesn't exist and has an interval file extension
      * @return true if the token looks like an interval file name, or false otherwise.
      */
@@ -546,26 +546,26 @@ public final class IntervalUtils {
         final File file = new File(str);
 
         boolean hasIntervalFileExtension = false;
-        for (final String extension : INTERVAL_FILE_EXTENSIONS) {
-            if (str.toLowerCase().endsWith(extension)) {
+        for ( final String extension : INTERVAL_FILE_EXTENSIONS ) {
+            if ( str.toLowerCase().endsWith(extension) ) {
                 hasIntervalFileExtension = true;
             }
         }
 
-        if (hasIntervalFileExtension) {
-            if (!checkExists || file.exists()) {
+        if ( hasIntervalFileExtension ) {
+            if ( ! checkExists || file.exists() ) {
                 return true;
             } else {
                 throw new UserException.CouldNotReadInputFile(file, "The interval file does not exist.");
             }
-        } else {
+        }
+        else {
             return false;
         }
     }
 
     /**
      * Returns a map of contig names with their sizes.
-     *
      * @param reference The reference for the intervals.
      * @return A map of contig names with their sizes.
      */
@@ -573,7 +573,7 @@ public final class IntervalUtils {
         final ReferenceSequenceFile referenceSequenceFile = createReference(reference);
         final List<GenomeLoc> locs = GenomeLocSortedSet.createSetFromSequenceDictionary(referenceSequenceFile.getSequenceDictionary()).toList();
         final Map<String, Integer> lengths = new LinkedHashMap<>();
-        for (final GenomeLoc loc : locs) {
+        for (final GenomeLoc loc: locs) {
             lengths.put(loc.getContig(), loc.size());
         }
         return lengths;
@@ -581,9 +581,8 @@ public final class IntervalUtils {
 
     /**
      * Splits an interval list into multiple files.
-     *
-     * @param fileHeader   The sam file header.
-     * @param locs         The genome locs to split.
+     * @param fileHeader The sam file header.
+     * @param locs The genome locs to split.
      * @param scatterParts The output interval lists to write to.
      */
     public static void scatterContigIntervals(final SAMFileHeader fileHeader, final List<GenomeLoc> locs, final List<File> scatterParts) {
@@ -595,12 +594,12 @@ public final class IntervalUtils {
         // Locs are already sorted.
 
         long totalBases = 0;
-        for (final GenomeLoc loc : locs) {
+        for(final GenomeLoc loc : locs) {
             totalBases += loc.size();
         }
 
         final long idealBasesPerPart = totalBases / scatterParts.size();
-        if (idealBasesPerPart == 0) {
+        if(idealBasesPerPart == 0) {
             throw new UserException.BadInput(String.format("Genome region is too short (%d bases) to split into %d parts", totalBases, scatterParts.size()));
         }
 
@@ -608,17 +607,17 @@ public final class IntervalUtils {
         final ArrayList<Integer> contigStartLocs = new ArrayList<>();
         String prevContig = null;
 
-        for (int i = 0; i < locs.size(); ++i) {
+        for(int i = 0; i < locs.size(); ++i) {
 
             final GenomeLoc loc = locs.get(i);
-            if (prevContig == null || !loc.getContig().equals(prevContig)) {
+            if(prevContig == null || !loc.getContig().equals(prevContig)) {
                 contigStartLocs.add(i);
             }
             prevContig = loc.getContig();
 
         }
 
-        if (contigStartLocs.size() < scatterParts.size()) {
+        if(contigStartLocs.size() < scatterParts.size()) {
             throw new UserException.BadInput(String.format("Input genome region has too few contigs (%d) to split into %d parts", contigStartLocs.size(), scatterParts.size()));
         }
 
@@ -626,7 +625,7 @@ public final class IntervalUtils {
         int partIdx = 0;
         IntervalList outList = new IntervalList(fileHeader);
 
-        for (int i = 0; i < locs.size(); ++i) {
+        for(int i = 0; i < locs.size(); ++i) {
 
             final GenomeLoc loc = locs.get(i);
             thisPartBases += loc.getStop() - loc.getStart();
@@ -635,36 +634,37 @@ public final class IntervalUtils {
 
             boolean partMustStop = false;
 
-            if (partIdx < (scatterParts.size() - 1)) {
+            if(partIdx < (scatterParts.size() - 1)) {
 
                 // If there are n contigs and n parts remaining then we must split here,
                 // otherwise we will run out of contigs.
 
                 final int nextPart = partIdx + 1;
                 final int nextPartMustStartBy = contigStartLocs.get(nextPart + (contigStartLocs.size() - scatterParts.size()));
-                if (i + 1 == nextPartMustStartBy) {
+                if(i + 1 == nextPartMustStartBy) {
                     partMustStop = true;
                 }
 
-            } else if (i == locs.size() - 1) {
+            }
+            else if(i == locs.size() - 1) {
 
                 // We're done! Write the last scatter file.
                 partMustStop = true;
 
             }
 
-            if (partMustStop || thisPartBases > idealBasesPerPart) {
+            if(partMustStop || thisPartBases > idealBasesPerPart) {
 
                 // Ideally we would split here. However, we must make sure to do so
                 // on a contig boundary. Test always passes with partMustStop == true
                 // since that indicates we're at a contig boundary.
 
                 GenomeLoc nextLoc = null;
-                if ((i + 1) < locs.size()) {
+                if((i + 1) < locs.size()) {
                     nextLoc = locs.get(i + 1);
                 }
 
-                if (nextLoc == null || !nextLoc.getContig().equals(loc.getContig())) {
+                if(nextLoc == null || !nextLoc.getContig().equals(loc.getContig())) {
 
                     // Write out this part:
                     outList.write(scatterParts.get(partIdx));
@@ -684,8 +684,7 @@ public final class IntervalUtils {
 
     /**
      * Splits an interval list into multiple sublists.
-     *
-     * @param locs   The genome locs to split.
+     * @param locs The genome locs to split.
      * @param splits The stop points for the genome locs returned by splitFixedIntervals.
      * @return A list of lists of genome locs, split according to splits
      */
@@ -694,7 +693,7 @@ public final class IntervalUtils {
         Utils.nonNull(splits, "splits is null");
         int start = 0;
         final List<List<GenomeLoc>> sublists = new ArrayList<>(splits.size());
-        for (final Integer stop : splits) {
+        for (final Integer stop: splits) {
             final List<GenomeLoc> curList = new ArrayList<>();
             for (int i = start; i < stop; i++) {
                 curList.add(locs.get(i));
@@ -709,9 +708,8 @@ public final class IntervalUtils {
 
     /**
      * Splits an interval list into multiple files.
-     *
-     * @param fileHeader   The sam file header.
-     * @param splits       Pre-divided genome locs returned by splitFixedIntervals.
+     * @param fileHeader The sam file header.
+     * @param splits Pre-divided genome locs returned by splitFixedIntervals.
      * @param scatterParts The output interval lists to write to.
      */
     public static void scatterFixedIntervals(final SAMFileHeader fileHeader, final List<List<GenomeLoc>> splits, final List<File> scatterParts) {
@@ -737,8 +735,7 @@ public final class IntervalUtils {
 
     /**
      * Splits the genome locs up by size.
-     *
-     * @param locs     Genome locs to split.
+     * @param locs Genome locs to split.
      * @param numParts Number of parts to split the locs into.
      * @return The stop points to split the genome locs.
      */
@@ -764,7 +761,7 @@ public final class IntervalUtils {
 
         // the ideal size of each split
         final long bp = IntervalUtils.intervalSize(locs);
-        final long idealSplitSize = Math.max((long) Math.floor(bp / (1.0 * numParts)), 1);
+        final long idealSplitSize = Math.max((long)Math.floor(bp / (1.0*numParts)), 1);
 
         // algorithm:
         // split = ()
@@ -782,8 +779,8 @@ public final class IntervalUtils {
         final List<List<GenomeLoc>> splits = new ArrayList<>(numParts);
 
         LinkedList<GenomeLoc> locsLinkedList = new LinkedList<>(locs);
-        while (!locsLinkedList.isEmpty()) {
-            if (splits.size() + 1 == numParts) {
+        while ( ! locsLinkedList.isEmpty() ) {
+            if ( splits.size() + 1 == numParts ) {
                 // the last one gets all of the remaining parts
                 splits.add(new ArrayList<>(locsLinkedList));
                 locsLinkedList.clear();
@@ -801,17 +798,17 @@ public final class IntervalUtils {
         final List<GenomeLoc> split = new ArrayList<>();
         long size = 0;
 
-        while (!remaining.isEmpty()) {
+        while ( ! remaining.isEmpty() ) {
             final GenomeLoc head = remaining.pop();
             final long newSize = size + head.size();
 
-            if (newSize == idealSplitSize) {
+            if ( newSize == idealSplitSize ) {
                 split.add(head);
                 break; // we are done
-            } else if (newSize > idealSplitSize) {
+            } else if ( newSize > idealSplitSize ) {
                 final long remainingBp = idealSplitSize - size;
                 final long cutPoint = head.getStart() + remainingBp;
-                final GenomeLoc[] parts = head.split((int) cutPoint);
+                final GenomeLoc[] parts = head.split((int)cutPoint);
                 remaining.push(parts[1]);
                 remaining.push(parts[0]);
                 // when we go around, head.size' = idealSplitSize - size
@@ -828,23 +825,23 @@ public final class IntervalUtils {
     /**
      * Check whether two locatables overlap.
      * <p>
-     * Two locatables overlap if the share the same contig and they have at least one
-     * base in common based on their start and end positions.
+     *    Two locatables overlap if the share the same contig and they have at least one
+     *    base in common based on their start and end positions.
      * </p>
      * <p>
-     * This method returns {@code false} if either input {@link Locatable} has a {@code null}
-     * contig.
+     *    This method returns {@code false} if either input {@link Locatable} has a {@code null}
+     *    contig.
      * </p>
      *
-     * @param left  first locatable.
+     * @param left first locatable.
      * @param right second locatable.
-     * @return {@code true} iff there is an overlap between both locatables.
      * @throws IllegalArgumentException if either {@code left} or {@code right} locatable
-     *                                  is {@code null}.
+     *  is {@code null}.
+     * @return {@code true} iff there is an overlap between both locatables.
      */
     public static boolean overlaps(final Locatable left, final Locatable right) {
-        Utils.nonNull(left, "the left locatable is null");
-        Utils.nonNull(right, "the right locatable is null");
+        Utils.nonNull(left,"the left locatable is null");
+        Utils.nonNull(right,"the right locatable is null");
         if (left.getContig() == null || right.getContig() == null) {
             return false;
         } else if (!left.getContig().equals(right.getContig())) {
@@ -908,8 +905,7 @@ public final class IntervalUtils {
 
     /**
      * Converts a GenomeLoc to a picard interval.
-     *
-     * @param loc      The GenomeLoc.
+     * @param loc The GenomeLoc.
      * @param locIndex The loc index for use in the file.
      * @return The picard interval.
      */
@@ -920,8 +916,9 @@ public final class IntervalUtils {
     /**
      * merge a list of genome locs that may be overlapping, returning the list of unique genomic locations
      *
-     * @param raw  the unchecked genome loc list
+     * @param raw the unchecked genome loc list
      * @param rule the merging rule we're using
+     *
      * @return the list of merged locations
      */
     public static List<GenomeLoc> mergeIntervalLocations(final List<GenomeLoc> raw, final IntervalMergingRule rule) {
@@ -949,7 +946,7 @@ public final class IntervalUtils {
 
     public static long intervalSize(final List<GenomeLoc> locs) {
         long size = 0;
-        for (final GenomeLoc loc : locs) {
+        for ( final GenomeLoc loc : locs ) {
             size += loc.size();
         }
         return size;
@@ -957,9 +954,8 @@ public final class IntervalUtils {
 
     /**
      * Returns a list of intervals between the passed int locs. Does not extend UNMAPPED locs.
-     *
-     * @param parser    A genome loc parser for creating the new intervals
-     * @param locs      Original genome locs
+     * @param parser A genome loc parser for creating the new intervals
+     * @param locs Original genome locs
      * @param basePairs Number of base pairs on each side of loc
      * @return The list of intervals between the locs
      */
@@ -977,14 +973,14 @@ public final class IntervalUtils {
     }
 
     private static ReferenceSequenceFile createReference(final File fastaFile) {
-        return CachingIndexedFastaSequenceFile.checkAndCreate(fastaFile);
+            return CachingIndexedFastaSequenceFile.checkAndCreate(fastaFile);
     }
 
     private static LinkedHashMap<String, List<GenomeLoc>> splitByContig(final List<GenomeLoc> sorted) {
         final LinkedHashMap<String, List<GenomeLoc>> splits = new LinkedHashMap<>();
         GenomeLoc last = null;
         List<GenomeLoc> contigLocs = null;
-        for (final GenomeLoc loc : sorted) {
+        for (final GenomeLoc loc: sorted) {
             if (GenomeLoc.isUnmapped(loc)) {
                 continue;
             }
@@ -1003,12 +999,11 @@ public final class IntervalUtils {
      * and a collection of {@link Locatable} instances.
      *
      * <p>
-     * The order in the result list is will correspond to the traversal order in the input collection.
+     *     The order in the result list is will correspond to the traversal order in the input collection.
      * </p>
-     *
      * @param locatables input locatable collection.
-     * @return never {@code null}. The result is an unmodifiable list.
      * @throws IllegalArgumentException if {@code locatable} is {@code null} or contains any {@code null}.
+     * @return never {@code null}. The result is an unmodifiable list.
      */
     public static List<GenomeLoc> genomeLocsFromLocatables(final GenomeLocParser parser, final Collection<? extends Locatable> locatables) {
         Utils.nonNull(parser, "the input genome-loc parser cannot be null");
@@ -1033,14 +1028,14 @@ public final class IntervalUtils {
 
     /**
      * Create a new interval, bounding start and stop by the start and end of contig
-     * <p>
+     *
      * This function will return null if start and stop cannot be adjusted in any reasonable way
      * to be on the contig.  For example, if start and stop are both past the end of the contig,
      * there's no way to fix this, and null will be returned.
      *
-     * @param contig       our contig
-     * @param start        our start as an arbitrary integer (may be negative, etc)
-     * @param stop         our stop as an arbitrary integer (may be negative, etc)
+     * @param contig our contig
+     * @param start our start as an arbitrary integer (may be negative, etc)
+     * @param stop our stop as an arbitrary integer (may be negative, etc)
      * @param contigLength length of the contig
      * @return a valid interval over contig, or null if a meaningful interval cannot be created
      */
@@ -1050,7 +1045,7 @@ public final class IntervalUtils {
         final int boundedStart = Math.max(1, start);
         final int boundedStop = Math.min(contigLength, stop);
 
-        if (boundedStart > contigLength || boundedStop < 1) {
+        if ( boundedStart > contigLength || boundedStop < 1 ){
             // there's no meaningful way to create this interval, as the start and stop are off the contig
             return null;
         } else {
@@ -1061,16 +1056,16 @@ public final class IntervalUtils {
     /**
      * Determines whether the provided interval is within the bounds of its assigned contig according to the provided dictionary
      *
-     * @param interval   interval to check
+     * @param interval interval to check
      * @param dictionary dictionary to use to validate contig bounds
      * @return true if the interval's contig exists in the dictionary, and the interval is within its bounds, otherwise false
      */
-    public static boolean intervalIsOnDictionaryContig(final SimpleInterval interval, final SAMSequenceDictionary dictionary) {
+    public static boolean intervalIsOnDictionaryContig( final SimpleInterval interval, final SAMSequenceDictionary dictionary ) {
         Utils.nonNull(interval);
         Utils.nonNull(dictionary);
 
         final SAMSequenceRecord contigRecord = dictionary.getSequence(interval.getContig());
-        if (contigRecord == null) {
+        if ( contigRecord == null ) {
             return false;
         }
 
@@ -1082,26 +1077,27 @@ public final class IntervalUtils {
     // so that whichever intervals you start from, the resulting shards will line up.
 
     /**
+     *
      * Splits the given input intervals into shards of at most the requested size.
      * The shard boundaries lie at integer multiples of shardSize.
-     * <p>
+     *
      * chr2:1-200 -> chr2:1-100,chr2:101-200
-     * </p>
+     *
      * This method will return all intervals in RAM.  If you need a solution that is light on RAM usage, though it
-     * returns an iterator, see {@link org.broadinstitute.hellbender.utils.iterators.ShardedIntervalIterator}
+     *  returns an iterator, see {@link org.broadinstitute.hellbender.utils.iterators.ShardedIntervalIterator}
      */
     static public List<SimpleInterval> cutToShards(Iterable<SimpleInterval> intervals, int shardSize) {
         ArrayList<SimpleInterval> ret = new ArrayList<>();
         for (SimpleInterval i : intervals) {
             int beginShard = shardIndex(i.getStart(), shardSize);
             int endShard = shardIndex(i.getEnd(), shardSize);
-            if (beginShard == endShard) {
+            if (beginShard==endShard) {
                 ret.add(i);
                 continue;
             }
             // more than one shard: output begin to end-of-shard, then multiple full shards, then begin-of-shard to end.
             ret.add(new SimpleInterval(i.getContig(), i.getStart(), endOfShard(beginShard, shardSize)));
-            for (int shard = beginShard + 1; shard < endShard; shard++) {
+            for (int shard = beginShard+1; shard<endShard; shard++) {
                 ret.add(new SimpleInterval(i.getContig(), beginOfShard(shard, shardSize), endOfShard(shard, shardSize)));
             }
             ret.add(new SimpleInterval(i.getContig(), beginOfShard(endShard, shardSize), i.getEnd()));
@@ -1114,7 +1110,7 @@ public final class IntervalUtils {
      * number of the shard this offset is in. Shards are numbered starting at zero.
      */
     static public int shardIndex(int oneBasedOffset, int shardSize) {
-        return ((oneBasedOffset - 1) / shardSize);
+        return ((oneBasedOffset-1) / shardSize);
     }
 
     /**
@@ -1128,7 +1124,7 @@ public final class IntervalUtils {
      * last offset in this shard (1-based).
      */
     static public int endOfShard(int shardIndex, int shardSize) {
-        return beginOfShard(shardIndex + 1, shardSize) - 1;
+        return beginOfShard(shardIndex+1, shardSize)-1;
     }
 
 
