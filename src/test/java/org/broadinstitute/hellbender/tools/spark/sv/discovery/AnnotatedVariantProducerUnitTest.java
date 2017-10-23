@@ -44,14 +44,14 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
      */
     private static void seeIfItWorks_evidenceAnnotation(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData,
                                                         final String[] expectedMappingQualitiesAsStrings,
-                                                        final String[] expectedAlignmentLengthsAsStrings) throws IOException {
+                                                        final String[] expectedAlignmentLengthsAsStrings) {
 
         final AlignmentInterval region1 = testData._1();
         final AlignmentInterval region2 = testData._2();
         final byte[] contigSeq = null; // hack, as the contig sequence is really not necessary for this test purpose
 
         final Map<String, Object> attributeMap =
-                AnnotatedVariantProducer.getEvidenceRelatedAnnotations(Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4())));
+                AnnotatedVariantProducer.getEvidenceRelatedAnnotations(Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4(), SVDiscoveryTestDataProvider.seqDict)));
 
         Assert.assertEquals(((String)attributeMap.get(GATKSVVCFConstants.MAPPING_QUALITIES)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
                 expectedMappingQualitiesAsStrings);
@@ -60,7 +60,7 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
     }
 
     @Test(groups = "sv")
-    public void testGetEvidenceRelatedAnnotations() throws IOException {
+    public void testGetEvidenceRelatedAnnotations() {
 
         // inversion
         Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
@@ -132,7 +132,7 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
         final AlignmentInterval region1 = testData._1();
         final AlignmentInterval region2 = testData._2();
 
-        final Iterable<ChimericAlignment> evidence = Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4()));
+        final Iterable<ChimericAlignment> evidence = Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4(), SVDiscoveryTestDataProvider.seqDict));
 
         final NovelAdjacencyReferenceLocations breakpoints = testData._3();
 
@@ -246,7 +246,7 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "CIIntervals")
-    public void testProduceCIInterval(final int point, final SVInterval interval, final String expected, final Exception expectedException) throws Exception {
+    public void testProduceCIInterval(final int point, final SVInterval interval, final String expected, final Exception expectedException) {
         if (expectedException == null) {
             Assert.assertEquals(AnnotatedVariantProducer.produceCIInterval(point, interval), expected);
         } else {

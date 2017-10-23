@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.mockito.Mockito;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -132,8 +131,8 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest extends BaseTe
         etls.forEach(e -> evidenceTree.put(e.getPairedStrandedIntervals(), e));
 
         final List<VariantContext> processedVariantContexts =
-                DiscoverVariantsFromContigAlignmentsSAMSpark.processEvidenceTargetLinks(params, localLogger, evidenceTree,
-                        metadata, inputVariants, referenceMultiSource);
+                DiscoverVariantsFromContigAlignmentsSAMSpark.processEvidenceTargetLinks(inputVariants, evidenceTree, metadata, referenceMultiSource, params, localLogger
+                );
 
         VariantContextTestUtils.assertEqualVariants(processedVariantContexts, expectedVariants);
     }
