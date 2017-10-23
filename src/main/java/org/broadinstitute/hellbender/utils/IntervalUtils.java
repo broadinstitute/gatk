@@ -10,7 +10,6 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.Feature;
-import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -59,21 +58,6 @@ public final class IntervalUtils {
      */
     public static final Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR =
             Comparator.comparing(Locatable::getContig,Comparator.nullsLast(String::compareTo))
-                    .thenComparingInt(Locatable::getStart)
-                    .thenComparingInt(Locatable::getEnd);
-
-    /**
-     * Please see:  https://github.com/gpanther/java-nat-sort
-     *
-     * Also called alpha numerical sorting.
-     *
-     * Ensures that sorting would be:
-     * 1,2,3,10,11,X,Y
-     *
-     * Please note that {@link Comparator::naturalOrder} does not do this.
-     */
-    public static final Comparator<Locatable> NATURAL_ORDER_COMPARATOR =
-            Comparator.comparing(Locatable::getContig, Comparator.nullsLast(CaseInsensitiveSimpleNaturalComparator.getInstance()))
                     .thenComparingInt(Locatable::getStart)
                     .thenComparingInt(Locatable::getEnd);
 
@@ -1327,8 +1311,7 @@ public final class IntervalUtils {
         final List<T> result = (locatables == null? null: new ArrayList<>(locatables));
 
         if (result != null) {
-            final GenomicLocatableComparator comparator = new GenomicLocatableComparator(dictionary);
-            result.sort(comparator);
+            result.sort(getDictionaryOrderComparator(dictionary));
         }
         return result;
     }
@@ -1377,53 +1360,8 @@ public final class IntervalUtils {
     /**
      * The order of contigs/sequences in the dictionary is the order of the sorting here.
      */
-    public static class GenomicLocatableComparator implements Comparator<Locatable> {
-
-        private SAMSequenceDictionary dictionary;
-        private final static Comparator<Locatable> positionOnlyComparator = Comparator.comparing(Locatable::getStart)
-                .thenComparingInt(Locatable::getEnd);
-
-        public SAMSequenceDictionary getDictionary() {
-            return dictionary;
-        }
-
-        public GenomicLocatableComparator(final SAMSequenceDictionary dictionary) {
-            this.dictionary = dictionary;
-        }
-
-        @Override
-        public int compare(Locatable o1, Locatable o2) {
-            int o1index = dictionary.getSequenceIndex(o1.getContig());
-            int o2index = dictionary.getSequenceIndex(o2.getContig());
-
-            // Make sure when neither contig is seen in the index, the locatables are put last, but sorted naturally.
-            final boolean isNeitherContigInDictionary = (o1index == -1) && (o2index == -1);
-            if (isNeitherContigInDictionary) {
-                return NATURAL_ORDER_COMPARATOR.compare(o1, o2);
-            }
-
-            // if one locatable is seen in the dictionary, but not the other....
-            if (o1index == -1) return 1;
-            if (o2index == -1) return -1;
-
-            if (o1index != o2index) {
-                return o1index - o2index;
-            } else {
-                return positionOnlyComparator.compare(o1, o2);
-            }
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (!(obj instanceof GenomicLocatableComparator)) return false;
-
-            final GenomicLocatableComparator o = (GenomicLocatableComparator) obj;
-            if (!dictionary.isSameDictionary(o.getDictionary())) {
-                return false;
-            }
-            return true;
-        }
+    public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
+        return (o1, o2) -> IntervalUtils.compareLocatables(o1, o2, dictionary);
     }
 }
 

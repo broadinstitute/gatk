@@ -70,6 +70,9 @@ public class CombineSegmentBreakpoints extends GATKTool {
     private File outputFile;
 
     @Override
+    public boolean requiresReference() { return true;}
+
+    @Override
     public void traverse() {
 
         final List<SimpleAnnotatedGenomicRegion> segments1 = AnnotatedRegionParser.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);

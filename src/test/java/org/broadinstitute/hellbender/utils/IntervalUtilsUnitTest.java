@@ -1737,8 +1737,30 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     public void testBasicGenomicSortOfLocatable(final List<Locatable> testList, final List<Locatable> gtList) throws IOException {
 
         final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
-        testList.sort(new IntervalUtils.GenomicLocatableComparator(dictionary));
+        testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
         Assert.assertEquals(testList, gtList);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testBasicGenomicSortOfLocatableErrorContigNotInDictionary() throws IOException {
+        final List<Locatable> testList = Arrays.asList(
+               new SimpleInterval("2", 1500, 2000),
+               new SimpleInterval("11", 1000, 2000),
+               new SimpleInterval("1", 1500, 2000),
+               new SimpleInterval("10", 1500, 2000),
+               new SimpleInterval("10", 2500, 3000),
+               new SimpleInterval("X", 2500, 3000),
+               new SimpleInterval("X", 3500, 4000),
+               new SimpleInterval("MT", 3500, 4000),
+               new SimpleInterval("AL1234.123NOT_IN_DICT", 3500, 4000),
+               new SimpleInterval("GL000207.1", 3500, 4000),
+               new SimpleInterval("Y", 3500, 4000),
+               new SimpleInterval("GL1234.123NOT_IN_DICT", 3700, 4000),
+               new SimpleInterval("GL1234.123NOT_IN_DICT", 3500, 4000)
+        );
+
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
     }
 
     @DataProvider(name = "genomicSortingTests")
@@ -1761,15 +1783,12 @@ public final class IntervalUtilsUnitTest extends BaseTest {
                 new SimpleInterval("X", 2500, 3000),
                 new SimpleInterval("X", 3500, 4000),
                 new SimpleInterval("MT", 3500, 4000),
-                new SimpleInterval("AL1234.123NOT_IN_DICT", 3500, 4000),
                 new SimpleInterval("GL000207.1", 3500, 4000),
-                new SimpleInterval("Y", 3500, 4000),
-                new SimpleInterval("GL1234.123NOT_IN_DICT", 3700, 4000),
-                new SimpleInterval("GL1234.123NOT_IN_DICT", 3500, 4000)
+                new SimpleInterval("Y", 3500, 4000)
         );
         final List<Locatable> gtList2 = Arrays.asList(
                 list2.get(2), list2.get(0), list2.get(3), list2.get(4), list2.get(1), list2.get(5),
-                list2.get(6), list2.get(10), list2.get(7), list2.get(9), list2.get(8), list2.get(12), list2.get(11));
+                list2.get(6), list2.get(9), list2.get(7), list2.get(8));
 
         return new Object[][]{
                 {list1, gtList1},
