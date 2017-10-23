@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -50,7 +51,7 @@ public class SVVCFWriter {
         writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary, getVcfHeader(referenceSequenceDictionary));
     }
 
-    static void writeVCF(final PipelineOptions pipelineOptions, final String outputPath, String vcfFileName,
+    static void writeVCF(final PipelineOptions pipelineOptions, String vcfFileName,
                          final String fastaReference, final JavaRDD<VariantContext> variantContexts,
                          final Logger logger) {
 
@@ -63,8 +64,20 @@ public class SVVCFWriter {
         writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary, getVcfHeader(referenceSequenceDictionary));
     }
 
+    public static void writeVCF(final PipelineOptions pipelineOptions, final String outputFile, final String referencePath,
+                                final JavaRDD<SVContext> calls, final VCFHeader header, final Logger logger) {
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, referencePath, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
 
-    private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
+        final List<? extends VariantContext> sortedVariantsList = sortVariantsByCoordinate(calls.collect(), referenceSequenceDictionary);
+
+        logNumOfVarByTypes(sortedVariantsList, logger);
+
+        writeVariants(outputFile, sortedVariantsList, referenceSequenceDictionary, header);
+
+    }
+
+
+    private static void logNumOfVarByTypes(final List<? extends VariantContext> sortedVariantsList, final Logger logger) {
 
         logger.info("Discovered " + variants.size() + " variants.");
 
@@ -140,4 +153,6 @@ public class SVVCFWriter {
 
         return vcWriterBuilder.build();
     }
+
+
 }

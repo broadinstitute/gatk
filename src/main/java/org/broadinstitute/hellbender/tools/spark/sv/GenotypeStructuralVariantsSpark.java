@@ -40,7 +40,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocation;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.StructuralVariantContext;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -161,21 +161,21 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaRDD<SVHaplotype> haplotypeAndContigs = haplotypesAndContigsSource
                 .getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), traversalParameters, 0)
                 .map(SVHaplotype::of);
-        final JavaRDD<StructuralVariantContext> variants = variantsSource.getParallelVariantContexts(
+        final JavaRDD<SVContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
-                .map(StructuralVariantContext::of).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
+                .map(SVContext::of).filter(GenotypeStructuralVariantsSpark::structuralVariantAlleleIsSupported);
         final SparkSharder sharder = new SparkSharder(ctx, getReferenceSequenceDictionary(), intervals, shardSize, 0, 10000);
-        final JavaRDD<Shard<StructuralVariantContext>> variantSharded = sharder.shard(variants, StructuralVariantContext.class);
+        final JavaRDD<Shard<SVContext>> variantSharded = sharder.shard(variants, SVContext.class);
         final JavaRDD<Shard<SVHaplotype>> haplotypesSharded = sharder.shard(haplotypeAndContigs, SVHaplotype.class);
-        final JavaPairRDD<Shard<StructuralVariantContext>, Shard<SVHaplotype>> variantAndHaplotypesSharded = sharder.cogroup(variantSharded, haplotypesSharded);
-        final JavaPairRDD<StructuralVariantContext, Iterable<SVHaplotype>> variantAndHaplotypes = sharder
-                .matchLeftByKey(variantAndHaplotypesSharded, StructuralVariantContext::getUniqueID, SVHaplotype::getVariantId);
+        final JavaPairRDD<Shard<SVContext>, Shard<SVHaplotype>> variantAndHaplotypesSharded = sharder.cogroup(variantSharded, haplotypesSharded);
+        final JavaPairRDD<SVContext, Iterable<SVHaplotype>> variantAndHaplotypes = sharder
+                .matchLeftByKey(variantAndHaplotypesSharded, SVContext::getUniqueID, SVHaplotype::getVariantId);
 
-        final ShardPartitioner<StructuralVariantContext> partitioner = sharder.partitioner(StructuralVariantContext.class, variantAndHaplotypes.getNumPartitions());
+        final ShardPartitioner<SVContext> partitioner = sharder.partitioner(SVContext.class, variantAndHaplotypes.getNumPartitions());
         final String fastqDir = this.fastqDir;
         final String fastqFileFormat = "asm%06d.fastq";
 
-        final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> variantHaplotypesAndTemplates =
+        final JavaPairRDD<SVContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> variantHaplotypesAndTemplates =
             variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
                     final AssemblyCollection assemblyCollection = new AssemblyCollection(fastqDir, fastqFileFormat);
                     return Utils.stream(it)
@@ -196,14 +196,14 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             }).iterator();
                 });
 
-        final JavaRDD<StructuralVariantContext> calls = processVariants(variantHaplotypesAndTemplates, ctx);
+        final JavaRDD<SVContext> calls = processVariants(variantHaplotypesAndTemplates, ctx);
         final VCFHeader header = composeOutputHeader();
         SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
                 referenceArguments.getReferenceFile().getAbsolutePath(), calls, header, logger);
         tearDown(ctx);
     }
 
-    private JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> joinFragments(final JavaPairRDD<StructuralVariantContext, Iterable<GATKRead>> variantAndHaplotypes) {
+    private JavaPairRDD<SVContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> joinFragments(final JavaPairRDD<SVContext, Iterable<GATKRead>> variantAndHaplotypes) {
         return variantAndHaplotypes
                 .mapToPair(tuple -> new Tuple2<>(tuple._1(), new Tuple2<>(tuple._2(), tuple._1().getUniqueID())))
                 .mapToPair(tuple -> new Tuple2<>(tuple._1(), new Tuple2<>(tuple._2()._1(), Utils.stream(tuple._2()._1())
@@ -240,14 +240,14 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         }
     }
 
-    private JavaRDD<StructuralVariantContext> processVariants(final JavaPairRDD<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> input, final JavaSparkContext ctx) {
+    private JavaRDD<SVContext> processVariants(final JavaPairRDD<SVContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> input, final JavaSparkContext ctx) {
         final Broadcast<SAMSequenceDictionary> broadCastDictionary = ctx.broadcast(getReferenceSequenceDictionary());
         final SerializableBiFunction<String, byte[], File> imageCreator =  GenotypeStructuralVariantsSpark::createTransientImageFile;
         final AlignmentPenalties penalties = this.penalties;
         final InsertSizeDistribution insertSizeDistribution = this.insertSizeDistribution;
         return input.mapPartitions(it -> {
             final SAMSequenceDictionary dictionary = broadCastDictionary.getValue();
-            final Stream<Tuple2<StructuralVariantContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>>> variants =
+            final Stream<Tuple2<SVContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>>> variants =
                     Utils.stream(it);
             final Map<String, File> imagesByName = new HashMap<>();
             final SAMFileHeader header = new SAMFileHeader();
@@ -364,12 +364,12 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 newVariantBuilder.genotypes(
                         new GenotypeBuilder().name("sample")
                                 .PL(likelihoods1.getAsPLs()).make());
-                return StructuralVariantContext.of(newVariantBuilder.make());
+                return SVContext.of(newVariantBuilder.make());
            }).iterator();
         });
     }
 
-    private static StructuralVariantContext processVariant(final StructuralVariantContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {
+    private static SVContext processVariant(final SVContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {
         Haplotype refHaplotype = null;
         Haplotype altHaplotype = null;
         final List<GenotypingContig> alignedContigs = new ArrayList<>();
@@ -459,7 +459,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         }
     }
 
-    private static boolean structuralVariantAlleleIsSupported(final StructuralVariantContext ctx) {
+    private static boolean structuralVariantAlleleIsSupported(final SVContext ctx) {
         switch (ctx.getStructuralVariantType()) {
             case INS:
             case DEL:

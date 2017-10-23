@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -56,7 +57,7 @@ public class TemplateMappingInformation implements Serializable {
         } else {
             final Pair<List<AlignmentInterval>, List<AlignmentInterval>> sortedAlignments
                     = sortLeftRightAlignments(firstIntervals, secondIntervals);
-            final Pair<SVFastqUtils.Strand, SVFastqUtils.Strand> strands = new ImmutablePair<>(
+            final Pair<Strand, Strand> strands = new ImmutablePair<>(
                     strand(sortedAlignments.getLeft()), strand(sortedAlignments.getRight()));
             final ReadPairOrientation orientation = ReadPairOrientation.fromStrands(strands.getLeft(), strands.getRight());
             if (orientation.isProper()) {
@@ -122,12 +123,12 @@ public class TemplateMappingInformation implements Serializable {
                 : new ImmutablePair<>(second, first);
     }
 
-    private static SVFastqUtils.Strand strand(final List<AlignmentInterval> firstIntervals) {
+    private static Strand strand(final List<AlignmentInterval> firstIntervals) {
         final int mappedBasesOrientation = firstIntervals.stream()
                 .mapToInt(ai -> (ai.forwardStrand ? 1 : -1) * CigarUtils.countAlignedBases(ai.cigarAlong5to3DirectionOfContig))
                 .sum();
         if (mappedBasesOrientation != 0) {
-            return mappedBasesOrientation < 0 ? SVFastqUtils.Strand.NEGATIVE : SVFastqUtils.Strand.POSITIVE;
+            return mappedBasesOrientation < 0 ? Strand.NEGATIVE : Strand.POSITIVE;
         } else { // tie-break:
             final Comparator<AlignmentInterval> comparator0 = Comparator.comparingInt(a -> CigarUtils.countAlignedBases(a.cigarAlong5to3DirectionOfContig));
             final Comparator<AlignmentInterval> comparator1 = comparator0.thenComparingInt(a -> a.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
@@ -137,7 +138,7 @@ public class TemplateMappingInformation implements Serializable {
             final Comparator<AlignmentInterval> comparator = comparator1.thenComparingInt(a -> a.startInAssembledContig).reversed();
 
             final boolean forwardStrand = firstIntervals.stream().sorted(comparator).findFirst().get().forwardStrand;
-            return forwardStrand ? SVFastqUtils.Strand.POSITIVE : SVFastqUtils.Strand.NEGATIVE;
+            return forwardStrand ? Strand.POSITIVE : Strand.NEGATIVE;
         }
     }
 

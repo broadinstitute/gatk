@@ -294,7 +294,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
         Utils.nonNull(bases, "the input bases array cannot be null");
         final int to = offset + length;
         for (int i = offset; i < to; i++) {
-            Utils.validateArg(Nucleotide.valueOf(bases[i]) != Nucleotide.INVALID,
+            Utils.validateArg(Nucleotide.decode(bases[i]) != Nucleotide.INVALID,
                     "the input sequence contains invalid base calls like: " + StringUtils.escape(""+ (char) bases[i]));
         }
     }

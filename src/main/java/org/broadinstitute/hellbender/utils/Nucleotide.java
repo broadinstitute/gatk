@@ -14,30 +14,60 @@ import java.util.stream.LongStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public enum Nucleotide {
-    A, C, G, T, R, Y, S, W, K, M, B, D, H, V, N, X, INVALID;
+    A(true, false, false, false),
+    C(false, true, false, false),
+    G(false, false, true, false),
+    T(false, false, false, true),
+    R(true, false, true, false),
+    Y(false, true, false, true),
+    S(false, true, true, false),
+    W(true, false, false, true),
+    K(false, false, true, true),
+    M(true, false, true, false),
+    B(false, true, true, true),
+    D(true, false, true, true),
+    H(true, true, false, true),
+    V(true, true, true, false),
+    N(true, true, true, true),
+    INVALID(false, false, false, false);
+
+    public static final Nucleotide U = T;
+    public static final Nucleotide X = N;
 
     private static final Nucleotide[] baseToValue = new Nucleotide[Byte.MAX_VALUE + 1];
 
     static {
         Arrays.fill(baseToValue, INVALID);
-        baseToValue['a'] = baseToValue['A'] = A;
-        baseToValue['c'] = baseToValue['C'] = C;
-        baseToValue['g'] = baseToValue['G'] = G;
-        baseToValue['t'] = baseToValue['T'] = T;
-        baseToValue['u'] = baseToValue['U'] = T;
-        baseToValue['r'] = baseToValue['R'] = R;
-        baseToValue['y'] = baseToValue['Y'] = Y;
-        baseToValue['s'] = baseToValue['S'] = S;
-        baseToValue['w'] = baseToValue['W'] = W;
-        baseToValue['k'] = baseToValue['K'] = K;
-        baseToValue['m'] = baseToValue['M'] = M;
-        baseToValue['b'] = baseToValue['B'] = B;
-        baseToValue['d'] = baseToValue['D'] = D;
-        baseToValue['h'] = baseToValue['H'] = H;
-        baseToValue['v'] = baseToValue['V'] = V;
-        baseToValue['n'] = baseToValue['N'] = N;
+        for (final Nucleotide nucleotide : values()) {
+            baseToValue[nucleotide.lowerCaseByteEncoding] = baseToValue[nucleotide.upperCaseByteEncoding] = nucleotide;
+        }
+        baseToValue['u'] = baseToValue['U'] = U;
         baseToValue['x'] = baseToValue['X'] = X;
-        baseToValue['n'] = baseToValue['N'] = N;
+    }
+
+    private static final int A_MASK = 1;
+    private static final int C_MASK = A_MASK << 1;
+    private static final int G_MASK = C_MASK << 1;
+    private static final int T_MASK = G_MASK << 1;
+
+    private final int acgtMask;
+    private final boolean isConcrete;
+
+    /**
+     * Holds lower-case byte encoding for this nucleotide; {@code 0} for {@link Nucleotide#INVALID}.
+     */
+    private final byte lowerCaseByteEncoding;
+
+    /**
+     * Holds the upper-case byte encoding for this nucleotide; {@code 0} for {@link Nucleotide#INVALID}.
+     */
+    private final byte upperCaseByteEncoding;
+
+    Nucleotide(final boolean a, final boolean c, final boolean g, final boolean t) {
+        acgtMask = (a ? A_MASK : 0) | (c ? C_MASK : 0) | (g ? G_MASK : 0) | (t ? T_MASK : 0);
+        isConcrete = acgtMask == A_MASK || acgtMask == C_MASK || acgtMask == G_MASK || acgtMask == T_MASK;
+        lowerCaseByteEncoding = acgtMask == 0 ? (byte) 0 : (byte) name().charAt(0);
+        upperCaseByteEncoding = acgtMask == 0 ? (byte) 0 : (byte) Character.toUpperCase(name().charAt(0));
     }
 
     /**
@@ -48,16 +78,18 @@ public enum Nucleotide {
      * <p>
      *     The {@link #INVALID} nucleotide does not have an actual base then resulting in an exception.
      * </p>
-     * @throws UnsupportedOperationException if this nucleotide does not have a byte representation such
-     *  as {@link #INVALID}.
-     * @return a positive byte value.
+     * @return a valid byte representation for a nucleotide, {@code 0} for {@link Nucleotide#INVALID}.
      */
-    public byte toBase() {
-        if (this == INVALID) {
-            throw new UnsupportedOperationException("the invalid nucleotide does not have a base byte");
-        } else {
-            return (byte) name().charAt(0);
-        }
+    public byte encodeAsByte(final boolean lowerCase) {
+        return lowerCase ? lowerCaseByteEncoding : upperCaseByteEncoding;
+    }
+
+    /**
+     * Returns the nucleotide encoding in a byte using its upper-case representation.
+     * @return a valid upper-case byte representation for a nucleotide, {@code 0} for {@link Nucleotide#INVALID}.
+     */
+    public byte encodeAsByte() {
+        return upperCaseByteEncoding;
     }
 
     /**
@@ -76,7 +108,7 @@ public enum Nucleotide {
      * @return {@code true} iff this is a concrete nucleotide.
      */
     public boolean isConcrete() {
-        return ordinal() <= T.ordinal();
+        return isConcrete;
     }
 
     /**
@@ -84,7 +116,16 @@ public enum Nucleotide {
      * @return {@code true} iff this is an ambiguous nucleotide.
      */
     public boolean isAmbiguous() {
-        return ordinal() > T.ordinal() && this != INVALID;
+        return !isConcrete && this != INVALID;
+    }
+
+    public boolean includes(final Nucleotide other) {
+        Utils.nonNull(other);
+        if (this == INVALID || other == INVALID) {
+            return false;
+        } else {
+            return ((this.acgtMask & other.acgtMask) == other.acgtMask);
+        }
     }
 
     /**

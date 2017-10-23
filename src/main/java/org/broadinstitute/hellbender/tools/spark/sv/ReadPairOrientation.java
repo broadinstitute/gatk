@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -127,12 +128,12 @@ public enum ReadPairOrientation {
      * @param right the member of the pair that maps right-most on that contig.
      * @return never {@code null}, but {@link #XX} if the strand information is missing for any in the pair.
      */
-    public static ReadPairOrientation fromStrands(final SVFastqUtils.Strand left, final SVFastqUtils.Strand right) {
+    public static ReadPairOrientation fromStrands(final Strand left, final Strand right) {
         if (left == null || right == null) {
             return XX;
         } else {
-            return fromReadPairNegativeStrandFlags(left == SVFastqUtils.Strand.NEGATIVE,
-                    right == SVFastqUtils.Strand.NEGATIVE);
+            return fromReadPairNegativeStrandFlags(left == Strand.NEGATIVE,
+                    right == Strand.NEGATIVE);
         }
     }
 

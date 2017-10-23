@@ -21,12 +21,12 @@ public class NucleotideUnitTest {
 
     @Test
     public void testToBase() {
-        Assert.assertEquals(Nucleotide.A.toBase(), (byte)'A');
-        Assert.assertEquals(Nucleotide.C.toBase(), (byte)'C');
-        Assert.assertEquals(Nucleotide.G.toBase(), (byte)'G');
-        Assert.assertEquals(Nucleotide.N.toBase(), (byte)'N');
-        Assert.assertEquals(Nucleotide.T.toBase(), (byte)'T');
-        Assert.assertEquals(Nucleotide.X.toBase(), (byte)'X');
+        Assert.assertEquals(Nucleotide.A.encodeAsByte(), (byte)'A');
+        Assert.assertEquals(Nucleotide.C.encodeAsByte(), (byte)'C');
+        Assert.assertEquals(Nucleotide.G.encodeAsByte(), (byte)'G');
+        Assert.assertEquals(Nucleotide.N.encodeAsByte(), (byte)'N');
+        Assert.assertEquals(Nucleotide.T.encodeAsByte(), (byte)'T');
+        Assert.assertEquals(Nucleotide.X.encodeAsByte(), (byte)'X');
     }
 
     @Test
@@ -47,7 +47,7 @@ public class NucleotideUnitTest {
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testToBaseOnInvalid() {
-        Nucleotide.INVALID.toBase();
+        Nucleotide.INVALID.encodeAsByte();
     }
 
     @Test
@@ -89,7 +89,8 @@ public class NucleotideUnitTest {
                 case 'D': expected = Nucleotide.D; break;
                 case 'h':
                 case 'H': expected = Nucleotide.H; break;
-                default : expected = Nucleotide.INVALID;
+                default :
+                    expected = Nucleotide.INVALID;
             }
             Assert.assertSame(Nucleotide.decode(i), expected, "Failed with base " + i + " returning nucleotide " + Nucleotide.decode(i));
         }
@@ -181,8 +182,8 @@ public class NucleotideUnitTest {
             if (nuc == Nucleotide.INVALID) {
                 continue;
             }
-            result.add( new Object[] { new byte[] { nuc.toBase() } });
-            result.add( new Object[] { Utils.repeatBytes( nuc.toBase(), MIN_RANDOM_SEQ_LENGTH) });
+            result.add( new Object[] { new byte[] { nuc.encodeAsByte() } });
+            result.add( new Object[] { Utils.repeatBytes( nuc.encodeAsByte(), MIN_RANDOM_SEQ_LENGTH) });
         }
         for (int i = 0; i < NUMBER_OF_RANDOM_SEQUENCES; i++) {
             final int length = random.nextInt(MAX_RANDOM_SEQ_LENGTH - MIN_RANDOM_SEQ_LENGTH + 1) + MIN_RANDOM_SEQ_LENGTH;
