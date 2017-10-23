@@ -1135,7 +1135,7 @@ public final class IntervalUtils {
     // (end of shard-related code)
 
     /**
-     * Perform a interval break point union and return a list of locatables.
+     * Perform a interval break point "union" and return a list of locatables.
      *
      * Suppose we have two lists of locatables:
      * List 1:
@@ -1176,7 +1176,7 @@ public final class IntervalUtils {
      * @return Locatables from the unioned breakpoints of locatable1 and locatable2.  If both inputs are null, return an
      *   empty list.  Please note that returned values are new copies.
      */
-    static public <T extends Locatable> List<Locatable> unionBreakpoints(final List<T> locatables1, final List<T> locatables2) {
+    static public <T extends Locatable> List<Locatable> combineBreakpoints(final List<T> locatables1, final List<T> locatables2) {
         if ((locatables1 == null) && (locatables2 == null)) {
             return Collections.emptyList();
         }
@@ -1295,25 +1295,25 @@ public final class IntervalUtils {
     }
 
     /**
-     *  Same as {@link IntervalUtils::unionBreakpoints}, but sorts the inputs first.  Sorted versions are kept in a new list.
+     *  Same as {@link IntervalUtils::combineBreakpoints}, but sorts the inputs first.  Sorted versions are kept in a new list.
      *
-     * Sorts using natural sort.
+     * Sorts using sequence dictionary sort.
      *
-     * @param locatables1 See {@link IntervalUtils::unionBreakpoints}, but can be unsorted.
-     * @param locatables2 See {@link IntervalUtils::unionBreakpoints}, but can be unsorted.
+     * @param locatables1 See {@link IntervalUtils::combineBreakpoints}, but can be unsorted.
+     * @param locatables2 See {@link IntervalUtils::combineBreakpoints}, but can be unsorted.
      * @param dictionary Sequence dictionary to base the sort.  The order of contigs/sequences in the dictionary is the order of the sorting here.
      *                   Never {@code null}
-     * @param <T> See {@link IntervalUtils::unionBreakpoints}
-     * @return See {@link IntervalUtils::unionBreakpoints}.  Please note that the output will be sorted.  Never {@code null}
+     * @param <T> See {@link IntervalUtils::combineBreakpoints}
+     * @return See {@link IntervalUtils::combineBreakpoints}.  Please note that the output will be sorted.  Never {@code null}
      */
-    static public <T extends Locatable> List<Locatable> unionIntervalsWithSorting(final List<T> locatables1, final List<T> locatables2,
-                                                                                  final SAMSequenceDictionary dictionary) {
+    static public <T extends Locatable> List<Locatable> combineBreakpointsWithSorting(final List<T> locatables1, final List<T> locatables2,
+                                                                                      final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary);
 
         final List<T> sortedLocatables1 = sortLocatablesBySequenceDictionary(locatables1, dictionary);
         final List<T> sortedLocatables2 = sortLocatablesBySequenceDictionary(locatables2, dictionary);
 
-        return unionBreakpoints(sortedLocatables1, sortedLocatables2);
+        return combineBreakpoints(sortedLocatables1, sortedLocatables2);
     }
 
     /**
