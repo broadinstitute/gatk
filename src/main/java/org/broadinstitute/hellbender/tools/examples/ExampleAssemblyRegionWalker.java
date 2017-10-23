@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ShardingArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -37,7 +38,7 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     private PrintStream outputStream = null;
 
     @Override
-    protected int defaultReadShardSize() { return NO_INTERVAL_SHARDING; }
+    protected int defaultReadShardSize() { return ShardingArgumentCollection.NO_INTERVAL_SHARDING; }
 
     @Override
     protected int defaultReadShardPadding() { return 100; }

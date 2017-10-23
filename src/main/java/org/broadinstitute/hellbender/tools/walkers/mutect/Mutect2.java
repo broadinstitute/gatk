@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ShardingArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -196,7 +197,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private Mutect2Engine m2Engine;
 
     @Override
-    protected int defaultReadShardSize() { return NO_INTERVAL_SHARDING; }
+    protected int defaultReadShardSize() { return ShardingArgumentCollection.NO_INTERVAL_SHARDING; }
 
     @Override
     protected int defaultReadShardPadding() { return 100; }

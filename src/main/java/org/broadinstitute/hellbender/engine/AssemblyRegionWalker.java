@@ -2,7 +2,10 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.AssemblyRegionWalkerShardingArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ShardingArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -46,19 +49,8 @@ import java.util.List;
  */
 public abstract class AssemblyRegionWalker extends GATKTool {
 
-    /**
-     * If readShardSize is set to this value, we will not shard the user's intervals. Instead,
-     * we'll create one shard per interval (or one shard per contig, if intervals are not explicitly specified)
-     */
-    public static final int NO_INTERVAL_SHARDING = -1;
-
-    @Advanced
-    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. Set to " + NO_INTERVAL_SHARDING + " for one shard per interval (or one shard per contig, if intervals are not explicitly specified). For good performance, this should typically be much larger than the maximum assembly region size.", optional = true)
-    protected int readShardSize = defaultReadShardSize();
-
-    @Advanced
-    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Read shards must have as much or more padding than assembly regions.", optional = true)
-    protected int readShardPadding = defaultReadShardPadding();
+    @ArgumentCollection
+    protected ShardingArgumentCollection shardingArgumentCollection = defaultShardingArgumentCollection();
 
     @Argument(fullName = "minAssemblyRegionSize", shortName = "minAssemblyRegionSize", doc = "Minimum size of an assembly region", optional = true)
     protected int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
@@ -81,12 +73,19 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
 
     /**
-     * @return Default value for the {@link #readShardSize} parameter, if none is provided on the command line
+     * Default implementation returns an {@link AssemblyRegionWalkerShardingArgumentCollection} with {@link #defaultReadShardPadding()} and {@link #defaultReadShardPadding()} default values.
+     */
+    public ShardingArgumentCollection defaultShardingArgumentCollection() {
+        return new AssemblyRegionWalkerShardingArgumentCollection(defaultReadShardSize(), defaultReadShardPadding());
+    }
+
+    /**
+     * @return Default value for the {@link AssemblyRegionWalkerShardingArgumentCollection#readShardSize} parameter, if none is provided on the command line
      */
     protected abstract int defaultReadShardSize();
 
     /**
-     * @return Default value for the {@link #readShardPadding} parameter, if none is provided on the command line
+     * @return Default value for the {@link AssemblyRegionWalkerShardingArgumentCollection#readShardPadding} parameter, if none is provided on the command line
      */
     protected abstract int defaultReadShardPadding();
 
@@ -140,20 +139,16 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Override
     protected final void onStartup() {
         super.onStartup();
+        shardingArgumentCollection.validateArguments();
 
-        if ( readShardSize <= 0 && readShardSize != NO_INTERVAL_SHARDING ) {
-            throw new CommandLineException.BadArgumentValue("read shard size must be > 0 or " + NO_INTERVAL_SHARDING + " for no sharding");
-        }
-
-        if ( readShardPadding < 0 ) {
-            throw new CommandLineException.BadArgumentValue("read shard padding must be >= 0");
-        }
+        final int readShardSize = shardingArgumentCollection.getShardSize();
+        final int readShardPadding = shardingArgumentCollection.getShardPadding();
 
         if ( minAssemblyRegionSize > maxAssemblyRegionSize ) {
             throw new CommandLineException.BadArgumentValue("minAssemblyRegionSize must be <= maxAssemblyRegionSize");
         }
 
-        if ( readShardSize != NO_INTERVAL_SHARDING && maxAssemblyRegionSize > readShardSize ) {
+        if ( readShardSize != ShardingArgumentCollection.NO_INTERVAL_SHARDING && maxAssemblyRegionSize > readShardSize ) {
             throw new CommandLineException.BadArgumentValue("maxAssemblyRegionSize must be <= readShardSize");
         }
 
@@ -166,7 +161,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     }
 
     /**
-     * Shard our intervals for traversal into ReadShards using the {@link #readShardSize} and {@link #readShardPadding} arguments
+     * Shard our intervals for traversal into ReadShards using the {@link ShardingArgumentCollection} arguments
      *
      * @param intervals unmodified intervals for traversal
      * @return List of {@link LocalReadShard} objects, sharded and padded as necessary
@@ -174,8 +169,11 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     private List<LocalReadShard> makeReadShards(final List<SimpleInterval> intervals ) {
         final List<LocalReadShard> shards = new ArrayList<>();
 
+        final int readShardSize = shardingArgumentCollection.getShardSize();
+        final int readShardPadding = shardingArgumentCollection.getShardPadding();
+
         for ( final SimpleInterval interval : intervals ) {
-            if ( readShardSize != NO_INTERVAL_SHARDING ) {
+            if ( readShardSize != ShardingArgumentCollection.NO_INTERVAL_SHARDING ) {
                 shards.addAll(LocalReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
             }
             else {
