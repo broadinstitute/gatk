@@ -144,7 +144,6 @@ dependencies {
     compile 'org.broadinstitute:barclay:1.2.1'
     compile 'com.github.broadinstitute:picard:' + picardVersion
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
-    compile 'net.sf.supercsv:super-csv:2.4.0'
     compile ('com.intel:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j'
         exclude module: 'spark-core_2.10'
