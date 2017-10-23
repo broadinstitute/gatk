@@ -23,7 +23,7 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
     public static final String SEG1 = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg1.tsv";
     public static final String SEG_GT = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg_fake_gt.tsv";
     public static final String SEG1_DIFFERENT_HEADERS = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg1_different_headers.tsv";
-
+    public static final String REF = "src/test/resources/Homo_sapiens_assembly19_chr1_1M.fasta";
 
     @Test
     public void testRunWithExactSegments() throws IOException {
@@ -35,6 +35,8 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add(SEG1);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG1_DIFFERENT_HEADERS);
+        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+        arguments.add(REF);
 
         Utils.stream(columnSet.iterator()).forEach(s -> {
             arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
@@ -59,6 +61,8 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         // Input files are exactly the same.  Therefore, the union should only generate more columns.
         final File outputFile = File.createTempFile("unionseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+        arguments.add(REF);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG1);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
@@ -88,6 +92,8 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         // This test is a bit more like the real world
         final File outputFile = File.createTempFile("unionseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+        arguments.add(REF);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG1_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
@@ -151,6 +157,8 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         // This test is a bit more like the real world
         final File outputFile = File.createTempFile("unionseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+        arguments.add(REF);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(SEG1_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
