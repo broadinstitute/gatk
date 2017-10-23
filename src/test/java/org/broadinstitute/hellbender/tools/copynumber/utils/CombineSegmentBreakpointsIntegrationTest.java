@@ -18,11 +18,11 @@ import java.util.List;
 import java.util.Set;
 
 public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/copynumber/utils/");
-    public static final String SEG1 = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg1.tsv";
-    public static final String SEG_GT = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg_fake_gt.tsv";
-    public static final String SEG1_DIFFERENT_HEADERS = TEST_RESOURCE_DIR.getAbsolutePath() + "/seg1_different_headers.tsv";
-    public static final String REF = "src/test/resources/Homo_sapiens_assembly19_chr1_1M.fasta";
+    private static final String TEST_RESOURCE_DIR = publicTestDir + "src/test/resources/org/broadinstitute/hellbender/tools/copynumber/utils/";
+    public static final String SEG1 = TEST_RESOURCE_DIR + "seg1.tsv";
+    public static final String SEG_GT = TEST_RESOURCE_DIR + "seg_fake_gt.tsv";
+    public static final String SEG1_DIFFERENT_HEADERS = TEST_RESOURCE_DIR + "seg1_different_headers.tsv";
+    public static final String REF = hg19_chr1_1M_Reference;
 
     @Test
     public void testRunWithExactSegments() throws IOException {
