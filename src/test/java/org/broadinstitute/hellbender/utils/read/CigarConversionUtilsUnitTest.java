@@ -7,6 +7,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -81,10 +82,16 @@ public class CigarConversionUtilsUnitTest extends BaseTest {
 
     @DataProvider(name = "InvalidCigarElementData")
     public Object[][] getInvalidCigarElementData() {
+        // because a CigarElement cannot be constructed by the HTSJDK framework, negative length requires
+        // a mocked object instead of new CigarElement(-1, CigarOperator.M)
+        final CigarElement negativeCigarLength = Mockito.mock(CigarElement.class);
+        Mockito.when(negativeCigarLength.getLength()).thenReturn(-1);
+        Mockito.when(negativeCigarLength.getOperator()).thenReturn(CigarOperator.M);
+
         return new Object[][] {
                 { null, IllegalArgumentException.class },
                 { new CigarElement(1, null), GATKException.class },
-                { new CigarElement(-1, CigarOperator.M), GATKException.class }
+                {negativeCigarLength, GATKException.class}
         };
     }
 
