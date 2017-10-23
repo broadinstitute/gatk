@@ -1562,10 +1562,38 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test(dataProvider = "unionIntervalsTesting")
     public void testUnionIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
-        final List<Locatable> outputs = IntervalUtils.unionIntervals(locatables1, locatables2);
+        final List<Locatable> outputs = IntervalUtils.unionIntervals(locatables1, locatables2,
+                getSamSequenceDictionaryForIntervalUnionTests());
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testUnionIntervalsErrorOverlapping() {
+        final List<Locatable> input1_1 = new ArrayList<>();
+        final List<Locatable> input1_2 = new ArrayList<>();
+        input1_1.add(new SimpleInterval("1", 1000, 2000));
+        input1_1.add(new SimpleInterval("1", 2000, 3000));
+        input1_2.add(new SimpleInterval("1", 500, 2500));
+        input1_2.add(new SimpleInterval("1", 2501, 3000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        IntervalUtils.unionIntervals(input1_1, input1_2,
+                getSamSequenceDictionaryForIntervalUnionTests());
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testUnionIntervalsErrorOverlapping2() {
+        final List<Locatable> input1_1 = new ArrayList<>();
+        final List<Locatable> input1_2 = new ArrayList<>();
+        input1_1.add(new SimpleInterval("1", 1000, 2000));
+        input1_2.add(new SimpleInterval("1", 500, 2500));
+        input1_2.add(new SimpleInterval("1", 2501, 3000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        IntervalUtils.unionIntervals(input1_1, input1_2,
+                getSamSequenceDictionaryForIntervalUnionTests());
+    }
+
 
     /**
      * Tests the sorting as well when using union intervals
@@ -1573,13 +1601,24 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     @Test(dataProvider = "unionIntervalsTesting")
     public void testUnionIntervalsWithShuffling(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
 
-        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(
-                Arrays.asList(new SAMSequenceRecord("1", 100000),
-                        new SAMSequenceRecord("2", 100000)));
+        if (locatables1 != null) {
+            Collections.shuffle(locatables1);
+        }
+        if (locatables2 != null) {
+            Collections.shuffle(locatables2);
+        }
+
+        final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForIntervalUnionTests();
 
         final List<Locatable> outputs = IntervalUtils.unionIntervalsWithSorting(locatables1, locatables2, dictionary);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
+    }
+
+    private SAMSequenceDictionary getSamSequenceDictionaryForIntervalUnionTests() {
+        return new SAMSequenceDictionary(
+                Arrays.asList(new SAMSequenceRecord("1", 100000),
+                        new SAMSequenceRecord("2", 100000)));
     }
 
     @DataProvider(name = "overlappingData")

@@ -1134,20 +1134,18 @@ public final class IntervalUtils {
     // (end of shard-related code)
 
     /**
-     * Perform a segment break point union and return a list of locatables.
+     * Perform a interval break point union and return a list of locatables.
      *
      * Suppose we have two lists of locatables:
      * List 1:
      *
      * <pre>
-     *     chromosome  start  end
      *     1  1000  2000
      * </pre>
      *
      * List 2:
      *
      * <pre>
-     *     chromosome  start  end
      *     1  500  2500
      *     1  2501  3000
      *     1  4000  5000
@@ -1155,7 +1153,6 @@ public final class IntervalUtils {
      *
      * The result would be:
      * <pre>
-     *     chromosome  start  end
      *     1  500  999
      *     1  1000  2000
      *     1  2001  2500
@@ -1168,19 +1165,23 @@ public final class IntervalUtils {
      * <p>
      * Does not alter the input.
      * </p>
-     * Any single list of input locatables containing duplicates or overlapping intervals will cause undefined behavior.
+     *
+     * Any single list of input locatables containing duplicates or overlapping intervals will throw an exception.
      *
      * Intervals are assumed to include the start and end bases.
      *
      * @param locatables1 list of locatables
      * @param locatables2 list of locatables
-     * @return Locatables from the union'ed breakpoints of locatable1 and locatable2.  If both inputs are null, return an
+     * @return Locatables from the unioned breakpoints of locatable1 and locatable2.  If both inputs are null, return an
      *   empty list.  Please note that returned values are new copies.
      */
-    static public <T extends Locatable> List<Locatable> unionIntervals(final List<T> locatables1, final List<T> locatables2) {
+    static public <T extends Locatable> List<Locatable> unionIntervals(final List<T> locatables1, final List<T> locatables2, final SAMSequenceDictionary dictionary) {
         if ((locatables1 == null) && (locatables2 == null)) {
             return Collections.emptyList();
         }
+
+        validateNoOverlappingIntervals(locatables1, dictionary);
+        validateNoOverlappingIntervals(locatables2, dictionary);
 
         if (CollectionUtils.isEmpty(locatables1)) {
             return locatables2.stream().map(SimpleInterval::new).collect(Collectors.toList());
@@ -1264,6 +1265,20 @@ public final class IntervalUtils {
         return result;
     }
 
+    private static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables1, SAMSequenceDictionary dictionary) {
+        final int numLostIntervals1 = getNumLostIntervalsFromMerging(locatables1, dictionary);
+        if (numLostIntervals1 > 0) {
+            throw new UserException.BadInput("Overlap (or duplication) detected in input:  " + locatables1.size() + " intervals had " + (numLostIntervals1 + 1) +" overlapping intervals.");
+        }
+    }
+
+    private static <T extends Locatable> int getNumLostIntervalsFromMerging(List<T> locatables1, SAMSequenceDictionary dictionary) {
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+        final List<GenomeLoc> genomeLocs1 = locatables1.stream().map(l -> parser.createGenomeLoc(l)).collect(Collectors.toList());
+        final int numMergedSegments = mergeIntervalLocations(genomeLocs1, IntervalMergingRule.OVERLAPPING_ONLY).size();
+        return locatables1.size() - numMergedSegments;
+    }
+
     /**
      *  Same as {@link IntervalUtils::unionIntervals}, but sorts the inputs first.  Sorted versions are kept in a new list.
      *
@@ -1271,14 +1286,15 @@ public final class IntervalUtils {
      *
      * @param locatables1 See {@link IntervalUtils::unionIntervals}, but can be unsorted.
      * @param locatables2 See {@link IntervalUtils::unionIntervals}, but can be unsorted.
+     * @param dictionary Sequence dictionary to base the sort.  The order of contigs/sequences in the dictionary is the order of the sorting here.
+     *                   Never {@code null}
      * @param <T> See {@link IntervalUtils::unionIntervals}
      * @return See {@link IntervalUtils::unionIntervals}.  Please note that the output will be sorted.  Never {@code null}
      */
     static public <T extends Locatable> List<Locatable> unionIntervalsWithSorting(final List<T> locatables1, final List<T> locatables2,
                                                                                   final SAMSequenceDictionary dictionary) {
-
+        Utils.nonNull(dictionary);
         final GenomicLocatableComparator comparator = new GenomicLocatableComparator(dictionary);
-
 
         final List<T> sortedLocatables1 = (locatables1 == null? null: new ArrayList<>(locatables1));
         if (sortedLocatables1 != null) {
@@ -1289,7 +1305,7 @@ public final class IntervalUtils {
         if (sortedLocatables2 != null) {
             sortedLocatables2.sort(comparator);
         }
-        return unionIntervals(sortedLocatables1, sortedLocatables2);
+        return unionIntervals(sortedLocatables1, sortedLocatables2, dictionary);
     }
 
     /**
@@ -1349,7 +1365,10 @@ public final class IntervalUtils {
         return result;
     }
 
-    static class GenomicLocatableComparator implements Comparator<Locatable> {
+    /**
+     * The order of contigs/sequences in the dictionary is the order of the sorting here.
+     */
+    public static class GenomicLocatableComparator implements Comparator<Locatable> {
 
         private SAMSequenceDictionary dictionary;
         private Comparator<Locatable> positionOnlyComparator;

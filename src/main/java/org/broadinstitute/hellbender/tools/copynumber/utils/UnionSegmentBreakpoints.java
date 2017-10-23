@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.utils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -98,7 +99,7 @@ public class UnionSegmentBreakpoints extends GATKTool {
         Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
 
         final List<SimpleAnnotatedGenomicRegion> finalList = annotateUnionedIntervals(segments1, segments2,
-                Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap));
+                Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap), getBestAvailableSequenceDictionary());
 
         // TODO: Capture sample names in the comments if possible.
         AnnotatedRegionParser.writeAnnotatedRegionsAsTsv(finalList, outputFile, Collections.emptyList());
@@ -118,19 +119,19 @@ public class UnionSegmentBreakpoints extends GATKTool {
      *  in inputToOutputHeaderMaps.
      */
     private List<SimpleAnnotatedGenomicRegion> annotateUnionedIntervals(final List<SimpleAnnotatedGenomicRegion> segments1, final List<SimpleAnnotatedGenomicRegion> segments2,
-                                                                        final List<Map<String, String>> inputToOutputHeaderMaps) {
+                                                                        final List<Map<String, String>> inputToOutputHeaderMaps,
+                                                                        final SAMSequenceDictionary dictionary) {
 
         final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Arrays.asList(segments1, segments2);
 
-        // We assume that the union'ed intervals are sorted.
-        // TODO: This needs to be sorted if we want to support more than two sets of regions at once.
-        final List<Locatable> unionIntervals = IntervalUtils.unionIntervals(
+        // We assume that the unioned intervals are sorted.
+        final List<Locatable> unionIntervals = IntervalUtils.unionIntervalsWithSorting(
                 segmentLists.get(0).stream().map(SimpleAnnotatedGenomicRegion::getInterval)
                         .collect(Collectors.toList()),
                 segmentLists.get(1).stream().map(SimpleAnnotatedGenomicRegion::getInterval)
-                        .collect(Collectors.toList()));
+                        .collect(Collectors.toList()), dictionary);
 
-        // Create a list of maps where each entry corresponds to union'ed intervals to the regions in segmentList_i
+        // Create a list of maps where each entry corresponds to unioned intervals to the regions in segmentList_i
         final List<Map<Locatable, List<SimpleAnnotatedGenomicRegion>>> unionIntervalsToSegmentsMaps = segmentLists.stream()
                 .map(segs -> IntervalUtils.createOverlapMap(unionIntervals, segs)).collect(Collectors.toList());
 
