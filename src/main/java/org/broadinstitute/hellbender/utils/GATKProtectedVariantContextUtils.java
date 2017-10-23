@@ -6,9 +6,11 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -16,6 +18,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
@@ -401,5 +404,144 @@ public class GATKProtectedVariantContextUtils {
             final boolean isRefStartsWithAlt = IntStream.range(0, allele.length()).allMatch(i -> ref.getBases()[i] == allele.getBases()[i]);
             return !isRefStartsWithAlt;
         }
+    }
+
+    /**
+     * Given a set of alleles (reference and alternate), choose the allele that is the best match for the given read (and offset)
+     *
+     * @param pileupElement read and offset.  Never {@code null}
+     * @param referenceAllele Reference allele.  Never {@code null}
+     * @param altAlleles List of candidate alternate alleles.  Never {@code null}
+     * @param minBaseQualityCutoff minimum base quality for the bases that match the allele in order to be counted.
+     *                             Must be positive or zero.  If you do not want any filtering, specify 0.
+     * @return The allele (reference or from the altAlleles) that matches.  {@code null} if none are a match or the base qualities
+     *      corresponding to the allele don't all exceed the minimum.
+     */
+    public static Allele chooseAlleleForRead(final PileupElement pileupElement, final Allele referenceAllele, final List<Allele> altAlleles, int minBaseQualityCutoff) {
+        Utils.nonNull(pileupElement);
+        Utils.nonNull(referenceAllele);
+        Utils.nonNull(altAlleles);
+        ParamUtils.isPositiveOrZero(minBaseQualityCutoff, "Minimum base quality must be positive or zero.");
+
+        final boolean isRef = referenceAllele.basesMatch(getBasesForAlleleInRead(pileupElement, referenceAllele))
+                && !pileupElement.isBeforeDeletionStart() && !pileupElement.isBeforeInsertion();
+
+        Allele pileupAllele = null;
+        if (!isRef) {
+
+            for (Allele altAllele : altAlleles) {
+                final VariantContext.Type variantType = typeOfVariant(referenceAllele, altAllele);
+
+                if (variantType == VariantContext.Type.INDEL) {
+                    if (isIndelInThePileupElement(pileupElement, referenceAllele, altAllele)) {
+                        pileupAllele = altAllele;
+                    }
+
+                } else if (variantType == VariantContext.Type.MNP || variantType == VariantContext.Type.SNP) {
+                    if (doesReadContainAllele(pileupElement, altAllele) == ReadContainAllele.TRUE) {
+                        pileupAllele = altAllele;
+                    }
+                }
+            }
+        } else {
+            pileupAllele = referenceAllele;
+        }
+
+        if ((pileupAllele != null) && (getMinBaseQualityForAlleleInRead(pileupElement, pileupAllele) < minBaseQualityCutoff)) {
+            pileupAllele = null;
+        }
+
+        return pileupAllele;
+    }
+
+    private static boolean isIndelInThePileupElement(final PileupElement pileupElement, final Allele referenceAllele, final Allele altAllele) {
+        boolean isAltAlleleInThePileup = false;
+
+        // Check insertion
+        if (pileupElement.isBeforeInsertion()) {
+            final int insertionLength = pileupElement.getLengthOfImmediatelyFollowingIndel();
+            if (insertionLength == pileupElement.getLengthOfImmediatelyFollowingIndel()) {
+                final String insertionBases = pileupElement.getBasesOfImmediatelyFollowingInsertion();
+                // edge case: ignore a deletion immediately preceding an insertion as p.getBasesOfImmediatelyFollowingInsertion() returns null [EB]
+                if (insertionBases != null) {
+                    final boolean isMatch = Allele.extend(referenceAllele, insertionBases.getBytes()).basesMatch(altAllele);
+                    if (isMatch) {
+                        isAltAlleleInThePileup = true;
+                    }
+                }
+            }
+        }
+
+        // Check deletion
+        if (pileupElement.isBeforeDeletionStart()) {
+            final int deletionLength = pileupElement.getLengthOfImmediatelyFollowingIndel();
+            if ((referenceAllele.getBases().length - altAllele.getBases().length) == deletionLength) {
+                isAltAlleleInThePileup = true;
+            }
+        }
+        return isAltAlleleInThePileup;
+    }
+
+    /**
+     * @param pileupElement pileup element representing the read.  Never {@code null}
+     * @param allele allele to get overlapping bases in read.  Never {@code null}
+     * @return array of the bytes that correspond to the allele in the pileup element.  Note that, if the read ends, this
+     * list can be smaller than the length of the allele.
+     */
+    private static byte[] getBasesForAlleleInRead(final PileupElement pileupElement, final Allele allele) {
+        Utils.nonNull(pileupElement);
+        Utils.nonNull(allele);
+        return ArrayUtils.subarray(pileupElement.getRead().getBases(), pileupElement.getOffset(), pileupElement.getOffset() + allele.getBases().length);
+    }
+
+    /**
+     * TODO: Test.  And make sure to test with reference alleles to make sure "*" is not included.
+     * @param pileupElement pileup element representing the read.  Never {@code null}
+     * @param allele query allele.  Never {@code null}
+     * @return Whether the read contains the allele.  Note that unknown can occur as well.
+     */
+    public static ReadContainAllele doesReadContainAllele(final PileupElement pileupElement, final Allele allele) {
+        Utils.nonNull(pileupElement);
+        Utils.nonNull(allele);
+
+        final byte[] readBases = ArrayUtils.subarray(pileupElement.getRead().getBases(), pileupElement.getOffset(), pileupElement.getOffset() + allele.getBases().length);
+
+        if (readBases.length < allele.getBases().length) {
+            return ReadContainAllele.UNKNOWN;
+        }
+
+        if (allele.basesMatch(readBases)) {
+            return ReadContainAllele.TRUE;
+        } else {
+            return ReadContainAllele.FALSE;
+        }
+    }
+
+    /**
+     * Find the minimum base quality for all bases in a read that correspond to a given allele.
+     *
+     * @param pileupElement pileup element representing the read.  Never {@code null}
+     * @param allele query allele.  Never {@code null}
+     * @return lowest base quality seen in the corresponding bases of the read
+     */
+    private static int getMinBaseQualityForAlleleInRead(final PileupElement pileupElement, final Allele allele) {
+        Utils.nonNull(pileupElement);
+        Utils.nonNull(allele);
+        final byte[] alleleBases = allele.getBases();
+        final byte[] pileupBaseQualities = ArrayUtils.subarray(pileupElement.getRead().getBaseQualities(), pileupElement.getOffset(), pileupElement.getOffset() + alleleBases.length);
+        final OptionalInt minQuality = IntStream.range(0, pileupBaseQualities.length).map(i -> Byte.toUnsignedInt(pileupBaseQualities[i])).min();
+        if (!minQuality.isPresent()) {
+            return -1;
+        } else {
+            return minQuality.getAsInt();
+        }
+    }
+
+    /**
+     * An enumeration to represent whether a read contains the allele at a position.
+     */
+    public enum ReadContainAllele {
+        // UNKNOWN could be used if the read does not fully cover the allele.  For example, a ten base allele appearing near the end of the read
+        TRUE, FALSE, UNKNOWN
     }
 }

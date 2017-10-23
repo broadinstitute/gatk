@@ -2,8 +2,11 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
+import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Collection;
@@ -117,5 +120,63 @@ public final class ArtificialReadUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(unmappedRead.getAssignedStart(), 50);
         Assert.assertEquals(unmappedRead.getBases(), new byte[]{'A'});
         Assert.assertEquals(unmappedRead.getBaseQualities(), new byte[]{30});
+    }
+
+    @Test(dataProvider = "createNonIndelPileupElement")
+    public void testCreateNonIndelPileupElement(final int offsetInRead, final Allele newAllele, final int lengthOfRead, final String gtBases) {
+        final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetInRead, newAllele, lengthOfRead);
+        Assert.assertEquals(pileupElement.getRead().getBasesString(), gtBases);
+    }
+
+    @DataProvider(name="createNonIndelPileupElement")
+    public Object[][] createNonIndelPileupElement() {
+        return new Object[][] {
+                {1, Allele.create("TTTT", true), 5, "ATTTT"},
+                {0, Allele.create("TTTT", true), 5, "TTTTA"},
+                {4, Allele.create("TTTT", true), 5, "AAAAT"},
+                {1, Allele.create("TTTT", false), 5, "ATTTT"},
+                {0, Allele.create("TTTT", false), 5, "TTTTA"},
+                {4, Allele.create("TTTT", false), 5, "AAAAT"},
+                {4, Allele.create("TCCT", false), 5, "AAAAT"},
+                {4, Allele.create("CCCT", false), 5, "AAAAC"},
+                {3, Allele.create("CCCT", false), 5, "AAACC"},
+        };
+    }
+
+    @Test(dataProvider = "createInsertionPileupElement")
+    public void testCreateInsertionPileup(final int offsetInRead, final Allele insertionAllele, final int lengthOfRead, final String gtBases) {
+        final PileupElement pileupElement = ArtificialReadUtils.createSplicedInsertionPileupElement(offsetInRead, insertionAllele, lengthOfRead);
+        Assert.assertEquals(pileupElement.getRead().getBasesString(), gtBases);
+    }
+
+    @DataProvider(name="createInsertionPileupElement")
+    public Object[][] createInsertionileupElement() {
+        return new Object[][] {
+                {1, Allele.create("ATTT", true), 5, "AATTTAAA"},
+                {0, Allele.create("ATTT", true), 5, "ATTTAAAA"},
+                {4, Allele.create("ATTT", true), 5, "AAAAATTT"},
+                {4, Allele.create("CTTT", true), 5, "AAAACTTT"},
+                {1, Allele.create("ATTT", false), 5, "AATTTAAA"},
+                {0, Allele.create("ATTT", false), 5, "ATTTAAAA"},
+                {4, Allele.create("ATTT", false), 5, "AAAAATTT"},
+        };
+    }
+
+    @Test(dataProvider = "createDeletionPileupElement")
+    public void testCreateDeletionPileup(final int offsetInRead, final Allele referenceAllele, final int lengthOfRead, final String gtBases) {
+        final PileupElement pileupElement = ArtificialReadUtils.createSplicedDeletionPileupElement(offsetInRead, referenceAllele, lengthOfRead);
+        Assert.assertEquals(pileupElement.getRead().getBasesString(), gtBases);
+    }
+
+    @DataProvider(name="createDeletionPileupElement")
+    public Object[][] createDeletionileupElement() {
+        return new Object[][] {
+                {1, Allele.create("AAAA", true), 5, "AA"},
+                {0, Allele.create("CAAA", true), 5, "CA"},
+                {1, Allele.create("AAAA", false), 5, "AA"},
+                {0, Allele.create("CAAA", false), 5, "CA"},
+                {4, Allele.create("AAAA", false), 5, "AAAAA"},
+                {4, Allele.create("CAAA", false), 5, "AAAAC"}
+        };
     }
 }

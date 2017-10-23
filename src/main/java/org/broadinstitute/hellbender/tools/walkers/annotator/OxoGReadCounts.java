@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import org.apache.commons.lang.mutable.MutableInt;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -23,7 +22,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 
 /**
@@ -151,36 +149,9 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
 
         final Map<Allele, MutableInt> countMap = isF2R1(pileupElement.getRead()) ? f2r1Counts : f1r2Counts;
 
-        final boolean isRef = referenceAllele.basesMatch(getBasesForAlleleInRead(pileupElement, referenceAllele))
-                && !pileupElement.isBeforeDeletionStart() && !pileupElement.isBeforeInsertion();
-
-        Allele pileupAllele = null;
-        if (!isRef) {
-
-            for (Allele altAllele : altAlleles) {
-                final VariantContext.Type variantType = GATKProtectedVariantContextUtils.typeOfVariant(referenceAllele, altAllele);
-
-                if (variantType == VariantContext.Type.INDEL) {
-                    if (isIndelInThePileupElement(pileupElement, referenceAllele, altAllele)) {
-                        pileupAllele = altAllele;
-                    }
-
-                } else if (variantType == VariantContext.Type.MNP || variantType == VariantContext.Type.SNP) {
-                    if (altAllele.basesMatch(getBasesForAlleleInRead(pileupElement, altAllele))) {
-                        pileupAllele = altAllele;
-                    }
-                }
-            }
-
-        } else {
-            pileupAllele = referenceAllele;
-        }
+        final Allele pileupAllele = GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
 
         if (pileupAllele == null) {
-            return;
-        }
-
-        if (getMinBaseQualityForAlleleInRead(pileupElement, pileupAllele) < minBaseQualityCutoff) {
             return;
         }
 
@@ -188,50 +159,6 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
             countMap.get(pileupAllele).increment();
         }
     }
-
-    private static boolean isIndelInThePileupElement(final PileupElement pileupElement, final Allele referenceAllele, final Allele altAllele) {
-        boolean isAltAlleleInThePileup = false;
-
-        // Check insertion
-        if (pileupElement.isBeforeInsertion()) {
-            final int insertionLength = pileupElement.getLengthOfImmediatelyFollowingIndel();
-            if (insertionLength == pileupElement.getLengthOfImmediatelyFollowingIndel()) {
-                final String insertionBases = pileupElement.getBasesOfImmediatelyFollowingInsertion();
-                // edge case: ignore a deletion immediately preceding an insertion as p.getBasesOfImmediatelyFollowingInsertion() returns null [EB]
-                if (insertionBases != null) {
-                    final boolean isMatch = Allele.extend(referenceAllele, insertionBases.getBytes()).basesMatch(altAllele);
-                    if (isMatch) {
-                        isAltAlleleInThePileup = true;
-                    }
-                }
-            }
-        }
-
-        // Check deletion
-        if (pileupElement.isBeforeDeletionStart()) {
-            final int deletionLength = pileupElement.getLengthOfImmediatelyFollowingIndel();
-            if ((referenceAllele.getBases().length - altAllele.getBases().length) == deletionLength) {
-                isAltAlleleInThePileup = true;
-            }
-        }
-        return isAltAlleleInThePileup;
-    }
-
-    private static byte[] getBasesForAlleleInRead(final PileupElement pileupElement, final Allele allele) {
-        return ArrayUtils.subarray(pileupElement.getRead().getBases(), pileupElement.getOffset(), pileupElement.getOffset() + allele.getBases().length);
-    }
-
-    private static int getMinBaseQualityForAlleleInRead(final PileupElement pileupElement, final Allele allele) {
-        final byte[] alleleBases = allele.getBases();
-        final byte[] pileupBaseQualities = ArrayUtils.subarray(pileupElement.getRead().getBaseQualities(), pileupElement.getOffset(), pileupElement.getOffset() + alleleBases.length);
-        final OptionalInt minQuality = IntStream.range(0, pileupBaseQualities.length).map(i -> Byte.toUnsignedInt(pileupBaseQualities[i])).min();
-        if (!minQuality.isPresent()) {
-            return -1;
-        } else {
-            return minQuality.getAsInt();
-        }
-    }
-
 
     protected static boolean isUsableRead(final GATKRead read) {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;

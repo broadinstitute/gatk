@@ -4,20 +4,27 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Created by David Benjamin on 2/15/17.
  */
-public class GATKProtectedVariantContextUtilsUnitTest {
+public class GATKProtectedVariantContextUtilsUnitTest extends BaseTest {
+
+    public static final int LENGTH_OF_ARTIFICIAL_READ = 50;
+
     @Test
     public void testGetPileup() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
@@ -96,4 +103,150 @@ public class GATKProtectedVariantContextUtilsUnitTest {
         };
     }
 
+    @Test(dataProvider = "bestAlleleSNP")
+    public void testChooseBestAlleleSNP(final Allele referenceAllele, final List<Allele> altAlleles, int offsetIntoRead, int minBaseQualityCutoff, int gtChosenInAlt, boolean isGtRef) {
+
+        // No indels
+        if (isGtRef) {
+            final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, referenceAllele, LENGTH_OF_ARTIFICIAL_READ);
+            final Allele chosen = GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
+            Assert.assertEquals(chosen, referenceAllele);
+        } else {
+            final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, altAlleles.get(gtChosenInAlt), LENGTH_OF_ARTIFICIAL_READ);
+            final Allele chosen = GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
+            Assert.assertEquals(chosen, altAlleles.get(gtChosenInAlt));
+        }
+    }
+
+    @DataProvider(name = "bestAlleleSNP")
+    public Object[][] createSNPAlleles() {
+        return new Object[][] {
+                // final Allele referenceAllele, final List<Allele> altAlleles, int offsetIntoRead, int minBaseQualityCutoff, int gtChosenInAlt, boolean isGtRef
+                {
+                    Allele.create("A", true), Arrays.asList(Allele.create("T", false), Allele.create("CA", false)), 0, 0,
+                        0, false
+                }, {
+                    Allele.create("A", true), Arrays.asList(Allele.create("T", false), Allele.create("CA", false)), 0,  0,
+                        0, true
+                }, {
+                    Allele.create("A", true), Arrays.asList(Allele.create("C", false), Allele.create("T", false)), 1, 0,
+                        0, false
+                }, {
+                    Allele.create("AA", true), Arrays.asList(Allele.create("CC", false), Allele.create("T", false)), 1, 0,
+                        0, false
+                }, {
+                    Allele.create("AA", true), Arrays.asList(Allele.create("T", false), Allele.create("CC", false)), 1, 0,
+                        1, false
+                }, {
+                    Allele.create("GA", true), Arrays.asList(Allele.create("T", false), Allele.create("CC", false)), 1, 0,
+                    1, true
+                }
+        };
+    }
+
+    @Test(dataProvider = "testInsertions")
+    public void testChooseBestAlleleInsertion(final int offsetIntoRead, final String refBases, final String altBases,
+                                              final boolean isSpliceInAlt) {
+
+        // We assume that we are on the base right before the insertion.  We are pretending each read is 50 bases long.
+        final Allele referenceAllele = Allele.create(refBases, true);
+        final Allele insertionAllele = Allele.create(altBases, false);
+
+        if (isSpliceInAlt) {
+            final PileupElement pileupElement = ArtificialReadUtils.createSplicedInsertionPileupElement(offsetIntoRead, insertionAllele, LENGTH_OF_ARTIFICIAL_READ);
+            Assert.assertEquals(
+                    GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele,
+                            Collections.singletonList(insertionAllele), 0),
+                    insertionAllele);
+        } else {
+            final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, referenceAllele, LENGTH_OF_ARTIFICIAL_READ);
+            Assert.assertEquals(
+                    GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele,
+                            Collections.singletonList(insertionAllele), 0),
+                    referenceAllele);
+        }
+    }
+
+    @Test(dataProvider = "testDeletions")
+    public void testChooseBestAlleleDeletion(final int offsetIntoRead, final String refBases, final String altBases,
+                                              final boolean isSpliceInAlt) {
+
+        // We assume that we are on the base right before the insertion.  We are pretending each read is 50 bases long.
+        final Allele referenceAllele = Allele.create(refBases, true);
+        final Allele deletionAllele = Allele.create(altBases, false);
+
+        if (isSpliceInAlt) {
+            final PileupElement pileupElement = ArtificialReadUtils.createSplicedDeletionPileupElement(offsetIntoRead, referenceAllele, LENGTH_OF_ARTIFICIAL_READ);
+            Assert.assertEquals(
+                    GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele,
+                            Collections.singletonList(deletionAllele), 0),
+                    deletionAllele);
+        } else {
+            final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, referenceAllele, LENGTH_OF_ARTIFICIAL_READ);
+            Assert.assertEquals(
+                    GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele,
+                            Collections.singletonList(deletionAllele), 0),
+                    referenceAllele);
+        }
+    }
+
+    @Test
+    public void testChooseBestAlleleNull() {
+
+        final int offsetIntoRead = 10;
+
+        // We assume that we are on the base right before the insertion.  We are pretending each read is 50 bases long.
+        final Allele referenceAllele = Allele.create("T", true);
+        final Allele deletionAllele = Allele.create("A", false);
+
+        final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, referenceAllele, LENGTH_OF_ARTIFICIAL_READ);
+        final byte[] newBases = pileupElement.getRead().getBases();
+        newBases[offsetIntoRead] = (byte) 'C';
+        pileupElement.getRead().setBases(newBases);
+
+        Assert.assertEquals(
+                GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele,
+                        Collections.singletonList(deletionAllele), 0),
+                null);
+    }
+
+    @DataProvider(name="testInsertions")
+    public Object[][] createTestInsertions() {
+        return new Object[][] {
+                {0, "A", "ATT", true},
+                {0, "A", "ATT", false},
+                {10, "A", "ATT", true},
+                {10, "A", "ATT", false}
+        };
+    }
+    @DataProvider(name="testDeletions")
+    public Object[][] createTestDeletions() {
+        return new Object[][] {
+                {0, "ATT", "A", true},
+                {0, "ATT", "A", false},
+                {10, "ATT", "A", true},
+                {10, "ATT", "A", false}
+        };
+    }
+
+    @Test(dataProvider = "doesReadContainAllele")
+    public void testDoesReadContainAllele(final int offsetIntoRead, final String actualBases, final String searchAlleleBases,
+                                          final GATKProtectedVariantContextUtils.ReadContainAllele gt) {
+
+        final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, Allele.create(actualBases, true), LENGTH_OF_ARTIFICIAL_READ);
+        Assert.assertEquals(GATKProtectedVariantContextUtils.doesReadContainAllele(pileupElement, Allele.create(searchAlleleBases, false)),
+                gt);
+        Assert.assertEquals(GATKProtectedVariantContextUtils.doesReadContainAllele(pileupElement, Allele.create(actualBases, false)),
+                GATKProtectedVariantContextUtils.ReadContainAllele.TRUE);
+    }
+
+    @DataProvider(name="doesReadContainAllele")
+    public Object[][] createDoesReadContainAlelle() {
+        return new Object[][] {
+                {10, "ATT", "C", GATKProtectedVariantContextUtils.ReadContainAllele.FALSE},
+                {10, "AT", "AT", GATKProtectedVariantContextUtils.ReadContainAllele.TRUE},
+                {49, "A", "ATT", GATKProtectedVariantContextUtils.ReadContainAllele.UNKNOWN},
+                {48, "AT", "ATT", GATKProtectedVariantContextUtils.ReadContainAllele.UNKNOWN},
+        };
+    }
 }
