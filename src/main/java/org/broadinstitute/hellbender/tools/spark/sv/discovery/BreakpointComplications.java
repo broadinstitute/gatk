@@ -5,10 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
@@ -93,7 +90,7 @@ public final class BreakpointComplications {
         return homologyForwardStrandRep;
     }
 
-    public String getInsertedSequenceForwardStrandRep() {
+    String getInsertedSequenceForwardStrandRep() {
         return insertedSequenceForwardStrandRep;
     }
 
@@ -135,6 +132,7 @@ public final class BreakpointComplications {
         return hasDuplicationAnnotation && dupSeqStrandOnCtg.stream().noneMatch(s -> s.equals(Strand.NEGATIVE));
     }
 
+    // =================================================================================================================
     @VisibleForTesting
     BreakpointComplications() {
 
@@ -168,34 +166,45 @@ public final class BreakpointComplications {
      * identify potential complications such as homology and duplication on the reference and/or on the contig.
      */
     BreakpointComplications(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
-        // TODO: 12/5/16 simple translocation, don't tackle yet
-        // a segment with lower coordinate on the locally-assembled contig could map to a higher reference coordinate region
-        // under two basic types of SV's: inversion (strand switch necessary) and translocation (no strand switch necessary)
-        final boolean isNotSimpleTranslocation = chimericAlignment.isNotSimpleTranslocation();
 
-        if (chimericAlignment.strandSwitch!= StrandSwitch.NO_SWITCH) {
+        // if-else testing order matters here:
+        // if the two segments in the input chimeric alignment suggests simple translocation {@see ChimericAlignment#isNotSimpleTranslocation()}, then
+        //  we need other types of evidence to fully resolve type of event, until then we can only say a novel adjacency (BND) is detected;
+        // if the two segments in the input chimeric alignment map to the same chromosome, then
+        //  the segment with lower coordinate on the locally-assembled contig could map to a higher reference coordinate region
+        //  under two basic types of SV's: inversion (strand switch necessary) and "translocation" (no strand switch necessary)
+        final boolean suggestsSimpleTranslocation = !chimericAlignment.isNotSimpleTranslocation();
+        if (suggestsSimpleTranslocation) {
+            initForSuspectedTranslocation(chimericAlignment, contigSeq);
+        } else if (chimericAlignment.strandSwitch != StrandSwitch.NO_SWITCH) { // TODO: 9/9/17 the case involves an inversion, could be retired once same chr strand-switch BND calls are evaluated.
             if (isLikelyInvertedDuplication(chimericAlignment.regionWithLowerCoordOnContig, chimericAlignment.regionWithHigherCoordOnContig))
                 initForInvDup(chimericAlignment, contigSeq);
             else
                 initForInversion(chimericAlignment, contigSeq);
-        } else if (isNotSimpleTranslocation) {
+        } else {
             initForInsDel(chimericAlignment, contigSeq);
         }
     }
 
-    private void initForInversion(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
+    // =================================================================================================================
 
-        final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
-        final AlignmentInterval secondAlignmentInterval = chimericAlignment.regionWithHigherCoordOnContig;
+    private void initForSuspectedTranslocation(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
+        homologyForwardStrandRep = getHomology(chimericAlignment.regionWithLowerCoordOnContig,
+                chimericAlignment.regionWithHigherCoordOnContig, contigSeq);
+        insertedSequenceForwardStrandRep = getInsertedSequence(chimericAlignment.regionWithLowerCoordOnContig,
+                chimericAlignment.regionWithHigherCoordOnContig, contigSeq);
+    }
 
-        homologyForwardStrandRep = getHomology(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
-        insertedSequenceForwardStrandRep = getInsertedSequence(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
-        dupSeqRepeatUnitRefSpan = null;
-        dupSeqRepeatNumOnRef = dupSeqRepeatNumOnCtg = 0;
-        dupSeqStrandOnRef = dupSeqStrandOnCtg = null;
-        cigarStringsForDupSeqOnCtg = null;
-        dupAnnotIsFromOptimization = false;
-        hasDuplicationAnnotation = false;
+    // =================================================================================================================
+    /**
+     * todo : see ticket #3529
+     * @return true iff the two AI of the {@code longRead} overlaps on reference is more than half of the two AI's minimal read span.
+     */
+    @VisibleForTesting
+    public static boolean isLikelyInvertedDuplication(final AlignmentInterval one, final AlignmentInterval two) {
+        return 2 * AlignmentInterval.overlapOnRefSpan(one, two) >
+                Math.min(one.endInAssembledContig - one.startInAssembledContig,
+                         two.endInAssembledContig - two.startInAssembledContig) + 1;
     }
 
     /**
@@ -218,15 +227,15 @@ public final class BreakpointComplications {
 
         // jump start and jump landing locations
         final int jumpStartRefLoc = firstAlignmentInterval.forwardStrand ? firstAlignmentInterval.referenceSpan.getEnd()
-                                                                         : firstAlignmentInterval.referenceSpan.getStart();
+                : firstAlignmentInterval.referenceSpan.getStart();
         final int jumpLandingRefLoc = secondAlignmentInterval.forwardStrand ? secondAlignmentInterval.referenceSpan.getStart()
-                                                                            : secondAlignmentInterval.referenceSpan.getEnd();
+                : secondAlignmentInterval.referenceSpan.getEnd();
 
         if (firstAlignmentInterval.forwardStrand) {
             final int alpha = firstAlignmentInterval.referenceSpan.getStart(),
-                      omega = secondAlignmentInterval.referenceSpan.getStart();
+                    omega = secondAlignmentInterval.referenceSpan.getStart();
             dupSeqRepeatUnitRefSpan = new SimpleInterval(firstAlignmentInterval.referenceSpan.getContig(),
-                                                         Math.max(alpha, omega), Math.min(jumpStartRefLoc, jumpLandingRefLoc));
+                    Math.max(alpha, omega), Math.min(jumpStartRefLoc, jumpLandingRefLoc));
             if ( (alpha <= omega && jumpStartRefLoc < jumpLandingRefLoc) || (alpha > omega && jumpLandingRefLoc < jumpStartRefLoc) ) {
                 invertedTransInsertionRefSpan = new SimpleInterval(firstAlignmentInterval.referenceSpan.getContig(),
                         Math.min(jumpStartRefLoc, jumpLandingRefLoc) + 1, Math.max(jumpStartRefLoc, jumpLandingRefLoc));
@@ -234,7 +243,7 @@ public final class BreakpointComplications {
             dupSeqStrandOnCtg = DEFAULT_INV_DUP_CTG_ORIENTATIONS_FR;
         } else {
             final int alpha = firstAlignmentInterval.referenceSpan.getEnd(),
-                      omega = secondAlignmentInterval.referenceSpan.getEnd();
+                    omega = secondAlignmentInterval.referenceSpan.getEnd();
             dupSeqRepeatUnitRefSpan = new SimpleInterval(firstAlignmentInterval.referenceSpan.getContig(),
                     Math.max(jumpStartRefLoc, jumpLandingRefLoc), Math.min(alpha, omega));
             if ( (alpha >= omega && jumpLandingRefLoc < jumpStartRefLoc) || (alpha < omega && jumpStartRefLoc < jumpLandingRefLoc) ) {
@@ -260,7 +269,7 @@ public final class BreakpointComplications {
         final boolean needRC;
         if (firstAlignmentInterval.forwardStrand) {
             final int alpha = firstAlignmentInterval.referenceSpan.getStart(),
-                      omega = secondAlignmentInterval.referenceSpan.getStart();
+                    omega = secondAlignmentInterval.referenceSpan.getStart();
             if (alpha <= omega) {
                 final int walkOnRead = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
                         firstAlignmentInterval.startInAssembledContig, omega - alpha, false);
@@ -276,7 +285,7 @@ public final class BreakpointComplications {
             }
         } else {
             final int alpha = firstAlignmentInterval.referenceSpan.getEnd(),
-                      omega = secondAlignmentInterval.referenceSpan.getEnd();
+                    omega = secondAlignmentInterval.referenceSpan.getEnd();
             if (alpha >= omega) {
                 final int walkOnRead = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
                         firstAlignmentInterval.startInAssembledContig, alpha - omega, false);
@@ -297,18 +306,22 @@ public final class BreakpointComplications {
         return seq;
     }
 
-    /**
-     * todo : see ticket #3529
-     * @return true iff the two AI of the {@code longRead} overlaps on reference is more than half of the two AI's minimal read span.
-     */
-    @VisibleForTesting
-    public static boolean isLikelyInvertedDuplication(final AlignmentInterval one, final AlignmentInterval two) {
-        return 2 * AlignmentInterval.overlapOnRefSpan(one, two) >
-                Math.min(one.endInAssembledContig - one.startInAssembledContig,
-                         two.endInAssembledContig - two.startInAssembledContig) + 1;
-    }
-
     //==================================================================================================================
+    //////////// BELOW ARE CODE PATH USED FOR INSERTION, DELETION, AND DUPLICATION (INV OR NOT) AND INVERSION, AND ARE TESTED FOR THAT PURPOSE
+    private void initForInversion(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
+
+        final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
+        final AlignmentInterval secondAlignmentInterval = chimericAlignment.regionWithHigherCoordOnContig;
+
+        homologyForwardStrandRep = getHomology(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
+        insertedSequenceForwardStrandRep = getInsertedSequence(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
+        dupSeqRepeatUnitRefSpan = null;
+        dupSeqRepeatNumOnRef = dupSeqRepeatNumOnCtg = 0;
+        dupSeqStrandOnRef = dupSeqStrandOnCtg = null;
+        cigarStringsForDupSeqOnCtg = null;
+        dupAnnotIsFromOptimization = false;
+        hasDuplicationAnnotation = false;
+    }
 
     private void initForInsDel(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
 
@@ -349,8 +362,6 @@ public final class BreakpointComplications {
                 throw new GATKException("An identified breakpoint pair seem to suggest insertion but the inserted sequence is empty: " + chimericAlignment.onErrStringRep());
         }
     }
-
-    //==================================================================================================================
 
     private void resolveComplicationForSimpleTandupExpansion(final SimpleInterval leftReferenceInterval,
                                                              final AlignmentInterval firstContigRegion,

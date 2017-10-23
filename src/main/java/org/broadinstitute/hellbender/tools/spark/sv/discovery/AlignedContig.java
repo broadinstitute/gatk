@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.utils.Utils;
+import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,7 +61,17 @@ public final class AlignedContig {
         Comparator<AlignmentInterval> compareRefSpanStart = (AlignmentInterval a1, AlignmentInterval a2) -> a1.referenceSpan.getStart() - a2.referenceSpan.getStart();
         return comparePos.thenComparing(compareRefTig).thenComparing(compareRefSpanStart);
     }
-    
+
+    @Override
+    public String toString() {
+        return formatContigInfo(
+                new Tuple2<>(contigName, alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())));
+    }
+
+    public static String formatContigInfo(final Tuple2<String, List<String>> pair) {
+        return "(" + pair._1 + ",[" + pair._2 + "])";
+    }
+
     void serialize(final Kryo kryo, final Output output) {
 
         output.writeString(contigName);

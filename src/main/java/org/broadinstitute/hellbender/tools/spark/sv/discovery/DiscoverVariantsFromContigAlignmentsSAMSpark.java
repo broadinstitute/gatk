@@ -26,7 +26,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
@@ -38,9 +40,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
-
 
 /**
  * This tool takes a SAM file containing the alignments of assembled contigs or long reads to the reference
@@ -94,9 +96,9 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         discoverVariantsAndWriteVCF(parsedContigAlignments,
                 discoverStageArgs,
                 ctx.broadcast(getReference()),
-                vcfOutputFileName,
-                localLogger,
-                headerForReads.getSequenceDictionary());
+                headerForReads.getSequenceDictionary(), vcfOutputFileName,
+                localLogger
+        );
     }
 
     public static final class SAMFormattedContigAlignmentParser extends AlignedContigGenerator implements Serializable {
@@ -174,22 +176,21 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * turn into annotated {@link VariantContext}'s, and writes them to VCF.
      */
     public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
-                                                   final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                   final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                   final String vcfOutputFileName,
-                                                   final Logger localLogger,
-                                                   final SAMSequenceDictionary samSequenceDictionary) {
-        discoverVariantsAndWriteVCF(alignedContigs, parameters, broadcastReference, vcfOutputFileName,
-                localLogger, null, null, samSequenceDictionary);
+                                                   final SAMSequenceDictionary referenceSequenceDictionary,
+                                                   final String vcfOutputFileName, final Logger localLogger) {
+        discoverVariantsAndWriteVCF(alignedContigs, null, null, parameters, broadcastReference,
+                referenceSequenceDictionary, vcfOutputFileName, localLogger);
     }
 
     public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
-                                                   final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
-                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                   final String vcfOutputFileName, final Logger localLogger,
                                                    final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                                    final ReadMetadata metadata,
-                                                   final SAMSequenceDictionary sequenceDictionary) {
+                                                   final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                   final SAMSequenceDictionary referenceSequenceDictionary,
+                                                   final String vcfOutputFileName, final Logger localLogger) {
 
         Utils.validate(! (evidenceTargetLinks != null && metadata == null),
                 "Must supply read metadata when incorporating evidence target links");
@@ -197,8 +198,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         JavaRDD<VariantContext> annotatedVariants =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
                         .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
-                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH)))
-                        .flatMapToPair(DiscoverVariantsFromContigAlignmentsSAMSpark::discoverNovelAdjacencyFromChimericAlignments)    // a filter-passing contig's alignments may or may not produce novel adjacency
+                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, referenceSequenceDictionary)))
+                        .flatMapToPair(pair -> discoverNovelAdjacencyFromChimericAlignments(pair, referenceSequenceDictionary))       // a filter-passing contig's alignments may or may not produce novel adjacency
                         .groupByKey()                                                                                                 // group the same novel adjacency produced by different contigs together
                         .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments
                         .map(noveltyTypeAndEvidence ->
@@ -212,14 +213,12 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         List<VariantContext> collectedAnnotatedVariants = annotatedVariants.collect();
 
         if (evidenceTargetLinks != null) {
-            collectedAnnotatedVariants = processEvidenceTargetLinks(parameters,
-                    localLogger,
-                    evidenceTargetLinks,
-                    metadata,
-                    collectedAnnotatedVariants, broadcastReference.getValue());
+            collectedAnnotatedVariants = processEvidenceTargetLinks(collectedAnnotatedVariants, evidenceTargetLinks, metadata, broadcastReference.getValue(), parameters,
+                    localLogger
+            );
         }
 
-        SVVCFWriter.writeVCF(collectedAnnotatedVariants, vcfOutputFileName, sequenceDictionary, localLogger);
+        SVVCFWriter.writeVCF(collectedAnnotatedVariants, vcfOutputFileName, referenceSequenceDictionary, localLogger);
     }
 
     /**
@@ -228,12 +227,12 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * a given threshold.
      */
     @VisibleForTesting
-    static List<VariantContext> processEvidenceTargetLinks(final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
-                                                           final Logger localLogger,
+    static List<VariantContext> processEvidenceTargetLinks(final List<VariantContext> assemblyDiscoveredVariants,
                                                            final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                                            final ReadMetadata metadata,
-                                                           final List<VariantContext> assemblyDiscoveredVariants,
-                                                           final ReferenceMultiSource reference) {
+                                                           final ReferenceMultiSource reference,
+                                                           final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                           final Logger localLogger) {
         final int originalEvidenceLinkSize = evidenceTargetLinks.size();
         List<VariantContext> result = assemblyDiscoveredVariants
                 .stream()
@@ -271,10 +270,9 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * Given contig alignments, emit novel adjacency not present on the reference to which the locally-assembled contigs were aligned.
      */
     public static Iterator<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>>
-    discoverNovelAdjacencyFromChimericAlignments(final Tuple2<byte[], List<ChimericAlignment>> tigSeqAndChimerics) {
-        return Utils.stream(tigSeqAndChimerics._2)
-                .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, tigSeqAndChimerics._1), ca))
-                .collect(Collectors.toList()).iterator();
+    discoverNovelAdjacencyFromChimericAlignments(final Tuple2<byte[], List<ChimericAlignment>> tigSeqAndChimeras, final SAMSequenceDictionary referenceDictionary) {
+        return Utils.stream(tigSeqAndChimeras._2)
+                .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, tigSeqAndChimeras._1, referenceDictionary), ca)).iterator();
     }
 
     // TODO: 7/6/17 interface to be changed in the new implementation, where a set of NRAL's associated with a single contig is considered together.
@@ -285,8 +283,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             final NovelAdjacencyReferenceLocations novelAdjacency,
             final Iterable<ChimericAlignment> chimericAlignments) {
         return new Tuple2<>(novelAdjacency,
-                new Tuple2<>(SvTypeInference.inferFromNovelAdjacency(novelAdjacency),
-                        chimericAlignments));
+                new Tuple2<>(SvTypeInference.inferFromNovelAdjacency(novelAdjacency), chimericAlignments));
     }
 
     /**

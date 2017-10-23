@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -61,6 +62,12 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(FilterLongReadAlignmentsSAMSpark.class);
 
+    @Advanced
+    @Argument(doc = "Maximum difference between alignment configuration scores for which two configurations will be considered equally likely",
+            shortName = "cst",
+            fullName = "configScoreDiffTol", optional = true)
+    public final Double configScoreDiffTolerance = 0.0;
+
     @Argument(doc = "file containing non-canonical contig names (e.g chrUn_KI270588v1) in the reference, human reference assumed when omitted",
             shortName = "nonCanoTigFile",
             fullName = "nonCanonicalContigNamesFile", optional = true)
@@ -93,27 +100,23 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
         final SAMFileHeader header = getHeaderForReads();
 
         FileUtils.writeLinesToSingleFile(
-                filterByScore(reads, header, nonCanonicalContigNamesFile, localLogger)
+                filterByScore(reads, header, nonCanonicalContigNamesFile, localLogger, configScoreDiffTolerance)
                         .sortBy(tig -> tig.contigName, true, reads.getNumPartitions()/100) // num partition is purely guess
                         .mapToPair(contig -> new Tuple2<>(contig.contigName,
                                 contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())))
-                        .map(FilterLongReadAlignmentsSAMSpark::formatContigInfo).collect().iterator(),
+                        .map(AlignedContig::formatContigInfo).collect().iterator(),
                 outputFilePrefix + "_newFiltering.ai");
 
         if (runOldFilteringToo) {
             FileUtils.writeLinesToSingleFile(
-                    oldWayOfFiltering(reads, header, localLogger).map(FilterLongReadAlignmentsSAMSpark::formatContigInfo)
+                    oldWayOfFiltering(reads, header, localLogger).map(AlignedContig::formatContigInfo)
                     .collect().iterator(),
                     outputFilePrefix + "_oldFiltering.ai");
         }
     }
 
-    static String formatContigInfo(final Tuple2<String, List<String>> pair) {
-        return "(" + pair._1 + ",[" + pair._2 + "])";
-    }
-
     /**
-     * Delegates to {@link ChimericAlignment#parseOneContig(AlignedContig, int)}, which is currently used in SV discovery pipeline,
+     * Delegates to {@link ChimericAlignment#parseOneContig(AlignedContig, int, SAMSequenceDictionary)}, which is currently used in SV discovery pipeline,
      * to filter out alignments and produces {@link ChimericAlignment} for variant discovery and interpretation.
      * Here it is simply appended with a collection operation that collects the alignments stored in the {@link ChimericAlignment}'s.
      */
@@ -122,16 +125,18 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                                                                        final Logger toolLogger) {
 
         // parse SAM records transform to AlignmentInterval format and split gapped alignment
-        final JavaRDD<AlignedContig> parsedContigAlignmentsWithGapSplit
-                = new SAMFormattedContigAlignmentParser(longReads, header, true, toolLogger).getAlignedContigs()
-                .filter(contig -> contig.alignmentIntervals.size()>1).cache();
+        final JavaRDD<AlignedContig> parsedContigAlignmentsWithGapSplit =
+                new SAMFormattedContigAlignmentParser(longReads, header, true, toolLogger)
+                        .getAlignedContigs()
+                        .filter(contig -> contig.alignmentIntervals.size()>1).cache();
 
+        final SAMSequenceDictionary referenceDictionary = header.getSequenceDictionary();
         // delegates to ChimericAlignment.parseOneContig()
         return
                 parsedContigAlignmentsWithGapSplit
                 .mapToPair(alignedContig ->
                         new Tuple2<>(alignedContig.contigName,
-                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH).stream()
+                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, referenceDictionary).stream()
                                         .flatMap(chimericAlignment -> chimericAlignment.getAlignmentIntervals().stream())
                                         .sorted(AlignedContig.getAlignmentIntervalComparator())
                                         .collect(Collectors.toList())))
@@ -149,23 +154,27 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      * @param header        header for the long reads
      * @param toolLogger    logger for, most likely, debugging uses
      *
+     * @param scoreDiffTolerance
      * @return              contigs with alignments filtered and custom formatted as {@link AlignmentInterval}
      */
     static JavaRDD<AlignedContig> filterByScore(final JavaRDD<GATKRead> longReads,
                                                 final SAMFileHeader header,
                                                 final String nonCanonicalContigNamesFile,
-                                                final Logger toolLogger) {
+                                                final Logger toolLogger,
+                                                final Double scoreDiffTolerance) {
 
-        toolLogger.info( "Processing this many raw alignments: " + longReads.count() );
+        longReads.cache();
+        toolLogger.info( "Processing " + longReads.count() + " raw alignments from " +
+                         longReads.map(GATKRead::getName).distinct().count() + " contigs.");
 
-        final JavaRDD<AlignedContig> parsedContigAlignments
-                = new SAMFormattedContigAlignmentParser(longReads, header, false, toolLogger)
-                .getAlignedContigs()
-                .filter(FilterLongReadAlignmentsSAMSpark::contigFilter).cache();
+        final JavaRDD<AlignedContig> parsedContigAlignments =
+                new SAMFormattedContigAlignmentParser(longReads, header, false, toolLogger)
+                        .getAlignedContigs()
+                        .filter(FilterLongReadAlignmentsSAMSpark::contigFilter).cache();
+        longReads.unpersist();
+        toolLogger.info( "Primitive filtering based purely on MQ left " + parsedContigAlignments.count() + " contigs.");
 
-        toolLogger.info( "Primitive filtering based purely on MQ left these many contigs: " + parsedContigAlignments.count() );
-
-        return filterAndSplitGappedAI(parsedContigAlignments, nonCanonicalContigNamesFile, header.getSequenceDictionary());
+        return filterAndSplitGappedAI(parsedContigAlignments, nonCanonicalContigNamesFile, header.getSequenceDictionary(), scoreDiffTolerance);
     }
 
     /**
@@ -191,13 +200,14 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     @VisibleForTesting
     static JavaRDD<AlignedContig> filterAndSplitGappedAI(final JavaRDD<AlignedContig> parsedContigAlignments,
                                                          final String nonCanonicalContigNamesFile,
-                                                         final SAMSequenceDictionary dictionary) {
+                                                         final SAMSequenceDictionary dictionary,
+                                                         final Double scoreDiffTolerance) {
 
         final Set<String> canonicalChromosomes = getCanonicalChromosomes(nonCanonicalContigNamesFile, dictionary);
 
         return parsedContigAlignments
                 .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigName,
-                        new Tuple2<>(alignedContig.contigSequence, pickBestConfigurations(alignedContig, canonicalChromosomes))))
+                        new Tuple2<>(alignedContig.contigSequence, pickBestConfigurations(alignedContig, canonicalChromosomes, scoreDiffTolerance))))
                 .flatMap(FilterLongReadAlignmentsSAMSpark::reConstructContigFromPickedConfiguration);
     }
 
@@ -208,7 +218,8 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      */
     @VisibleForTesting
     static List<List<AlignmentInterval>> pickBestConfigurations(final AlignedContig alignedContig,
-                                                                final Set<String> canonicalChromosomes) {
+                                                                final Set<String> canonicalChromosomes,
+                                                                final Double scoreDiffTolerance) {
 
         // group 1: get max aligner score of mappings to canonical chromosomes and speed up in case of too many mappings
         final int maxCanonicalChrAlignerScore = alignedContig.alignmentIntervals.stream()
@@ -248,7 +259,14 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                 .orElseThrow(() -> new GATKException("Cannot find best-scoring configuration on alignments of contig: " + alignedContig.contigName));
 
         return IntStream.range(0, allConfigurations.size())
-                .filter(i -> scores.get(i) >= maxScore)
+                .filter(i -> {
+                    final Double s = scores.get(i);
+                    // two configurations with would-be-same-scores can differ by a tolerance due to the sin of comparing
+                    // could-be-close floating point values
+                    // (see http://www.cygnus-software.com/papers/comparingfloats/Comparing%20floating%20point%20numbers.htm)
+                    final Double tol = Math.max(Math.ulp(s), scoreDiffTolerance);
+                    return s >= maxScore || maxScore - s <= tol;
+                })
                 .mapToObj(allConfigurations::get).collect(Collectors.toList());
     }
 

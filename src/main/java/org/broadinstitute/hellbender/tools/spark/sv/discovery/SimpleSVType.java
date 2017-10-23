@@ -1,11 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
 import java.util.Collections;
 import java.util.Map;

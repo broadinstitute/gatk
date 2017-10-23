@@ -19,10 +19,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class VariantDetectorFromLongReadAlignmentsForSimpleStrandSwitchUnitTest extends BaseTest {
+public class ContigAlignmentsModifierUnitTest extends BaseTest {
 
     @DataProvider(name = "forComputeNewRefSpanAndCigar")
-    private Object[][] createTestDataForComputeNewRefSpanAndCigar() throws IOException {
+    private Object[][] createTestDataForComputeNewRefSpanAndCigar() {
 
         final List<Object[]> data = new ArrayList<>(20);
 
@@ -57,13 +57,13 @@ public class VariantDetectorFromLongReadAlignmentsForSimpleStrandSwitchUnitTest 
     public void testComputeNewRefSpanAndCigar(final AlignmentInterval interval, final int clipLength, final boolean clipFrom3PrimeEnd,
                                               final SimpleInterval expectedRefSpan, final Cigar expectedCigar) {
 
-        final Tuple2<SimpleInterval, Cigar> x = SimpleStrandSwitchVariantDetector.computeNewRefSpanAndCigar(interval, clipLength, clipFrom3PrimeEnd);
+        final Tuple2<SimpleInterval, Cigar> x = ContigAlignmentsModifier.computeNewRefSpanAndCigar(interval, clipLength, clipFrom3PrimeEnd);
         Assert.assertEquals(x._1, expectedRefSpan);
         Assert.assertEquals(x._2, expectedCigar);
     }
 
     @DataProvider(name = "forCigarExtraction")
-    private Object[][] createTestDataForCigarExtraction() throws IOException {
+    private Object[][] createTestDataForCigarExtraction() {
 
         final List<Object[]> data = new ArrayList<>(20);
 
@@ -101,7 +101,8 @@ public class VariantDetectorFromLongReadAlignmentsForSimpleStrandSwitchUnitTest 
     public void testExtractCigar(final AlignmentInterval interval, final List<CigarElement> expectedLeft,
                                  final List<CigarElement> expectedMiddle, final List<CigarElement> expectedRight) {
 
-        final Tuple3<List<CigarElement>, List<CigarElement>, List<CigarElement>> x = SimpleStrandSwitchVariantDetector.splitCigarByLeftAndRightClipping(interval);
+        final Tuple3<List<CigarElement>, List<CigarElement>, List<CigarElement>> x =
+                ContigAlignmentsModifier.splitCigarByLeftAndRightClipping(interval);
         Assert.assertEquals(x._1(), expectedLeft);
         Assert.assertEquals(x._2(), expectedMiddle);
         Assert.assertEquals(x._3(), expectedRight);
