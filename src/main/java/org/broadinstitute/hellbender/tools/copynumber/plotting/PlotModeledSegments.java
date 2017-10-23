@@ -27,23 +27,23 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Plot segmented copy-ratio and minor-allele-fraction results.
+ * Plots segmented copy-ratio and minor-allele-fraction modeling results.
  *
  * <p>The order and representation of contigs in plots follows the contig ordering within the required reference sequence dictionary. </p>
  *
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" PlotACNVResults \
- *   --hets tumor.hets.tsv \
- *   --denoisedNormalized tn_coverage.tn.tsv \
- *   --segments acnv_segments.seg \
+ * gatk-launch --javaOptions "-Xmx4g" PlotModeledSegments \
+ *   --allelicCounts tumor.hets.tsv \
+ *   --denoisedCopyRatios tumor.denoisedCR.tsv \
+ *   --segments tumor.modelFinal.seg \
  *   -SD ref_fasta.dict \
- *   --output folder_name \
- *   --outputPrefix basename
+ *   --output output_dir \
+ *   --outputPrefix tumor
  * </pre>
  *
- * <p>The --output parameter specifies a directory.</p>
+ * <p>The --output parameter specifies a pre-existing directory.</p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -105,14 +105,14 @@ public final class PlotModeledSegments extends CommandLineProgram {
             fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME,
             shortName = CopyNumberStandardArgument.OUTPUT_PREFIX_SHORT_NAME
     )
-    protected String outputPrefix;
+    private String outputPrefix;
 
     @Argument(
             doc = "Output directory.",
             fullName =  StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    protected String outputDir;
+    private String outputDir;
 
     //read input files
     private CopyRatioCollection denoisedCopyRatios;

@@ -21,27 +21,28 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Plots segmented coverage results.
+ * Plots the results of read-count denoising.
  *
  * <p>The order and representation of contigs in plots follows the contig ordering within the required reference sequence dictionary. </p>
  *
  * <h3>Examples</h3>
  *
- * <p>The --output parameter specifies a pre-existing directory.</p>
- *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" PlotSegmentedCopyRatio \
+ * gatk-launch --javaOptions "-Xmx4g" PlotDenoisedCopyRatios \
  *   --standardizedCopyRatios tumor.standardizedCR.tsv \
- *   --standardizedCopyRatios tumor.denoisedCR.tsv \
+ *   --denoisedCopyRatios tumor.denoisedCR.tsv \
  *   -SD ref_fasta.dict \
- *   --output output_file
+ *   --output output_dir \
+ *   --outputPrefix tumor
  * </pre>
+ *
+ * <p>The --output parameter specifies a pre-existing directory.</p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Create plots of denoised copy ratio.",
-        oneLineSummary = "Create plots of denoised copy ratio.",
+        summary = "Create plots of denoised copy ratios.",
+        oneLineSummary = "Create plots of denoised copy ratios.",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
@@ -51,16 +52,14 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
     @Argument(
             doc = "Input file containing standardized copy-ratio profile (output of DenoiseReadCounts).",
             fullName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_SHORT_NAME,
-            optional = true
+            shortName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_SHORT_NAME
     )
     private File inputStandardizedCopyRatiosFile;
 
     @Argument(
             doc = "Input file containing denoised copy-ratio profile (output of DenoiseReadCounts).",
             fullName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_SHORT_NAME,
-            optional = true
+            shortName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_SHORT_NAME
     )
     private File inputDenoisedCopyRatiosFile;
 

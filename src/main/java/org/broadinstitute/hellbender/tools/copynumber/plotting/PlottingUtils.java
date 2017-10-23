@@ -7,6 +7,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SampleLocatableCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.io.File;
@@ -32,6 +34,9 @@ final class PlottingUtils {
     static Map<String, Integer> getContigLengthMap(final File sequenceDictionaryFile,
                                                    final int minContigLength,
                                                    final Logger logger) {
+        IOUtils.canReadFile(sequenceDictionaryFile);
+        ParamUtils.isPositiveOrZero(minContigLength, "Minimum contig length must be non-negative.");
+        Utils.nonNull(logger);
         final SAMSequenceDictionary sequenceDictionary = ReferenceUtils.loadFastaDictionary(sequenceDictionaryFile);
         Utils.validateArg(sequenceDictionary.getSequences().stream().map(SAMSequenceRecord::getSequenceName).noneMatch(n -> n.contains(CONTIG_DELIMITER)),
                 String.format("Contig names cannot contain \"%s\".", CONTIG_DELIMITER));
@@ -53,7 +58,10 @@ final class PlottingUtils {
                                                       final SampleLocatableCollection<T> locatableCollection,
                                                       final File file,
                                                       final Logger logger) {
+        Utils.nonNull(contigLengthMap);
+        Utils.nonNull(logger);
         if (locatableCollection == null) {
+            Utils.validateArg(file == null, "File can only be null if collection is also null.");
             return;
         }
         final Set<String> contigNames = contigLengthMap.keySet();
@@ -68,6 +76,7 @@ final class PlottingUtils {
     }
 
     static String addTrailingSlashIfNecessary(final String outputDir) {
+        Utils.nonEmpty(outputDir);
         return outputDir.endsWith(File.separator) ? outputDir : outputDir + File.separator;
     }
 }

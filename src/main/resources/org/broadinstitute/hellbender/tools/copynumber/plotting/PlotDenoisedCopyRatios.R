@@ -59,8 +59,8 @@ WriteDenoisingPlots = function(sample_name, standardized_copy_ratios_file, denoi
     write.table(round((standardizedMAD - denoisedMAD) / standardizedMAD, 3), file.path(output_dir, paste(output_prefix, ".scaledDeltaMAD.txt", sep="")), col.names=FALSE, row.names=FALSE)
 
     #plot standardized and denoised copy ratio on top of each other
-    pre_color_blue="#3B5DFF"
-    post_color_green="#4FC601"
+    pre_color_blue = "#3B5DFF"
+    post_color_green = "#4FC601"
 
     #plot over full range
     denoising_plot_file = file.path(output_dir, paste(output_prefix, ".denoised.png", sep=""))
