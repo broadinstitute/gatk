@@ -1141,7 +1141,7 @@ public final class IntervalUtils {
      *     1  4000  5000
      * </pre>
      *
-     * Note that start breakpoints will always appear as starts of the resulting segments.
+     * Note that start breakpoints will always appear as starts of the resulting intervals.
      *
      * <p>
      * Does not alter the input.
@@ -1154,9 +1154,10 @@ public final class IntervalUtils {
      * @param locatables1 list of locatables
      * @param locatables2 list of locatables
      * @return Locatables from the combined breakpoints of locatable1 and locatable2.  If both inputs are null, return an
-     *   empty list.  Please note that returned values are new copies.
+     *   empty list.  Please note that returned values are new copies.  If exactly one of the inputs is null, this method
+     *   returns a copy of of the non-null input.
      */
-    static public <T extends Locatable> List<Locatable> combineBreakpoints(final List<T> locatables1, final List<T> locatables2) {
+    protected static <T extends Locatable> List<Locatable> combineBreakpoints(final List<T> locatables1, final List<T> locatables2) {
         if ((locatables1 == null) && (locatables2 == null)) {
             return Collections.emptyList();
         }
@@ -1195,14 +1196,13 @@ public final class IntervalUtils {
             // Sort the breakpoints for this contig.  Use the pair structure, since we need to differentiate between a
             //  breakpoint that is a start and a breakpoint that is end, yet have the same position.  This is especially
             //  important for single base intervals.
-            // TODO: Shorten the code here
             final List<Pair<Integer, IntervalBreakpointTypeEnum>> breakpoints = new ArrayList<>(contigToBreakpoints.get(contig));
             breakpoints.sort((p1, p2) -> {
                 final int firstComparison = p1.getLeft().compareTo(p2.getLeft());
                 if (firstComparison != 0) {
                     return firstComparison;
                 } else {
-                    // We want start before end
+                    // We want start breakpoints before end breakpoints
                     return p1.getRight().compareTo(p2.getRight());
                 }
             });
@@ -1217,7 +1217,7 @@ public final class IntervalUtils {
 
                 // if both breakpoints are starts of intervals, then the result is bp1, bp2-1
                 // if both breakpoints are ends of intervals, then the result is bp1+1, bp2
-                int start = (!isCurrentBreakpointStart && !isNextBreakpointStart ? currentBreakpoint + 1: currentBreakpoint);
+                int start = (!isCurrentBreakpointStart && !isNextBreakpointStart ? currentBreakpoint + 1 : currentBreakpoint);
                 int end = (isCurrentBreakpointStart && isNextBreakpointStart ? nextBreakpoint - 1 : nextBreakpoint);
 
                 // If the current breakpoint is an end and the next is a start, then we want to shrink both ends.
@@ -1286,7 +1286,7 @@ public final class IntervalUtils {
      * @param <T> See {@link IntervalUtils::combineBreakpoints}
      * @return See {@link IntervalUtils::combineBreakpoints}.  Please note that the output will be sorted.  Never {@code null}
      */
-    static public <T extends Locatable> List<Locatable> combineBreakpointsWithSorting(final List<T> locatables1, final List<T> locatables2,
+    public static <T extends Locatable> List<Locatable> combineBreakpointsWithSorting(final List<T> locatables1, final List<T> locatables2,
                                                                                       final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary);
 
@@ -1305,10 +1305,10 @@ public final class IntervalUtils {
      * @return new list that is sorted using the sequence index of the given dictionary.  Returns {@code null} if locatables
      *   is {@code null}.  Instances in the list are not copies of input.
      */
-    public static <T extends Locatable> List<T> sortLocatablesBySequenceDictionary(Collection<T> locatables, SAMSequenceDictionary dictionary) {
+    public static <T extends Locatable> List<T> sortLocatablesBySequenceDictionary(final Collection<T> locatables, final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary);
 
-        final List<T> result = (locatables == null? null: new ArrayList<>(locatables));
+        final List<T> result = (locatables == null ? null : new ArrayList<>(locatables));
 
         if (result != null) {
             result.sort(getDictionaryOrderComparator(dictionary));
@@ -1362,10 +1362,11 @@ public final class IntervalUtils {
      * The order of contigs/sequences in the dictionary is the order of the sorting here.
      *
      * @param dictionary dictionary to use for the sorting.  Intervals with sequences not in this dictionary will cause
-     *                   exceptions to be thrown.
+     *                   exceptions to be thrown.  Never {@ode null}.
      * @return an instance of {@code Comapator<Locatable>} for use in sorting of Locatables.
      */
     public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(dictionary);
         return (o1, o2) -> IntervalUtils.compareLocatables(o1, o2, dictionary);
     }
 
@@ -1376,6 +1377,3 @@ public final class IntervalUtils {
         START_BREAKPOINT, END_BREAKPOINT
     }
 }
-
-
-
