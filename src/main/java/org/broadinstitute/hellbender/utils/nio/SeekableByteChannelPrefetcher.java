@@ -75,7 +75,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     public long nbGoingBack = 0;
     // number of times the user asks for data past the end of the file.
     public long nbReadsPastEnd = 0;
-    // number of tries we retried in response to a "403: Forbidden" error.
+    // number of times we retried in response to a "403: Forbidden" error.
     public long nbRetriesFor403 = 0;
     // timing statistics have an overhead, so only turn them on when debugging performance
     // issues.
@@ -133,8 +133,6 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
                 throw new IllegalArgumentException("blockIndex " + blockIndex + " has position " + pos + ": negative position is not valid.");
             }
             chan.position(pos);
-            // clearing isn't normally required, but it's here in case of retry due to exception.
-            buf.clear();
             // read until buffer is full, or EOF
             while (chan.read(buf) >= 0 && buf.hasRemaining()) {}
             return buf;
