@@ -5,7 +5,10 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.*;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.Feature;
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator;
 import org.apache.commons.collections4.CollectionUtils;
@@ -1322,7 +1325,7 @@ public final class IntervalUtils {
      * @return new list that is sorted using the sequence index of the given dictionary.  Returns {@code null} if locatables
      *   is {@code null}.  Instances in the list are not copies of input.
      */
-    public static <T extends Locatable> List<T> sortLocatablesBySequenceDictionary(List<T> locatables, SAMSequenceDictionary dictionary) {
+    public static <T extends Locatable> List<T> sortLocatablesBySequenceDictionary(Collection<T> locatables, SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary);
 
         final List<T> result = (locatables == null? null: new ArrayList<>(locatables));
@@ -1359,41 +1362,17 @@ public final class IntervalUtils {
         validateNoOverlappingIntervals(vals);
 
         final List<T> sortedKeys = sortLocatablesBySequenceDictionary(keys, dictionary);
-        final List<U> sortedVals = sortLocatablesBySequenceDictionary(vals, dictionary);
 
-        final PeekableIterator<T> keysIterator = new PeekableIterator<>(sortedKeys.iterator());
-        final PeekableIterator<U> valsIterator = new PeekableIterator<>(sortedVals.iterator());
-        final Set<T> keysSet = new HashSet<>(sortedKeys);
+        final OverlapDetector<U> overlapDetector = OverlapDetector.create(vals);
 
-        // Inialize the entire map with key to empty list entries.
-        final Map<T, List<U>> result = keysSet.stream().collect(Collectors.toMap(k -> k, k -> new ArrayList<>()));
+        final Map<T, List<U>> result = new HashMap<>();
 
-        if (!valsIterator.hasNext() || !keysIterator.hasNext()) {
-            return result;
-        }
+        for (final T key: sortedKeys) {
 
-        U v = valsIterator.next();
-        Locatable k = keysIterator.next();
-
-        while ((k != null) && (v != null)) {
-            if (k.overlaps(v)) {
-                result.get(k).add(v);
-            }
-
-            // Note that this takes advantage of k.overlaps(null) --> false
-            if (k.overlaps(valsIterator.peek())) {
-                if (valsIterator.hasNext()) {
-                    v = valsIterator.next();
-                } else {
-                    v = null;
-                }
-            } else {
-                if (keysIterator.hasNext()) {
-                    k = keysIterator.next();
-                } else {
-                    k = null;
-                }
-            }
+            // Get the overlaps, sort'em, and create a map entry.
+            final Set<U> overlaps = overlapDetector.getOverlaps(key);
+            final List<U> overlapsAsList = sortLocatablesBySequenceDictionary(overlaps, dictionary);
+            result.put(key, overlapsAsList);
         }
 
         return result;
@@ -1405,20 +1384,15 @@ public final class IntervalUtils {
     public static class GenomicLocatableComparator implements Comparator<Locatable> {
 
         private SAMSequenceDictionary dictionary;
-        private Comparator<Locatable> positionOnlyComparator;
+        private final static Comparator<Locatable> positionOnlyComparator = Comparator.comparing(Locatable::getStart)
+                .thenComparingInt(Locatable::getEnd);
 
         public SAMSequenceDictionary getDictionary() {
             return dictionary;
         }
 
-        public Comparator<Locatable> getPositionOnlyComparator() {
-            return positionOnlyComparator;
-        }
-
         public GenomicLocatableComparator(final SAMSequenceDictionary dictionary) {
             this.dictionary = dictionary;
-            positionOnlyComparator = Comparator.comparing(Locatable::getStart)
-                    .thenComparingInt(Locatable::getEnd);
         }
 
         @Override
@@ -1449,9 +1423,9 @@ public final class IntervalUtils {
             if (!(obj instanceof GenomicLocatableComparator)) return false;
 
             final GenomicLocatableComparator o = (GenomicLocatableComparator) obj;
-            if (!(dictionary.isSameDictionary(o.getDictionary()) &&
-              (positionOnlyComparator.equals(o.getPositionOnlyComparator()))))
+            if (!dictionary.isSameDictionary(o.getDictionary())) {
                 return false;
+            }
             return true;
         }
     }

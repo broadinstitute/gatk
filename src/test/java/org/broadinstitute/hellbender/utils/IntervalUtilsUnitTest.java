@@ -1623,10 +1623,10 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     public void testUnionIntervalsWithShuffling(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
 
         if (locatables1 != null) {
-            Collections.shuffle(locatables1);
+            Collections.shuffle(locatables1, new Random(4040));
         }
         if (locatables2 != null) {
-            Collections.shuffle(locatables2);
+            Collections.shuffle(locatables2, new Random(4040));
         }
 
         final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForIntervalUnionTests();
@@ -1644,66 +1644,84 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @DataProvider(name = "overlappingData")
     public Object [][] createOverlappingData() {
-        final List<SimpleInterval> k = Lists.newArrayList(new SimpleInterval("1", 100, 500));
-        final List<SimpleInterval> k3 = Lists.newArrayList(new SimpleInterval("1", 100, 500),
+        final List<SimpleInterval> k = Arrays.asList(new SimpleInterval("1", 100, 500));
+        final List<SimpleInterval> k3 = Arrays.asList(new SimpleInterval("1", 100, 500),
                 new SimpleInterval("2", 100, 500));
-        final List<SimpleInterval> k4 = Lists.newArrayList(new SimpleInterval("1", 100, 500),
+        final List<SimpleInterval> k4 = Arrays.asList(new SimpleInterval("1", 100, 500),
                 new SimpleInterval("1", 800, 800),
                 new SimpleInterval("2", 300, 500));
-        final List<SimpleInterval> k5 = Lists.newArrayList(new SimpleInterval("1", 100, 300),
+        final List<SimpleInterval> k5 = Arrays.asList(new SimpleInterval("1", 100, 300),
                 new SimpleInterval("1", 301, 400));
 
-        final List<SimpleInterval> k6 = Lists.newArrayList(
+        final List<SimpleInterval> k6 = Arrays.asList(
                 new SimpleInterval("1",10001,10500),
                 new SimpleInterval("1", 52500, 109750),
                 new SimpleInterval("1", 109751, 230500),
                 new SimpleInterval("1", 230501, 258500));
 
-        final List<SimpleInterval> vs = Lists.newArrayList(
+        final List<SimpleInterval> vs = Arrays.asList(
                 new SimpleInterval("1", 100, 200),
                 new SimpleInterval("1", 300, 800)
         );
-        final List<SimpleInterval> vs2 = Lists.newArrayList(
+        final List<SimpleInterval> vs2 = Arrays.asList(
                 new SimpleInterval("1", 100, 200),
                 new SimpleInterval("1", 700, 800)
         );
-        final List<SimpleInterval> vs3 = Lists.newArrayList(
+        final List<SimpleInterval> vs3 = Arrays.asList(
                 new SimpleInterval("1", 800, 1200),
                 new SimpleInterval("2", 100, 800)
         );
-        final List<SimpleInterval> vs5 = Lists.newArrayList(
+        final List<SimpleInterval> vs5 = Arrays.asList(
                 new SimpleInterval("1", 100, 200),
                 new SimpleInterval("1", 201, 500)
         );
-        final List<SimpleInterval> vs6 = Lists.newArrayList(
+        final List<SimpleInterval> vs6 = Arrays.asList(
                 new SimpleInterval("1",5000, 60000),
                 new SimpleInterval("1",70000, 100000),
                 new SimpleInterval("1",120000, 220000),
                 new SimpleInterval("1",230000, 300000)
         );
 
-        final List<SimpleInterval> vs7 = Lists.newArrayList(
+        final List<SimpleInterval> vs7 = Arrays.asList(
                 new SimpleInterval("1",50, 200)
         );
 
         return new Object[][]{
+                // The new ArrayList calls are to preserve order since we may shuffle inputs.
                 // Simple tests
-                {k, vs, ImmutableMap.of(k.get(0), vs)},
-                {k, vs2, ImmutableMap.of(k.get(0), vs2.subList(0,1))},
+                {k, vs, ImmutableMap.of(k.get(0), new ArrayList<>(vs))},
+                {k, vs2, ImmutableMap.of(k.get(0), new ArrayList<>(vs2).subList(0,1))},
                 {k, vs3, ImmutableMap.of(k.get(0), Collections.emptyList())},
 
                 // Slightly more sophisticated tests.
-                {k3, vs, ImmutableMap.of(k3.get(0), vs, k3.get(1), Collections.emptyList())},
-                {k4, vs, ImmutableMap.of(k4.get(0), vs, k4.get(1), vs.subList(1,2), k4.get(2), Collections.emptyList())},
-                {k5, vs5, ImmutableMap.of(k5.get(0), vs5, k5.get(1), vs5.subList(1,2))},
-                {k6, vs6, ImmutableMap.of(k6.get(0), vs6.subList(0,1), k6.get(1), vs6.subList(0,2), k6.get(2), vs6.subList(2,4), k6.get(3), vs6.subList(3,4))},
-                {k, vs7, ImmutableMap.of(k.get(0), vs7)},
+                {k3, vs, ImmutableMap.of(k3.get(0), new ArrayList<>(vs), k3.get(1), Collections.emptyList())},
+                {k4, vs, ImmutableMap.of(k4.get(0), new ArrayList<>(vs), k4.get(1), new ArrayList<>(vs).subList(1,2), k4.get(2), Collections.emptyList())},
+                {k5, vs5, ImmutableMap.of(k5.get(0), new ArrayList<>(vs5), k5.get(1), new ArrayList<>(vs5).subList(1,2))},
+                {k6, vs6, ImmutableMap.of(k6.get(0), new ArrayList<>(vs6).subList(0,1), k6.get(1), new ArrayList<>(vs6).subList(0,2),
+                        k6.get(2), new ArrayList<>(vs6).subList(2,4), k6.get(3), new ArrayList<>(vs6).subList(3,4))},
+                {k, vs7, ImmutableMap.of(k.get(0), new ArrayList<>(vs7))},
         };
     }
 
     @Test(dataProvider = "overlappingData")
     public void testCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
+        assertCreateOverlapMap(locatables1, locatables2, gtOutput);
+    }
 
+    @Test(dataProvider = "overlappingData")
+    public void testCreateOverlapMapUnsorted(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
+
+        if (locatables1 != null) {
+            Collections.shuffle(locatables1, new Random(1234));
+        }
+        if (locatables2 != null) {
+            Collections.shuffle(locatables2, new Random(4311));
+        }
+
+        assertCreateOverlapMap(locatables1, locatables2, gtOutput);
+    }
+
+    private void assertCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
         final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2,
                 getSamSequenceDictionaryForIntervalUnionTests());
         Assert.assertEquals(outputs.size(), gtOutput.size());
