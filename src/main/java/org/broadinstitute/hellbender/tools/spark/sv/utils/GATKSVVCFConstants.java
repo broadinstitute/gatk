@@ -55,7 +55,7 @@ public final class GATKSVVCFConstants {
     public static final String DUP_TAN_EXPANSION_STRING = "EXPANSION";
 
     // type specific: inverted duplication
-    public static final String DUP_INV_ORIENTATIONS = "DUP_INV_ORIENTATIONS";
+    public static final String DUP_ORIENTATIONS = "DUP_ORIENTATIONS";
 
     // type specific: inversion
     public static final String INV33 = "INV33";
@@ -73,7 +73,7 @@ public final class GATKSVVCFConstants {
                     "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT",
                     "CTG_NAMES", "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH",
                     "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
-                    "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_INV_ORIENTATIONS",
+                    "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_ORIENTATIONS",
                     "INV33", "INV55")
                     .sorted().collect(Collectors.toList());
 }

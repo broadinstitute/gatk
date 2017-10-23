@@ -113,7 +113,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     }
 
     /**
-     * Delegates to {@link ChimericAlignment#parseOneContig(AlignedContig, int)}, which is currently used in SV discovery pipeline,
+     * Delegates to {@link ChimericAlignment#parseOneContig(AlignedContig, int, boolean, boolean)}, which is currently used in SV discovery pipeline,
      * to filter out alignments and produces {@link ChimericAlignment} for variant discovery and interpretation.
      * Here it is simply appended with a collection operation that collects the alignments stored in the {@link ChimericAlignment}'s.
      */
@@ -131,7 +131,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                 parsedContigAlignmentsWithGapSplit
                 .mapToPair(alignedContig ->
                         new Tuple2<>(alignedContig.contigName,
-                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH).stream()
+                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, true, true).stream()
                                         .flatMap(chimericAlignment -> chimericAlignment.getAlignmentIntervals().stream())
                                         .sorted(AlignedContig.getAlignmentIntervalComparator())
                                         .collect(Collectors.toList())))

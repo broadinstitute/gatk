@@ -61,60 +61,57 @@ public class NovelAdjacencyReferenceLocations {
     @VisibleForTesting
     static Tuple2<SimpleInterval, SimpleInterval> leftJustifyBreakpoints(final ChimericAlignment ca,
                                                                          final BreakpointComplications complication) {
-
         final int homologyLen = complication.getHomologyForwardStrandRep().length();
+
+        final Tuple2<SimpleInterval, SimpleInterval> coordSortedReferenceSpans = ca.getCoordSortedReferenceSpans();
+        final SimpleInterval leftReferenceSpan  = coordSortedReferenceSpans._1,
+                             rightReferenceSpan = coordSortedReferenceSpans._2;
 
         final String leftBreakpointRefContig, rightBreakpointRefContig;
         final int leftBreakpointCoord, rightBreakpointCoord;
         if (complication.hasDuplicationAnnotation()) {
-            if (complication.hasDupSeqButNoStrandSwitch()) { // simple duplication not involving inverted repeats
-                leftBreakpointRefContig = rightBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
-                final SimpleInterval leftReferenceInterval, rightReferenceInterval;
-                if (ca.isForwardStrandRepresentation) {
-                    leftReferenceInterval  = ca.regionWithLowerCoordOnContig.referenceSpan;
-                    rightReferenceInterval = ca.regionWithHigherCoordOnContig.referenceSpan;
+
+            leftBreakpointRefContig = rightBreakpointRefContig = leftReferenceSpan.getContig();
+
+            if (complication.indicatesInvDup()) { // inverted duplication
+                leftBreakpointCoord  = complication.getDupSeqRepeatUnitRefSpan().getStart() - 1;
+                rightBreakpointCoord = complication.getDupSeqRepeatUnitRefSpan().getEnd();
+            } else { // duplication not involving inverted repeats
+                if (leftReferenceSpan.contains(rightReferenceSpan) || rightReferenceSpan.contains(leftReferenceSpan)) { // one ref span contains the other
+                    leftBreakpointCoord  = complication.getDupSeqRepeatUnitRefSpan().getStart();
+                    rightBreakpointCoord = complication.getDupSeqRepeatUnitRefSpan().getEnd();
                 } else {
-                    leftReferenceInterval  = ca.regionWithHigherCoordOnContig.referenceSpan;
-                    rightReferenceInterval = ca.regionWithLowerCoordOnContig.referenceSpan;
+                    final int expansionDiffMayBeNegative = complication.getDupSeqRepeatNumOnCtg() - complication.getDupSeqRepeatNumOnRef();
+                    if (expansionDiffMayBeNegative > 0) {
+                        leftBreakpointCoord = leftReferenceSpan.getEnd() - homologyLen + 1
+                                              - expansionDiffMayBeNegative * complication.getDupSeqRepeatUnitRefSpan().size();
+                    } else {
+                        // no shift by 1 because for deletion record, POS is base BEFORE the deleted sequence
+                        leftBreakpointCoord = leftReferenceSpan.getEnd() - homologyLen;
+                    }
+                    // TODO: 9/26/17 if we decide to treat dup as insertion so POS==END, rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
+                    rightBreakpointCoord = complication.getDupSeqRepeatUnitRefSpan().getEnd();
                 }
-                if (complication.getDupSeqRepeatNumOnCtg() > complication.getDupSeqRepeatNumOnRef()) {
-                    leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen
-                            - (complication.getDupSeqRepeatNumOnCtg() - complication.getDupSeqRepeatNumOnRef()) * complication.getDupSeqRepeatUnitRefSpan().size();
-                } else {
-                    leftBreakpointCoord = leftReferenceInterval.getEnd() - homologyLen;
-                }
-                rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
-            } else {
-                leftBreakpointRefContig = rightBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
-                leftBreakpointCoord     = complication.getDupSeqRepeatUnitRefSpan().getStart() - 1;
-                rightBreakpointCoord    = complication.getDupSeqRepeatUnitRefSpan().getEnd();
             }
         } else { // inversion and simple deletion & insertion
-            final SimpleInterval leftReferenceInterval, rightReferenceInterval;
-            if (ca.isForwardStrandRepresentation) {
-                leftReferenceInterval  = ca.regionWithLowerCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithHigherCoordOnContig.referenceSpan;
-            } else {
-                leftReferenceInterval  = ca.regionWithHigherCoordOnContig.referenceSpan;
-                rightReferenceInterval = ca.regionWithLowerCoordOnContig.referenceSpan;
-            }
-            leftBreakpointRefContig  = leftReferenceInterval.getContig();
-            rightBreakpointRefContig = rightReferenceInterval.getContig();
-            if (ca.strandSwitch == StrandSwitch.NO_SWITCH) {
-                leftBreakpointCoord  = leftReferenceInterval.getEnd() - homologyLen;
-                rightBreakpointCoord = rightReferenceInterval.getStart() - 1;
-            } else if (ca.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE){
-                leftBreakpointCoord  = leftReferenceInterval.getEnd() - homologyLen;
-                rightBreakpointCoord = rightReferenceInterval.getEnd();
-            } else {
-                leftBreakpointCoord  = leftReferenceInterval.getStart() - 1;
-                rightBreakpointCoord = rightReferenceInterval.getStart() + homologyLen - 1;
+            leftBreakpointRefContig  = leftReferenceSpan.getContig();
+            rightBreakpointRefContig = rightReferenceSpan.getContig();
+            if (ca.strandSwitch == StrandSwitch.NO_SWITCH) { // simple ins/del
+                leftBreakpointCoord  = leftReferenceSpan.getEnd() - homologyLen;
+                rightBreakpointCoord = rightReferenceSpan.getStart() - 1;
+            } else if (ca.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE){ // detected inv by assembling left breakpoint
+                leftBreakpointCoord  = leftReferenceSpan.getEnd() - homologyLen;
+                rightBreakpointCoord = rightReferenceSpan.getEnd();
+            } else {                                                        // detected inv by assembling right breakpoint
+                leftBreakpointCoord  = leftReferenceSpan.getStart() - 1;
+                rightBreakpointCoord = rightReferenceSpan.getStart() + homologyLen - 1;
             }
         }
 
         Utils.validate(leftBreakpointCoord <= rightBreakpointCoord,
                 "Inferred novel adjacency reference locations have left location after right location : " +
-                        leftBreakpointCoord + "\t" + rightBreakpointCoord + ca.onErrStringRep() + "\n" + complication.toString());
+                        leftBreakpointRefContig + ":" + leftBreakpointCoord + "-" + rightBreakpointCoord + "\n" +
+                        ca.onErrStringRep() + "\t" + complication.toString());
 
         final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
         final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);
