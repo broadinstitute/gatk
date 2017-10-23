@@ -18,10 +18,9 @@ public class AnnotatedRegionParserUnitTest extends BaseTest {
 
     @Test
     public void basicTest() throws IOException {
-        final AnnotatedRegionParser parser = new AnnotatedRegionParser();
         final Set<String> headersOfInterest = Sets.newHashSet(Lists.newArrayList("name", "learning_SAMPLE_0"));
         final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
-                parser.readAnnotatedRegions(new File(TEST_FILE), headersOfInterest);
+                AnnotatedRegionParser.readAnnotatedRegions(new File(TEST_FILE), headersOfInterest);
 
         Assert.assertEquals(simpleAnnotatedGenomicRegions.size(), 518);
         Assert.assertTrue(simpleAnnotatedGenomicRegions.stream()
