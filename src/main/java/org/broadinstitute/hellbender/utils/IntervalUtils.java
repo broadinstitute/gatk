@@ -1115,7 +1115,7 @@ public final class IntervalUtils {
     // (end of shard-related code)
 
     /**
-     * Perform a interval break point "union" and return a list of locatables.
+     * Combine the breakpoints of multiple intervals and return a list of locatables based on the updated breakpoints.
      *
      * Suppose we have two lists of locatables:
      * List 1:
@@ -1153,7 +1153,7 @@ public final class IntervalUtils {
      *
      * @param locatables1 list of locatables
      * @param locatables2 list of locatables
-     * @return Locatables from the unioned breakpoints of locatable1 and locatable2.  If both inputs are null, return an
+     * @return Locatables from the combined breakpoints of locatable1 and locatable2.  If both inputs are null, return an
      *   empty list.  Please note that returned values are new copies.
      */
     static public <T extends Locatable> List<Locatable> combineBreakpoints(final List<T> locatables1, final List<T> locatables2) {
@@ -1367,6 +1367,13 @@ public final class IntervalUtils {
      */
     public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
         return (o1, o2) -> IntervalUtils.compareLocatables(o1, o2, dictionary);
+    }
+
+    /**
+     * An enum to classify breakpoints whether the breakpoint is the start or end of a region.
+     */
+    public enum IntervalBreakpointTypeEnum {
+        START_BREAKPOINT, END_BREAKPOINT
     }
 }
 

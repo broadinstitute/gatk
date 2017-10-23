@@ -1391,8 +1391,8 @@ public final class IntervalUtilsUnitTest extends BaseTest {
             Assert.assertEquals(IntervalUtils.locatableToString(interval), "1:1-100");
     }
 
-    @DataProvider(name = "unionIntervalsTesting")
-    public Object [][] unionIntervalsTesting() {
+    @DataProvider(name = "combineIntervalsTesting")
+    public Object [][] combineIntervalsTesting() {
 
         // Overlap where one fits in another and an interval that is totally disconnected
         final List<Locatable> input1_1 = new ArrayList<>();
@@ -1585,15 +1585,15 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "unionIntervalsTesting")
-    public void testUnionIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
+    @Test(dataProvider = "combineIntervalsTesting")
+    public void testCombineIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
         final List<Locatable> outputs = IntervalUtils.combineBreakpoints(locatables1, locatables2);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testUnionIntervalsErrorOverlapping() {
+    public void testCombineIntervalsErrorOverlapping() {
         final List<Locatable> input1_1 = new ArrayList<>();
         final List<Locatable> input1_2 = new ArrayList<>();
         input1_1.add(new SimpleInterval("1", 1000, 2000));
@@ -1605,7 +1605,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testUnionIntervalsErrorOverlapping2() {
+    public void testCombineIntervalsErrorOverlapping2() {
         final List<Locatable> input1_1 = new ArrayList<>();
         final List<Locatable> input1_2 = new ArrayList<>();
         input1_1.add(new SimpleInterval("1", 1000, 2000));
@@ -1617,10 +1617,10 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     }
 
     /**
-     * Tests the sorting as well when using union intervals
+     * Tests the sorting as well when using combining intervals
      */
-    @Test(dataProvider = "unionIntervalsTesting")
-    public void testUnionIntervalsWithShuffling(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
+    @Test(dataProvider = "combineIntervalsTesting")
+    public void testCombineIntervalsWithShuffling(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
 
         if (locatables1 != null) {
             Collections.shuffle(locatables1, new Random(4040));
@@ -1629,14 +1629,14 @@ public final class IntervalUtilsUnitTest extends BaseTest {
             Collections.shuffle(locatables2, new Random(4040));
         }
 
-        final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForIntervalUnionTests();
+        final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForCombineIntervalTests();
 
         final List<Locatable> outputs = IntervalUtils.combineBreakpointsWithSorting(locatables1, locatables2, dictionary);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }
 
-    private SAMSequenceDictionary getSamSequenceDictionaryForIntervalUnionTests() {
+    private SAMSequenceDictionary getSamSequenceDictionaryForCombineIntervalTests() {
         return new SAMSequenceDictionary(
                 Arrays.asList(new SAMSequenceRecord("1", 500000),
                         new SAMSequenceRecord("2", 500000)));
@@ -1723,7 +1723,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     private void assertCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
         final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2,
-                getSamSequenceDictionaryForIntervalUnionTests());
+                getSamSequenceDictionaryForCombineIntervalTests());
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs.keySet().size(), new HashSet<>(locatables1).size());
         Assert.assertTrue(Sets.difference(outputs.keySet(), gtOutput.keySet()).size() == 0);

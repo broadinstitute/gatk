@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -13,11 +12,9 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedRegionParser;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.*;
@@ -25,9 +22,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        oneLineSummary = "(EXPERIMENTAL) Do a breakpoint union of two segment files and annotate with chosen columns from each file.",
+        oneLineSummary = "(EXPERIMENTAL) Combine the breakpoints of two segment files and annotate the resulting intervals with chosen columns from each file.",
         summary = "Combine the breakpoints of two segment files while preserving annotations.\n" +
-                "This tool will load all segments into RAM.",
+                "This tool will load all segments into RAM.\n"+
+        "Expected interval columns are: " + SimpleAnnotatedGenomicRegion.CONTIG_HEADER + ", " +
+        SimpleAnnotatedGenomicRegion.START_HEADER + ", " + SimpleAnnotatedGenomicRegion.END_HEADER,
         programGroup = CopyNumberProgramGroup.class)
 @BetaFeature
 public class CombineSegmentBreakpoints extends GATKTool {
@@ -45,6 +44,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
             minElements = 2
     )
     private List<File> segmentFiles = new ArrayList<>();
+
     @Argument(
             doc = "Input segment file labels -- these will appear as suffixes in case of collisions.  The specification order must correspond to the input segment files.",
             fullName = LABELS_LONG_NAME,
@@ -53,7 +53,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
             minElements = 2,
             optional = true
     )
-    private List<String> segmentFileLabels = Lists.newArrayList("1", "2");
+    private List<String> segmentFileLabels = Arrays.asList("1", "2");
 
     @Argument(
             doc = "List of columns in either segment file that should be reported in the output file.  If the column header exists in both, it will have the appropriate label appended as a suffix.",
@@ -75,8 +75,8 @@ public class CombineSegmentBreakpoints extends GATKTool {
     @Override
     public void traverse() {
 
-        final List<SimpleAnnotatedGenomicRegion> segments1 = AnnotatedRegionParser.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);
-        final List<SimpleAnnotatedGenomicRegion> segments2 = AnnotatedRegionParser.readAnnotatedRegions(segmentFiles.get(1), columnsOfInterest);
+        final List<SimpleAnnotatedGenomicRegion> segments1 = SimpleAnnotatedGenomicRegion.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);
+        final List<SimpleAnnotatedGenomicRegion> segments2 = SimpleAnnotatedGenomicRegion.readAnnotatedRegions(segmentFiles.get(1), columnsOfInterest);
 
         // Check to see if we should warn the user that one or more columns of interest were not seen in any input file.
         final Set<String> allSeenAnnotations = Sets.union(segments1.get(0).getAnnotations().keySet(), segments2.get(0).getAnnotations().keySet());
@@ -95,17 +95,16 @@ public class CombineSegmentBreakpoints extends GATKTool {
         // These are mappings that take the header name from the segment files and map to an output header to avoid conflicts.
         final Map<String, String> input1ToOutputHeaderMap = segments1.get(0).getAnnotations().keySet().stream().filter(a -> !intersectingAnnotations.contains(a))
                 .collect(Collectors.toMap(Function.identity(), Function.identity()));
-        Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(0)));
+        intersectingAnnotations.stream().forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(0)));
 
         final Map<String, String> input2ToOutputHeaderMap = segments2.get(0).getAnnotations().keySet().stream().filter(a -> !intersectingAnnotations.contains(a))
                 .collect(Collectors.toMap(Function.identity(), Function.identity()));
-        Utils.stream(intersectingAnnotations.iterator()).forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
+        intersectingAnnotations.stream().forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
 
         final List<SimpleAnnotatedGenomicRegion> finalList = annotateCombinedIntervals(segments1, segments2,
                 Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap), getBestAvailableSequenceDictionary());
 
-        // TODO: Capture sample names in the comments if possible.
-        AnnotatedRegionParser.writeAnnotatedRegionsAsTsv(finalList, outputFile, Collections.emptyList());
+        SimpleAnnotatedGenomicRegion.writeAnnotatedRegionsAsTsv(finalList, outputFile);
     }
 
     /**
@@ -118,7 +117,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
      *                                Each maps the annotation name as it appears in the segment list to the output annotation name it should get.
      *                                This is required typically to avoid conflicts in the output annotation names.
      *
-     * @return a list of simple annotated regions that is a breakpoint union of segments1 and segments2 and contains all the annotations specified
+     * @return a list of simple annotated regions that is a combination of the breakpoints in segments2 and contains all the annotations specified
      *  in inputToOutputHeaderMaps.
      */
     private List<SimpleAnnotatedGenomicRegion> annotateCombinedIntervals(final List<SimpleAnnotatedGenomicRegion> segments1, final List<SimpleAnnotatedGenomicRegion> segments2,
@@ -140,7 +139,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
         final List<SimpleAnnotatedGenomicRegion> result = new ArrayList<>();
 
         for (final Locatable interval: combinedIntervals) {
-            final Map<String, String> intervalAnnotationMap = new HashMap<>();
+            final SortedMap<String, String> intervalAnnotationMap = new TreeMap<>();
 
             for (int i = 0; i < combinedIntervalsToSegmentsMaps.size(); i ++) {
                 final Map<Locatable, List<SimpleAnnotatedGenomicRegion>> combinedIntervalsToSegmentsMap = combinedIntervalsToSegmentsMaps.get(i);
