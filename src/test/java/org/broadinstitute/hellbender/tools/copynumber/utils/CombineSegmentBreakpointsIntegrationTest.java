@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Set;
 
 public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_RESOURCE_DIR = publicTestDir + "src/test/resources/org/broadinstitute/hellbender/tools/copynumber/utils/";
+    private static final String TEST_RESOURCE_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/";
     public static final String COMBINE_SEG_FILE_INPUT = TEST_RESOURCE_DIR + "combine-segment-breakpoints-with-legacy-header.tsv";
     public static final String COMBINE_SEG_FILE_INPUT_GT = TEST_RESOURCE_DIR + "combine-segment-breakpoints-with-legacy-header-ground-truth.tsv";
     public static final String COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS = TEST_RESOURCE_DIR + "combine-segment-breakpoints-different-annotation-headers-with-legacy-header.tsv";
