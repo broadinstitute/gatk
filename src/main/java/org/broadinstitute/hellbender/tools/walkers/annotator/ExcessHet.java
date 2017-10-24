@@ -173,8 +173,4 @@ public final class ExcessHet extends InfoFieldAnnotation implements StandardAnno
         return Collections.singletonList(GATKVCFConstants.EXCESS_HET_KEY);
     }
 
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }

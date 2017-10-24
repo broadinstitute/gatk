@@ -35,9 +35,6 @@ public final class MappingQualityRankSumTest extends RankSumTest implements Stan
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
-
-    @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         return OptionalDouble.of(read.getMappingQuality());

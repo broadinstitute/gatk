@@ -34,11 +34,6 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.READ_POS_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
-
-    @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         return getReadPosition(read, refLoc);
     }

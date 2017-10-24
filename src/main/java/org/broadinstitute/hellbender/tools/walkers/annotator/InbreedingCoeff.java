@@ -94,6 +94,4 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY); }
 
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
 }

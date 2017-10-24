@@ -8,6 +8,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
@@ -125,21 +126,21 @@ public final class RMSMappingQualityUnitTest {
 
     @Test
     public void testDescriptions_AS() throws Exception {
-        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
-        Assert.assertEquals(cov.getDescriptions().size(), 1);
-        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
+        final ReducibleAnnotation cov = new AS_RMSMappingQuality();
+        Assert.assertEquals(cov.getRawDescriptions().size(), 1);
+        Assert.assertEquals(cov.getRawDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
     }
 
     @Test
     public void testNullLikelihoods_AS() throws Exception {
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
-        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
+        final AS_RMSMappingQuality cov = new AS_RMSMappingQuality();
         final Map<String, Object> annotate = cov.annotate(referenceContext, vc, null);
         Assert.assertTrue(annotate.isEmpty());
 
-        Assert.assertEquals(cov.getDescriptions().size(), 1);
-        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(cov.getRawDescriptions().size(), 1);
+        Assert.assertEquals(cov.getRawDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
     }
 
     @Test

@@ -30,9 +30,6 @@ public final class LikelihoodRankSumTest extends RankSumTest {
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
-
-    @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, final ReadLikelihoods<Allele>.BestAllele bestAllele) {
         Utils.nonNull(read, "read is null");
         Utils.nonNull(bestAllele, "mostLikelyAllele is null");

@@ -49,7 +49,4 @@ public final class SampleList extends InfoFieldAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.SAMPLE_LIST_KEY); }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
 }
