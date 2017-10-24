@@ -2,14 +2,12 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.Arrays;
@@ -58,6 +56,11 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      * File containing Features as specified by the user on the command line
      */
     private final String featureFile;
+
+    /**
+     * Cache the codec for this feature input the first time we discover it, so we only do it once
+     */
+    private transient Class<FeatureCodec<T, ?>> featureCodecClass;
 
     /**
      * Delimiter between the logical name and the file name in the --argument_name logical_name:feature_file syntax
@@ -213,6 +216,21 @@ public final class FeatureInput<T extends Feature> implements Serializable {
         this.name = name;
         this.keyValueMap = Collections.unmodifiableMap(new LinkedHashMap<>(keyValueMap));   //make a unmodifiable copy
         this.featureFile = featureFile;
+    }
+
+    /**
+     * Remember the FeatureCodec class for this input the first time it is discovered so we can bypass dynamic codec
+     * discovery when multiple FeatureDataSources are created for the same input.
+     */
+    public void setFeatureCodecClass(final Class<FeatureCodec<T, ?>> featureCodecClass) {
+        this.featureCodecClass = featureCodecClass;
+    }
+
+    /**
+     * @return The previously established FeatureCodec class to use for this input, if any. May return {@code null}.
+     */
+    public Class<FeatureCodec<T, ?>> getFeatureCodecClass() {
+        return this.featureCodecClass;
     }
 
     /**
