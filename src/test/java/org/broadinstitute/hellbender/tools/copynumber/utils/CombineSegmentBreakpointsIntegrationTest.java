@@ -19,9 +19,9 @@ import java.util.Set;
 
 public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_RESOURCE_DIR = publicTestDir + "src/test/resources/org/broadinstitute/hellbender/tools/copynumber/utils/";
-    public static final String SEG1 = TEST_RESOURCE_DIR + "seg1.tsv";
-    public static final String SEG_GT = TEST_RESOURCE_DIR + "seg_fake_gt.tsv";
-    public static final String SEG1_DIFFERENT_HEADERS = TEST_RESOURCE_DIR + "seg1_different_headers.tsv";
+    public static final String COMBINE_SEG_FILE_INPUT = TEST_RESOURCE_DIR + "combine-segment-breakpoints-with-legacy-header.tsv";
+    public static final String COMBINE_SEG_FILE_INPUT_GT = TEST_RESOURCE_DIR + "combine-segment-breakpoints-with-legacy-header-ground-truth.tsv";
+    public static final String COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS = TEST_RESOURCE_DIR + "combine-segment-breakpoints-different-annotation-headers-with-legacy-header.tsv";
     public static final String REF = hg19_chr1_1M_Reference;
 
     @Test
@@ -31,9 +31,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final Set<String> columnSet = Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", "Segment_Mean", "Segment_Call");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG1);
+        arguments.add(COMBINE_SEG_FILE_INPUT);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG1_DIFFERENT_HEADERS);
+        arguments.add(COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
 
@@ -63,9 +63,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG1);
+        arguments.add(COMBINE_SEG_FILE_INPUT);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG1);
+        arguments.add(COMBINE_SEG_FILE_INPUT);
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("MEAN_LOG2_COPY_RATIO");
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
@@ -94,9 +94,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG1_DIFFERENT_HEADERS);
+        arguments.add(COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG_GT);
+        arguments.add(COMBINE_SEG_FILE_INPUT_GT);
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Mean");
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
@@ -159,9 +159,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG1_DIFFERENT_HEADERS);
+        arguments.add(COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS);
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(SEG_GT);
+        arguments.add(COMBINE_SEG_FILE_INPUT_GT);
         arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
         arguments.add(TEST);
         arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
