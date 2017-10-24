@@ -24,42 +24,55 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public abstract class SampleRecordCollection<T> implements SampleMetadata {
+public abstract class SampleRecordCollection<RECORD> implements SampleMetadata {
     private final SampleMetadata sampleMetadata;
-    private final ImmutableList<T> records;
+    private final ImmutableList<RECORD> records;
     private final TableColumnCollection mandatoryColumns;
-    private final Function<DataLine, T> dataLineToRecordFunction;
-    private final BiConsumer<T, DataLine> recordAndDataLineBiConsumer;
+    private final Function<DataLine, RECORD> recordFromDataLineDecoder;
+    private final BiConsumer<RECORD, DataLine> recordToDataLineEncoder;
 
     /**
      * Constructor given the sample metadata, the list of records, the mandatory column headers,
      * and the lambdas for reading and writing records.
+     *
+     * @param sampleMetadata                metadata associated with the sample
+     * @param records                       list of records associated with the sample; may be empty
+     * @param mandatoryColumns              mandatory columns required to construct collection from a TSV file; cannot be empty
+     * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
+     * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
     SampleRecordCollection(final SampleMetadata sampleMetadata,
-                           final List<T> records,
+                           final List<RECORD> records,
                            final TableColumnCollection mandatoryColumns,
-                           final Function<DataLine, T> dataLineToRecordFunction,
-                           final BiConsumer<T, DataLine> recordAndDataLineBiConsumer) {
+                           final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                           final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         this.sampleMetadata = Utils.nonNull(sampleMetadata);
         this.records = ImmutableList.copyOf(Utils.nonNull(records));
         this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
-        this.dataLineToRecordFunction = Utils.nonNull(dataLineToRecordFunction);
-        this.recordAndDataLineBiConsumer = Utils.nonNull(recordAndDataLineBiConsumer);
+        this.recordFromDataLineDecoder = Utils.nonNull(recordFromDataLineDecoder);
+        this.recordToDataLineEncoder = Utils.nonNull(recordToDataLineEncoder);
+        Utils.nonEmpty(mandatoryColumns.names());
     }
 
     /**
      * Constructor given an input file, the mandatory column headers, and the lambdas for reading and writing records.
      * The sample metadata is read from the header of the file and the list of records is read using
      * the column headers and the appropriate lambda.
+     *
+     * @param inputFile                     TSV file containing sample metadata and records; the latter may be empty
+     * @param mandatoryColumns              mandatory columns required to construct collection from a TSV file; cannot be empty
+     * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
+     * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
     SampleRecordCollection(final File inputFile,
                            final TableColumnCollection mandatoryColumns,
-                           final Function<DataLine, T> dataLineToRecordFunction,
-                           final BiConsumer<T, DataLine> recordAndDataLineBiConsumer) {
+                           final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                           final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         IOUtils.canReadFile(inputFile);
         this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
-        this.dataLineToRecordFunction = Utils.nonNull(dataLineToRecordFunction);
-        this.recordAndDataLineBiConsumer = Utils.nonNull(recordAndDataLineBiConsumer);
+        this.recordFromDataLineDecoder = Utils.nonNull(recordFromDataLineDecoder);
+        this.recordToDataLineEncoder = Utils.nonNull(recordToDataLineEncoder);
+        Utils.nonEmpty(mandatoryColumns.names());
 
         try (final SampleRecordCollectionReader reader = new SampleRecordCollectionReader(inputFile)) {
             TableUtils.checkMandatoryColumns(reader.columns(), mandatoryColumns, UserException.BadInput::new);
@@ -86,7 +99,7 @@ public abstract class SampleRecordCollection<T> implements SampleMetadata {
     /**
      * @return  an immutable view of the records contained in the collection
      */
-    public final List<T> getRecords() {
+    public final List<RECORD> getRecords() {
         return records;
     }
 
@@ -122,7 +135,7 @@ public abstract class SampleRecordCollection<T> implements SampleMetadata {
         return result;
     }
 
-    private final class SampleRecordCollectionReader extends TableReader<T> {
+    private final class SampleRecordCollectionReader extends TableReader<RECORD> {
         private final File file;
 
         private SampleRecordCollectionReader(final File file) throws IOException {
@@ -136,13 +149,13 @@ public abstract class SampleRecordCollection<T> implements SampleMetadata {
         }
 
         @Override
-        protected T createRecord(final DataLine dataLine) {
+        protected RECORD createRecord(final DataLine dataLine) {
             Utils.nonNull(dataLine);
-            return dataLineToRecordFunction.apply(dataLine);
+            return recordFromDataLineDecoder.apply(dataLine);
         }
     }
 
-    private final class SampleRecordCollectionWriter extends TableWriter<T> {
+    private final class SampleRecordCollectionWriter extends TableWriter<RECORD> {
         private final SampleMetadata sampleMetadata;
 
         SampleRecordCollectionWriter(final File file,
@@ -164,10 +177,10 @@ public abstract class SampleRecordCollection<T> implements SampleMetadata {
         }
 
         @Override
-        protected void composeLine(final T record, final DataLine dataLine) {
+        protected void composeLine(final RECORD record, final DataLine dataLine) {
             Utils.nonNull(record);
             Utils.nonNull(dataLine);
-            recordAndDataLineBiConsumer.accept(record, dataLine);
+            recordToDataLineEncoder.accept(record, dataLine);
         }
     }
 }

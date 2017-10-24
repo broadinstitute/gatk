@@ -101,7 +101,7 @@ public final class SampleLocatableCollectionUnitTest extends BaseTest {
             static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
         }
         
-        private static final Function<DataLine, SimpleLocatable> SIMPLE_LOCATABLE_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
+        private static final Function<DataLine, SimpleLocatable> SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
             final String contig = dataLine.get(SimpleLocatableTableColumn.CONTIG);
             final int start = dataLine.getInt(SimpleLocatableTableColumn.START);
             final int end = dataLine.getInt(SimpleLocatableTableColumn.END);
@@ -110,19 +110,19 @@ public final class SampleLocatableCollectionUnitTest extends BaseTest {
             return new SimpleLocatable(interval, value);
         };
 
-        private static final BiConsumer<SimpleLocatable, DataLine> SIMPLE_LOCATABLE_RECORD_AND_DATA_LINE_BI_CONSUMER = (simpleLocatable, dataLine) ->
+        private static final BiConsumer<SimpleLocatable, DataLine> SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER = (simpleLocatable, dataLine) ->
                 dataLine.append(simpleLocatable.getInterval().getContig())
                         .append(simpleLocatable.getInterval().getStart())
                         .append(simpleLocatable.getInterval().getEnd())
                         .append(simpleLocatable.getValue());
 
         private SimpleSampleLocatableCollection(final File inputFile) {
-            super(inputFile, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_DATA_LINE_TO_RECORD_FUNCTION, SIMPLE_LOCATABLE_RECORD_AND_DATA_LINE_BI_CONSUMER);
+            super(inputFile, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
         }
 
         private SimpleSampleLocatableCollection(final SampleMetadata sampleMetadata,
                                                 final List<SimpleLocatable> simpleLocatables) {
-            super(sampleMetadata, simpleLocatables, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_DATA_LINE_TO_RECORD_FUNCTION, SIMPLE_LOCATABLE_RECORD_AND_DATA_LINE_BI_CONSUMER);
+            super(sampleMetadata, simpleLocatables, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
         }
     }
 

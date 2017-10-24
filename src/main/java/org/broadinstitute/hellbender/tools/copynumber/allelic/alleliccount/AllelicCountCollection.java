@@ -31,7 +31,7 @@ public final class AllelicCountCollection extends SampleLocatableCollection<Alle
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
     
-    private static final Function<DataLine, AllelicCount> ALLELIC_COUNT_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
+    private static final Function<DataLine, AllelicCount> ALLELIC_COUNT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
         final String contig = dataLine.get(AllelicCountTableColumn.CONTIG);
         final int position = dataLine.getInt(AllelicCountTableColumn.POSITION);
         final int refReadCount = dataLine.getInt(AllelicCountTableColumn.REF_COUNT);
@@ -42,7 +42,7 @@ public final class AllelicCountCollection extends SampleLocatableCollection<Alle
         return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide);
     };
 
-    private static final BiConsumer<AllelicCount, DataLine> ALLELIC_COUNT_RECORD_AND_DATA_LINE_BI_CONSUMER = (allelicCount, dataLine) ->
+    private static final BiConsumer<AllelicCount, DataLine> ALLELIC_COUNT_RECORD_TO_DATA_LINE_ENCODER = (allelicCount, dataLine) ->
             dataLine.append(allelicCount.getInterval().getContig())
                     .append(allelicCount.getInterval().getEnd())
                     .append(allelicCount.getRefReadCount())
@@ -51,11 +51,11 @@ public final class AllelicCountCollection extends SampleLocatableCollection<Alle
                     .append(allelicCount.getAltNucleotide().name());
 
     public AllelicCountCollection(final File inputFile) {
-        super(inputFile, AllelicCountCollection.AllelicCountTableColumn.COLUMNS, ALLELIC_COUNT_DATA_LINE_TO_RECORD_FUNCTION, ALLELIC_COUNT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(inputFile, AllelicCountCollection.AllelicCountTableColumn.COLUMNS, ALLELIC_COUNT_RECORD_FROM_DATA_LINE_DECODER, ALLELIC_COUNT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public AllelicCountCollection(final SampleMetadata sampleMetadata,
                                   final List<AllelicCount> AllelicCounts) {
-        super(sampleMetadata, AllelicCounts, AllelicCountCollection.AllelicCountTableColumn.COLUMNS, ALLELIC_COUNT_DATA_LINE_TO_RECORD_FUNCTION, ALLELIC_COUNT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(sampleMetadata, AllelicCounts, AllelicCountCollection.AllelicCountTableColumn.COLUMNS, ALLELIC_COUNT_RECORD_FROM_DATA_LINE_DECODER, ALLELIC_COUNT_RECORD_TO_DATA_LINE_ENCODER);
     }
 }

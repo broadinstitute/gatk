@@ -5,7 +5,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -29,24 +28,24 @@ import java.util.stream.IntStream;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public abstract class SampleLocatableCollection<T extends Locatable> extends SampleRecordCollection<T> {
+public abstract class SampleLocatableCollection<RECORD extends Locatable> extends SampleRecordCollection<RECORD> {
     public static final Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR = IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR;
 
     /**
      * Records are sorted using {@code LEXICOGRAPHICAL_ORDER_COMPARATOR}.
      */
     public SampleLocatableCollection(final SampleMetadata sampleMetadata,
-                                     final List<T> records,
+                                     final List<RECORD> records,
                                      final TableColumnCollection mandatoryColumns,
-                                     final Function<DataLine, T> dataLineToRecordFunction,
-                                     final BiConsumer<T, DataLine> recordAndDataLineBiConsumer) {
+                                     final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                     final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(
                 sampleMetadata,
                 Utils.nonNull(records).stream().sorted(LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList()),
                 mandatoryColumns,
-                dataLineToRecordFunction,
-                recordAndDataLineBiConsumer);
-        validateIntervals(getSampleName(), getIntervals());
+                recordFromDataLineDecoder,
+                recordToDataLineEncoder);
+        validateIntervals(getSampleName(), getRecords());
     }
 
     /**
@@ -54,40 +53,30 @@ public abstract class SampleLocatableCollection<T extends Locatable> extends Sam
      */
     public SampleLocatableCollection(final File inputFile,
                                      final TableColumnCollection mandatoryColumns,
-                                     final Function<DataLine, T> dataLineToRecordFunction,
-                                     final BiConsumer<T, DataLine> recordAndDataLineBiConsumer) {
-        super(inputFile, mandatoryColumns, dataLineToRecordFunction, recordAndDataLineBiConsumer);
-        validateIntervals(getSampleName(), getIntervals());
+                                     final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                     final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+        super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
+        validateIntervals(getSampleName(), getRecords());
     }
 
     //check for ordering, duplicates, and overlaps
-    private static void validateIntervals(final String sampleName,
-                                          final List<SimpleInterval> intervals) {
-        if (!Ordering.from(LEXICOGRAPHICAL_ORDER_COMPARATOR).isStrictlyOrdered(intervals)) {
+    private static <T extends Locatable> void validateIntervals(final String sampleName,
+                                                                final List<T> records) {
+        if (!Ordering.from(LEXICOGRAPHICAL_ORDER_COMPARATOR).isStrictlyOrdered(records)) {
             throw new IllegalArgumentException(String.format("Records for sample %s were not strictly sorted in lexicographical order.", sampleName));
         }
-        final OptionalInt failureIndex = IntStream.range(1, intervals.size())
-                .filter(i -> IntervalUtils.overlaps(intervals.get(i - 1), intervals.get(i)))
+        final OptionalInt failureIndex = IntStream.range(1, records.size())
+                .filter(i -> IntervalUtils.overlaps(records.get(i - 1), records.get(i)))
                 .findFirst();
         if (failureIndex.isPresent()) {
             final int index = failureIndex.getAsInt();
             throw new IllegalArgumentException(
                     String.format("Records for sample %s contain at least two overlapping intervals: %s and %s",
-                            sampleName, intervals.get(index - 1), intervals.get(index)));
+                            sampleName, records.get(index - 1), records.get(index)));
         }
     }
 
-    /**
-     * @return  a new modifiable list of {@link SimpleInterval}s corresponding to the {@link Locatable}s
-     *          for each record contained in the collection
-     */
-    public List<SimpleInterval> getIntervals() {
-        return getRecords().stream()
-                .map(r -> new SimpleInterval(r.getContig(), r.getStart(), r.getEnd()))
-                .collect(Collectors.toList());
-    }
-
-    public OverlapDetector<T> getOverlapDetector() {
+    public OverlapDetector<RECORD> getOverlapDetector() {
         return OverlapDetector.create(getRecords());
     }
 }
