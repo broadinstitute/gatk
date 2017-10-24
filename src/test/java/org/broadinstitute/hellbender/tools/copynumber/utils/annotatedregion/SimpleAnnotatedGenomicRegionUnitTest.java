@@ -23,7 +23,7 @@ public class SimpleAnnotatedGenomicRegionUnitTest extends BaseTest {
         final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
                 SimpleAnnotatedGenomicRegion.readAnnotatedRegions(new File(TEST_FILE), headersOfInterest);
 
-        Assert.assertEquals(simpleAnnotatedGenomicRegions.size(), 518);
+        Assert.assertEquals(simpleAnnotatedGenomicRegions.size(), 15);
         Assert.assertTrue(simpleAnnotatedGenomicRegions.stream()
                 .mapToInt(s -> s.getAnnotations().entrySet().size())
                 .allMatch(i -> i == headersOfInterest.size()));
