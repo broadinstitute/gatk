@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -37,7 +36,7 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
 
-        Utils.stream(columnSet.iterator()).forEach(s -> {
+        columnSet.stream().forEach(s -> {
             arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
             arguments.add(s);
         });
@@ -114,8 +113,6 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         Assert.assertEquals(regions.size(), 13);
         Assert.assertTrue(regions.stream().allMatch(r -> r.getAnnotations().size() == 4));
         assertUnionedSegFiles(SEGMENT_CALL_1, SEGMENT_MEAN_1, SEGMENT_MEAN_2, SEGMENT_CALL_2, regions);
-
-
     }
 
     private void assertUnionedSegFiles(final String segmentCall1, final String segmentMean1, final String segmentMean2,
