@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

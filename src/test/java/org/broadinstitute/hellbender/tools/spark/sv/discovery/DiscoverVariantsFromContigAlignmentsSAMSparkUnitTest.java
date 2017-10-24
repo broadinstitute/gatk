@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -15,7 +16,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.mockito.Mockito;
 import org.testng.annotations.DataProvider;
@@ -28,7 +28,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.when;
 
-public class DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest extends BaseTest {
+public class DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest extends GATKBaseTest {
 
 
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest.class);

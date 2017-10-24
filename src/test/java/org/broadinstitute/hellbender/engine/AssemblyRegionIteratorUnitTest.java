@@ -2,11 +2,11 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMSequenceDictionary;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -26,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class AssemblyRegionIteratorUnitTest extends BaseTest {
+public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
 
     @DataProvider
     public Object[][] testCorrectRegionsHaveCorrectReadsAndSizeData() {

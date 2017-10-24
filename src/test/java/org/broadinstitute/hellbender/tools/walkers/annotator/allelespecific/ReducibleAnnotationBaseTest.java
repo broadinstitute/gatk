@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -9,7 +10,6 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * sites in the source files NA12878.AS.chr20snippet.g.vcf, NA12892.AS.chr20snippet.g.vcf, CombineGVCFs.output.vcf, and
  * GenotypeGVCFs.output.vcf to add new annotations.
  */
-public abstract class ReducibleAnnotationBaseTest extends BaseTest {
+public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
 
     @Override
     public String getToolTestDataDir() {

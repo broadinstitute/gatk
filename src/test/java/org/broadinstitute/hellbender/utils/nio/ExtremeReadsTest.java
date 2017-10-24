@@ -6,17 +6,13 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.samples.PedReaderUnitTest;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 import org.testng.Assert;
 import org.apache.logging.log4j.Logger;
@@ -25,7 +21,7 @@ import org.apache.logging.log4j.Logger;
  * Stress test for reading lots of data from the cloud using a very small prefetch buffer.
  * Do not run this too often.
  */
-public final class ExtremeReadsTest extends BaseTest {
+public final class ExtremeReadsTest extends GATKBaseTest {
 
     static final String fname = GCS_GATK_TEST_RESOURCES + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
     static final int THREAD_COUNT = 1000;

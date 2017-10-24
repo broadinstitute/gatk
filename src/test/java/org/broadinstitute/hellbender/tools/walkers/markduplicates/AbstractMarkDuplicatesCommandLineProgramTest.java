@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
+package org.broadinstitute.hellbender.tools.walkers.markduplicates;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;

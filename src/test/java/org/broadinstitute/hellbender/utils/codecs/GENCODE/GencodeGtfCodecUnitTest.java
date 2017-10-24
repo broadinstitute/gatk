@@ -4,6 +4,7 @@ import htsjdk.tribble.Tribble;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.readers.LineIterator;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -23,7 +24,7 @@ import java.nio.file.StandardCopyOption;
  * Modeled after the TableCodecUnitTest, with extras specific to this file format.
  * Created by jonn on 7/27/17.
  */
-public class GencodeGtfCodecUnitTest extends BaseTest {
+public class GencodeGtfCodecUnitTest extends GATKBaseTest {
 
     private static final String testResourceDir = publicTestDir + "org/broadinstitute/hellbender/utils/codecs/GENCODE/";
     private static final String xyzTestFile = largeFileTestDir + "gencode.v26.primary_assembly.annotation.XYZ.gtf";

@@ -4,22 +4,21 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 import scala.Tuple3;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class ContigAlignmentsModifierUnitTest extends BaseTest {
+public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "forComputeNewRefSpanAndCigar")
     private Object[][] createTestDataForComputeNewRefSpanAndCigar() {

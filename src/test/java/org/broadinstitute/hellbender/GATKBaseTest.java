@@ -1,31 +1,15 @@
 package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.util.Log;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.Assert;
-import org.testng.Reporter;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeSuite;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.PrintStream;
-import java.nio.file.Path;
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-
 
 /**
  * This is the base test class for all of our test cases.  All test cases should extend from this
