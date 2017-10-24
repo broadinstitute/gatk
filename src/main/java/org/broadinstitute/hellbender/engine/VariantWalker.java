@@ -57,8 +57,8 @@ public abstract class VariantWalker extends VariantWalkerBase {
 
         //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
         //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
-        features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                     referenceArguments.getReferencePath());
+//        features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+//                                     referenceArguments.getReferencePath());
 
         //Note: the intervals for the driving variants are set in onStartup
     }
