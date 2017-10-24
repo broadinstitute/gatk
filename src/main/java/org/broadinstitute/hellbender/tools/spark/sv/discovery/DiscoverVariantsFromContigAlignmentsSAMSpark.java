@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
 
@@ -231,7 +232,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         JavaRDD<VariantContext> annotatedVariants =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
                         .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
-                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, broadcastSequenceDictionary.getValue())))
+                                ChimericAlignment.parseOneContig(alignedContig, broadcastSequenceDictionary.getValue(),
+                                        true, DEFAULT_MIN_ALIGNMENT_LENGTH, CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)))
                         .flatMapToPair(pair -> discoverNovelAdjacencyFromChimericAlignments(pair, broadcastSequenceDictionary.getValue()))       // a filter-passing contig's alignments may or may not produce novel adjacency
                         .groupByKey()                                                                                                 // group the same novel adjacency produced by different contigs together
                         .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments

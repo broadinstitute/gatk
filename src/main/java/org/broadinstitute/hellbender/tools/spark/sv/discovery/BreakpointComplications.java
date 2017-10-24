@@ -177,7 +177,7 @@ public final class BreakpointComplications {
         if (suggestsSimpleTranslocation) {
             initForSuspectedTranslocation(chimericAlignment, contigSeq);
         } else if (chimericAlignment.strandSwitch != StrandSwitch.NO_SWITCH) { // TODO: 9/9/17 the case involves an inversion, could be retired once same chr strand-switch BND calls are evaluated.
-            if (isLikelyInvertedDuplication(chimericAlignment.regionWithLowerCoordOnContig, chimericAlignment.regionWithHigherCoordOnContig))
+            if (chimericAlignment.isLikelyInvertedDuplication())
                 initForInvDup(chimericAlignment, contigSeq);
             else
                 initForInversion(chimericAlignment, contigSeq);
@@ -196,20 +196,10 @@ public final class BreakpointComplications {
     }
 
     // =================================================================================================================
-    /**
-     * todo : see ticket #3529
-     * @return true iff the two AI of the {@code longRead} overlaps on reference is more than half of the two AI's minimal read span.
-     */
-    @VisibleForTesting
-    public static boolean isLikelyInvertedDuplication(final AlignmentInterval one, final AlignmentInterval two) {
-        return 2 * AlignmentInterval.overlapOnRefSpan(one, two) >
-                Math.min(one.endInAssembledContig - one.startInAssembledContig,
-                         two.endInAssembledContig - two.startInAssembledContig) + 1;
-    }
 
     /**
      * Initialize the fields in this object, assuming the input chimeric alignment is induced by two alignments with
-     * "significant" (see {@link #isLikelyInvertedDuplication(AlignmentInterval, AlignmentInterval)})
+     * "significant" (see {@link ChimericAlignment#isLikelyInvertedDuplication()})
      * overlap on their reference spans.
      */
     private void initForInvDup(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
@@ -327,9 +317,14 @@ public final class BreakpointComplications {
 
         final AlignmentInterval firstContigRegion  = chimericAlignment.regionWithLowerCoordOnContig;
         final AlignmentInterval secondContigRegion = chimericAlignment.regionWithHigherCoordOnContig;
-        final Tuple2<SimpleInterval, SimpleInterval> referenceSpans = chimericAlignment.getCoordSortedReferenceSpans();
-        final SimpleInterval leftReferenceSpan  = referenceSpans._1;
-        final SimpleInterval rightReferenceSpan = referenceSpans._2;
+        final SimpleInterval leftReferenceSpan, rightReferenceSpan;
+        if (chimericAlignment.isForwardStrandRepresentation) {
+            leftReferenceSpan = firstContigRegion.referenceSpan;
+            rightReferenceSpan = secondContigRegion.referenceSpan;
+        } else {
+            leftReferenceSpan = secondContigRegion.referenceSpan;
+            rightReferenceSpan = firstContigRegion.referenceSpan;
+        }
 
         final int r1e = leftReferenceSpan.getEnd(),
                   r2b = rightReferenceSpan.getStart(),
