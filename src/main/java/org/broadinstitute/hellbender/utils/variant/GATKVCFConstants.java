@@ -132,8 +132,7 @@ public final class GATKVCFConstants {
     public static final String ALLELE_FRACTION_KEY =                "AF";
     public static final String POSTERIOR_PROBABILITIES_KEY =        "SA_POST_PROB"; // Strand Artifact Filter
     public static final String MAP_ALLELE_FRACTIONS_KEY =           "SA_MAP_AF"; // Strand Artifact Filter
-    public static final String ALT_READ_F1R2_COUNT_KEY =            "ALT_F1R2"; // Orientation Bias Filter
-
+    public static final String READ_ORIENTATION_POSTERIOR_KEY =     "ROARTIFACT";
 
     //FILTERS
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,

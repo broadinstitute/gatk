@@ -9,9 +9,11 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
 
 
 import java.io.IOException;
@@ -20,7 +22,7 @@ import java.util.*;
 /**
  * Created by tsato on 4/19/17.
  */
-public class StrandArtifactUnitTest {
+public class StrandArtifactUnitTest extends BaseTest {
     final int numChromosomes = 2; // create chromosome 0 and chromosome 1
     final int startingChromosome = 1;
     final int chromosomeSize = 1000;

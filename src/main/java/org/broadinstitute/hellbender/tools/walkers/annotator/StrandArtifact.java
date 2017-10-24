@@ -22,9 +22,6 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
  * Created by tsato on 4/19/17.
  */
 public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
-    public static final String POSTERIOR_PROBABILITIES_KEY = "SA_POST_PROB";
-    public static final String MAP_ALLELE_FRACTIONS_KEY = "SA_MAP_AF";
-
     // pseudocounts for the beta distribution over epsilon
     // alpha > 0 and beta > 0. alpha = beta = 1 gives us the flat prior
     // give more prior weight to beta (i.e. pseudocount for tails) so that the peak shifts towards 0

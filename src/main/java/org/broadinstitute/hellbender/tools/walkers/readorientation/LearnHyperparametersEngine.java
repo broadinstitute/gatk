@@ -481,6 +481,31 @@ public class LearnHyperparametersEngine {
         }
 
         static List<State> artifactStates = Arrays.asList(F1R2_A, F1R2_C, F1R2_G, F1R2_T, F2R1_A, F2R1_C, F2R1_G, F2R1_T);
+
+
+        /** Contract: this method always returns the F1R2 state in the 0th index, F2R1 state in the 1st index **/
+        public static State[] getArtifactStatesOfInterest(final Nucleotide altAllele) {
+            final State[] relevantArtifactStates;
+            switch (altAllele) {
+                case A:
+                    relevantArtifactStates = new State[]{State.F1R2_A, State.F2R1_A};
+                    break;
+                case C:
+                    relevantArtifactStates = new State[]{State.F1R2_C, State.F2R1_C};
+                    break;
+                case G:
+                    relevantArtifactStates = new State[]{State.F1R2_G, State.F2R1_G};
+                    break;
+                case T:
+                    relevantArtifactStates = new State[]{State.F1R2_T, State.F2R1_T};
+                    break;
+                default:
+                    throw new UserException(String.format("Alt allele must be in {A, C, G, T} but got %s", altAllele));
+            }
+
+            Utils.validate(relevantArtifactStates.length == 2, "there should only be 2 artifact states of interest for each alt allele");
+            return relevantArtifactStates;
+        }
     }
 
 

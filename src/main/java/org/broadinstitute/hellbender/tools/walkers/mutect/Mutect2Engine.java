@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ReadOrientationArtifact;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
@@ -115,6 +116,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.variantAnnotationArgumentCollection,
                 MTAC.dbsnp.dbsnp,
                 MTAC.comps);
+
+        /*** START HACK ***/
+        // a hack to give the read orientation annotation an input to Mutect2, which is accessible only in M2ArgumentCollection.
+        // We need this until the day we can provide an annotation with an input file directly
+        ReadOrientationArtifact annotation = (ReadOrientationArtifact) annotationEngine.getGenotypeAnnotations().stream()
+                .filter(a -> a.getClass().getSimpleName().equals("ReadOrientationArtifact"))
+                .findFirst().get();
+        annotation.setHyperparameterTable(MTAC.hyperparameterTable);
+        /*** END HACK ***/
 
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);

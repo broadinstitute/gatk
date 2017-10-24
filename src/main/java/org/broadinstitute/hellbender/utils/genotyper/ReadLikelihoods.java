@@ -1171,7 +1171,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
 
         /**
          * Confidence that the read actually was generated under that likelihood.
-         * This is equal to the difference between this and the second best allele match.
+         * This is equal to the difference between this and the second b[est allele match.
          */
         public final double confidence;
 
