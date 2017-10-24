@@ -30,9 +30,6 @@ public final class BaseQualityRankSumTest extends RankSumTest implements Standar
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
-
-    @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         return getReadBaseQuality(read, refLoc);
     }

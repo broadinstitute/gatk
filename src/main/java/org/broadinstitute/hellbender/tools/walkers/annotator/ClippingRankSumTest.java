@@ -29,9 +29,6 @@ public final class ClippingRankSumTest extends RankSumTest implements StandardHC
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.CLIPPING_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
-
-    @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         return OptionalDouble.of(AlignmentUtils.getNumHardClippedBases(read));
