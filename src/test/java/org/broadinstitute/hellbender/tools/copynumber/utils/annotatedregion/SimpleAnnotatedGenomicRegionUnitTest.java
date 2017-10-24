@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 public class SimpleAnnotatedGenomicRegionUnitTest extends BaseTest {
-    private final String TEST_FILE = publicTestDir + "org/broadinstitute/hellbender/tools/coveragemodel/learning_combined_copy_number.tsv";
+    private static final String TEST_FILE = publicTestDir + "org/broadinstitute/hellbender/tools/coveragemodel/learning_combined_copy_number.tsv";
 
     @Test
     public void basicTest() throws IOException {

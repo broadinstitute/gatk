@@ -35,8 +35,8 @@ import java.util.stream.Stream;
  */
 public final class IntervalUtilsUnitTest extends BaseTest {
     public static final String INTERVAL_TEST_DATA = publicTestDir + "org/broadinstitute/hellbender/utils/interval/";
-    public static final String emptyIntervals = BaseTest.publicTestDir + "empty_intervals.list";
-    public static final String FULL_HG19_DICT = BaseTest.publicTestDir + "Homo_sapiens_assembly19.dict";
+    public static final String emptyIntervals = publicTestDir + "empty_intervals.list";
+    public static final String FULL_HG19_DICT = publicTestDir + "Homo_sapiens_assembly19.dict";
     private List<GenomeLoc> hg19ReferenceLocs;
     private List<GenomeLoc> hg19exomeIntervals;
 
