@@ -1179,14 +1179,14 @@ public final class IntervalUtils {
         final Set<String> contigs = masterList.stream()
                 .map(Locatable::getContig).collect(Collectors.toSet());
 
-        final Map<String, Set<Pair<Integer, IntervalBreakpointTypeEnum>>> contigToBreakpoints = contigs.stream()
+        final Map<String, Set<Pair<Integer, IntervalBreakpointType>>> contigToBreakpoints = contigs.stream()
                 .collect(Collectors.toMap(Function.identity(), l -> new HashSet<>()));
 
         // Populate initialized maps with contigs to the break points.  Also, keep a mapping of contigs
         //  to start breakpoints.
         masterList.forEach(l -> {
-            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getStart(), IntervalBreakpointTypeEnum.START_BREAKPOINT));
-            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getEnd(), IntervalBreakpointTypeEnum.END_BREAKPOINT));
+            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getStart(), IntervalBreakpointType.START_BREAKPOINT));
+            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getEnd(), IntervalBreakpointType.END_BREAKPOINT));
         });
 
         final List<Locatable> result = new ArrayList<>();
@@ -1196,7 +1196,7 @@ public final class IntervalUtils {
             // Sort the breakpoints for this contig.  Use the pair structure, since we need to differentiate between a
             //  breakpoint that is a start and a breakpoint that is end, yet have the same position.  This is especially
             //  important for single base intervals.
-            final List<Pair<Integer, IntervalBreakpointTypeEnum>> breakpoints = new ArrayList<>(contigToBreakpoints.get(contig));
+            final List<Pair<Integer, IntervalBreakpointType>> breakpoints = new ArrayList<>(contigToBreakpoints.get(contig));
             breakpoints.sort((p1, p2) -> {
                 final int firstComparison = p1.getLeft().compareTo(p2.getLeft());
                 if (firstComparison != 0) {
@@ -1212,8 +1212,8 @@ public final class IntervalUtils {
                 final int currentBreakpoint = breakpoints.get(i).getLeft();
                 final int nextBreakpoint = breakpoints.get(i + 1).getLeft();
 
-                final boolean isCurrentBreakpointStart = breakpoints.get(i).getRight() == IntervalBreakpointTypeEnum.START_BREAKPOINT;
-                final boolean isNextBreakpointStart = breakpoints.get(i + 1).getRight() == IntervalBreakpointTypeEnum.START_BREAKPOINT;
+                final boolean isCurrentBreakpointStart = breakpoints.get(i).getRight() == IntervalBreakpointType.START_BREAKPOINT;
+                final boolean isNextBreakpointStart = breakpoints.get(i + 1).getRight() == IntervalBreakpointType.START_BREAKPOINT;
 
                 // if both breakpoints are starts of intervals, then the result is bp1, bp2-1
                 // if both breakpoints are ends of intervals, then the result is bp1+1, bp2
@@ -1373,7 +1373,7 @@ public final class IntervalUtils {
     /**
      * An enum to classify breakpoints whether the breakpoint is the start or end of a region.
      */
-    public enum IntervalBreakpointTypeEnum {
+    public enum IntervalBreakpointType {
         START_BREAKPOINT, END_BREAKPOINT
     }
 }
