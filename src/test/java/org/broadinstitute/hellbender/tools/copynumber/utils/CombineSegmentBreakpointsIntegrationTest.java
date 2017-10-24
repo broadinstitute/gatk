@@ -26,7 +26,7 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
     @Test
     public void testRunWithExactSegments() throws IOException {
         // Segment intervals are the same in the input files.  Therefore, the union should only generate more columns.
-        final File outputFile = File.createTempFile("unionseg_", ".tsv");
+        final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final Set<String> columnSet = Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", "Segment_Mean", "Segment_Call");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
@@ -57,7 +57,7 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
     @Test
     public void testRunWithExactSameFiles() throws IOException {
         // Input files are exactly the same.  Therefore, the union should only generate more columns.
-        final File outputFile = File.createTempFile("unionseg_", ".tsv");
+        final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
@@ -88,7 +88,7 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
     @Test
     public void testRunWithNotExactOverlaps() throws IOException {
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("unionseg_", ".tsv");
+        final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
@@ -151,7 +151,7 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final String TEST = "test";
         final String GT = "gt";
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("unionseg_", ".tsv");
+        final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);

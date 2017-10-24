@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.testng.collections.Lists;
 
 import java.io.File;
 import java.util.*;
@@ -53,7 +54,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
             minElements = 2,
             optional = true
     )
-    private List<String> segmentFileLabels = Arrays.asList("1", "2");
+    private List<String> segmentFileLabels = Lists.newArrayList("1", "2");
 
     @Argument(
             doc = "List of columns in either segment file that should be reported in the output file.  If the column header exists in both, it will have the appropriate label appended as a suffix.",

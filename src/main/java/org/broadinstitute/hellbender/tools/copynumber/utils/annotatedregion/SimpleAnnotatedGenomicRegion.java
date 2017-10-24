@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -119,7 +120,8 @@ final public class SimpleAnnotatedGenomicRegion implements Locatable {
      */
     public static void writeAnnotatedRegionsAsTsv(final List<SimpleAnnotatedGenomicRegion> regions, final File outputFile) {
 
-        final List<String> columnHeaders = Arrays.asList(CONTIG_HEADER, START_HEADER, END_HEADER);
+        // Can't do Arrays.asList, since we will be adding to this list.
+        final List<String> columnHeaders = Lists.newArrayList(CONTIG_HEADER, START_HEADER, END_HEADER);
         final List<String> otherHeaders = new ArrayList<>(regions.get(0).getAnnotations().keySet());
         otherHeaders.sort(String::compareTo);
 
