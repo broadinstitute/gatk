@@ -5,6 +5,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -74,6 +75,16 @@ public abstract class SampleLocatableCollection<RECORD extends Locatable> extend
                     String.format("Records for sample %s contain at least two overlapping intervals: %s and %s",
                             sampleName, records.get(index - 1), records.get(index)));
         }
+    }
+
+    /**
+     * @return  a new modifiable list of {@link SimpleInterval}s corresponding to the {@link Locatable}s
+     *          for each record contained in the collection
+     */
+    public List<SimpleInterval> getIntervals() {
+        return getRecords().stream()
+                .map(r -> new SimpleInterval(r.getContig(), r.getStart(), r.getEnd()))
+                .collect(Collectors.toList());
     }
 
     public OverlapDetector<RECORD> getOverlapDetector() {
