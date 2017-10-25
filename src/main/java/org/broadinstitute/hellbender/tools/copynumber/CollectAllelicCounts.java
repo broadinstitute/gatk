@@ -14,6 +14,9 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollector;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
@@ -30,12 +33,13 @@ import java.util.List;
  * gatk-launch --javaOptions "-Xmx4g" CollectAllelicCounts \
  *   --input sample.bam \
  *   --reference ref_fasta.fa \
- *   --siteIntervals sites.interval_list \
+ *   -L sites.interval_list \
  *   --output allelic_counts.tsv
  * </pre>
  *
  * <p>
- *     The --siteIntervals is a Picard-style interval list, e.g.:
+ *     Use -L as usual to specify intervals for the sites of interest.  For example,
+ *     a Picard interval list can be used:
  * </p>
  *
  * <pre>
@@ -78,7 +82,7 @@ import java.util.List;
  */
 @CommandLineProgramProperties(
         summary = "Collects ref/alt counts at sites.",
-        oneLineSummary = "Collects ref/alt counts at sites",
+        oneLineSummary = "Collects ref/alt counts at sites.",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
@@ -91,20 +95,20 @@ public final class CollectAllelicCounts extends LocusWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    protected File outputAllelicCountsFile;
+    private File outputAllelicCountsFile;
 
     @Argument(
             doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
             fullName = "minimumBaseQuality",
             shortName = "minBQ",
-            optional = true,
-            minValue = 0
+            minValue = 0,
+            optional = true
     )
-    protected int minimumBaseQuality = 20;
+    private int minimumBaseQuality = 20;
 
     private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
 
-    private AllelicCountCollector allelicCountCollector = new AllelicCountCollector();
+    private AllelicCountCollector allelicCountCollector;
 
     @Override
     public boolean emitEmptyLoci() {return true;}
@@ -117,6 +121,9 @@ public final class CollectAllelicCounts extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
+        final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
+        final SampleMetadata sampleMetadata = new SimpleSampleMetadata(sampleName);
+        allelicCountCollector = new AllelicCountCollector(sampleMetadata);
         logger.info("Collecting allelic counts...");
     }
 

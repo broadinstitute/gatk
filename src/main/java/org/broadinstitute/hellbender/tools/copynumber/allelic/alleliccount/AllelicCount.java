@@ -66,6 +66,14 @@ public class AllelicCount implements Locatable {
         return altNucleotide;
     }
 
+    public int getTotalReadCount() {
+        return altReadCount + refReadCount;
+    }
+
+    public double getAlternateAlleleFraction() {
+        return getTotalReadCount() == 0 ? 0. : (double) altReadCount / getTotalReadCount();
+    }
+
     /**
      * If all fields are specified for both {@link AllelicCount} objects, they are all used to check for equality.
      * Otherwise, if either or both counts have both nucleotides unspecified, then
@@ -98,7 +106,12 @@ public class AllelicCount implements Locatable {
 
     @Override
     public String toString() {
-        return String.format("(%s, ref count=%s, alt count=%s, ref nucleotide=%s, alt nucleotide=%s)",
-                interval, refReadCount, altReadCount, refNucleotide, altNucleotide);
+        return "AllelicCount{" +
+                "interval=" + interval +
+                ", refReadCount=" + refReadCount +
+                ", altReadCount=" + altReadCount +
+                ", refNucleotide=" + refNucleotide +
+                ", altNucleotide=" + altNucleotide +
+                '}';
     }
 }
