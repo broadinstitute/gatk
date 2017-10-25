@@ -216,8 +216,11 @@ dependencies {
     compile('org.objenesis:objenesis:1.2')
     testCompile('org.objenesis:objenesis:2.1')
 
-    // Comment the next line to disable native code proxies in Spark MLLib
-    compile('com.github.fommil.netlib:all:1.1.2')
+    // Comment the next lines to disable native code proxies in Spark MLLib
+    compile('com.github.fommil.netlib:netlib-native_ref-osx-x86_64:1.1:natives')
+    compile('com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives')
+    compile('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
+    compile('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
 
     // Dependency change for including MLLib
     compile('com.esotericsoftware:kryo:3.0.3'){
