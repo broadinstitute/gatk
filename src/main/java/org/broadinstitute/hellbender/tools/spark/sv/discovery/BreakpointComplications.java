@@ -257,36 +257,49 @@ public final class BreakpointComplications {
 
         final int start, end; // intended to be 0-based, semi-open [start, end)
         final boolean needRC;
+        // below we need to use cigars of the provided alignments to compute how long we need to walk on the read
+        // so that we can "start" to or "end" to collect bases for alternative haplotype sequence,
+        // because one could imagine either alignment has long flanking region that is far from the affected reference region.
         if (firstAlignmentInterval.forwardStrand) {
             final int alpha = firstAlignmentInterval.referenceSpan.getStart(),
-                    omega = secondAlignmentInterval.referenceSpan.getStart();
+                      omega = secondAlignmentInterval.referenceSpan.getStart();
             if (alpha <= omega) {
-                final int walkOnRead = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
-                        firstAlignmentInterval.startInAssembledContig, omega - alpha, false);
-                start  = firstAlignmentInterval.startInAssembledContig + walkOnRead - 1;
-                end    = secondAlignmentInterval.endInAssembledContig;
+                final int walkOnReadUntilDuplicatedSequence ;
+                if (alpha == omega) {
+                    walkOnReadUntilDuplicatedSequence = 0;
+                } else {
+                    walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                            firstAlignmentInterval.startInAssembledContig, omega - alpha, false);
+                }
+                start = firstAlignmentInterval.startInAssembledContig + walkOnReadUntilDuplicatedSequence - 1;
+                end = secondAlignmentInterval.endInAssembledContig;
                 needRC = false;
             } else {
-                final int walkOnRead = SvCigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
-                        secondAlignmentInterval.endInAssembledContig, alpha - omega, true);
-                start  = firstAlignmentInterval.startInAssembledContig - 1;
-                end    = secondAlignmentInterval.endInAssembledContig - walkOnRead;
+                final int walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                            secondAlignmentInterval.endInAssembledContig, alpha - omega, true);
+                start = firstAlignmentInterval.startInAssembledContig - 1;
+                end = secondAlignmentInterval.endInAssembledContig - walkOnReadUntilDuplicatedSequence;
                 needRC = true;
             }
         } else {
             final int alpha = firstAlignmentInterval.referenceSpan.getEnd(),
-                    omega = secondAlignmentInterval.referenceSpan.getEnd();
+                      omega = secondAlignmentInterval.referenceSpan.getEnd();
             if (alpha >= omega) {
-                final int walkOnRead = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
-                        firstAlignmentInterval.startInAssembledContig, alpha - omega, false);
-                start  = firstAlignmentInterval.startInAssembledContig + walkOnRead - 1;
-                end    = secondAlignmentInterval.endInAssembledContig;
+                final int walkOnReadUntilDuplicatedSequence ;
+                if (alpha == omega) {
+                    walkOnReadUntilDuplicatedSequence = 0;
+                } else {
+                    walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(firstAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                            firstAlignmentInterval.startInAssembledContig, alpha - omega, false);
+                }
+                start = firstAlignmentInterval.startInAssembledContig + walkOnReadUntilDuplicatedSequence - 1;
+                end = secondAlignmentInterval.endInAssembledContig;
                 needRC = true;
             } else {
-                final int walkOnRead = SvCigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
-                        secondAlignmentInterval.endInAssembledContig, omega - alpha, true);
-                start  = firstAlignmentInterval.startInAssembledContig - 1;
-                end    = secondAlignmentInterval.endInAssembledContig - walkOnRead;
+                final int walkOnReadUntilDuplicatedSequence = SvCigarUtils.computeAssociatedDistOnRead(secondAlignmentInterval.cigarAlong5to3DirectionOfContig,
+                            secondAlignmentInterval.endInAssembledContig, omega - alpha, true);
+                start = firstAlignmentInterval.startInAssembledContig - 1;
+                end = secondAlignmentInterval.endInAssembledContig - walkOnReadUntilDuplicatedSequence;
                 needRC = false;
             }
         }
