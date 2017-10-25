@@ -3,10 +3,12 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -19,6 +21,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrEx
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -72,13 +75,28 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
+        Utils.validate(evidenceAndAssemblyArgs.externalEvidenceFile == null || discoverStageArgs.cnvCallsFile == null,
+                "Please only specify one of externalEvidenceFile or cnvCallsFile");
+
+        if (discoverStageArgs.cnvCallsFile != null) {
+            evidenceAndAssemblyArgs.externalEvidenceFile = discoverStageArgs.cnvCallsFile;
+        }
+
         final SAMFileHeader header = getHeaderForReads();
+
+        final String sampleId = SVUtils.getSampleId(header);
 
         // gather evidence, run assembly, and align
         final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults =
                 FindBreakpointEvidenceSpark
-                        .gatherEvidenceAndWriteContigSamFile(ctx, evidenceAndAssemblyArgs, header, getUnfilteredReads(),
-                                outputAssemblyAlignments, localLogger);
+                        .gatherEvidenceAndWriteContigSamFile(ctx,
+                                sampleId,
+                                evidenceAndAssemblyArgs,
+                                header,
+                                getUnfilteredReads(),
+                                outputAssemblyAlignments,
+                                localLogger);
+
         // todo: when we call imprecise variants don't return here
         if (assembledEvidenceResults.getAlignedAssemblyOrExcuseList().isEmpty()) return;
 
@@ -91,14 +109,21 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final List<EvidenceTargetLink> evidenceTargetLinks = assembledEvidenceResults.getEvidenceTargetLinks();
         final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceLinkTree = makeEvidenceLinkTree(evidenceTargetLinks);
 
+        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls = DiscoverVariantsFromContigAlignmentsSAMSpark.broadcastCNVCalls(ctx, header, sampleId, discoverStageArgs);
+
         // discover variants and write to vcf
         DiscoverVariantsFromContigAlignmentsSAMSpark
                 .discoverVariantsAndWriteVCF(
                         parsedAlignments,
-                        evidenceLinkTree, assembledEvidenceResults.getReadMetadata(), discoverStageArgs,
+                        discoverStageArgs,
                         ctx.broadcast(getReference()),
-                        header.getSequenceDictionary(), vcfOutputFileName,
-                        localLogger
+                        ctx.broadcast(header.getSequenceDictionary()),
+                        vcfOutputFileName,
+                        localLogger,
+                        evidenceLinkTree,
+                        assembledEvidenceResults.getReadMetadata(),
+                        broadcastCNVCalls,
+                        sampleId
                 );
     }
 

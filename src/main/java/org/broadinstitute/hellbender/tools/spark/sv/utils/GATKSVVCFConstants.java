@@ -68,12 +68,17 @@ public final class GATKSVVCFConstants {
     public static final String DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING = "INS-DUPLICATION-TANDEM-EXPANSION";
     public static final String DUP_INV_INTERNAL_ID_START_STRING = "INS-DUPLICATION-INVERTED-EXPANSION";
 
+    public static final String EXTERNAL_CNV_CALLS = "EXTERNAL_CNV_CALLS";
+
+    public static final String COPY_NUMBER_FORMAT = "CN";
+    public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
+
     public static final List<String> expectedHeaderLinesInVCF
             = Stream.of("SVTYPE", "SVLEN", "MATEID", "INV", "DEL", "INS", "DUP", "DUP:INV",
                     "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT",
                     "CTG_NAMES", "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH",
                     "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
                     "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_INV_ORIENTATIONS",
-                    "INV33", "INV55")
+                    "INV33", "INV55", "EXTERNAL_CNV_CALLS")
                     .sorted().collect(Collectors.toList());
 }

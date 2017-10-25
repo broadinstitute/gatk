@@ -37,21 +37,26 @@ public class AnnotatedVariantProducer implements Serializable {
      * @param breakendMates                     BND variants of mates to each other, assumed to be of size 2
      * @param contigAlignments                  chimeric alignments of supporting contig
      * @param broadcastReference                reference
+     * @param broadcastSequenceDictionary
      * @throws IOException                      due to reference retrieval
      */
     public static List<VariantContext> produceAnnotatedBNDmatesVcFromNovelAdjacency(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations,
                                                                                     final Tuple2<BreakEndVariantType, BreakEndVariantType> breakendMates,
                                                                                     final Iterable<ChimericAlignment> contigAlignments,
-                                                                                    final Broadcast<ReferenceMultiSource> broadcastReference)
+                                                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                                    final String sampleId)
             throws IOException {
 
         final VariantContext firstMate =
                 produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc, -1,
-                        novelAdjacencyReferenceLocations.complication, breakendMates._1, null, contigAlignments, broadcastReference);
+                        novelAdjacencyReferenceLocations.complication, breakendMates._1, null, contigAlignments,
+                        broadcastReference, broadcastSequenceDictionary, null, sampleId);
 
         final VariantContext secondMate =
                 produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc, -1,
-                        novelAdjacencyReferenceLocations.complication, breakendMates._2, null, contigAlignments, broadcastReference);
+                        novelAdjacencyReferenceLocations.complication, breakendMates._2, null, contigAlignments,
+                        broadcastReference, broadcastSequenceDictionary, null, sampleId);
 
         final VariantContextBuilder builder0 = new VariantContextBuilder(firstMate);
         builder0.attribute(GATKSVVCFConstants.BND_MATEID_STR, secondMate.getID());
@@ -71,8 +76,10 @@ public class AnnotatedVariantProducer implements Serializable {
      * @param inferredType                      inferred type of variant
      * @param altHaplotypeSeq                   alt haplotype sequence (could be null)
      * @param contigAlignments                  chimeric alignments from contigs used for generating this novel adjacency
-     * @param broadcastReference                broadcasted reference
-     *
+     * @param broadcastReference                broadcast reference
+     * @param broadcastSequenceDictionary       broadcast reference sequence dictionary
+     * @param broadcastCNVCalls                 broadcast of external CNV calls (can be null)
+     * @param sampleId                          sample identifier of the current sample
      * @throws IOException                      due to read operations on the reference
      */
     static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final SimpleInterval refLoc, final int end,
@@ -80,7 +87,10 @@ public class AnnotatedVariantProducer implements Serializable {
                                                                             final SvType inferredType,
                                                                             final byte[] altHaplotypeSeq,
                                                                             final Iterable<ChimericAlignment> contigAlignments,
-                                                                            final Broadcast<ReferenceMultiSource> broadcastReference)
+                                                                            final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                                            final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                            final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                                                            final String sampleId)
             throws IOException {
 
         final int applicableEnd = end < 0 ? refLoc.getEnd() : end; // BND formatted variant shouldn't have END
@@ -108,7 +118,35 @@ public class AnnotatedVariantProducer implements Serializable {
         if (altHaplotypeSeq!=null)
             vcBuilder.attribute(GATKSVVCFConstants.SEQ_ALT_HAPLOTYPE, new String(altHaplotypeSeq));
 
+        if (broadcastCNVCalls != null && end > 0) {
+            final String cnvCallAnnotation = getExternalCNVCallAnnotation(refLoc, end, vcBuilder, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
+            if (! "".equals(cnvCallAnnotation)) {
+                vcBuilder.attribute(GATKSVVCFConstants.EXTERNAL_CNV_CALLS, cnvCallAnnotation);
+            }
+        }
+
         return vcBuilder.make();
+    }
+
+    private static String getExternalCNVCallAnnotation(final SimpleInterval refLoc,
+                                                       final int end,
+                                                       final VariantContextBuilder vcBuilder,
+                                                       final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                       final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                                       final String sampleId) {
+        final SVInterval variantInterval = new SVInterval(broadcastSequenceDictionary.getValue().getSequenceIndex(refLoc.getContig()),refLoc.getStart(), end);
+        final SVIntervalTree<VariantContext> cnvCallTree = broadcastCNVCalls.getValue();
+        final String cnvCallAnnotation =
+                Utils.stream(cnvCallTree.overlappers(variantInterval))
+                        .map(overlapper -> formatExternalCNVCallAnnotation(overlapper.getValue(), sampleId))
+                        .collect(Collectors.joining(","));
+        return cnvCallAnnotation;
+    }
+
+    private static String formatExternalCNVCallAnnotation(final VariantContext externalCNVCall, String sampleId) {
+        return externalCNVCall.getID() + ":"
+                + externalCNVCall.getGenotype(sampleId).getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT) + ":"
+                + externalCNVCall.getGenotype(sampleId).getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT);
     }
 
     public static VariantContext produceAnnotatedVcFromEvidenceTargetLink(final EvidenceTargetLink e,
