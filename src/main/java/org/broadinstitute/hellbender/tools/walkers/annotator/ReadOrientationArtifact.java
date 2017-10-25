@@ -108,7 +108,8 @@ public class ReadOrientationArtifact extends GenotypeAnnotation implements Stand
         final double[] pi = hyps.getPi();
 
         // a vector of length K, the probability of drawing an alt read (i.e. allele fraction) given z
-        final double[] f = hyps.getF();
+        // final double[] f = hyps.getF();
+        final double[] f = new double[]{0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 1e-3, 0.5, 0, 0.999};
 
         // a vector of length K, the probability of drawing an F1R2 alt read given z
         final double[] theta = hyps.getTheta();

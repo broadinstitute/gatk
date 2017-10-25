@@ -172,7 +172,7 @@ public class CollectDataForReadOrientationFilterIntegrationTest extends CommandL
         final String sampleName = "samthreetree";
         final SampleList sampleList = new IndexedSampleList(sampleName);
 
-        // specify chracteristics of reads
+        // specify characteristics of reads
         final int depth = numAltReads + numRefReads;
 
         final byte[] refReadBases = "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();

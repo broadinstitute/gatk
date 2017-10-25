@@ -38,7 +38,7 @@ public class ReadOrientationArtifactUnitTest extends BaseTest {
                 {0.3, 0.5, 0.0, 0.0}, // allele fraction 0.3 variant with no bias
                 {0.3, 0.99, 1.0, 0.0}, // allele fraction 0.3 variant with heavy F1R2 bias
                 {0.3, 0.94, 1.0, 0.0}, // allele fraction 0.2 variant with moderate F1R2 bias
-                {0.3, 0.2, 0.0, 1.0}}; // allele fraction 0.2 variant with a heavy F2R1 bias
+                {0.2, 1e-2, 0.0, 1.0}}; // allele fraction 0.2 variant with a heavy F2R1 bias
     }
 
     @Test(dataProvider="readOrientationArtifact")

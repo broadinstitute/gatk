@@ -122,7 +122,6 @@ public class LearnHyperparametersEngine {
         f[State.SOMATIC_HET.ordinal()] = 0; // m is parameterized by alpha and beta when z = somatic het
 
         // similarly, we may fix some of theta_z
-        // TODO: or should we learn them?
         for (State state : State.getF1R2States()){
             theta[state.ordinal()] = 1 - EPSILON;
         }
@@ -135,21 +134,6 @@ public class LearnHyperparametersEngine {
             theta[state.ordinal()] = 0.5;
         }
 
-        // initialize responsibilities TODO: no need to initialize responsibilities
-        // ===========================
-        // FIXME: revisit after the test - we only need to initialize either resonsibilities (M-step first) or
-        // hyperparameters (E-step first). Probably makes sense to initialize hyperparameters.
-        final double initialResponsibility = 1.0/NUM_STATES;
-        for (int n = 0; n < numAltExamples; n++ ) {
-            Arrays.fill(altResponsibilities[n], initialResponsibility);
-        }
-
-        /**
-         * TODO: explain how we optimize for ref sites
-         */
-        for (int n = 0; n < RefSiteHistogram.MAX_DEPTH; n++ ) {
-            Arrays.fill(refResponsibilities[n], initialResponsibility);
-        }
     }
 
     public Hyperparameters runEMAlgorithm(final Logger logger){

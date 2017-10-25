@@ -88,17 +88,18 @@ public class LearnHyperparametersEngineUnitTest {
         final List<AltSiteRecord> altDeisgnMatrix = new ArrayList<>();
         final RefSiteHistogram refSiteHistogram = new RefSiteHistogram(refContext);
 
-        final int NUM_EXAMPLES_PER_ALLELE = 10000; // this many examples, ref and alt, per allele
-        final int NUM_ALT_EXAMPLES = 10; // for each alt allele we have this many alt sites
+        final int numExamplesPerAllele = 10000; // this many examples, ref and alt, per allele
+        final int numAltExamples = 10; // for each alt allele we have this many alt sites
         // TODO: want to have - 2 here instead of -1 and still detect the artifact. For that, we must learn theta
-        final int NUM_G_TO_T_F1R2_ARTIFACT = ALT_DEPTH - 1; // G -> T transversion only, this many alt sites have F1R2 artifact
-        final int NUM_G_TO_A_F2R1_ARTIFACT = ALT_DEPTH - 1; // G -> A transition only, this many alt sites have F2R1 artifact
+        // TODO: make this test more realistic with sampling from a binomial distribution and what not
+        final int numGToTF1R2Artifact = ALT_DEPTH - 1; // G -> T transversion only, this many alt sites have F1R2 artifact
+        final int numGToAF2R1Artifact = ALT_DEPTH - 1; // G -> A transition only, this many alt sites have F2R1 artifact
 
         // first create the examples for the G -> T transitions, a fraction of which has read orientation bias
         List<Nucleotide> alleles = Arrays.asList(Nucleotide.A, Nucleotide.C, Nucleotide.G, Nucleotide.T);
         for (Nucleotide allele : alleles) {
-            for (int n = 0; n < NUM_EXAMPLES_PER_ALLELE; n++) {
-                if (n < NUM_ALT_EXAMPLES && allele != Nucleotide.G) {
+            for (int n = 0; n < numExamplesPerAllele; n++) {
+                if (n < numAltExamples && allele != Nucleotide.G) {
                     // Give G -> T transition 90% F1R2 artifact
                     // Give G -> A transition 95% F2R1 artifact
                     final int[] depthCounts = new int[alleles.size()];
@@ -106,8 +107,8 @@ public class LearnHyperparametersEngineUnitTest {
 
                     depthCounts[allele.ordinal()] = ALT_DEPTH;
                     switch (allele) {
-                        case T : f1r2Counts[allele.ordinal()] = NUM_G_TO_T_F1R2_ARTIFACT; break; // 19 out of 20 alt reads is F1R2
-                        case A : f1r2Counts[allele.ordinal()] = ALT_DEPTH - NUM_G_TO_A_F2R1_ARTIFACT; break; // 19 out of 20 alt reads is F2R1
+                        case T : f1r2Counts[allele.ordinal()] = numGToTF1R2Artifact; break; // 19 out of 20 alt reads is F1R2
+                        case A : f1r2Counts[allele.ordinal()] = ALT_DEPTH - numGToAF2R1Artifact; break; // 19 out of 20 alt reads is F2R1
                         case C : f1r2Counts[allele.ordinal()] = ALT_DEPTH / 2; break; // G -> C should be balanced
                         default : throw new UserException(String.format("We should never reach here but got allele %s", allele));
                     }
@@ -125,15 +126,14 @@ public class LearnHyperparametersEngineUnitTest {
                 LearnHyperparameters.DEFAULT_CONVERGENCE_THRESHOLD, LearnHyperparameters.DEFAULT_MAX_ITERATIONS);
         Hyperparameters hyperparameters = engine.runEMAlgorithm(logger);
 
-        Assert.assertEquals(engine.effectiveCounts[State.F1R2_T.ordinal()], (double) NUM_ALT_EXAMPLES, epsilon);
-        Assert.assertEquals(engine.effectiveCounts[State.F2R1_A.ordinal()], (double) NUM_ALT_EXAMPLES, epsilon);
-        Assert.assertEquals(engine.effectiveCounts[State.SOMATIC_HET.ordinal()], (double) NUM_ALT_EXAMPLES, epsilon);
-
+        Assert.assertEquals(engine.effectiveCounts[State.F1R2_T.ordinal()], (double) numAltExamples, epsilon);
+        Assert.assertEquals(engine.effectiveCounts[State.F2R1_A.ordinal()], (double) numAltExamples, epsilon);
+        Assert.assertEquals(engine.effectiveCounts[State.SOMATIC_HET.ordinal()], (double) numAltExamples, epsilon);
 
         // test pi
-        Assert.assertEquals(hyperparameters.getPi()[State.F1R2_T.ordinal()], (double) NUM_ALT_EXAMPLES/NUM_EXAMPLES_PER_ALLELE, 1e-3);
-        Assert.assertEquals(hyperparameters.getPi()[State.F2R1_A.ordinal()], (double) NUM_ALT_EXAMPLES/NUM_EXAMPLES_PER_ALLELE, 1e-3);
-        Assert.assertEquals(hyperparameters.getPi()[State.SOMATIC_HET.ordinal()], (double) NUM_ALT_EXAMPLES/NUM_EXAMPLES_PER_ALLELE, 1e-3);
+        Assert.assertEquals(hyperparameters.getPi()[State.F1R2_T.ordinal()], (double) numAltExamples/numExamplesPerAllele, 1e-3);
+        Assert.assertEquals(hyperparameters.getPi()[State.F2R1_A.ordinal()], (double) numAltExamples/numExamplesPerAllele, 1e-3);
+        Assert.assertEquals(hyperparameters.getPi()[State.SOMATIC_HET.ordinal()], (double) numAltExamples/numExamplesPerAllele, 1e-3);
 
         // impossible states get 0 probability
         for (State z : State.getImpossibleStates(Nucleotide.G)){
