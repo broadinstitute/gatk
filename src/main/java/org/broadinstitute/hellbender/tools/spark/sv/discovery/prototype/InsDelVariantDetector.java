@@ -24,27 +24,28 @@ import java.util.List;
 final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyContigAlignments {
 
     @Override
-    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> localAssemblyContigs, final String vcfOutputFileName,
-                                   final Broadcast<ReferenceMultiSource> broadcastReference, final SAMSequenceDictionary refSequenceDictionary,
-                                   final Logger toolLogger){
+    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> contigs, final String vcfOutputFileName,
+                                   final Broadcast<ReferenceMultiSource> broadcastReference, final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                   final Logger toolLogger, final String sampleId){
 
         final JavaPairRDD<byte[], List<ChimericAlignment>> chimericAlignments =
-                localAssemblyContigs
+                contigs
                         .mapToPair(tig -> convertAlignmentIntervalToChimericAlignment(tig,
                                 StructuralVariationDiscoveryArgumentCollection.
                                         DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH,
-                                refSequenceDictionary));
+                                broadcastSequenceDictionary.getValue()));
 
         // usual business as in DiscoverVariantsFromContigAlignmentsSAMSpark#discoverVariantsAndWriteVCF()
         final JavaRDD<VariantContext> annotatedVariants =
                 chimericAlignments
-                        .flatMapToPair(pair -> DiscoverVariantsFromContigAlignmentsSAMSpark.discoverNovelAdjacencyFromChimericAlignments(pair, refSequenceDictionary))
+                        .flatMapToPair(pair -> DiscoverVariantsFromContigAlignmentsSAMSpark.discoverNovelAdjacencyFromChimericAlignments(pair, broadcastSequenceDictionary.getValue()))
                         .groupByKey()
                         .mapToPair(noveltyAndEvidence -> DiscoverVariantsFromContigAlignmentsSAMSpark.inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))
                         .map(noveltyTypeAndEvidence -> DiscoverVariantsFromContigAlignmentsSAMSpark.annotateVariant(noveltyTypeAndEvidence._1,
-                                noveltyTypeAndEvidence._2._1, null, noveltyTypeAndEvidence._2._2, broadcastReference));
+                                noveltyTypeAndEvidence._2._1, null, noveltyTypeAndEvidence._2._2, broadcastReference,
+                                broadcastSequenceDictionary, null, sampleId));
 
-        SVVCFWriter.writeVCF(annotatedVariants.collect(), vcfOutputFileName, refSequenceDictionary, toolLogger);
+        SVVCFWriter.writeVCF(annotatedVariants.collect(), vcfOutputFileName, broadcastSequenceDictionary.getValue(), toolLogger);
     }
 
     /**

@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.*;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -12,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.*;
@@ -165,6 +163,16 @@ public final class SVUtils {
 
     public static <T> Iterator<T> singletonIterator( final T t ) {
         return Collections.singletonList(t).iterator();
+    }
+
+    public static String getSampleId(final SAMFileHeader header) {
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        final Set<String> sampleSet = readGroups.stream().map(SAMReadGroupRecord::getSample).collect(Collectors.toSet());
+
+        Utils.validate(sampleSet.size() == 1, "Read groups must contain reads from one and only one sample");
+
+        final String sample = sampleSet.iterator().next();
+        return sample;
     }
 
     public static class IteratorFilter<T> implements Iterator<T> {

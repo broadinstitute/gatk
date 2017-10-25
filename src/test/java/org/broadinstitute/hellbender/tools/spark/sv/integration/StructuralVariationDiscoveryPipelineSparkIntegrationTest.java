@@ -33,16 +33,19 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         final String kmerIgnoreListLoc;
         final String alignerRefIndexImgLoc;
         final String outputDir;
+        final String cnvCallsLoc;
 
 
         StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs(final String bamLoc,
                                                                      final String kmerIgnoreListLoc,
                                                                      final String alignerRefIndexImgLoc,
+                                                                     final String cnvCallsLoc,
                                                                      final String outputDir) {
             this.bamLoc = bamLoc;
             this.kmerIgnoreListLoc = kmerIgnoreListLoc;
             this.alignerRefIndexImgLoc = alignerRefIndexImgLoc;
             this.outputDir = outputDir;
+            this.cnvCallsLoc = cnvCallsLoc;
         }
 
         String getCommandLineNoApiKey() {
@@ -53,7 +56,8 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                     " --kmersToIgnore " + kmerIgnoreListLoc +
                     " --contigSAMFile "       + outputDir + "/assemblies.sam" +
                     " --breakpointIntervals " + outputDir + "/intervals" +
-                    " --fastqDir "            + outputDir + "/fastq";
+                    " --fastqDir "            + outputDir + "/fastq" +
+                    (cnvCallsLoc == null ? "" : " --cnvCalls " + cnvCallsLoc);
         }
 
         @Override
@@ -62,6 +66,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                     "bamLoc='" + bamLoc + '\'' +
                     ", kmerIgnoreListLoc='" + kmerIgnoreListLoc + '\'' +
                     ", alignerRefIndexImgLoc='" + alignerRefIndexImgLoc + '\'' +
+                    ", cnvCallsLoc='" + cnvCallsLoc + '\'' +
                     ", outputDir='" + outputDir + '\'' +
                     '}';
         }
@@ -74,8 +79,15 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         final File tempDirNew = BaseTest.createTempDir("new");
         tempDirNew.deleteOnExit();
         Files.createDirectories(Paths.get(tempDirNew.getAbsolutePath()+"/fastq"));
-        tests.add(new Object[]{new StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_NEW, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirNew.getAbsolutePath())});
-
+        tests.add(new Object[]{
+                new StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs(
+                        SVIntegrationTestDataProvider.TEST_BAM,
+                        SVIntegrationTestDataProvider.KMER_KILL_LIST,
+                        SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG,
+                        SVIntegrationTestDataProvider.EXTERNAL_CNV_CALLS,
+                        tempDirNew.getAbsolutePath()
+                )
+        });
 
         return tests.toArray(new Object[][]{});
     }

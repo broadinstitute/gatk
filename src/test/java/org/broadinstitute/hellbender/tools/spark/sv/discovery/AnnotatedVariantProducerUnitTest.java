@@ -127,7 +127,7 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
     // Integrative test
     // -----------------------------------------------------------------------------------------------
     private static void seeIfItWorks_integrative(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData,
-                                                 final List<String> expectedAttributeKeys) throws IOException {
+                                                 final List<String> expectedAttributeKeys, final String sampleId) throws IOException {
 
         final AlignmentInterval region1 = testData._1();
         final AlignmentInterval region2 = testData._2();
@@ -139,7 +139,8 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
         final VariantContext variantContext =
                 AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.leftJustifiedLeftRefLoc,
                         breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, SvTypeInference.inferFromNovelAdjacency(breakpoints),
-                        null, evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference));
+                        null, evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference),
+                        SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.seqDict), null, sampleId);
 
         final List<String> attributeKeys = variantContext.getAttributes().keySet().stream().sorted().collect(Collectors.toList());
 
@@ -153,86 +154,88 @@ public class AnnotatedVariantProducerUnitTest extends BaseTest {
                 GATKSVVCFConstants.TOTAL_MAPPINGS, GATKSVVCFConstants.HQ_MAPPINGS, GATKSVVCFConstants.MAPPING_QUALITIES,
                 GATKSVVCFConstants.ALIGN_LENGTHS, GATKSVVCFConstants.MAX_ALIGN_LENGTH, GATKSVVCFConstants.CONTIG_NAMES);
 
+        final String sampleId = "sample";
+        
         // inversion
         Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.INV33, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()));
+                Sets.newHashSet(GATKSVVCFConstants.INV33, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()), sampleId);
 
         // simple deletion
         testData = SVDiscoveryTestDataProvider.forSimpleDeletion_minus;
 
-        seeIfItWorks_integrative(testData, commonAttributes.stream().sorted().collect(Collectors.toList()));
+        seeIfItWorks_integrative(testData, commonAttributes.stream().sorted().collect(Collectors.toList()), sampleId);
 
         // simple insertion
         testData = SVDiscoveryTestDataProvider.forSimpleInsertion_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.INSERTED_SEQUENCE).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // long range substitution
         testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.INSERTED_SEQUENCE).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // simple deletion with homology
         testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // simple tandem dup contraction from 2 units to 1 unit
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // simple tandem dup expansion from 1 unit to 2 units
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUP_SEQ_CIGARS, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUP_SEQ_CIGARS, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.INSERTED_SEQUENCE, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup contraction from 3 units to 2 units
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup expansion from 2 units to 3 units
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
                 Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()));
+                .sorted().collect(Collectors.toList()), sampleId);
     }
 
 

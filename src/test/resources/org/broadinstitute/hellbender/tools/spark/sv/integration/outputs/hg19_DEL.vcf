@@ -16,6 +16,7 @@
 ##INFO=<ID=DUP_SEQ_CIGARS,Number=.,Type=String,Description="CIGARs of the repeated sequence on the locally-assembled contigs when aligned to DUP_REPEAT_UNIT_REF_SPAN (currently only available for repeats when DUP_ANNOTATIONS_IMPRECISE is false)">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
 ##INFO=<ID=EXPANSION,Number=0,Type=Flag,Description="Tandem repeats expansion compared to reference">
+##INFO=<ID=EXTERNAL_CNV_CALLS,Number=.,Type=String,Description="Comma-delimited list of external copy number calls that overlap with this variant in format ID:CN:CNQ">
 ##INFO=<ID=HOMLEN,Number=1,Type=Integer,Description="Length of base pair identical micro-homology at event breakpoints">
 ##INFO=<ID=HOMSEQ,Number=.,Type=String,Description="Sequence of base pair identical micro-homology at event breakpoints">
 ##INFO=<ID=HQ_MAPPINGS,Number=1,Type=Integer,Description="Number of high-quality contig alignments that support the variant">
@@ -36,4 +37,4 @@
 ##contig=<ID=20,length=63025520>
 ##contig=<ID=21,length=48129895>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-21	43350116	DEL_21_43350116_43353485	G	<DEL>	.	.	ALIGN_LENGTHS=200,200;CTG_NAMES=asm000000:tig00008,asm000001:tig00002;END=43353485;HOMSEQ=GAGGAA;HOMLEN=6;HQ_MAPPINGS=2;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=200;READ_PAIR_SUPPORT=23;SPLIT_READ_SUPPORT=8;SVLEN=-3369;SVTYPE=DEL;TOTAL_MAPPINGS=2
+21	43350116	DEL_21_43350116_43353485	G	<DEL>	.	.	ALIGN_LENGTHS=200,200;CTG_NAMES=asm000000:tig00008,asm000001:tig00002;END=43353485;EXTERNAL_CNV_CALLS=CNV_21_43350200_43353400:1:80;HOMSEQ=GAGGAA;HOMLEN=6;HQ_MAPPINGS=2;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=200;READ_PAIR_SUPPORT=23;SPLIT_READ_SUPPORT=8;SVLEN=-3369;SVTYPE=DEL;TOTAL_MAPPINGS=2

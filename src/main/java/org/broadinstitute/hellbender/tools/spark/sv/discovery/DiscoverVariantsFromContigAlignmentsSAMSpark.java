@@ -7,6 +7,8 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -18,6 +20,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -26,15 +29,14 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -89,6 +91,10 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
         final SAMFileHeader headerForReads = getHeaderForReads();
 
+        final String sampleId = SVUtils.getSampleId(headerForReads);
+
+        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls = broadcastCNVCalls(ctx, headerForReads, sampleId, discoverStageArgs);
+
         final JavaRDD<AlignedContig> parsedContigAlignments
                 = new SAMFormattedContigAlignmentParser(getReads(), headerForReads, true, localLogger)
                 .getAlignedContigs();
@@ -96,9 +102,29 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         discoverVariantsAndWriteVCF(parsedContigAlignments,
                 discoverStageArgs,
                 ctx.broadcast(getReference()),
-                headerForReads.getSequenceDictionary(), vcfOutputFileName,
-                localLogger
+                ctx.broadcast(headerForReads.getSequenceDictionary()),
+                vcfOutputFileName,
+                localLogger,
+                broadcastCNVCalls,
+                sampleId
         );
+    }
+
+    public static Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls(final JavaSparkContext ctx, final SAMFileHeader header, final String sampleId, final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs) {
+        final SVIntervalTree<VariantContext> cnvCalls;
+        if (discoverStageArgs.cnvCallsFile != null) {
+            cnvCalls = loadCNVCalls(discoverStageArgs.cnvCallsFile, header, sampleId);
+        } else {
+            cnvCalls = null;
+        }
+
+        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls;
+        if (cnvCalls != null) {
+            broadcastCNVCalls = ctx.broadcast(cnvCalls);
+        } else {
+            broadcastCNVCalls = null;
+        }
+        return broadcastCNVCalls;
     }
 
     public static final class SAMFormattedContigAlignmentParser extends AlignedContigGenerator implements Serializable {
@@ -178,19 +204,26 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
                                                    final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                   final SAMSequenceDictionary referenceSequenceDictionary,
-                                                   final String vcfOutputFileName, final Logger localLogger) {
-        discoverVariantsAndWriteVCF(alignedContigs, null, null, parameters, broadcastReference,
-                referenceSequenceDictionary, vcfOutputFileName, localLogger);
+                                                   final Broadcast<SAMSequenceDictionary> broadcastSamSequenceDictionary,
+                                                   final String vcfOutputFileName,
+                                                   final Logger localLogger,
+                                                   final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                                   final String sampleId) {
+
+        discoverVariantsAndWriteVCF(alignedContigs, parameters, broadcastReference, broadcastSamSequenceDictionary,
+                vcfOutputFileName, localLogger, null, null, broadcastCNVCalls, sampleId);
     }
 
     public static void discoverVariantsAndWriteVCF(final JavaRDD<AlignedContig> alignedContigs,
+                                                   final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                   final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                   final String vcfOutputFileName,
+                                                   final Logger localLogger,
                                                    final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                                    final ReadMetadata metadata,
-                                                   final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
-                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                   final SAMSequenceDictionary referenceSequenceDictionary,
-                                                   final String vcfOutputFileName, final Logger localLogger) {
+                                                   final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                                   final String sampleId) {
 
         Utils.validate(! (evidenceTargetLinks != null && metadata == null),
                 "Must supply read metadata when incorporating evidence target links");
@@ -198,8 +231,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         JavaRDD<VariantContext> annotatedVariants =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1)                                     // filter out any contigs that has less than two alignment records
                         .mapToPair(alignedContig -> new Tuple2<>(alignedContig.contigSequence,                                        // filter a contig's alignment and massage into ordered collection of chimeric alignments
-                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, referenceSequenceDictionary)))
-                        .flatMapToPair(pair -> discoverNovelAdjacencyFromChimericAlignments(pair, referenceSequenceDictionary))       // a filter-passing contig's alignments may or may not produce novel adjacency
+                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, broadcastSequenceDictionary.getValue())))
+                        .flatMapToPair(pair -> discoverNovelAdjacencyFromChimericAlignments(pair, broadcastSequenceDictionary.getValue()))       // a filter-passing contig's alignments may or may not produce novel adjacency
                         .groupByKey()                                                                                                 // group the same novel adjacency produced by different contigs together
                         .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments
                         .map(noveltyTypeAndEvidence ->
@@ -208,17 +241,50 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                         noveltyTypeAndEvidence._2._1,
                                         null,
                                         noveltyTypeAndEvidence._2._2,
-                                        broadcastReference));
+                                        broadcastReference,
+                                        broadcastSequenceDictionary,
+                                        broadcastCNVCalls,
+                                        sampleId));
 
         List<VariantContext> collectedAnnotatedVariants = annotatedVariants.collect();
 
         if (evidenceTargetLinks != null) {
-            collectedAnnotatedVariants = processEvidenceTargetLinks(collectedAnnotatedVariants, evidenceTargetLinks, metadata, broadcastReference.getValue(), parameters,
-                    localLogger
-            );
+            collectedAnnotatedVariants = processEvidenceTargetLinks(
+                    collectedAnnotatedVariants,
+                    evidenceTargetLinks,
+                    metadata,
+                    broadcastReference.getValue(),
+                    parameters,
+                    localLogger);
         }
 
-        SVVCFWriter.writeVCF(collectedAnnotatedVariants, vcfOutputFileName, referenceSequenceDictionary, localLogger);
+        SVVCFWriter.writeVCF(collectedAnnotatedVariants, vcfOutputFileName, broadcastSequenceDictionary.getValue(), localLogger);
+    }
+
+
+    /**
+     * Loads an external cnv call list and returns the results in an SVIntervalTree. NB: the contig indices in the SVIntervalTree
+     * are based on the sequence indices in the SAM header, _NOT_ the ReadMetadata (which we might not have access to at this
+     * time).
+     */
+    public static SVIntervalTree<VariantContext> loadCNVCalls(final String cnvCallsFile, final SAMFileHeader headerForReads, final String sampleId) {
+        Utils.validate(cnvCallsFile != null, "Can't load null CNV calls file");
+        try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(cnvCallsFile, null, 0, null) ) {
+            final VCFHeader cnvCallHeader = (VCFHeader) dataSource.getHeader();
+            final ArrayList<String> sampleNamesInOrder = cnvCallHeader.getSampleNamesInOrder();
+            Utils.validate(sampleNamesInOrder.size() == 1, "CNV call VCF should be single sample");
+            Utils.validate(sampleNamesInOrder.contains(sampleId), ("CNV call VCF does not contain calls for sample " + sampleId));
+            Utils.validate(cnvCallHeader.getSequenceDictionary() != null,
+                    "CNV calls file does not have a valid sequence dictionary");
+            Utils.validate(cnvCallHeader.getSequenceDictionary().isSameDictionary(headerForReads.getSequenceDictionary()),
+                "CNV calls file does not have the same sequence dictionary as the read evidence");
+            SVIntervalTree<VariantContext> cnvCallTree = new SVIntervalTree<>();
+            Utils.stream(dataSource.iterator())
+                    .map(vc -> new VariantContextBuilder(vc).genotypes(vc.getGenotype(sampleId)).make()) // forces a decode of the genotype for serialization purposes
+                    .map(vc -> new Tuple2<>(new SVInterval(headerForReads.getSequenceIndex(vc.getContig()), vc.getStart(), vc.getEnd()),vc))
+                    .forEach(pv -> cnvCallTree.put(pv._1(), pv._2()));
+            return cnvCallTree;
+        }
     }
 
     /**
@@ -293,13 +359,16 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                                  final SvType inferredType,
                                                  final byte[] altHaplotypeSeq,
                                                  final Iterable<ChimericAlignment> chimericAlignments,
-                                                 final Broadcast<ReferenceMultiSource> broadcastReference)
+                                                 final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                 final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                 final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                                 final String sampleId)
             throws IOException {
         return AnnotatedVariantProducer
                 .produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacency.leftJustifiedLeftRefLoc,
                         novelAdjacency.leftJustifiedRightRefLoc.getStart(), novelAdjacency.complication,
                         inferredType, altHaplotypeSeq, chimericAlignments,
-                        broadcastReference);
+                        broadcastReference, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
     }
 
 }

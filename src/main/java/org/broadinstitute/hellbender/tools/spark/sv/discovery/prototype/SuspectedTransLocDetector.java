@@ -7,14 +7,12 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
-import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.List;
 
 final class SuspectedTransLocDetector implements VariantDetectorFromLocalAssemblyContigAlignments {
 
@@ -22,9 +20,12 @@ final class SuspectedTransLocDetector implements VariantDetectorFromLocalAssembl
     private static final List<String> EMPTY_INSERTION_MAPPINGS = Collections.EMPTY_LIST;
 
     @Override
-    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> localAssemblyContigs, final String vcfOutputFileName,
-                                   final Broadcast<ReferenceMultiSource> broadcastReference, final SAMSequenceDictionary refSequenceDictionary,
-                                   final Logger toolLogger) {
+    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> localAssemblyContigs,
+                                   final String vcfOutputFileName,
+                                   final Broadcast<ReferenceMultiSource> broadcastReference,
+                                   final Broadcast<SAMSequenceDictionary> refSequenceDictionary,
+                                   final Logger toolLogger,
+                                   final String sampleId) {
         toolLogger.info(localAssemblyContigs.count() + " chimeras indicating strand-switch-less breakpoints");
 
         final JavaPairRDD<ChimericAlignment, byte[]> chimeraAndSequence =
@@ -33,20 +34,20 @@ final class SuspectedTransLocDetector implements VariantDetectorFromLocalAssembl
                                 SimpleStrandSwitchVariantDetector.splitPairStrongEnoughEvidenceForCA(tig.alignmentIntervals.get(0),
                                         tig.alignmentIntervals.get(1), SimpleStrandSwitchVariantDetector.MORE_RELAXED_ALIGNMENT_MIN_MQ,
                                         0))
-                        .mapToPair(tig -> convertAlignmentIntervalsToChimericAlignment(tig, refSequenceDictionary)).cache();
+                        .mapToPair(tig -> convertAlignmentIntervalsToChimericAlignment(tig, refSequenceDictionary.getValue())).cache();
 
         final JavaRDD<VariantContext> annotatedBNDs =
                 chimeraAndSequence
-                        .mapToPair(pair -> new Tuple2<>(new NovelAdjacencyReferenceLocations(pair._1, pair._2, refSequenceDictionary), pair._1))
+                        .mapToPair(pair -> new Tuple2<>(new NovelAdjacencyReferenceLocations(pair._1, pair._2, refSequenceDictionary.getValue()), pair._1))
                         .groupByKey()
-                        .mapToPair(noveltyAndEvidence -> inferBNDType(noveltyAndEvidence, broadcastReference.getValue(), refSequenceDictionary))
+                        .mapToPair(noveltyAndEvidence -> inferBNDType(noveltyAndEvidence, broadcastReference.getValue(), refSequenceDictionary.getValue()))
                         .flatMap(noveltyTypeAndEvidence ->
                                 AnnotatedVariantProducer
                                         .produceAnnotatedBNDmatesVcFromNovelAdjacency(noveltyTypeAndEvidence._1,
-                                                noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2, broadcastReference).iterator());
+                                                noveltyTypeAndEvidence._2._1, noveltyTypeAndEvidence._2._2, broadcastReference, refSequenceDictionary, sampleId).iterator());
 
         SVVCFWriter.writeVCF(annotatedBNDs.collect(), vcfOutputFileName.replace(".vcf", "_transBND.vcf"),
-                refSequenceDictionary, toolLogger);
+                refSequenceDictionary.getValue(), toolLogger);
     }
 
     private static Tuple2<ChimericAlignment, byte[]> convertAlignmentIntervalsToChimericAlignment(final AlignedContig contig,

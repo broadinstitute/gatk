@@ -26,15 +26,18 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
     private static final class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs {
         final String outputDir;
+        final String cnvCallsLoc;
 
-        DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs(final String outputDir){
+        DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs(final String outputDir, final String cnvCallsLoc){
             this.outputDir = outputDir;
+            this.cnvCallsLoc = cnvCallsLoc;
         }
 
         String getCommandLineNoApiKey() {
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + SVIntegrationTestDataProvider.TEST_CONTIG_SAM +
-                    " -O " + outputDir + "/variants.vcf";
+                    " -O " + outputDir + "/variants.vcf" +
+                    (cnvCallsLoc == null ? "" : " --cnvCalls " + cnvCallsLoc);
         }
 
     }
@@ -44,7 +47,9 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
         List<Object[]> tests = new ArrayList<>();
         final File tempDirLeft = BaseTest.createTempDir("forLeft");
         tempDirLeft.deleteOnExit();
-        tests.add(new Object[]{new DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs(tempDirLeft.getAbsolutePath())});
+        tests.add(new Object[]{
+                new DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs(tempDirLeft.getAbsolutePath(), SVIntegrationTestDataProvider.EXTERNAL_CNV_CALLS)
+        });
         return tests.toArray(new Object[][]{});
     }
 

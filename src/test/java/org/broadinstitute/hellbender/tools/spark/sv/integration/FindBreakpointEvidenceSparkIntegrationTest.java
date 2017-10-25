@@ -66,7 +66,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
         final File tempDirNew = BaseTest.createTempDir("forNew");
         tempDirNew.deleteOnExit();
         Files.createDirectories(Paths.get(tempDirNew.getAbsolutePath()+"/fastq"));
-        tests.add(new Object[]{new FindBreakpointEvidenceSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM_NEW, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirNew.getAbsolutePath())});
+        tests.add(new Object[]{new FindBreakpointEvidenceSparkIntegrationTestArgs(SVIntegrationTestDataProvider.TEST_BAM, SVIntegrationTestDataProvider.KMER_KILL_LIST, SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirNew.getAbsolutePath())});
 
         return tests.toArray(new Object[][]{});
     }
