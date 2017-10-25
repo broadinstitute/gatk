@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -7,11 +8,18 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -79,6 +87,32 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Advanced
     @Argument(fullName = "maxProbPropagationDistance", shortName = "maxProbPropagationDistance", doc="Upper limit on how many bases away probability mass can be moved around when calculating the boundaries between active and inactive assembly regions", optional = true)
     protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
+
+    /**
+     * If provided, this walker will write out its activity profile (per bp probabilities of being active)
+     * to this file in the IGV formatted TAB deliminated output:
+     *
+     * http://www.broadinstitute.org/software/igv/IGV
+     *
+     * Intended to make debugging the activity profile calculations easier
+     */
+    @Argument(fullName="activityProfileOut", shortName="APO", doc="Output the raw activity profile results in IGV format", optional = true)
+    protected String activityProfileOut = null;
+
+    private PrintStream activityProfileOutStream;
+
+    /**
+     * If provided, this walker will write out its assembly regions
+     * to this file in the IGV formatted TAB-delimited output:
+     *
+     * http://www.broadinstitute.org/software/igv/IGV
+     *
+     * Intended to make debugging the active region calculations easier
+     */
+    @Argument(fullName="assemblyRegionOut", shortName="ARO", doc="Output the assembly region to this IGV formatted file", optional = true)
+    protected String assemblyRegionOut = null;
+
+    private PrintStream assemblyRegionOutStream;
 
     /**
      * @return Default value for the {@link #readShardSize} parameter, if none is provided on the command line
@@ -163,6 +197,8 @@ public abstract class AssemblyRegionWalker extends GATKTool {
 
         final List<SimpleInterval> intervals = hasIntervals() ? intervalsForTraversal : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         readShards = makeReadShards(intervals);
+
+        initializeAssemblyRegionOutputStreams();
     }
 
     /**
@@ -184,6 +220,32 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         }
 
         return shards;
+    }
+
+    private void initializeAssemblyRegionOutputStreams() {
+        if ( activityProfileOut != null ) {
+            try {
+                activityProfileOutStream = new PrintStream(activityProfileOut);
+            }
+            catch ( IOException e ) {
+                throw new UserException.CouldNotCreateOutputFile(activityProfileOut, "Error writing activity profile to output file", e);
+            }
+
+            logger.info("Writing activity profile to " + activityProfileOut);
+            IGVUtils.printIGVFormatHeader(activityProfileOutStream, "line", "ActivityProfile");
+        }
+
+        if ( assemblyRegionOut != null ) {
+            try {
+                assemblyRegionOutStream = new PrintStream(assemblyRegionOut);
+            }
+            catch ( IOException e ) {
+                throw new UserException.CouldNotCreateOutputFile(assemblyRegionOut, "Error writing assembly regions to output file", e);
+            }
+
+            logger.info("Writing assembly regions to " + assemblyRegionOut);
+            IGVUtils.printIGVFormatHeader(assemblyRegionOutStream, "line", "AssemblyRegions");
+        }
     }
 
     /**
@@ -250,6 +312,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             final AssemblyRegion assemblyRegion = assemblyRegionIter.next();
             
             logger.debug("Processing assembly region at " + assemblyRegion.getSpan() + " isActive: " + assemblyRegion.isActive() + " numReads: " + assemblyRegion.getReads().size() + " in read shard " + shard.getInterval());
+            writeAssemblyRegion(assemblyRegion);
 
             apply(assemblyRegion,
                     new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
@@ -257,6 +320,25 @@ public abstract class AssemblyRegionWalker extends GATKTool {
 
             // For this traversal, the progress meter unit is the assembly region rather than the read shard
             progressMeter.update(assemblyRegion.getSpan());
+        }
+    }
+
+    private void writeAssemblyRegion(final AssemblyRegion region) {
+        writeActivityProfile(region.getSupportingStates());
+
+        if ( assemblyRegionOutStream != null ) {
+            IGVUtils.printIGVFormatRow(assemblyRegionOutStream, new SimpleInterval(region.getContig(), region.getStart(), region.getStart()),
+                    "end-marker", 0.0);
+            IGVUtils.printIGVFormatRow(assemblyRegionOutStream, region,
+                    "size=" + new SimpleInterval(region).size(), region.isActive() ? 1.0 : -1.0);
+        }
+    }
+
+    private void writeActivityProfile(final List<ActivityProfileState> states) {
+        if ( activityProfileOutStream != null ) {
+            for ( final ActivityProfileState state : states ) {
+                IGVUtils.printIGVFormatRow(activityProfileOutStream, state.getLoc(), "state", Math.min(state.isActiveProb(), 1.0));
+            }
         }
     }
 
@@ -269,6 +351,14 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     protected final void onShutdown() {
         // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
+
+        if ( assemblyRegionOutStream != null ) {
+            assemblyRegionOutStream.close();
+        }
+
+        if ( activityProfileOutStream != null ) {
+            activityProfileOutStream.close();
+        }
     }
 
     /**
