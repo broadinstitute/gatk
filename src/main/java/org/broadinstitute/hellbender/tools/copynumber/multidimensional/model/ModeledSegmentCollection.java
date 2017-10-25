@@ -33,7 +33,7 @@ public final class ModeledSegmentCollection extends SampleLocatableCollection<Mo
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, ModeledSegment> MODELED_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
+    private static final Function<DataLine, ModeledSegment> MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
         final String contig = dataLine.get(ModeledSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(ModeledSegmentTableColumn.START);
         final int end = dataLine.getInt(ModeledSegmentTableColumn.END);
@@ -51,7 +51,7 @@ public final class ModeledSegmentCollection extends SampleLocatableCollection<Mo
                 new ModeledSegment.SimplePosteriorSummary(minorAlleleFractionPosterior10, minorAlleleFractionPosterior50, minorAlleleFractionPosterior90));
     };
 
-    private static final BiConsumer<ModeledSegment, DataLine> MODELED_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER = (modeledSegment, dataLine) ->
+    private static final BiConsumer<ModeledSegment, DataLine> MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER = (modeledSegment, dataLine) ->
             dataLine.append(modeledSegment.getContig())
                     .append(modeledSegment.getStart())
                     .append(modeledSegment.getEnd())
@@ -65,11 +65,11 @@ public final class ModeledSegmentCollection extends SampleLocatableCollection<Mo
                     .append(String.format(DOUBLE_FORMAT, modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile90()));
 
     public ModeledSegmentCollection(final File inputFile) {
-        super(inputFile, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, MODELED_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(inputFile, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public ModeledSegmentCollection(final SampleMetadata sampleMetadata,
                                     final List<ModeledSegment> modeledSegments) {
-        super(sampleMetadata, modeledSegments, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, MODELED_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(sampleMetadata, modeledSegments, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 }

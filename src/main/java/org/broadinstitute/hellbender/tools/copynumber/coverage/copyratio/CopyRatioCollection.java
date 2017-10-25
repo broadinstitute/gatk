@@ -23,7 +23,7 @@ public final class CopyRatioCollection extends SampleLocatableCollection<CopyRat
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, CopyRatio> COPY_RATIO_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
+    private static final Function<DataLine, CopyRatio> COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
         final String contig = dataLine.get(CopyRatioTableColumn.CONTIG);
         final int start = dataLine.getInt(CopyRatioTableColumn.START);
         final int end = dataLine.getInt(CopyRatioTableColumn.END);
@@ -32,19 +32,19 @@ public final class CopyRatioCollection extends SampleLocatableCollection<CopyRat
         return new CopyRatio(interval, copyRatio);
     };
 
-    private static final BiConsumer<CopyRatio, DataLine> COPY_RATIO_RECORD_AND_DATA_LINE_BI_CONSUMER = (copyRatio, dataLine) ->
+    private static final BiConsumer<CopyRatio, DataLine> COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER = (copyRatio, dataLine) ->
         dataLine.append(copyRatio.getInterval().getContig())
                 .append(copyRatio.getInterval().getStart())
                 .append(copyRatio.getInterval().getEnd())
                 .append(copyRatio.getLog2CopyRatioValue());
 
     public CopyRatioCollection(final File inputFile) {
-        super(inputFile, CopyRatioTableColumn.COLUMNS, COPY_RATIO_DATA_LINE_TO_RECORD_FUNCTION, COPY_RATIO_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(inputFile, CopyRatioTableColumn.COLUMNS, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public CopyRatioCollection(final SampleMetadata sampleMetadata,
                                final List<CopyRatio> copyRatios) {
-        super(sampleMetadata, copyRatios, CopyRatioTableColumn.COLUMNS, COPY_RATIO_DATA_LINE_TO_RECORD_FUNCTION, COPY_RATIO_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(sampleMetadata, copyRatios, CopyRatioTableColumn.COLUMNS, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public List<Double> getLog2CopyRatioValues() {
