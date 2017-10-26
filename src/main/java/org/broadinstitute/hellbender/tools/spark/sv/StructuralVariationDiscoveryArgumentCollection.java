@@ -128,9 +128,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "output dir for assembled fastqs", fullName = "fastqDir", optional = true)
         public String fastqDir;
 
-        @Argument(doc = "output dir for assemblies", fullName = "gfaDir", optional = true)
-        public String gfaDir;
-
         @Argument(doc = "output file for non-assembled breakpoints in bedpe format",
                 fullName = "targetLinkFile", optional = true)
         public String targetLinkFile;

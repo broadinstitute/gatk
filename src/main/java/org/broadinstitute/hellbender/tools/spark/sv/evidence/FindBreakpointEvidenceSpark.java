@@ -127,8 +127,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // write a FASTQ file for each interval
         final FermiLiteAssemblyHandler fermiLiteAssemblyHandler =
-                new FermiLiteAssemblyHandler(params.alignerIndexImageFile, params.maxFASTQSize,
-                                                params.fastqDir, params.gfaDir);
+                new FermiLiteAssemblyHandler(params.alignerIndexImageFile, params.maxFASTQSize, params.fastqDir);
         alignedAssemblyOrExcuseList.addAll(
                 handleAssemblies(ctx, qNamesMultiMap, unfilteredReads, filter, intervals.size(),
                         params.includeMappingLocation, fermiLiteAssemblyHandler));
@@ -479,14 +478,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         private final String alignerIndexFile;
         private final int maxFastqSize;
         private final String fastqDir;
-        private final String gfaDir;
 
         FermiLiteAssemblyHandler( final String alignerIndexFile, final int maxFastqSize,
-                                  final String fastqDir, final String gfaDir ) {
+                                  final String fastqDir ) {
             this.alignerIndexFile = alignerIndexFile;
             this.maxFastqSize = maxFastqSize;
             this.fastqDir = fastqDir;
-            this.gfaDir = gfaDir;
         }
 
         @Override
@@ -509,8 +506,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final long timeStart = System.currentTimeMillis();
             final FermiLiteAssembly assembly = new FermiLiteAssembler().createAssembly(readsList);
             final int secondsInAssembly = (int)((System.currentTimeMillis() - timeStart + 500)/1000);
-            if ( gfaDir != null ) {
-                final String gfaName = String.format("%s/%s.gfa", gfaDir, assemblyName);
+            if ( fastqDir != null ) {
+                final String gfaName = String.format("%s/%s.gfa", fastqDir, assemblyName);
                 try ( final OutputStream os = BucketUtils.createFile(gfaName) ) {
                     assembly.writeGFA(os);
                 }
