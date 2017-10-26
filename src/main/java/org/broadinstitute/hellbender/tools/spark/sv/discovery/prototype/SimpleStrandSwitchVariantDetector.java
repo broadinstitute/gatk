@@ -50,7 +50,7 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
         });
         final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> invDupAndStrandSwitchBreakpoints =
                 RDDUtils.split(deOverlappedContigs,
-                        contig -> BreakpointComplications.isLikelyInvertedDuplication(contig.alignmentIntervals.get(0),
+                        contig -> ChimericAlignment.isLikelyInvertedDuplication(contig.alignmentIntervals.get(0),
                                 contig.alignmentIntervals.get(1)), false);
 
         final JavaRDD<VariantContext> simpleStrandSwitchBkpts =
@@ -87,7 +87,7 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
     }
 
     /**
-     * Roughly similar to {@link ChimericAlignment#nextAlignmentMayBeNovelInsertion(AlignmentInterval, AlignmentInterval, Integer)}:
+     * Roughly similar to {@link ChimericAlignment#nextAlignmentMayBeInsertion(AlignmentInterval, AlignmentInterval, Integer, Integer, boolean)}:
      *  1) either alignment may have very low mapping quality (a more relaxed mapping quality threshold);
      *  2) either alignment may consume only a "short" part of the contig, or if assuming that the alignment consumes
      *     roughly the same amount of ref bases and read bases, has isAlignment that is too short

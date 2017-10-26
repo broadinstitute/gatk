@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+
 
 final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyContigAlignments {
 
@@ -31,6 +33,8 @@ final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyCon
         final JavaPairRDD<byte[], List<ChimericAlignment>> chimericAlignments =
                 contigs
                         .mapToPair(tig -> convertAlignmentIntervalToChimericAlignment(tig,
+                                StructuralVariationDiscoveryArgumentCollection.
+                                        DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD,
                                 StructuralVariationDiscoveryArgumentCollection.
                                         DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH,
                                 broadcastSequenceDictionary.getValue()));
@@ -49,10 +53,11 @@ final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyCon
     }
 
     /**
-     * Very similar to {@link ChimericAlignment#parseOneContig(AlignedContig, int, SAMSequenceDictionary)}, except that
+     * Very similar to {@link ChimericAlignment#parseOneContig(AlignedContig, SAMSequenceDictionary, boolean, int, int, boolean)}, except that
      * badly mapped (MQ < 60) 1st alignment is no longer skipped.
      */
     private static Tuple2<byte[], List<ChimericAlignment>> convertAlignmentIntervalToChimericAlignment (final AlignedContig contig,
+                                                                                                        final int mapQualThresholdInclusive,
                                                                                                         final int minAlignmentBlockSize,
                                                                                                         final SAMSequenceDictionary referenceDictionary) {
 
@@ -63,7 +68,7 @@ final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyCon
         final List<String> insertionMappings = new ArrayList<>();
         while ( iterator.hasNext() ) {
             final AlignmentInterval next = iterator.next();
-            if (ChimericAlignment.nextAlignmentMayBeNovelInsertion(current, next, minAlignmentBlockSize)) {
+            if (ChimericAlignment.nextAlignmentMayBeInsertion(current, next, mapQualThresholdInclusive, minAlignmentBlockSize, true)) {
                 if (iterator.hasNext()) {
                     insertionMappings.add(next.toPackedString());
                     continue;

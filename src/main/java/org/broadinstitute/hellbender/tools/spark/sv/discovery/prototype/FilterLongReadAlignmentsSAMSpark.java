@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser;
@@ -116,7 +117,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     }
 
     /**
-     * Delegates to {@link ChimericAlignment#parseOneContig(AlignedContig, int, SAMSequenceDictionary)}, which is currently used in SV discovery pipeline,
+     * Delegates to {@link ChimericAlignment#parseOneContig(AlignedContig, SAMSequenceDictionary, boolean, int, int, boolean)}, which is currently used in SV discovery pipeline,
      * to filter out alignments and produces {@link ChimericAlignment} for variant discovery and interpretation.
      * Here it is simply appended with a collection operation that collects the alignments stored in the {@link ChimericAlignment}'s.
      */
@@ -136,7 +137,9 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                 parsedContigAlignmentsWithGapSplit
                 .mapToPair(alignedContig ->
                         new Tuple2<>(alignedContig.contigName,
-                                ChimericAlignment.parseOneContig(alignedContig, DEFAULT_MIN_ALIGNMENT_LENGTH, referenceDictionary).stream()
+                                ChimericAlignment.parseOneContig(alignedContig, referenceDictionary,
+                                        true, DEFAULT_MIN_ALIGNMENT_LENGTH,
+                                        CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true).stream()
                                         .flatMap(chimericAlignment -> chimericAlignment.getAlignmentIntervals().stream())
                                         .sorted(AlignedContig.getAlignmentIntervalComparator())
                                         .collect(Collectors.toList())))

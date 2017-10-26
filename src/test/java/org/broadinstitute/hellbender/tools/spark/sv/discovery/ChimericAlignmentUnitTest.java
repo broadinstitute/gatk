@@ -3,18 +3,30 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple4;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider.*;
 
 public class ChimericAlignmentUnitTest extends BaseTest {
 
@@ -32,152 +44,185 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     }
 
     @Test(groups = "sv")
-    public void testFilterByNextAlignmentMayBeNovelInsertion() throws Exception {
+    public void testFilterByNextAlignmentMayBeInsertion() {
         final AlignmentInterval overlappingRegion1 = new AlignmentInterval(new SimpleInterval("19", 48699881, 48700035), 1, 154, TextCigarCodec.decode("47S154M"), false, 60, 0, 100, AlnModType.NONE);
         final AlignmentInterval overlappingRegion2 = new AlignmentInterval(new SimpleInterval("19", 48700584, 48700669), 117, 201, TextCigarCodec.decode("116H85M"), true, 60, 0, 100, AlnModType.NONE);
 
-        Assert.assertTrue(ChimericAlignment.nextAlignmentMayBeNovelInsertion(overlappingRegion1, overlappingRegion2, 50));
+        Assert.assertTrue(ChimericAlignment.nextAlignmentMayBeInsertion(overlappingRegion1, overlappingRegion2,  CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, 50,true));
     }
 
-    @Test(groups = "sv")
-    public void testBooleanStatesAndSerialization_inversion() {
+    @DataProvider(name = "forBooleanSeriesAndSerialization")
+    private Object[][] createTestData() {
+        final List<Object[]> data = new ArrayList<>(20);
 
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        // simple inversion
+        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, true, false, false, false});
 
-        testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftPlus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.FORWARD_TO_REVERSE, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        testData = forSimpleInversionWithHom_leftPlus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.FORWARD_TO_REVERSE, true, false, false, false});
 
-        testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftMinus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.FORWARD_TO_REVERSE, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        testData = forSimpleInversionWithHom_leftMinus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.FORWARD_TO_REVERSE, false, false, false, false});
 
-        testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_rightPlus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        testData = forSimpleInversionWithHom_rightPlus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, true, false, false, false});
 
-        testData = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_rightMinus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, true, true, false);
-        testSerialization(testData._1(), testData._2());
-    }
-
-    @Test(groups = "sv")
-    public void testBooleanStatesAndSerialization_simpleInsertionAndDeletion() {
+        testData = forSimpleInversionWithHom_rightMinus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.REVERSE_TO_FORWARD, false, false, false, false});
 
         // simple deletion
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleDeletion_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        testData = SVDiscoveryTestDataProvider.forSimpleDeletion_plus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forSimpleDeletion_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
 
         // simple insertion
         testData = SVDiscoveryTestDataProvider.forSimpleInsertion_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forSimpleInsertion_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
 
         // long range substitution
         testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
 
         // simple deletion with homology
         testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
-        testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
-    }
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
 
-    @Test(groups = "sv")
-    public void testBooleanStatesAndSerialization_tandemDuplication_simple() {
+        testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_minus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
 
         // tandem duplication simple contraction
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
 
         // tandem duplication simple expansion
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
 
         // tandem duplication simple expansion with novel insertion
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
-        testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
-    }
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
 
-    @Test(groups = "sv")
-    public void testBooleanStatesAndSerialization_tandemDuplication_complex() {
+        testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
+
+
 
         // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
+
 
         // second test: contraction from 2 units to 1 unit with pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
+
 
         // third test: contraction from 3 units to 2 units without pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
+
 
         // fourth test: expansion from 2 units to 3 units without pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, true, true);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, false, false, false});
+
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
-        testBooleanSeries(testData._1(), testData._2(), StrandSwitch.NO_SWITCH, true, true, false);
-        testSerialization(testData._1(), testData._2());
+        data.add(new Object[]{testData._1(), testData._2(), StrandSwitch.NO_SWITCH, false, false, false, false});
+
+        ////////// ABOVE ARE FOR SIMPLE VARIANTS: INS/DEL, DUP EXPANSION, DUP CONTRACTION, INVERSION, BELOW ARE FOR TRANSLOCATION SUSPECTS AND INV DUP
+
+        // inverted duplication
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(21, 1, 46709983);
+        SAMRecord one =
+                ArtificialReadUtils.createArtificialRead(header, "asm017968:tig00020", 20, 25625477,
+                        "CCTTTCTATTCTAACATTATTGACCCACTACAATAAAATTAAGTATACTTTAGGCTGGGCATGGTGGTTTACACCTGTAATCCCAACACTTTGGGAGGCCGAGGCGGGTGG".getBytes(),
+                        ArtificialReadUtils.createRandomReadQuals(111), "212H111M").convertToSAMRecord(header);
+        one.setSupplementaryAlignmentFlag(true);
+        one.setMappingQuality(60);
+        one.setReadNegativeStrandFlag(true);
+        one.setAttribute("NM", 0);
+        one.setAttribute("AS", 111);
+
+        SAMRecord two = ArtificialReadUtils.createArtificialRead(header, "asm017968:tig00020", 20, 25625379,
+                "CCACCCGCCTCGGCCTCCCAAAGTGTTGGGATTACAGGTGTAAACCACCATGCCCAGCCTAAAGTATACTTAATTTTATTGTAGTGGGTCAATAATGTTAGAATAGAAAGGAGAATCAGAAGAGAGAAAAGAAACAGATGATCTTATGAATCCCCAATTTATATCCCCCAATTAAGGCATCTCTTTCTTCTGTCTCCCTATATCCCTTTCTATTCTAACATTATTGACCCACTACAATAAAATTAAGTATACTTTAGGCTGGGCATGGTGGTTTACACCTGTAATCCCAACACTTTGGGAGGCCGAGGCGGGTGGATCACTTG".getBytes(),
+                ArtificialReadUtils.createRandomReadQuals(323), "106S217M").convertToSAMRecord(header);
+        two.setMappingQuality(60);
+        two.setAttribute("NM", 0);
+        two.setAttribute("AS", 217);
+
+        AlignmentInterval intervalOne = new AlignmentInterval(one);
+        AlignmentInterval intervalTwo = new AlignmentInterval(two);
+
+        data.add(new Object[]{intervalOne, intervalTwo, StrandSwitch.REVERSE_TO_FORWARD, false, false, true, true});
+
+        intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 48513458, 48513545), 1, 88, TextCigarCodec.decode("88M227H"), true, 39, 1, 83, AlnModType.NONE);
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 48513297, 48513579), 84, 365, TextCigarCodec.decode("83S282M"), false, 60, 0, 282, AlnModType.NONE);
+        data.add(new Object[]{intervalOne, intervalTwo, StrandSwitch.FORWARD_TO_REVERSE, true, false, true, true});
+
+
+        // same-chr translocation suspect, forward and reverse representation
+        intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 61015129, 61015272), 1, 144, TextCigarCodec.decode("144M148H"), true, 60, 1, 139, AlnModType.NONE);
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 60992732, 60992880), 144, 292, TextCigarCodec.decode("143S149M"), true, 60, 0, 149, AlnModType.NONE);
+        data.add(new Object[]{intervalOne, intervalTwo, StrandSwitch.NO_SWITCH, true, true, false, true});
+
+        intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 28861368, 28861775), 1, 409, TextCigarCodec.decode("387M1I21M623H"), false, 60, 22, 286, AlnModType.NONE);
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 28896473, 28897229), 276, 1032, TextCigarCodec.decode("275S757M"), false, 60, 1, 752, AlnModType.NONE);
+        data.add(new Object[]{intervalOne, intervalTwo, StrandSwitch.NO_SWITCH, false, true, false, true});
+
+        // diff-chr translocation suspect without SS
+        intervalOne = new AlignmentInterval(new SimpleInterval("chr21", 24923683, 24923715), 1, 33, TextCigarCodec.decode("33M130H"), true, 60, 0, 33, AlnModType.NONE);
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 11590055, 11590197), 21, 163, TextCigarCodec.decode("20S143M"), true, 60, 3, 128, AlnModType.NONE);
+        data.add(new Object[]{intervalOne, intervalTwo, StrandSwitch.NO_SWITCH, true, true, false, true});
+
+        // diff-chr translocation suspect with SS
+        intervalOne = new AlignmentInterval(new SimpleInterval("chr21", 5374092, 5374748), 1, 656, TextCigarCodec.decode("656M322S"), true, 60, 14, 586, AlnModType.NONE);
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 28764673, 28765145), 506, 978, TextCigarCodec.decode("473M505H"), false, 60, 16, 393, AlnModType.NONE);
+        data.add(new Object[]{intervalOne, intervalTwo, StrandSwitch.FORWARD_TO_REVERSE, false, true, false, true});
+
+
+        return data.toArray(new Object[data.size()][]);
     }
 
-    private static void testBooleanSeries(final AlignmentInterval region1, final AlignmentInterval region2,
-                                          final StrandSwitch expectedStrandSwitch,
-                                          final boolean expectedRefPositionSwitch,
-                                          final boolean expectedIsNotSimpleTranslocation,
-                                          final boolean expectedIsForwardStrandRepresentation) {
+    @Test(dataProvider = "forBooleanSeriesAndSerialization", groups = "sv")
+    public void test(final AlignmentInterval region1, final AlignmentInterval region2,
+                     final StrandSwitch expectedStrandSwitch,
+                     final boolean expectedIsForwardStrandRepresentation,
+                     final boolean expectedIsLikelySimpleTranslocation,
+                     final boolean expectedIsLikelyInvDup,
+                     final boolean shouldUseRefVersion_b38) {
+
+        final SAMSequenceDictionary refDict = shouldUseRefVersion_b38 ? SVDiscoveryTestDataProvider.b38_seqDict : SVDiscoveryTestDataProvider.seqDict;
 
         Assert.assertEquals(ChimericAlignment.determineStrandSwitch(region1, region2), expectedStrandSwitch);
-        Assert.assertEquals(ChimericAlignment.involvesRefPositionSwitch(region1, region2), expectedRefPositionSwitch);
-        Assert.assertEquals(ChimericAlignment.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, expectedRefPositionSwitch), expectedIsForwardStrandRepresentation);
-        Assert.assertEquals(ChimericAlignment.isNotSimpleTranslocation(region1, region2, expectedStrandSwitch, expectedRefPositionSwitch), expectedIsNotSimpleTranslocation);
-    }
+        Assert.assertEquals(ChimericAlignment.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, refDict), expectedIsForwardStrandRepresentation);
+        Assert.assertEquals(ChimericAlignment.isLikelySimpleTranslocation(region1, region2, expectedStrandSwitch), expectedIsLikelySimpleTranslocation);
+        Assert.assertEquals(ChimericAlignment.isLikelyInvertedDuplication(region1, region2), expectedIsLikelyInvDup);
 
-    private static void testSerialization(final AlignmentInterval region1, final AlignmentInterval region2) {
-
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "dummyName", SVDiscoveryTestDataProvider.seqDict);
+        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "dummyName", refDict);
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();
