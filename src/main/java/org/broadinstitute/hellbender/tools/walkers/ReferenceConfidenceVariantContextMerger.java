@@ -508,7 +508,7 @@ public final class ReferenceConfidenceVariantContextMerger {
 
         // create the index mapping, using the <NON-REF> allele whenever such a mapping doesn't exist
         for ( int i = 1; i < targetAlleles.size(); i++ ) {
-            // if there’s more than 1 DEL allele then we need to use the best one
+            // if there's more than 1 DEL allele then we need to use the best one
             if ( targetAlleles.get(i) == Allele.SPAN_DEL && g.hasPL() ) {
                 final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
                 if ( occurrences > 1 ) {
