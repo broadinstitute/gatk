@@ -169,7 +169,9 @@ public final class SVUtils {
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
         final Set<String> sampleSet = readGroups.stream().map(SAMReadGroupRecord::getSample).collect(Collectors.toSet());
 
-        Utils.validate(sampleSet.size() == 1, "Read groups must contain reads from one and only one sample");
+        Utils.validate(sampleSet.size() == 1,
+                "Read groups must contain reads from one and only one sample, " +
+                        "but we are finding the following ones in the given header: \t" + sampleSet.toString());
 
         final String sample = sampleSet.iterator().next();
         return sample;

@@ -29,6 +29,10 @@ public final class SVDiscoveryTestDataProvider {
             BaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary seqDict = reference.getReferenceSequenceDictionary(null);
 
+    public static final ReferenceMultiSource b38_reference = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+            BaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+    public static final SAMSequenceDictionary b38_seqDict = b38_reference.getReferenceSequenceDictionary(null);
+
     public static byte[] getReverseComplimentCopy(final byte[] sequence) {
         final byte[] sequenceCopy = Arrays.copyOf(sequence, sequence.length);
         SequenceUtil.reverseComplement(sequenceCopy);
@@ -200,7 +204,7 @@ public final class SVDiscoveryTestDataProvider {
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, AlnModType.NONE);
 
         final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2), false);
-        final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(ChimericAlignment.parseOneContig(alignedContig, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, seqDict).get(0), contigSequence, seqDict);
+        final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(ChimericAlignment.parseOneContig(alignedContig, seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true).get(0), contigSequence, seqDict);
         return new Tuple4<>(region1, region2, breakpoints, "asm702700:tig00001");
     }
 
