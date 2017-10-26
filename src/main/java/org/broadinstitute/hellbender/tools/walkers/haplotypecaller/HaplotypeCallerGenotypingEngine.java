@@ -300,7 +300,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         final ReferenceDataSource refData = new ReferenceMemorySource(new ReferenceBases(ref, refLocInterval), header.getSequenceDictionary());
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
 
-        final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
+        final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true, configuration.emitReferenceConfidence!=ReferenceConfidenceMode.NONE);
         return call.getAlleles().size() == mergedVC.getAlleles().size() ? untrimmedResult
                 : GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
     }

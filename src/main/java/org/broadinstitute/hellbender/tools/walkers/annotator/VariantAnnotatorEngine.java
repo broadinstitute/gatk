@@ -253,6 +253,24 @@ public final class VariantAnnotatorEngine {
                                           final ReferenceContext ref,
                                           final ReadLikelihoods<Allele> likelihoods,
                                           final Predicate<VariantAnnotation> addAnnot) {
+        return annotateContext(vc, features, ref, likelihoods, addAnnot, false);
+    }
+
+    /**
+     * Annotates the given variant context - adds all annotations that satisfy the predicate.
+     * @param vc the variant context to annotate
+     * @param features context containing the features that overlap the given variant
+     * @param ref the reference context of the variant to annotate or null if there is none
+     * @param likelihoods likelihoods indexed by sample, allele, and read within sample. May be null
+     * @param addAnnot function that indicates if the given annotation type should be added to the variant
+     * @param useRaw set to true to have reducible annotations produce raw annotations
+     */
+    public VariantContext annotateContext(final VariantContext vc,
+                                          final FeatureContext features,
+                                          final ReferenceContext ref,
+                                          final ReadLikelihoods<Allele> likelihoods,
+                                          final Predicate<VariantAnnotation> addAnnot,
+                                          final boolean useRaw) {
         Utils.nonNull(vc, "vc cannot be null");
         Utils.nonNull(features, "features cannot be null");
 
@@ -264,7 +282,12 @@ public final class VariantAnnotatorEngine {
         final Map<String, Object> infoAnnotMap = new LinkedHashMap<>(newGenotypeAnnotatedVC.getAttributes());
         for ( final InfoFieldAnnotation annotationType : this.infoAnnotations) {
             if (addAnnot.test(annotationType)){
-                final Map<String, Object> annotationsFromCurrentType = annotationType.annotate(ref, newGenotypeAnnotatedVC, likelihoods);
+                Map<String, Object> annotationsFromCurrentType = null;
+                if (useRaw && annotationType instanceof ReducibleAnnotation) {
+                    annotationsFromCurrentType = ((ReducibleAnnotation) annotationType).annotateRawData(ref, newGenotypeAnnotatedVC, likelihoods);
+                } else {
+                    annotationsFromCurrentType = annotationType.annotate(ref, newGenotypeAnnotatedVC, likelihoods);
+                }
                 if ( annotationsFromCurrentType != null ) {
                     infoAnnotMap.putAll(annotationsFromCurrentType);
                 }

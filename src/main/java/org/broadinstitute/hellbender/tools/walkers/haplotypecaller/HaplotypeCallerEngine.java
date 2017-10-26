@@ -182,7 +182,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         //Allele-specific annotations are not yet supported in the VCF mode
         if (isAlleleSpecificMode(annotationEngine) && isVCFMode()){
-           throw new UserException("Allele-specific annotations are not yet supported in the VCF mode");
+            throw new UserException("Allele-specific annotations are not yet supported in the VCF mode");
         }
 
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader);

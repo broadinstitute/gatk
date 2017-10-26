@@ -64,7 +64,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      *
      * Test currently throws an exception due to lack of support for allele-specific annotations in VCF mode
      */
-    @Test(dataProvider="HaplotypeCallerTestInputs", expectedExceptions = UserException.class)
+    @Test(dataProvider="HaplotypeCallerTestInputs")//, expectedExceptions = UserException.class)
     public void testVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
