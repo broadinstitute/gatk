@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.nio;
 
+import com.google.cloud.storage.StorageException;
 import com.google.common.base.Stopwatch;
+import java.net.HttpRetryException;
 import java.util.concurrent.ThreadFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
@@ -47,6 +49,8 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     private Stopwatch betweenCallsToRead = Stopwatch.createUnstarted();
     private static int prefetcherCount = 0;
     private final int prefetcherIndex;
+    // Number of times to retry on 403 errors.
+    private final int forbiddenRetries = 3;
 
     // statistics, for profiling
     // time spent blocking the user because we're waiting on the network
@@ -69,8 +73,10 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     // number of times the user asks for data with a lower index than what we already have
     // (so they're not following the expected pattern of increasing indexes)
     public long nbGoingBack = 0;
-    // number of times the user asks for data past the end of the file
+    // number of times the user asks for data past the end of the file.
     public long nbReadsPastEnd = 0;
+    // number of times we retried in response to a "403: Forbidden" error.
+    public long nbRetriesFor403 = 0;
     // timing statistics have an overhead, so only turn them on when debugging performance
     // issues.
     private static final boolean trackTime = false;
@@ -251,8 +257,15 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
             ensureFetching(blockIndex);
         }
         WorkUnit candidate = fetching;
-        // block until we have the buffer
-        ByteBuffer buf = candidate.getBuf();
+        ByteBuffer buf;
+        try {
+            // block until we have the buffer
+            buf = candidate.getBuf();
+        } catch (Exception x) {
+            // error? Discard so we'll try afresh if asked once more.
+            fetching = null;
+            throw x;
+        }
         full.add(candidate);
         fetching = null;
         if (candidate.blockIndex == blockIndex) {
@@ -292,22 +305,50 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
                 msBetweenCallsToRead += betweenCallsToRead.elapsed(TimeUnit.MILLISECONDS);
             }
             ByteBuffer src;
-            try {
-                Stopwatch waitingForData;
-                if (trackTime) {
-                    waitingForData = Stopwatch.createStarted();
+            int tries = 0;
+            do {
+                tries++;
+                try {
+                    Stopwatch waitingForData;
+                    if (trackTime) {
+                        waitingForData = Stopwatch.createStarted();
+                    }
+                    src = fetch(position);
+                    if (trackTime) {
+                        msWaitingForData += waitingForData.elapsed(TimeUnit.MILLISECONDS);
+                    }
+                } catch (InterruptedException e) {
+                    // Restore interrupted status
+                    Thread.currentThread().interrupt();
+                    return 0;
+                } catch (ExecutionException e) {
+                    final Throwable cause = e.getCause();
+                    if (cause != null && cause instanceof StorageException) {
+                        StorageException stex = (StorageException) cause;
+                        if (stex.getCode() == 403) {
+                            // Retry on "Forbidden." Yes this is unusual but
+                            // see https://github.com/broadinstitute/gatk/issues/3735
+                            // for report of getting 403 errors that cleared out on retry.
+                            if (tries <= forbiddenRetries) {
+                                try {
+                                    Thread.sleep(500 * (1<<tries));
+                                } catch (InterruptedException e1) {
+                                    // Restore interrupted status
+                                    Thread.currentThread().interrupt();
+                                    return 0;
+                                }
+                                nbRetriesFor403++;
+                                continue;
+                            }
+                            throw new RuntimeException("403: Forbidden. Exhausted all " + forbiddenRetries + " retries.", e);
+                        }
+                    }
+                    throw new RuntimeException(e);
                 }
-                src = fetch(position);
-                if (trackTime) {
-                    msWaitingForData += waitingForData.elapsed(TimeUnit.MILLISECONDS);
-                }
-            } catch (InterruptedException e) {
-                // Restore interrupted status
-                Thread.currentThread().interrupt();
-                return 0;
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
-            }
+                // break;while pattern for retries: use "continue" to retry
+                break;
+            } while (true);
+
             if (null == src) {
                 // the caller is asking for a block past EOF
                 nbReadsPastEnd++;
