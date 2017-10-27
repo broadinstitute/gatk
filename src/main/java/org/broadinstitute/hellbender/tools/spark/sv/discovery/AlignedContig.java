@@ -62,6 +62,11 @@ public final class AlignedContig {
         return comparePos.thenComparing(compareRefTig).thenComparing(compareRefSpanStart);
     }
 
+    // needs this due to Java naive lambda NOT Spark serializable, and we need a serializable callable
+    public static boolean hasOnly2Alignments(final AlignedContig contigWithOnlyOneConfig) {
+        return contigWithOnlyOneConfig.alignmentIntervals.size() == 2;
+    }
+
     @Override
     public String toString() {
         return formatContigInfo(

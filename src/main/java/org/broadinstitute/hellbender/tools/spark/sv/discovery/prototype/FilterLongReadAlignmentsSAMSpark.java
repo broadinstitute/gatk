@@ -39,9 +39,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.*;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser;
 
 
@@ -101,7 +99,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
             final SAMFileHeader header = getHeaderForReads();
 
             Files.write(Paths.get(outputFilePrefix + "_newFiltering.ai"),
-                    () -> filterByScore(reads, header, nonCanonicalContigNamesFile, localLogger, configScoreDiffTolerance)
+                    () -> filterByScore(reads, header, nonCanonicalContigNamesFile, configScoreDiffTolerance, localLogger)
                             .sortBy(tig -> tig.contigName, true, reads.getNumPartitions() / 100) // num partition is purely guess
                             .mapToPair(contig -> new Tuple2<>(contig.contigName,
                                     contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())))
@@ -157,16 +155,18 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      * aims at providing an "optimal coverage" of the long read, based on an heuristic scoring scheme
      * {@link #computeScoreOfConfiguration(List, Set, int)}.
      *
-     * @param longReads     long read alignments
-     * @param header        header for the long reads
-     * @param toolLogger    logger for, most likely, debugging uses
+     * @param longReads             long read alignments
+     * @param header                header for the long reads
+     * @param scoreDiffTolerance    a tolerance where if two configurations' scores differ less than or equal to this amount, they are considered equally good
+     * @param toolLogger            logger for, most likely, debugging uses
+     *
      * @return              contigs with alignments filtered and custom formatted as {@link AlignmentInterval}
      */
     static JavaRDD<AlignedContig> filterByScore(final JavaRDD<GATKRead> longReads,
                                                 final SAMFileHeader header,
                                                 final String nonCanonicalContigNamesFile,
-                                                final Logger toolLogger,
-                                                final Double scoreDiffTolerance) {
+                                                final Double scoreDiffTolerance,
+                                                final Logger toolLogger) {
 
         longReads.cache();
         toolLogger.info( "Processing " + longReads.count() + " raw alignments from " +

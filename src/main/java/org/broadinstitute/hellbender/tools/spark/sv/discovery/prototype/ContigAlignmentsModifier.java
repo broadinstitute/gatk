@@ -23,9 +23,14 @@ public final class ContigAlignmentsModifier {
     /**
      * Removes overlap between input {@code contig}'s two alignments.
      * If the two alignment intervals are NOT overlapping, return the original aligned contig.
+     * @param dictionary if null, then {@code one} and {@code two} must be mapped to the same chromosome
      */
     public static List<AlignmentInterval> removeOverlap(final AlignmentInterval one, final AlignmentInterval two,
                                                         final SAMSequenceDictionary dictionary) {
+        if (dictionary == null)
+            Utils.validateArg(one.referenceSpan.getContig().equals(two.referenceSpan.getContig()),
+                    "despite input alignments mapped to different chromosomes, input reference sequence dictionary is null. \n" +
+                            one.toPackedString() + "\t" + two.toPackedString());
 
         final AlignmentInterval reconstructedOne, reconstructedTwo;
         final int overlapOnRead = AlignmentInterval.overlapOnContig(one, two);
