@@ -101,7 +101,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
         final SAMFileHeader header = getHeaderForReads();
 
         FileUtils.writeLinesToSingleFile(
-                filterByScore(reads, header, nonCanonicalContigNamesFile, localLogger, configScoreDiffTolerance)
+                filterByScore(reads, header, nonCanonicalContigNamesFile, configScoreDiffTolerance, localLogger)
                         .sortBy(tig -> tig.contigName, true, reads.getNumPartitions()/100) // num partition is purely guess
                         .mapToPair(contig -> new Tuple2<>(contig.contigName,
                                 contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())))
@@ -152,16 +152,24 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      * aims at providing an "optimal coverage" of the long read, based on an heuristic scoring scheme
      * {@link #computeScoreOfConfiguration(List, Set, int)}.
      *
+<<<<<<< HEAD
      * @param longReads     long read alignments
      * @param header        header for the long reads
      * @param toolLogger    logger for, most likely, debugging uses
+=======
+     * @param longReads             long read alignments
+     * @param header                header for the long reads
+     * @param scoreDiffTolerance    a tolerance where if two configurations' scores differ less than or equal to this amount, they are considered equally good
+     * @param toolLogger            logger for, most likely, debugging uses
+     *
+>>>>>>> 8fbca1ed7... update the branching logic about how different contigs, based on their alignments signature, are sent down different code path
      * @return              contigs with alignments filtered and custom formatted as {@link AlignmentInterval}
      */
     static JavaRDD<AlignedContig> filterByScore(final JavaRDD<GATKRead> longReads,
                                                 final SAMFileHeader header,
                                                 final String nonCanonicalContigNamesFile,
-                                                final Logger toolLogger,
-                                                final Double scoreDiffTolerance) {
+                                                final Double scoreDiffTolerance,
+                                                final Logger toolLogger) {
 
         longReads.cache();
         toolLogger.info( "Processing " + longReads.count() + " raw alignments from " +

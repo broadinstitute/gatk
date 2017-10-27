@@ -18,22 +18,19 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.FileUtils;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.RDDUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Tuple2;
 
+import java.io.IOException;
 import java.util.EnumMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AssemblyContigAlignmentSignatureClassifier.RawTypes;
 
 /**
  * This tool takes a SAM file containing alignments of single-ended long read
@@ -66,11 +63,11 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     public String nonCanonicalChromosomeNamesFile;
 
     @Argument(doc = "output directory", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-              fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputDir;
 
     @Argument(doc = "output SAM files", shortName = "wSAM",
-              fullName = "writeSAM", optional = true)
+            fullName = "writeSAM", optional = true)
     private boolean writeSAMFiles = false;
 
     @Override
@@ -93,146 +90,68 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         final JavaRDD<GATKRead> reads = getReads();
         final SAMFileHeader headerForReads = getHeaderForReads();
+        final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(headerForReads);
+        final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast = ctx.broadcast(getReference());
         final SAMSequenceDictionary refSequenceDictionary = headerForReads.getSequenceDictionary();
-
+        final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary = ctx.broadcast(refSequenceDictionary);
         final String sampleId = SVUtils.getSampleId(headerForReads);
 
-        // filter alignments and split the gaps
-        final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed =
-                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, headerForReads, nonCanonicalChromosomeNamesFile, localLogger, 0.0)
-                        .filter(lr -> lr.alignmentIntervals.size()>1).cache();
-
-        // divert the long reads by their possible type of SV
         final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes =
-                divertReadsByPossiblyRawTypes(contigsWithAlignmentsReconstructed, localLogger);
+                preprocess(reads, headerBroadcast, broadcastSequenceDictionary, nonCanonicalChromosomeNamesFile, outputDir, writeSAMFiles, localLogger);
 
+        dispatchJobs(sampleId, contigsByPossibleRawTypes, referenceMultiSourceBroadcast, broadcastSequenceDictionary);
+    }
+
+    //==================================================================================================================
+
+    private static EnumMap<RawTypes, JavaRDD<AlignedContig>> preprocess(final JavaRDD<GATKRead> reads,
+                                                                        final Broadcast<SAMFileHeader> headerBroadcast,
+                                                                        final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                        final String nonCanonicalChromosomeNamesFile,
+                                                                        final String outputDir,
+                                                                        final boolean writeSAMFiles,
+                                                                        final Logger localLogger) {
+        // filter alignments and split the gaps, hence the name "reconstructed"
+        final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed =
+                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, headerBroadcast.getValue(), nonCanonicalChromosomeNamesFile, 0.0, localLogger)
+                        .filter(lr -> lr.alignmentIntervals.size() > 1).cache();
+
+        // classify and divert assembly contigs by their possible type of SV
+        final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes =
+                AssemblyContigAlignmentSignatureClassifier.classifyContigs(contigsWithAlignmentsReconstructed,
+                        broadcastSequenceDictionary, localLogger);
+
+        // prepare for output and optionally writes SAM files separately for contigs of different classes
         if ( !FileUtils.createDirToWriteTo(outputDir) )
-            throw new GATKException("Could not create directory " + outputDir + " to write results to.");
+            throw new UserException.CouldNotCreateOutputFile(outputDir,
+                    "Could not create directory to output results", new IOException(""));
 
         if (writeSAMFiles) {
-            final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(headerForReads);
             contigsByPossibleRawTypes.forEach((k, v) -> writeSAM(v, k.name(), reads, headerBroadcast, outputDir, localLogger));
         }
 
-        final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast = ctx.broadcast(getReference());
-        final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary = ctx.broadcast(refSequenceDictionary);
-
-        dispatchJobs( contigsByPossibleRawTypes, referenceMultiSourceBroadcast, broadcastSequenceDictionary, sampleId);
+        return contigsByPossibleRawTypes;
     }
 
-    private void dispatchJobs(final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes,
+    //==================================================================================================================
+
+    private void dispatchJobs(final String sampleId,
+                              final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes,
                               final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast,
-                              final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary, final String sampleId) {
+                              final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary) {
 
         new InsDelVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), outputDir+"/"+RawTypes.InsDel.name()+".vcf",
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), outputDir+"/"+ RawTypes.InsDel.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
         new SimpleStrandSwitchVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Inv), outputDir+"/"+RawTypes.Inv.name()+".vcf",
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch), outputDir+"/"+ RawTypes.IntraChrStrandSwitch.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
-        // here contigs supporting cpx having only 2 alignments could be handled easily together with ref block order switch ones
-        final JavaRDD<AlignedContig> diffChrTrans =
-                contigsByPossibleRawTypes.get(RawTypes.Cpx).filter(tig -> tig.alignmentIntervals.size() == 2);
         new SuspectedTransLocDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.DispersedDupOrMEI).union(diffChrTrans),
-                        outputDir+"/"+ RawTypes.DispersedDupOrMEI.name()+".vcf",
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.TandemDupOrMEIBkpt),
+                        outputDir+"/"+ RawTypes.TandemDupOrMEIBkpt.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
-    }
-
-    private enum RawTypes {
-        Ambiguous, Inv, InsDel, DispersedDupOrMEI, Cpx;
-    }
-
-    private static boolean hasOnly2Alignments(final AlignedContig contigWithOnlyOneConfig) {
-        return contigWithOnlyOneConfig.alignmentIntervals.size() == 2;
-    }
-
-    private static boolean isSameChromosomeMapping(final AlignedContig contigWithOnlyOneConfigAnd2Aln) {
-        Utils.validateArg(hasOnly2Alignments(contigWithOnlyOneConfigAnd2Aln),
-                "assumption that input contig has only 2 alignments is violated. \n" +
-                        contigWithOnlyOneConfigAnd2Aln.toString());
-        return contigWithOnlyOneConfigAnd2Aln.alignmentIntervals.get(0).referenceSpan.getContig()
-                .equals(contigWithOnlyOneConfigAnd2Aln.alignmentIntervals.get(1).referenceSpan.getContig());
-    }
-
-    static boolean isLikelyInvBreakpointOrInsInv(final AlignedContig contigWithOnlyOneConfigAnd2AlnToSameChr) {
-        Utils.validateArg(isSameChromosomeMapping(contigWithOnlyOneConfigAnd2AlnToSameChr),
-                "assumption that input contig's 2 alignments map to the same chr is violated. \n" +
-                        contigWithOnlyOneConfigAnd2AlnToSameChr.toString());
-        return contigWithOnlyOneConfigAnd2AlnToSameChr.alignmentIntervals.get(0).forwardStrand
-                ^
-                contigWithOnlyOneConfigAnd2AlnToSameChr.alignmentIntervals.get(1).forwardStrand;
-    }
-
-    private static boolean isSuggestingRefBlockOrderSwitch(final AlignedContig contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch) {
-        Utils.validateArg(isSameChromosomeMapping(contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch),
-                "assumption that input contig's 2 alignments map to the same chr is violated. \n" +
-                        contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.toString());
-        Utils.validateArg( !isLikelyInvBreakpointOrInsInv(contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch),
-                "assumption that input contig's 2 alignments map to the same chr is violated. \n" +
-                        contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.toString());
-
-        final AlignmentInterval one = contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.alignmentIntervals.get(0),
-                                two = contigWithOnlyOneConfigAnd2AlnToSameChrWithoutStrandSwitch.alignmentIntervals.get(1);
-        if (one.referenceSpan.contains(two.referenceSpan) || two.referenceSpan.contains(one.referenceSpan))
-            return false;
-        final List<AlignmentInterval> deOverlappedTempAlignments =
-                ContigAlignmentsModifier.removeOverlap(one, two, null);
-
-        return deOverlappedTempAlignments.get(0).referenceSpan.getStart() > deOverlappedTempAlignments.get(1).referenceSpan.getStart()
-                == deOverlappedTempAlignments.get(0).forwardStrand;
-    }
-
-    private static boolean isLikelyCpx(final AlignedContig contigWithOnlyOneConfig) {
-        Utils.validateArg(!contigWithOnlyOneConfig.hasEquallyGoodAlnConfigurations,
-                "assumption that input contig has one unique best alignment configuration is violated: " +
-                        contigWithOnlyOneConfig.toString());
-
-        return !hasOnly2Alignments(contigWithOnlyOneConfig) || !isSameChromosomeMapping(contigWithOnlyOneConfig);
-    }
-
-    private static EnumMap<RawTypes, JavaRDD<AlignedContig>> divertReadsByPossiblyRawTypes(final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed,
-                                                                                           final Logger toolLogger) {
-
-        final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByRawTypes = new EnumMap<>(RawTypes.class);
-
-        // long reads with more than 1 best configurations
-        contigsByRawTypes.put(RawTypes.Ambiguous,
-                contigsWithAlignmentsReconstructed.filter(tig -> tig.hasEquallyGoodAlnConfigurations));
-
-        // long reads with only 1 best configuration
-        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfig =
-                contigsWithAlignmentsReconstructed.filter(lr -> !lr.hasEquallyGoodAlnConfigurations).cache();
-
-        // divert away those likely suggesting cpx sv (more than 2 alignments after gap split, or 2 alignments to diff chr)
-        final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> cpxAndNot =
-                RDDUtils.split(contigsWithOnlyOneBestConfig, SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyCpx, true);
-
-        contigsByRawTypes.put(RawTypes.Cpx, cpxAndNot._1);
-
-        // long reads with only 1 best configuration and having only 2 alignments mapped to the same chromosome
-        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChr = cpxAndNot._2;
-
-        // divert away those with strand switch
-        final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> strandSwitchAndNot =
-                RDDUtils.split(contigsWithOnlyOneBestConfigAnd2AIToSameChr, SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isLikelyInvBreakpointOrInsInv, true);
-
-        contigsByRawTypes.put(RawTypes.Inv, strandSwitchAndNot._1);
-
-        // 2 AI, same chr, no strand switch, then only 2 cases left
-        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch = strandSwitchAndNot._2;
-
-        // case 1: dispersed duplication, or MEI (that is, reference blocks seemingly switched their orders)
-        final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> x =
-                RDDUtils.split(contigsWithOnlyOneBestConfigAnd2AIToSameChrWithoutStrandSwitch, SvDiscoverFromLocalAssemblyContigAlignmentsSpark::isSuggestingRefBlockOrderSwitch, true);
-        contigsByRawTypes.put(RawTypes.DispersedDupOrMEI, x._1);
-
-        // case 2: no order switch: ins, del, or tandem dup
-        contigsByRawTypes.put(RawTypes.InsDel, x._2);
-
-        return contigsByRawTypes;
     }
 
     private static void writeSAM(final JavaRDD<AlignedContig> filteredContigs, final String rawTypeString,
@@ -246,5 +165,4 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         FileUtils.writeSAMFile(splitLongReads.collect().iterator(), headerBroadcast.getValue(),
                 outputDir+"/"+rawTypeString+".sam", false);
     }
-
 }

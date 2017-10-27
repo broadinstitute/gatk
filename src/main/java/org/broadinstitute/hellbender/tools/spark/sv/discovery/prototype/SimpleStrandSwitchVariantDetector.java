@@ -39,17 +39,10 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
         toolLogger.info(contigs.count() + " chimeras indicating either 1) simple strand-switch breakpoints, or 2) inverted duplication.");
 
         // split between suspected inv dup VS strand-switch breakpoints
-        // logic flow: first modify alignments (heuristically) if there are overlaps on read between the alignments,
-        //             then split the input reads into two classes--those judged by IsLikelyInvertedDuplication are likely invdup and those aren't
+        // logic flow: split the input reads into two classes--those judged by IsLikelyInvertedDuplication are likely invdup and those aren't
         //             finally send the two split reads down different path, one for inv dup and one for BND records
-        final JavaRDD<AlignedContig> deOverlappedContigs = contigs.map(tig -> {
-            final AlignmentInterval one = tig.alignmentIntervals.get(0),
-                                    two = tig.alignmentIntervals.get(1);
-            return new AlignedContig(tig.contigName, tig.contigSequence,
-                    ContigAlignmentsModifier.removeOverlap(one, two, broadcastSequenceDictionary.getValue()), false);
-        });
         final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> invDupAndStrandSwitchBreakpoints =
-                RDDUtils.split(deOverlappedContigs,
+                RDDUtils.split(contigs,
                         contig -> ChimericAlignment.isLikelyInvertedDuplication(contig.alignmentIntervals.get(0),
                                 contig.alignmentIntervals.get(1)), false);
 
@@ -75,7 +68,7 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
      */
     private static Tuple2<ChimericAlignment, byte[]> convertAlignmentIntervalsToChimericAlignment
     (final AlignedContig contigWith2AIMappedToSameChrAndStrandSwitch, final Broadcast<SAMSequenceDictionary> referenceDictionary) {
-        Utils.validateArg(SvDiscoverFromLocalAssemblyContigAlignmentsSpark.isLikelyInvBreakpointOrInsInv(contigWith2AIMappedToSameChrAndStrandSwitch),
+        Utils.validateArg(AssemblyContigAlignmentSignatureClassifier.indicatesIntraChrStrandSwitchBkpts(contigWith2AIMappedToSameChrAndStrandSwitch),
                 "assumption that input aligned assembly contig has 2 alignments mapped to the same chr with strand switch is invalid.\n" +
                         contigWith2AIMappedToSameChrAndStrandSwitch.toString());
 
