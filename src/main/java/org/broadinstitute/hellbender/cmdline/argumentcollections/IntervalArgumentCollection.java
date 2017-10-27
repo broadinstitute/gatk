@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -85,7 +84,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
      * treated as separate intervals instead.
      */
     @Argument(fullName = "interval_merging_rule", shortName = "imr", doc = "Interval merging rule for abutting intervals", optional = true)
-    protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
+    protected IntervalMergingRule intervalMergingRule = IntervalMergingRule.ALL;
 
     /**
      * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records
@@ -100,6 +99,34 @@ public abstract class IntervalArgumentCollection implements Serializable {
      */
     public List<SimpleInterval> getIntervals( final SAMSequenceDictionary sequenceDict ){
         return getTraversalParameters(sequenceDict).getIntervalsForTraversal();
+    }
+
+    /**
+     * Get the interval set rule specified on the command line.
+     */
+    public IntervalSetRule getIntervalSetRule() {
+        return intervalSetRule;
+    }
+
+    /**
+     * Get the interval padding specified on the command line.
+     */
+    public int getIntervalPadding() {
+        return intervalPadding;
+    }
+
+    /**
+     * Get the interval exclusion padding specified on the command line.
+     */
+    public int getIntervalExclusionPadding() {
+        return intervalExclusionPadding;
+    }
+
+    /**
+     * Get the interval merging rule specified on the command line.
+     */
+    public IntervalMergingRule getIntervalMergingRule() {
+        return intervalMergingRule;
     }
 
     /**
@@ -134,13 +161,13 @@ public abstract class IntervalArgumentCollection implements Serializable {
             includeSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(genomeLocParser.getSequenceDictionary());
         } else {
             try {
-                includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMerging, intervalPadding, genomeLocParser);
+                includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMergingRule, intervalPadding, genomeLocParser);
             } catch( UserException.EmptyIntersection e) {
                 throw new CommandLineException.BadArgumentValue("-L, --interval_set_rule", getIntervalStrings()+","+intervalSetRule, "The specified intervals had an empty intersection");
             }
         }
 
-        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, intervalExclusionPadding, genomeLocParser);
+        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMergingRule, intervalExclusionPadding, genomeLocParser);
         if ( excludeSortedSet.contains(GenomeLoc.UNMAPPED) ) {
             throw new UserException("-XL unmapped is not currently supported");
         }
