@@ -14,9 +14,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class PythonScriptExecutorUnitTest extends GATKBaseTest {
-    final String HELLO_WORLD_SCRIPT = "print \"hello, world\"";
+    final String HELLO_WORLD_SCRIPT = "print (\"hello, world\")";
 
-    @Test(groups = {"PYTHON"})
+    @Test(groups = {"python"})
     public void testPythonExists() {
         Assert.assertTrue(
                 new PythonScriptExecutor(true).externalExecutableExists(),
@@ -24,7 +24,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
         );
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsCommand() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final boolean ret = pythonExecutor.executeCommand(HELLO_WORLD_SCRIPT, null, null);
@@ -32,7 +32,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsModule() {
         // use builtin module "random"
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
@@ -41,7 +41,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsScript() {
         final File scriptFile = writeTemporaryScriptFile(HELLO_WORLD_SCRIPT, PythonScriptExecutor.PYTHON_EXTENSION);
 
@@ -51,7 +51,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsRawArgs() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final boolean ret = pythonExecutor.executeArgs(new ArrayList<String>(Arrays.asList("-c", HELLO_WORLD_SCRIPT)));
@@ -59,7 +59,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsRawArgsSerial() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final List<String> args = new ArrayList<>(Arrays.asList("-c", HELLO_WORLD_SCRIPT));
@@ -68,7 +68,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
         Assert.assertTrue(pythonExecutor.executeArgs(args), "Second Python exec failed");
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsRawArgsWithPythonArguments() {
         final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
         final boolean ret = pythonExecutor.executeArgs(new ArrayList<>(Arrays.asList("-v", "-c", HELLO_WORLD_SCRIPT )));
@@ -76,7 +76,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
         Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testExecuteAsScriptWithScriptArguments() {
         final String SCRIPT_WITH_ARGUMENTS =
                 "import fileinput\n" +
@@ -92,7 +92,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
        Assert.assertTrue(ret, "Python exec failed");
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists", expectedExceptions = PythonScriptExecutorException.class)
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists", expectedExceptions = PythonScriptExecutorException.class)
     public void testNonExistentScriptException() throws IOException {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         executor.executeScript(
@@ -101,7 +101,7 @@ public class PythonScriptExecutorUnitTest extends GATKBaseTest {
                 null);
     }
 
-    @Test(groups = {"PYTHON"}, dependsOnMethods = "testPythonExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testPythonExists")
     public void testNonExistentScriptNoException() {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         executor.setIgnoreExceptions(true);
