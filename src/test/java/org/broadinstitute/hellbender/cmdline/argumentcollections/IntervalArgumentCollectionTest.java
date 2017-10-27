@@ -96,7 +96,7 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
     public void testIntervalMergingRuleAdjacentMerge(IntervalArgumentCollection iac){
         iac.addToIntervalStrings("1:1-100");
         iac.addToIntervalStrings("1:101-200");
-        iac.intervalMerging = IntervalMergingRule.ALL;
+        iac.intervalMergingRule = IntervalMergingRule.ALL;
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 1, 200)));
     }
 
@@ -104,7 +104,7 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
     public void testIntervalMergingRuleAdjacentNoMerge(IntervalArgumentCollection iac){
         iac.addToIntervalStrings("1:1-100");
         iac.addToIntervalStrings("1:101-200");
-        iac.intervalMerging = IntervalMergingRule.OVERLAPPING_ONLY;
+        iac.intervalMergingRule = IntervalMergingRule.OVERLAPPING_ONLY;
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).size(), 2);
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).get(0), new SimpleInterval("1", 1, 100));
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()).get(1), new SimpleInterval("1", 101, 200));
@@ -120,7 +120,7 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
         iac.addToIntervalStrings("1:101-200");
         iac.addToIntervalStrings("1:90-110");
         iac.intervalSetRule = IntervalSetRule.INTERSECTION;
-        iac.intervalMerging = IntervalMergingRule.ALL;
+        iac.intervalMergingRule = IntervalMergingRule.ALL;
         iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
     }
 
