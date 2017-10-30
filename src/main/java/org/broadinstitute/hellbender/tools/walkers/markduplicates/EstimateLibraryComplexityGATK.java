@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import picard.sam.util.PhysicalLocation;
@@ -437,11 +437,11 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
             }
             sorter.cleanup();
 
-            final MetricsFile<DuplicationMetrics, Integer> file = getMetricsFile();
+            final MetricsFile<GATKDuplicationMetrics, Integer> file = getMetricsFile();
             for (final String library : duplicationHistosByLibrary.keySet()) {
                 final Histogram<Integer> duplicationHisto = duplicationHistosByLibrary.get(library);
                 final Histogram<Integer> opticalHisto = opticalHistosByLibrary.get(library);
-                final DuplicationMetrics metrics = new DuplicationMetrics();
+                final GATKDuplicationMetrics metrics = new GATKDuplicationMetrics();
                 metrics.LIBRARY = library;
 
                 // Filter out any bins that have only a single entry in them and calcu
@@ -456,7 +456,7 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
                     }
                 }
 
-                metrics.calculateDerivedMetrics();
+                metrics.calculateDerivedFields();
                 file.addMetric(metrics);
                 file.addHistogram(duplicationHisto);
 

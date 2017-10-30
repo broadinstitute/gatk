@@ -120,12 +120,14 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
                         final SAMRecord rec = iterator.next();
                         if (!rec.isSecondaryOrSupplementary()) {
                             final String library = LibraryIdGenerator.getLibraryName(header, rec);
-                            DuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
+                            GATKDuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
                             if (metrics == null) {
-                                metrics = new DuplicationMetrics();
+                                metrics = new GATKDuplicationMetrics();
                                 metrics.LIBRARY = library;
                                 libraryIdGenerator.addMetricsByLibrary(library, metrics);
                             }
+
+                            //todo have to update the new field in the metrics
 
                             // First bring the simple metrics up to date
                             if (rec.getReadUnmappedFlag()) {
