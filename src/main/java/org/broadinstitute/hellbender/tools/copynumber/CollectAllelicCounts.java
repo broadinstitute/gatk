@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.LocusWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
@@ -20,6 +21,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSam
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -87,8 +89,12 @@ import java.util.List;
 )
 @DocumentedFeature
 public final class CollectAllelicCounts extends LocusWalker {
-
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
+
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+
+    public static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimumBaseQuality";
+    public static final String MINIMUM_BASE_QUALITY_SHORT_NAME = "minBQ";
 
     @Argument(
             doc = "Output allelic-counts file.",
@@ -98,26 +104,30 @@ public final class CollectAllelicCounts extends LocusWalker {
     private File outputAllelicCountsFile;
 
     @Argument(
-            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
-            fullName = "minimumBaseQuality",
-            shortName = "minBQ",
+            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileups.",
+            fullName = MINIMUM_BASE_QUALITY_LONG_NAME,
+            shortName = MINIMUM_BASE_QUALITY_SHORT_NAME,
             minValue = 0,
             optional = true
     )
     private int minimumBaseQuality = 20;
 
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
-
     private AllelicCountCollector allelicCountCollector;
 
     @Override
-    public boolean emitEmptyLoci() {return true;}
+    public boolean emitEmptyLoci() {
+        return true;
+    }
 
     @Override
-    public boolean requiresReference() {return true;}
+    public boolean requiresReference() {
+        return true;
+    }
 
     @Override
-    public boolean requiresIntervals() {return true;}
+    public boolean requiresIntervals() {
+        return true;
+    }
 
     @Override
     public void onTraversalStart() {
@@ -129,16 +139,18 @@ public final class CollectAllelicCounts extends LocusWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> initialReadFilters = super.getDefaultReadFilters();
-        initialReadFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-
-        return initialReadFilters;
+        final List<ReadFilter> filters = super.getDefaultReadFilters();
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        return filters;
     }
 
     @Override
     public Object onTraversalSuccess() {
         allelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
-        logger.info("Allelic counts written to " + outputAllelicCountsFile.toString());
+        logger.info("Allelic counts written to " + outputAllelicCountsFile);
         return("SUCCESS");
     }
 

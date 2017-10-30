@@ -84,6 +84,8 @@
 @SQ	SN:GL000225.1	LN:211173	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	AS:GRCh37	M5:63945c3e6962f28ffd469719a747e73c	SP:Homo Sapiens
 @SQ	SN:GL000192.1	LN:547496	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	AS:GRCh37	M5:325ba9e808f669dfeee210fdd7b470ac	SP:Homo Sapiens
 @SQ	SN:NC_007605	LN:171823	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	AS:NC_007605.1	M5:6743bd63b3ff2b5b8985d8933c53290a	SP:Epstein-Barr virus
+1	1	100	+	.
+1	101	200	+	.
 20	68099	68660	+	.
 20	123018	123579	+	.
 20	137934	138486	+	.
