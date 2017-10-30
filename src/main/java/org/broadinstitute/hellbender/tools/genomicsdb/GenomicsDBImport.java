@@ -20,6 +20,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -42,20 +43,23 @@ import java.util.function.Function;
 
 
 /**
- * This tool imports GVCFs to GenomicsDB. To run this tool,
+ * Imports GVCFs to GenomicsDB
+ *
+ * TODO: NEEDS BETTER DESCRIPTION
+ *
  * 1. A single interval must be provided
- * 2. The tool accepts multiple GVCFs each of which must contain data
+ * 2. The tool accepts multiple GVCFs, each of which must contain data
  *    for one sample
  * 3. The path to the GenomicsDB workspace must be specified
  * 4. User may optionally specify paths to which to write JSON files
  *
- * To read data from GenomicsDB, use the query interface GenomicsDBFeatureReader
  */
 @CommandLineProgramProperties(
-    summary = "Import VCFs to GenomicsDB",
-    oneLineSummary = "Import VCFs to GenomicsDB",
+    summary = "Import GVCFs to GenomicsDB",
+    oneLineSummary = "Import GVCFs to GenomicsDB",
     programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class GenomicsDBImport extends GATKTool {
 
     private static final long DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE = 16*1024L;
@@ -74,94 +78,119 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validateSampleNameMap";
     public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "readerThreads";
 
+    /**
+     * Path to the workspace directory that will be created to hold the GenomicsDB data. This must be a POSIX file
+     * system path. The target directory must not yet exist unless the overwriteExistingGenomicsDBWorkspace flag is
+     * used.
+     */
     @Argument(fullName = WORKSPACE_ARG_NAME,
               shortName = WORKSPACE_ARG_NAME,
-              doc = "Workspace for GenomicsDB. Has to be a POSIX file system path")
+              doc = "Workspace for GenomicsDB")
     private String workspace;
 
+    /**
+     * Buffer size (in bytes) that will be allocated for GenomicsDB attributes during the import process.
+     * This should be large enough to hold data from one site across all samples.
+     */
     @Argument(fullName = SEGMENT_SIZE_ARG_NAME,
               shortName = SEGMENT_SIZE_ARG_NAME,
-              doc = "Buffer size in bytes allocated for GenomicsDB attributes during " +
-                    "import. Should be large enough to hold data from one site. " +
-                    " Defaults to " + DEFAULT_SEGMENT_SIZE,
+              doc = "Buffer size (in bytes) for GenomicsDB attributes",
               optional = true)
     private long segmentSize = DEFAULT_SEGMENT_SIZE;
 
+    /**
+     * Each file input GVCF file must contain data for a single sample only. This argument can be specified multiple
+     * times and can accept either a GVCF file or a text file containing a list of GVCF files. This argument is
+     * incompatible with the sampleNameMap argument.
+     */
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
               shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
-              doc = "GVCF files to be imported to GenomicsDB. Each file must contain" +
-                    "data for only a single sample. Either this or " + SAMPLE_NAME_MAP_LONG_NAME +
-                    " must be specified.",
+              doc = "GVCF files to import into GenomicsDB",
               optional = true,
               mutex = {SAMPLE_NAME_MAP_LONG_NAME})
     private List<String> variantPaths;
 
+    /**
+     * Buffer size (in bytes) that will be allocated for storing variant contexts. Larger values are better because
+     * smaller values entail more frequent writing to disk. The default value was empirically determined to work
+     * well for many inputs.
+     */
     @Argument(fullName = VCF_BUFFER_SIZE_ARG_NAME,
               shortName = VCF_BUFFER_SIZE_ARG_NAME,
-              doc = "Buffer size in bytes to store variant contexts." +
-                    " Larger values are better as smaller values cause frequent disk writes." +
-                    " Defaults to " + DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE + " which was empirically determined to work" +
-                    " well for many inputs.",
+              doc = "Buffer size in (bytes) for variant contexts",
               optional = true,
               minValue = 1024L,
               minRecommendedValue = 10 * 1024)
     private long vcfBufferSizePerSample = DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE;
 
+    /**
+     * This flag makes it possible to overwrite a GenomicsDB that already exists.
+     */
     @Argument(fullName = OVERWRITE_WORKSPACE_NAME,
               shortName = OVERWRITE_WORKSPACE_NAME,
-              doc = "Will overwrite given workspace if it exists. " +
-                    "Otherwise a new workspace is created. " +
-                    "Defaults to false",
+              doc = "Overwrite existing GenomicsDB",
               optional = true)
     private Boolean overwriteExistingWorkspace = false;
 
+    /**
+     * This argument controls the number of samples for which readers are open at once. This provides a way to
+     * minimize memory consumption, but can cause the import operation to take longer to complete. When using more
+     * than a hundred batches, use the consolidate flag to improve feature read time. Set batchSize to 0 to disable
+     * batching (i.e. readers will be opened at once for all samples).
+     */
     @Argument(fullName = BATCHSIZE_ARG_NAME,
               shortName = BATCHSIZE_ARG_NAME,
-              doc = "Batch size controls the number of samples for which readers are open at once " +
-                    "and therefore provides a way to minimize memory consumption. However, it can take longer to complete. " +
-                    "Use the consolidate flag if more than a hundred batches were used. This will improve feature read time. " +
-                    "batchSize=0 means no batching (i.e. readers for all samples will be opened at once) " +
-                    "Defaults to " + DEFAULT_ZERO_BATCH_SIZE,
+              doc = "Batch size",
               optional = true)
     private int batchSize = DEFAULT_ZERO_BATCH_SIZE;
 
+    /**
+     * When importing data in batches, a new fragment is created for each batch. When working with very large cohort
+     * sizes, thousands of fragments would normally be created, and GenomicsDB feature readers would try to open ~20x
+     * as many files. Also, internally GenomicsDB would consume more memory to maintain bookkeeping data from all
+     * fragments. This flag mitigates these issues by causing the tool to merge all fragments into one. Note that while
+     * merging can potentially improve read performance, overall benefit might not be noticeable as the top Java layers
+     * have significantly higher overheads. This flag has no effect if only one batch is used.
+     */
     @Argument(fullName = CONSOLIDATE_ARG_NAME,
               shortName = CONSOLIDATE_ARG_NAME,
-              doc = "Boolean flag to enable consolidation. If importing data in batches, a new fragment is created for " +
-                    "each batch. In case thousands of fragments are created, GenomicsDB feature readers will try " +
-                    "to open ~20x as many files. Also, internally GenomicsDB would consume more memory to maintain " +
-                    "bookkeeping data from all fragments. Use this flag to merge all fragments into one. " +
-                    "Merging can potentially improve read performance, however overall benefit might not be noticeable " +
-                    "as the top Java layers have significantly higher overheads. This flag has no effect if only one " +
-                    "batch is used. Defaults to false",
+              doc = "Enable consolidation when using batches",
               optional = true)
     private Boolean doConsolidation = false;
 
+    /**
+     * Path to a file containing a mapping of sample names to file URIs, in tab-delimited format. If this is
+     * specified, the header from the first sample will be treated as the merged header (rather than actively merging
+     * the input headers and using the result), and the sample names will be taken from this file. This is a
+     * performance optimization that relaxes the normal checks for consistent headers and is NOT recommended for
+     * normal use. Using GVCFs with incompatible headers may result in silent data corruption.
+     */
     @Advanced
     @Argument(fullName = SAMPLE_NAME_MAP_LONG_NAME,
             shortName = SAMPLE_NAME_MAP_LONG_NAME,
-            doc = "Path to file containing a mapping of sample name to file uri in tab delimited format.  If this is " +
-                    "specified then the header from the first sample will be treated as the merged header rather than " +
-                    "merging the headers, and the sample names will be taken from this file.  This is a performance optimization " +
-                    "that relaxes the normal checks for consistent headers.  Using vcfs with incompatible headers may result " +
-                    "in silent data corruption.",
+            doc = "Mapping of sample names to file URIs",
             optional = true,
             mutex = {StandardArgumentDefinitions.VARIANT_LONG_NAME})
     private String sampleNameMapFile;
 
+    /**
+     * This flag activates a sanity check on the sampleNameMap file. Specifically, the tool checks whether
+     * feature readers are valid and shows a warning if sample names do not match what is in the headers.
+     */
     @Argument(fullName = VALIDATE_SAMPLE_MAP_LONG_NAME,
             shortName = VALIDATE_SAMPLE_MAP_LONG_NAME,
-            doc = "Boolean flag to enable checks on the sampleNameMap file. If true, tool checks whether" +
-                "feature readers are valid and shows a warning if sample names do not match with the headers." +
-                "Defaults to false",
+            doc = "Enable checks on the sampleNameMap file",
             optional = true)
     private Boolean validateSampleToReaderMap = false;
 
+    /**
+     * This argument controls how many simultaneous threads to use when opening GVCFs in batches. Higher values may
+     * improve performance when network latency is an issue.
+     */
     @Advanced
     @Argument(fullName = VCF_INITIALIZER_THREADS_LONG_NAME,
             shortName = VCF_INITIALIZER_THREADS_LONG_NAME,
-            doc = "how many simultaneous threads to use when opening VCFs in batches, higher values may improve performance " +
-                    "when network latency is an issue",
+            doc = "Number of simultaneous threads for batches",
             optional = true,
             minValue = 1)
     private int vcfInitializerThreads = 1;
