@@ -375,6 +375,30 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    @Test
+    public void testAssemblyRegionAndActivityProfileOutput() throws Exception {
+        final File output = createTempFile("testAssemblyRegionAndActivityProfileOutput", ".vcf");
+        final File assemblyRegionOut = createTempFile("testAssemblyRegionAndActivityProfileOutput_assemblyregions", ".igv");
+        final File activityProfileOut = createTempFile("testAssemblyRegionAndActivityProfileOutput_activityprofile", ".igv");
+        final File expectedAssemblyRegionOut = new File(TEST_FILES_DIR, "expected.testAssemblyRegionAndActivityProfileOutput_assemblyregions.igv");
+        final File expectedActivityProfileOut = new File(TEST_FILES_DIR, "expected.testAssemblyRegionAndActivityProfileOutput_activityprofile.igv");
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10003000",
+                "-O", output.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--assemblyRegionOut", assemblyRegionOut.getAbsolutePath(),
+                "--activityProfileOut", activityProfileOut.getAbsolutePath()
+        };
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(assemblyRegionOut, expectedAssemblyRegionOut);
+        IntegrationTestSpec.assertEqualTextFiles(activityProfileOut, expectedActivityProfileOut);
+    }
+
     /*
      * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and the first genotype.
      */
