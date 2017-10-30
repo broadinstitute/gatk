@@ -105,8 +105,9 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     }
 
     /**
+     * Get in name-sorted order a list of samples merged from the driving variants files.
      *
-     *
+     * @return SampleSet merged requiring unique names from the drivingVariants
      */
     public final SortedSet<String> getSamplesForVariants() {
         return drivingVariants.getSamples();

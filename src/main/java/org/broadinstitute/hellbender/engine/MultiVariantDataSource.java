@@ -235,9 +235,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
         final Map<String, VCFHeader> headers = featureDataSources
                 .stream()
                 .collect(Collectors.toMap(ds -> ds.getName(), ds -> (VCFHeader) ds.getHeader()));
-
-        // Now merge the headers using htsjdk, which is pretty promiscuous, and which only works properly
-        // because of the cross-dictionary validation done in validateAllSequenceDictionaries.
+        
         return VcfUtils.getSortedSampleSet(headers, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
     }
 

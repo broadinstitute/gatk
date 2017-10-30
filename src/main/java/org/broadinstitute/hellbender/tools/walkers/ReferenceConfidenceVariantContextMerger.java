@@ -311,7 +311,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     /**
      * Determines the ref allele given the provided reference base at this position
      *
-     * @param VCs     collection of unsorted genomic VCs
+     * @param VCs     collection of unsorted genomic variantContexts
      * @param loc     the current location
      * @param refBase the reference allele to use if all contexts in the VC are spanning
      * @return new Allele or null if no reference allele/base is available
