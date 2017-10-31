@@ -82,7 +82,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     @Argument(doc = "whether to run old way of filtering or not",
             shortName = "OT",
             fullName = "oldFilteringToo", optional = true)
-    private boolean runOldFilteringToo = false;
+    private boolean runOldFilteringTool = false;
 
     @Override
     public boolean requiresReads() {
@@ -108,9 +108,9 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                         .map(AlignedContig::formatContigInfo).collect().iterator(),
                 outputFilePrefix + "_newFiltering.ai");
 
-        if (runOldFilteringToo) {
+        if (runOldFilteringTool) {
             FileUtils.writeLinesToSingleFile(
-                    oldWayOfFiltering(reads, header, localLogger).map(AlignedContig::formatContigInfo)
+                    oldWayOfFiltering(reads, header).map(AlignedContig::formatContigInfo)
                     .collect().iterator(),
                     outputFilePrefix + "_oldFiltering.ai");
         }
@@ -122,12 +122,11 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      * Here it is simply appended with a collection operation that collects the alignments stored in the {@link ChimericAlignment}'s.
      */
     private static JavaPairRDD<String, List<String>> oldWayOfFiltering(final JavaRDD<GATKRead> longReads,
-                                                                       final SAMFileHeader header,
-                                                                       final Logger toolLogger) {
+                                                                       final SAMFileHeader header) {
 
         // parse SAM records transform to AlignmentInterval format and split gapped alignment
         final JavaRDD<AlignedContig> parsedContigAlignmentsWithGapSplit =
-                new SAMFormattedContigAlignmentParser(longReads, header, true, toolLogger)
+                new SAMFormattedContigAlignmentParser(longReads, header, true)
                         .getAlignedContigs()
                         .filter(contig -> contig.alignmentIntervals.size()>1).cache();
 
@@ -144,8 +143,8 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                                         .sorted(AlignedContig.getAlignmentIntervalComparator())
                                         .collect(Collectors.toList())))
                 .sortByKey()
-                .mapValues(ailist -> ailist.stream().map(AlignmentInterval::toPackedString)
-                                     .collect(SVUtils.arrayListCollector(ailist.size())));
+                .mapValues(aiList -> aiList.stream().map(AlignmentInterval::toPackedString)
+                                     .collect(SVUtils.arrayListCollector(aiList.size())));
     }
 
     /**
@@ -156,8 +155,6 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      * @param longReads     long read alignments
      * @param header        header for the long reads
      * @param toolLogger    logger for, most likely, debugging uses
-     *
-     * @param scoreDiffTolerance
      * @return              contigs with alignments filtered and custom formatted as {@link AlignmentInterval}
      */
     static JavaRDD<AlignedContig> filterByScore(final JavaRDD<GATKRead> longReads,
@@ -171,7 +168,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                          longReads.map(GATKRead::getName).distinct().count() + " contigs.");
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
-                new SAMFormattedContigAlignmentParser(longReads, header, false, toolLogger)
+                new SAMFormattedContigAlignmentParser(longReads, header, false)
                         .getAlignedContigs()
                         .filter(FilterLongReadAlignmentsSAMSpark::contigFilter).cache();
         longReads.unpersist();
@@ -338,9 +335,9 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      * or less summed mismatches if still tie.
      */
     private static Comparator<AlignedContig> sortConfigurations() {
-        Comparator<AlignedContig> numFirst
+        final Comparator<AlignedContig> numFirst
                 = (AlignedContig x, AlignedContig y) -> Integer.compare(x.alignmentIntervals.size(), y.alignmentIntervals.size());
-        Comparator<AlignedContig> mismatchSecond
+        final Comparator<AlignedContig> mismatchSecond
                 = (AlignedContig x, AlignedContig y) -> Integer.compare(x.alignmentIntervals.stream().mapToInt(ai -> ai.mismatches).sum(),
                                                                         y.alignmentIntervals.stream().mapToInt(ai -> ai.mismatches).sum());
         return numFirst.thenComparing(mismatchSecond);
