@@ -19,9 +19,7 @@ import java.io.FileReader;
  * This class is an extension of SamFileTester used to test AbstractMarkDuplicatesCommandLineProgram's with SAM files generated on the fly.
  * This performs the underlying tests defined by classes such as AbstractMarkDuplicatesCommandLineProgramTest.
  */
-// TODO: is this really necessary for the packaged testing framework?
-// TODO: it looks like that this is a SamFileTester exclusive for MarkDuplicates with the parameter in GATK/Picard
-// TODO: and thus, it should live in the test resources
+// TODO: it should live in the test sources, as the implementations - not required to be packed in the testing framework
 public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
 
     final private File metricsFile;

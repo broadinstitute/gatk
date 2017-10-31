@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
+import org.broadinstitute.hellbender.utils.test.SimpleIntervalTestFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -23,7 +23,7 @@ import java.util.*;
  */
 public final class TargetCollectionUnitTest extends GATKBaseTest {
 
-    private static final TargetsToolsTestUtils targetsUtils = new TargetsToolsTestUtils(new File(CommandLineProgramTest.getTestDataDir(), "exome/test_reference.fasta"));
+    private static final SimpleIntervalTestFactory targetsUtils = new SimpleIntervalTestFactory(new File(CommandLineProgramTest.getTestDataDir(), "exome/test_reference.fasta"));
 
     /**
      * General target_db_test_data, will contain TargetDB instances as a single arguments.

@@ -12,10 +12,10 @@ import java.io.File;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class TargetsToolsTestUtils {
+public final class SimpleIntervalTestFactory {
 
     /** Initialize the reference file and dictionary to use for creating intervals. */
-    public TargetsToolsTestUtils(final File referenceFile){
+    public SimpleIntervalTestFactory(final File referenceFile){
         this.REFERENCE_FILE = referenceFile;
         this.REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);;
     }
@@ -74,6 +74,6 @@ public final class TargetsToolsTestUtils {
      */
     public SimpleInterval createInterval(final String contig, final int start) {
         // TODO: should this really be createInterval(contig, start, start) instead of using the constructor supplied here?
-        return new SimpleInterval(contig,start,start);
+        return createInterval(contig,start,start);
     }
 }

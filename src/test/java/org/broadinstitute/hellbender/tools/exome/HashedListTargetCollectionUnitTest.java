@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
+import org.broadinstitute.hellbender.utils.test.SimpleIntervalTestFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  */
 public final class HashedListTargetCollectionUnitTest extends GATKBaseTest {
 
-    private static final TargetsToolsTestUtils targetsUtils = new TargetsToolsTestUtils(new File(CommandLineProgramTest.getTestDataDir(), "exome/test_reference.fasta"));
+    private static final SimpleIntervalTestFactory targetsUtils = new SimpleIntervalTestFactory(new File(CommandLineProgramTest.getTestDataDir(), "exome/test_reference.fasta"));
 
     /**
      * Average target size for randomly generated test data.
