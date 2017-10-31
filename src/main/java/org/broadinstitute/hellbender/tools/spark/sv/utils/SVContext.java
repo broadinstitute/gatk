@@ -60,10 +60,9 @@ public final class SVContext extends VariantContext {
     public static SVContext of(final VariantContext vc) {
         if (vc instanceof SVContext) {
             return (SVContext) vc;
-        } else {
-            assertIsStructuralVariantContext(vc);
-            return new SVContext(vc);
         }
+        assertIsStructuralVariantContext(vc);
+        return new SVContext(vc);
     }
 
     private static void assertIsStructuralVariantContext(final VariantContext vc) {
@@ -244,7 +243,7 @@ public final class SVContext extends VariantContext {
      * @return {@link #NO_LENGTH} if there is no SVLEN annotation and the length could not be inferred, 0 or greater otherwise.
      */
     public int getStructuralVariantLength() {
-        if (length == MISSING_END && hasAttribute(GATKSVVCFConstants.SVLEN)) {
+        if (length == MISSING_LENGTH) {
             length = Math.abs(getAttributeAsInt(GATKSVVCFConstants.SVLEN, NO_LENGTH));
         }
         return length;

@@ -224,6 +224,24 @@ public class SVIntervalTreeTest extends BaseTest {
     }
 
     @Test(groups = "sv")
+    public void overlapFractionTest() {
+        final SVIntervalTree<String> tree1 = new SVIntervalTree<>();
+        final SVIntervalTree<Integer> tree2 = new SVIntervalTree<>();
+        Assert.assertEquals(tree1.overlapFraction(tree2), Float.NaN);
+        tree1.put(new SVInterval(0, 1000, 2000), null);
+        Assert.assertEquals(tree1.overlapFraction(tree2), 0.f);
+        tree2.put(new SVInterval(0, 2000, 2500), null);
+        Assert.assertEquals(tree1.overlapFraction(tree2), 0.f);
+        tree2.put(new SVInterval(0, 1999, 2500), null);
+        Assert.assertEquals(tree1.overlapFraction(tree2), 1.f);
+        tree2.clear();
+        tree2.put(new SVInterval(0, 500, 1001), null);
+        Assert.assertEquals(tree1.overlapFraction(tree2), 1.f);
+        tree1.put(new SVInterval( 0, 3000, 4000), null);
+        Assert.assertEquals(tree1.overlapFraction(tree2), 0.5f);
+    }
+
+    @Test(groups = "sv")
     public void reverseIteratorTest() {
         final SVIntervalTree<Integer> testTree = initTree();
         final Iterator<SVIntervalTree.Entry<Integer>> itr1 = testTree.reverseIterator();

@@ -227,6 +227,41 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
     }
 
     /**
+     * Check the tree against a probe interval to see if there's an overlapping interval.
+     *
+     * @param interval The interval sought.
+     * @return Whether or not there's an overlapping interval in this tree.
+     */
+    public boolean hasOverlapper( final SVInterval interval ) {
+        Node<V> node = root;
+
+        if ( node != null && !node.getMaxEndInterval().isUpstreamOf(interval) ) {
+            while ( true ) {
+                if ( node.getInterval().overlaps(interval) ) {
+                    return true;
+                } else { // no overlap.  if there might be a left sub-tree overlapper, consider the left sub-tree.
+                    final Node<V> left = node.getLeft();
+                    if ( left != null && !left.getMaxEndInterval().isUpstreamOf(interval) ) {
+                        node = left;
+                    } else { // left sub-tree cannot contain an overlapper.  consider the right sub-tree.
+                        // if everything in the right sub-tree is past the end of the query interval, then break
+                        if ( interval.isUpstreamOf(node.getInterval()) ) {
+                            break;
+                        }
+
+                        node = node.getRight();
+                        // if no right sub-tree or all nodes end too early, then break
+                        if ( node == null || node.getMaxEndInterval().isUpstreamOf(interval) ) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Find the earliest interval in the tree that overlaps the specified interval.
      *
      * @param interval The interval sought.
@@ -384,6 +419,15 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
         final V result = this.sentinel;
         this.sentinel = sentinel;
         return result;
+    }
+
+    /** fraction of the intervals in this tree that overlap with intervals in some other tree */
+    public float overlapFraction( final SVIntervalTree<?> that ) {
+        int count = 0;
+        for ( final Entry<V> entry : this ) {
+            if ( that.hasOverlapper(entry.getInterval()) ) count += 1;
+        }
+        return (float)count/size();
     }
 
     void removeNode( final Node<V> node ) {
@@ -879,7 +923,7 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
         protected Node<V> next;
         protected Node<V> last;
 
-        protected IteratorBase( Node<V> node ) { next = node; }
+        protected IteratorBase( final Node<V> node ) { next = node; }
 
         @Override
         public boolean hasNext() {
