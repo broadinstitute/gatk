@@ -154,6 +154,11 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 .inferSvAndWriteVCF(outputDir+"/"+ RawTypes.TandemDupOrMEIBkpt.name()+".vcf", sampleId,
                         contigsByPossibleRawTypes.get(RawTypes.TandemDupOrMEIBkpt),
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger);
+
+        new CpxVariantDetector()
+                .inferSvAndWriteVCF(outputDir+"/"+ RawTypes.Cpx.name()+".vcf", sampleId,
+                        contigsByPossibleRawTypes.get(RawTypes.Cpx),
+                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger);
     }
 
     private static void writeSAM(final JavaRDD<AlignedContig> filteredContigs, final String rawTypeString,
