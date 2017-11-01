@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.coverage.caller;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.copyratio.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.copyratio.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.segmentation.CopyRatioSegment;
@@ -10,7 +11,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMet
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -22,7 +22,7 @@ import java.util.stream.IntStream;
 
 import static org.broadinstitute.hellbender.tools.copynumber.coverage.caller.CalledCopyRatioSegment.Call.*;
 
-public final class ReCapSegCallerUnitTest extends BaseTest {
+public final class ReCapSegCallerUnitTest extends GATKBaseTest {
     @Test
     public void testMakeCalls() {
 

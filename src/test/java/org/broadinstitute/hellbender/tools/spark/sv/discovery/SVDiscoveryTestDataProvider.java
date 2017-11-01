@@ -30,7 +30,7 @@ public final class SVDiscoveryTestDataProvider {
     public static final SAMSequenceDictionary seqDict = reference.getReferenceSequenceDictionary(null);
 
     public static final ReferenceMultiSource b38_reference = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
-            BaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+            GATKBaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b38_seqDict = b38_reference.getReferenceSequenceDictionary(null);
 
     public static byte[] getReverseComplimentCopy(final byte[] sequence) {

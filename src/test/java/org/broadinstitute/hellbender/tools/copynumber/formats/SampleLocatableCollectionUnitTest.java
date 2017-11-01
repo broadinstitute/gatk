@@ -2,13 +2,13 @@ package org.broadinstitute.hellbender.tools.copynumber.formats;
 
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SampleLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.testng.Assert;
@@ -26,7 +26,7 @@ import java.util.function.Function;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SampleLocatableCollectionUnitTest extends BaseTest {
+public final class SampleLocatableCollectionUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = toolsTestDir + "copynumber/formats";
     private static final File SIMPLE_LOCATABLE_COLLECTION_FILE =
             new File(TEST_SUB_DIR, "locatable-collection-tsv-simple-locatable-collection.tsv");
