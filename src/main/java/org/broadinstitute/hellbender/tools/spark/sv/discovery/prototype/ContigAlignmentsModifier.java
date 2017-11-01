@@ -38,20 +38,7 @@ public final class ContigAlignmentsModifier {
             reconstructedOne = one;
             reconstructedTwo = two;
         } else {
-            final boolean oneYieldToTwo;
-            if (one.referenceSpan.getContig().equals(two.referenceSpan.getContig())) {
-                if (one.forwardStrand != two.forwardStrand) { // so that the inverted duplicated reference span is minimal.
-                    // jumpStart is for "the starting reference location of a jump that linked two alignment intervals", and
-                    // jumpLandingRefLoc is for "that jump's landing reference location"
-                    final int jumpStartRefLoc = one.referenceSpan.getEnd(),
-                            jumpLandingRefLoc = two.referenceSpan.getStart();
-                    oneYieldToTwo = jumpStartRefLoc <= jumpLandingRefLoc == one.forwardStrand;
-                } else {
-                    oneYieldToTwo = one.forwardStrand;
-                }
-            } else {
-                oneYieldToTwo = IntervalUtils.compareContigs(one.referenceSpan, two.referenceSpan, dictionary) > 0;
-            }
+            final boolean oneYieldToTwo = homologyYieldingStrategy(one, two, dictionary);
 
             if (oneYieldToTwo) {
                 reconstructedOne = clipAlignmentInterval(one, overlapOnRead, true);
@@ -63,6 +50,30 @@ public final class ContigAlignmentsModifier {
 
         }
         return Arrays.asList(reconstructedOne, reconstructedTwo);
+    }
+
+    /**
+     * Implementing homology-yielding strategy between two alignments {@code one} and {@code two}.
+     *
+     * @return true if {@code one} should yield the homologous sequence to {@code two}.
+     */
+    static boolean homologyYieldingStrategy(final AlignmentInterval one, final AlignmentInterval two,
+                                            final SAMSequenceDictionary dictionary) {
+        final boolean oneYieldToTwo;
+        if (one.referenceSpan.getContig().equals(two.referenceSpan.getContig())) {
+            if (one.forwardStrand != two.forwardStrand) { // so that the inverted duplicated reference span is minimal.
+                // jumpStart is for "the starting reference location of a jump that linked two alignment intervals", and
+                // jumpLandingRefLoc is for "that jump's landing reference location"
+                final int jumpStartRefLoc = one.referenceSpan.getEnd(),
+                          jumpLandingRefLoc = two.referenceSpan.getStart();
+                oneYieldToTwo = jumpStartRefLoc <= jumpLandingRefLoc == one.forwardStrand;
+            } else {
+                oneYieldToTwo = one.forwardStrand;
+            }
+        } else {
+            oneYieldToTwo = IntervalUtils.compareContigs(one.referenceSpan, two.referenceSpan, dictionary) > 0;
+        }
+        return oneYieldToTwo;
     }
 
     /**

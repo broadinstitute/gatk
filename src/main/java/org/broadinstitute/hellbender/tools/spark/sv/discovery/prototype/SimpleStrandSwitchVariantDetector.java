@@ -30,11 +30,10 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
     static final int MORE_RELAXED_ALIGNMENT_MIN_MQ = 20;
 
     @Override
-    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> contigs, final String vcfOutputFileName,
+    public void inferSvAndWriteVCF(final String vcfOutputFileName, final String sampleId, final JavaRDD<AlignedContig> contigs,
                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
-                                   final Logger toolLogger,
-                                   final String sampleId) {
+                                   final Logger toolLogger) {
 
         toolLogger.info(contigs.count() + " chimeras indicating either 1) simple strand-switch breakpoints, or 2) inverted duplication.");
 

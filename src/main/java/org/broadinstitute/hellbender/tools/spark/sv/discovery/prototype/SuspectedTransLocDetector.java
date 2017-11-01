@@ -20,12 +20,10 @@ final class SuspectedTransLocDetector implements VariantDetectorFromLocalAssembl
     private static final List<String> EMPTY_INSERTION_MAPPINGS = Collections.EMPTY_LIST;
 
     @Override
-    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> localAssemblyContigs,
-                                   final String vcfOutputFileName,
+    public void inferSvAndWriteVCF(final String vcfOutputFileName, final String sampleId, final JavaRDD<AlignedContig> localAssemblyContigs,
                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                    final Broadcast<SAMSequenceDictionary> refSequenceDictionary,
-                                   final Logger toolLogger,
-                                   final String sampleId) {
+                                   final Logger toolLogger) {
         toolLogger.info(localAssemblyContigs.count() + " chimeras indicating strand-switch-less breakpoints");
 
         final JavaPairRDD<ChimericAlignment, byte[]> chimeraAndSequence =

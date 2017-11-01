@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.*;
 import org.apache.spark.api.java.JavaRDD;
@@ -305,5 +308,22 @@ public final class SVUtils {
         }
 
         return ctx.parallelize(sequenceChunks, sequenceChunks.size()/ref_records_per_partition+1);
+    }
+
+    public static final class SimpleIntervalKryoSerializer extends com.esotericsoftware.kryo.Serializer<SimpleInterval> {
+        @Override
+        public void write(final Kryo kryo, final Output output, final SimpleInterval simpleInterval) {
+            output.writeString(simpleInterval.getContig());
+            output.writeInt(simpleInterval.getStart());
+            output.writeInt(simpleInterval.getEnd());
+        }
+
+        @Override
+        public SimpleInterval read(final Kryo kryo, final Input input, final Class<SimpleInterval> clazz) {
+            final String ctg = input.readString();
+            final int start = input.readInt();
+            final int end = input.readInt();
+            return new SimpleInterval(ctg, start, end);
+        }
     }
 }

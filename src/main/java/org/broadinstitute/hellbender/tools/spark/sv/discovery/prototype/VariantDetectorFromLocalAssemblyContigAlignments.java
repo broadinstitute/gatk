@@ -14,7 +14,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 interface VariantDetectorFromLocalAssemblyContigAlignments {
 
     // TODO: 10/6/17 requires a ReferenceMultiSource and SAMSequenceDictionary at the same time because the 2bit reference gives a scrambled reference contig order (see #2037)
-    void inferSvAndWriteVCF(final JavaRDD<AlignedContig> contigs, final String vcfOutputFileName,
-                            final Broadcast<ReferenceMultiSource> broadcastReference, final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
-                            final Logger toolLogger, final String sampleId);
+    void inferSvAndWriteVCF(final String vcfOutputFileName, final String sampleId, final JavaRDD<AlignedContig> contigs,
+                            final Broadcast<ReferenceMultiSource> broadcastReference,
+                            final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                            final Logger toolLogger);
 }

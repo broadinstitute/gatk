@@ -328,7 +328,7 @@ public final class AlignmentInterval {
     /**
      * Computes overlap between reference span of the two input alignment intervals.
      */
-    static int overlapOnRefSpan(final AlignmentInterval one, final AlignmentInterval two) {
+    public static int overlapOnRefSpan(final AlignmentInterval one, final AlignmentInterval two) {
 
         if (!one.referenceSpan.getContig().equals(two.referenceSpan.getContig())) return 0;
 

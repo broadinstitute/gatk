@@ -141,17 +141,19 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                               final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary) {
 
         new InsDelVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), outputDir+"/"+ RawTypes.InsDel.name()+".vcf",
-                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
+                .inferSvAndWriteVCF(outputDir+"/"+ RawTypes.InsDel.name()+".vcf", sampleId,
+                        contigsByPossibleRawTypes.get(RawTypes.InsDel),
+                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger);
 
         new SimpleStrandSwitchVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch), outputDir+"/"+ RawTypes.IntraChrStrandSwitch.name()+".vcf",
-                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
+                .inferSvAndWriteVCF(outputDir+"/"+ RawTypes.IntraChrStrandSwitch.name()+".vcf", sampleId,
+                        contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch),
+                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger);
 
         new SuspectedTransLocDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.TandemDupOrMEIBkpt),
-                        outputDir+"/"+ RawTypes.TandemDupOrMEIBkpt.name()+".vcf",
-                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
+                .inferSvAndWriteVCF(outputDir+"/"+ RawTypes.TandemDupOrMEIBkpt.name()+".vcf", sampleId,
+                        contigsByPossibleRawTypes.get(RawTypes.TandemDupOrMEIBkpt),
+                        referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger);
     }
 
     private static void writeSAM(final JavaRDD<AlignedContig> filteredContigs, final String rawTypeString,
