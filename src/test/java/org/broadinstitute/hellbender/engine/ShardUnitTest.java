@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.List;
 
-public class ShardUnitTest extends BaseTest {
+public class ShardUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "DivideIntervalIntoShardsTestData")
     public Object[][] divideIntervalIntoShardsTestData() {

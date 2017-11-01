@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,7 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PSTaxonomyDatabaseTest extends BaseTest {
+public class PSTaxonomyDatabaseTest extends GATKBaseTest {
 
     @Test
     public void testSerializeDeserialize() {

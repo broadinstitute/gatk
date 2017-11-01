@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.pon.allelic;
 import htsjdk.samtools.util.Log;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -18,7 +18,7 @@ import java.util.List;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AllelicPanelOfNormalsCreatorUnitTest extends BaseTest {
+public final class AllelicPanelOfNormalsCreatorUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final FileFilter PULLDOWN_FILTER = new WildcardFileFilter("allelic-pon-test-pulldown-*tsv");

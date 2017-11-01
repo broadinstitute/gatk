@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.CommandLineProgramTester;
 import org.testng.Assert;
 
@@ -14,7 +13,7 @@ import java.util.List;
 /**
  * Utility class for GATK CommandLine Program testing.
  */
-public abstract class CommandLineProgramTest extends BaseTest implements CommandLineProgramTester {
+public abstract class CommandLineProgramTest extends GATKBaseTest implements CommandLineProgramTester {
 
     /**
      * Returns the location of the resource directory. The default implementation points to the common directory for tools.

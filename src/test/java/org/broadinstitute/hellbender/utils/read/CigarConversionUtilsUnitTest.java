@@ -6,7 +6,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class CigarConversionUtilsUnitTest extends BaseTest {
+public class CigarConversionUtilsUnitTest extends GATKBaseTest {
 
     private CigarUnit createCigarUnit( final Long operationLength, final String operation ) {
         final CigarUnit unit = new CigarUnit();

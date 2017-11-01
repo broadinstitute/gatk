@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +17,7 @@ import java.util.Collections;
 /**
  * Created by davidben on 3/23/17.
  */
-public class ReferenceBasesUnitTest extends BaseTest {
+public class ReferenceBasesUnitTest extends GATKBaseTest {
 
     @Test
     public void test() {

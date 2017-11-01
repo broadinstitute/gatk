@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
-import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.collections.ListUtils;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +15,7 @@ import java.util.*;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class IntervalOverlappingIteratorUnitTest extends BaseTest {
+public class IntervalOverlappingIteratorUnitTest extends GATKBaseTest {
 
     @DataProvider(name="data")
     public Object[][] getData() {

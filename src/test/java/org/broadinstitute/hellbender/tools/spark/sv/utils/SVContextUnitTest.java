@@ -8,12 +8,12 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.integration.SVIntegrationTestDataProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.TestException;
@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
-public class SVContextUnitTest extends BaseTest {
+public class SVContextUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/spark/sv/utils/";
 
     private static final File VALID_VARIANTS_FILE = new File(TEST_SUB_DIR, "SVContext.vcf.gz");

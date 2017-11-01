@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMSequenceRecord;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.TestException;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import scala.Tuple2;
 import java.io.*;
 import java.util.*;
 
-public final class PSBuildReferenceTaxonomyUtilsTest extends BaseTest {
+public final class PSBuildReferenceTaxonomyUtilsTest extends GATKBaseTest {
 
     @Test
     public void testParseReferenceRecords() {

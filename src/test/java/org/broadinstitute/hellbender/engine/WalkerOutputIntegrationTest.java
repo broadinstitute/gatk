@@ -4,7 +4,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.PrintReads;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -23,7 +23,7 @@ public class WalkerOutputIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testPGOnByDefault() throws IOException {
         final File inFile = new File(TEST_DATA_DIR, "testPGOnByDefault.bam");
-        final File outFile = BaseTest.createTempFile("testNoConflictRG", ".bam");
+        final File outFile = GATKBaseTest.createTempFile("testNoConflictRG", ".bam");
         final String[] args = new String[] {
                 //NOTE: no addOutputSAMProgramRecord argument
                 "--input" , inFile.getAbsolutePath(),

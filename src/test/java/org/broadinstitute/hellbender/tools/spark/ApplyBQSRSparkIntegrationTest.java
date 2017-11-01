@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
@@ -78,7 +78,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test(dataProvider = "ApplyBQSRTest", groups = "spark")
     public void testApplyBQSR(ABQSRTest params) throws IOException {
-        File outFile = BaseTest.createTempFile("applyBQSRTest", params.outputExtension);
+        File outFile = GATKBaseTest.createTempFile("applyBQSRTest", params.outputExtension);
         final ArrayList<String> args = new ArrayList<>();
         File refFile = null;
 

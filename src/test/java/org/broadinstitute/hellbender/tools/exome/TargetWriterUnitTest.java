@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,13 +21,13 @@ public class TargetWriterUnitTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullAnnotationSet() throws IOException {
-        final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
+        final File testFile = GATKBaseTest.createTempFile("ttw-test", ".tsv");
         new TargetWriter(testFile, null).close();
     }
 
     @Test(dataProvider="correctAnnotationSets")
     public void testSimpleWrite(final Set<TargetAnnotation> annotationSet) throws IOException {
-        final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
+        final File testFile = GATKBaseTest.createTempFile("ttw-test", ".tsv");
         final int TARGET_COUNT = 10;
 
         final TargetWriter subject = new TargetWriter(testFile, annotationSet);
@@ -54,7 +54,7 @@ public class TargetWriterUnitTest {
 
     @Test(dataProvider="wrongTargetAnnotationSetPairs", expectedExceptions = NoSuchElementException.class)
     public void testWrongTargetAnnotations(final Set<TargetAnnotation> expectedSet, final Set<TargetAnnotation> actualAnnotationSet) throws IOException {
-        final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
+        final File testFile = GATKBaseTest.createTempFile("ttw-test", ".tsv");
         final int TARGET_COUNT = 5;
 
         final TargetWriter subject = new TargetWriter(testFile, expectedSet);
@@ -69,7 +69,7 @@ public class TargetWriterUnitTest {
 
     @Test(dataProvider="extraTargetAnnotationSetPairs")
     public void testExtraTargetAnnotations(final Set<TargetAnnotation> expectedSet, final Set<TargetAnnotation> actualAnnotationSet) throws IOException {
-        final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
+        final File testFile = GATKBaseTest.createTempFile("ttw-test", ".tsv");
         final int TARGET_COUNT = 5;
 
         final TargetWriter subject = new TargetWriter(testFile, expectedSet);

@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 /**
  * testing of the new (non-legacy) version of LocusIteratorByState
  */
-public abstract class LocusIteratorByStateBaseTest extends BaseTest {
+public abstract class LocusIteratorByStateBaseTest extends GATKBaseTest {
     protected static SAMFileHeader header;
     protected GenomeLocParser genomeLocParser;
 

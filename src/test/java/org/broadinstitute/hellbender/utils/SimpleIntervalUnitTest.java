@@ -5,15 +5,14 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public final class SimpleIntervalUnitTest extends BaseTest {
+public final class SimpleIntervalUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "badIntervals")
     public Object[][] badIntervals(){

@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class CopyRatioModellerUnitTest extends BaseTest {
+public final class CopyRatioModellerUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-copy-ratio-modeller.tsv");

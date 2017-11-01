@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -21,7 +21,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
+public final class VariantOverlapAnnotatorUnitTest extends GATKBaseTest {
 
     private VariantContext makeVC(final String source, final String id, final List<String> alleles) {
         final VariantContext vc = GATKVariantContextUtils.makeFromAlleles(source, "20", 10, alleles);

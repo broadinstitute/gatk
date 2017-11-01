@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.segmentation;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter.ChangepointSortOrder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class KernelSegmenterUnitTest extends BaseTest {
+public final class KernelSegmenterUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 1;   //make sure to reset random seed to this value before each simulated test case
 
     /**

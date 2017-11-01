@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.linalg;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.junit.Assert;
 import org.nd4j.linalg.factory.Nd4j;
 import org.testng.annotations.DataProvider;
@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 
-public class FourierLinearOperatorNDArrayUnitTest extends BaseTest {
+public class FourierLinearOperatorNDArrayUnitTest extends GATKBaseTest {
 
     private static final double EPS = 1e-8;
 

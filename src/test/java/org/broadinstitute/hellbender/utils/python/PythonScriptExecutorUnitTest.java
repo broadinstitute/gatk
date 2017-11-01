@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.python;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -12,7 +13,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class PythonScriptExecutorUnitTest extends BaseTest {
+public class PythonScriptExecutorUnitTest extends GATKBaseTest {
     final String HELLO_WORLD_SCRIPT = "print \"hello, world\"";
 
     @Test(groups = {"PYTHON"})

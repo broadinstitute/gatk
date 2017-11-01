@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -187,7 +187,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceMultiSourceIsSerializable() {
-        final ReferenceMultiSource args = new ReferenceMultiSource((PipelineOptions) null, BaseTest.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource args = new ReferenceMultiSource((PipelineOptions) null, GATKBaseTest.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(args, ReferenceMultiSource.class, SparkContextFactory.getTestSparkContext().getConf());
     }
 

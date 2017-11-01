@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.base.Strings;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public final class SeqGraphUnitTest extends BaseTest {
+public final class SeqGraphUnitTest extends GATKBaseTest {
     private static final boolean DEBUG = false;
 
     private class MergeNodesWithNoVariationTestProvider extends TestDataProvider {

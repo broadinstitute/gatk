@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
  * Tests for Segment and SegmentUtils classes
  *
  */
-public final class ModeledSegmentUnitTest extends BaseTest{
+public final class ModeledSegmentUnitTest extends GATKBaseTest {
 
     //a common set of CalledIntervals for tests
     private final ModeledSegment ci1 = new ModeledSegment(new SimpleInterval("chr1", 1, 4), "call", 12, 0);

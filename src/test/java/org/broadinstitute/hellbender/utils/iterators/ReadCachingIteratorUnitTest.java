@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -11,7 +11,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.*;
 
-public class ReadCachingIteratorUnitTest extends BaseTest {
+public class ReadCachingIteratorUnitTest extends GATKBaseTest {
 
     @Test
     public void testReadCachingIterator() {

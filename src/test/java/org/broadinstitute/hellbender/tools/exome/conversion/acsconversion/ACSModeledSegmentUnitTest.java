@@ -3,14 +3,14 @@ package org.broadinstitute.hellbender.tools.exome.conversion.acsconversion;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
  * Created by lichtens on 6/16/16.
  */
-public class ACSModeledSegmentUnitTest extends BaseTest {
+public class ACSModeledSegmentUnitTest extends GATKBaseTest {
     @Test
     public void testSegMean() {
         final ACSModeledSegment tmp = new ACSModeledSegment(new SimpleInterval("1", 100, 110), ModeledSegment.NO_CALL, 10, ParamUtils.log2(1.5),

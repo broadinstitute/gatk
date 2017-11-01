@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.io;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
-public final class IOUtilsUnitTest extends BaseTest {
+public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testTempDir() {
@@ -114,7 +114,7 @@ public final class IOUtilsUnitTest extends BaseTest {
 
     @Test( expectedExceptions = UserException.CouldNotReadInputFile.class )
     public void testReadNonExistentFileIntoByteArray() {
-        File nonExistentFile = BaseTest.getSafeNonExistentFile("djfhsdkjghdfk");
+        File nonExistentFile = GATKBaseTest.getSafeNonExistentFile("djfhsdkjghdfk");
         Assert.assertFalse(nonExistentFile.exists());
 
         IOUtils.readFileIntoByteArray(nonExistentFile);
@@ -142,7 +142,7 @@ public final class IOUtilsUnitTest extends BaseTest {
         //It runs at jvm shutdown so there isn't a good way to test it properly.
         //If you see a directory in the hellbender main folder called
 
-        final File dir = new File(BaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
+        final File dir = new File(GATKBaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
         IOUtils.deleteRecursivelyOnExit(dir);
 
         FileUtils.mkdir(dir, true);

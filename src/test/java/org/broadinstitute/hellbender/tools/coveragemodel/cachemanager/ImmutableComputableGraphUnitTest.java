@@ -5,7 +5,7 @@ import com.google.common.collect.Sets;
 import org.apache.commons.lang.RandomStringUtils;
 import org.broadinstitute.hellbender.utils.MathObjectAsserts;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.ops.transforms.Transforms;
@@ -46,7 +46,7 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class ImmutableComputableGraphUnitTest extends BaseTest {
+public class ImmutableComputableGraphUnitTest extends GATKBaseTest {
 
     private static final Random rng = new Random(1984);
 

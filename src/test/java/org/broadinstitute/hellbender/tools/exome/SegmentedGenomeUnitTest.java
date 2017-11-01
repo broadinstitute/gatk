@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +15,7 @@ import java.util.List;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SegmentedGenomeUnitTest extends BaseTest {
+public final class SegmentedGenomeUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final File TARGET_FILE_SMALL_SEGMENT_MERGING

@@ -5,7 +5,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LongBloomFilter;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.TestException;
 import org.testng.annotations.BeforeTest;
@@ -17,7 +17,7 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.Set;
 
-public class PSKmerBloomFilterTest extends BaseTest {
+public class PSKmerBloomFilterTest extends GATKBaseTest {
 
     private final double falsePositiveProb = 0.1;
     private final int setSize = 100000;

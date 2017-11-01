@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -59,7 +59,7 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         final String inputPath = new File(TEST_DATA_DIR, fileName).getAbsolutePath();
         final String referencePath = referenceName != null ? new File(referenceName).getAbsolutePath() : null;
 
-        final File outfile = BaseTest.createTempFile("test", ".insert_size_metrics");
+        final File outfile = GATKBaseTest.createTempFile("test", ".insert_size_metrics");
 
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         ReadsSparkSource readSource = new ReadsSparkSource(ctx, ValidationStringency.DEFAULT_STRINGENCY);

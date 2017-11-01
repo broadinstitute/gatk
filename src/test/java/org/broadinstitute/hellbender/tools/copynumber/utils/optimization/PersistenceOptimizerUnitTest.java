@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.utils.optimization;
 
 import com.google.common.collect.Ordering;
 import com.google.common.primitives.Doubles;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class PersistenceOptimizerUnitTest extends BaseTest {
+public final class PersistenceOptimizerUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 1;   //reset seed before each simulated test case
 
     @DataProvider(name = "dataPersistenceOptimizer")

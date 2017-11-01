@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.hmm;
 import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.testng.Assert;
@@ -26,7 +26,7 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HMMUnitTest extends BaseTest {
+public final class HMMUnitTest extends GATKBaseTest {
 
     private static final Random RANDOM = new Random(1313);
 

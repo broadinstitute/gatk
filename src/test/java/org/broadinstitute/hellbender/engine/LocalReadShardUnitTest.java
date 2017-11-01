@@ -6,10 +6,9 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +18,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class LocalReadShardUnitTest extends BaseTest {
+public class LocalReadShardUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "InvalidConstructionTestData")
     public Object[][] invalidConstructionTestData() {

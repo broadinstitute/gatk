@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.List;
 
 
-public class AlleleSubsettingUtilsUnitTest extends BaseTest {
+public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
 
     private static final Allele Aref = Allele.create("A", true);
     private static final Allele C = Allele.create("C");

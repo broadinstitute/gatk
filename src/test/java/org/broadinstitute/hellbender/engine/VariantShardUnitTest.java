@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import com.google.api.services.genomics.model.Read;
 import org.broadinstitute.hellbender.utils.test.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.List;
 
-public final class VariantShardUnitTest extends BaseTest {
+public final class VariantShardUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "variantShards")
     public Object[][] reads() {

@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.TestException;
 import org.testng.annotations.BeforeTest;
@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.util.Random;
 
-public class PSKmerSetTest extends BaseTest {
+public class PSKmerSetTest extends GATKBaseTest {
 
     private final int setSize = 1000;
     private final long seed = 48393943L;

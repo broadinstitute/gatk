@@ -5,7 +5,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -15,7 +15,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
-public class ActivityProfileUnitTest extends BaseTest {
+public class ActivityProfileUnitTest extends GATKBaseTest {
     private GenomeLocParser genomeLocParser;
     private GenomeLoc startLoc;
     private SAMFileHeader header;

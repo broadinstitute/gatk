@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -8,7 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 
-public class IGVUtilsUnitTest extends BaseTest {
+public class IGVUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testPrintIGVFormatHeader() throws IOException {

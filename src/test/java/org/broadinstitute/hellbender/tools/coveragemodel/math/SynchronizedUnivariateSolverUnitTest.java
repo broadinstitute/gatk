@@ -4,7 +4,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.analysis.solvers.AbstractUnivariateSolver;
 import org.apache.commons.math3.analysis.solvers.BrentSolver;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class SynchronizedUnivariateSolverUnitTest extends BaseTest {
+public class SynchronizedUnivariateSolverUnitTest extends GATKBaseTest {
 
     private static final Function<UnivariateSolverSpecifications,
             AbstractUnivariateSolver> SOLVER_FACTORY = desc -> new BrentSolver(desc.getAbsoluteAccuracy(),

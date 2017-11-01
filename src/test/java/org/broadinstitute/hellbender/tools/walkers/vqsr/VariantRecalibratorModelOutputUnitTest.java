@@ -5,7 +5,7 @@ import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class VariantRecalibratorModelOutputUnitTest extends BaseTest {
+public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
     protected final static Logger logger = Logger.getLogger(VariantRecalibratorModelOutputUnitTest.class);
     private final boolean printTables = false;
     private final int numAnnotations = 6;

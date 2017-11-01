@@ -8,7 +8,7 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -22,7 +22,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 
-public final class ReadUtilsUnitTest extends BaseTest {
+public final class ReadUtilsUnitTest extends GATKBaseTest {
     private interface GetAdaptorFunc {
         public int getAdaptor(final GATKRead record);
     }

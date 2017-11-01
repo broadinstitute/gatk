@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-public final class EventTypeUnitTest extends BaseTest {
+public final class EventTypeUnitTest extends GATKBaseTest {
     @Test
     public void testEventTypes() {
         for ( final EventType et : EventType.values() ) {

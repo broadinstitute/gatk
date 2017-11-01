@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class AllelicSplitCallerUnitTest extends BaseTest {
+public class AllelicSplitCallerUnitTest extends GATKBaseTest {
 
     private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/conversion/allelicbalancecaller/";
     private static final File ACNV_SEG_FILE = new File(TEST_DIR, "cell_line-sim-final.seg");

@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,7 +23,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class BAQUnitTest extends BaseTest {
+public final class BAQUnitTest extends GATKBaseTest {
 
     private static final int START_CHR = 1;
     private static final int NUM_CHR = 2;

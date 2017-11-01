@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -25,7 +25,7 @@ import java.util.Map;
 
 import static org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource.*;
 
-public class ReferenceAPISourceUnitTest extends BaseTest {
+public class ReferenceAPISourceUnitTest extends GATKBaseTest {
 
     private ReferenceBases queryReferenceAPI(final String referenceName, final SimpleInterval interval, int pageSize ) {
         final Pipeline p = setupPipeline();

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * Basic unit test for GenomeLoc
  */
-public final class GenomeLocUnitTest extends BaseTest {
+public final class GenomeLocUnitTest extends GATKBaseTest {
 
     /**
      * Tests that we got a string parameter in correctly

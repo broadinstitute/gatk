@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class BandPassActivityProfileUnitTest extends BaseTest {
+public class BandPassActivityProfileUnitTest extends GATKBaseTest {
     private GenomeLocParser genomeLocParser;
     private SAMFileHeader header;
 

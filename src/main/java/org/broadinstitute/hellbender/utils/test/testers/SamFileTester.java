@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.utils.test.testers;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.test.CommandLineProgramTester;
 
 import java.io.File;
 import java.util.*;
@@ -12,7 +12,7 @@ import java.util.*;
 /**
  * Abstract class for doing basic on the fly SAM file testing.
  */
-public abstract class SamFileTester extends CommandLineProgramTest {
+public abstract class SamFileTester implements CommandLineProgramTester {
 
     private final SAMRecordSetBuilder samRecordSetBuilder;
     protected final Map<String, Boolean> duplicateFlags = new LinkedHashMap<>();

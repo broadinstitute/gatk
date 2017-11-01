@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.utils.collections;
 
 import com.google.common.collect.Sets;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 
-public class NestedIntegerArrayUnitTest extends BaseTest{
+public class NestedIntegerArrayUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testEmpty() throws Exception {

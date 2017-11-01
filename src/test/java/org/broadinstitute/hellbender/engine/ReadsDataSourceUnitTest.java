@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,7 +20,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 
-public final class ReadsDataSourceUnitTest extends BaseTest {
+public final class ReadsDataSourceUnitTest extends GATKBaseTest {
     private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private final Path FIRST_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
     private final Path SECOND_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
@@ -46,7 +46,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testHandleNonExistentFile() {
-        new ReadsDataSource(BaseTest.getSafeNonExistentPath("nonexistent.bam"));
+        new ReadsDataSource(GATKBaseTest.getSafeNonExistentPath("nonexistent.bam"));
     }
 
     @Test(expectedExceptions = UserException.class)
@@ -518,7 +518,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             final String extraContig,
             final String outputName,
             final String extension) {
-        final File outputFile = BaseTest.createTempFile(outputName, extension);
+        final File outputFile = GATKBaseTest.createTempFile(outputName, extension);
         try (ReadsDataSource readsSource = new ReadsDataSource(inputPath)) {
             SAMFileHeader header = readsSource.getHeader();
             SAMSequenceRecord fakeSequenceRec = new SAMSequenceRecord(extraContig, 100);

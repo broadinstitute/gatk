@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +17,7 @@ import java.util.List;
 import static org.broadinstitute.hellbender.utils.SequenceDictionaryUtils.*;
 import static org.broadinstitute.hellbender.utils.SequenceDictionaryUtils.SequenceDictionaryCompatibility.*;
 
-public final class SequenceDictionaryUtilsUnitTest extends BaseTest {
+public final class SequenceDictionaryUtilsUnitTest extends GATKBaseTest {
 
     private static Logger logger = LogManager.getLogger(SequenceDictionaryUtilsUnitTest.class);
 

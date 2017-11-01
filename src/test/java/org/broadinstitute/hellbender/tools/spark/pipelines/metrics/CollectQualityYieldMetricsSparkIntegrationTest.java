@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -43,7 +43,7 @@ public final class CollectQualityYieldMetricsSparkIntegrationTest extends Comman
     public void test(final String inName, final String outName, final String referenceName, final boolean useOQ) throws IOException {
         final File input = new File(TEST_DATA_DIR, inName);
         final File expectedFile = new File(TEST_DATA_DIR, outName);   //file created using picard 1.130
-        final File outfile = BaseTest.createTempFile("testCollectQualityYield", ".metrics");
+        final File outfile = GATKBaseTest.createTempFile("testCollectQualityYield", ".metrics");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--I");
         args.add(input.getCanonicalPath());

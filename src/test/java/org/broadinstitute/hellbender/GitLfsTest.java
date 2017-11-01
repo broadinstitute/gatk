@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -11,7 +10,7 @@ import java.io.IOException;
 /**
  * Test that git-lfs is properly pulling down files.
  */
-public class GitLfsTest extends BaseTest{
+public class GitLfsTest extends GATKBaseTest {
 
     @Test(groups = "large")
     public void testLargeFilesAreDownloaded() throws IOException {

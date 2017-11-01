@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public final class GraphUtilsUnitTest extends BaseTest {
+public final class GraphUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void compPrefixLen1(){

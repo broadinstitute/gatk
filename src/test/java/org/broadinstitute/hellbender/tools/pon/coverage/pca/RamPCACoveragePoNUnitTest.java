@@ -4,13 +4,13 @@ package org.broadinstitute.hellbender.tools.pon.coverage.pca;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 
-public final class RamPCACoveragePoNUnitTest extends BaseTest {
+public final class RamPCACoveragePoNUnitTest extends GATKBaseTest {
     private static final File LARGE_CNV_TEST_FILE_DIR = new File(largeFileTestDir, "cnv");
 
     private static final File TEST_PCOV_FILE = new File(LARGE_CNV_TEST_FILE_DIR, "create-pon-control-full.pcov");

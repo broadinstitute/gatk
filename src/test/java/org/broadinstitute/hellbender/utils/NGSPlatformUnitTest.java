@@ -10,7 +10,7 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -23,7 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class NGSPlatformUnitTest extends BaseTest {
+public final class NGSPlatformUnitTest extends GATKBaseTest {
 
     // example fasta index file, can be deleted if you don't use the reference
     private IndexedFastaSequenceFile seq;

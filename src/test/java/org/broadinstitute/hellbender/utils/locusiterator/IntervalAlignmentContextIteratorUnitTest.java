@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 
-public class IntervalAlignmentContextIteratorUnitTest extends BaseTest {
+public class IntervalAlignmentContextIteratorUnitTest extends GATKBaseTest {
 
     private static final File TEST_LARGE_DATA_DIR = new File("src/test/resources/large/");
     private static final String BAM_FILE_NAME = TEST_LARGE_DATA_DIR.getAbsolutePath() + "/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";

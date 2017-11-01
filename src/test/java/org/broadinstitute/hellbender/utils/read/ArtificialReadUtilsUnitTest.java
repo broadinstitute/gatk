@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -11,7 +11,7 @@ import java.util.Iterator;
 
 import static org.testng.Assert.*;
 
-public final class ArtificialReadUtilsUnitTest extends BaseTest {
+public final class ArtificialReadUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testReadGroup() {

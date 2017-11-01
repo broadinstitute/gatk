@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.TargetCodec;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -39,7 +39,7 @@ import java.util.stream.Stream;
  */
 public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File REFERENCE = new File(BaseTest.hg19MiniReference);
+    private static final File REFERENCE = new File(GATKBaseTest.hg19MiniReference);
 
     // Test meta-parameters:
     private static final int MIN_TARGET_SIZE = 10;

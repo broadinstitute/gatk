@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.annotations.Test;
@@ -89,7 +89,7 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
         args.add("-V");
         args.add(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.MultiContext.vcf");
         args.add("-O");
-        args.add(BaseTest.createTempFile("testMultipleContexts", ".csv"));
+        args.add(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
 
         runCommandLine(args);
     }
@@ -105,7 +105,7 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
         args.add("-V");
         args.add(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.NON_REF.vcf");
         args.add("-O");
-        args.add(BaseTest.createTempFile("testMultipleContexts", ".csv"));
+        args.add(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
 
         runCommandLine(args);
     }
@@ -121,7 +121,7 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
         args.add("-V");
         args.add(aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.warnings.vcf");
         args.add("-O");
-        args.add(BaseTest.createTempFile("testMultipleContexts", ".csv"));
+        args.add(GATKBaseTest.createTempFile("testMultipleContexts", ".csv"));
 
         runCommandLine(args);
     }

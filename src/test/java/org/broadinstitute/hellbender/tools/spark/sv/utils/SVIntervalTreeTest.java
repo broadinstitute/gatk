@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Iterator;
 
-public class SVIntervalTreeTest extends BaseTest {
+public class SVIntervalTreeTest extends GATKBaseTest {
     private static SVInterval[] intervals = {
             new SVInterval(0, 100, 200),
             new SVInterval(0, 150, 250),

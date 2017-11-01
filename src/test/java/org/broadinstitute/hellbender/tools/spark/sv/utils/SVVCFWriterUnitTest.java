@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType.createBracketedSymbAlleleString;
 
-public class SVVCFWriterUnitTest extends BaseTest {
+public class SVVCFWriterUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testSortVariantsByCoordinate(){

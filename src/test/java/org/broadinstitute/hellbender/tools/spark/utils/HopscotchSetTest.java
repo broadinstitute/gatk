@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.utils;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
 
-public final class HopscotchSetTest extends BaseTest {
+public final class HopscotchSetTest extends GATKBaseTest {
     private static final int RAND_SEED = 0xdeadf00;
     private static final int HHASH_NVALS = 10000;
     private static final int N_TRIALS = 100;

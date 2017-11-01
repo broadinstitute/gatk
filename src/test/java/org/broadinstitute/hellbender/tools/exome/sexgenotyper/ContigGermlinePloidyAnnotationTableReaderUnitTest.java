@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -13,7 +13,7 @@ import java.io.IOException;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class ContigGermlinePloidyAnnotationTableReaderUnitTest extends BaseTest {
+public class ContigGermlinePloidyAnnotationTableReaderUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/sexgenotyper/";
     private static final File BAD_CONTIG_PLOIDY_ANNOTS_FILE_1 = new File(TEST_SUB_DIR, "contig_annots_bad_autosomal_annot.tsv");
     private static final File BAD_CONTIG_PLOIDY_ANNOTS_FILE_2 = new File(TEST_SUB_DIR, "contig_annots_bad_class.tsv");

@@ -26,7 +26,7 @@ import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -37,7 +37,7 @@ import java.util.Iterator;
 import java.io.IOException;
 import java.util.Set;
 
-public final class GATKToolUnitTest extends BaseTest{
+public final class GATKToolUnitTest extends GATKBaseTest {
 
     public static final String bqsrTestDir = toolsTestDir + "BQSR/";
 
@@ -362,7 +362,7 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testNonExistentReferenceFile() throws Exception {
         final TestGATKToolWithFeatures tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final String[] args = {"--reference", BaseTest.getSafeNonExistentFile("NonExistentReferenceFile.fasta").getAbsolutePath()};
+        final String[] args = {"--reference", GATKBaseTest.getSafeNonExistentFile("NonExistentReferenceFile.fasta").getAbsolutePath()};
         clp.parseArguments(System.out, args);
         tool.onStartup();
     }

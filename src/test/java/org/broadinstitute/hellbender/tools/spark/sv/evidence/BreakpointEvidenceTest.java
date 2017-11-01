@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class BreakpointEvidenceTest extends BaseTest {
+public class BreakpointEvidenceTest extends GATKBaseTest {
     private final static LibraryStatistics stats =
             new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
                     60000000000L, 600000000L, 3000000000L);

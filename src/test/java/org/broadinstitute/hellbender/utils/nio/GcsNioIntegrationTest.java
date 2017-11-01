@@ -4,7 +4,7 @@ import com.google.cloud.storage.StorageException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -15,7 +15,7 @@ import java.nio.file.*;
 /**
  * Test GCS access via the NIO APIs.
  */
-public final class GcsNioIntegrationTest extends BaseTest {
+public final class GcsNioIntegrationTest extends GATKBaseTest {
 
     final String privateFilePath = "org/broadinstitute/hellbender/utils/nio/private_file.txt";
     final String privateFilePath2 = "org/broadinstitute/hellbender/utils/nio/private_file_2.txt";

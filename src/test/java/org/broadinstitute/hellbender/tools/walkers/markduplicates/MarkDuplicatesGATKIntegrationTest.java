@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesTester;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;

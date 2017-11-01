@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -23,7 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public final class CoverageUnitTest extends BaseTest {
+public final class CoverageUnitTest extends GATKBaseTest {
 
     private static final GATKRead makeRead() {
         return ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));

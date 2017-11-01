@@ -7,7 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext.Type;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -19,7 +19,7 @@ import java.util.*;
 /**
  * Tests for the various VariantContext variant filter predicates
  */
-public class VariantFilterUnitTest extends BaseTest {
+public class VariantFilterUnitTest extends GATKBaseTest {
 
     final Allele SnpRef = Allele.create("A", true);
     final Allele Snp = Allele.create("T");

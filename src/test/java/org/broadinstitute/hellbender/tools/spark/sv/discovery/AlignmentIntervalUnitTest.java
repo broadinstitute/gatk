@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.read.CigarTestUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class AlignmentIntervalUnitTest extends BaseTest {
+public class AlignmentIntervalUnitTest extends GATKBaseTest {
     private static final String dummyRefName = "1";
     private static final List<String> refNames = Collections.singletonList(dummyRefName);
 

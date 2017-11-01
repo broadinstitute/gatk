@@ -11,7 +11,7 @@ import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -48,7 +48,7 @@ public final class HDF5LibraryUnitTest {
 
     @Test()
     public void testCreateHDF5File() {
-        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final File testFile = GATKBaseTest.createTempFile("hdf5", ".hd5");
         testFile.delete();
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.close();
@@ -56,7 +56,7 @@ public final class HDF5LibraryUnitTest {
 
     @Test(dependsOnMethods = {"testCreateGroup", "testMakeDouble"})
     public void testIsPresent() {
-        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final File testFile = GATKBaseTest.createTempFile("hdf5", ".hd5");
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         Assert.assertFalse(file.isPresent("test-group"));
         Assert.assertFalse(file.isPresent("test-group/lola-run"));
@@ -86,7 +86,7 @@ public final class HDF5LibraryUnitTest {
 
     @Test()
     public void testCreateGroup() {
-        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final File testFile = GATKBaseTest.createTempFile("hdf5", ".hd5");
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         Assert.assertTrue(file.makeGroup("test-group/lola-run"));
 

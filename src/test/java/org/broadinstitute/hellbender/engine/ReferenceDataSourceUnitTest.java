@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,13 +15,13 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public final class ReferenceDataSourceUnitTest extends BaseTest {
+public final class ReferenceDataSourceUnitTest extends GATKBaseTest {
 
     private static final File TEST_REFERENCE = new File(hg19MiniReference);
 
     @Test(expectedExceptions = UserException.class)
     public void testNonExistentReference() {
-        new ReferenceFileSource(BaseTest.getSafeNonExistentFile("nonexistent.fasta"));
+        new ReferenceFileSource(GATKBaseTest.getSafeNonExistentFile("nonexistent.fasta"));
     }
 
     @Test(expectedExceptions = UserException.MissingReferenceFaiFile.class)

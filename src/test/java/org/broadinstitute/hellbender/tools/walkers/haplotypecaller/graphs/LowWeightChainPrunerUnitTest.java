@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class LowWeightChainPrunerUnitTest extends BaseTest {
+public final class LowWeightChainPrunerUnitTest extends GATKBaseTest {
     @DataProvider(name = "pruneChainsData")
     public Object[][] makePruneChainsData() {
         List<Object[]> tests = new ArrayList<>();
