@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -24,7 +24,7 @@ import java.util.List;
  * A unit test suite for the {@link FuncotatorUtils} class.
  * Created by jonn on 9/1/17.
  */
-public class FuncotatorUtilsUnitTest extends BaseTest {
+public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Static Variables:

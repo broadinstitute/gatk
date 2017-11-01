@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -13,7 +14,7 @@ import java.util.List;
  *  * Unit test class for the {@link GencodeFuncotation} class.
  * Created by jonn on 9/1/17.
  */
-public class GencodeFuncotationUnitTest extends BaseTest {
+public class GencodeFuncotationUnitTest extends GATKBaseTest {
     
     //==================================================================================================================
     // Helper Methods:
