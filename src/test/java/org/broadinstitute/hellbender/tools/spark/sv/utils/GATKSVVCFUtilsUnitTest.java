@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.variant.vcf.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.junit.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
 
-public class GATKSVVCFUtilsUnitTest extends BaseTest {
+public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
 
 
     @Test(groups = "sv")

@@ -1,17 +1,16 @@
 package org.broadinstitute.hellbender.utils.collections;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.util.Arrays;
 
 /**
  * Basic unit test for ExpandingArrayList
  */
-public class ExpandingArrayListUnitTest extends BaseTest {
+public class ExpandingArrayListUnitTest extends GATKBaseTest {
     ExpandingArrayList<Integer> empty, initCap10, hasOne, hasTen;
 
     @BeforeMethod

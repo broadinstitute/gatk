@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.utils;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public final class HopscotchMapTest extends BaseTest {
+public final class HopscotchMapTest extends GATKBaseTest {
 
     // a HopscotchMap is just like a HopscotchSet, which is separately tested, except for two things:
     //   the uniqueness criterion is on key rather than on the entire entry,

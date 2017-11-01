@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.tools.examples.metrics.multi.ExampleCollectMultiMetricsSpark;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -38,7 +37,7 @@ public final class ExampleCollectMultiMetricsIntegrationTest extends CommandLine
             final String expectedResultsFile) throws IOException {
 
         final File input = new File(TEST_DATA_DIR, fileName);
-        final File textOut = BaseTest.createTempFile("test", ".txt");
+        final File textOut = GATKBaseTest.createTempFile("test", ".txt");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
 

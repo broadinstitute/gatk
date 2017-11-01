@@ -25,7 +25,7 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -38,7 +38,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 
-public final class ReferenceConfidenceModelUnitTest extends BaseTest {
+public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
     GenomeLocParser parser;
     final String RGID = "ID1";
     SAMReadGroupRecord rg;

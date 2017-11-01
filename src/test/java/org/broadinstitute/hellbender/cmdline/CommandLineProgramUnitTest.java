@@ -3,17 +3,17 @@ package org.broadinstitute.hellbender.cmdline;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
-public class CommandLineProgramUnitTest extends BaseTest {
+public class CommandLineProgramUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetUsage(){
         final CommandLineProgram clp = getClp();
         String usage = clp.getUsage();
-        BaseTest.assertContains(usage, "Usage:");
+        GATKBaseTest.assertContains(usage, "Usage:");
     }
 
     @Test

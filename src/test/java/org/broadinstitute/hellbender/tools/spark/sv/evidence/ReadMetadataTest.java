@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -16,7 +17,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ReadMetadataTest extends BaseTest {
+public class ReadMetadataTest extends GATKBaseTest {
     private final static LibraryStatistics LIBRARY_STATISTICS =
             new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
                     60000000000L, 600000000L, 3000000000L);

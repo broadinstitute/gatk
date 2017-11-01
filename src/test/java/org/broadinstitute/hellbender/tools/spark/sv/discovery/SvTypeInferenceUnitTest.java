@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.collect.ImmutableSet;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
 
-public class SvTypeInferenceUnitTest extends BaseTest {
+public class SvTypeInferenceUnitTest extends GATKBaseTest {
 
     /**
      * Hack to force trigger test data generation.

@@ -5,14 +5,14 @@ import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class AssemblyRegionTestDataSetUnitTest extends BaseTest {
+public final class AssemblyRegionTestDataSetUnitTest extends GATKBaseTest {
 
     @Test(dataProvider="activeRegionTestDataSets")
     @SuppressWarnings("fallthrough")

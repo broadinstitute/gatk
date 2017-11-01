@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import scala.Tuple4;
 
 import java.io.ByteArrayOutputStream;
@@ -26,11 +26,11 @@ import java.util.List;
 public final class SVDiscoveryTestDataProvider {
 
     public static final ReferenceMultiSource reference = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
-            BaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+            GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary seqDict = reference.getReferenceSequenceDictionary(null);
 
     public static final ReferenceMultiSource b38_reference = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
-            BaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+            GATKBaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b38_seqDict = b38_reference.getReferenceSequenceDictionary(null);
 
     public static byte[] getReverseComplimentCopy(final byte[] sequence) {

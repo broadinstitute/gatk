@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -34,7 +34,7 @@ import static org.testng.Assert.assertFalse;
 /**
  * Test out the functionality of the new genome loc parser
  */
-public final class GenomeLocParserUnitTest extends BaseTest {
+public final class GenomeLocParserUnitTest extends GATKBaseTest {
     private GenomeLocParser genomeLocParser;
     private SAMFileHeader header;
 

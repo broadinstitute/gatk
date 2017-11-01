@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -128,7 +128,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                 .addArgument(PreprocessIntervals.LENGTH_OF_BINS_SHORT_NAME, Integer.toString(binLength))
                 .addArgument(PreprocessIntervals.PADDING_SHORT_NAME, Integer.toString(paddingLength))
                 .addOutput(outputFile);
-        argsBuilder.addArgument("L",  BaseTest.packageRootTestDir + "tools/copynumber/preprocess-intervals-test.interval_list");
+        argsBuilder.addArgument("L",  GATKBaseTest.packageRootTestDir + "tools/copynumber/preprocess-intervals-test.interval_list");
         runCommandLine(argsBuilder);
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
 

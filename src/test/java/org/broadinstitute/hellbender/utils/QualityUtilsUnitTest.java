@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Basic unit test for QualityUtils class
  */
-public final class QualityUtilsUnitTest extends BaseTest {
+public final class QualityUtilsUnitTest extends GATKBaseTest {
     final private static double TOLERANCE = 1e-9;
 
     @BeforeClass

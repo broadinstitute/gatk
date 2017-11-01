@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class Nd4jUnitTest extends BaseTest {
+public class Nd4jUnitTest extends GATKBaseTest {
     private static final double EPS = 1e-10;
 
     @Test

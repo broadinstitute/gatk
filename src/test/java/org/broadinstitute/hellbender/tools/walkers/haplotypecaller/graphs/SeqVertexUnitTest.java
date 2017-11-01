@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SeqVertexUnitTest extends BaseTest {
+public final class SeqVertexUnitTest extends GATKBaseTest {
     @Test
     public void testEqualsAndHashCode() {
         final byte[] bases = "ACT".getBytes();

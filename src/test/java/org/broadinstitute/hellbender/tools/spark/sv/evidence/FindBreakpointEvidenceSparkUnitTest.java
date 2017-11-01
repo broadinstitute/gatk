@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
-public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
+public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
     private static final SVInterval[] testIntervals =
             { new SVInterval(1, 43349482, 43350671), new SVInterval(1, 43353045, 43353870) };
 

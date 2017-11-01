@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.utils;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMapTest.IntPair;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class HopscotchMultiMapTest extends BaseTest {
+public final class HopscotchMultiMapTest extends GATKBaseTest {
 
     // a HopscotchMultiMap is just like a HopscotchCollection, which is separately tested,
     //    except that retrieval is by key rather than by entry.

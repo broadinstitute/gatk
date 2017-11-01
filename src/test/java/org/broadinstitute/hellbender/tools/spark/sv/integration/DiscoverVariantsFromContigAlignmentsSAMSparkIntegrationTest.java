@@ -4,7 +4,7 @@ import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -45,7 +45,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
     @DataProvider(name = "discoverVariantsFromContigAlignmentsSparkIntegrationTest")
     public Object[][] createTestData() {
         List<Object[]> tests = new ArrayList<>();
-        final File tempDirLeft = BaseTest.createTempDir("forLeft");
+        final File tempDirLeft = GATKBaseTest.createTempDir("forLeft");
         tempDirLeft.deleteOnExit();
         tests.add(new Object[]{
                 new DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs(tempDirLeft.getAbsolutePath(), SVIntegrationTestDataProvider.EXTERNAL_CNV_CALLS)

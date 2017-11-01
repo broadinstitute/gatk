@@ -6,11 +6,11 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class ReferenceMultiSourceUnitTest extends BaseTest {
+public class ReferenceMultiSourceUnitTest extends GATKBaseTest {
 
     private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
 
@@ -30,7 +30,7 @@ public class ReferenceMultiSourceUnitTest extends BaseTest {
     public void testBadReferenceFile() {
         PipelineOptions options = null;
         new ReferenceMultiSource(options,
-                BaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
+                GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
                 ReferenceWindowFunctions.IDENTITY_FUNCTION);
     }
 

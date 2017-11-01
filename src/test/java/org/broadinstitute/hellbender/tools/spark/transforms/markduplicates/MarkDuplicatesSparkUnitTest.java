@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class MarkDuplicatesSparkUnitTest extends BaseTest {
+public class MarkDuplicatesSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "md")
     public Object[][] loadReads() {
         String dir = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/MarkDuplicatesGATK/").getAbsolutePath();

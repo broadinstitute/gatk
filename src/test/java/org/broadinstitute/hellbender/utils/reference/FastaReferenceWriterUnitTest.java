@@ -8,9 +8,9 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.SequenceUtil;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 /**
  * Unit tests for {@link FastaReferenceWriter}.
  */
-public class FastaReferenceWriterUnitTest extends BaseTest {
+public class FastaReferenceWriterUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void testEmptySequence() throws IOException {

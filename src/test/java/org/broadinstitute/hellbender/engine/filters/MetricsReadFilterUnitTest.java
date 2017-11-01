@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * No need to extend from BaseTest here. Just testing some logic of {@link MetricsReadFilter}
+ * No need to extend from GATKBaseTest here. Just testing some logic of {@link MetricsReadFilter}
  */
 public class MetricsReadFilterUnitTest {
   private final MetricsReadFilter anyFilter =

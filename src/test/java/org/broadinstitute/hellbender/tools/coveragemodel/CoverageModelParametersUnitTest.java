@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 /**
@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class CoverageModelParametersUnitTest extends BaseTest {
+public class CoverageModelParametersUnitTest extends GATKBaseTest {
 
     /**
      * Create a random model, write, read, and assert

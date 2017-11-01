@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.testng.Assert;
@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public final class RecalUtilsUnitTest extends BaseTest {
+public final class RecalUtilsUnitTest extends GATKBaseTest {
     private class Row {
         int rg, qual, ne, no;
 

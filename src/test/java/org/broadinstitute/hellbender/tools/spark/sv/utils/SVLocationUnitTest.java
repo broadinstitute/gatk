@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class SVLocationUnitTest extends BaseTest {
+public class SVLocationUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testGetters() {
         final SVLocation location = new SVLocation(1, 2);

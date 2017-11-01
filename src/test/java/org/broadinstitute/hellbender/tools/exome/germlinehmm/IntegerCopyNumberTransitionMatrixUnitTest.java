@@ -4,7 +4,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathObjectAsserts;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,7 +14,7 @@ import java.util.Arrays;
 /**
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class IntegerCopyNumberTransitionMatrixUnitTest extends BaseTest {
+public class IntegerCopyNumberTransitionMatrixUnitTest extends GATKBaseTest {
 
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/germlinehmm";
     private static final File HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TABLE_FILE = new File(TEST_SUB_DIR,

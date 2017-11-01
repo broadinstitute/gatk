@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +13,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public final class ReadsContextUnitTest extends BaseTest {
+public final class ReadsContextUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "EmptyReadsContextDataProvider")
     public Object[][] getEmptyReadsContextData() {

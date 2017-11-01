@@ -4,7 +4,7 @@ import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.analysis.solvers.BrentSolver;
 import org.apache.commons.math3.exception.NoBracketingException;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +15,7 @@ import java.util.List;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class RobustBrentSolverUnitTest extends BaseTest {
+public class RobustBrentSolverUnitTest extends GATKBaseTest {
 
     private static final double DEF_ABS_ACC = 1e-6;
     private static final double DEF_REL_ACC = 1e-6;

@@ -5,7 +5,7 @@ import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
@@ -81,7 +81,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "ApplyBQSRTest")
     public void testApplyBQSR(ABQSRTest params) throws IOException {
-        File outFile = BaseTest.createTempFile("applyBQSRTest", params.outputExtension);
+        File outFile = GATKBaseTest.createTempFile("applyBQSRTest", params.outputExtension);
         final ArrayList<String> args = new ArrayList<>();
         File refFile = null;
 
@@ -184,7 +184,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testOverfiltering() throws IOException {
         final File zeroRefBasesReadBam = new File(resourceDir, "NA12878.oq.read_consumes_zero_ref_bases.bam");
-        final File outFile = BaseTest.createTempFile("testReadThatConsumesNoReferenceBases", ".bam");
+        final File outFile = GATKBaseTest.createTempFile("testReadThatConsumesNoReferenceBases", ".bam");
         final String[] args = new String[] {
                 "--input", zeroRefBasesReadBam.getAbsolutePath(),
                 "--bqsr_recal_file", resourceDir + "NA12878.oq.gatk4.recal.gz",
@@ -199,7 +199,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testAddingPG() throws IOException {
         final File inFile = new File(resourceDir, "NA12878.oq.read_consumes_zero_ref_bases.bam");
-        final File outFile = BaseTest.createTempFile("testAddingPG", ".bam");
+        final File outFile = GATKBaseTest.createTempFile("testAddingPG", ".bam");
         final String[] args = new String[] {
                 "--input", inFile.getAbsolutePath(),
                 "--bqsr_recal_file", resourceDir + "NA12878.oq.gatk4.recal.gz",

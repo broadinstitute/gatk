@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.iterators;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,9 +12,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class SamReaderQueryingIteratorUnitTest extends BaseTest {
+public class SamReaderQueryingIteratorUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "SamReaderQueryingIteratorTestData")
     public Object[][] samReaderQueryingIteratorTestData() {

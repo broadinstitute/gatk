@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingEngine;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -16,7 +16,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 
-public final class AFCalculationUnitTest extends BaseTest {
+public final class AFCalculationUnitTest extends GATKBaseTest {
     static Allele A = Allele.create("A", true);
     static Allele C = Allele.create("C");
     static Allele G = Allele.create("G");

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -14,7 +14,7 @@ import java.io.File;
  */
 public class GatherTranchesIntegrationTest extends CommandLineProgramTest {
 
-    private static final String testDir = BaseTest.publicTestDir + "/large/VQSR/";
+    private static final String testDir = GATKBaseTest.publicTestDir + "/large/VQSR/";
 
     @Test
     public void testCombine2Shards() throws Exception {
@@ -29,7 +29,7 @@ public class GatherTranchesIntegrationTest extends CommandLineProgramTest {
         args.add("--input");
         args.add(recal2.getAbsolutePath());
 
-        final File outFile = BaseTest.createTempFile("gatheredTranches", ".txt");
+        final File outFile = GATKBaseTest.createTempFile("gatheredTranches", ".txt");
         args.addOutput(outFile);
         final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, 0);

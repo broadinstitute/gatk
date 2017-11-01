@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion;
 
 import com.google.common.collect.ImmutableSortedMap;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class SimpleAnnotatedGenomicRegionUnitTest extends BaseTest {
+public class SimpleAnnotatedGenomicRegionUnitTest extends GATKBaseTest {
     private static final String TEST_FILE = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/combine-segment-breakpoints-with-legacy-header-learning-combined-copy-number.tsv";
 
     @Test

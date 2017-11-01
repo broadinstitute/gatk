@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,7 +14,7 @@ import static org.broadinstitute.hellbender.utils.BaseUtils.Base.N;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class SAMPileupFeatureUnitTests extends BaseTest {
+public class SAMPileupFeatureUnitTests extends GATKBaseTest {
 
     @Test
     public void testGetPileupString() {

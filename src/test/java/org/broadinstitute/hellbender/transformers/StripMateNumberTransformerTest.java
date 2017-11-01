@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.transformers;
 
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class StripMateNumberTransformerTest extends BaseTest {
+public class StripMateNumberTransformerTest extends GATKBaseTest {
 
 
     @DataProvider(name = "testData")

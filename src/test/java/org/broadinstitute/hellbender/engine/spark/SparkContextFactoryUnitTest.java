@@ -2,11 +2,11 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.spark.SparkConf;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class SparkContextFactoryUnitTest extends BaseTest {
+public class SparkContextFactoryUnitTest extends GATKBaseTest {
 
     private static final String prop1 = "spark.value1";
     private static final String value1 = "10";

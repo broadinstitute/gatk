@@ -3,14 +3,14 @@ package org.broadinstitute.hellbender.utils.downsampling;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class ReadsDownsamplingIteratorUnitTest extends BaseTest {
+public class ReadsDownsamplingIteratorUnitTest extends GATKBaseTest {
 
     // Toy downsampler that keeps only reads with names "B" or "C"
     private static class KeepReadsBAndCOnlyDownsampler extends ReadsDownsampler {

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -49,8 +49,8 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
         final File reference = referenceName == null ? null : new File(referenceName);
         final File expectedFile = new File(TEST_DATA_DIR, expectedFileName);
 
-        final File outfile = BaseTest.createTempFile("test", ".metrics");
-        final File pdf = BaseTest.createTempFile("test", ".pdf");
+        final File outfile = GATKBaseTest.createTempFile("test", ".metrics");
+        final File pdf = GATKBaseTest.createTempFile("test", ".pdf");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("-" + "I");

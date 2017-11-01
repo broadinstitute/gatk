@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import static org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils.Nd4jIO
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class Nd4jIOUtilsUnitTest extends BaseTest {
+public class Nd4jIOUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void binaryDumpTest() {

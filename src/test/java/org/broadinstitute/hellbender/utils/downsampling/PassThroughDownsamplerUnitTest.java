@@ -2,13 +2,13 @@ package org.broadinstitute.hellbender.utils.downsampling;
 
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.List;
 
-public final class PassThroughDownsamplerUnitTest extends BaseTest {
+public final class PassThroughDownsamplerUnitTest extends GATKBaseTest {
     @Test
     public void testClear() throws Exception {
         final PassThroughDownsampler ptd = new PassThroughDownsampler();

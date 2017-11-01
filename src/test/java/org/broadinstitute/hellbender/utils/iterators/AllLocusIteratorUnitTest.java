@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import java.util.*;
 
 import static org.mockito.Mockito.*;
 
-public class AllLocusIteratorUnitTest extends BaseTest {
+public class AllLocusIteratorUnitTest extends GATKBaseTest {
 
     @DataProvider
     public Object[][] testIteratorReturnsPileupsForAllLociData() {

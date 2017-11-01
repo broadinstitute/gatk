@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_InbreedingCoeff;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -15,7 +15,7 @@ import java.util.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public final class InbreedingCoeffUnitTest extends BaseTest {
+public final class InbreedingCoeffUnitTest extends GATKBaseTest {
     private static final double DELTA_PRECISION = 0.001;
     private static final Allele Aref = Allele.create("A", true);
     private static final Allele T = Allele.create("T");

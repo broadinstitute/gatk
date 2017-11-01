@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.coveragemodel;
 
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeData;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class CoverageModelCopyRatioEmissionProbabilityCalculatorUnitTest extends BaseTest {
+public class CoverageModelCopyRatioEmissionProbabilityCalculatorUnitTest extends GATKBaseTest {
 
     private static final double[] truthReadCountsTable = {1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8};
     private static final double[] truthMuTable = {-20.0741, 22.4479, 9.7571, 16.9622, -19.2745};

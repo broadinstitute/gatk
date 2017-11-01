@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
  * Testing the basic functionality of the diploid genotype class
  */
-public final class DiploidGenotypeUnitTest extends BaseTest {
+public final class DiploidGenotypeUnitTest extends GATKBaseTest {
 
     @Test
     public void testCreateDiploidFromString() {

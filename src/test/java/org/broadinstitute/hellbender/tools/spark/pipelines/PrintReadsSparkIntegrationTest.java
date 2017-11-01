@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
@@ -82,7 +82,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
 
     @Test(dataProvider="testingData", groups="spark")
     public void testFileToFile(String fileIn, String extOut, String reference) throws Exception {
-        final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
+        final File outFile = GATKBaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
         final File originalFile = new File(TEST_DATA_DIR, fileIn);
         final File refFile;
@@ -109,7 +109,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     @Test(groups = "spark")
     public void testCoordinateSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.sorted.bam");
-        final File outBam = BaseTest.createTempFile("print_reads_spark", ".bam");
+        final File outBam = GATKBaseTest.createTempFile("print_reads_spark", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inBam.getCanonicalPath());
@@ -125,7 +125,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     public void testCoordinateSortedInRegion() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.sorted.bam");
         final File expectedBam = new File(getTestDataDir(), "print_reads.sorted.chr1_1.bam");
-        final File outBam = BaseTest.createTempFile("print_reads_spark", ".bam");
+        final File outBam = GATKBaseTest.createTempFile("print_reads_spark", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inBam.getCanonicalPath());
@@ -142,7 +142,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     public void testSequenceDictionaryValidation() throws Exception {
         final File inCram = new File(getTestDataDir(), "print_reads.sorted.cram");
         final File inRef = new File(getTestDataDir(), "print_reads.chr1only.fasta");
-        final File outBam = BaseTest.createTempFile("print_reads_spark", ".bam");
+        final File outBam = GATKBaseTest.createTempFile("print_reads_spark", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inCram.getCanonicalPath());
@@ -171,7 +171,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
 
     @Test(dataProvider="testFileToFile_queryNameSorted", expectedExceptions = UserException.class, groups="spark")
     public void testFileToFile_queryNameSorted(String fileIn, String extOut, String reference) throws Exception {
-        final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
+        final File outFile = GATKBaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
         final File originalFile = new File(TEST_DATA_DIR, fileIn);
         final File refFile;
@@ -197,7 +197,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     @Test(expectedExceptions = UserException.class, groups = "spark")
     public void testNameSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.bam");
-        final File outBam = BaseTest.createTempFile("print_reads", ".bam");
+        final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inBam.getCanonicalPath());
@@ -215,7 +215,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     @Test(groups = "spark")
     public void testReadFiltering() throws IOException {
         final File samWithOneMalformedRead = new File(getTestDataDir(), "print_reads_one_malformed_read.sam");
-        final File outBam = BaseTest.createTempFile("print_reads_testReadFiltering", ".bam");
+        final File outBam = GATKBaseTest.createTempFile("print_reads_testReadFiltering", ".bam");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
@@ -242,7 +242,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void testNonExistentReference() throws Exception {
         final File inCram = new File(TEST_DATA_DIR, "print_reads.sorted.cram");
-        final File outCram = BaseTest.createTempFile("print_reads_bad_reference", ".cram");
+        final File outCram = GATKBaseTest.createTempFile("print_reads_bad_reference", ".cram");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
@@ -250,7 +250,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         args.add(outCram.getCanonicalPath());
         args.add("-R");
-        args.add(BaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
+        args.add(GATKBaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
 
         runCommandLine(args.getArgsArray());
     }

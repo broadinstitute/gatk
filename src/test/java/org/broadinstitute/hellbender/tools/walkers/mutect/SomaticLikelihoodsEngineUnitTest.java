@@ -6,16 +6,14 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.junit.Assert;
 import org.testng.annotations.Test;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 3/9/17.
  */
-public class SomaticLikelihoodsEngineUnitTest extends BaseTest {
+public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
     @Test
     public void testAlleleFractionsPosterior() {
 

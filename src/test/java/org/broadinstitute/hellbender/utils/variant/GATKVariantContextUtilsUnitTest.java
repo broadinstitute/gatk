@@ -16,7 +16,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class GATKVariantContextUtilsUnitTest extends BaseTest {
+public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     Allele Aref, T, C, G, Cref, ATC, ATCATC;
     Allele ATCATCT;

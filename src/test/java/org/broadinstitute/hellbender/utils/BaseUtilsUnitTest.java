@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.Random;
 
 
-public final class BaseUtilsUnitTest extends BaseTest {
+public final class BaseUtilsUnitTest extends GATKBaseTest {
     @BeforeClass
     public void init() { }
 
@@ -75,7 +75,7 @@ public final class BaseUtilsUnitTest extends BaseTest {
     public void testCaptureStdOut(){
         PrintStream stdout = System.out;
         String out = captureStdout(() -> System.out.println("Hello world"));
-        BaseTest.assertContains(out, "Hello world");
+        GATKBaseTest.assertContains(out, "Hello world");
 
         try {
             captureStdout(() -> {
@@ -92,7 +92,7 @@ public final class BaseUtilsUnitTest extends BaseTest {
     public void testCaptureStderr(){
         PrintStream stderr = System.err;
         String out = captureStderr(() -> System.err.println("Hello world"));
-        BaseTest.assertContains(out, "Hello world");
+        GATKBaseTest.assertContains(out, "Hello world");
         try {
             captureStdout(() -> {
                 throw new IllegalStateException("oh no!");

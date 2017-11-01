@@ -6,7 +6,7 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathObjectAsserts;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -26,7 +26,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HDF5PCACoveragePoNUnitTest extends BaseTest {
+public final class HDF5PCACoveragePoNUnitTest extends GATKBaseTest {
     private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
     private static final File TEST_PON_TARGETS = new File(TEST_RESOURCE_DIR, "test_creation_of_panel-targets.txt");
     private static final File TEST_PON_SAMPLES = new File(TEST_RESOURCE_DIR, "test_creation_of_panel-samples.txt");

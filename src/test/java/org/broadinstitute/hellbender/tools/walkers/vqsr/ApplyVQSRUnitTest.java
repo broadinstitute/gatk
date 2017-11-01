@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import htsjdk.variant.vcf.VCFConstants;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-
-public class ApplyVQSRUnitTest extends BaseTest {
+public class ApplyVQSRUnitTest extends GATKBaseTest {
     @Test
     public final void testGenerateFilterString() {
         final ApplyVQSR ar = new ApplyVQSR();

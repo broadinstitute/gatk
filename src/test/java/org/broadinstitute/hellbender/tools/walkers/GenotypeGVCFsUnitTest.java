@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.function.Function;
 
 
-public class GenotypeGVCFsUnitTest extends BaseTest {
+public class GenotypeGVCFsUnitTest extends GATKBaseTest {
 
     public static final int MIN_DP = 15;
     public static final int DP = 3;

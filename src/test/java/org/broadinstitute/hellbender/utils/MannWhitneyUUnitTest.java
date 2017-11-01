@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import com.google.common.primitives.Doubles;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.Assert;
@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class MannWhitneyUUnitTest extends BaseTest {
+public class MannWhitneyUUnitTest extends GATKBaseTest {
     private static double DELTA_PRECISION = 0.00001;
 
     private static final MannWhitneyU rst = new MannWhitneyU();

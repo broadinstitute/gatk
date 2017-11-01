@@ -3,18 +3,15 @@ package org.broadinstitute.hellbender.utils.reference;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
 
-import java.lang.reflect.Method;
-import java.util.*;
-
 import java.io.*;
 
 
-public class ReferenceUtilsUnitTest extends BaseTest {
+public class ReferenceUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testLoadFastaDictionaryFromFile() {

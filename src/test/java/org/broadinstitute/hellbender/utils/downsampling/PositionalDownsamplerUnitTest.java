@@ -5,14 +5,14 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class PositionalDownsamplerUnitTest extends BaseTest {
+public class PositionalDownsamplerUnitTest extends GATKBaseTest {
 
     private final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
 

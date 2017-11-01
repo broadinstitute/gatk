@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -18,7 +18,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Map;
 
-public final class TandemRepeatUnitTest extends BaseTest {
+public final class TandemRepeatUnitTest extends GATKBaseTest {
 
     @Test
     public void testUsingVC() {

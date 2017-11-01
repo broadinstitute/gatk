@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.testng.Assert;
@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public class AddContextDataToReadSparkUnitTest extends BaseTest {
+public class AddContextDataToReadSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases() {
         List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);

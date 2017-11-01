@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSou
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BQSRTestData;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
@@ -89,7 +89,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "BQSRLocalRefTest", groups = "spark")
     public void testBQSRLocalRef(BQSRTest params) throws IOException {
-        File outFile = BaseTest.createTempFile("bqsrSparkPipelineTest", params.outputExtension);
+        File outFile = GATKBaseTest.createTempFile("bqsrSparkPipelineTest", params.outputExtension);
         final List<String> args = new ArrayList<>();
 
         args.add("-I");

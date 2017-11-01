@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionSimulatedData;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 /**
  * Created by lichtens on 6/16/16.
  */
-public class ACSModeledSegmentUtilsUnitTest extends BaseTest {
+public class ACSModeledSegmentUtilsUnitTest extends GATKBaseTest {
     static final String TEST_FILE_PATH= "src/test/resources/org/broadinstitute/hellbender/tools/exome/conversion/allelicbalancecaller/cell_line_small-sim-final.seg";
 
     @Test

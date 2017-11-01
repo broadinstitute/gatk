@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizat
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ACNVModeledSegmentConversionUtilsUnitTest extends BaseTest {
+public class ACNVModeledSegmentConversionUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testSimpleConversionCannotYieldSegmentMeanOfZero() {

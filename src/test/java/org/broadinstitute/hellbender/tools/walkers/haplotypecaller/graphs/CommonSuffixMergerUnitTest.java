@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-public class CommonSuffixMergerUnitTest extends BaseTest {
+public class CommonSuffixMergerUnitTest extends GATKBaseTest {
     private static final boolean PRINT_GRAPHS = false;
 
     @DataProvider(name = "CompleteCycleData")

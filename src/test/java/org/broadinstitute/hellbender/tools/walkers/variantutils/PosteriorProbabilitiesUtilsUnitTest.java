@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import java.util.List;
 
 
 @SuppressWarnings("unchecked")
-public final class PosteriorProbabilitiesUtilsUnitTest extends BaseTest {
+public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
 
     final Allele Aref = Allele.create("A", true);
     final Allele T = Allele.create("T");

@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class BreakpointDensityFilterTest extends BaseTest {
+public class BreakpointDensityFilterTest extends GATKBaseTest {
     private static final SAMFileHeader artificialSamHeader =
             ArtificialReadUtils.createArtificialSamHeaderWithGroups(2, 1, 1000000, 1);
     private static final ReadMetadata readMetadata = initMetadata();

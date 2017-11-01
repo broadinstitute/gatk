@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -18,7 +18,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class ReadPosRankSumTestUnitTest extends BaseTest {
+public final class ReadPosRankSumTestUnitTest extends GATKBaseTest {
     private final String sample1 = "NA1";
     private final String sample2 = "NA2";
     private static final String CONTIG = "1";

@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class HeaderlessSAMRecordCoordinateComparatorUnitTest extends BaseTest {
+public class HeaderlessSAMRecordCoordinateComparatorUnitTest extends GATKBaseTest {
 
     /**
      * Tests that the ordering produced by HeaderlessSAMRecordCoordinateComparator matches the ordering

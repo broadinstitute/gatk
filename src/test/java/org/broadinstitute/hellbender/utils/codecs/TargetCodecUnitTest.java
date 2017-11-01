@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.codecs;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.PositionalBufferedStream;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.testng.Assert;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 
-public class TargetCodecUnitTest extends BaseTest {
+public class TargetCodecUnitTest extends GATKBaseTest {
 
     @Test
     public void testTargetCodecCanDecodeFileURIs() {

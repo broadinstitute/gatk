@@ -13,7 +13,7 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -30,7 +30,7 @@ import java.util.function.BiPredicate;
 
 import static htsjdk.variant.vcf.VCFConstants.MAX_GENOTYPE_QUAL;
 
-public class GVCFWriterUnitTest extends BaseTest {
+public class GVCFWriterUnitTest extends GATKBaseTest {
 
     private static final String CHR1 = "1";
     private static final String CHR2 = "2";

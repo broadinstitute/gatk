@@ -5,7 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public final class ProcessControllerUnitTest extends BaseTest {
+public final class ProcessControllerUnitTest extends GATKBaseTest {
     private static final String NL = String.format("%n");
 
     @Test
@@ -143,8 +143,8 @@ public final class ProcessControllerUnitTest extends BaseTest {
         File outFile = null;
         File errFile = null;
         try {
-            outFile = BaseTest.createTempFile("temp", "");
-            errFile = BaseTest.createTempFile("temp", "");
+            outFile = GATKBaseTest.createTempFile("temp", "");
+            errFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(new String[]{"cat", "non_existent_file"});
             job.getStdoutSettings().setOutputFile(outFile);
@@ -185,8 +185,8 @@ public final class ProcessControllerUnitTest extends BaseTest {
         File outFile = null;
         File errFile = null;
         try {
-            outFile = BaseTest.createTempFile("temp", "");
-            errFile = BaseTest.createTempFile("temp", "");
+            outFile = GATKBaseTest.createTempFile("temp", "");
+            errFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(new String[]{"cat", "non_existent_file"});
             job.getStdoutSettings().setOutputFile(outFile);
@@ -295,7 +295,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
     public void testEcho(EchoCommand script) throws IOException {
         File outputFile = null;
         try {
-            outputFile = BaseTest.createTempFile("temp", "");
+            outputFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(script.command);
             if (script.output != null) {
@@ -363,7 +363,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
         File outputFile = null;
         try {
             scriptFile = writeScript(script.content);
-            outputFile = BaseTest.createTempFile("temp", "");
+            outputFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(new String[]{"sh", scriptFile.getAbsolutePath()});
             if (script.output != null) {
@@ -411,7 +411,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
     private static File writeScript(String contents) {
         try {
-            File file = BaseTest.createTempFile("temp", "");
+            File file = GATKBaseTest.createTempFile("temp", "");
             FileUtils.writeStringToFile(file, contents);
             return file;
         } catch (IOException e) {

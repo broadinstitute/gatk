@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.cachemanager;
 
 import org.broadinstitute.hellbender.utils.MathObjectAsserts;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import java.util.*;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class CacheNodeUnitTest extends BaseTest {
+public class CacheNodeUnitTest extends GATKBaseTest {
     private static final List<CacheNode.NodeTag> EMPTY_NODE_TAG_LIST = Collections.emptyList();
     private static final List<CacheNode.NodeKey> EMPTY_NODE_KEY_LIST = Collections.emptyList();
     private static final Map<CacheNode.NodeKey, Duplicable> EMPTY_PARENTS = Collections.emptyMap();

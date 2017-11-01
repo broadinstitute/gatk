@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.utils;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class SetSizeUtilsTest extends BaseTest {
+public class SetSizeUtilsTest extends GATKBaseTest {
 
     private static boolean isPrime(final long iii) {
         if (iii % 2 == 0 || iii % 3 == 0) return false;

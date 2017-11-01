@@ -5,9 +5,9 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,7 +21,7 @@ import java.util.List;
  * Implementations of a {@link SmithWatermanAligner} can be tested by subclassing this test and overriding
  * {@link #getAligner()} to return an instance of the class to be tested
  */
-public abstract class SmithWatermanAlignerAbstractUnitTest extends BaseTest {
+public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest {
 
     /**
      * @return an aligner to be tested
