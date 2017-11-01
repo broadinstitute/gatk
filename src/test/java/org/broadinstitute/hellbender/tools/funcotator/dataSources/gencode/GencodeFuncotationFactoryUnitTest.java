@@ -7,6 +7,7 @@ import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
@@ -26,7 +27,7 @@ import java.util.*;
  * Unit test class for the {@link GencodeFuncotationFactory} class.
  * Created by jonn on 9/1/17.
  */
-public class GencodeFuncotationFactoryUnitTest extends BaseTest {
+public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Static Variables:
