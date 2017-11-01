@@ -37,10 +37,11 @@ import java.util.List;
  * </pre>
  */
 public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
-    protected static final String DELIMITER_REGEX = "\\s+";
     protected static final String HEADER_DELIMITER = "HEADER";
     protected static final String IGV_HEADER_DELIMITER = "track";
     protected static final String COMMENT_DELIMITER = "#";
+
+    protected String delimiter_regex = "\\s+";
 
     protected List<String> header = new ArrayList<>();
 
@@ -49,11 +50,11 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
     }
 
     @Override
-    public TableFeature decode(String line) {
+    public TableFeature decode(final String line) {
         if (line.startsWith(HEADER_DELIMITER) || line.startsWith(COMMENT_DELIMITER) || line.startsWith(IGV_HEADER_DELIMITER)) {
             return null;
         }
-        String[] split = line.split(DELIMITER_REGEX);
+        final String[] split = line.split(delimiter_regex);
         if (split.length < 1) {
             throw new IllegalArgumentException("TableCodec line = " + line + " is not a valid table format");
         }
@@ -74,7 +75,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
                 if (!header.isEmpty()) {
                     throw new UserException.MalformedFile("Input table file seems to have two header lines.  The second is = " + line);
                 }
-                final String[] spl = line.split(DELIMITER_REGEX);
+                final String[] spl = line.split(delimiter_regex);
                 Collections.addAll(header, spl);
                 return header;
             } else if (line.startsWith(COMMENT_DELIMITER)) {
