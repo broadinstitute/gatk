@@ -152,4 +152,3 @@ public class BinnedReadCountReader extends TableReader<ReadCountData> {
                 "Read count table must contain the following columns: " + ReadCountTableColumn.COLUMNS.toString());
     }
 }
-

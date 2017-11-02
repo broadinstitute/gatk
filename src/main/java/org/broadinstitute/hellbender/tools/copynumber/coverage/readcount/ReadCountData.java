@@ -43,4 +43,10 @@ public abstract class ReadCountData {
      */
     public abstract TableColumnCollection getReadCountDataColumns();
 
+    /**
+     * Return the aggregate read count associated with this record
+     *
+     * @return total read count
+     */
+    public abstract int getTotalReadCount();
 }

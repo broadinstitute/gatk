@@ -3,11 +3,13 @@ package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.ioutil
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -47,6 +49,21 @@ public final class HDF5Utils {
     private static final int NUM_INTERVAL_FIELDS = IntervalField.values().length;
 
     private HDF5Utils() {}
+
+    /**
+     * Check if input read count file is an HDF5 file
+     *
+     * @param inputFile input read count file
+     * @return whether input file is in HDF5 or TSV format
+     */
+    public static boolean isHDF5File(final File inputFile) {
+        try (final HDF5File hdf5File = new HDF5File(inputFile)) {
+            logger.info(String.format("Opening %s as an HDF5 file...", hdf5File.getFile()));
+            return true;
+        } catch (final HDF5LibException e) {
+            return false;
+        }
+    }
 
     /**
      * Read a list of {@link SimpleInterval}s from a HDF5 File

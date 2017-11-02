@@ -62,6 +62,11 @@ public class SimpleReadCountData extends ReadCountData {
         return new TableColumnCollection(Arrays.asList(SIMPLE_COUNT_COLUMN_NAME));
     }
 
+    @Override
+    public int getTotalReadCount() {
+        return count;
+    }
+
     /**
      *
      * @return

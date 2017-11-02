@@ -2,15 +2,16 @@ package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin.ReadCountCovariateBin;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin.ReadCountCovariateBinCollection;
-import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Created by asmirnov on 7/10/17.
@@ -56,5 +57,10 @@ public class BinnedReadCountData extends ReadCountData {
     @Override
     public TableColumnCollection getReadCountDataColumns() {
         return null;
+    }
+
+    @Override
+    public int getTotalReadCount() {
+        return binToCountMap.values().stream().mapToInt(Number::intValue).sum();
     }
 }

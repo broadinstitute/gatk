@@ -11,7 +11,6 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
-
 public class HDF5ReadCountsReader {
     private static final String SAMPLE_NAME_PATH = "/sample_name/value";
     private static final String INTERVALS_GROUP_NAME = "/intervals";
