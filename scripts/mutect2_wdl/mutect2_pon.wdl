@@ -9,9 +9,9 @@ workflow Mutect2_Panel {
 	File ref_fasta
 	File ref_fasta_index
 	File ref_dict
-    String m2_docker
+    String gatk_docker
     File? gatk4_jar_override
-    Int preemptible_attempts
+    Int? preemptible_attempts
     File picard_jar
     String? m2_extra_args
     String pon_name
@@ -27,8 +27,8 @@ workflow Mutect2_Panel {
             ref_dict = ref_dict,
             is_run_orientation_bias_filter = false,
             is_run_oncotator = false,
-            m2_docker = m2_docker,
-            oncotator_docker = m2_docker,   #unused dummy value
+            gatk_docker = gatk_docker,
+            oncotator_docker = gatk_docker,   #unused dummy value
             gatk4_jar_override = gatk4_jar_override,
             preemptible_attempts = preemptible_attempts,
             artifact_modes = ["G/T"],   #unused dummy value
@@ -44,7 +44,7 @@ workflow Mutect2_Panel {
             output_vcf_name = pon_name,
             gatk4_jar_override = gatk4_jar_override,
             preemptible_attempts = preemptible_attempts,
-            m2_docker = m2_docker
+            gatk_docker = gatk_docker
     }
 
     output {
@@ -62,7 +62,7 @@ task CreatePanel {
       String output_vcf_name
       File? gatk4_jar_override
       Int preemptible_attempts
-      String m2_docker
+      String gatk_docker
 
       command {
             # Use GATK Jar override if specified
@@ -75,7 +75,7 @@ task CreatePanel {
       }
 
       runtime {
-            docker: "${m2_docker}"
+            docker: "${gatk_docker}"
             memory: "5 GB"
             disks: "local-disk " + 300 + " HDD"
             preemptible: "${preemptible_attempts}"

@@ -164,15 +164,15 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        if (posteriorProbabilities[maxZIndex] > MTFAC.STRAND_ARTIFACT_POSTERIOR_PROB_THRESHOLD &&
-                mapAlleleFractionEstimates[maxZIndex] < MTFAC.STRAND_ARTIFACT_ALLELE_FRACTION_THRESHOLD){
+        if (posteriorProbabilities[maxZIndex] > MTFAC.strandArtifactPosteriorProbThreshold &&
+                mapAlleleFractionEstimates[maxZIndex] < MTFAC.strandArtifactAlleleFractionThreshold){
             filters.add(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
         }
     }
 
     private void applyClusteredEventFilter(final VariantContext vc, final Collection<String> filters) {
         final Integer eventCount = vc.getAttributeAsInt(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, -1);
-        if (eventCount > MTFAC.maxEventsInHaplotype) {
+        if (eventCount > MTFAC.maxEventsInRegion) {
             filters.add(GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME);
         }
     }

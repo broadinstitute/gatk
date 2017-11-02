@@ -79,9 +79,9 @@ workflow Mutect2ReplicateValidation {
 	File? gnomad
 	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
-	String m2_docker
+	String gatk_docker
 	File? gatk4_jar_override
-	Int preemptible_attempts
+	Int? preemptible_attempts
 	Array[String] artifact_modes
 	File picard_jar
 	String? m2_extra_args
@@ -109,8 +109,8 @@ workflow Mutect2ReplicateValidation {
 				picard_jar = picard_jar,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = false,
-                oncotator_docker = m2_docker,
-                m2_docker = m2_docker,
+                oncotator_docker = gatk_docker,
+                gatk_docker = gatk_docker,
                 gatk4_jar_override = gatk4_jar_override,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes,
