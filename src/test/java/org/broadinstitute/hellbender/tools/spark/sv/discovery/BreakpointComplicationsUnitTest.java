@@ -5,6 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -14,7 +15,7 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public class BreakpointComplicationsUnitTest {
+public class BreakpointComplicationsUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testGetHomology() {
