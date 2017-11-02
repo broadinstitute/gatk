@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
@@ -15,7 +16,7 @@ import java.util.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class EvidenceTargetLinkClustererTest {
+public class EvidenceTargetLinkClustererTest extends GATKBaseTest {
     private static final SAMFileHeader artificialSamHeader =
             ArtificialReadUtils.createArtificialSamHeaderWithGroups(2, 1, 1000000, 1);
     private static final ReadMetadata readMetadata = initMetadata();

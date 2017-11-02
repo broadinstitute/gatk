@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -7,9 +8,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.testng.Assert.*;
-
-public class TextMDCodecTest {
+public class TextMDCodecTest extends GATKBaseTest {
 
     @DataProvider(name = "mdStringProvider")
     public Object[][] getMdStrings() {

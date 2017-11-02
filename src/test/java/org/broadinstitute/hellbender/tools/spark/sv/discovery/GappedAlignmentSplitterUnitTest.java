@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval.NO_NM;
 
-public class GappedAlignmentSplitterUnitTest {
+public class GappedAlignmentSplitterUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testCompactifyNeighboringSoftClippings() {
