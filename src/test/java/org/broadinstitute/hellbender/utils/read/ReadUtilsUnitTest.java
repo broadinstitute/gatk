@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.testng.Assert;
@@ -792,5 +793,4 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
 
         return result.toArray(new Object[result.size()][]);
     }
-
 }
