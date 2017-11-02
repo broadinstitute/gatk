@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
 import java.util.Iterator;
 
-public class PairedStrandedIntervalTreeTest {
+public class PairedStrandedIntervalTreeTest extends GATKBaseTest {
 
     @Test
     public void testOverlappers() throws Exception {
