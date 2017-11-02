@@ -398,7 +398,11 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public Object onTraversalSuccess() {
-        super.onTraversalSuccess();
+
+        if (storedReferenceContext == null) {
+            logger.warn("Error: The requested interval contained no data in source VCF files");
+            return null;
+        }
 
         SimpleInterval interval = prevPos != null ? new SimpleInterval(prevPos.getContig(), prevPos.getStart(), VariantContextsOverlappingCurrentMerge.stream().map(VariantContext::getEnd).max(Comparator.naturalOrder()).get()) :
                 storedReferenceContext.getInterval();
