@@ -44,14 +44,16 @@ import java.util.stream.Collectors;
 )
 @BetaFeature
 public class ValidateBasicSomaticShortMutations extends VariantWalker {
-    public static final String SAMPLE_NAME_DISCOVERY_VCF = "dsv";
+    public static final String SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME = "discv";
+    public static final String SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME = "discoveryVariants";
     public static final String SAMPLE_NAME_VALIDATION_CASE = "valcase";
     public static final String SAMPLE_NAME_VALIDATION_CONTROL = "valcontrol";
     public final static int DEFAULT_MIN_BQ_CUTOFF = 20;
     public final static String CUTOFF_SHORT_NAME = "bqcutoff";
     public final static String CUTOFF_LONG_NAME = "min-base-quality-cutoff";
 
-    @Argument(shortName = SAMPLE_NAME_DISCOVERY_VCF,
+    @Argument(shortName = SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME,
+            fullName = SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME,
             doc = "sample name for discovery in VCF.")
     protected String discoverySampleInVcf;
 
@@ -72,7 +74,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             fullName = CUTOFF_LONG_NAME,
             doc = "minimum base quality to count a read toward validation.",
             optional = true)
-    public Integer minBqCutoff = DEFAULT_MIN_BQ_CUTOFF;
+    public int minBqCutoff = DEFAULT_MIN_BQ_CUTOFF;
 
     @Override
     public boolean requiresReference() {
@@ -104,6 +106,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
         final List<ReadFilter> result = new ArrayList<>(super.getDefaultReadFilters());
         result.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         result.add(ReadFilterLibrary.NOT_DUPLICATE);
+        result.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         return result;
     }
 
@@ -115,25 +118,31 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
 
         final Genotype genotype = discoveryVariantContext.getGenotype(discoverySampleInVcf);
 
-        // If we cannot validate this genotype, we should simple skip it.
+        // Skip any symbolic reference alleles
         final Allele referenceAllele = discoveryVariantContext.getReference();
+        if (referenceAllele.isSymbolic()) {
+            logger.warn("Skipping variant with symbolic reference allele: " + discoveryVariantContext);
+            return;
+        }
+
+        // If we cannot validate this genotype, we should simply skip it.
         final boolean isAbleToValidate = BasicSomaticShortMutationValidator.isAbleToValidateGenotype(genotype, referenceAllele);
         if (!isAbleToValidate) {
             return;
         }
 
         // We assume that there is only one alternate allele that we are interested in.
-        //   Please note that multiallelics are not supported.
+        //   Multiallelics are not supported.
         final Allele altAllele = genotype.getAllele(1);
 
         final SAMFileHeader samFileHeader = getHeaderForReads();
 
         final ReadPileup readPileup = GATKProtectedVariantContextUtils.getPileup(discoveryVariantContext, readsContext);
-        final Map<String, ReadPileup> stringPileupElementMap = readPileup.splitBySample(samFileHeader, "__UNKNOWN__");
+        final Map<String, ReadPileup> pileupsBySample = readPileup.splitBySample(samFileHeader, "__UNKNOWN__");
 
-        final ReadPileup validationNormalPileup = stringPileupElementMap.get(validationControlName);
+        final ReadPileup validationNormalPileup = pileupsBySample.get(validationControlName);
 
-        final ReadPileup validationTumorPileup = stringPileupElementMap.get(validationCaseName);
+        final ReadPileup validationTumorPileup = pileupsBySample.get(validationCaseName);
 
         final Map<Allele, MutableInt> validationTumorAllelicCounts = new AllelePileupCounter(referenceAllele, discoveryVariantContext.getAlternateAlleles(), minBqCutoff, validationTumorPileup)
                 .getCountMap();
@@ -150,9 +159,6 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
 
         results.add(basicValidationResult);
     }
-
-    @Override
-    public boolean requiresIntervals() {return true;}
 
     @Override
     public Object onTraversalSuccess(){

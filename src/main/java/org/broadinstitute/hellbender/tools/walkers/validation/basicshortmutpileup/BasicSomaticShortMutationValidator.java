@@ -11,8 +11,16 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class BasicSomaticShortMutationValidator {
     private static final Logger logger = LogManager.getLogger(BasicSomaticShortMutationValidator.class);
+
+    private static final List<VariantContext.Type> VALIDATABLE_TYPES = Arrays.asList(VariantContext.Type.SNP, VariantContext.Type.MNP, VariantContext.Type.INDEL);
+
+    private BasicSomaticShortMutationValidator() {
+    }
 
     /**
      * @param genotype The genotype to test whether we can attempt to validate.  Never {@code null}
@@ -27,25 +35,21 @@ public class BasicSomaticShortMutationValidator {
         //  - The genotype has a ploidy of 2
         //  - The genotype is a simple indel or a xNP
         //  - The first allele of the genotype is reference
-        final boolean isPloidyOfTwo = genotype.getAlleles().size() == 2;
+        final boolean isDiploid = genotype.getAlleles().size() == 2;
         final boolean doesGenotypeHaveReference = genotype.getAllele(0).equals(referenceAllele);
-        final VariantContext.Type typeOfVariant = GATKProtectedVariantContextUtils.typeOfVariant(genotype.getAllele(0), genotype.getAllele(1));
-        final boolean isValidatableVariantType =
-                (typeOfVariant.equals(VariantContext.Type.INDEL) || typeOfVariant.equals(VariantContext.Type.SNP) ||
-                        typeOfVariant.equals(VariantContext.Type.MNP))
+        final boolean isReferenceNotSymbolic = !referenceAllele.isSymbolic();
+        final VariantContext.Type variantType = GATKProtectedVariantContextUtils.typeOfVariant(genotype.getAllele(0), genotype.getAllele(1));
+        final boolean isValidatableVariantType = VALIDATABLE_TYPES.contains(variantType)
                         && !GATKProtectedVariantContextUtils.isComplexIndel(genotype.getAllele(0), genotype.getAllele(1));
         final boolean hasKnownCoverage = genotype.hasAD() && (genotype.getAD().length == 2);
-        final boolean isCanValidate = (isPloidyOfTwo && doesGenotypeHaveReference && isValidatableVariantType && hasKnownCoverage);
-        if (!isCanValidate) {
-            logger.info("Cannot validate genotype: " + genotype + "  ploidy2: " + isPloidyOfTwo +
+        final boolean isValidateable = (isDiploid && doesGenotypeHaveReference && isValidatableVariantType && hasKnownCoverage && isReferenceNotSymbolic);
+        if (!isValidateable) {
+            logger.info("Cannot validate genotype: " + genotype + "  ploidy2: " + isDiploid +
                     "  genotypeHasReferenceAllele: " + doesGenotypeHaveReference + "   validatableVariant: " + isValidatableVariantType +
-                    "  hasCompleteAD field: " + hasKnownCoverage);
+                    "  hasCompleteAD field: " + hasKnownCoverage + "  isNonSymbolicReference: " + isReferenceNotSymbolic);
         }
 
-        return isCanValidate;
-    }
-
-    private BasicSomaticShortMutationValidator() {
+        return isValidateable;
     }
 
     /** Perform basic somatic pileup validation and return a result instance.

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,6 +14,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Useful when you know the interval and the alleles of interest ahead of the counting.
@@ -29,21 +31,31 @@ public class AllelePileupCounter {
 
     /**
      *
-     * @param referenceAllele allele to treat as reference.  Easy to create with {@link Allele#create(String, boolean)}, where
-     *                  second parameter is {@code true}.  Never {@code null}.   If the reference is symbolic, no counts will be
-     *                        maintained in this instance.
+     * @param referenceAllele allele to treat as reference.  Create with {@link Allele#create(String, boolean)}, where
+     *                  second parameter is {@code true}.  Never {@code null}.   If the reference is symbolic, exception will be thrown.
      * @param alternateAlleles List of alleles to treat as the alternates.  Easy to create with {@link Allele#create(String, boolean)}, where
      *                  second parameter is {@code false}.  Never {@code null}
      * @param minBaseQualityCutoff minimum base quality for the bases that match the allele in order to be counted.
      *                             Must be positive or zero.
      */
     public AllelePileupCounter(final Allele referenceAllele, final List<Allele> alternateAlleles, int minBaseQualityCutoff) {
+
         this.referenceAllele = Utils.nonNull(referenceAllele);
         this.alternateAlleles = Utils.nonNull(alternateAlleles);
+
+        // Additional checks
+        if (referenceAllele.isSymbolic()) {
+            throw new UserException.BadInput("A symbolic reference allele was specified.");
+        }
+
+        Utils.validateArg(!referenceAllele.isNonReference(), "Reference allele was non-reference: " + referenceAllele);
+        Utils.validateArg(alternateAlleles.stream().allMatch(a -> a.isNonReference()),
+                "One or more alternate alleles were reference: " + alternateAlleles.stream().map(a-> a.toString()).collect(Collectors.joining(", ")));
+
         this.minBaseQualityCutoff = ParamUtils.isPositiveOrZero(minBaseQualityCutoff, "Minimum base quality must be positive or zero.");;
 
         alternateAlleles.forEach(a -> countMap.put(a, new MutableInt(0)));
-        countMap.putIfAbsent(referenceAllele, new MutableInt(0));
+        countMap.put(referenceAllele, new MutableInt(0));
     }
 
     /**
@@ -96,11 +108,8 @@ public class AllelePileupCounter {
         Utils.nonNull(pileupElement);
 
         final Allele pileupAllele = GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
-        if (pileupAllele == null) {
-            return;
-        }
 
-        if (countMap.containsKey(pileupAllele)) {
+        if ((pileupAllele != null) && (countMap.containsKey(pileupAllele))) {
             countMap.get(pileupAllele).increment();
         }
     }

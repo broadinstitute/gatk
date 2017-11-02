@@ -4,22 +4,22 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 
 public class BasicValidationResult implements Locatable {
-    private int minValidationReadCount;
-    private boolean isEnoughValidationReads;
-    private boolean isOutOfNoiseFloor;
-    private double power;
-    private int validationAltCount;
-    private int validationRefCount;
-    private int discoveryAltCount;
-    private int discoveryRefCount;
-    private Locatable interval;
-    private Allele reference;
-    private Allele alternate;
-    private String filters;
+    private final int minValidationReadCount;
+    private final boolean isEnoughValidationReads;
+    private final boolean isOutOfNoiseFloor;
+    private final double power;
+    private final int validationAltCount;
+    private final int validationRefCount;
+    private final int discoveryAltCount;
+    private final int discoveryRefCount;
+    private final Locatable interval;
+    private final Allele reference;
+    private final Allele alternate;
+    private final String filters;
 
-    public BasicValidationResult(final Locatable interval, int minValidationReadCount, boolean isEnoughValidationReads,
-                                 boolean isOutOfNoiseFloor, double power, int validationAltCount,
-                                 int validationRefCount, int discoveryAltCount, int discoveryRefCount, final Allele ref,
+    public BasicValidationResult(final Locatable interval, final int minValidationReadCount, final boolean isEnoughValidationReads,
+                                 final boolean isOutOfNoiseFloor, final double power, final int validationAltCount,
+                                 final int validationRefCount, final int discoveryAltCount, final int discoveryRefCount, final Allele ref,
                                  final Allele alt, final String filters) {
         this.minValidationReadCount = minValidationReadCount;
         this.isEnoughValidationReads = isEnoughValidationReads;
@@ -56,40 +56,20 @@ public class BasicValidationResult implements Locatable {
         return minValidationReadCount;
     }
 
-    public void setMinValidationReadCount(int minValidationReadCount) {
-        this.minValidationReadCount = minValidationReadCount;
-    }
-
     public boolean isEnoughValidationReads() {
         return isEnoughValidationReads;
-    }
-
-    public void setEnoughValidationReads(boolean enoughValidationReads) {
-        isEnoughValidationReads = enoughValidationReads;
     }
 
     public boolean isOutOfNoiseFloor() {
         return isOutOfNoiseFloor;
     }
 
-    public void setOutOfNoiseFloor(boolean outOfNoiseFloor) {
-        isOutOfNoiseFloor = outOfNoiseFloor;
-    }
-
     public double getPower() {
         return power;
     }
 
-    public void setPower(double power) {
-        this.power = power;
-    }
-
     public Locatable getInterval() {
         return interval;
-    }
-
-    public void setInterval(Locatable interval) {
-        this.interval = interval;
     }
 
     @Override
@@ -111,23 +91,11 @@ public class BasicValidationResult implements Locatable {
         return reference;
     }
 
-    public void setReference(Allele reference) {
-        this.reference = reference;
-    }
-
     public Allele getAlternate() {
         return alternate;
     }
 
-    public void setAlternate(Allele alternate) {
-        this.alternate = alternate;
-    }
-
     public String getFilters() {
         return filters;
-    }
-
-    public void setFilters(String filters) {
-        this.filters = filters;
     }
 }

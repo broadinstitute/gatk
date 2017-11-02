@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-public class AllelePileupCounterUnitTest extends BaseTest {
+public class AllelePileupCounterUnitTest extends GATKBaseTest {
 
     private static final String TEST_DREAM_BAM_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
     private static final String TEST_DREAM_TUMOR_BAM = TEST_DREAM_BAM_DIR + "tumor.bam";

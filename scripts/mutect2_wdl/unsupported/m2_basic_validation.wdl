@@ -104,10 +104,8 @@ workflow m2_validation {
                 ref_dict = ref_dict,
                 tumor_bam = tumor_bam_files[i],
                 tumor_bam_index = tumor_bam_indices[i],
-                tumor_sample_name = sub(sub(tumor_bam_files[i], "[/]*.*/", ""), "\\.bam$", ""),
                 normal_bam = normal_bam_files[i],
                 normal_bam_index = normal_bam_indices[i],
-                normal_sample_name = sub(sub(normal_bam_files[i], "[/]*.*/", ""), "\\.bam$", ""),
                 scatter_count = scatter_count,
                 pon = pon,
                 pon_index = pon_index,
@@ -139,10 +137,8 @@ workflow m2_validation {
                 ref_dict = ref_dict,
                 tumor_bam = validation_tumor_bam_files[i],
                 tumor_bam_index = validation_tumor_bam_indices[i],
-                tumor_sample_name = sub(sub(validation_tumor_bam_files[i], "[/]*.*/", ""), "\\.bam$", ""),
                 normal_bam = validation_normal_bam_files[i],
                 normal_bam_index = validation_normal_bam_indices[i],
-                normal_sample_name = sub(sub(validation_normal_bam_files[i], "[/]*.*/", ""), "\\.bam$", ""),
                 scatter_count = scatter_count,
                 pon = pon,
                 pon_index = pon_index,
@@ -170,7 +166,6 @@ workflow m2_validation {
                 bam = m2_validation_bamout.bamout,
                 gatk_docker = m2_docker,
                 new_sample_name = m2_validation_bamout.tumor_bam_sample_name,
-                gatk4_jar = gatk4_jar,
                 gatk4_jar_override = gatk4_jar_override,
                 output_bam_basename = m2_validation_bamout.tumor_bam_sample_name
         }
@@ -256,30 +251,29 @@ task basic_validator {
     Int final_mem=select_first([mem, 7])
 
     command <<<
-    set -e
-    # Use GATK Jar override if specified
-    GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        set -e
+        # Use GATK Jar override if specified
+        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-    echo "Getting sample names...."
-    java -Xmx${final_mem-1}g -jar $GATK_JAR GetSampleName -I ${validation_normal_bam} -O validation_normal_name.txt
-    java -Xmx${final_mem-1}g -jar $GATK_JAR GetSampleName -I ${validation_tumor_bam} -O validation_tumor_name.txt
-    echo ${discovery_tumor_sample_name}
-    echo ${discovery_normal_sample_name}
-    echo "Sample names (for validation files):"
-    echo `cat validation_tumor_name.txt`
-    echo `cat validation_normal_name.txt`
-    echo "Running BasicValidatorWalker (incl. filtering info).... "
-    java -Xmx${final_mem-1}g -jar $GATK_JAR ValidateBasicSomaticShortMutations \
-        -dsv ${discovery_tumor_sample_name} \
-        -V ${vcf_calls} \
-        -I ${validation_tumor_bam} \
-        -I ${validation_normal_bam} \
-        -valcase  `cat validation_tumor_name.txt` \
-        -valcontrol `cat validation_normal_name.txt` \
-        -O output_validation_${entity_id}.tsv \
-        -L ${call_intervals} \
-        -R ${ref_fasta} \
-        -bqcutoff ${default=20 base_quality_cutoff}
+        echo "Getting sample names...."
+        java -Xmx${final_mem-1}g -jar $GATK_JAR GetSampleName -I ${validation_normal_bam} -O validation_normal_name.txt
+        java -Xmx${final_mem-1}g -jar $GATK_JAR GetSampleName -I ${validation_tumor_bam} -O validation_tumor_name.txt
+        echo ${discovery_tumor_sample_name}
+        echo ${discovery_normal_sample_name}
+        echo "Sample names (for validation files):"
+        echo `cat validation_tumor_name.txt`
+        echo `cat validation_normal_name.txt`
+        echo "Running BasicValidatorWalker (incl. filtering info).... "
+        java -Xmx${final_mem-1}g -jar $GATK_JAR ValidateBasicSomaticShortMutations \
+            -discv ${discovery_tumor_sample_name} \
+            -V ${vcf_calls} \
+            -I ${validation_tumor_bam} \
+            -I ${validation_normal_bam} \
+            -valcase  `cat validation_tumor_name.txt` \
+            -valcontrol `cat validation_normal_name.txt` \
+            -O output_validation_${entity_id}.tsv \
+            -R ${ref_fasta} \
+            -bqcutoff ${default=20 base_quality_cutoff}
 
     >>>
 
@@ -337,7 +331,6 @@ task rewrite_bam_by_sample {
     String new_sample_name
     File bam
 
-    String gatk4_jar
     File? gatk4_jar_override
     String output_bam_basename
 
@@ -353,10 +346,7 @@ task rewrite_bam_by_sample {
         set -e
 
         # Use GATK Jar override if specified
-        GATK_JAR=${gatk4_jar}
-        if [[ "${gatk4_jar_override}" == *.jar ]]; then
-          GATK_JAR=${gatk4_jar_override}
-        fi
+        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         java -Xmx${final_mem-1}g -jar $GATK_JAR PrintReads -I ${bam} -O ${output_bam_basename}.tmp.bam -RF SampleReadFilter -sample ${sep=" -sample " new_sample_name}
 

@@ -4,11 +4,11 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Created by David Benjamin on 2/15/17.
  */
-public class GATKProtectedVariantContextUtilsUnitTest extends BaseTest {
+public class GATKProtectedVariantContextUtilsUnitTest extends GATKBaseTest {
 
     public static final int LENGTH_OF_ARTIFICIAL_READ = 50;
 
@@ -231,22 +231,22 @@ public class GATKProtectedVariantContextUtilsUnitTest extends BaseTest {
 
     @Test(dataProvider = "doesReadContainAllele")
     public void testDoesReadContainAllele(final int offsetIntoRead, final String actualBases, final String searchAlleleBases,
-                                          final GATKProtectedVariantContextUtils.ReadContainAllele gt) {
+                                          final Trilean gt) {
 
         final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, Allele.create(actualBases, true), LENGTH_OF_ARTIFICIAL_READ);
         Assert.assertEquals(GATKProtectedVariantContextUtils.doesReadContainAllele(pileupElement, Allele.create(searchAlleleBases, false)),
                 gt);
         Assert.assertEquals(GATKProtectedVariantContextUtils.doesReadContainAllele(pileupElement, Allele.create(actualBases, false)),
-                GATKProtectedVariantContextUtils.ReadContainAllele.TRUE);
+                Trilean.TRUE);
     }
 
     @DataProvider(name="doesReadContainAllele")
     public Object[][] createDoesReadContainAlelle() {
         return new Object[][] {
-                {10, "ATT", "C", GATKProtectedVariantContextUtils.ReadContainAllele.FALSE},
-                {10, "AT", "AT", GATKProtectedVariantContextUtils.ReadContainAllele.TRUE},
-                {49, "A", "ATT", GATKProtectedVariantContextUtils.ReadContainAllele.UNKNOWN},
-                {48, "AT", "ATT", GATKProtectedVariantContextUtils.ReadContainAllele.UNKNOWN},
+                {10, "ATT", "C", Trilean.FALSE},
+                {10, "AT", "AT", Trilean.TRUE},
+                {49, "A", "ATT", Trilean.UNKNOWN},
+                {48, "AT", "ATT", Trilean.UNKNOWN},
         };
     }
 }

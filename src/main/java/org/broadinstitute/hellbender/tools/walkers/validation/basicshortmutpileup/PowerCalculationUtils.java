@@ -4,7 +4,9 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
+import org.broadinstitute.hellbender.utils.Trilean;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
@@ -12,6 +14,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class PowerCalculationUtils {
+
+    public static final double P_VALUE_FOR_NOISE = 0.99;
+    public static final int MINIMUM_NUM_READS_FOR_SIGNAL_COUNT = 2;
+
     private PowerCalculationUtils() {}
 
     /**
@@ -31,39 +37,50 @@ public class PowerCalculationUtils {
         return (1 - betaBinomialDistribution.cumulativeProbability(minCountForSignal - 1));
     }
 
-    static int calculateMinCountForSignal(int validationTumorTotalCount, double maxSignalRatioInNormal) {
+    /**
+     *
+     * @param validationTumorTotalCount the total number of reads that we would like to validate.
+     *                                  Must be positive or zero.
+     * @param maxSignalRatioInNormal a ratio of non-ref to ref bases.  Must be within 0.0 - 1.0.
+     * @return the minimum read count to be above the model noise floor.
+     */
+    public static int calculateMinCountForSignal(int validationTumorTotalCount, double maxSignalRatioInNormal) {
+        ParamUtils.isPositiveOrZero(validationTumorTotalCount, "Cannot have a negative total count.");
+        ParamUtils.inRange(maxSignalRatioInNormal, 0.0, 1.0, "Cannot have have a ratio that is outside of 0.0 - 1.0.");
+
         final BinomialDistribution binomialDistribution = new BinomialDistribution(validationTumorTotalCount, maxSignalRatioInNormal);
-        int minCountForSignal = binomialDistribution.inverseCumulativeProbability(0.99);
-        minCountForSignal = Math.max(minCountForSignal, 2);
-        return minCountForSignal;
+        return Math.max(binomialDistribution.inverseCumulativeProbability(P_VALUE_FOR_NOISE), MINIMUM_NUM_READS_FOR_SIGNAL_COUNT);
     }
 
     /**
-     * Calculate the maximum ratio of (non-ref read count) to (reference allele read count) + (non-ref read count)
-     *  in the given pileup.
+     * Calculate the fraction of non-ref reads in the given pileup.
      *
      *  In this context, this code is only looking for reads that have a base change (or directly precede an indel) at that location.
      *
-     * @param readPileup pileup to create the ratio.
-     * @param referenceAllele reference allele
+     * @param readPileup pileup to create the ratio.  Never {@code null}
+     * @param referenceAllele reference allele.  Never {@code null}
      * @param minBaseQualityCutoff only count the bases that exceed the min base quality.  For xNP, it is the min quality
-     *                             all overlapping loci.  For indels, this is the base preceding the indel itself.
+     *                             all overlapping loci.  For indels, this is the base preceding the indel itself.  Must be positive or zero.
+     *                             Zero indicates that all reads should pass this filter.
      * @return ratio as a double
      */
-    static double calculateMaxAltRatio(final ReadPileup readPileup, final Allele referenceAllele, int minBaseQualityCutoff) {
+    public static double calculateMaxAltRatio(final ReadPileup readPileup, final Allele referenceAllele, int minBaseQualityCutoff) {
+        ParamUtils.isPositiveOrZero(minBaseQualityCutoff, "Cannot have a negative minBaseQualityCutoff.");
+        Utils.nonNull(readPileup);
+        Utils.nonNull(referenceAllele);
 
         // Go through the read pileup and find all new bases.
         final List<PileupElement> pileupElementsPassingQuality = Utils.stream(readPileup.iterator())
-                .filter(pe -> pe.getBase() != PileupElement.DELETION_BASE)
-                .filter(pe -> pe.getRead().getBaseQuality(pe.getOffset()) >= minBaseQualityCutoff)
+                .filter(pe -> !pe.isDeletion())
+                .filter(pe -> pe.getQual() >= minBaseQualityCutoff)
                 .collect(Collectors.toList());
 
         final long numAlternate = pileupElementsPassingQuality.stream()
-                .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == GATKProtectedVariantContextUtils.ReadContainAllele.FALSE)
+                .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.FALSE)
                 || pe.isBeforeDeletionStart() || pe.isBeforeInsertion()).count();
 
         final long numReference = pileupElementsPassingQuality.stream()
-                .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == GATKProtectedVariantContextUtils.ReadContainAllele.TRUE)
+                .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.TRUE)
                 && !pe.isBeforeDeletionStart() && !pe.isBeforeInsertion()).count();
 
         return (double) numAlternate / ((double) numReference + (double) numAlternate);

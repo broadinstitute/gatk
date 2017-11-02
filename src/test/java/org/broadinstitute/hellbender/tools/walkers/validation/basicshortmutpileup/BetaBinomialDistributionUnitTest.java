@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.junit.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class BetaBinomialDistributionUnitTest extends BaseTest {
+public class BetaBinomialDistributionUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "basicBetaBinomialTest")
     public void basicTestPdf(int x, int n, int a, int b, double gt) {

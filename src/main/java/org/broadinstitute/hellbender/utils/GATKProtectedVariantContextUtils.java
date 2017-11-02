@@ -438,7 +438,7 @@ public class GATKProtectedVariantContextUtils {
                     }
 
                 } else if (variantType == VariantContext.Type.MNP || variantType == VariantContext.Type.SNP) {
-                    if (doesReadContainAllele(pileupElement, altAllele) == ReadContainAllele.TRUE) {
+                    if (doesReadContainAllele(pileupElement, altAllele) == Trilean.TRUE) {
                         pileupAllele = altAllele;
                     }
                 }
@@ -459,21 +459,12 @@ public class GATKProtectedVariantContextUtils {
 
         // Check insertion
         if (pileupElement.isBeforeInsertion()) {
-            final int insertionLength = pileupElement.getLengthOfImmediatelyFollowingIndel();
-            if (insertionLength == pileupElement.getLengthOfImmediatelyFollowingIndel()) {
-                final String insertionBases = pileupElement.getBasesOfImmediatelyFollowingInsertion();
-                // edge case: ignore a deletion immediately preceding an insertion as p.getBasesOfImmediatelyFollowingInsertion() returns null [EB]
-                if (insertionBases != null) {
-                    final boolean isMatch = Allele.extend(referenceAllele, insertionBases.getBytes()).basesMatch(altAllele);
-                    if (isMatch) {
-                        isAltAlleleInThePileup = true;
-                    }
-                }
+            final String insertionBases = pileupElement.getBasesOfImmediatelyFollowingInsertion();
+            // edge case: ignore a deletion immediately preceding an insertion as p.getBasesOfImmediatelyFollowingInsertion() returns null [EB]
+            if ((insertionBases != null) && (Allele.extend(referenceAllele, insertionBases.getBytes()).basesMatch(altAllele))) {
+                isAltAlleleInThePileup = true;
             }
-        }
-
-        // Check deletion
-        if (pileupElement.isBeforeDeletionStart()) {
+        } else if (pileupElement.isBeforeDeletionStart()) {
             final int deletionLength = pileupElement.getLengthOfImmediatelyFollowingIndel();
             if ((referenceAllele.getBases().length - altAllele.getBases().length) == deletionLength) {
                 isAltAlleleInThePileup = true;
@@ -500,20 +491,20 @@ public class GATKProtectedVariantContextUtils {
      * @param allele query allele.  Never {@code null}
      * @return Whether the read contains the allele.  Note that unknown can occur as well.
      */
-    public static ReadContainAllele doesReadContainAllele(final PileupElement pileupElement, final Allele allele) {
+    public static Trilean doesReadContainAllele(final PileupElement pileupElement, final Allele allele) {
         Utils.nonNull(pileupElement);
         Utils.nonNull(allele);
 
         final byte[] readBases = ArrayUtils.subarray(pileupElement.getRead().getBases(), pileupElement.getOffset(), pileupElement.getOffset() + allele.getBases().length);
 
         if (readBases.length < allele.getBases().length) {
-            return ReadContainAllele.UNKNOWN;
+            return Trilean.UNKNOWN;
         }
 
         if (allele.basesMatch(readBases)) {
-            return ReadContainAllele.TRUE;
+            return Trilean.TRUE;
         } else {
-            return ReadContainAllele.FALSE;
+            return Trilean.FALSE;
         }
     }
 
@@ -530,18 +521,6 @@ public class GATKProtectedVariantContextUtils {
         final byte[] alleleBases = allele.getBases();
         final byte[] pileupBaseQualities = ArrayUtils.subarray(pileupElement.getRead().getBaseQualities(), pileupElement.getOffset(), pileupElement.getOffset() + alleleBases.length);
         final OptionalInt minQuality = IntStream.range(0, pileupBaseQualities.length).map(i -> Byte.toUnsignedInt(pileupBaseQualities[i])).min();
-        if (!minQuality.isPresent()) {
-            return -1;
-        } else {
-            return minQuality.getAsInt();
-        }
-    }
-
-    /**
-     * An enumeration to represent whether a read contains the allele at a position.
-     */
-    public enum ReadContainAllele {
-        // UNKNOWN could be used if the read does not fully cover the allele.  For example, a ten base allele appearing near the end of the read
-        TRUE, FALSE, UNKNOWN
+        return minQuality.orElse(-1);
     }
 }
