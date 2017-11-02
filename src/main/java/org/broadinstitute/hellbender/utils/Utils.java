@@ -1137,4 +1137,47 @@ public final class Utils {
         return sorted.get(sorted.size() / 2);
     }
 
+
+    /**
+     * Splits a String using indexOf instead of regex to speed things up.
+     *
+     * @param str the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return an array of tokens.
+     */
+    public static ArrayList<String> split(final String str, final String delimiter) {
+        // This is 10 because the ArrayList default capacity is 10 (but private).
+        return split(str, delimiter, 10);
+    }
+
+    /**
+     * Splits a given {@link String} using {@link String#indexOf} instead of regex to speed things up.
+     * @param str The {@link String} to split.
+     * @param delimiter The delimiter used to split the {@link String}.
+     * @param expectedNumTokens The number of tokens expected (used to initialize the capacity of the {@link ArrayList}).
+     * @return An {@link ArrayList} of tokens.
+     */
+    public static ArrayList<String> split(final String str, final String delimiter, final int expectedNumTokens) {
+        final ArrayList<String> result =  new ArrayList<>(expectedNumTokens);
+
+        if ( str.length() == 0) {
+            result.add("");
+        }
+        else if ( delimiter.length() == 0) {
+            for ( int i = 0; i < str.length(); ++i ) {
+                result.add( str.substring(i, i+1) );
+            }
+        }
+        else {
+            int delimiterIdx = -1;
+            do {
+                final int tokenStartIdx = delimiterIdx + 1;
+                delimiterIdx = str.indexOf(delimiter, tokenStartIdx);
+                final String token = (delimiterIdx != -1 ? str.substring(tokenStartIdx, delimiterIdx) : str.substring(tokenStartIdx));
+                result.add(token);
+            } while (delimiterIdx != -1);
+        }
+
+        return result;
+    }
 }
