@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-1.2
+FROM broadinstitute/gatk:gatkbase-1.2.1
 
 ADD . /gatk
 
