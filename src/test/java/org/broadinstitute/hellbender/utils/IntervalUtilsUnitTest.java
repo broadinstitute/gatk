@@ -2118,7 +2118,103 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "createGroupIntervalsByContigTestData")
     public void testGroupIntervalsByContig(final List<SimpleInterval> inputIntervals, final List<List<SimpleInterval>> expectedResult) {
-        final List<List<SimpleInterval>> result = IntervalUtils.groupIntervalsByContig(inputIntervals);
+        final List<List<SimpleInterval>> result =
+                IntervalUtils.groupIntervalsByContig(inputIntervals);
         Assert.assertEquals(result, expectedResult);
+    }
+
+    public static Object[][] createIntervalWithStop() {
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        return new Object[][]{
+                {dictionary, "1", 100, 200},
+                {dictionary, "2", 780, 900233}
+        };
+    }
+
+    @Test(dataProvider = "createIntervalWithStop")
+    public void testCreateIntervalWithStop(final SAMSequenceDictionary dictionary, final String contig, final int start, final int stop) {
+        Assert.assertEquals(IntervalUtils.createInterval(dictionary, contig, start, stop), new SimpleInterval(contig, start, stop));
+    }
+
+    @DataProvider
+    public static Object[][] createIntervalWithoutStop() {
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        return new Object[][]{
+                {dictionary, "1", 100},
+                {dictionary, "2", 780}
+        };
+    }
+
+
+    @Test(dataProvider = "createIntervalWithoutStop")
+    public void testCreateIntervalWithoutStop(final SAMSequenceDictionary dictionary, final String contig, final int start) {
+        Assert.assertEquals(IntervalUtils.createInterval(dictionary, contig, start), new SimpleInterval(contig, start, start));
+    }
+
+    @DataProvider
+    public static Iterator<Object[]> createOverEntireContig() {
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        return dictionary.getSequences().stream()
+                .map(seq -> new Object[]{dictionary, seq.getSequenceName(), seq.getSequenceLength()})
+                .iterator();
+    }
+
+
+    @Test(dataProvider = "createOverEntireContig")
+    public void testCreateOverEntireContig(final SAMSequenceDictionary dictionary, final String contig, final int length) {
+        Assert.assertEquals(IntervalUtils.createOverEntireContig(dictionary, contig), new SimpleInterval(contig, 1, length));
+    }
+
+    @DataProvider
+    public static Object[][] invalidCreateIntervalArgs() {
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        return new Object[][]{
+                // null dictionary or contig
+                {null, "1", 100, 200, IllegalArgumentException.class},
+                {dictionary, null, 100, 200, IllegalArgumentException.class},
+                // invalid contig
+                {dictionary, "2L", 100, 200, UserException.class},
+                // invalid start or end
+                {dictionary, "1", -1, 200, UserException.class},
+                {dictionary, "1", 10, -1, UserException.class},
+                {dictionary, "1", 1000, 100, UserException.class},
+                // more than the length
+                {dictionary, "1", 100, dictionary.getSequence("1").getSequenceLength() + 1, UserException.class}
+        };
+    }
+
+    @Test(dataProvider = "invalidCreateIntervalArgs")
+    public void testInvalidCreateIntervalArgs(final SAMSequenceDictionary dictionary, final String contig, final int start, final int stop, final Class<? extends Throwable> exceptionClass) {
+        Assert.assertThrows(exceptionClass, () -> IntervalUtils.createInterval(dictionary, contig, start, stop));
+    }
+
+    @DataProvider
+    public static Object[][] invalidCreateOverEntireContigArgs() {
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        return new Object[][]{
+                {null, "1", IllegalArgumentException.class},
+                {dictionary, null, IllegalArgumentException.class},
+                {dictionary, "2L", UserException.class}
+        };
+    }
+
+    @Test(dataProvider = "invalidCreateOverEntireContigArgs")
+    public void testInvalidCreateOverEntireContigArgs(final SAMSequenceDictionary dictionary, final String contig, final Class<? extends Throwable> exceptionClass) {
+        Assert.assertThrows(exceptionClass, () -> IntervalUtils.createOverEntireContig(dictionary, contig));
+    }
+
+    @DataProvider
+    public static Object[][] invalidCreateOverEntireContigArgsWithIndex() {
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        return new Object[][]{
+                {null, 1},
+                {dictionary, -1},
+                {dictionary, dictionary.size() + 1}
+        };
+    }
+
+    @Test(dataProvider = "invalidCreateOverEntireContigArgsWithIndex", expectedExceptions = IllegalArgumentException.class)
+    public void testInvalidCreateOverEntireContigArgsWithIndex(final SAMSequenceDictionary dictionary, final int contigIdx) {
+        IntervalUtils.createOverEntireContig(dictionary, contigIdx);
     }
 }
