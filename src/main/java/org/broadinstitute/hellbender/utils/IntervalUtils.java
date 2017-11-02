@@ -1516,4 +1516,50 @@ public final class IntervalUtils {
     public enum IntervalBreakpointType {
         START_BREAKPOINT, END_BREAKPOINT
     }
+
+    /**
+     * Creates a {@link SimpleInterval} instance given its contig and base range.
+     * @param contig the new location contig name.
+     * @param start  the new location start base index.
+     * @param stop the new location stop base index.
+     * @return never {@code null}.
+     * @throws UserException if there was some problem when creating the location.
+     */
+    public static SimpleInterval createInterval(final SAMSequenceDictionary dictionary, final String contig, final int start, final int stop) {
+        return new SimpleInterval(dictionary.getSequence(contig).getSequenceName(),start,stop);
+    }
+
+
+    /**
+     * Creates a {@link SimpleInterval} instance on an entire contig.
+     * @param contigIndex the new location contig index.
+     * @return never {@code null}.
+     * @throws UserException if there was some problem when creating the location.
+     */
+    public static SimpleInterval createOverEntireContig(final SAMSequenceDictionary dictionary, final int contigIndex) {
+        final int contigLength = dictionary.getSequence(contigIndex).getSequenceLength();
+        return new SimpleInterval(dictionary.getSequence(contigIndex).getSequenceName(),1,contigLength);
+    }
+
+    /**
+     * Creates a {@link SimpleInterval} instance on an entire contig.
+     * @param contig the new location contig.
+     * @return never {@code null}.
+     * @throws UserException if there was some problem when creating the location.
+     */
+    public static SimpleInterval createOverEntireContig(final SAMSequenceDictionary dictionary, final String contig) {
+        final int contigLength = dictionary.getSequence(contig).getSequenceLength();
+        return new SimpleInterval(dictionary.getSequence(contig).getSequenceName(),1,contigLength);
+    }
+
+    /**
+     * Creates a {@link SimpleInterval} at a give contig and position.
+     * @param contig the contig name.
+     * @param start the start and stop position.
+     * @return never {@code null}.
+     * @throws UserException if there was some problem when creating the location.
+     */
+    public static SimpleInterval createInterval(final SAMSequenceDictionary dictionary, final String contig, final int start) {
+        return createInterval(dictionary, contig,start,start);
+    }
 }
