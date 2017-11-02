@@ -22,9 +22,9 @@ workflow Mutect2_Multi_Concordance {
 	File? variants_for_contamination
     File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
-    String m2_docker
+    String gatk_docker
     File? gatk4_jar_override
-    Int preemptible_attempts
+    Int? preemptible_attempts
     Array[String] artifact_modes
     File picard_jar
     String? m2_args
@@ -50,7 +50,7 @@ workflow Mutect2_Multi_Concordance {
             variants_for_contamination_index = variants_for_contamination_index,
         	is_run_orientation_bias_filter = is_run_orientation_bias_filter,
         	is_run_oncotator = false,
-            m2_docker = m2_docker,
+            gatk_docker = gatk_docker,
             oncotator_docker = "NO_ONCOTATOR",
             gatk4_jar_override = gatk4_jar_override,
             preemptible_attempts = preemptible_attempts,
@@ -70,7 +70,7 @@ workflow Mutect2_Multi_Concordance {
                     truth_vcf_idx = truth[n][1],
                     eval_vcf = Mutect2_Multi.filtered_vcf_files[n],
                     eval_vcf_idx = Mutect2_Multi.filtered_vcf_index_files[n],
-                    m2_docker = m2_docker,
+                    gatk_docker = gatk_docker,
                     preemptible_attempts = preemptible_attempts
             }
          }
@@ -94,7 +94,7 @@ workflow Mutect2_Multi_Concordance {
       File truth_vcf_idx
       File eval_vcf
       File eval_vcf_idx
-      String m2_docker
+      String gatk_docker
       Int preemptible_attempts
 
       command {
@@ -114,7 +114,7 @@ workflow Mutect2_Multi_Concordance {
 
         runtime {
             memory: "5 GB"
-            docker: "${m2_docker}"
+            docker: "${gatk_docker}"
             disks: "local-disk " + 400 + " HDD"
              preemptible: "${preemptible_attempts}"
         }

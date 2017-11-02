@@ -22,8 +22,8 @@ The following resources:
 * A reference .fasta file, along with accompanying .fasta.fai and .dict files.
 * A gatk4 java .jar file.
 * A Picard java .jar file.
-* Three lists of .bam files -- one each for 5-plex, 10-plex and 20-plex replicates -- where each row has the format <bam_file.bam></TAB><bam_index.bai></TAB><sample_name>
-* A list of .bam files of the specificity validation's replicates.
+* Three lists of .bam files -- one each for 5-plex, 10-plex and 20-plex replicates -- where each row has the format <bam_file.bam></TAB><bam_index.bai>
+* A list of .bam files of the specificity validation's replicates, where each row has the format <replicate_i.bam></TAB><replicate_i.bai></TAB><replicate_j.bam></TAB><replicate_j.bai>, with one row for each *ordered* pair i, j eg (1,2), (1,3), (2,1), (2,3), (3,1), (3,2) if there are three replicates.
 * An intervals file.
 * A gnomAD vcf.
 * A Mutect2 panel of normals .vcf corresponding to the intervals and sequencing protocol of the specificity replicates.
@@ -33,7 +33,6 @@ In the same directory as your wdl scripts, fill in a file called sensitivity.jso
 
 ```
 {
-
   "HapmapSensitivityAllPlexes.max_depth": "The maximum depth to consider for sensitivity.  1000 is a reasonable default.",
   "HapmapSensitivityAllPlexes.gatk": "[path to gatk .jar file]",
   "HapmapSensitivityAllPlexes.ref_fasta": "[path to reference .fasta file]",
@@ -87,7 +86,7 @@ In the same directory as your wdl scripts, fill in a file called specificity.jso
 }
 ```
 
-Note that the docker image path is not used when the validations are run locally.
+Note that the docker image path is not used when the validations are run locally.  When running locally, a valid docker path must still be given or else cromwell will fail.  When running locally, fill in gatk4_jar with some dummy value such as "OVERRIDDEN".
 
 ## Running in Cromwell
 * Run hapmap_sensitivity_all_plexes.wdl with the parameters in sensitivity.json
