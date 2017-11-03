@@ -18,13 +18,12 @@ task PadTargets {
     String filename = select_first([targets, ""])
     String base_filename = basename(filename, ".tsv")
 
-    command <<<
-        echo ${filename}; \
+    command {
         java -Xmx${default="1" mem}g -jar ${gatk_jar} PadTargets \
             --targets ${targets} \
             --padding ${default="250" padding} \
             --output ${base_filename}.padded.tsv
-    >>>
+    }
 
     runtime {
         docker: "${gatk_docker}"
@@ -38,20 +37,126 @@ task PadTargets {
     }
 }
 
-# Collect proportional coverage
-task CollectCoverage {
+task PreprocessIntervals {
+    File? intervals
+    File ref_fasta_dict
+    Int? padding
+    Int? bin_length
+    String gatk_jar
+
+    # Runtime parameters
+    Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
+
+    # Determine output filename
+    String filename = select_first([intervals, "wgs"])
+    String base_filename = basename(filename, ".interval_list")
+
+    command {
+        java -Xmx${default="2" mem}g -jar ${gatk_jar} PreprocessIntervals \
+            ${"-L " + intervals} \
+            -sequenceDictionary ${ref_fasta_dict} \
+            --padding ${default="250" padding} \
+            --binLength ${default="1000" bin_length} \
+            --interval_merging_rule OVERLAPPING_ONLY \
+            --output ${base_filename}.preprocessed.interval_list
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 2]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+        File preprocessed_intervals = "${base_filename}.preprocessed.interval_list"
+    }
+}
+
+# Create a target file with GC annotations
+task AnnotateTargets {
+    String entity_id
+    File intervals
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    String gatk_jar
+
+    # Runtime parameters
+    Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
+
+    command {
+        java -Xmx${default="4" mem}g -jar ${gatk_jar} AnnotateTargets \
+            --targets ${intervals} \
+            --reference ${ref_fasta} \
+            --interval_merging_rule OVERLAPPING_ONLY \
+            --output ${entity_id}.annotated.tsv
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB")) + 50]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+        File annotated_intervals = "${entity_id}.annotated.tsv"
+    }
+}
+
+task AnnotateIntervals {
+    File intervals
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    String gatk_jar
+
+    # Runtime parameters
+    Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
+
+    command {
+        java -Xmx${default="4" mem}g -jar ${gatk_jar} AnnotateIntervals \
+            -L ${intervals} \
+            --reference ${ref_fasta} \
+            --interval_merging_rule OVERLAPPING_ONLY \
+            --output annotated_intervals.tsv
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 5]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB")) + 50]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+        File annotated_intervals = "annotated_intervals.tsv"
+    }
+}
+
+# Collect read counts for germline workflow (TSV output in target format)
+task CollectReadCounts {
     File? padded_targets
     File bam
     File bam_idx
-    String? transform
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    Int? wgs_bin_length
     Boolean? keep_non_autosomes
     Boolean? disable_all_read_filters
     Boolean? disable_sequence_dictionary_validation
     Boolean? keep_duplicate_reads
-    Int? wgs_bin_size
-    File ref_fasta
-    File ref_fasta_fai
-    File ref_fasta_dict
     String gatk_jar
 
     # Runtime parameters
@@ -65,60 +170,64 @@ task CollectCoverage {
 
     # Sample name is derived from the bam filename
     String base_filename = basename(bam, ".bam")
- 
-    # Output file name depending on type of coverage
-    String cov_output_name = if (is_wgs && (select_first([transform, ""])  == "RAW")) then "${base_filename}.coverage.tsv.raw_cov" else "${base_filename}.coverage.tsv"
-  
+
+    String read_counts_tsv_filename = "${base_filename}.readCounts.tsv"
+    String read_counts_hdf5_filename = if is_wgs then "${base_filename}.readCounts.hdf5" else ""
+    String intervals_filename = if is_wgs then "${base_filename}.readCounts.intervals.tsv" else select_first([padded_targets, ""])
+
     command <<<
         if [ ${is_wgs} = true ]
             then
-                java -Xmx${default=4 mem}g -jar ${gatk_jar} SparkGenomeReadCounts \
+                java -Xmx${default="8" mem}g -jar ${gatk_jar} SparkGenomeReadCounts \
                     --input ${bam} \
                     --reference ${ref_fasta} \
-                    --binsize ${default=10000 wgs_bin_size} \
+                    --binLength ${default="1000" wgs_bin_length} \
                     --keepXYMT ${default="false" keep_non_autosomes} \
                     --disableToolDefaultReadFilters ${default="false" disable_all_read_filters} \
                     --disableSequenceDictionaryValidation ${default="true" disable_sequence_dictionary_validation} \
                     $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disableReadFilter NotDuplicateReadFilter "; else echo ""; fi) \
-                    --outputFile ${base_filename}.coverage.tsv
+                    --output ${read_counts_tsv_filename} \
+                    --writeHdf5
             else
-                java -Xmx${default=4 mem}g -jar ${gatk_jar} CalculateTargetCoverage \
+                java -Xmx${default="4" mem}g -jar ${gatk_jar} CalculateTargetCoverage \
                     --input ${bam} \
                     --reference ${ref_fasta} \
                     --targets ${padded_targets} \
                     --groupBy SAMPLE \
-                    --transform ${default="PCOV" transform} \
+                    --transform RAW \
                     --targetInformationColumns FULL \
                     --interval_set_rule UNION \
+                    --interval_merging_rule OVERLAPPING_ONLY \
                     --interval_padding 0 \
                     --secondsBetweenProgressUpdates 10.0 \
                     --disableToolDefaultReadFilters ${default="false" disable_all_read_filters} \
                     --disableSequenceDictionaryValidation ${default="true" disable_sequence_dictionary_validation} \
                     $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disableReadFilter NotDuplicateReadFilter "; else echo ""; fi) \
-                    --output ${base_filename}.coverage.tsv
+                    --output ${read_counts_tsv_filename}
         fi
     >>>
 
     runtime {
         docker: "${gatk_docker}"
         memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB"))+50]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
         String entity_id = base_filename
-        File coverage = cov_output_name 
+        File read_counts = read_counts_tsv_filename
+        File read_counts_hdf5 = read_counts_hdf5_filename   #"" if is_wgs = false
+        File intervals = intervals_filename                 #padded_targets if is_wgs = false
     }
 }
 
-# Create a target file with GC annotations
-task AnnotateTargets {
-    String entity_id
-    File targets
-    File ref_fasta
-    File ref_fasta_fai
-    File ref_fasta_dict
+# Collect counts for ModelSegments workflow
+task CollectCounts {
+    File intervals
+    File bam
+    File bam_idx
+    String? output_format
     String gatk_jar
 
     # Runtime parameters
@@ -127,22 +236,73 @@ task AnnotateTargets {
     Int? preemptible_attempts
     Int? disk_space_gb
 
+    # Sample name is derived from the bam filename
+    String base_filename = basename(bam, ".bam")
+    String counts_filename = if !defined(output_format) then "${base_filename}.counts.hdf5" else "${base_filename}.counts.tsv"
+
     command {
-        java -Xmx${default=4 mem}g -jar ${gatk_jar} AnnotateTargets \
-            --targets ${targets} \
+        java -Xmx${default="8" mem}g -jar ${gatk_jar} CollectFragmentCounts \
+            --input ${bam} \
+            -L ${intervals} \
+            --outputFormat ${default="HDF5" output_format} \
+            --interval_merging_rule OVERLAPPING_ONLY \
+            --output ${counts_filename}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: select_first([mem, 8]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+        String entity_id = base_filename
+        File counts = counts_filename
+    }
+}
+
+# Collect allelic counts
+task CollectAllelicCounts {
+    File common_sites
+    File bam
+    File bam_idx
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    Int? minimum_base_quality
+    String gatk_jar
+
+    # Runtime parameters
+    Int? mem
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
+
+    # Sample name is derived from the bam filename
+    String base_filename = basename(bam, ".bam")
+
+    String allelic_counts_filename = "${base_filename}.allelicCounts.tsv"
+
+    command {
+        java -Xmx${default="8" mem}g -jar ${gatk_jar} CollectAllelicCounts \
+            -L ${common_sites} \
+            --input ${bam} \
             --reference ${ref_fasta} \
-            --output ${entity_id}.annotated.tsv
+            --minimumBaseQuality ${default="20" minimum_base_quality} \
+            --output ${allelic_counts_filename}
     }
 
     runtime {
         docker: "${gatk_docker}"
         memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB"))+50]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
-        File annotated_targets = "${entity_id}.annotated.tsv"
+        String entity_id = base_filename
+        File allelic_counts = allelic_counts_filename
     }
 }
 
@@ -150,7 +310,7 @@ task AnnotateTargets {
 task CorrectGCBias {
     String entity_id
     File coverage   # This can be either single-sample or multi-sample
-    File annotated_targets
+    File annotated_intervals
     String gatk_jar
 
     # Runtime parameters
@@ -162,7 +322,7 @@ task CorrectGCBias {
     command {
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CorrectGCBias \
           --input ${coverage} \
-          --targets ${annotated_targets} \
+          --targets ${annotated_intervals} \
           --output ${entity_id}.gc_corrected.tsv
     }
 

@@ -11,7 +11,7 @@ env:
   - TEST_TYPE=cloud UPLOAD=true
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - RUN_CNV_SOMATIC_WDL=true
+  - RUN_CNV_SOMATIC_LEGACY_WDL=true
   - RUN_M2_WDL=true
   - RUN_CNV_GERMLINE_WDL=true
   global:
@@ -79,7 +79,7 @@ before_install:
    sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi
 # Download Cromwell jar
-- if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
+- if [[ $RUN_CNV_SOMATIC_LEGACY_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
     wget -O ~/cromwell-0.28.jar https://github.com/broadinstitute/cromwell/releases/download/28/cromwell-28.jar;
   fi
 # Download Picard jar
@@ -99,7 +99,7 @@ install:
   else
     ./gradlew assemble;
     ./gradlew installDist;
-    if [[ $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
+    if [[ $RUN_CNV_SOMATIC_LEGACY_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
     fi
@@ -111,9 +111,9 @@ script:
     echo "Not running any tests for nightly builds";
   elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
-  elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
-    echo "Running CNV somatic workflows";
-    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+  elif [[ $RUN_CNV_SOMATIC_LEGACY_WDL == true ]]; then
+    echo "Running legacy CNV somatic workflows";
+    bash scripts/cnv_cromwell_tests/somatic_legacy/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
     echo "Running CNV germline workflows";
     bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
