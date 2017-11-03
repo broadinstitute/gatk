@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public final class PSUtils {
 
-    protected static final Logger logger = LogManager.getLogger(PSUtils.class);
+    private static final Logger logger = LogManager.getLogger(PSUtils.class);
 
     public static JavaRDD<GATKRead> primaryReads(final JavaRDD<GATKRead> reads) {
         return reads.filter(read -> !(read.isSecondaryAlignment() || read.isSupplementaryAlignment()));
@@ -104,9 +104,8 @@ public final class PSUtils {
                 numDeletions += e.getLength();
             }
         }
-        if (numMatches < 0)  {
+        if (numMatches < 0) {
             logger.warn("Invalid arguments passed to getMatchesLessDeletions(): numMismatches was greater than the number of matches/mismatches in the cigar. Returning 0.");
-            return 0;
         }
         return numMatches - numDeletions;
     }
