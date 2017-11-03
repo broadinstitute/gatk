@@ -1565,6 +1565,68 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         output16.add(new SimpleInterval("2", 16001, 35000));
 
 
+        // Trivial to combine but has a lot of contigs
+        final List<Locatable> input17_1 = Lists.newArrayList(
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 5000, 6000),
+                new SimpleInterval("1", 7000, 8000),
+                new SimpleInterval("1", 10000, 11000),
+                new SimpleInterval("1", 12000, 14000),
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 11000),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000));
+        final List<Locatable> input17_2 = Lists.newArrayList(
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 10500),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000));
+        final List<Locatable> output17 = Lists.newArrayList(
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 5000, 6000),
+                new SimpleInterval("1", 7000, 8000),
+                new SimpleInterval("1", 10000, 11000),
+                new SimpleInterval("1", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000),
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 10500),
+                new SimpleInterval("10", 10501, 11000),
+                new SimpleInterval("10", 12000, 14000)
+        );
+
         return new Object[][]{
                 {input1_1, input1_2, output1},
                 {input2_1, input2_2, output2},
@@ -1582,6 +1644,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 {input14_1, input14_2, output14},
                 {input15_1, input15_2, output15},
                 {input16_1, input16_2, output16},
+                {input17_1, input17_2, output17},
         };
     }
 
@@ -1639,7 +1702,10 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     private SAMSequenceDictionary getSamSequenceDictionaryForCombineIntervalTests() {
         return new SAMSequenceDictionary(
                 Arrays.asList(new SAMSequenceRecord("1", 500000),
-                        new SAMSequenceRecord("2", 500000)));
+                        new SAMSequenceRecord("2", 500000),
+                        new SAMSequenceRecord("3", 500000),
+                        new SAMSequenceRecord("4", 500000),
+                        new SAMSequenceRecord("10", 500000)));
     }
 
     @DataProvider(name = "overlappingData")
