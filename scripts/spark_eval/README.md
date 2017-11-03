@@ -14,8 +14,8 @@ export GCS_CLUSTER=...
 # Run on exome (<1hr)
 nohup ./run_gcs_cluster.sh exome_reads-pipeline_gcs.sh &
 
-# Run on genome (a few hrs)
-NUM_WORKERS=20 nohup ./run_gcs_cluster.sh copy_genome_to_hdfs_on_gcs.sh genome_md-bqsr-hc_hdfs.sh &
+# Run on genome (<2hrs)
+NUM_WORKERS=20 nohup ./run_gcs_cluster.sh copy_genome_to_hdfs_on_gcs.sh genome_reads-pipeline_hdfs.sh &
 
 # Check results
 cat results/*
@@ -103,11 +103,17 @@ nohup ./run_gcs_cluster.sh copy_small_to_hdfs_on_gcs.sh small_reads-pipeline_hdf
 ### More examples
 
 ```bash
+# Exome Mark Duplicates, BQSR, Haplotype Caller on HDFS
+nohup ./run_gcs_cluster.sh copy_exome_to_hdfs_on_gcs.sh exome_md-bqsr-hc_hdfs.sh &
+
 # Exome ReadsSparkPipeline on HDFS
 nohup ./run_gcs_cluster.sh copy_exome_to_hdfs_on_gcs.sh exome_reads-pipeline_hdfs.sh &
 
 # Genome Mark Duplicates, BQSR, Haplotype Caller on HDFS using 20 workers
 NUM_WORKERS=20 nohup ./run_gcs_cluster.sh copy_genome_to_hdfs_on_gcs.sh genome_md-bqsr-hc_hdfs.sh &
+
+# Genome ReadsSparkPipeline on HDFS using 20 workers
+NUM_WORKERS=20 nohup ./run_gcs_cluster.sh copy_genome_to_hdfs_on_gcs.sh genome_reads-pipeline_hdfs.sh &
 ```
 
 ## Running test cases

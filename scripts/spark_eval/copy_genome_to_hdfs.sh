@@ -20,7 +20,7 @@ hadoop fs -mkdir -p $TARGET_DIR
 #gsutil cp gs://hellbender/q4_spark_eval/WGS-G94982-NA12878.bam - | hadoop fs -put - $TARGET_DIR/WGS-G94982-NA12878.bam
 #gsutil cp gs://hellbender/q4_spark_eval/WGS-G94982-NA12878.bai - | hadoop fs -put - $TARGET_DIR/WGS-G94982-NA12878.bai
 # BAM with NC_007605 reads removed since this contig is not in the reference
-gsutil gs://broad-spark-eval-test-data/genome/WGS-G94982-NA12878-no-NC_007605.bam - | hadoop fs -put - /user/tom/q4_spark_eval/WGS-G94982-NA12878-no-NC_007605.bam
+gsutil gs://broad-spark-eval-test-data/genome/WGS-G94982-NA12878-no-NC_007605.bam - | hadoop fs -put - $TARGET_DIR/WGS-G94982-NA12878-no-NC_007605.bam
 
 # Download reference (b37) (ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/b37/)
 gsutil gs://broad-spark-eval-test-data/genome/human_g1k_v37.2bit - | hadoop fs -put - $TARGET_DIR/human_g1k_v37.2bit
