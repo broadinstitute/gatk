@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.base.Functions;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.apache.commons.collections4.CollectionUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -199,15 +199,6 @@ public class TemplateHaplotypeScoreTable implements Serializable {
                 mappingInfo[j] = newMappingInfo;
             }
         } // else {...} no changes.
-    }
-
-    public GenotypeLikelihoods calculateGenotypeLikelihoods(final int ploidy) {
-        final ReadLikelihoods<SVHaplotype> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("the-sample"),
-                new IndexedAlleleList<>(haplotypes), Collections.singletonMap("the-sample", templates.stream().map(t -> t.fragments().get(0).toUnmappedRead(null, false)).collect(Collectors.toList())));
-        final LikelihoodMatrix<SVHaplotype> matrix = likelihoods.sampleMatrix(0);
-        matrix.setAll(values);
-        final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, haplotypes.size());
-        return calculator.genotypeLikelihoods(matrix);
     }
 
     public double[] getRow(final int i) {

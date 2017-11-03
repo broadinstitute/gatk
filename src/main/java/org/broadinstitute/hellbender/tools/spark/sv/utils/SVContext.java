@@ -206,7 +206,7 @@ public final class SVContext extends VariantContext {
         final SimpleInterval startInterval = referenceBases.get(0).getInterval();
         return new ArraySVHaplotype(SVHaplotype.REF_HAPLOTYPE_NAME,
                 Collections.singletonList(new AlignmentInterval(startInterval.getContig(), startInterval.getStart(), true, cigar,
-                        SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)), bases);
+                        SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)), bases, this.getUniqueID(), getStartPositionInterval(), false);
     }
 
     /**
@@ -286,7 +286,7 @@ public final class SVContext extends VariantContext {
                 Collections.singletonList(new AlignmentInterval(leftReferenceBases.getInterval().getContig(),
                         leftReferenceBases.getInterval().getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0,
                         AlignmentInterval.NO_AS)),
-                resultBases);
+                resultBases, getUniqueID(), getStartPositionInterval(), false);
     }
 
     private SVHaplotype composeInsertionHaplotype(final List<ReferenceBases> allReferenceBases) {
@@ -309,7 +309,7 @@ public final class SVContext extends VariantContext {
         final SimpleInterval referenceBasesInterval = referenceBases.getInterval();
         return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME,
                 Collections.singletonList(new AlignmentInterval(referenceBasesInterval.getContig(), referenceBasesInterval.getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0, AlignmentInterval.NO_AS)),
-                resultBases);
+                resultBases, getUniqueID(), getStartPositionInterval(), false);
     }
 
     /**

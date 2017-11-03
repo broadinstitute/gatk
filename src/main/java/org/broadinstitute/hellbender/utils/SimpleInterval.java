@@ -40,6 +40,13 @@ public final class SimpleInterval implements Locatable, Serializable {
         this.end = end;
     }
 
+     /**
+      * Create a singe based interval
+      */
+     public SimpleInterval(final String contig, final int position) {
+         this(contig, position, position);
+     }
+
     /**
      * Create a new SimpleInterval from a {@link Locatable}
      * @param locatable any Locatable
@@ -77,7 +84,7 @@ public final class SimpleInterval implements Locatable, Serializable {
       * @throws IllegalArgumentException if {@code locatable} is not valid as described in {@link #SimpleInterval(Locatable)}
       * @return never {@code null}.
       */
-     public static SimpleInterval valueOf(final Locatable locatable) {
+     public static SimpleInterval of(final Locatable locatable) {
          Utils.nonNull(locatable);
          if (locatable instanceof SimpleInterval) {
              return (SimpleInterval) locatable;
@@ -362,6 +369,10 @@ public final class SimpleInterval implements Locatable, Serializable {
       * @return never {@code null}.
       */
      public SimpleInterval getStartInterval() {
-         return new SimpleInterval(contig, start, start);
+         if (start == end) {
+             return this;
+         } else {
+             return new SimpleInterval(contig, start, start);
+         }
      }
  }

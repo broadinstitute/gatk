@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.stream.LongStream;
 
 /**
- * Represents the nucleotide alphabet.
+ * Represents the nucleotide alphabet with support for IUPAC ambiguity codes.
  *
  * <p>
  *    This enumeration not only contains concrete nucleotides, but also
@@ -35,11 +35,13 @@ public enum Nucleotide {
     public static final Nucleotide X = N;
 
     private static final Nucleotide[] baseToValue = new Nucleotide[Byte.MAX_VALUE + 1];
+    private static final Nucleotide[] maskToValue = new Nucleotide[1 << 4];
 
     static {
         Arrays.fill(baseToValue, INVALID);
         for (final Nucleotide nucleotide : values()) {
             baseToValue[nucleotide.lowerCaseByteEncoding] = baseToValue[nucleotide.upperCaseByteEncoding] = nucleotide;
+            maskToValue[nucleotide.acgtMask] = nucleotide;
         }
         baseToValue['u'] = baseToValue['U'] = U;
         baseToValue['x'] = baseToValue['X'] = X;
@@ -128,11 +130,32 @@ public enum Nucleotide {
         }
     }
 
+    public boolean intersects(final Nucleotide other) {
+        Utils.nonNull(other);
+        return ((this.acgtMask & other.acgtMask) != 0);
+    }
+
     /**
-     * Helper class to count the number of occurrences of each nucleotide in
+     * Returns the nucleotide code that corresponds to all the nucleotides that are compatible with
+     * this and another nucleotide code.
+     * <p>
+     * Notice that this method will return {@link #INVALID} if the intersection is empty.
+     * </p>
+     *
+     * @param other the other nucleotide to intersect with.
+     * @return never {@code null}.
+     */
+    public Nucleotide intersection(final Nucleotide other) {
+        Utils.nonNull(other);
+        return maskToValue[this.acgtMask & other.acgtMask];
+    }
+
+    /**
+     * Helper class to count the number of occurrences of each nucleotide code in
      * a sequence.
      */
     public static class Counter {
+
         private final long[] counts;
 
         /**

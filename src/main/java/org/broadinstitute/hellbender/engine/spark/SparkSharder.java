@@ -109,7 +109,7 @@ public class SparkSharder {
      * @param <R> the type of the "right" or value shard data.
      * @return never {@code null}.
      */
-    public <L extends Locatable, R extends Locatable> JavaPairRDD<Shard<L>, Shard<R>> cogroup(final JavaRDD<Shard<L>> left, JavaRDD<Shard<R>> right) {
+    public <L, R> JavaPairRDD<Shard<L>, Shard<R>> cogroup(final JavaRDD<Shard<L>> left, JavaRDD<Shard<R>> right) {
         final JavaPairRDD<SimpleInterval, Shard<L>> leftWithIntervalKey = left.mapToPair(shard -> new Tuple2<>(shard.getInterval(), shard));
         final JavaPairRDD<SimpleInterval, Shard<R>> rightWithIntervalKey = right.mapToPair(shard -> new Tuple2<>(shard.getInterval(), shard));
         return leftWithIntervalKey.join(rightWithIntervalKey).mapToPair(tuple -> tuple._2());

@@ -7,12 +7,15 @@ import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMFlag;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,22 +31,47 @@ import java.util.stream.Collectors;
 @DefaultSerializer(ArraySVHaplotype.Serializer.class)
 public class ArraySVHaplotype extends AbstractSVHaplotype {
 
-    private final byte[] bases;
+    protected final byte[] bases;
+    protected final boolean isContig;
 
-    public ArraySVHaplotype(final String name, final List<AlignmentInterval> intervals, final byte[] bases) {
-        super(name, intervals);
+    public ArraySVHaplotype(final String name, final List<AlignmentInterval> intervals, final byte[] bases, final String variantId, final SimpleInterval variantLocation, final boolean isContig) {
+        super(name, intervals, variantId, variantLocation);
         this.bases = bases;
+        this.isContig = isContig;
     }
 
-    private ArraySVHaplotype(final Kryo kryo, final Input input) {
+    public static ArraySVHaplotype of(final GATKRead read) {
+        final byte[] bases = read.getBases();
+        final boolean isContig = "CTG".equals(read.getReadGroup());
+        final String variantId = read.getAttributeAsString("VC");
+        final List<AlignmentInterval> saIntervals = read.hasAttribute("SA") ? AlignmentInterval.decodeList(read.getAttributeAsString("SA")) : Collections.emptyList();
+        final List<AlignmentInterval> allIntervals;
+        if (read.isUnmapped()) {
+            allIntervals = saIntervals;
+        } else {
+            allIntervals = new ArrayList<>();
+            allIntervals.add(new AlignmentInterval(read));
+            allIntervals.addAll(saIntervals);
+        }
+        return new ArraySVHaplotype(read.getName(), allIntervals, bases, variantId,
+                new SimpleInterval(read.getAssignedContig(), read.getAssignedStart()), isContig);
+    }
+
+    protected ArraySVHaplotype(final Kryo kryo, final Input input) {
         super(kryo, input);
         final int length = input.readInt();
         this.bases = input.readBytes(length);
+        this.isContig = input.readBoolean();
     }
 
     @Override
     public int getLength() {
         return bases.length;
+    }
+
+    @Override
+    public boolean isContig() {
+        return isContig;
     }
 
     protected void unsafeCopyBases(final int offset, final byte[] dest, final int destOffset, final int length) {
@@ -59,22 +87,24 @@ public class ArraySVHaplotype extends AbstractSVHaplotype {
         }
     }
 
-    public static class Serializer extends com.esotericsoftware.kryo.Serializer<ArraySVHaplotype> {
+    public static class Serializer<S extends ArraySVHaplotype> extends AbstractSVHaplotype.Serializer<S> {
 
         @Override
-        public void write(final Kryo kryo, final Output output, final ArraySVHaplotype object) {
-            output.writeString(object.name);
-            output.writeInt(object.intervals.size());
-            for (final AlignmentInterval interval : object.intervals) {
-                kryo.writeObject(output, interval);
-            }
+        public void write(final Kryo kryo, final Output output, final S object) {
+            super.write(kryo, output, object);
             output.writeInt(object.bases.length);
             output.write(object.bases);
+            output.writeBoolean(object.isContig);
         }
 
         @Override
-        public ArraySVHaplotype read(Kryo kryo, Input input, Class<ArraySVHaplotype> type) {
-            return new ArraySVHaplotype(kryo, input);
+        @SuppressWarnings("unchecked")
+        public S read(Kryo kryo, Input input, Class<S> type) {
+            if (type != ArraySVHaplotype.class) {
+                throw new IllegalArgumentException("the input class must be: " + ArraySVHaplotype.class);
+            } else {
+                return (S) new ArraySVHaplotype(kryo, input);
+            }
         }
     }
 

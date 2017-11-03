@@ -8,6 +8,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
@@ -31,7 +32,7 @@ import java.util.stream.Collectors;
 /**
  * Created by valentin on 10/11/17.
  */
-public interface SVHaplotype  {
+public interface SVHaplotype {
 
     String REF_HAPLOTYPE_NAME = "ref";
     String ALT_HAPLOTYPE_NAME = "alt";
@@ -45,6 +46,10 @@ public interface SVHaplotype  {
     String getName();
 
     int getLength();
+
+    boolean isContig();
+
+    SimpleInterval getVariantLocation();
 
     /**
      * Copies bases from the haplotype into an array.
@@ -180,4 +185,6 @@ public interface SVHaplotype  {
             return new Cigar(new ArrayList<>(cigarElements));
         }
     }
+
+    String getVariantId();
 }

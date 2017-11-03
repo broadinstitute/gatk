@@ -98,7 +98,8 @@ public final class ShardPartitioner<T extends Locatable> extends Partitioner {
         final SVInterval query = new SVInterval(contigIndex != null ? contigIndex : Objects.hashCode(contig) % contigToIndex.size(), start, end + 1);
         // By construction minOverlapper won't ever return a null:
         //return 0;
-        return partitions.minOverlapper(query).getValue();
+        final SVIntervalTree.Entry<Integer> minOverlapper = partitions.minOverlapper(query);
+        return minOverlapper.getValue();
     }
 
     @SuppressWarnings("unchecked")
@@ -141,7 +142,7 @@ public final class ShardPartitioner<T extends Locatable> extends Partitioner {
                                                           // partition.
         int currentPartition = 0; // current partition index; first one is 0.
         int currentContigIndex = -1; // current contig index; before the first one is -1.
-        int currentPartitionStart = 1; // current partition- start positions set to and open start.
+        int currentPartitionStart = 0; // current partition- start positions set to and open start.
         L previousLocatable = null;
         while (shardIterator.hasNext()) {
             final L locatable = shardIterator.next();
@@ -155,7 +156,7 @@ public final class ShardPartitioner<T extends Locatable> extends Partitioner {
                 }
             } else {
                 if (currentContig != null) {
-                    //partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
+                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
                 }
                 currentContigIndex++;
                 currentPartitionStart = 1;

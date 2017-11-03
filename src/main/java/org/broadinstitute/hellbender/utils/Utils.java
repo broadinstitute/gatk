@@ -710,7 +710,7 @@ public final class Utils {
 
     public static void validateArg(final boolean condition, final String msg){
         if (!condition){
-            throw new IllegalArgumentException(msg);
+                    throw new IllegalArgumentException(msg);
         }
     }
 
