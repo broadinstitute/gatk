@@ -178,7 +178,7 @@ public final class VariantsSparkSink {
             final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy, final int numReducers) throws IOException {
 
         final Configuration conf = ctx.hadoopConfiguration();
-        if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION)) {
+        if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION) || outputFile.endsWith(".gz")) {
             conf.setBoolean(FileOutputFormat.COMPRESS, true);
             conf.setClass(FileOutputFormat.COMPRESS_CODEC, BGZFCodec.class, CompressionCodec.class);
         } else {
