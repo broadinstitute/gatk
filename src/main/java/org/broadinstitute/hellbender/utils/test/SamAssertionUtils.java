@@ -1,19 +1,32 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.collect.Sets;
-import htsjdk.samtools.*;
-import org.apache.commons.io.FilenameUtils;
-import picard.sam.SortSam;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.read.SamComparison;
-import org.testng.Assert;
-
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMValidationError;
+import htsjdk.samtools.SamFileValidator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import org.apache.commons.io.FilenameUtils;
+import picard.sam.SortSam;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SamComparison;
+import org.testng.Assert;
 
 /**
  * Collection of utilities for making common assertions about SAM files for unit testing purposes.
@@ -372,7 +385,7 @@ public final class SamAssertionUtils {
      * Unconditionally validate/assert that the contents are CRAM
      */
     public static void assertCRAMContents(final File putativeCRAMFile) {
-        Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMFile));
+        Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMFile), "should have had CRAM contents: " + putativeCRAMFile.getName());
     }
 
     private static void sortSam(final File input, final File output, final File reference, final ValidationStringency stringency) {
