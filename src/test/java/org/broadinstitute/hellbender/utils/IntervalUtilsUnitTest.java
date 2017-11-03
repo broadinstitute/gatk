@@ -1577,6 +1577,11 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 new SimpleInterval("10", 7000, 8000),
                 new SimpleInterval("10", 10000, 11000),
                 new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("11", 5000, 6000),
+                new SimpleInterval("11", 7000, 8000),
+                new SimpleInterval("11", 10000, 11000),
+                new SimpleInterval("11", 12000, 14000),
                 new SimpleInterval("3", 1000, 2000),
                 new SimpleInterval("3", 5000, 6000),
                 new SimpleInterval("3", 7000, 8000),
@@ -1624,8 +1629,13 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 new SimpleInterval("10", 7000, 8000),
                 new SimpleInterval("10", 10000, 10500),
                 new SimpleInterval("10", 10501, 11000),
-                new SimpleInterval("10", 12000, 14000)
-        );
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("11", 5000, 6000),
+                new SimpleInterval("11", 7000, 8000),
+                new SimpleInterval("11", 10000, 11000),
+                new SimpleInterval("11", 12000, 14000)
+                );
 
         return new Object[][]{
                 {input1_1, input1_2, output1},
@@ -1646,13 +1656,6 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 {input16_1, input16_2, output16},
                 {input17_1, input17_2, output17},
         };
-    }
-
-    @Test(dataProvider = "combineIntervalsTesting")
-    public void testCombineIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
-        final List<Locatable> outputs = IntervalUtils.combineBreakpoints(locatables1, locatables2);
-        Assert.assertEquals(outputs.size(), gtOutput.size());
-        Assert.assertEquals(outputs, gtOutput);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -1705,7 +1708,8 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                         new SAMSequenceRecord("2", 500000),
                         new SAMSequenceRecord("3", 500000),
                         new SAMSequenceRecord("4", 500000),
-                        new SAMSequenceRecord("10", 500000)));
+                        new SAMSequenceRecord("10", 500000),
+                        new SAMSequenceRecord("11", 500000)));
     }
 
     @DataProvider(name = "overlappingData")

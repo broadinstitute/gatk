@@ -1115,6 +1115,9 @@ public final class IntervalUtils {
     // (end of shard-related code)
 
     /**
+     *
+     * For most uses, developers will want to call {@link IntervalUtils#combineBreakpointsWithSorting(List, List, SAMSequenceDictionary)} rather than this method.  This method has unsorted output.
+     *
      * Combine the breakpoints of multiple intervals and return a list of locatables based on the updated breakpoints.
      *
      * Suppose we have two lists of locatables:
@@ -1151,13 +1154,13 @@ public final class IntervalUtils {
      *
      * Intervals are assumed to include the start and end bases.
      *
-     * Output contigs will be shuffled.
+     * Output contigs will be unordered.
      *
      * @param locatables1 list of locatables
      * @param locatables2 list of locatables
      * @return Locatables from the combined breakpoints of locatable1 and locatable2.  If both inputs are null, return an
      *   empty list.  Please note that returned values are new copies.  If exactly one of the inputs is null, this method
-     *   returns a copy of of the non-null input.  Contigs will be shuffled.
+     *   returns a copy of of the non-null input.  Contigs will be unordered.
      */
     protected static <T extends Locatable> List<Locatable> combineBreakpoints(final List<T> locatables1, final List<T> locatables2) {
         if ((locatables1 == null) && (locatables2 == null)) {
@@ -1295,8 +1298,7 @@ public final class IntervalUtils {
         final List<T> sortedLocatables1 = sortLocatablesBySequenceDictionary(locatables1, dictionary);
         final List<T> sortedLocatables2 = sortLocatablesBySequenceDictionary(locatables2, dictionary);
 
-//        return  sortLocatablesBySequenceDictionary(combineBreakpoints(sortedLocatables1, sortedLocatables2), dictionary);
-        return combineBreakpoints(sortedLocatables1, sortedLocatables2);
+        return  sortLocatablesBySequenceDictionary(combineBreakpoints(sortedLocatables1, sortedLocatables2), dictionary);
     }
 
     /**
