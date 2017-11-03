@@ -51,6 +51,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         return new Object[][]{
                 {hg19_chr1_1M_dbSNP, ".vcf"},
                 {hg19_chr1_1M_dbSNP, ".vcf.bgz"},
+                {hg19_chr1_1M_dbSNP, ".vcf.gz"},
                 {hg19_chr1_1M_dbSNP_modified, ".vcf"},
         };
     }
