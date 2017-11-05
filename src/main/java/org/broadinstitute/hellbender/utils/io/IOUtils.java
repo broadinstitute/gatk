@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.io;
 
-import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
@@ -17,18 +16,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.io.Reader;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.*;
 import java.util.HashMap;
@@ -592,5 +580,14 @@ public final class IOUtils {
                 throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file cannot be read.  Check the permissions.");
             }
         }
+    }
+
+    /**
+     * Creates a directory, in local FS, HDFS, or Google buckets to write individual files in.
+     */
+    public static void createDirectory(final String pathString) throws IOException {
+        Utils.nonNull(pathString);
+
+        Files.createDirectory(getPath(pathString));
     }
 }

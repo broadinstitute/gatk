@@ -341,4 +341,17 @@ public final class SequenceDictionaryUtilsUnitTest extends GATKBaseTest {
 
         return new SAMSequenceDictionary(clonedContigs);
     }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testGetContigNamesListExpectingException() {
+        getContigNamesList(null);
+    }
+
+    @Test
+    public void testGetContigNamesList() {
+
+        final SAMSequenceDictionary samSequenceDictionary = new SAMSequenceDictionary(Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37));
+
+        Assert.assertEquals(getContigNamesList(samSequenceDictionary), Arrays.asList("1", "2", "10"));
+    }
 }

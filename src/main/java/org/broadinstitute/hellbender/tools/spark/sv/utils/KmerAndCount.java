@@ -1,12 +1,11 @@
-package org.broadinstitute.hellbender.tools.spark.sv.evidence;
+package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Map;
 
@@ -15,13 +14,14 @@ import java.util.Map;
  */
 @DefaultSerializer(KmerAndCount.Serializer.class)
 @VisibleForTesting
-final class KmerAndCount extends SVKmerLong implements Map.Entry<SVKmer, Integer> {
+public final class KmerAndCount extends SVKmerLong implements Map.Entry<SVKmer, Integer> {
     private int count;
 
-    KmerAndCount( final SVKmerLong kmer ) { this(kmer,1); }
+    public KmerAndCount( final SVKmerLong kmer ) { this(kmer,1); }
 
-    KmerAndCount( final SVKmerLong kmer, final int count ) {
-        super(kmer);
+    public KmerAndCount( final SVKmerLong kmer, final int count ) {
+        super(Utils.nonNull(kmer));
+        Utils.validateArg(count >= 0, "initializing count is negative: " + count);
         this.count = count;
     }
 

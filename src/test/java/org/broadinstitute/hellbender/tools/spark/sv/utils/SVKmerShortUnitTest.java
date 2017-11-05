@@ -15,18 +15,18 @@ import java.util.Random;
  * Unit tests for SVKmerShort and SVKmerizer<SVKmerShort>.
  */
 public class SVKmerShortUnitTest {
-    @Test
+    @Test(groups = "sv")
     public void testDefaultConstruction() {
         Assert.assertEquals(new SVKmerShort(10).toString(10), "AAAAAAAAAA");
         Assert.assertEquals(new SVKmerShort(11).toString(11), "AAAAAAAAAAA");
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = "sv")
     public void testDefaultConstructionWithTooLargeK() {
         final SVKmerShort tooBigK = new SVKmerShort(32);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = "sv")
     public void testDefaultConstructionWithTooSmallK() {
         final SVKmerShort tooSmallK = new SVKmerShort(0);
     }
@@ -38,13 +38,13 @@ public class SVKmerShortUnitTest {
         };
     }
 
-    @Test(dataProvider = "sequenceStrings")
+    @Test(dataProvider = "sequenceStrings", groups = "sv")
     public void testConstructionAndToString(final String str) {
         Assert.assertEquals(str, SVKmerizer.toKmer(str, new SVKmerShort(str.length())).toString(str.length()));
         Assert.assertEquals(str, SVKmerizer.toKmer(str.getBytes(), new SVKmerShort(str.length())).toString(str.length()));
     }
 
-    @Test(dataProvider = "sequenceStrings")
+    @Test(dataProvider = "sequenceStrings", groups = "sv")
     public void testSuccessor(final String str) {
         final int K = str.length();
         final StringBuilder sb = new StringBuilder(str);
@@ -71,7 +71,7 @@ public class SVKmerShortUnitTest {
         };
     }
 
-    @Test(dataProvider = "maskData")
+    @Test(dataProvider = "maskData", groups = "sv")
     public void testMaskedKmers(final String seq1, final String seq2, final byte[] maskBytes, final boolean equal) {
 
         if (seq1.length() != seq2.length()) {
@@ -90,7 +90,7 @@ public class SVKmerShortUnitTest {
         }
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testRandomMaskedKmers() {
 
         final int K = 31;
@@ -130,7 +130,7 @@ public class SVKmerShortUnitTest {
         }
     }
 
-    @Test(dataProvider = "sequenceStrings")
+    @Test(dataProvider = "sequenceStrings", groups = "sv")
     public void testPredecessor(final String str) {
         final int K = str.length();
         final StringBuilder sb = new StringBuilder(str);
@@ -146,7 +146,7 @@ public class SVKmerShortUnitTest {
         Assert.assertEquals(sb.toString(), kkk.predecessor(SVKmerLong.Base.T, K).toString(K));
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testReverseComplementation() {
         Assert.assertEquals(SVKmerizer.toKmer("ACGTACGA", new SVKmerShort(8)).reverseComplement(8), SVKmerizer.toKmer("TCGTACGT", new SVKmerShort(8)));
         Assert.assertEquals(SVKmerizer.toKmer("ACGTACGTC", new SVKmerShort(9)).reverseComplement(9), SVKmerizer.toKmer("GACGTACGT", new SVKmerShort(9)));
@@ -155,13 +155,13 @@ public class SVKmerShortUnitTest {
         Assert.assertEquals(SVKmerizer.toKmer("ACGTTCGTC", new SVKmerShort(9)).reverseComplement(9), SVKmerizer.toKmer("GACGAACGT", new SVKmerShort(9)));
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testCanonicalization() {
         Assert.assertEquals(SVKmerizer.toKmer("ACGTACGTC", new SVKmerShort(9)).canonical(9), SVKmerizer.toKmer("ACGTACGTC", new SVKmerShort(9)));
         Assert.assertEquals(SVKmerizer.toKmer("GACGTACGT", new SVKmerShort(9)).canonical(9), SVKmerizer.toKmer("ACGTACGTC", new SVKmerShort(9)));
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testComparison() {
         final SVKmerShort kkk1 = (SVKmerShort) SVKmerizer.toKmer("ACGTA", new SVKmerShort(5));
         final SVKmerShort kkk2 = (SVKmerShort) SVKmerizer.toKmer("ACGTC", new SVKmerShort(5));
@@ -171,13 +171,13 @@ public class SVKmerShortUnitTest {
         Assert.assertTrue(kkk2.compareTo(kkk1) > 0);
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testHashCode() {
         Assert.assertNotEquals(SVKmerizer.toKmer("TAGCGTA", new SVKmerShort(7)).hashCode(), SVKmerizer.toKmer("TAGCGTC", new SVKmerShort(7)).hashCode());
         Assert.assertEquals(SVKmerizer.toKmer("TAGGGTC", new SVKmerShort(7)).hashCode(), SVKmerizer.toKmer("TAGGGTC", new SVKmerShort(7)).hashCode());
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testKmerization() {
         final SVKmerizer kmerizer = new SVKmerizer("AAAAATT", 5, 1, new SVKmerShort(7));
         Assert.assertTrue(kmerizer.hasNext());
@@ -189,7 +189,7 @@ public class SVKmerShortUnitTest {
         Assert.assertTrue(!kmerizer.hasNext());
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testKmerizationAcrossN() {
         final SVKmerizer kmerizer = new SVKmerizer("AAAAANTTTTT", 5, 1, new SVKmerShort(11));
         Assert.assertTrue(kmerizer.hasNext());

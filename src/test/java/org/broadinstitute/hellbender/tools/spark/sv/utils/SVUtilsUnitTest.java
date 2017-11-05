@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
  */
 public class SVUtilsUnitTest extends GATKBaseTest {
 
-    @Test(groups = "spark")
+    @Test(groups = "sv")
     void hashMapCapacityTest() {
         Assert.assertEquals(SVUtils.hashMapCapacity(150),201);
     }

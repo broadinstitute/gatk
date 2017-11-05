@@ -366,9 +366,7 @@ public class SVFastqUtils {
     }
 
     /** Write a list of FASTQ records into a file. */
-    public static void writeFastqFile(
-            final String fileName,
-            final Iterator<FastqRead> fastqReadItr ) {
+    public static void writeFastqFile(final String fileName, final Iterator<FastqRead> fastqReadItr ) {
         try ( final OutputStream writer =
                       new BufferedOutputStream(BucketUtils.createFile(fileName)) ) {
             writeFastqStream(writer, fastqReadItr);

@@ -66,7 +66,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
     }
 
 
-    @Test(dataProvider = "simpleEvidenceClusters")
+    @Test(dataProvider = "simpleEvidenceClusters", groups = "sv")
     public void testGetBreakpointClusters(final List<BreakpointEvidence> evidenceList) {
 
         BreakpointDensityFilter breakpointDensityFilter =
@@ -88,7 +88,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
         Assert.assertFalse(breakpointDensityFilter.hasNext());
     }
 
-    @Test(dataProvider = "simpleEvidenceClusters")
+    @Test(dataProvider = "simpleEvidenceClusters", groups = "sv")
     public void testGetBreakpointClustersWithCoherentEvidence(final List<BreakpointEvidence> evidenceList) {
 
         BreakpointDensityFilter breakpointDensityFilter =
@@ -110,7 +110,7 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
         Assert.assertFalse(breakpointDensityFilter.hasNext());
     }
 
-    @Test
+    @Test(groups = "sv")
     public void testCrossPartitionEvidence() {
         // build evidence for partition 0
         final List<BreakpointEvidence> evidenceList0 = new ArrayList<>();

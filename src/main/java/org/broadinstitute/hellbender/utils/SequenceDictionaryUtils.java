@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.utils;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -464,6 +464,11 @@ public final class SequenceDictionaryUtils {
         for (SAMSequenceRecord dictionaryEntry : dict.getSequences())
             contigNames.add(dictionaryEntry.getSequenceName());
         return contigNames;
+    }
+
+    public static List<String> getContigNamesList(final SAMSequenceDictionary refSeqDict) {
+        Utils.nonNull(refSeqDict, "provided reference sequence ditionary is null");
+        return refSeqDict.getSequences().stream().map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
     }
 
     /**

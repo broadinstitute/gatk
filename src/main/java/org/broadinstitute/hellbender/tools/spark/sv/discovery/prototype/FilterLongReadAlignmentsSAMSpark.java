@@ -25,7 +25,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.GappedAlignmentSplitter;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.FileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -82,7 +81,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     @Argument(doc = "whether to run old way of filtering or not",
             shortName = "OT",
             fullName = "oldFilteringToo", optional = true)
-    private boolean runOldFilteringTool = false;
+    private boolean runOldFilteringToo = false;
 
     @Override
     public boolean requiresReads() {
@@ -97,22 +96,28 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final JavaRDD<GATKRead> reads = getReads();
-        final SAMFileHeader header = getHeaderForReads();
+        try {
+            final JavaRDD<GATKRead> reads = getReads();
+            final SAMFileHeader header = getHeaderForReads();
 
-        FileUtils.writeLinesToSingleFile(
-                filterByScore(reads, header, nonCanonicalContigNamesFile, localLogger, configScoreDiffTolerance)
-                        .sortBy(tig -> tig.contigName, true, reads.getNumPartitions()/100) // num partition is purely guess
-                        .mapToPair(contig -> new Tuple2<>(contig.contigName,
-                                contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())))
-                        .map(AlignedContig::formatContigInfo).collect().iterator(),
-                outputFilePrefix + "_newFiltering.ai");
+            Files.write(Paths.get(outputFilePrefix + "_newFiltering.ai"),
+                    () -> filterByScore(reads, header, nonCanonicalContigNamesFile, localLogger, configScoreDiffTolerance)
+                            .sortBy(tig -> tig.contigName, true, reads.getNumPartitions() / 100) // num partition is purely guess
+                            .mapToPair(contig -> new Tuple2<>(contig.contigName,
+                                    contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())))
+                            .map(AlignedContig::formatContigInfo)
+                            .map(s -> (CharSequence)s).collect().iterator()
+            );
 
-        if (runOldFilteringTool) {
-            FileUtils.writeLinesToSingleFile(
-                    oldWayOfFiltering(reads, header).map(AlignedContig::formatContigInfo)
-                    .collect().iterator(),
-                    outputFilePrefix + "_oldFiltering.ai");
+            if (runOldFilteringToo) {
+                Files.write(Paths.get(outputFilePrefix + "_oldFiltering.ai"),
+                        () -> oldWayOfFiltering(reads, header)
+                                .map(AlignedContig::formatContigInfo)
+                                .map(s -> (CharSequence)s).collect().iterator()
+                );
+            }
+        } catch (final IOException ioe) {
+            throw new UserException.CouldNotCreateOutputFile("Could not save filtering results to file", ioe);
         }
     }
 
