@@ -23,9 +23,9 @@ final class TempMultipleAlignmentsReclassifier {
      * Reclassify assembly contigs based on alignment fine tuning.
      * @return 4 classes:
      *          1) non-informative contigs who after fine tuning has 0 or 1 good alignment left
-     *          2) contigs with more than 2 good alignments but doesn't seem to have picture complete as defined by {@link #hasIncomePictureDueToChromosomeHopping(AlignedContig)}
+     *          2) contigs with more than 2 good alignments but doesn't seem to have picture complete as defined by {@link #hasIncomePicture(AlignedContig)}
      *          3) contigs with 2 good alignments and bad alignments encoded as strings
-     *          4) contigs with more than 2 good alignments and seemingly have picture complete as defined by {@link #hasIncomePictureDueToChromosomeHopping(AlignedContig)}
+     *          4) contigs with more than 2 good alignments and seemingly have picture complete as defined by {@link #hasIncomePicture(AlignedContig)}
      */
     static Tuple4<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>, JavaPairRDD<AlignedContig, List<String>>, JavaPairRDD<AlignedContig, List<String>>>
     reClassifyContigsWithMultipleAlignments(final JavaRDD<AlignedContig> localAssemblyContigs,
@@ -57,15 +57,15 @@ final class TempMultipleAlignmentsReclassifier {
         final JavaPairRDD<AlignedContig, List<String>> multipleAlignments =
                 split1._2.mapToPair(tuple3 -> new Tuple2<>(tuple3._2(), tuple3._3()));
         final JavaPairRDD<AlignedContig, List<String>> multipleAlignmentsIncompletePicture =
-                multipleAlignments.filter(pair -> hasIncomePictureDueToChromosomeHopping(pair._1));
+                multipleAlignments.filter(pair -> hasIncomePicture(pair._1));
         final JavaPairRDD<AlignedContig, List<String>> multipleAlignmentsCompletePicture =
-                multipleAlignments.filter(pair -> !hasIncomePictureDueToChromosomeHopping(pair._1));
+                multipleAlignments.filter(pair -> !hasIncomePicture(pair._1));
 
-        return new Tuple4<>(garbage, multipleAlignmentsIncompletePicture.map(Tuple2::_1),
+        return new Tuple4<>(garbage, multipleAlignmentsIncompletePicture.keys(),
                 twoAlignments, multipleAlignmentsCompletePicture);
     }
 
-    private static boolean hasIncomePictureDueToChromosomeHopping(final AlignedContig contigWithMultipleAlignments) {
+    private static boolean hasIncomePicture(final AlignedContig contigWithMultipleAlignments) {
         Utils.validateArg(contigWithMultipleAlignments.alignmentIntervals.size() > 2,
                 "assumption that input contig has more than 2 alignments is violated.\n" +
                         contigWithMultipleAlignments.toString());
@@ -73,31 +73,32 @@ final class TempMultipleAlignmentsReclassifier {
         final AlignmentInterval head = contigWithMultipleAlignments.alignmentIntervals.get(0),
                                 tail = contigWithMultipleAlignments.alignmentIntervals.get(contigWithMultipleAlignments.alignmentIntervals.size()-1);
 
-        if (!head.referenceSpan.getContig().equals(tail.referenceSpan.getContig()))
+        // tail not resuming the "direction of flow" started by head
+        if ( !head.referenceSpan.getContig().equals(tail.referenceSpan.getContig()) || head.forwardStrand != tail.forwardStrand)
             return true;
 
-        if (head.forwardStrand != tail.forwardStrand)
+        // reference span anomaly
+        final SimpleInterval referenceSpanHead = head.referenceSpan,
+                             referenceSpanTail = tail.referenceSpan;
+        if (referenceSpanHead.contains(referenceSpanTail) || referenceSpanTail.contains(referenceSpanHead))
             return true;
 
-        return refSpanAnomaly(head, tail);
-    }
-
-    private static boolean refSpanAnomaly(final AlignmentInterval one, final AlignmentInterval two) {
-        final SimpleInterval referenceSpanOne = one.referenceSpan,
-                             referenceSpanTwo = two.referenceSpan;
-        if (referenceSpanOne.contains(referenceSpanTwo) || referenceSpanTwo.contains(referenceSpanOne))
+        final boolean refSpanAnomaly =
+                contigWithMultipleAlignments.alignmentIntervals
+                        .subList(1, contigWithMultipleAlignments.alignmentIntervals.size() - 1)
+                        .stream().map(ai -> ai.referenceSpan)
+                        .anyMatch( middle -> { // middle alignments' ref span either disjoint from head/tail, or completely contained in head/tail ref span
+                            final boolean badHead = middle.overlaps(referenceSpanHead) && !referenceSpanHead.contains(middle);
+                            final boolean badTail = middle.overlaps(referenceSpanTail) && !referenceSpanTail.contains(middle);
+                            return badHead || badTail;
+                        });
+        if (refSpanAnomaly)
             return true;
 
-        if (one.forwardStrand != two.forwardStrand) {
-            return referenceSpanOne.overlaps(referenceSpanTwo);
+        if (head.forwardStrand) {
+            return referenceSpanHead.getStart() >= referenceSpanTail.getStart();
         } else {
-            if (one.forwardStrand) {
-                return referenceSpanOne.getStart() > referenceSpanTwo.getStart() &&
-                        referenceSpanOne.getStart() <= referenceSpanTwo.getEnd();
-            } else {
-                return referenceSpanTwo.getStart() > referenceSpanOne.getStart() &&
-                        referenceSpanTwo.getStart() <= referenceSpanOne.getEnd();
-            }
+            return referenceSpanHead.getEnd() <= referenceSpanHead.getEnd();
         }
     }
 
