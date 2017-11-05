@@ -319,7 +319,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
 
     }
 
-    @Test(dataProvider = "randomValidCigars")
+    @Test(dataProvider = "randomValidCigars", groups = "sv")
     public void testSoftClip(final Cigar cigar) {
         final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.S);
         final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(
@@ -331,7 +331,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
         Assert.assertEquals(actual, expected);
     }
 
-    @Test(dataProvider = "randomValidCigars")
+    @Test(dataProvider = "randomValidCigars", groups = "sv")
     public void testHardClip(final Cigar cigar) {
         final Cigar actual = AlignmentInterval.softOrHardReclip(cigar, CigarOperator.H);
         final Cigar expected = CigarUtils.combineAdjacentCigarElements(new Cigar(

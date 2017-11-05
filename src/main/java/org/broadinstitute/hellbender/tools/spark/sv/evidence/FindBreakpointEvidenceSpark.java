@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
@@ -43,8 +42,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
-import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ExternalEvidence;
+import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
 
 /**
  * Tool to discover reads that support a hypothesis of a genomic breakpoint.
@@ -82,10 +81,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
-        final String sampleId = SVUtils.getSampleId(getHeaderForReads());
-
-        gatherEvidenceAndWriteContigSamFile(ctx, sampleId, params, getHeaderForReads(),
-                getUnfilteredReads(), outputAssemblyAlignments, LogManager.getLogger(FindBreakpointEvidenceSpark.class));
+        gatherEvidenceAndWriteContigSamFile(ctx, params, getHeaderForReads(), getUnfilteredReads(),
+                outputAssemblyAlignments, logger);
 
     }
 
@@ -97,10 +94,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      */
     public static AssembledEvidenceResults gatherEvidenceAndWriteContigSamFile(
             final JavaSparkContext ctx,
-            final String sampleId, final FindBreakpointEvidenceSparkArgumentCollection params,
+            final FindBreakpointEvidenceSparkArgumentCollection params,
             final SAMFileHeader header,
             final JavaRDD<GATKRead> unfilteredReads,
-            final String outputAssembliesFile,
+            final String outputAssemblyAlignments,
             final Logger toolLogger) {
 
         Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
@@ -144,15 +141,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             AlignedAssemblyOrExcuse.writeIntervalFile(params.intervalFile, header, intervals, alignedAssemblyOrExcuseList);
         }
 
-        // write the output file
-        final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-        final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
-        contigAlignmentsReadGroup.setSample(sampleId);
-        cleanHeader.addReadGroup(contigAlignmentsReadGroup);
-        cleanHeader.setSortOrder(params.assembliesSortOrder);
-
-        AlignedAssemblyOrExcuse.writeSAMFile(outputAssembliesFile, cleanHeader, alignedAssemblyOrExcuseList,
-                params.assembliesSortOrder == SAMFileHeader.SortOrder.queryname);
+        // write alignments of the assembled contigs
+        AlignedAssemblyOrExcuse.writeAssemblySAMFile(outputAssemblyAlignments, alignedAssemblyOrExcuseList, header, params.assembliesSortOrder);
         log("Wrote SAM file of aligned contigs.", toolLogger);
 
         return new AssembledEvidenceResults(evidenceScanResults.readMetadata, intervals, alignedAssemblyOrExcuseList,
@@ -419,9 +409,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final Logger logger)
     {
         final Set<SVKmer> kmerKillSet =
-                SVUtils.readKmersFile(params.kSize,
-                                        params.kmersToIgnoreFile,
-                                        new SVKmerLong(params.kSize));
+                SVFileUtils.readKmersFile(params.kmersToIgnoreFile, params.kSize);
         if ( params.adapterSequence != null ) {
             SVKmerizer.stream(params.adapterSequence, params.kSize, 0, new SVKmerLong())
                     .forEach(kmer -> kmerKillSet.add(kmer.canonical(params.kSize)));
@@ -465,8 +453,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         new ReadsForQNamesFinder(broadcastQNamesMultiMap.value(), nIntervals,
                                 includeMappingLocation, readItr, filter).iterator(), false)
                 .combineByKey(x -> x,
-                                FindBreakpointEvidenceSpark::combineLists,
-                                FindBreakpointEvidenceSpark::combineLists,
+                                SVUtils::concatenateLists,
+                                SVUtils::concatenateLists,
                                 new HashPartitioner(nIntervals), false, null)
                 .map(localAssemblyHandler::apply)
                 .collect();
@@ -475,15 +463,6 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         BwaMemIndexCache.closeAllDistributedInstances(ctx);
 
         return intervalDispositions;
-    }
-
-    /** Concatenate two lists. */
-    private static List<SVFastqUtils.FastqRead> combineLists(final List<SVFastqUtils.FastqRead> list1,
-                                                             final List<SVFastqUtils.FastqRead> list2 ) {
-        final List<SVFastqUtils.FastqRead> result = new ArrayList<>(list1.size() + list2.size());
-        result.addAll(list1);
-        result.addAll(list2);
-        return result;
     }
 
     /** This LocalAssemblyHandler aligns assembly contigs with BWA, along with some optional writing of intermediate results. */
@@ -702,7 +681,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                                                         final String exclusionIntervalsFile ) {
         if ( exclusionIntervalsFile == null ) return intervals;
         final SortedSet<SVInterval> gaps =
-                new TreeSet<>(SVUtils.readIntervalsFile(exclusionIntervalsFile, contigNameMap));
+                new TreeSet<>(SVFileUtils.readIntervalsFile(exclusionIntervalsFile, contigNameMap));
         return intervals.stream()
                 .filter(interval -> {
                     final SortedSet<SVInterval> headSet = gaps.headSet(interval);
@@ -929,7 +908,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         return new Tuple2<>(intervals, evidenceTargetLinks);
     }
 
-    private static void writeTargetLinks(final Broadcast<ReadMetadata> broadcastMetadata, final List<EvidenceTargetLink> targetLinks, final String targetLinkFile) {
+    private static void writeTargetLinks(final Broadcast<ReadMetadata> broadcastMetadata,
+                                         final List<EvidenceTargetLink> targetLinks, final String targetLinkFile) {
         if ( targetLinkFile != null ) {
             try (final OutputStreamWriter writer =
                          new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(targetLinkFile)))) {

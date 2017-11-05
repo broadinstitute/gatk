@@ -4,6 +4,8 @@ import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
@@ -223,5 +225,20 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
             throw new SkipException("cannot make a file unreadable (maybe you're running as root)");
         }
         IOUtils.canReadFile(file);
+    }
+
+    @Test
+    public void testCreateDirectory() throws IOException {
+
+        // hdfs
+        Path tempPath = IOUtils.getPath(MiniClusterUtils.getWorkingDir(MiniClusterUtils.getMiniCluster()).toUri().toString())
+                .resolve("temp");
+        IOUtils.createDirectory(tempPath.toUri().toString());
+        Assert.assertTrue(java.nio.file.Files.exists(tempPath));
+
+        // local
+        tempPath = IOUtils.getPath(BaseTest.createTempDir("xxx").getAbsolutePath().concat("/sub"));
+        IOUtils.createDirectory(tempPath.toUri().toString());
+        Assert.assertTrue(java.nio.file.Files.exists(tempPath));
     }
 }

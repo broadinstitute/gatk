@@ -50,6 +50,14 @@ public class SVDUSTFilteredKmerizer extends SVKmerizer {
         return Utils.stream(new SVDUSTFilteredKmerizer(seq, kSize, maxDUSTScore, kmer));
     }
 
+    public static Stream<SVKmer> canonicalStream( final CharSequence seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
+        return stream(seq, kSize, maxDUSTScore, kmer).map(km -> km.canonical(kSize));
+    }
+
+    public static Stream<SVKmer> canonicalStream( final byte[] seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
+        return stream(seq, kSize, maxDUSTScore, kmer).map(km -> km.canonical(kSize));
+    }
+
     @Override
     protected SVKmer nextKmer( final SVKmer initialKmer, int validBaseCount ) {
         final int len = seq.length();

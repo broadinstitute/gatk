@@ -482,4 +482,11 @@ public final class CigarUtils {
             throw new IllegalArgumentException("the input cigar only have clipping operations");
         }
     }
+
+    public static int countAlignedBases(final Cigar cigar ) {
+        return Utils.nonNull(cigar).getCigarElements().stream()
+                .filter(cigarElement -> cigarElement.getOperator().isAlignment())
+                .mapToInt(CigarElement::getLength)
+                .sum();
+    }
 }

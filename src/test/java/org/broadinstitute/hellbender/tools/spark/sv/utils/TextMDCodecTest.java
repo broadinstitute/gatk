@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.sv.evidence;
+package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
@@ -20,7 +20,7 @@ public class TextMDCodecTest extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "mdStringProvider")
+    @Test(dataProvider = "mdStringProvider", groups = "sv")
     public void testParseMDString(String mdString, List<TextMDCodec.MDElement> expectedElements) throws Exception {
         final List<TextMDCodec.MDElement> actualElements = TextMDCodec.parseMDString(mdString);
         Assert.assertEquals(actualElements.size(), expectedElements.size());
