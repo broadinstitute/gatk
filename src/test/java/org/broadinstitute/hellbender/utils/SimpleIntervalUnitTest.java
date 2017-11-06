@@ -208,6 +208,25 @@ public final class SimpleIntervalUnitTest extends GATKBaseTest {
                 "overlap() returned incorrect result for intervals " + firstInterval + " and " + secondInterval);
     }
 
+    @DataProvider()
+    private Object[][] overlapsWithMarginExpectingException() {
+        final SimpleInterval standardInterval = new SimpleInterval("1", 10, 20);
+        final SimpleInterval middleInterval = new SimpleInterval("1", 100, 200);
+
+        return new Object[][] {
+                { standardInterval, new SimpleInterval("2", 10, 20), -100 },
+                { standardInterval, new SimpleInterval("1", 30, 50), -9 },
+                { standardInterval, new SimpleInterval("1", 30, 50), -10 },
+                { middleInterval, new SimpleInterval("1", 50, 90), -9 },
+                { middleInterval, new SimpleInterval("1", 50, 90), -10 },
+        };
+    }
+    @Test(dataProvider = "overlapsWithMarginExpectingException", expectedExceptions = IllegalArgumentException.class)
+    public void testOverlapWithMarginExpectingException( final SimpleInterval firstInterval, final SimpleInterval secondInterval,
+                                                         int margin) {
+        firstInterval.overlapsWithMargin(secondInterval, margin);
+    }
+
     @DataProvider(name = "IntervalContainsData")
     public Object[][] getIntervalContainsData() {
         final SimpleInterval containingInterval = new SimpleInterval("1", 10, 20);
