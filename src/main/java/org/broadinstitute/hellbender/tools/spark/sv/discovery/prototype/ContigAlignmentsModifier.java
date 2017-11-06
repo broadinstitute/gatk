@@ -34,6 +34,9 @@ public final class ContigAlignmentsModifier {
 
         final AlignmentInterval reconstructedOne, reconstructedTwo;
         final int overlapOnRead = AlignmentInterval.overlapOnContig(one, two);
+        Utils.validateArg(overlapOnRead < Math.min(one.getSpanOnRead(), two.getSpanOnRead()),
+                "two input alignments' overlap on read consumes completely one of them.\t"
+                        + one.toPackedString() + "\t" + two.toPackedString());
         if (overlapOnRead == 0) {
             reconstructedOne = one;
             reconstructedTwo = two;

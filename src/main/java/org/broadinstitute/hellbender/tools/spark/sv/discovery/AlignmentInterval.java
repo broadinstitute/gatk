@@ -313,6 +313,10 @@ public final class AlignmentInterval {
         this.alnModType = modType;
     }
 
+    public int getSpanOnRead() {
+        return endInAssembledContig - startInAssembledContig + 1;
+    }
+
     /**
      * @return the number of bases of overlap between two alignment regions overlap on the locally-assembled contig they originate from.
      * Mostly useful for computing micro-homologyForwardStrandRep.
