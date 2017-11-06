@@ -15,9 +15,9 @@ import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -1667,7 +1667,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         input1_2.add(new SimpleInterval("1", 500, 2500));
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.combineBreakpoints(input1_1, input1_2);
+        IntervalUtils.combineAndSortBreakpoints(input1_1, input1_2, getSamSequenceDictionaryForCombineIntervalTests());
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -1679,7 +1679,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.combineBreakpoints(input1_1, input1_2);
+        IntervalUtils.combineAndSortBreakpoints(input1_1, input1_2, getSamSequenceDictionaryForCombineIntervalTests());
     }
 
     /**

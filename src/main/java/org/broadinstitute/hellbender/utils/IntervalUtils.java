@@ -1154,15 +1154,16 @@ public final class IntervalUtils {
      *
      * Intervals are assumed to include the start and end bases.
      *
-     * Output contigs will be unordered.
-     *
      * @param locatables1 list of locatables
      * @param locatables2 list of locatables
+     * @param dictionary Sequence dictionary to base the sort.  The order of contigs/sequences in the dictionary is the order of the sorting here.
      * @return Locatables from the combined breakpoints of locatable1 and locatable2.  If both inputs are null, return an
      *   empty list.  Please note that returned values are new copies.  If exactly one of the inputs is null, this method
-     *   returns a copy of of the non-null input.  Contigs will be unordered.
+     *   returns a copy of of the non-null input.
      */
-    protected static <T extends Locatable> List<Locatable> combineBreakpoints(final List<T> locatables1, final List<T> locatables2) {
+    protected static <T extends Locatable> List<Locatable> combineAndSortBreakpoints(final List<T> locatables1,
+                                                                                     final List<T> locatables2,
+                                                                                     final SAMSequenceDictionary dictionary) {
         if ((locatables1 == null) && (locatables2 == null)) {
             return Collections.emptyList();
         }
@@ -1171,10 +1172,10 @@ public final class IntervalUtils {
         validateNoOverlappingIntervals(locatables2);
 
         if (CollectionUtils.isEmpty(locatables1)) {
-            return locatables2.stream().map(SimpleInterval::new).collect(Collectors.toList());
+            return sortLocatablesBySequenceDictionary(locatables2.stream().map(SimpleInterval::new).collect(Collectors.toList()), dictionary);
         }
         if (CollectionUtils.isEmpty(locatables2)) {
-            return locatables1.stream().map(SimpleInterval::new).collect(Collectors.toList());
+            return sortLocatablesBySequenceDictionary(locatables1.stream().map(SimpleInterval::new).collect(Collectors.toList()), dictionary);
         }
 
         final List<Locatable> masterList = new ArrayList<>();
@@ -1250,7 +1251,7 @@ public final class IntervalUtils {
                 }
             }
         }
-        return result;
+        return sortLocatablesBySequenceDictionary(result, dictionary);
     }
 
     /**
@@ -1280,16 +1281,16 @@ public final class IntervalUtils {
     }
 
     /**
-     *  Same as {@link IntervalUtils::combineBreakpoints}, but sorts the inputs first.  Sorted versions are kept in a new list.
+     *  Same as {@link IntervalUtils::combineAndSortBreakpoints}, but sorts the inputs first.  Sorted versions are kept in a new list.
      *
      * Sorts using sequence dictionary sort.
      *
-     * @param locatables1 See {@link IntervalUtils::combineBreakpoints}, but can be unsorted.
-     * @param locatables2 See {@link IntervalUtils::combineBreakpoints}, but can be unsorted.
+     * @param locatables1 See {@link IntervalUtils::combineAndSortBreakpoints}, but can be unsorted.
+     * @param locatables2 See {@link IntervalUtils::combineAndSortBreakpoints}, but can be unsorted.
      * @param dictionary Sequence dictionary to base the sort.  The order of contigs/sequences in the dictionary is the order of the sorting here.
      *                   Never {@code null}
-     * @param <T> See {@link IntervalUtils::combineBreakpoints}
-     * @return See {@link IntervalUtils::combineBreakpoints}.  Please note that the output will be sorted.  Never {@code null}
+     * @param <T> See {@link IntervalUtils::combineAndSortBreakpoints}
+     * @return See {@link IntervalUtils::combineAndSortBreakpoints}.  Please note that the output will be sorted.  Never {@code null}
      */
     public static <T extends Locatable> List<Locatable> combineBreakpointsWithSorting(final List<T> locatables1, final List<T> locatables2,
                                                                                       final SAMSequenceDictionary dictionary) {
@@ -1298,7 +1299,7 @@ public final class IntervalUtils {
         final List<T> sortedLocatables1 = sortLocatablesBySequenceDictionary(locatables1, dictionary);
         final List<T> sortedLocatables2 = sortLocatablesBySequenceDictionary(locatables2, dictionary);
 
-        return  sortLocatablesBySequenceDictionary(combineBreakpoints(sortedLocatables1, sortedLocatables2), dictionary);
+        return combineAndSortBreakpoints(sortedLocatables1, sortedLocatables2, dictionary);
     }
 
     /**

@@ -109,7 +109,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
     }
 
     /**
-     *  Create intervals with breakpoints of segments1 and segments2 as described in {@link IntervalUtils::combineBreakpoints} and annotate
+     *  Create intervals with breakpoints of segments1 and segments2 as described in {@link IntervalUtils::combineAndSortBreakpoints} and annotate
      *   the new intervals with annotations of interest in segments1 and segments2.
      *
      * @param segments1 a list of simple annotated regions
