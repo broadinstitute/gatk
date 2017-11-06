@@ -100,7 +100,7 @@ public class Funcotator extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         logger.info("Traversal complete!");
-        return null;
+        return true;
     }
 
     @Override

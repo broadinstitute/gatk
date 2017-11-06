@@ -10,6 +10,10 @@ import java.util.List;
 
 /**
  * An abstract class to allow for writing output for the Funcotator.
+ * Used to output Funcotations to a location of the user's choice.
+ * For example, writing out to a VCF file (e.g. {@link org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer}).
+ * It is also possible to write to a stream, or other connection (e.g. a UDP port)
+ * at the user's discretion.
  * Created by jonn on 8/30/17.
  */
 public abstract class OutputRenderer {
