@@ -7,7 +7,6 @@ import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.Logger;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -43,18 +42,8 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                    final Logger toolLogger) {
 
-        // determine event primary chromosome and strand representation
-        // add jumping locations on reference annotation then extract the segmenting locations on event primary chromosome
         final JavaRDD<AnnotatedContig> annotatedContigs =
                 localAssemblyContigs.map(tig -> new AnnotatedContig(tig, broadcastSequenceDictionary.getValue()));
-
-        // segment affected reference regions by jumping locations
-        // then make sense of event, i.e. provide interpretation
-        final JavaPairRDD<String, ReferenceSegmentsAndEventDescription> assemblyContigPrimarySegments =
-                annotatedContigs
-                        .mapToPair(annotatedContig ->
-                                new Tuple2<>(annotatedContig.contig.contigName,
-                                        segmentReferenceAndInterpret(annotatedContig)));
 
         // extract corresponding alt haplotype sequence
 
@@ -64,11 +53,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         try {
             Files.write(Paths.get(Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxEvents.txt"),
                     () -> annotatedContigs
-                            .mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig))
-                            .join(assemblyContigPrimarySegments)
-                            .sortByKey()
-                            .values()
-                            .map(tuple2 -> "\n" + tuple2._1.toString() + "\n" + tuple2._2.toString())
+                            .map(AnnotatedContig::toString)
                             .map(s -> (CharSequence) s)
                             .collect().iterator());
         } catch (final IOException ioe) {
@@ -81,10 +66,12 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         private static final AlignedContig.Serializer contigSerializer = new AlignedContig.Serializer();
         private static final BasicInfo.Serializer basicInfoSerializer = new BasicInfo.Serializer();
         private static final Jump.Serializer jumpSerializer = new Jump.Serializer();
+        private static final ReferenceSegmentsAndEventDescription.Serializer eventsSerializer = new ReferenceSegmentsAndEventDescription.Serializer();
         final AlignedContig contig;
         final BasicInfo basicInfo;
         private List<Jump> jumps;
         private List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations;
+        private ReferenceSegmentsAndEventDescription referenceSegmentsAndEventDescription;
 
         /**
          * These two getters may return null if the corresponding fields are not properly initialized yet.
@@ -93,16 +80,21 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             return jumps;
         }
         List<SimpleInterval> getEventPrimaryChromosomeSegmentingLocations() { return eventPrimaryChromosomeSegmentingLocations;}
+        ReferenceSegmentsAndEventDescription getSegmentsAndDescription() { return referenceSegmentsAndEventDescription; }
 
-        SimpleInterval getRegionBoundedByAlphaAndOmega() {
-            return new SimpleInterval(basicInfo.eventPrimaryChromosome, basicInfo.alpha.getStart(), basicInfo.omega.getEnd());
-        }
-
+        /**
+         * determine event primary chromosome and strand representation
+         * add jumping locations on reference annotation then extract the segmenting locations on event primary chromosome
+         * segment affected reference regions by jumping locations
+         * then make sense of event, i.e. provide interpretation
+         * finally extract corresponding alt haplotype sequence
+         */
         AnnotatedContig(final AlignedContig contig, final SAMSequenceDictionary refSequenceDictionary) {
             this.contig = new AlignedContig(contig.contigName, contig.contigSequence,
                     deOverlapAlignments(contig.alignmentIntervals, refSequenceDictionary), contig.hasEquallyGoodAlnConfigurations);;
             this.basicInfo = new BasicInfo(this.contig);
-            markSegmentingRefLocations(refSequenceDictionary);
+
+            annotate(refSequenceDictionary);
         }
 
         private static List<AlignmentInterval> deOverlapAlignments(final List<AlignmentInterval> originalAlignments,
@@ -126,20 +118,28 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             return result;
         }
 
-        void markSegmentingRefLocations(final SAMSequenceDictionary refSequenceDictionary) {
-            jumps = extractJumpsOnReference(contig.alignmentIntervals);
-            eventPrimaryChromosomeSegmentingLocations =
-                    extractSegmentingRefLocationsOnEventPrimaryChromosome(jumps, basicInfo, refSequenceDictionary);
+        private void annotate(final SAMSequenceDictionary refSequenceDictionary) {
+            try {
+                jumps = extractJumpsOnReference(contig.alignmentIntervals);
+
+                eventPrimaryChromosomeSegmentingLocations =
+                        extractSegmentingRefLocationsOnEventPrimaryChromosome(jumps, basicInfo, refSequenceDictionary);
+
+                referenceSegmentsAndEventDescription =
+                        segmentReferenceAndInterpret(basicInfo, contig.alignmentIntervals, jumps,
+                                eventPrimaryChromosomeSegmentingLocations);
+            } catch (final GATKException ex) {
+                throw new GATKException(toString(), ex);
+            }
         }
-
-
 
         @Override
         public String toString() {
             return "Contig:\t" + contig.toString() +
-                    "\nBasicInfo:\t" + basicInfo.toString() +
-                    "\nJumps:\t" + jumps.toString() +
-                    "\nSeg.Boundaries:\t" + eventPrimaryChromosomeSegmentingLocations.toString();
+                    "\n" + basicInfo.toString() +
+                    "\nJumps:\t" + ( jumps == null ? "NULL" : jumps.toString()) +
+                    "\nSeg.Boundaries:\t" + ( eventPrimaryChromosomeSegmentingLocations == null ? "NULL" : eventPrimaryChromosomeSegmentingLocations.toString()) +
+                    "\n" + (referenceSegmentsAndEventDescription == null ? "NULL" : referenceSegmentsAndEventDescription.toString());
         }
 
         AnnotatedContig(final Kryo kryo, final Input input) {
@@ -155,6 +155,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             for (int i = 0; i < numSegmentingLocs; ++i) {
                 eventPrimaryChromosomeSegmentingLocations.add(kryo.readObject(input, SimpleInterval.class));
             }
+            referenceSegmentsAndEventDescription = eventsSerializer.read(kryo, input, ReferenceSegmentsAndEventDescription.class);
         }
 
         void serialize(final Kryo kryo, final Output output) {
@@ -166,6 +167,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             output.writeInt(eventPrimaryChromosomeSegmentingLocations.size());
             for (final SimpleInterval segmentingLoc : eventPrimaryChromosomeSegmentingLocations)
                 kryo.writeObject(output, segmentingLoc);
+            eventsSerializer.write(kryo, output, referenceSegmentsAndEventDescription);
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AnnotatedContig> {
@@ -206,9 +208,13 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             }
         }
 
+        SimpleInterval getRegionBoundedByAlphaAndOmega() {
+            return new SimpleInterval(eventPrimaryChromosome, alpha.getStart(), omega.getEnd());
+        }
+
         @Override
         public String toString() {
-            return "primary chr: " + eventPrimaryChromosome + "\tstrand rep:" + (forwardStrandRep ? '+' : '-') +
+            return "BasicInfo:\tprimary chr: " + eventPrimaryChromosome + "\tstrand rep:" + (forwardStrandRep ? '+' : '-') +
                     "\talpha: " + alpha.toString() +  "\tomega: " + omega.toString();
         }
 
@@ -354,15 +360,10 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             final List<Jump> jumps,
             final BasicInfo basicInfo,
             final SAMSequenceDictionary refSequenceDictionary) {
+        final SimpleInterval regionBoundedByAlphaAndOmega = basicInfo.getRegionBoundedByAlphaAndOmega();
         return jumps.stream()
                 .flatMap(jump -> Stream.of(jump.start, jump.landing))
-                .filter(loc ->
-                    loc.getContig().equals(basicInfo.eventPrimaryChromosome)
-                            &&
-                            IntervalUtils.compareLocatables(loc, basicInfo.alpha, refSequenceDictionary) > 0
-                            &&
-                            IntervalUtils.compareLocatables(loc, basicInfo.omega, refSequenceDictionary) < 0
-                )
+                .filter(loc -> !alignmentIsDisjointFromAlphaOmega(loc, regionBoundedByAlphaAndOmega))
                 .distinct()
                 .sorted((one, two) -> IntervalUtils.compareLocatables(one, two, refSequenceDictionary))
                 .collect(Collectors.toList());
@@ -456,14 +457,24 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         }
     }
 
-    private static ReferenceSegmentsAndEventDescription segmentReferenceAndInterpret(final AnnotatedContig annotatedContig) {
+    private static ReferenceSegmentsAndEventDescription segmentReferenceAndInterpret(final BasicInfo basicInfo,
+                                                                                     final List<AlignmentInterval> contigAlignments,
+                                                                                     final List<Jump> jumps,
+                                                                                     final List<SimpleInterval> segmentingLocations) {
 
-        final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
+        final String eventPrimaryChromosome = basicInfo.eventPrimaryChromosome;
 
         if (segmentingLocations.size() == 1) {
-            return livingAbroad(annotatedContig);
+            final boolean caseSeenBefore =
+                    contigAlignments.stream()
+                            .filter(ai -> ai.referenceSpan.getContig().equals(eventPrimaryChromosome)).count() == 2;
+            if (caseSeenBefore) {
+                return livingAbroad(basicInfo, contigAlignments, jumps, segmentingLocations);
+            } else {
+                throw new UnhandledCaseSeen("run into unseen case:\n");
+            }
         } else {
-            return homelandMover(annotatedContig);
+            return homelandMover(basicInfo, contigAlignments, jumps, segmentingLocations);
         }
     }
 
@@ -473,48 +484,47 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
      * and the first and last alignment share a single base on their ref span
      * (hence we have only one jump location on the event primary chromosome)
      */
-    private static ReferenceSegmentsAndEventDescription livingAbroad(final AnnotatedContig annotatedContig) {
+    private static ReferenceSegmentsAndEventDescription livingAbroad(final BasicInfo basicInfo,
+                                                                     final List<AlignmentInterval> contigAlignments,
+                                                                     final List<Jump> jumps,
+                                                                     final List<SimpleInterval> segmentingLocations) {
 
-        final String eventPrimaryChromosome = annotatedContig.basicInfo.eventPrimaryChromosome;
-        final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
 
-        final boolean caseSeenBefore =
-                annotatedContig.contig.alignmentIntervals.stream()
-                        .filter(ai -> ai.referenceSpan.getContig().equals(eventPrimaryChromosome)).count() == 2;
-        if (caseSeenBefore) {
-            final SimpleInterval singleBase = segmentingLocations.get(0);
-            final List<SimpleInterval> segments = new ArrayList<>(Arrays.asList(singleBase, singleBase));
+        final SimpleInterval singleBase = segmentingLocations.get(0);
+        final List<SimpleInterval> segments = new ArrayList<>(Arrays.asList(singleBase, singleBase));
 
-            final List<String> description =
-                    annotatedContig.contig.alignmentIntervals
-                            .subList(1, annotatedContig.contig.alignmentIntervals.size() - 1).stream()
-                            .map(ai -> {
-                                if (annotatedContig.basicInfo.forwardStrandRep)
-                                    return ai.forwardStrand ? ai.referenceSpan.toString() : "-"+ai.referenceSpan.toString();
-                                else
-                                    return ai.forwardStrand ? "-"+ai.referenceSpan.toString() : ai.referenceSpan.toString();
-                            }).collect(Collectors.toList());
+        final List<String> description =
+                contigAlignments
+                        .subList(1, contigAlignments.size() - 1).stream()
+                        .map(ai -> {
+                            if (basicInfo.forwardStrandRep)
+                                return ai.forwardStrand ? ai.referenceSpan.toString() : "-"+ai.referenceSpan.toString();
+                            else
+                                return ai.forwardStrand ? "-"+ai.referenceSpan.toString() : ai.referenceSpan.toString();
+                        }).collect(Collectors.toList());
 
-            description.add(0, "1");
-            description.add("1");
-            return new ReferenceSegmentsAndEventDescription(segments, description);
-        } else {
-            throw new GATKException("run into unseen case:\n" + annotatedContig.toString());
-        }
+        description.add(0, "1");
+        description.add("1");
+        return new ReferenceSegmentsAndEventDescription(segments, description);
+
     }
 
-    private static ReferenceSegmentsAndEventDescription homelandMover(final AnnotatedContig annotatedContig) {
+    private static ReferenceSegmentsAndEventDescription homelandMover(final BasicInfo basicInfo,
+                                                                      final List<AlignmentInterval> contigAlignments,
+                                                                      final List<Jump> jumps,
+                                                                      final List<SimpleInterval> segmentingLocations) {
 
-        final List<SimpleInterval> segments = extractRefSegments(annotatedContig);
-        final List<String> descriptions = makeInterpretation(annotatedContig, segments);
+        final List<SimpleInterval> segments = extractRefSegments(basicInfo, segmentingLocations);
+        final List<String> descriptions = makeInterpretation(basicInfo, contigAlignments, jumps, segments);
 
         return new ReferenceSegmentsAndEventDescription(segments, descriptions);
     }
 
-    private static List<SimpleInterval> extractRefSegments(final AnnotatedContig annotatedContig) {
+    // TODO: 11/6/17 fix 2-base long segment problem here
+    private static List<SimpleInterval> extractRefSegments(final BasicInfo basicInfo,
+                                                           final List<SimpleInterval> segmentingLocations) {
 
-        final String eventPrimaryChromosome = annotatedContig.basicInfo.eventPrimaryChromosome;
-        final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
+        final String eventPrimaryChromosome = basicInfo.eventPrimaryChromosome;
 
         final List<SimpleInterval> segments = new ArrayList<>(segmentingLocations.size() - 1);
         final Iterator<SimpleInterval> iterator = segmentingLocations.iterator();
@@ -527,21 +537,24 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         return segments;
     }
 
-    private static List<String> makeInterpretation(final AnnotatedContig annotatedContig, final List<SimpleInterval> segments) {
+    private static List<String> makeInterpretation(final BasicInfo basicInfo,
+                                                   final List<AlignmentInterval> contigAlignments,
+                                                   final List<Jump> jumps,
+                                                   final List<SimpleInterval> segments) {
 
         // using overlap with alignments ordered along the '+' strand representation of the signaling contig to
         // make sense of how the reference segments are ordered, including orientations--using signs of the integers,
         // on the sample;
         final List<AlignmentInterval> alignmentIntervalList =
-                annotatedContig.basicInfo.forwardStrandRep ? annotatedContig.contig.alignmentIntervals
-                                                           : ImmutableList.copyOf(annotatedContig.contig.alignmentIntervals).reverse();
+                basicInfo.forwardStrandRep ? contigAlignments
+                                           : ImmutableList.copyOf(contigAlignments).reverse();
         final Iterator<Boolean> jumpIterator =
-                annotatedContig.basicInfo.forwardStrandRep ? annotatedContig.getJumps().stream().map(jump -> jump.gapped).iterator()
-                                                           : ImmutableList.copyOf(annotatedContig.getJumps()).reverse().stream().map(jump -> jump.gapped).iterator();
+                basicInfo.forwardStrandRep ? jumps.stream().map(jump -> jump.gapped).iterator()
+                                           : ImmutableList.copyOf(jumps).reverse().stream().map(jump -> jump.gapped).iterator();
         Boolean currentJumpIsGapped = jumpIterator.next();
         boolean jumpIsLast = false;
 
-        final SimpleInterval regionBoundedByAlphaAndOmega = annotatedContig.getRegionBoundedByAlphaAndOmega();
+        final SimpleInterval regionBoundedByAlphaAndOmega = basicInfo.getRegionBoundedByAlphaAndOmega();
 
         final List<String> descriptions = new ArrayList<>(2*segments.size()); //ini. cap. a guess
         final List<Tuple2<SimpleInterval, Integer>> insertionMappedToDisjointRegionAndWhereToInsert = new ArrayList<>();
@@ -551,13 +564,13 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                 // disjoint alignment won't overlap any segments, so note down once where to insert, then move to next alignment
                 final int indexABS = descriptions.size();
                 insertionMappedToDisjointRegionAndWhereToInsert.add(new Tuple2<>(alignment.referenceSpan,
-                        annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand ? indexABS : -1*indexABS));
+                        basicInfo.forwardStrandRep == alignment.forwardStrand ? indexABS : -1*indexABS));
                 if ( currentJumpIsGapped )
                     descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
             } else {
                 // depending on the representation and the current alignment's orientation, traverse segments in different order
                 final int start, stop, step;
-                if (annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand) {
+                if (basicInfo.forwardStrandRep == alignment.forwardStrand) {
                     start = 0;
                     stop = segments.size();
                     step = 1;
@@ -572,7 +585,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                     final SimpleInterval currentSegment = segments.get(i);
                     // if current segment is contained in current alignment, note it down
                     if (alignmentContainsSegment(alignment.referenceSpan, currentSegment)) {
-                        if (annotatedContig.basicInfo.forwardStrandRep) // +1 below on i for 1-based description, no magic
+                        if (basicInfo.forwardStrandRep) // +1 below on i for 1-based description, no magic
                             descriptions.add( String.valueOf((alignment.forwardStrand ? 1 : -1) * (i+1)) );
                         else
                             descriptions.add( String.valueOf((alignment.forwardStrand ? -1 : 1) * (i+1)) );
@@ -624,4 +637,17 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
 
     // =================================================================================================================
 
+
+    private static final class UnhandledCaseSeen extends GATKException.ShouldNeverReachHereException {
+        private static final long serialVersionUID = 0L;
+        UnhandledCaseSeen( final String s ) {
+            super(s);
+        }
+
+        UnhandledCaseSeen( final String s, final Throwable throwable ) {
+            super(s, throwable);
+        }
+
+        UnhandledCaseSeen( final Throwable throwable) {this("Seeing unhandled case", throwable);}
+    }
 }
