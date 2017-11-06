@@ -393,162 +393,6 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    Object[][] provideAllelesAndFrameshiftResults() {
-        return new Object[][] {
-                { Allele.create((byte)'A'), Allele.create((byte)'A'), false },
-                { Allele.create((byte)'A'), Allele.create((byte)'T'), false },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        false
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'T'}),
-                        false
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'T',(byte)'T'}),
-                        false
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A'}),
-                        false
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
-                        false
-                },
-
-                // ======================
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
-                        true
-                },
-
-                {
-                        Allele.create(new byte[] {(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
-                        true
-                },
-                {
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
-                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
-                        true
-                },
-        };
-    }
-
-    @DataProvider
-    Object[][] providePositionsAndFrameshiftResults() {
-        return new Object[][] {
-                { 1,1,1, false },
-                { 1,3,1, true },
-                { 1,3,2, true },
-                { 1,3,3, false },
-                { 1,3,233, true },
-                { 1,3,234, false },
-                { 1,3,235, true },
-                { 8,9,8, true },
-                { 8,9,9, false },
-                { 8,9,10, true },
-                { 8,9,11, true },
-                { 8,9,12, false },
-        };
-    }
-
-    @DataProvider
-    Object[][] provideDataForTestIsInsertion() {
-        return new Object[][] {
-                { Allele.create("A", true),     Allele.create("T"),     false },
-                { Allele.create("A", true),     Allele.create("TT"),    true },
-                { Allele.create("AA", true),    Allele.create("TT"),    false },
-                { Allele.create("AA", true),    Allele.create("T"),     false },
-                { Allele.create("A", true),     Allele.create("TTTTT"), true },
-                { Allele.create("AAAAA", true), Allele.create("T"),     false },
-                { Allele.create("AAAAA", true), Allele.create("TTTTT"), false },
-        };
-    }
-
-    @DataProvider
-    Object[][] provideDataForTestIsDeletion() {
-        return new Object[][] {
-                { Allele.create("A", true),     Allele.create("T"),     false },
-                { Allele.create("A", true),     Allele.create("TT"),    false },
-                { Allele.create("AA", true),    Allele.create("TT"),    false },
-                { Allele.create("AA", true),    Allele.create("T"),     true },
-                { Allele.create("A", true),     Allele.create("TTTTT"), false },
-                { Allele.create("AAAAA", true), Allele.create("T"),     true },
-                { Allele.create("AAAAA", true), Allele.create("TTTTT"), false },
-        };
-    }
-
-    @DataProvider
-    Object[][] provideDataForTestIsOnp() {
-        return new Object[][] {
-                { Allele.create("A", true),     Allele.create("T"),     true },
-                { Allele.create("A", true),     Allele.create("TT"),    false },
-                { Allele.create("AA", true),    Allele.create("TT"),    true },
-                { Allele.create("AA", true),    Allele.create("T"),     false },
-                { Allele.create("A", true),     Allele.create("TTTTT"), false },
-                { Allele.create("AAAAA", true), Allele.create("T"),     false },
-                { Allele.create("AAAAA", true), Allele.create("TTTTT"), true },
-        };
-    }
-
-    @DataProvider
-    Object[][] provideDataForTestIsIndel() {
-        return new Object[][] {
-                { Allele.create("A", true),     Allele.create("T"),     false },
-                { Allele.create("A", true),     Allele.create("TT"),    true },
-                { Allele.create("AA", true),    Allele.create("TT"),    false },
-                { Allele.create("AA", true),    Allele.create("T"),     true },
-                { Allele.create("A", true),     Allele.create("TTTTT"), true },
-                { Allele.create("AAAAA", true), Allele.create("T"),     true },
-                { Allele.create("AAAAA", true), Allele.create("TTTTT"), false },
-        };
-    }
-
-    @DataProvider
     Object[][] providePositionAndExpectedAlignedPosition() {
         return new Object[][] {
                 {   1,   1},
@@ -714,7 +558,6 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 { "W", AminoAcid.TRYPTOPHAN },
                 { "Y", AminoAcid.TYROSINE },
                 { "V", AminoAcid.VALINE },
-                { "!", AminoAcid.NONSENSE },
                 { "ahuewifaef", null },
                 { "", null },
                 { "X", null },
@@ -747,7 +590,6 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 { 'W', AminoAcid.TRYPTOPHAN },
                 { 'Y', AminoAcid.TYROSINE },
                 { 'V', AminoAcid.VALINE },
-                { '!', AminoAcid.NONSENSE },
                 { 'a', null },
                 { '\0', null },
                 { 'X', null },
@@ -923,31 +765,31 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
         return new Object[][] {
                 {1000, 5, 1000, 1500, Strand.POSITIVE, 0, "c.e5-0"},
-                {1000, 4, 0, 1500, Strand.POSITIVE,    0, "c.e4+500"},
+                {1000, 4, 1, 1500, Strand.POSITIVE,    0, "c.e4+500"},
                 {1000, 3, 500, 1500, Strand.POSITIVE,  0, "c.e3-500"},
 
                 {1000, 5, 1000, 1500, Strand.NEGATIVE, 0, "c.e5+0"},
-                {1000, 4, 0, 1500, Strand.NEGATIVE,    0, "c.e4-500"},
+                {1000, 4, 1, 1500, Strand.NEGATIVE,    0, "c.e4-500"},
                 {1000, 3, 500, 1500, Strand.NEGATIVE,  0, "c.e3+500"},
 
                 {1000, 5, 1500, 500, Strand.NEGATIVE,  0, "c.e5+500"},
 
                 {1000, 5, 1000, 1500, Strand.POSITIVE, 1, "c.e5+1"},
-                {1000, 4, 0, 1500, Strand.POSITIVE,    2, "c.e4+502"},
+                {1000, 4, 1, 1500, Strand.POSITIVE,    2, "c.e4+502"},
                 {1000, 3, 500, 1500, Strand.POSITIVE,  3, "c.e3-497"},
 
                 {1000, 5, 1000, 1500, Strand.NEGATIVE, 4, "c.e5+4"},
-                {1000, 4, 0, 1500, Strand.NEGATIVE,    5, "c.e4-495"},
+                {1000, 4, 1, 1500, Strand.NEGATIVE,    5, "c.e4-495"},
                 {1000, 3, 500, 1500, Strand.NEGATIVE,  6, "c.e3+506"},
 
                 {1000, 5, 1500, 500, Strand.NEGATIVE,  7, "c.e5+507"},
 
                 {1000, 5, 1000, 1500, Strand.POSITIVE, -1, "c.e5-1"},
-                {1000, 4, 0, 1500, Strand.POSITIVE,    -2, "c.e4+498"},
+                {1000, 4, 1, 1500, Strand.POSITIVE,    -2, "c.e4+498"},
                 {1000, 3, 500, 1500, Strand.POSITIVE,  -3, "c.e3-503"},
 
                 {1000, 5, 1000, 1500, Strand.NEGATIVE, -4, "c.e5-4"},
-                {1000, 4, 0, 1500, Strand.NEGATIVE,    -5, "c.e4-505"},
+                {1000, 4, 1, 1500, Strand.NEGATIVE,    -5, "c.e4-505"},
                 {1000, 3, 500, 1500, Strand.NEGATIVE,  -6, "c.e3+494"},
 
                 {1000, 5, 1500, 500, Strand.NEGATIVE,  -7, "c.e5+493"},
@@ -1106,41 +948,6 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Tests:
 
-    @Test(dataProvider = "provideAllelesAndFrameshiftResults")
-    void testIsFrameshift(final Allele ref, final Allele alt, final boolean expected) {
-        Assert.assertEquals( FuncotatorUtils.isFrameshift(ref, alt), expected );
-        Assert.assertEquals( FuncotatorUtils.isFrameshift(ref.getBaseString(), alt.getBaseString()), expected );
-    }
-
-    @Test(dataProvider = "providePositionsAndFrameshiftResults")
-    void testIsFrameshiftByPositions(final int refStart, final int refEnd, final int altEnd, final boolean expected) {
-        Assert.assertEquals( FuncotatorUtils.isFrameshift(refStart, refEnd, altEnd), expected );
-    }
-
-    @Test(dataProvider = "provideDataForTestIsInsertion")
-    void testIsInsertion(final Allele ref, final Allele alt, final boolean expected) {
-        Assert.assertEquals( FuncotatorUtils.isInsertion(ref, alt), expected );
-        Assert.assertEquals( FuncotatorUtils.isInsertion(ref.getBaseString(), alt.getBaseString()), expected );
-    }
-
-    @Test(dataProvider = "provideDataForTestIsDeletion")
-    void testIsDeletion(final Allele ref, final Allele alt, final boolean expected) {
-        Assert.assertEquals( FuncotatorUtils.isDeletion(ref, alt), expected );
-        Assert.assertEquals( FuncotatorUtils.isDeletion(ref.getBaseString(), alt.getBaseString()), expected );
-    }
-
-    @Test(dataProvider = "provideDataForTestIsOnp")
-    void testIsOnp(final Allele ref, final Allele alt, final boolean expected) {
-        Assert.assertEquals( FuncotatorUtils.isOnp(ref, alt), expected );
-        Assert.assertEquals( FuncotatorUtils.isOnp(ref.getBaseString(), alt.getBaseString()), expected );
-    }
-
-    @Test(dataProvider = "provideDataForTestIsIndel")
-    void testIsIndel(final Allele ref, final Allele alt, final boolean expected ) {
-        Assert.assertEquals( FuncotatorUtils.isIndel(ref, alt), expected );
-        Assert.assertEquals( FuncotatorUtils.isIndel(ref.getBaseString(), alt.getBaseString()), expected );
-    }
-
 //    @Test(dataProvider = "provideReferenceAndExonListAndExpected")
 //    void testGetCodingSequence(final ReferenceContext reference, final List<Locatable> exonList, final Strand strand, final String expected) {
 //        final String codingSequence = FuncotatorUtils.getCodingSequence(reference, exonList, strand);
@@ -1218,8 +1025,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                         "Threonine",
                         "Tryptophan",
                         "Tyrosine",
-                        "Valine",
-                        "Nonsense Acid"
+                        "Valine"
                 }
         );
     }
@@ -1249,7 +1055,6 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                         "Trp",
                         "Tyr",
                         "Val",
-                         "NONSENSE",
                 }
         );
     }

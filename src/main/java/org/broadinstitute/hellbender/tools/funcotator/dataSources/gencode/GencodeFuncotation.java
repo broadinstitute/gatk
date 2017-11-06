@@ -34,7 +34,7 @@ public class GencodeFuncotation extends Funcotation {
     private String                  genomeChange;                       // TRIVIAL
     private String                  annotationTranscript;               // TRIVIAL
     private String                  transcriptStrand;                   // TRIVIAL
-    private Integer                 transcriptExon;                     //           CDS / UTRs
+    private Integer transcriptExon;                     //           CDS / UTRs
     private Integer                 transcriptPos;                      // TRIVIAL
     private String                  cDnaChange;                         //           CDS
     private String                  codonChange;                        //           CDS
@@ -47,6 +47,13 @@ public class GencodeFuncotation extends Funcotation {
      * Basic constructor for a {@link GencodeFuncotation}.
      */
     public GencodeFuncotation() {}
+
+    /**
+     * @return A new builder for a {@link GencodeFuncotation}.
+     */
+    public static GencodeFuncotationBuilder getBuilder() {
+        return new GencodeFuncotationBuilder();
+    }
 
     //==================================================================================================================
 
@@ -300,12 +307,12 @@ public class GencodeFuncotation extends Funcotation {
         this.transcriptStrand = transcriptStrand;
     }
 
-    public Integer getTranscriptExon() {
+    public Integer getTranscriptExonNumber() {
         return transcriptExon;
     }
 
-    public void setTranscriptExon(final Integer transcriptExon) {
-        this.transcriptExon = transcriptExon;
+    public void setTranscriptExonNumber(final Integer transcriptExonNumber) {
+        this.transcriptExon = transcriptExonNumber;
     }
 
     public Integer getTranscriptPos() {

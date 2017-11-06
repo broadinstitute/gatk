@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -350,7 +349,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                         muc16TranscriptIdMap,
                         muc16TranscriptDataSource);
 
-        final GencodeFuncotation.VariantClassification varClass = GencodeFuncotationFactory.getVariantClassification(
+        final GencodeFuncotation.VariantClassification varClass = GencodeFuncotationFactory.createVariantClassification(
                 variantContext,
                 altAllele,
                 variantType,
