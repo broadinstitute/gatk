@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.*;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -15,6 +16,8 @@ import java.util.stream.Collectors;
  * Common functions for PathSeq
  */
 public final class PSUtils {
+
+    private static final Logger logger = LogManager.getLogger(PSUtils.class);
 
     public static JavaRDD<GATKRead> primaryReads(final JavaRDD<GATKRead> reads) {
         return reads.filter(read -> !(read.isSecondaryAlignment() || read.isSupplementaryAlignment()));
@@ -101,7 +104,9 @@ public final class PSUtils {
                 numDeletions += e.getLength();
             }
         }
-        if (numMatches < 0) throw new IllegalArgumentException("numMismatches was greater than the number of matches/mismatches in the cigar");
+        if (numMatches < 0) {
+            logger.warn("Invalid arguments passed to getMatchesLessDeletions(): numMismatches was greater than the number of matches/mismatches in the cigar. Returning 0.");
+        }
         return numMatches - numDeletions;
     }
 }
