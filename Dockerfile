@@ -1,10 +1,11 @@
 # Using OpenJDK 8
 FROM broadinstitute/gatk:gatkbase-1.2.1
+ARG DRELEASE
 
 ADD . /gatk
 
 WORKDIR /gatk
-RUN /gatk/gradlew clean compileTestJava installAll localJar
+RUN /gatk/gradlew clean compileTestJava installAll localJar -Drelease=$DRELEASE
 
 WORKDIR /root
 

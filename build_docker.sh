@@ -105,8 +105,13 @@ if [ -n "$STAGING_DIR" ]; then
 fi
 
 # Build
+if [ -n "${IS_PUSH}" ]; then
+    RELEASE=true
+else
+    RELEASE=false
+fi
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} .
+docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg DRELEASE=$RELEASE .
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
@@ -118,8 +123,7 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 	fi
 
 	git lfs pull
-    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/*
-    chmod a+w ${STAGING_ABSOLUTE_PATH}/
+    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
 
 	echo docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
 	docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
