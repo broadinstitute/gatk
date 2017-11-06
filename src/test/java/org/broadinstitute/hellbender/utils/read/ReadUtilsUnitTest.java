@@ -3,8 +3,35 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.api.services.genomics.model.LinearAlignment;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
-import htsjdk.samtools.*;
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.SamFiles;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.RandomDNA;
@@ -13,14 +40,10 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.*;
-import java.util.stream.Stream;
 
 
 public final class ReadUtilsUnitTest extends GATKBaseTest {
@@ -470,34 +493,35 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     public Object[][] createSAMWriterData() {
         return new Object[][] {
                 // Note: We expect to silently fail to create an index if createIndex is true but sort order is not coord.
-                {getTestFile("query_sorted.bam"),     false,  true, true, false},
-                {getTestFile("coordinate_sorted.bam"),false,  true, true, true},
-                {getTestFile("query_sorted.bam"),     true,   true, true, false},
-                {getTestFile("coordinate_sorted.bam"),true,   true, true, true},
-                {getTestFile("query_sorted.bam"),     true,   true, false, false},
-                {getTestFile("coordinate_sorted.bam"),true,   true, false, true},
-                {getTestFile("coordinate_sorted.bam"),true,   false, false, false}
-        };
+            {getTestFile("print_reads.sam"),     getTestFile("print_reads.fasta"), ".cram", false,  true, true, false},
+            {getTestFile("query_sorted.bam"),     null, ".bam", false,  true, true, false},
+            {getTestFile("coordinate_sorted.bam"),null, ".bam", false,  true, true, true},
+            {getTestFile("query_sorted.bam"),     null, ".bam", true,   true, true, false},
+            {getTestFile("coordinate_sorted.bam"),null, ".bam", true,   true, true, true},
+            {getTestFile("query_sorted.bam"),     null, ".bam", true,   true, false, false},
+            {getTestFile("coordinate_sorted.bam"),null, ".bam", true,   true, false, true},
+            {getTestFile("coordinate_sorted.bam"),null, ".bam", true,   false, false, false}        };
     }
 
     @Test(dataProvider="createSAMWriter")
-    public void testCreateSAMWriter(
+    public void testCreateLegacySAMWriter(
             final File bamFile,
+            final File referenceFile,
+            final String outputExtension,
             final boolean preSorted,
             final boolean createIndex,
             final boolean createMD5,
             final boolean expectIndex) throws Exception {
+        final File outputFile = createTempFile("samWriterTest",  outputExtension);
 
-        final File outputFile = createTempFile("samWriterTest",  ".bam");
-
-        try (final SamReader samReader = SamReaderFactory.makeDefault().open(bamFile)) {
+        try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
              final SAMFileHeader header = samReader.getFileHeader();
             if (expectIndex) { // ensure test condition
                 Assert.assertEquals(expectIndex, header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
             }
 
             try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
-                            (outputFile, null, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
+                            (outputFile, referenceFile, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
                 final Iterator<SAMRecord> samRecIt = samReader.iterator();
                 while (samRecIt.hasNext()) {
                     samWriter.addAlignment(samRecIt.next());
@@ -511,6 +535,58 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         }
         Assert.assertEquals(expectIndex, null != SamFiles.findIndex(outputFile));
         Assert.assertEquals(createMD5, md5File.exists());
+
+        // now check the contents are the same
+        try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
+            final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputFile)) {
+            final Iterator<SAMRecord> samRecIt = samReader.iterator();
+            final Iterator<SAMRecord> outRecIt = outputReader.iterator();
+            Assert.assertEquals(samRecIt, outRecIt);
+        }
+    }
+
+    @Test(dataProvider="createSAMWriter")
+    public void testCreatePathSAMWriter(
+        final File bamFile,
+        final File referenceFile,
+        final String outputExtension,
+        final boolean preSorted,
+        final boolean createIndex,
+        final boolean createMD5,
+        final boolean expectIndex) throws Exception {
+
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+
+            final Path outputPath = jimfs.getPath("samWriterTest" + outputExtension);
+            final Path md5Path = jimfs.getPath("samWriterTest" + outputExtension + ".md5");
+
+            try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
+
+                final SAMFileHeader header = samReader.getFileHeader();
+                if (expectIndex) { // ensure test condition
+                    Assert.assertEquals(expectIndex, header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
+                }
+
+                try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
+                    (outputPath, referenceFile, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
+                    final Iterator<SAMRecord> samRecIt = samReader.iterator();
+                    while (samRecIt.hasNext()) {
+                        samWriter.addAlignment(samRecIt.next());
+                    }
+                }
+
+                Assert.assertEquals(expectIndex, null != SamFiles.findIndex(outputPath));
+                Assert.assertEquals(createMD5, Files.exists(md5Path));
+            }
+
+            // now check the contents are the same
+            try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
+                final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
+                final Iterator<SAMRecord> samRecIt = samReader.iterator();
+                final Iterator<SAMRecord> outRecIt = outputReader.iterator();
+                Assert.assertEquals(samRecIt, outRecIt);
+            }
+        }
     }
 
     @DataProvider(name="hasCRAMFileContents")
