@@ -40,7 +40,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
     private final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
     private final ReadsSparkSource readsSource = new ReadsSparkSource(ctx);
     private final SAMFileHeader header = readsSource.getHeader(readsFile, null);
-    private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(readsFile, null, null, 0L);
+    private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(readsFile, null, null);
     private final SVReadFilter filter = new SVReadFilter(params);
     private final ReadMetadata readMetadataExpected =
             new ReadMetadata(Collections.emptySet(), header,

@@ -113,7 +113,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         } else {
             traversalParameters = null;
         }
-        JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize), input2);
+        JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize, !useJdkInflater, !useJdkDeflater), input2);
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.
         long firstBamSize = firstReads.count();
