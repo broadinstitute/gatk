@@ -738,43 +738,43 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final String s = "The quick fox jumped over the lazy brown dog.";
 
         return new Object[][] {
-                { "", "", new ArrayList<>(Arrays.asList("".split(""))) },
-                { "", "1", new ArrayList<>(Arrays.asList("".split("1"))) },
-                { s, "1", new ArrayList<>(Arrays.asList(s.split("1"))) },
-                { s, "",  new ArrayList<>(Arrays.asList(s.split(""))) },
-                { s, "a", new ArrayList<>(Arrays.asList(s.split("a"))) },
-                { s, "b", new ArrayList<>(Arrays.asList(s.split("b"))) },
-                { s, "c", new ArrayList<>(Arrays.asList(s.split("c"))) },
-                { s, "d", new ArrayList<>(Arrays.asList(s.split("d"))) },
-                { s, "e", new ArrayList<>(Arrays.asList(s.split("e"))) },
-                { s, "f", new ArrayList<>(Arrays.asList(s.split("f"))) },
-                { s, "g", new ArrayList<>(Arrays.asList(s.split("g"))) },
-                { s, "h", new ArrayList<>(Arrays.asList(s.split("h"))) },
-                { s, "i", new ArrayList<>(Arrays.asList(s.split("i"))) },
-                { s, "j", new ArrayList<>(Arrays.asList(s.split("j"))) },
-                { s, "k", new ArrayList<>(Arrays.asList(s.split("k"))) },
-                { s, "l", new ArrayList<>(Arrays.asList(s.split("l"))) },
-                { s, "m", new ArrayList<>(Arrays.asList(s.split("m"))) },
-                { s, "n", new ArrayList<>(Arrays.asList(s.split("n"))) },
-                { s, "o", new ArrayList<>(Arrays.asList(s.split("o"))) },
-                { s, "p", new ArrayList<>(Arrays.asList(s.split("p"))) },
-                { s, "q", new ArrayList<>(Arrays.asList(s.split("q"))) },
-                { s, "r", new ArrayList<>(Arrays.asList(s.split("r"))) },
-                { s, "s", new ArrayList<>(Arrays.asList(s.split("s"))) },
-                { s, "t", new ArrayList<>(Arrays.asList(s.split("t"))) },
-                { s, "u", new ArrayList<>(Arrays.asList(s.split("u"))) },
-                { s, "v", new ArrayList<>(Arrays.asList(s.split("v"))) },
-                { s, "w", new ArrayList<>(Arrays.asList(s.split("w"))) },
-                { s, "x", new ArrayList<>(Arrays.asList(s.split("x"))) },
-                { s, "y", new ArrayList<>(Arrays.asList(s.split("y"))) },
-                { s, "z", new ArrayList<>(Arrays.asList(s.split("z"))) },
-                { s, " ", new ArrayList<>(Arrays.asList(s.split(" "))) },
+                { "", "",  "".split("" ) },
+                { "", "1", "".split("1") },
+                { s, "1",   s.split("1") },
+                { s, "",    s.split("" ) },
+                { s, "a",   s.split("a") },
+                { s, "b",   s.split("b") },
+                { s, "c",   s.split("c") },
+                { s, "d",   s.split("d") },
+                { s, "e",   s.split("e") },
+                { s, "f",   s.split("f") },
+                { s, "g",   s.split("g") },
+                { s, "h",   s.split("h") },
+                { s, "i",   s.split("i") },
+                { s, "j",   s.split("j") },
+                { s, "k",   s.split("k") },
+                { s, "l",   s.split("l") },
+                { s, "m",   s.split("m") },
+                { s, "n",   s.split("n") },
+                { s, "o",   s.split("o") },
+                { s, "p",   s.split("p") },
+                { s, "q",   s.split("q") },
+                { s, "r",   s.split("r") },
+                { s, "s",   s.split("s") },
+                { s, "t",   s.split("t") },
+                { s, "u",   s.split("u") },
+                { s, "v",   s.split("v") },
+                { s, "w",   s.split("w") },
+                { s, "x",   s.split("x") },
+                { s, "y",   s.split("y") },
+                { s, "z",   s.split("z") },
+                { s, " ",   s.split(" ") },
         };
     }
 
     @Test(dataProvider = "provideDataForTestUtilsSplitString")
-    public void testUtilsSplitString( final String str, final String delimiter, final ArrayList<String> expected ) {
+    public void testUtilsSplitString( final String str, final String delimiter, final String[] expected ) {
         Assert.assertEquals( Utils.split(str, delimiter), expected );
-        Assert.assertEquals( Utils.split(str, delimiter, expected.size()), expected );
+        Assert.assertEquals( Utils.split(str, delimiter, expected.length), expected );
     }
 }

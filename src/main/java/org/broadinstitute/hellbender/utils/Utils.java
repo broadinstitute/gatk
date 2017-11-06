@@ -4,6 +4,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.tribble.util.ParsingUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -1143,9 +1144,9 @@ public final class Utils {
      *
      * @param str the string to split.
      * @param delimiter the delimiter used to split the string.
-     * @return an array of tokens.
+     * @return A {@link String} Array of tokens.
      */
-    public static ArrayList<String> split(final String str, final String delimiter) {
+    public static String[] split(final String str, final String delimiter) {
         // This is 10 because the ArrayList default capacity is 10 (but private).
         return split(str, delimiter, 10);
     }
@@ -1155,9 +1156,9 @@ public final class Utils {
      * @param str The {@link String} to split.
      * @param delimiter The delimiter used to split the {@link String}.
      * @param expectedNumTokens The number of tokens expected (used to initialize the capacity of the {@link ArrayList}).
-     * @return An {@link ArrayList} of tokens.
+     * @return A {@link String} Array of tokens.
      */
-    public static ArrayList<String> split(final String str, final String delimiter, final int expectedNumTokens) {
+    public static String[] split(final String str, final String delimiter, final int expectedNumTokens) {
         final ArrayList<String> result =  new ArrayList<>(expectedNumTokens);
 
         if ( str.length() == 0) {
@@ -1167,6 +1168,9 @@ public final class Utils {
             for ( int i = 0; i < str.length(); ++i ) {
                 result.add( str.substring(i, i+1) );
             }
+        }
+        else if ( delimiter.length() == 1) {
+            return ParsingUtils.split(str, delimiter.charAt(0)).toArray(new String[]{});
         }
         else {
             int delimiterIdx = -1;
@@ -1178,6 +1182,6 @@ public final class Utils {
             } while (delimiterIdx != -1);
         }
 
-        return result;
+        return result.toArray(new String[]{});
     }
 }

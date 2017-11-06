@@ -75,6 +75,7 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
     //==================================================================================================================
 
     // Disabled so that we don't waste time.
+    // It takes 216.95812968 seconds (about 3.5 minutes) to run this test.
     // Cached results here:
 //    --------------------------------------------------------------------------------
 //    Timing Results:
@@ -91,9 +92,7 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
     @Test(enabled = false)
     void compareTimingForSplitString() {
 
-//    Java String.split,
-//    HTSJDK's ParsingUtils::split
-//    GATK3's Utils::split.
+        final long overallStartTime = System.nanoTime();
 
         //------------------------------------------------------------------------------------------------------------------
         // Baseline Java String.split:
@@ -171,9 +170,17 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
 
         //------------------------------------------------------------------------------------------------------------------
 
+        final long overallEndTime = System.nanoTime();
+        final long overallElapsedTime_ns = overallEndTime - overallStartTime;
+        final double overallElapsedTime_ms = overallElapsedTime_ns / 1000000.0;
+
+        //------------------------------------------------------------------------------------------------------------------
+
         // Print results:
         System.out.println("================================================================================");
         System.out.println("Timing Results:");
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("Overall Elapsed Time: " + overallElapsedTime_ns + "ns, " + overallElapsedTime_ms + "ms");
         System.out.println("--------------------------------------------------------------------------------");
         System.out.println("Java Split String:");
         printTimingString("Words", javaSplitWordTotalTime_ns, wordsToSplitOn.size());
