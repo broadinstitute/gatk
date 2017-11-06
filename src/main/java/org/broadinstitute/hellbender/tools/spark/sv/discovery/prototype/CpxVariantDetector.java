@@ -33,6 +33,9 @@ import java.util.stream.Stream;
  */
 final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContigAlignments {
 
+    public static final String UNMAPPED_INSERTION = "UMIS";
+
+
     @Override
     public void inferSvAndWriteVCF(final String vcfOutputFileName, final String sampleId, final JavaRDD<AlignedContig> localAssemblyContigs,
                                    final Broadcast<ReferenceMultiSource> broadcastReference,
@@ -44,7 +47,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         final JavaRDD<AnnotatedContig> annotatedContigs = localAssemblyContigs.map(tig -> new AnnotatedContig(tig, broadcastSequenceDictionary.getValue()));
 
         // segment affected reference regions by jumping locations
-        final JavaPairRDD<String, Tuple2<List<SimpleInterval>, List<Integer>>> assemblyContigPrimarySegments =
+        final JavaPairRDD<String, ReferenceSegmentsAndEventDescription> assemblyContigPrimarySegments =
                 annotatedContigs
                         .mapToPair(annotatedContig ->
                                 new Tuple2<>(annotatedContig.contig.contigName, segmentReference(annotatedContig)));
@@ -61,9 +64,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                                 .join(assemblyContigPrimarySegments)
                                 .sortByKey()
                                 .values()
-                                .map(tuple2 -> "\n" + tuple2._1.toString() +
-                                        "\nSegments:\t" + tuple2._2._1.toString() +
-                                        "\nEvents:\t" + tuple2._2._2.toString())
+                                .map(tuple2 -> "\n" + tuple2._1.toString() + "\n" + tuple2._2.toString())
                                 .collect().iterator(),
                         Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxJumps.txt");
     }
@@ -115,7 +116,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         }
 
         void markSegmentingRefLocations(final SAMSequenceDictionary refSequenceDictionary) {
-            jumps = extractJumpsOnReference(contig.alignmentIntervals, basicInfo, refSequenceDictionary);
+            jumps = extractJumpsOnReference(contig.alignmentIntervals);
             eventPrimaryChromosomeSegmentingLocations =
                     extractSegmentingRefLocationsOnEventPrimaryChromosome(jumps, basicInfo, refSequenceDictionary);
         }
@@ -253,25 +254,13 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         final SimpleInterval start;
         final SimpleInterval landing;
         final StrandSwitch strandSwitch;
+        final boolean gapped;
 
-        Jump(final AlignmentInterval originalOne, final AlignmentInterval originalTwo, final boolean forwardStrandRep,
-             final SAMSequenceDictionary refSequenceDictionary) {
-            Utils.validateArg(AlignmentInterval.overlapOnContig(originalOne, originalTwo) <=0,
+        Jump(final AlignmentInterval one, final AlignmentInterval two) {
+            Utils.validateArg(AlignmentInterval.overlapOnContig(one, two) <=0,
                     "assumption that input alignments DO NOT overlap is violated.");
 
-            strandSwitch = ChimericAlignment.determineStrandSwitch(originalOne, originalTwo);
-
-            final int overlapOnRead = AlignmentInterval.overlapOnContig(originalOne, originalTwo);
-            final AlignmentInterval one, two;
-            if (overlapOnRead > 0) {
-                final List<AlignmentInterval> developedAlignments =
-                        ContigAlignmentsModifier.removeOverlap(originalOne, originalTwo, refSequenceDictionary);
-                one = developedAlignments.get(0);
-                two = developedAlignments.get(1);
-            } else {
-                one = originalOne;
-                two = originalTwo;
-            }
+            strandSwitch = ChimericAlignment.determineStrandSwitch(one, two);
 
             switch (strandSwitch){
                 case NO_SWITCH:
@@ -294,23 +283,28 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                     default: throw new NoSuchElementException("seeing a strand switch that doesn't make sense");
             }
 
+            gapped = two.startInAssembledContig > one.endInAssembledContig + 1;
+
         }
 
         @Override
         public String toString() {
-            return "Jump start: " + start.toString() + "\tjump landing: " + landing.toString() + "\t" + strandSwitch.name();
+            return "Jump start: " + start.toString() + "\tjump landing: " + landing.toString() +
+                    "\t" + strandSwitch.name() + "\t" + (gapped ? "G" : "C");
         }
 
         Jump(final Kryo kryo, final Input input) {
             start = kryo.readObject(input, SimpleInterval.class);
             landing = kryo.readObject(input, SimpleInterval.class);
             strandSwitch = StrandSwitch.values()[input.readInt()];
+            gapped = input.readBoolean();
         }
 
         void serialize(final Kryo kryo, final Output output) {
             kryo.writeObject(output, start);
             kryo.writeObject(output, landing);
             output.writeInt(strandSwitch.ordinal());
+            output.writeBoolean(gapped);
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<Jump> {
@@ -331,16 +325,14 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
      * The returned list of {@link Jump}'s are ordered along the alignments of the contig
      * if the contig is '+' strand representation, or reversed if the contig is '-' strand representation.
      */
-    private static List<Jump> extractJumpsOnReference(final List<AlignmentInterval> alignmentConfiguration,
-                                                      final BasicInfo basicInfo,
-                                                      final SAMSequenceDictionary refSequenceDictionary) {
+    private static List<Jump> extractJumpsOnReference(final List<AlignmentInterval> alignmentConfiguration) {
 
         final List<Jump> unsortedJumps = new ArrayList<>(alignmentConfiguration.size() - 1);
         final Iterator<AlignmentInterval> iterator = alignmentConfiguration.iterator();
         AlignmentInterval one = iterator.next();
         while(iterator.hasNext()) {
             final AlignmentInterval two = iterator.next();
-            unsortedJumps.add( new Jump(one, two, basicInfo.forwardStrandRep, refSequenceDictionary) );
+            unsortedJumps.add( new Jump(one, two) );
             one = two;
         }
 
@@ -366,31 +358,113 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
 
     // =================================================================================================================
 
-    private static Tuple2<List<SimpleInterval>, List<Integer>> segmentReference(final AnnotatedContig annotatedContig) {
+    @DefaultSerializer(ReferenceSegmentsAndEventDescription.Serializer.class)
+    private static final class ReferenceSegmentsAndEventDescription {
+        final List<SimpleInterval> referenceSegments;
+        final List<String> eventDescriptions;
+
+        ReferenceSegmentsAndEventDescription(final List<SimpleInterval> referenceSegments, final List<String> eventDescriptions) {
+            this.referenceSegments = referenceSegments;
+            this.eventDescriptions = eventDescriptions;
+        }
+
+        @Override
+        public String toString() {
+            return "Segments:\t" + referenceSegments.toString() +
+                    "\nEvents:\t" + eventDescriptions.toString();
+        }
+
+        ReferenceSegmentsAndEventDescription(final Kryo kryo, final Input input) {
+            final int numSegments = input.readInt();
+            referenceSegments = new ArrayList<>(numSegments);
+            for (int i = 0; i < numSegments; ++i)
+                referenceSegments.add(kryo.readObject(input, SimpleInterval.class));
+            final int numDescriptions = input.readInt();
+            eventDescriptions = new ArrayList<>(numDescriptions);
+            for (int i = 0; i < numDescriptions; ++i)
+                eventDescriptions.add(input.readString());
+        }
+
+        void serialize(final Kryo kryo, final Output output) {
+            output.writeInt(referenceSegments.size());
+            for (final SimpleInterval segment : referenceSegments)
+                kryo.writeObject(output, segment);
+            output.writeInt(eventDescriptions.size());
+            for (final String description: eventDescriptions)
+                output.writeString(description);
+        }
+
+        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ReferenceSegmentsAndEventDescription> {
+            @Override
+            public void write(final Kryo kryo, final Output output, final ReferenceSegmentsAndEventDescription x) {
+                x.serialize(kryo, output);
+            }
+
+            @Override
+            public ReferenceSegmentsAndEventDescription read(final Kryo kryo, final Input input,
+                                                             final Class<ReferenceSegmentsAndEventDescription> clazz) {
+                return new ReferenceSegmentsAndEventDescription(kryo, input);
+            }
+        }
+    }
+
+    private static ReferenceSegmentsAndEventDescription segmentReference(final AnnotatedContig annotatedContig) {
+
+        final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
+
+        if (segmentingLocations.size() == 1) {
+            return livingAbroad(annotatedContig);
+        } else {
+            return homelandMover(annotatedContig);
+        }
+    }
+
+    /**
+     * This is the case where a contig has the middle alignment(s) mapped to some disjoint places
+     * (different chromosome, or same chromosome but not in the region bounded by alpha and omega),
+     * and the first and last alignment share a single base on their ref span
+     * (hence we have only one jump location on the event primary chromosome)
+     */
+    private static ReferenceSegmentsAndEventDescription livingAbroad(final AnnotatedContig annotatedContig) {
 
         final String eventPrimaryChromosome = annotatedContig.basicInfo.eventPrimaryChromosome;
         final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
 
-        // this is the case where a contig has the middle alignment mapped to some disjoint places
-        // (different chromosome, or same chromosome but not in the region bounded by alpha and omega),
-        // and the first and last alignment share a single base on their ref span
-        // (hence we have only one jump location on the event primary chromosome)
-        if (segmentingLocations.size() == 1) {
-            if (annotatedContig.contig.alignmentIntervals.stream().filter(ai -> ai.referenceSpan.getContig().equals(eventPrimaryChromosome)).count() == 2) {
-                final SimpleInterval singleBase = segmentingLocations.get(0);
-                final SimpleInterval insertion = annotatedContig.contig.alignmentIntervals.get(1).referenceSpan;
-                final List<SimpleInterval> segments = new ArrayList<>(Arrays.asList(singleBase, singleBase));
-                final List<Integer> collect = new ArrayList<>(Arrays.asList(1, 1));
-                return new Tuple2<>(segments, collect);
-            } else {
-                throw new GATKException(annotatedContig.toString());
-            }
-        }
+        List<SimpleInterval> segments;
+        List<String> description;
+        final boolean caseSeenBefore =
+                annotatedContig.contig.alignmentIntervals.stream()
+                        .filter(ai -> ai.referenceSpan.getContig().equals(eventPrimaryChromosome)).count() == 2;
+        if (caseSeenBefore) {
+            final SimpleInterval singleBase = segmentingLocations.get(0);
+            segments = new ArrayList<>(Arrays.asList(singleBase, singleBase));
 
+            description =
+                    annotatedContig.contig.alignmentIntervals
+                            .subList(1, annotatedContig.contig.alignmentIntervals.size() - 1).stream()
+                            .map(ai -> {
+                                if (annotatedContig.basicInfo.forwardStrandRep)
+                                    return ai.forwardStrand ? ai.referenceSpan.toString() : "-"+ai.referenceSpan.toString();
+                                else
+                                    return ai.forwardStrand ? "-"+ai.referenceSpan.toString() : ai.referenceSpan.toString();
+                            }).collect(Collectors.toList());
+
+            description.add(0, "1");
+            description.add("1");
+            return new ReferenceSegmentsAndEventDescription(segments, description);
+        } else {
+            throw new GATKException("run into unseen case:\n" + annotatedContig.toString());
+        }
+    }
+
+    private static ReferenceSegmentsAndEventDescription homelandMover(final AnnotatedContig annotatedContig) {
+        final String eventPrimaryChromosome = annotatedContig.basicInfo.eventPrimaryChromosome;
+        final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
+        List<SimpleInterval> segments;
+        List<String> description;
         // first segment the affected reference region based on the segmenting locations
         // note that the resulting segments have a property that neighboring segments always share a boundary base
-        final List<SimpleInterval> segments = new ArrayList<>(segmentingLocations.size() - 1); // minimal size 1
-
+        segments = new ArrayList<>(segmentingLocations.size() - 1);
         final Iterator<SimpleInterval> iterator = segmentingLocations.iterator();
         SimpleInterval leftBoundary = iterator.next();
         while (iterator.hasNext()) {
@@ -399,30 +473,77 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             leftBoundary = rightBoundary;
         }
 
+        final Iterator<Jump> jumpIterator = annotatedContig.getJumps().iterator();
+        Jump currentJump = jumpIterator.next();
         // then using overlap with alignments ordered along the '+' strand representation of the signaling contig to
         // make sense of how the reference segments are ordered, including orientations--using signs of the integers,
         // on the sample;
         // the absolute value in the list is 1+idx into segments
-        final List<Integer> collect = new ArrayList<>();
+        description = new ArrayList<>(2*segments.size()); //ini. cap. a guess
         // N*M overlaps
         final List<AlignmentInterval> alignmentIntervalList =
                 annotatedContig.basicInfo.forwardStrandRep ? annotatedContig.contig.alignmentIntervals
-                                                           : ImmutableList.copyOf(annotatedContig.contig.alignmentIntervals).reverse();
+                        : ImmutableList.copyOf(annotatedContig.contig.alignmentIntervals).reverse();
+        final List<Tuple2<SimpleInterval, Integer>> insertionMappedToDisjointRegionAndWhereToInsert = new ArrayList<>();
         for (final AlignmentInterval alignment : alignmentIntervalList) {
-            for (int i = 0; i < segments.size(); ++i) {
+            final int start, stop, step;
+            if (annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand) {
+                start = 0;
+                stop = segments.size();
+                step = 1;
+            } else {
+                start = segments.size()-1;
+                stop = -1;
+                step = -1;
+            }
+            for (int i = start; i != stop; i += step) {
                 final SimpleInterval segment = segments.get(i);
-                if (segment.overlaps(alignment.referenceSpan) && segment.intersect(alignment.referenceSpan).size() > 1) { // avoid case where segment and alignment ref span overlap only on one boundary base
+                // avoid case where segment and alignment ref span overlap only on one boundary base
+                final boolean currentAlignmentContainsThisSegment =
+                        segment.overlaps(alignment.referenceSpan) && segment.intersect(alignment.referenceSpan).size() > 1;
+                if (currentAlignmentContainsThisSegment) {
                     if (annotatedContig.basicInfo.forwardStrandRep)
-                        collect.add( (alignment.forwardStrand ? 1 : -1) * (i+1) );
+                        description.add( String.valueOf((alignment.forwardStrand ? 1 : -1) * (i+1)) );
                     else
-                        collect.add( (alignment.forwardStrand ? -1 : 1) * (i+1) );
+                        description.add( String.valueOf((alignment.forwardStrand ? -1 : 1) * (i+1)) );
+
+                    if ( currentJump.gapped && (i + step != stop) ) {
+                        final SimpleInterval nextSegment = segments.get(i+step);
+                        final boolean currentAlignmentContainsNextSegment =
+                                nextSegment.overlaps(alignment.referenceSpan) && nextSegment.intersect(alignment.referenceSpan).size() > 1;
+                        if ( currentAlignmentContainsNextSegment )
+                            continue;
+                        else
+                            description.add(UNMAPPED_INSERTION);
+                    }
+                } else {
+                    // this is for mappings to disjoint regions
+                    if (i == start) { // current alignment doesn't contain any segment, i.e. it's a mapping to a disjoint region
+                        final int indexABS = description.size();
+                        insertionMappedToDisjointRegionAndWhereToInsert.add(new Tuple2<>(alignment.referenceSpan,
+                                annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand ? indexABS : -1*indexABS));
+                    }
+
+                    // because segments are continuous blocks within [alpha, omega],
+                    // if the current segment doesn't overlap with the the current alignment,
+                    // then the following segments won't either
+                    break;
                 }
             }
+            if (jumpIterator.hasNext()) // last alignment has no leaving jump so need to guard against that
+                currentJump = jumpIterator.next();
         }
-
-        return new Tuple2<>(segments, collect);
+        final ImmutableList<Tuple2<SimpleInterval, Integer>> reverse = ImmutableList.copyOf(insertionMappedToDisjointRegionAndWhereToInsert).reverse();
+        for (final Tuple2<SimpleInterval, Integer> pair : reverse){
+            final int index = pair._2;
+            if (index > 0 ) {
+                description.add(pair._2, pair._1.toString());
+            } else {
+                description.add(-1*pair._2, "-"+pair._1.toString());
+            }
+        }
+        return new ReferenceSegmentsAndEventDescription(segments, description);
     }
-
 
     // =================================================================================================================
 
