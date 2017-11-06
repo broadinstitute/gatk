@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -47,7 +45,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         gencodeFuncotation.setGenomeChange( genomeChange );
         gencodeFuncotation.setAnnotationTranscript( annotationTranscript );
         gencodeFuncotation.setTranscriptStrand( transcriptStrand );
-        gencodeFuncotation.setTranscriptExon( transcriptExon );
+        gencodeFuncotation.setTranscriptExonNumber( transcriptExon );
         gencodeFuncotation.setTranscriptPos( transcriptPos );
         gencodeFuncotation.setcDnaChange( cDnaChange );
         gencodeFuncotation.setCodonChange( codonChange );
