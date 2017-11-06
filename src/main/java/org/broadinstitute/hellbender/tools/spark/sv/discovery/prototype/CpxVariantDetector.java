@@ -62,7 +62,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
 
         // debug
         try {
-            Files.write(Paths.get(Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxJumps.txt"),
+            Files.write(Paths.get(Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxEvents.txt"),
                     () -> annotatedContigs
                             .mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig))
                             .join(assemblyContigPrimarySegments)
@@ -586,11 +586,6 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                 //  2) the next segment IS NOT contained in the current alignment's ref span
                 if ( currentJumpIsGapped && !jumpIsLast){
                     descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
-//                    if ( i + step == stop) {
-//                        descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
-//                    } else if ( ! alignmentContainsSegment(alignment.referenceSpan, segments.get(i + step)) ){
-//                        descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
-//                    }
                 }
             }
 
