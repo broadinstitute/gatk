@@ -1,16 +1,21 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.cloud.storage.StorageException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Random;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.nio.file.*;
 
 /**
  * Test GCS access via the NIO APIs.
@@ -31,6 +36,27 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
         try (InputStream inputStream = Files.newInputStream(Paths.get(URI.create(
                 "gs://pgp-harvard-data-public/hu011C57/GS000018120-DID/GS000015172-ASM/manifest.all.sig")))) {
             int firstByte = inputStream.read();
+        }
+    }
+
+    /**
+     * Ensure we can write to the staging folder. If this fails, it may indicate a misconfiguration.
+     *
+     * @throws IOException
+     */
+    @Test(groups={"bucket"})
+    public void writePrivateFile() throws IOException {
+        try {
+            final String dest = getGCPTestStaging() + "GcsNioIntegrationTest-writePrivateFile-test" + new Random().nextInt();
+            final Path outputPath = BucketUtils.getPathOnGcs(dest);
+            System.out.println("Writing to " + dest);
+            try (OutputStream os = Files.newOutputStream(outputPath)) {
+                os.write(42);
+            }
+            Files.deleteIfExists(outputPath);
+        } catch (shaded.cloud_nio.com.google.api.client.http.HttpResponseException forbidden) {
+            helpDebugAuthError();
+            throw forbidden;
         }
     }
 
@@ -118,41 +144,4 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
         chan.close();
     }
 
-
-    private FileSystem getAuthenticatedGcs(String bucket) throws IOException {
-        byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
-        return BucketUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
-    }
-
-
-    private void helpDebugAuthError() {
-        final String key = "GOOGLE_APPLICATION_CREDENTIALS";
-        String credsFile = System.getenv(key);
-        if (null == credsFile) {
-            System.err.println("$"+key+" is not defined.");
-            return;
-        }
-        System.err.println("$"+key+" = " + credsFile);
-        Path credsPath = Paths.get(credsFile);
-        boolean exists = Files.exists(credsPath);
-        System.err.println("File exists: " + exists);
-        if (exists) {
-            try {
-                System.err.println("Key lines from file:");
-                printKeyLines(credsPath, "\"type\"", "\"project_id\"", "\"client_email\"");
-            } catch (IOException x2) {
-                System.err.println("Unable to read: " + x2.getMessage());
-            }
-        }
-    }
-
-    private void printKeyLines(Path path, String... keywords) throws IOException {
-        for (String line : Files.readAllLines(path)) {
-            for (String keyword : keywords) {
-                if (line.contains(keyword)) {
-                    System.err.println(line);
-                }
-            }
-        }
-    }
 }
