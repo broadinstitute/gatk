@@ -94,6 +94,10 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         }
         List<SimpleInterval> getEventPrimaryChromosomeSegmentingLocations() { return eventPrimaryChromosomeSegmentingLocations;}
 
+        SimpleInterval getRegionBoundedByAlphaAndOmega() {
+            return new SimpleInterval(basicInfo.eventPrimaryChromosome, basicInfo.alpha.getStart(), basicInfo.omega.getEnd());
+        }
+
         AnnotatedContig(final AlignedContig contig, final SAMSequenceDictionary refSequenceDictionary) {
             this.contig = new AlignedContig(contig.contigName, contig.contigSequence,
                     deOverlapAlignments(contig.alignmentIntervals, refSequenceDictionary), contig.hasEquallyGoodAlnConfigurations);;
@@ -531,61 +535,78 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         final List<AlignmentInterval> alignmentIntervalList =
                 annotatedContig.basicInfo.forwardStrandRep ? annotatedContig.contig.alignmentIntervals
                                                            : ImmutableList.copyOf(annotatedContig.contig.alignmentIntervals).reverse();
+        final Iterator<Boolean> jumpIterator =
+                annotatedContig.basicInfo.forwardStrandRep ? annotatedContig.getJumps().stream().map(jump -> jump.gapped).iterator()
+                                                           : ImmutableList.copyOf(annotatedContig.getJumps()).reverse().stream().map(jump -> jump.gapped).iterator();
+        Boolean currentJumpIsGapped = jumpIterator.next();
+        boolean jumpIsLast = false;
 
-        // prep work
-        final Iterator<Jump> jumpIterator = annotatedContig.getJumps().iterator();
-        Jump currentJump = jumpIterator.next();
-        final List<Tuple2<SimpleInterval, Integer>> insertionMappedToDisjointRegionAndWhereToInsert = new ArrayList<>();
+        final SimpleInterval regionBoundedByAlphaAndOmega = annotatedContig.getRegionBoundedByAlphaAndOmega();
 
-        // N*M overlaps
         final List<String> descriptions = new ArrayList<>(2*segments.size()); //ini. cap. a guess
+        final List<Tuple2<SimpleInterval, Integer>> insertionMappedToDisjointRegionAndWhereToInsert = new ArrayList<>();
         for (final AlignmentInterval alignment : alignmentIntervalList) {
-            final int start, stop, step;
-            if (annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand) {
-                start = 0;
-                stop = segments.size();
-                step = 1;
+
+            if (alignmentIsDisjointFromAlphaOmega(alignment.referenceSpan, regionBoundedByAlphaAndOmega)) {
+                // disjoint alignment won't overlap any segments, so note down once where to insert, then move to next alignment
+                final int indexABS = descriptions.size();
+                insertionMappedToDisjointRegionAndWhereToInsert.add(new Tuple2<>(alignment.referenceSpan,
+                        annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand ? indexABS : -1*indexABS));
+                if ( currentJumpIsGapped )
+                    descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
             } else {
-                start = segments.size()-1;
-                stop = -1;
-                step = -1;
-            }
-            for (int i = start; i != stop; i += step) {
-                final SimpleInterval segment = segments.get(i);
-                if (alignmentContainsSegment(alignment.referenceSpan, segment)) {
-                    if (annotatedContig.basicInfo.forwardStrandRep) // +1 below on i for 1-based description, no magic
-                        descriptions.add( String.valueOf((alignment.forwardStrand ? 1 : -1) * (i+1)) );
-                    else
-                        descriptions.add( String.valueOf((alignment.forwardStrand ? -1 : 1) * (i+1)) );
-
-                    if ( currentJump.gapped && (i + step != stop) ) {
-                        final SimpleInterval nextSegment = segments.get(i + step);
-                        if ( ! alignmentContainsSegment(alignment.referenceSpan, nextSegment) )
-                            descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
-                    }
+                // depending on the representation and the current alignment's orientation, traverse segments in different order
+                final int start, stop, step;
+                if (annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand) {
+                    start = 0;
+                    stop = segments.size();
+                    step = 1;
                 } else {
-                    // this is for mappings to disjoint regions
-                    if (i == start) { // current alignment doesn't contain any segment, i.e. it's a mapping to a disjoint region
-                        final int indexABS = descriptions.size();
-                        insertionMappedToDisjointRegionAndWhereToInsert.add(new Tuple2<>(alignment.referenceSpan,
-                                annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand ? indexABS : -1*indexABS));
+                    start = segments.size()-1;
+                    stop = -1;
+                    step = -1;
+                }
+                // N*M overlaps
+                int i = start;
+                for ( ; i != stop; i += step) {
+                    final SimpleInterval currentSegment = segments.get(i);
+                    // if current segment is contained in current alignment, note it down
+                    if (alignmentContainsSegment(alignment.referenceSpan, currentSegment)) {
+                        if (annotatedContig.basicInfo.forwardStrandRep) // +1 below on i for 1-based description, no magic
+                            descriptions.add( String.valueOf((alignment.forwardStrand ? 1 : -1) * (i+1)) );
+                        else
+                            descriptions.add( String.valueOf((alignment.forwardStrand ? -1 : 1) * (i+1)) );
                     }
 
-                    // TODO: 11/6/17 fix this: just because this doesn't overlap doesn't mean later won't
-                    // because segments are continuous blocks within [alpha, omega],
-                    // if the current segment doesn't overlap with the the current alignment,
-                    // then the following segments won't either
-//                    break;
+                }
+                // if the current alignment is associated with a gapped jump,
+                // we need to signal that an unmapped insertion is present,
+                // but only under two cases:
+                //  1) no more segments to explore
+                //  2) the next segment IS NOT contained in the current alignment's ref span
+                if ( currentJumpIsGapped && !jumpIsLast){
+                    descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
+//                    if ( i + step == stop) {
+//                        descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
+//                    } else if ( ! alignmentContainsSegment(alignment.referenceSpan, segments.get(i + step)) ){
+//                        descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
+//                    }
                 }
             }
+
             if (jumpIterator.hasNext()) // last alignment has no leaving jump so need to guard against that
-                currentJump = jumpIterator.next();
+                currentJumpIsGapped = jumpIterator.next();
+            else
+                jumpIsLast = true;
         }
+
+        // post-hoc treatment of insertions that map to disjoint regions
+        // go in reverse order because inserting into "descriptions", and insertion invalidates indices/iterators
         final ImmutableList<Tuple2<SimpleInterval, Integer>> reverse =
                 ImmutableList.copyOf(insertionMappedToDisjointRegionAndWhereToInsert).reverse();
         for (final Tuple2<SimpleInterval, Integer> pair : reverse){
             final int index = pair._2;
-            if (index > 0 ) {
+            if (index > 0) {
                 descriptions.add(pair._2, pair._1.toString());
             } else {
                 descriptions.add(-1*pair._2, "-"+pair._1.toString());
@@ -599,6 +620,11 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         return alignmentRefSpan.overlaps(segment)
                 &&
                 alignmentRefSpan.intersect(segment).size() == segment.size();
+    }
+
+    private static boolean alignmentIsDisjointFromAlphaOmega(final SimpleInterval alignmentRefSpan,
+                                                             final SimpleInterval regionBoundedByAlphaAndOmega) {
+        return !alignmentRefSpan.overlaps(regionBoundedByAlphaAndOmega);
     }
 
     // =================================================================================================================
