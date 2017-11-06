@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.StrandSwitch;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
 import java.nio.file.Paths;
@@ -57,8 +58,10 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                 writeLinesToSingleFile(
                         annotatedContigs
                                 .mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig))
-                                .join(assemblyContigPrimarySegments).values()
-                                .map(tuple2 -> tuple2._1.toString() +
+                                .join(assemblyContigPrimarySegments)
+                                .sortByKey()
+                                .values()
+                                .map(tuple2 -> "\n" + tuple2._1.toString() +
                                         "\nSegments:\t" + tuple2._2._1.toString() +
                                         "\nEvents:\t" + tuple2._2._2.toString())
                                 .collect().iterator(),
@@ -75,14 +78,19 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         private List<Jump> jumps;
         private List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations;
 
+        /**
+         * These two getters may return null if the corresponding fields are not properly initialized yet.
+         */
+        List<Jump> getJumps() {
+            return jumps;
+        }
+        List<SimpleInterval> getEventPrimaryChromosomeSegmentingLocations() { return eventPrimaryChromosomeSegmentingLocations;}
+
         AnnotatedContig(final AlignedContig contig, final SAMSequenceDictionary refSequenceDictionary) {
             this.contig = new AlignedContig(contig.contigName, contig.contigSequence,
                     deOverlapAlignments(contig.alignmentIntervals, refSequenceDictionary), contig.hasEquallyGoodAlnConfigurations);;
             this.basicInfo = new BasicInfo(this.contig);
             markSegmentingRefLocations(refSequenceDictionary);
-            if (eventPrimaryChromosomeSegmentingLocations.size()<2)
-                throw new GATKException("unhandled case seen:\n" + this.contig.toString() +
-                        "\n" + basicInfo.toString() + "\n" + jumps.toString());
         }
 
         private static List<AlignmentInterval> deOverlapAlignments(final List<AlignmentInterval> originalAlignments,
@@ -92,6 +100,12 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             AlignmentInterval one = iterator.next();
             while (iterator.hasNext()) {
                 final AlignmentInterval two = iterator.next();
+                // TODO: 11/5/17 an edge case is possible where the best configuration contains two alignments, one of which contains a large gap, and since the gap split happens after the configuration scoring, one of the alignment from the gap split may be contained in the other original alignment, leading to problems; here we first skip it
+                if (two.alnModType.equals(AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT)) {
+                    final int overlapOnRead = AlignmentInterval.overlapOnContig(one, two);
+                    if (overlapOnRead >= two.getSpanOnRead())
+                        continue;
+                }
                 final List<AlignmentInterval> deoverlapped = ContigAlignmentsModifier.removeOverlap(one, two, refSequenceDictionary);
                 result.add(deoverlapped.get(0));
                 one = deoverlapped.get(1);
@@ -99,14 +113,6 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             result.add(one);
             return result;
         }
-
-        /**
-         * These two getters may return null if the corresponding fields are not properly initialized yet.
-         */
-        List<Jump> getJumps() {
-            return jumps;
-        }
-        List<SimpleInterval> getEventPrimaryChromosomeSegmentingLocations() { return eventPrimaryChromosomeSegmentingLocations;}
 
         void markSegmentingRefLocations(final SAMSequenceDictionary refSequenceDictionary) {
             jumps = extractJumpsOnReference(contig.alignmentIntervals, basicInfo, refSequenceDictionary);
@@ -250,6 +256,8 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
 
         Jump(final AlignmentInterval originalOne, final AlignmentInterval originalTwo, final boolean forwardStrandRep,
              final SAMSequenceDictionary refSequenceDictionary) {
+            Utils.validateArg(AlignmentInterval.overlapOnContig(originalOne, originalTwo) <=0,
+                    "assumption that input alignments DO NOT overlap is violated.");
 
             strandSwitch = ChimericAlignment.determineStrandSwitch(originalOne, originalTwo);
 
@@ -361,11 +369,26 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
     private static Tuple2<List<SimpleInterval>, List<Integer>> segmentReference(final AnnotatedContig annotatedContig) {
 
         final String eventPrimaryChromosome = annotatedContig.basicInfo.eventPrimaryChromosome;
+        final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
 
+        // this is the case where a contig has the middle alignment mapped to some disjoint places
+        // (different chromosome, or same chromosome but not in the region bounded by alpha and omega),
+        // and the first and last alignment share a single base on their ref span
+        // (hence we have only one jump location on the event primary chromosome)
+        if (segmentingLocations.size() == 1) {
+            if (annotatedContig.contig.alignmentIntervals.stream().filter(ai -> ai.referenceSpan.getContig().equals(eventPrimaryChromosome)).count() == 2) {
+                final SimpleInterval singleBase = segmentingLocations.get(0);
+                final SimpleInterval insertion = annotatedContig.contig.alignmentIntervals.get(1).referenceSpan;
+                final List<SimpleInterval> segments = new ArrayList<>(Arrays.asList(singleBase, singleBase));
+                final List<Integer> collect = new ArrayList<>(Arrays.asList(1, 1));
+                return new Tuple2<>(segments, collect);
+            } else {
+                throw new GATKException(annotatedContig.toString());
+            }
+        }
 
         // first segment the affected reference region based on the segmenting locations
         // note that the resulting segments have a property that neighboring segments always share a boundary base
-        final List<SimpleInterval> segmentingLocations = annotatedContig.getEventPrimaryChromosomeSegmentingLocations();
         final List<SimpleInterval> segments = new ArrayList<>(segmentingLocations.size() - 1); // minimal size 1
 
         final Iterator<SimpleInterval> iterator = segmentingLocations.iterator();
@@ -388,7 +411,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         for (final AlignmentInterval alignment : alignmentIntervalList) {
             for (int i = 0; i < segments.size(); ++i) {
                 final SimpleInterval segment = segments.get(i);
-                if (segment.overlaps(alignment.referenceSpan) && segment.intersect(alignment.referenceSpan).size() > 2) {
+                if (segment.overlaps(alignment.referenceSpan) && segment.intersect(alignment.referenceSpan).size() > 1) { // avoid case where segment and alignment ref span overlap only on one boundary base
                     if (annotatedContig.basicInfo.forwardStrandRep)
                         collect.add( (alignment.forwardStrand ? 1 : -1) * (i+1) );
                     else
