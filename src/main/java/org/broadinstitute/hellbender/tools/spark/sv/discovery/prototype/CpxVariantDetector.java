@@ -531,7 +531,9 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         SimpleInterval leftBoundary = iterator.next();
         while (iterator.hasNext()) {
             final SimpleInterval rightBoundary = iterator.next();
-            segments.add(new SimpleInterval(eventPrimaryChromosome, leftBoundary.getStart(), rightBoundary.getStart()));
+            if (rightBoundary.getStart() - leftBoundary.getEnd() > 1) {
+                segments.add(new SimpleInterval(eventPrimaryChromosome, leftBoundary.getStart(), rightBoundary.getStart()));
+            }
             leftBoundary = rightBoundary;
         }
         return segments;
