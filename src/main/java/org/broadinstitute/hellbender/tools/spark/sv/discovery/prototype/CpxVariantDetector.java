@@ -53,6 +53,9 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         try {
             Files.write(Paths.get(Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxEvents.txt"),
                     () -> annotatedContigs
+                            .mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig))
+                            .sortByKey()
+                            .values()
                             .map(AnnotatedContig::toString)
                             .map(s -> (CharSequence) s)
                             .collect().iterator());
@@ -135,7 +138,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
 
         @Override
         public String toString() {
-            return "Contig:\t" + contig.toString() +
+            return "\nContig:\t" + contig.toString() +
                     "\n" + basicInfo.toString() +
                     "\nJumps:\t" + ( jumps == null ? "NULL" : jumps.toString()) +
                     "\nSeg.Boundaries:\t" + ( eventPrimaryChromosomeSegmentingLocations == null ? "NULL" : eventPrimaryChromosomeSegmentingLocations.toString()) +
