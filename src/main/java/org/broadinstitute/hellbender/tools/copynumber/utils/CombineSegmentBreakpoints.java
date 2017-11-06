@@ -127,7 +127,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
 
         final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Arrays.asList(segments1, segments2);
 
-        final List<Locatable> combinedIntervals = IntervalUtils.combineBreakpointsWithSorting(
+        final List<Locatable> combinedIntervals = IntervalUtils.combineAndSortBreakpoints(
                 segmentLists.get(0).stream().map(SimpleAnnotatedGenomicRegion::getInterval)
                         .collect(Collectors.toList()),
                 segmentLists.get(1).stream().map(SimpleAnnotatedGenomicRegion::getInterval)

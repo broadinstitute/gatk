@@ -1697,7 +1697,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
         final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForCombineIntervalTests();
 
-        final List<Locatable> outputs = IntervalUtils.combineBreakpointsWithSorting(locatables1, locatables2, dictionary);
+        final List<Locatable> outputs = IntervalUtils.combineAndSortBreakpoints(locatables1, locatables2, dictionary);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }
