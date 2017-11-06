@@ -4,6 +4,8 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -1136,5 +1138,13 @@ public final class Utils {
     public static <T extends Comparable<?>> T getMedianValue(List<T> values) {
         final List<T> sorted = values.stream().sorted().collect(Collectors.toList());
         return sorted.get(sorted.size() / 2);
+    }
+
+    public static java.util.Iterator<String> lineIterator(final Path path) {
+        try {
+            return Files.lines(path).iterator();
+        } catch (IOException x) {
+            throw new UserException("Error reading " + path.toString() + ": " + x.getMessage());
+        }
     }
 }

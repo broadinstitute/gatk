@@ -1,25 +1,42 @@
 package org.broadinstitute.hellbender.utils;
 
 
+import static java.util.Arrays.asList;
+import static org.testng.Assert.assertEquals;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static java.util.Arrays.asList;
-import static org.testng.Assert.assertEquals;
 
 /**
  * Testing framework for general purpose utilities class.
@@ -730,5 +747,24 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testGetDuplicatedItems(final Collection<?> collection, final Set<?> duplicated) {
         final Set<?> result = Utils.getDuplicatedItems(collection);
         Assert.assertEquals(result, duplicated);
+    }
+
+    @Test
+    public void testLineIterator() throws IOException {
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path path = jimfs.getPath("test.txt");
+            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
+                bufferedWriter.write("Hello world\n");
+                bufferedWriter.write("What's new?");
+            }
+
+            final Iterator<String> it = Utils.lineIterator(path);
+            String firstLine = it.next();
+            Assert.assertEquals(firstLine, "Hello world");
+            String nextLine  = it.next();
+            Assert.assertEquals(nextLine, "What's new?");
+            Assert.assertFalse(it.hasNext());
+
+        }
     }
 }
