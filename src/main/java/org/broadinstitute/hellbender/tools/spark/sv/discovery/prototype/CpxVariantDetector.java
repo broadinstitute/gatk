@@ -530,7 +530,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         // on the sample;
         final List<AlignmentInterval> alignmentIntervalList =
                 annotatedContig.basicInfo.forwardStrandRep ? annotatedContig.contig.alignmentIntervals
-                        : ImmutableList.copyOf(annotatedContig.contig.alignmentIntervals).reverse();
+                                                           : ImmutableList.copyOf(annotatedContig.contig.alignmentIntervals).reverse();
 
         // prep work
         final Iterator<Jump> jumpIterator = annotatedContig.getJumps().iterator();
@@ -552,22 +552,15 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             }
             for (int i = start; i != stop; i += step) {
                 final SimpleInterval segment = segments.get(i);
-                // avoid case where segment and alignment ref span overlap only on one boundary base
-                final boolean currentAlignmentContainsThisSegment =
-                        segment.overlaps(alignment.referenceSpan) && segment.intersect(alignment.referenceSpan).size() > 1;
-                if (currentAlignmentContainsThisSegment) {
-                    if (annotatedContig.basicInfo.forwardStrandRep)
+                if (alignmentContainsSegment(alignment.referenceSpan, segment)) {
+                    if (annotatedContig.basicInfo.forwardStrandRep) // +1 below on i for 1-based description, no magic
                         descriptions.add( String.valueOf((alignment.forwardStrand ? 1 : -1) * (i+1)) );
                     else
                         descriptions.add( String.valueOf((alignment.forwardStrand ? -1 : 1) * (i+1)) );
 
                     if ( currentJump.gapped && (i + step != stop) ) {
-                        final SimpleInterval nextSegment = segments.get(i+step);
-                        final boolean currentAlignmentContainsNextSegment =
-                                nextSegment.overlaps(alignment.referenceSpan) && nextSegment.intersect(alignment.referenceSpan).size() > 1;
-                        if ( currentAlignmentContainsNextSegment )
-                            continue;
-                        else
+                        final SimpleInterval nextSegment = segments.get(i + step);
+                        if ( ! alignmentContainsSegment(alignment.referenceSpan, nextSegment) )
                             descriptions.add(ReferenceSegmentsAndEventDescription.UNMAPPED_INSERTION);
                     }
                 } else {
@@ -578,16 +571,18 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                                 annotatedContig.basicInfo.forwardStrandRep == alignment.forwardStrand ? indexABS : -1*indexABS));
                     }
 
+                    // TODO: 11/6/17 fix this: just because this doesn't overlap doesn't mean later won't
                     // because segments are continuous blocks within [alpha, omega],
                     // if the current segment doesn't overlap with the the current alignment,
                     // then the following segments won't either
-                    break;
+//                    break;
                 }
             }
             if (jumpIterator.hasNext()) // last alignment has no leaving jump so need to guard against that
                 currentJump = jumpIterator.next();
         }
-        final ImmutableList<Tuple2<SimpleInterval, Integer>> reverse = ImmutableList.copyOf(insertionMappedToDisjointRegionAndWhereToInsert).reverse();
+        final ImmutableList<Tuple2<SimpleInterval, Integer>> reverse =
+                ImmutableList.copyOf(insertionMappedToDisjointRegionAndWhereToInsert).reverse();
         for (final Tuple2<SimpleInterval, Integer> pair : reverse){
             final int index = pair._2;
             if (index > 0 ) {
@@ -597,6 +592,13 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             }
         }
         return descriptions;
+    }
+
+    // avoid case where segment and alignment ref span overlap only on one boundary base
+    private static boolean alignmentContainsSegment(final SimpleInterval alignmentRefSpan, final SimpleInterval segment) {
+        return alignmentRefSpan.overlaps(segment)
+                &&
+                alignmentRefSpan.intersect(segment).size() == segment.size();
     }
 
     // =================================================================================================================
