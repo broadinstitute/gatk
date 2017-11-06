@@ -109,7 +109,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
     }
 
     /**
-     *  Create intervals with breakpoints of segments1 and segments2 as described in {@link IntervalUtils::combineBreakpoints} and annotate
+     *  Create intervals with breakpoints of segments1 and segments2 as described in {@link IntervalUtils::combineAndSortBreakpoints} and annotate
      *   the new intervals with annotations of interest in segments1 and segments2.
      *
      * @param segments1 a list of simple annotated regions
@@ -127,7 +127,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
 
         final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Arrays.asList(segments1, segments2);
 
-        final List<Locatable> combinedIntervals = IntervalUtils.combineBreakpointsWithSorting(
+        final List<Locatable> combinedIntervals = IntervalUtils.combineAndSortBreakpoints(
                 segmentLists.get(0).stream().map(SimpleAnnotatedGenomicRegion::getInterval)
                         .collect(Collectors.toList()),
                 segmentLists.get(1).stream().map(SimpleAnnotatedGenomicRegion::getInterval)

@@ -15,9 +15,9 @@ import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -1565,6 +1565,78 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         output16.add(new SimpleInterval("2", 16001, 35000));
 
 
+        // Trivial to combine but has a lot of contigs
+        final List<Locatable> input17_1 = Lists.newArrayList(
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 5000, 6000),
+                new SimpleInterval("1", 7000, 8000),
+                new SimpleInterval("1", 10000, 11000),
+                new SimpleInterval("1", 12000, 14000),
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 11000),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("11", 5000, 6000),
+                new SimpleInterval("11", 7000, 8000),
+                new SimpleInterval("11", 10000, 11000),
+                new SimpleInterval("11", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000));
+        final List<Locatable> input17_2 = Lists.newArrayList(
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 10500),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000));
+        final List<Locatable> output17 = Lists.newArrayList(
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 5000, 6000),
+                new SimpleInterval("1", 7000, 8000),
+                new SimpleInterval("1", 10000, 11000),
+                new SimpleInterval("1", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000),
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 10500),
+                new SimpleInterval("10", 10501, 11000),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("11", 5000, 6000),
+                new SimpleInterval("11", 7000, 8000),
+                new SimpleInterval("11", 10000, 11000),
+                new SimpleInterval("11", 12000, 14000)
+                );
+
         return new Object[][]{
                 {input1_1, input1_2, output1},
                 {input2_1, input2_2, output2},
@@ -1582,14 +1654,8 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 {input14_1, input14_2, output14},
                 {input15_1, input15_2, output15},
                 {input16_1, input16_2, output16},
+                {input17_1, input17_2, output17},
         };
-    }
-
-    @Test(dataProvider = "combineIntervalsTesting")
-    public void testCombineIntervals(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
-        final List<Locatable> outputs = IntervalUtils.combineBreakpoints(locatables1, locatables2);
-        Assert.assertEquals(outputs.size(), gtOutput.size());
-        Assert.assertEquals(outputs, gtOutput);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -1601,7 +1667,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         input1_2.add(new SimpleInterval("1", 500, 2500));
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.combineBreakpoints(input1_1, input1_2);
+        IntervalUtils.combineAndSortBreakpoints(input1_1, input1_2, getSamSequenceDictionaryForCombineIntervalTests());
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -1613,7 +1679,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         input1_2.add(new SimpleInterval("1", 2501, 3000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
         input1_2.add(new SimpleInterval("1", 4000, 5000));
-        IntervalUtils.combineBreakpoints(input1_1, input1_2);
+        IntervalUtils.combineAndSortBreakpoints(input1_1, input1_2, getSamSequenceDictionaryForCombineIntervalTests());
     }
 
     /**
@@ -1631,7 +1697,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
         final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForCombineIntervalTests();
 
-        final List<Locatable> outputs = IntervalUtils.combineBreakpointsWithSorting(locatables1, locatables2, dictionary);
+        final List<Locatable> outputs = IntervalUtils.combineAndSortBreakpoints(locatables1, locatables2, dictionary);
         Assert.assertEquals(outputs.size(), gtOutput.size());
         Assert.assertEquals(outputs, gtOutput);
     }
@@ -1639,7 +1705,11 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     private SAMSequenceDictionary getSamSequenceDictionaryForCombineIntervalTests() {
         return new SAMSequenceDictionary(
                 Arrays.asList(new SAMSequenceRecord("1", 500000),
-                        new SAMSequenceRecord("2", 500000)));
+                        new SAMSequenceRecord("2", 500000),
+                        new SAMSequenceRecord("3", 500000),
+                        new SAMSequenceRecord("4", 500000),
+                        new SAMSequenceRecord("10", 500000),
+                        new SAMSequenceRecord("11", 500000)));
     }
 
     @DataProvider(name = "overlappingData")
