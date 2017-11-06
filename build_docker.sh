@@ -123,7 +123,8 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 	fi
 
 	git lfs pull
-    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/*
+    chmod a+w ${STAGING_ABSOLUTE_PATH}/build/reports/tests
+    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
     chmod a+w ${STAGING_ABSOLUTE_PATH}/
 
 	echo docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
