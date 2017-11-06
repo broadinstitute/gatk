@@ -12,6 +12,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
@@ -21,6 +22,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -57,16 +60,19 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         // output VCF
 
         // debug
-        org.broadinstitute.hellbender.tools.spark.sv.utils.FileUtils.
-                writeLinesToSingleFile(
-                        annotatedContigs
-                                .mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig))
-                                .join(assemblyContigPrimarySegments)
-                                .sortByKey()
-                                .values()
-                                .map(tuple2 -> "\n" + tuple2._1.toString() + "\n" + tuple2._2.toString())
-                                .collect().iterator(),
-                        Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxJumps.txt");
+        try {
+            Files.write(Paths.get(Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxJumps.txt"),
+                    () -> annotatedContigs
+                            .mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig))
+                            .join(assemblyContigPrimarySegments)
+                            .sortByKey()
+                            .values()
+                            .map(tuple2 -> "\n" + tuple2._1.toString() + "\n" + tuple2._2.toString())
+                            .map(s -> (CharSequence) s)
+                            .collect().iterator());
+        } catch (final IOException ioe) {
+            throw new UserException.CouldNotCreateOutputFile("Could not save filtering results to file", ioe);
+        }
     }
 
     @DefaultSerializer(AnnotatedContig.Serializer.class)
