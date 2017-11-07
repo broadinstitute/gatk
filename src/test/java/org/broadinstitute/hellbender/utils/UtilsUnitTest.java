@@ -7,17 +7,9 @@ import static org.testng.Assert.assertEquals;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.common.jimfs.Configuration;
-import com.google.common.jimfs.Jimfs;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -748,41 +740,5 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testGetDuplicatedItems(final Collection<?> collection, final Set<?> duplicated) {
         final Set<?> result = Utils.getDuplicatedItems(collection);
         Assert.assertEquals(result, duplicated);
-    }
-
-    @Test
-    public void testLineIteratorInForEach() throws IOException {
-        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
-            final Path path = jimfs.getPath("test.txt");
-            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-                bufferedWriter.write("Hello world\n");
-                bufferedWriter.write("What's new?");
-            }
-            ArrayList<String> got = new ArrayList<>();
-            for (String s: new Utils.LineIterator(path)) {
-                got.add(s);
-            }
-            Assert.assertEquals(got.size(), 2);
-            Assert.assertEquals(got.get(0), "Hello world");
-            Assert.assertEquals(got.get(1), "What's new?");
-        }
-    }
-
-    @Test
-    public void testLineIteratorAsResource() throws IOException {
-        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
-            final Path path = jimfs.getPath("test.txt");
-            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-                bufferedWriter.write("Hello world\n");
-                bufferedWriter.write("What's new?");
-            }
-            ArrayList<String> got = new ArrayList<>();
-            try (Utils.LineIterator lines = new Utils.LineIterator(path)) {
-                lines.forEach(s -> got.add(s));
-            }
-            Assert.assertEquals(got.size(), 2);
-            Assert.assertEquals(got.get(0), "Hello world");
-            Assert.assertEquals(got.get(1), "What's new?");
-        }
     }
 }
