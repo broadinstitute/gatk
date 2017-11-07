@@ -135,6 +135,9 @@ You can download and run pre-built versions of GATK4 from the following places:
 
 * To run a non-Spark tool, or to run a Spark tool locally, the syntax is: **`./gatk-launch ToolName toolArguments`**.
 
+* Tool arguments that allow multiple values, such as -I, can be supplied on the command line using a file with the extension ".args". Each line of the file should contain a
+  single value for the argument.
+
 * Examples:
 
   ```

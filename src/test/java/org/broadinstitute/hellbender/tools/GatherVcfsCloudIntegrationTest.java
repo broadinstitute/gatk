@@ -41,14 +41,14 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
     public void testGatherOverNIO(final GatherVcfsCloud.GatherType gatherType){
         assertGatherProducesCorrectVariants(gatherType,
                                             new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf"),
-                                            getTestFile("cloud-inputs.list"));
+                                            getTestFile("cloud-inputs.args"));
     }
 
     @Test(dataProvider = "getGatherTypes")
     public void testLocalGathers(final GatherVcfsCloud.GatherType gatherType){
         assertGatherProducesCorrectVariants(gatherType,
                                             getTestFile("gzipped.vcf.gz"),
-                                            getTestFile("bgzipped_shards.list"));
+                                            getTestFile("bgzipped_shards.args"));
     }
 
     private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, File inputs) {
