@@ -6,7 +6,9 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.SequenceUtil;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -46,7 +48,8 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                 localAssemblyContigs.map(tig -> new AnnotatedContig(tig, broadcastSequenceDictionary.getValue()));
 
         // extract corresponding alt haplotype sequence
-
+        final JavaPairRDD<String, byte[]> contigNameAndAltSeq =
+                annotatedContigs.mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig.extractAltHaplotypeSeq()));
         // output VCF
 
         // debug
@@ -54,9 +57,10 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             Files.write(Paths.get(Paths.get(vcfOutputFileName).getParent().toAbsolutePath().toString() + "/cpxEvents.txt"),
                     () -> annotatedContigs
                             .mapToPair(annotatedContig -> new Tuple2<>(annotatedContig.contig.contigName, annotatedContig))
+                            .join(contigNameAndAltSeq)
                             .sortByKey()
                             .values()
-                            .map(AnnotatedContig::toString)
+                            .map(pair -> pair._1.toString() + "\nAlt. Hap.Seq.:\t" + new String(pair._2))
                             .map(s -> (CharSequence) s)
                             .collect().iterator());
         } catch (final IOException ioe) {
@@ -99,6 +103,15 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
 
             annotate(refSequenceDictionary);
         }
+
+        byte[] extractAltHaplotypeSeq() {
+            final Tuple2<Integer, Integer> alphaAndOmegaPosOnRead = basicInfo.getAlphaAndOmegaPosOnRead();
+            final byte[] altSeq = Arrays.copyOfRange(contig.contigSequence, alphaAndOmegaPosOnRead._1 - 1, alphaAndOmegaPosOnRead._2);
+            if ( ! basicInfo.forwardStrandRep )
+                SequenceUtil.reverseComplement(altSeq);
+            return altSeq;
+        }
+
 
         private static List<AlignmentInterval> deOverlapAlignments(final List<AlignmentInterval> originalAlignments,
                                                                    final SAMSequenceDictionary refSequenceDictionary) {
@@ -195,6 +208,8 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         final boolean forwardStrandRep;     // if the signaling assembly contig is a forward strand representation
         final SimpleInterval alpha;         // the starting ref location of the head/tail alignment if the signaling assembly contig is a '+'/'-' representation
         final SimpleInterval omega;         // the ending   ref location of the tail/head alignment if the signaling assembly contig is a '+'/'-' representation
+        final int alphaOnRead;              // position on read corresponding to alpha
+        final int omegaOnRead;              // position on read corresponding to omega
 
         BasicInfo(final AlignedContig contig) {
             final AlignmentInterval head = contig.alignmentIntervals.get(0),
@@ -209,16 +224,24 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
                 alpha = new SimpleInterval(tail.referenceSpan.getContig(), tail.referenceSpan.getStart(), tail.referenceSpan.getStart());
                 omega = new SimpleInterval(head.referenceSpan.getContig(), head.referenceSpan.getEnd(), head.referenceSpan.getEnd());
             }
+
+            alphaOnRead = head.startInAssembledContig;
+            omegaOnRead = tail.endInAssembledContig;
         }
 
-        SimpleInterval getRegionBoundedByAlphaAndOmega() {
+        SimpleInterval getRefRegionBoundedByAlphaAndOmega() {
             return new SimpleInterval(eventPrimaryChromosome, alpha.getStart(), omega.getEnd());
+        }
+
+        Tuple2<Integer, Integer> getAlphaAndOmegaPosOnRead() {
+            return new Tuple2<>(alphaOnRead, omegaOnRead);
         }
 
         @Override
         public String toString() {
             return "BasicInfo:\tprimary chr: " + eventPrimaryChromosome + "\tstrand rep:" + (forwardStrandRep ? '+' : '-') +
-                    "\talpha: " + alpha.toString() +  "\tomega: " + omega.toString();
+                    "\talpha: " + alpha.toString() +  "\tomega: " + omega.toString() +
+                    "\talphaOnRead: " + alphaOnRead + "\tomegaOnRead: " + omegaOnRead;
         }
 
         BasicInfo(final Kryo kryo, final Input input) {
@@ -226,13 +249,17 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             forwardStrandRep = input.readBoolean();
             alpha = kryo.readObject(input, SimpleInterval.class);
             omega = kryo.readObject(input, SimpleInterval.class);
+            alphaOnRead = input.readInt();
+            omegaOnRead = input.readInt();
         }
 
         void serialize(final Kryo kryo, final Output output) {
             output.writeString(eventPrimaryChromosome);
             output.writeBoolean(forwardStrandRep);
-            kryo.writeObject(output, alpha/*, simpleIntervalSerializer*/);
-            kryo.writeObject(output, omega/*, simpleIntervalSerializer*/);
+            kryo.writeObject(output, alpha);
+            kryo.writeObject(output, omega);
+            output.writeInt(alphaOnRead);
+            output.writeInt(omegaOnRead);
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<BasicInfo> {
@@ -363,7 +390,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
             final List<Jump> jumps,
             final BasicInfo basicInfo,
             final SAMSequenceDictionary refSequenceDictionary) {
-        final SimpleInterval regionBoundedByAlphaAndOmega = basicInfo.getRegionBoundedByAlphaAndOmega();
+        final SimpleInterval regionBoundedByAlphaAndOmega = basicInfo.getRefRegionBoundedByAlphaAndOmega();
         return jumps.stream()
                 .flatMap(jump -> Stream.of(jump.start, jump.landing))
                 .filter(loc -> !alignmentIsDisjointFromAlphaOmega(loc, regionBoundedByAlphaAndOmega))
@@ -559,7 +586,7 @@ final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContig
         Boolean currentJumpIsGapped = jumpIterator.next();
         boolean jumpIsLast = false;
 
-        final SimpleInterval regionBoundedByAlphaAndOmega = basicInfo.getRegionBoundedByAlphaAndOmega();
+        final SimpleInterval regionBoundedByAlphaAndOmega = basicInfo.getRefRegionBoundedByAlphaAndOmega();
 
         final List<String> descriptions = new ArrayList<>(2*segments.size()); //ini. cap. a guess
         final List<Tuple2<SimpleInterval, Integer>> insertionMappedToDisjointRegionAndWhereToInsert = new ArrayList<>();
