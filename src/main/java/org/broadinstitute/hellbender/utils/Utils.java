@@ -6,6 +6,7 @@ import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.jexl2.JexlException;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -1141,47 +1142,82 @@ public final class Utils {
 
     /**
      * Splits a String using indexOf instead of regex to speed things up.
-     *
+     * If given an empty delimiter, will return each character in the string as a token.
      * @param str the string to split.
      * @param delimiter the delimiter used to split the string.
-     * @return A {@link String} Array of tokens.
+     * @return A {@link List} of {@link String} tokens.
      */
-    public static String[] split(final String str, final String delimiter) {
+    public static List<String> split(final String str, final String delimiter) {
         // This is 10 because the ArrayList default capacity is 10 (but private).
         return split(str, delimiter, 10);
     }
 
     /**
+     * Splits a String using indexOf instead of regex to speed things up.
+     *
+     * @param str the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return A {@link List} of {@link String} tokens.
+     */
+    public static List<String> split(final String str, final char delimiter) {
+        List<String> tokens = ParsingUtils.split( str, delimiter );
+
+        // We must adjust for splitting on the last character so that the results here will be the same as
+        // the results of String.split:
+        if ( delimiter == str.charAt(str.length() - 1)) {
+            tokens.remove( tokens.size() - 1 );
+        }
+
+        return tokens;
+    }
+
+
+    /**
      * Splits a given {@link String} using {@link String#indexOf} instead of regex to speed things up.
+     * If given an empty delimiter, will return each character in the string as a token.
      * @param str The {@link String} to split.
      * @param delimiter The delimiter used to split the {@link String}.
      * @param expectedNumTokens The number of tokens expected (used to initialize the capacity of the {@link ArrayList}).
-     * @return A {@link String} Array of tokens.
+     * @return A {@link List} of {@link String} tokens.
      */
-    public static String[] split(final String str, final String delimiter, final int expectedNumTokens) {
-        final ArrayList<String> result =  new ArrayList<>(expectedNumTokens);
+    public static List<String> split(final String str, final String delimiter, final int expectedNumTokens) {
+        List<String> result =  new ArrayList<>(expectedNumTokens);
 
-        if ( str.length() == 0) {
+        if ( str.isEmpty() ) {
             result.add("");
         }
-        else if ( delimiter.length() == 0) {
+        else if ( delimiter.isEmpty() ) {
             for ( int i = 0; i < str.length(); ++i ) {
                 result.add( str.substring(i, i+1) );
             }
         }
         else if ( delimiter.length() == 1) {
-            return ParsingUtils.split(str, delimiter.charAt(0)).toArray(new String[]{});
+            result = ParsingUtils.split(str, delimiter.charAt(0));
+
+            // We must adjust for splitting on the last character so that the results here will be the same as
+            // the results of String.split:
+            if ( delimiter.charAt(0) == str.charAt(str.length() - 1)) {
+                result.remove( result.size() - 1 );
+            }
         }
         else {
             int delimiterIdx = -1;
+            int tokenStartIdx = delimiterIdx + 1;
             do {
-                final int tokenStartIdx = delimiterIdx + 1;
                 delimiterIdx = str.indexOf(delimiter, tokenStartIdx);
                 final String token = (delimiterIdx != -1 ? str.substring(tokenStartIdx, delimiterIdx) : str.substring(tokenStartIdx));
                 result.add(token);
+                tokenStartIdx = delimiterIdx + delimiter.length();
             } while (delimiterIdx != -1);
+
+            // Check to see if the last entry is empty.
+            // String.split doesn't give us empty last elements of the token list, so we remove it.
+            if ( result.get(result.size() - 1).isEmpty() ) {
+                result.remove( result.size() - 1 );
+            }
+
         }
 
-        return result.toArray(new String[]{});
+        return result;
     }
 }

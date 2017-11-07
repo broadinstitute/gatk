@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 /**
  * A class to test the speed of different string.split implementations.
+ * This test is disabled by default because it takes 3.5 minutes to complete and we already have the information it provides.
  * Created by jonn on 11/1/17.
  */
 public class StringSplitSpeedUnitTest extends GATKBaseTest {
@@ -57,19 +58,73 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
 
     private static final int numIterations = 100000;
 
+    private static final double MS_TO_NS = 1000000.0;
+    private static final double S_TO_MS  = 1000.0;
+
     //=========================================================================
 
-    void printTimingString(final String decorator,
+    private static void printTimingString(final String decorator,
                            final long time_ns,
                            final int numSplits) {
 
-        final double time_ms =  time_ns / 1000000.0;
+        final double time_ms =  time_ns / MS_TO_NS;
 
         final double timePerSplit_ns = ((double)time_ns) / ((double)numSplits) / ((double)numIterations);
-        final double timePerSplit_ms = timePerSplit_ns / 1000000.0;
+        final double timePerSplit_ms = timePerSplit_ns / MS_TO_NS;
 
         System.out.println("\t" + decorator + " Total Time:\t" + time_ns + "ns\t" + time_ms +
                             "ms\tPer Split:\t" + timePerSplit_ns + "ns\t\t" + timePerSplit_ms + "ms");
+    }
+
+    private static void printTimingTable(final long   javaSplitWordTotalTime_ns,
+                                         final long   javaSplitSingleCharStringTotalTime_ns,
+                                         final long   htsjdkSplitSingleCharTotalTime_ns,
+                                         final long   gatkSplitWordTotalTime_ns,
+                                         final long   gatkSplitSingleCharStringTotalTime_ns,
+                                         final long   overallElapsedTime_ns,
+                                         final double overallElapsedTime_ms) {
+        System.out.println("================================================================================");
+        System.out.println("Timing Results:");
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("Overall Elapsed Time: " + overallElapsedTime_ns + "ns, " + overallElapsedTime_ms + "ms");
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("Java Split String:");
+        printTimingString("Words", javaSplitWordTotalTime_ns, wordsToSplitOn.size());
+        printTimingString("\"Chars\"", javaSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size());
+        System.out.println("HTSJDK ParsingUtils::split");
+        printTimingString("\"Chars\"", htsjdkSplitSingleCharTotalTime_ns, singleCharStringsToSplitOn.size());
+        System.out.println("GATK Utils::split");
+        printTimingString("Words", gatkSplitWordTotalTime_ns, wordsToSplitOn.size());
+        printTimingString("\"Chars\"", gatkSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size());
+        System.out.println("================================================================================");
+    }
+
+    private static void printTimingTableMarkup(final long   javaSplitWordTotalTime_ns,
+                                               final long   javaSplitSingleCharStringTotalTime_ns,
+                                               final long   htsjdkSplitSingleCharTotalTime_ns,
+                                               final long   gatkSplitWordTotalTime_ns,
+                                               final long   gatkSplitSingleCharStringTotalTime_ns ) {
+
+        System.out.println( "| Method | Benchmark | Total Time (ns) | Total Time (ms) | Time Per Split Operation (ns) | Time Per Split Operation (ms) |" );
+        System.out.println( "| --- | --- | --- | --- | --- | --- |" );
+        printTimingMarkupLine( "| Java String::split | Split on Words | ", javaSplitWordTotalTime_ns, wordsToSplitOn.size() );
+        printTimingMarkupLine( "| Java String::split | Split on Chars | ", javaSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size() );
+        System.out.println( "| HTSJDK ParsingUtils::split | Split on Words | NA | NA | NA | NA |" );
+        printTimingMarkupLine( "| HTSJDK ParsingUtils::split | Split on Chars | ", htsjdkSplitSingleCharTotalTime_ns, singleCharStringsToSplitOn.size() );
+        printTimingMarkupLine( "| GATK Utils::split | Split on Words | ", gatkSplitWordTotalTime_ns, wordsToSplitOn.size() );
+        printTimingMarkupLine( "| GATK Utils::split | Split on Chars | ", gatkSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size() );
+    }
+
+    private static void printTimingMarkupLine( final String rowHeader,
+                                               final long time_ns,
+                                               final int numSplits) {
+
+        final double time_ms =  time_ns / MS_TO_NS;
+
+        final double timePerSplit_ns = ((double)time_ns) / ((double)numSplits) / ((double)numIterations);
+        final double timePerSplit_ms = timePerSplit_ns / MS_TO_NS;
+
+        System.out.println( rowHeader + time_ns + " | " + time_ms + " | " + timePerSplit_ns + " | " + timePerSplit_ms + " |" );
     }
 
     //==================================================================================================================
@@ -99,6 +154,7 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
 
         //-------------------------------------------------
         // First we do words:
+        System.out.print("Testing Java String.split on words..."); System.out.flush();
         final long javaSplitWordStartTime = System.nanoTime();
 
         for ( int i = 0; i < numIterations; ++i ) {
@@ -108,9 +164,11 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         }
         final long javaSplitWordStopTime = System.nanoTime();
         final long javaSplitWordTotalTime_ns = javaSplitWordStopTime - javaSplitWordStartTime;
+        System.out.println( " Done! (" + (javaSplitWordTotalTime_ns / MS_TO_NS / S_TO_MS) + "s)" );
 
         //-------------------------------------------------
         // Now we do single char words:
+        System.out.print("Testing Java String.split on single characters..."); System.out.flush();
         final long javaSplitSingleCharStringStartTime = System.nanoTime();
 
         for ( int i = 0; i < numIterations; ++i ) {
@@ -120,6 +178,8 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         }
         final long javaSplitSingleCharStringStopTime = System.nanoTime();
         final long javaSplitSingleCharStringTotalTime_ns = javaSplitSingleCharStringStopTime - javaSplitSingleCharStringStartTime;
+        System.out.println( " Done! (" + (javaSplitSingleCharStringTotalTime_ns / MS_TO_NS / S_TO_MS) + "s)" );
+
 
         //------------------------------------------------------------------------------------------------------------------
         // HTSJDK's ParsingUtils::split:
@@ -131,6 +191,7 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
 
         //-------------------------------------------------
         // Now we do single char words:
+        System.out.print("Testing HTSJDK's ParsingUtils::split on single characters..."); System.out.flush();
         final long htsjdkSplitSingleCharStringStartTime = System.nanoTime();
 
         for ( int i = 0; i < numIterations; ++i ) {
@@ -140,12 +201,14 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         }
         final long htsjdkSplitSingleCharStringStopTime = System.nanoTime();
         final long htsjdkSplitSingleCharTotalTime_ns = htsjdkSplitSingleCharStringStopTime - htsjdkSplitSingleCharStringStartTime;
+        System.out.println( " Done! (" + (htsjdkSplitSingleCharTotalTime_ns / MS_TO_NS / S_TO_MS) + "s)" );
 
         //------------------------------------------------------------------------------------------------------------------
         // GATK's Utils::split:
 
         //-------------------------------------------------
         // First we do words:
+        System.out.print("Testing GATK's Utils::split: on words..."); System.out.flush();
         final long gatkSplitWordStartTime = System.nanoTime();
 
         for ( int i = 0; i < numIterations; ++i ) {
@@ -155,9 +218,11 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         }
         final long gatkSplitWordStopTime = System.nanoTime();
         final long gatkSplitWordTotalTime_ns = gatkSplitWordStopTime - gatkSplitWordStartTime;
+        System.out.println( " Done! (" + (gatkSplitWordTotalTime_ns / MS_TO_NS / S_TO_MS) + "s)" );
 
         //-------------------------------------------------
         // Now we do single char words:
+        System.out.print("Testing GATK's Utils::split: on single characters..."); System.out.flush();
         final long gatkSplitSingleCharStringStartTime = System.nanoTime();
 
         for ( int i = 0; i < numIterations; ++i ) {
@@ -167,31 +232,24 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         }
         final long gatkSplitSingleCharStringStopTime = System.nanoTime();
         final long gatkSplitSingleCharStringTotalTime_ns = gatkSplitSingleCharStringStopTime - gatkSplitSingleCharStringStartTime;
+        System.out.println( " Done! (" + (gatkSplitSingleCharStringTotalTime_ns / MS_TO_NS / S_TO_MS) + "s)" );
 
         //------------------------------------------------------------------------------------------------------------------
 
         final long overallEndTime = System.nanoTime();
         final long overallElapsedTime_ns = overallEndTime - overallStartTime;
-        final double overallElapsedTime_ms = overallElapsedTime_ns / 1000000.0;
+        final double overallElapsedTime_ms = overallElapsedTime_ns / MS_TO_NS;
 
         //------------------------------------------------------------------------------------------------------------------
 
         // Print results:
-        System.out.println("================================================================================");
-        System.out.println("Timing Results:");
-        System.out.println("--------------------------------------------------------------------------------");
-        System.out.println("Overall Elapsed Time: " + overallElapsedTime_ns + "ns, " + overallElapsedTime_ms + "ms");
-        System.out.println("--------------------------------------------------------------------------------");
-        System.out.println("Java Split String:");
-        printTimingString("Words", javaSplitWordTotalTime_ns, wordsToSplitOn.size());
-        printTimingString("\"Chars\"", javaSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size());
-        System.out.println("HTSJDK ParsingUtils::split");
-        printTimingString("\"Chars\"", htsjdkSplitSingleCharTotalTime_ns, singleCharStringsToSplitOn.size());
-        System.out.println("GATK Utils::split");
-        printTimingString("Words", gatkSplitWordTotalTime_ns, wordsToSplitOn.size());
-        printTimingString("\"Chars\"", gatkSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size());
-        System.out.println("================================================================================");
-        
+        printTimingTable(javaSplitWordTotalTime_ns, javaSplitSingleCharStringTotalTime_ns, htsjdkSplitSingleCharTotalTime_ns, gatkSplitWordTotalTime_ns, gatkSplitSingleCharStringTotalTime_ns, overallElapsedTime_ns, overallElapsedTime_ms);
+
+        System.out.println("");
+        System.out.println("====");
+        System.out.println("");
+
+        printTimingTableMarkup(javaSplitWordTotalTime_ns, javaSplitSingleCharStringTotalTime_ns, htsjdkSplitSingleCharTotalTime_ns, gatkSplitWordTotalTime_ns, gatkSplitSingleCharStringTotalTime_ns );
     }
 
 }

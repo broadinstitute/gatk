@@ -735,46 +735,80 @@ public final class UtilsUnitTest extends GATKBaseTest {
     @DataProvider
     public Object[][] provideDataForTestUtilsSplitString() {
 
-        final String s = "The quick fox jumped over the lazy brown dog.";
+        final String stringData = "The quick fox jumped over the lazy brown dog.  " +
+                "Arma virumque cano, Troiae qui primus ab oris " +
+                "Italiam, fato profugus, Laviniaque venit " +
+                "litora, multum ille et terris iactatus et alto " +
+                "vi superum saevae memorem Iunonis ob iram; " +
+                "multa quoque et bello passus, dum conderet urbem, " +
+                "inferretque deos Latio, genus unde Latinum, " +
+                "Albanique patres, atque altae moenia Romae.  " +
+                "Musa, mihi causas memora, quo numine laeso, " +
+                "quidve dolens, regina deum tot volvere casus " +
+                "insignem pietate virum, tot adire labores " +
+                "impulerit. Tantaene animis caelestibus irae9";
 
-        return new Object[][] {
-                { "", "",  "".split("" ) },
-                { "", "1", "".split("1") },
-                { s, "1",   s.split("1") },
-                { s, "",    s.split("" ) },
-                { s, "a",   s.split("a") },
-                { s, "b",   s.split("b") },
-                { s, "c",   s.split("c") },
-                { s, "d",   s.split("d") },
-                { s, "e",   s.split("e") },
-                { s, "f",   s.split("f") },
-                { s, "g",   s.split("g") },
-                { s, "h",   s.split("h") },
-                { s, "i",   s.split("i") },
-                { s, "j",   s.split("j") },
-                { s, "k",   s.split("k") },
-                { s, "l",   s.split("l") },
-                { s, "m",   s.split("m") },
-                { s, "n",   s.split("n") },
-                { s, "o",   s.split("o") },
-                { s, "p",   s.split("p") },
-                { s, "q",   s.split("q") },
-                { s, "r",   s.split("r") },
-                { s, "s",   s.split("s") },
-                { s, "t",   s.split("t") },
-                { s, "u",   s.split("u") },
-                { s, "v",   s.split("v") },
-                { s, "w",   s.split("w") },
-                { s, "x",   s.split("x") },
-                { s, "y",   s.split("y") },
-                { s, "z",   s.split("z") },
-                { s, " ",   s.split(" ") },
-        };
+        final List<String> wordsToSplitOn = Arrays.stream(stringData.split(" "))
+                .map(ssss -> (ssss.contains("?")) ? ssss.replace("?", "\\?") : ssss)
+                .collect(Collectors.toList());
+
+        final List<String> repeatedSubstringsToSplitOn = Arrays.asList( "us", "is", "it", "et", " et", " et ", "que ", " mult" );
+
+        final List<Object[]> testCases = new ArrayList<>();
+        testCases.addAll(
+                Arrays.asList(
+                    new Object[] { "", "",   Arrays.asList( "".split(""  ) ) },
+                    new Object[] { "", "1",  Arrays.asList( "".split("1" ) ) },
+                    new Object[] { stringData, "1",   Arrays.asList( stringData.split("1"  ) ) },
+                    new Object[] { stringData, "",    Arrays.asList( stringData.split(""   ) ) },
+                    new Object[] { stringData, "a",   Arrays.asList( stringData.split("a"  ) ) },
+                    new Object[] { stringData, "b",   Arrays.asList( stringData.split("b"  ) ) },
+                    new Object[] { stringData, "c",   Arrays.asList( stringData.split("c"  ) ) },
+                    new Object[] { stringData, "d",   Arrays.asList( stringData.split("d"  ) ) },
+                    new Object[] { stringData, "e",   Arrays.asList( stringData.split("e"  ) ) },
+                    new Object[] { stringData, "f",   Arrays.asList( stringData.split("f"  ) ) },
+                    new Object[] { stringData, "g",   Arrays.asList( stringData.split("g"  ) ) },
+                    new Object[] { stringData, "h",   Arrays.asList( stringData.split("h"  ) ) },
+                    new Object[] { stringData, "i",   Arrays.asList( stringData.split("i"  ) ) },
+                    new Object[] { stringData, "j",   Arrays.asList( stringData.split("j"  ) ) },
+                    new Object[] { stringData, "k",   Arrays.asList( stringData.split("k"  ) ) },
+                    new Object[] { stringData, "l",   Arrays.asList( stringData.split("l"  ) ) },
+                    new Object[] { stringData, "m",   Arrays.asList( stringData.split("m"  ) ) },
+                    new Object[] { stringData, "n",   Arrays.asList( stringData.split("n"  ) ) },
+                    new Object[] { stringData, "o",   Arrays.asList( stringData.split("o"  ) ) },
+                    new Object[] { stringData, "p",   Arrays.asList( stringData.split("p"  ) ) },
+                    new Object[] { stringData, "q",   Arrays.asList( stringData.split("q"  ) ) },
+                    new Object[] { stringData, "r",   Arrays.asList( stringData.split("r"  ) ) },
+                    new Object[] { stringData, "s",   Arrays.asList( stringData.split("s"  ) ) },
+                    new Object[] { stringData, "t",   Arrays.asList( stringData.split("t"  ) ) },
+                    new Object[] { stringData, "u",   Arrays.asList( stringData.split("u"  ) ) },
+                    new Object[] { stringData, "v",   Arrays.asList( stringData.split("v"  ) ) },
+                    new Object[] { stringData, "w",   Arrays.asList( stringData.split("w"  ) ) },
+                    new Object[] { stringData, "x",   Arrays.asList( stringData.split("x"  ) ) },
+                    new Object[] { stringData, "y",   Arrays.asList( stringData.split("y"  ) ) },
+                    new Object[] { stringData, "z",   Arrays.asList( stringData.split("z"  ) ) },
+                    new Object[] { stringData, " ",   Arrays.asList( stringData.split(" "  ) ) },
+                    new Object[] { stringData, "T",   Arrays.asList( stringData.split("T"  ) ) },
+                    new Object[] { stringData, "9",   Arrays.asList( stringData.split("9") ) }
+                )
+        );
+
+        // Create test cases for words:
+        for ( final String delim : wordsToSplitOn ) {
+            testCases.add( new Object[] { stringData, delim, Arrays.asList( stringData.split(delim) ) } );
+        }
+
+        // Create test cases for repeated substrings:
+        for ( final String delim : repeatedSubstringsToSplitOn ) {
+            testCases.add( new Object[] { stringData, delim, Arrays.asList( stringData.split(delim) ) } );
+        }
+
+        return testCases.toArray( new Object[][] {} );
     }
 
     @Test(dataProvider = "provideDataForTestUtilsSplitString")
-    public void testUtilsSplitString( final String str, final String delimiter, final String[] expected ) {
+    public void testUtilsSplitString( final String str, final String delimiter, final List<String> expected ) {
         Assert.assertEquals( Utils.split(str, delimiter), expected );
-        Assert.assertEquals( Utils.split(str, delimiter, expected.length), expected );
+        Assert.assertEquals( Utils.split(str, delimiter, expected.size()), expected );
     }
 }
