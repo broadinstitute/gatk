@@ -133,11 +133,17 @@ def annotate_vcf_1d(args, model):
 				continue # Require at least 1 annotation...
 
 			annotation_data = np.zeros(( len(annotations), ))
+			qual_and_dp_normalizer = 1000000.0
+
 			for i,a in enumerate(annotations):
 				if a == "QUAL":
 					annotation_data[i] = ariant.QUAL
 				elif a in variant.INFO:
 					annotation_data[i] = variant.INFO[a]
+
+				if a == "DP" or a == "QUAL":
+					 annotation_data[i] /= qual_and_dp_normalizer	
+			
 			annotation_batch[stats['annotations_in_batch']] = annotation_data
 			stats['annotations_in_batch'] += 1
 				

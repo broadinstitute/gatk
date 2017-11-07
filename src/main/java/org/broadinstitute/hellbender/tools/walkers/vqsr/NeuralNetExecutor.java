@@ -30,6 +30,12 @@ public final class NeuralNetExecutor extends VariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
     private File outputFile = null;
 
+    @Argument(fullName = "architecture", shortName = "a", doc = "Neural Net architecture and weights hd5 file", optional = false)
+    private String architecture = null;
+
+    @Argument(fullName = "batchSize", shortName = "bs", doc = "Batch size", optional = true)
+    private String batchSize = "32";
+
     @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
     private FeatureInput<VariantContext> auxiliaryVariants;
 
@@ -46,45 +52,42 @@ public final class NeuralNetExecutor extends VariantWalker {
         catch ( final FileNotFoundException e ) {
             throw new UserException.CouldNotReadInputFile(outputFile, e);
         }
+
+        System.out.println("output vcf is:"+outputFile.getAbsolutePath());
     }
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        outputStream.println("Current variant: " + variant);
-
+        //outputStream.println("Current variant: " + variant);
     }
 
     @Override
     public Object onTraversalSuccess() {
-        // Close the stream, and execute a python script that post-processes the output from the java processing
-        // step by just copying it to a separate output file:
-        //
-        // # Test script that accepts two input arguments that are file paths.
-        // # Copies the contents of th first file to the second file:
-        // import sys
-        // with open(sys.argv[1]) as fin:
-        //    lines = fin.readlines()
-        //    with open(sys.argv[2], "w") as fout:
-        //        fout.writelines(lines)
-        //
         outputStream.close();
         outputStream = null;
 
         final Resource pythonScriptResource = new Resource("ApplyNeuralNetModel.py", NeuralNetExecutor.class);
+        System.out.println("Run neural Net script");
         final boolean pythonReturnCode = pythonExecutor.executeScript(
                 pythonScriptResource,
                 null,
                 Arrays.asList(
                         "--architecture",
-                        "/dsde/working/sam/palantir_cnn/Analysis/vqsr_cnn/weights/m__base_quality_mode_phot__channels_last_False__id_g94982_no_qual_train2__window_size_128__read_limit_128__random_seed_12878__tensor_map_2d_mapping_quality__mode_ref_read_anno.hd5",
-                        "--tensors",
-                        "/Users/sam/vqsr_data/tensors/not_indel_subset/"
+                        architecture,
+                        "--input_vcf",
+                        drivingVariantFile,
+                        "--output_vcf",
+                        outputFile.getAbsolutePath(),
+                        "--reference_fasta",
+                        referenceArguments.getReferenceFileName(),
+                        "--batch_size",
+                        batchSize
                 )
-        );
 
+        );
+        System.out.println("Ran neural Net script");
         return pythonReturnCode;
     }
-
 
     @Override
     public void closeTool() {
