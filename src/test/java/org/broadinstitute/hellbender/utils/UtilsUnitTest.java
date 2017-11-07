@@ -14,6 +14,7 @@ import htsjdk.samtools.util.Log.LogLevel;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -750,21 +751,38 @@ public final class UtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testLineIterator() throws IOException {
+    public void testLineIteratorInForEach() throws IOException {
         try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
             final Path path = jimfs.getPath("test.txt");
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
                 bufferedWriter.write("Hello world\n");
                 bufferedWriter.write("What's new?");
             }
+            ArrayList<String> got = new ArrayList<>();
+            for (String s: new Utils.LineIterator(path)) {
+                got.add(s);
+            }
+            Assert.assertEquals(got.size(), 2);
+            Assert.assertEquals(got.get(0), "Hello world");
+            Assert.assertEquals(got.get(1), "What's new?");
+        }
+    }
 
-            final Iterator<String> it = Utils.lineIterator(path);
-            String firstLine = it.next();
-            Assert.assertEquals(firstLine, "Hello world");
-            String nextLine  = it.next();
-            Assert.assertEquals(nextLine, "What's new?");
-            Assert.assertFalse(it.hasNext());
-
+    @Test
+    public void testLineIteratorAsResource() throws IOException {
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path path = jimfs.getPath("test.txt");
+            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
+                bufferedWriter.write("Hello world\n");
+                bufferedWriter.write("What's new?");
+            }
+            ArrayList<String> got = new ArrayList<>();
+            try (Utils.LineIterator lines = new Utils.LineIterator(path)) {
+                lines.forEach(s -> got.add(s));
+            }
+            Assert.assertEquals(got.size(), 2);
+            Assert.assertEquals(got.get(0), "Hello world");
+            Assert.assertEquals(got.get(1), "What's new?");
         }
     }
 }
