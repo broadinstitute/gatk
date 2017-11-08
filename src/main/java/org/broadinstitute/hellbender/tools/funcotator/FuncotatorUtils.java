@@ -380,6 +380,93 @@ public class FuncotatorUtils {
         return (((regionLength - startPosition + 1) % 3) == 0);
     }
 
+    public static String getCodonChangeString2( final SequenceComparison seqComp ) {
+
+        // ONP:
+        if ( GATKProtectedVariantContextUtils.isOnp(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+            return getCodonChangeStringForOnp(
+                    seqComp.getAlignedCodingSequenceReferenceAllele(),
+                    seqComp.getAlignedCodingSequenceAlternateAllele(),
+                    seqComp.getAlignedCodingSequenceAlleleStart(),
+                    seqComp.getAlignedReferenceAlleleStop()
+            );
+        }
+        // Insertion:
+        else if ( GATKProtectedVariantContextUtils.isInsertion(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele())  ) {
+
+            if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+
+                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
+                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart() + 3) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
+                            nextRefCodon + "fs";
+                }
+                else {
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart()) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
+                            seqComp.getAlignedCodingSequenceReferenceAllele() + "fs";
+                }
+            }
+            else {
+                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
+                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+                    return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
+                            (seqComp.getAlignedCodingSequenceReferenceAllele() + nextRefCodon) + ">" + (seqComp.getAlignedAlternateAllele() + nextRefCodon);
+                }
+                else {
+                    return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
+                            seqComp.getAlignedCodingSequenceReferenceAllele() + ">" + seqComp.getAlignedAlternateAllele();
+                }
+            }
+
+        }
+        // Deletion:
+        else {
+
+            if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
+                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart() + 3) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
+                            nextRefCodon + "fs";
+                }
+                else {
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart()) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
+                            seqComp.getAlignedCodingSequenceReferenceAllele() + "fs";
+                }
+            }
+            else {
+
+                // Determine how many codons to get:
+                final int numAdditionalCodonsToGet = (int)Math.ceil((seqComp.getAlternateAllele().length() + ((seqComp.getAlignedCodingSequenceAlleleStart() - seqComp.getCodingSequenceAlleleStart()) % 3)) / 3);
+
+                // This means that the deletion is aligned with a codon:
+                if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
+
+                    // Was this a clean deletion (just put DEL after it)?
+                    if ( (seqComp.getAlternateAllele().length() % 3) == 0 ) {
+
+                    }
+                    else {
+
+                    }
+
+                }
+                else {
+
+                }
+
+                return "c.(XX)YY";
+            }
+        }
+
+    }
+
+    private static boolean isIndelBetweenCodons(final int codingSequenceAlleleStart,
+                                                final int alignedCodingSequenceAlleleStart,
+                                                final String refAllele ) {
+        final int codonOffset = alignedCodingSequenceAlleleStart - codingSequenceAlleleStart;
+        return (((codonOffset + refAllele.length()) % 3) == 0);
+    }
+
     /**
      * Creates the string representation of the codon change for the given {@link SequenceComparison}.
      * Requires that the given {@code seqComp} has the following fields defined with values that are not {@code null}:
@@ -403,7 +490,7 @@ public class FuncotatorUtils {
         Utils.nonNull(seqComp.getCodingSequenceAlleleStart());
 
         // Used for insertions:
-        Utils.nonNull(seqComp.getReferenceCodingSequence());
+        Utils.nonNull(seqComp.getTranscriptCodingSequence());
         assertValidStrand( seqComp.getStrand() );
 
         // Make some local names so that things are easier to read:
@@ -421,7 +508,7 @@ public class FuncotatorUtils {
         // Handle the insertion case:
         else if ( GATKProtectedVariantContextUtils.isInsertion(alignedRefAllele, alignedAltAllele) ) {
 
-            final String nextRefCodon = getNextReferenceCodon(seqComp.getReferenceCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+            final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
 
             // Check for frame shift syntax first:
             if ( GATKProtectedVariantContextUtils.isFrameshift(alignedRefAllele, alignedAltAllele) ) {
@@ -787,7 +874,7 @@ public class FuncotatorUtils {
      *     alternateAllele
      * In the case of an insertion, the given {@code seqComp} must have the following fields defined with values that are not {@code null}:
      *     codingSequenceAlleleStart
-     *     referenceCodingSequence
+     *     transcriptCodingSequence
      *     strand  (must also not be {@link Strand#NONE}
      * @param seqComp {@link SequenceComparison} representing the alternate and reference alleles for a DNA sequence.  Must not be {@code null}.
      * @return A {@link String} representing the codon change for the given {@link SequenceComparison}.
@@ -822,11 +909,11 @@ public class FuncotatorUtils {
         else if ( GATKProtectedVariantContextUtils.isInsertion(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
 
             Utils.nonNull(seqComp.getCodingSequenceAlleleStart());
-            Utils.nonNull(seqComp.getReferenceCodingSequence());
+            Utils.nonNull(seqComp.getTranscriptCodingSequence());
             assertValidStrand(seqComp.getStrand());
 
             // Because we have to deal with the codon after the insertion, we need to know what that next codon is:
-            final String nextRefCodon = getNextReferenceCodon(seqComp.getReferenceCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+            final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
 
             // We must also know the Amino Acid sequence for it:
             final String nextRefAaSeq = createAminoAcidSequence(nextRefCodon);
@@ -1590,7 +1677,7 @@ public class FuncotatorUtils {
          * Stored in the forward reading direction.  For NEGATIVE strand reads, must
          * reverse complement any bases retrieved.
          */
-        private ReferenceSequence referenceCodingSequence = null;
+        private ReferenceSequence transcriptCodingSequence = null;
 
         /**
          * The contig on which this sequence comparison occurs.
@@ -1611,6 +1698,7 @@ public class FuncotatorUtils {
         /**
          * The position (1-based, inclusive) in transcript coordinates relative to the start of
          * the transcript of start of the reference allele / variant.
+         * NOTE: Includes UTRs
          */
         private Integer transcriptAlleleStart                = null;
 
@@ -1696,7 +1784,7 @@ public class FuncotatorUtils {
         /**
          * An in-frame sequence of bases that includes the entire alternate allele based on the reference genome.
          * May span multiple codons.
-         * May include intron bases.
+         * May include INTRON bases.
          */
         private String  alignedAlternateAllele               = null;
 
@@ -1743,12 +1831,12 @@ public class FuncotatorUtils {
          * The reference sequence is stored in the forward reading direction.
          * For NEGATIVE strand reads, must reverse complement any bases retrieved.
          */
-        public ReferenceSequence getReferenceCodingSequence() {
-            return referenceCodingSequence;
+        public ReferenceSequence getTranscriptCodingSequence() {
+            return transcriptCodingSequence;
         }
 
-        public void setReferenceCodingSequence(final ReferenceSequence referenceCodingSequence) {
-            this.referenceCodingSequence = referenceCodingSequence;
+        public void setTranscriptCodingSequence(final ReferenceSequence transcriptCodingSequence) {
+            this.transcriptCodingSequence = transcriptCodingSequence;
         }
 
         public String getContig() {
