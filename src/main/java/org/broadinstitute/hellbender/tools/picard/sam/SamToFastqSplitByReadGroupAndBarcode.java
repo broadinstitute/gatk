@@ -311,9 +311,9 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
                 // long ranger 2.0
                 final String bx = read.getStringAttribute("BX");
                 tenxBC = bx.substring(0, bx.indexOf("-"));
-                tenxBCQ = createFillerString('A', tenxBC.length());
-                fillerBases = createFillerString('A', 7);
-                fillerQuals = createFillerString('A', 7);
+                tenxBCQ = createFillerString('N', tenxBC.length());
+                fillerBases = createFillerString('N', 7);
+                fillerQuals = createFillerString('N', 7);
             } else {
                 throw new GATKException("Read has neither an RX or BX barcode tag:" + read.toString());
             }
