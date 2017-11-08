@@ -47,13 +47,13 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     @Test(groups={"bucket"})
     public void writePrivateFile() throws IOException {
         try {
-            final String dest = getGCPTestStaging() + "GcsNioIntegrationTest-writePrivateFile-test" + new Random().nextInt();
+            final String dest = BucketUtils.getTempFilePath(
+                    getGCPTestStaging() +"GcsNioIntegrationTest-writePrivateFile-test", ".txt");
             final Path outputPath = BucketUtils.getPathOnGcs(dest);
             System.out.println("Writing to " + dest);
             try (OutputStream os = Files.newOutputStream(outputPath)) {
                 os.write(42);
             }
-            Files.deleteIfExists(outputPath);
         } catch (shaded.cloud_nio.com.google.api.client.http.HttpResponseException forbidden) {
             helpDebugAuthError();
             throw forbidden;

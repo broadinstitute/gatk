@@ -177,11 +177,11 @@ public final class BucketUtils {
 
     /**
      * Get a temporary file path based on the prefix and extension provided.
-     * This file (and possible indexes associated with it will be scheduled for deleton on shutdown
+     * This file (and possible indexes associated with it) will be scheduled for deletion on shutdown
      *
      * @param prefix a prefix for the file name
      *               for remote paths this should be a valid URI to root the temporary file in (ie. gcs://hellbender/staging/)
-     *               there is no guarantee that this will be used as the root of the tmp file name, a local prefix may be placed in the tmp folder for exapmle
+     *               there is no guarantee that this will be used as the root of the tmp file name, a local prefix may be placed in the tmp folder for example
      * @param extension and extension for the temporary file path, the resulting path will end in this
      * @return a path to use as a temporary file, on remote file systems which don't support an atomic tmp file reservation a path is chosen with a long randomized name
      *
@@ -193,6 +193,7 @@ public final class BucketUtils {
             deleteOnExit(path + Tribble.STANDARD_INDEX_EXTENSION);
             deleteOnExit(path + TabixUtils.STANDARD_INDEX_EXTENSION);
             deleteOnExit(path + ".bai");
+            deleteOnExit(path + ".md5");
             deleteOnExit(path.replaceAll(extension + "$", ".bai")); //if path ends with extension, replace it with .bai
             return path;
         } else {
