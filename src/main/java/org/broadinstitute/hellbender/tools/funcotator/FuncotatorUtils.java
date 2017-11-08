@@ -662,9 +662,14 @@ public class FuncotatorUtils {
             decorator = "fs";
         }
 
-        return "c.(" + (alignedCodingSequenceAlleleStart + 3) + "-" +
+        return "c.(" + alignedCodingSequenceAlleleStart + "-" +
                 alignedReferenceAlleleStop + ")" +
-                alignedRefAllele.substring(3).toLowerCase() + decorator;
+                alignedRefAllele.toLowerCase() + decorator;
+
+//        return "c.(" + (alignedCodingSequenceAlleleStart + 3) + "-" +
+//                alignedReferenceAlleleStop + ")" +
+//                alignedRefAllele.substring(3).toLowerCase() + decorator;
+        }
     }
 
     /**
@@ -1083,8 +1088,14 @@ public class FuncotatorUtils {
                 }
             }
 
-            return "c." + start + "_" + end + "del" +
-                    seqComp.getReferenceAllele().substring(seqComp.getAlternateAllele().length()).toUpperCase();
+            if ( start == end ) {
+                return "c." + start + "del" +
+                        seqComp.getReferenceAllele().substring(seqComp.getAlternateAllele().length()).toUpperCase();
+            }
+            else {
+                return "c." + start + "_" + end + "del" +
+                        seqComp.getReferenceAllele().substring(seqComp.getAlternateAllele().length()).toUpperCase();
+            }
         }
     }
 
