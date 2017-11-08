@@ -1526,21 +1526,19 @@ public final class IntervalUtils {
      * @param stop       the new location stop base index.
      *
      * @return never {@code null}.
-     * @throws UserException if there was some problem when creating the location.
      */
     public static SimpleInterval createInterval(final SAMSequenceDictionary dictionary, final String contig, final int start, final int stop) {
-        Utils.nonNull(dictionary, "null dictionary");
-        Utils.nonNull(contig, "null contig");
+        Utils.nonNull(dictionary, "dictionary is null");
         if (!SimpleInterval.isValid(contig, start, stop)) {
-            throw new UserException(String.format("Invalid coordinate: %s:%s-%s", contig, start, stop));
+            throw new IllegalArgumentException(String.format("Invalid coordinate: %s:%s-%s", contig, start, stop));
         }
         final int contigIndex = dictionary.getSequenceIndex(contig);
         if (contigIndex == -1) {
-            throw new UserException(String.format("Invalid coordinate: %s:%s-%s (contig not in dictionary)", contig, start, stop));
+            throw new IllegalArgumentException(String.format("Invalid coordinate: %s:%s-%s (contig not in dictionary)", contig, start, stop));
         }
         final SAMSequenceRecord record = dictionary.getSequence(contigIndex);
         if (record.getSequenceLength() < stop) {
-            throw new UserException(String.format("Invalid coordinate: %s:%s-%s (stop after sequence length %s)", contig, start, stop, record.getSequenceLength()));
+            throw new IllegalArgumentException(String.format("Invalid coordinate: %s:%s-%s (stop after sequence length %s)", contig, start, stop, record.getSequenceLength()));
         }
         return new SimpleInterval(dictionary.getSequence(contigIndex).getSequenceName(), start, stop);
     }
@@ -1551,11 +1549,9 @@ public final class IntervalUtils {
      * @param dictionary  reference dictionary.
      * @param contigIndex the new location contig index.
      * @return never {@code null}.
-     *
-     * @throws UserException if there was some problem when creating the location.
      */
     public static SimpleInterval createOverEntireContig(final SAMSequenceDictionary dictionary, final int contigIndex) {
-        Utils.nonNull(dictionary, "null dictionary");
+        Utils.nonNull(dictionary, "dictionary is null");
         Utils.validIndex(contigIndex, dictionary.size());
         final SAMSequenceRecord record = dictionary.getSequence(contigIndex);
         return new SimpleInterval(record.getSequenceName(), 1, record.getSequenceLength());
@@ -1568,14 +1564,13 @@ public final class IntervalUtils {
      * @param contig     the new location contig.
      *
      * @return never {@code null}.
-     * @throws UserException if there was some problem when creating the location.
      */
     public static SimpleInterval createOverEntireContig(final SAMSequenceDictionary dictionary, final String contig) {
-        Utils.nonNull(dictionary, "null dictionary");
-        Utils.nonNull(contig, "null contig");
+        Utils.nonNull(dictionary, "dictionary is null");
+        Utils.nonNull(contig, "contig is null");
         final int contigIndex = dictionary.getSequenceIndex(contig);
         if (contigIndex == -1) {
-            throw new UserException("Contig not in dictionary: " + contig);
+            throw new IllegalArgumentException("Contig not in dictionary: " + contig);
         }
         return createOverEntireContig(dictionary, contigIndex);
     }
@@ -1588,7 +1583,6 @@ public final class IntervalUtils {
      * @param start the start and stop position.
      *
      * @return never {@code null}.
-     * @throws UserException if there was some problem when creating the location.
      */
     public static SimpleInterval createInterval(final SAMSequenceDictionary dictionary, final String contig, final int start) {
         return createInterval(dictionary, contig, start, start);
