@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-1.2.1
+FROM broadinstitute/gatk:gatkbase-1.2.1 AS builder
 ARG DRELEASE
 
 ADD . /gatk
@@ -23,8 +23,15 @@ ENV CI true
 RUN echo "cd /gatk/ && ./gradlew jacocoTestReport" >/root/run_unit_tests.sh
 
 WORKDIR /root
-RUN cp -r /root/run_unit_tests.sh /gatk
-RUN cp -r gatk.jar /gatk
-RUN cp -r install_R_packages.R /gatk
 
+FROM broadinstitute/gatk:gatkbase-1.2.1
+RUN mkdir /gatk
+WORKDIR /gatk
+COPY --from=builder /root/run_unit_tests.sh .
+COPY --from=builder /gatk/gatk-launch .
+COPY --from=builder /gatk/build/libs/gatk.jar .
+COPY --from=builder /gatk/build/libs/gatk-spark.jar .
+COPY --from=builder /root/install_R_packages.R .
+ENV GATK_LOCAL_JAR /gatk/gatk.jar
+ENV GATK_SPARK_JAR /gatk/gatk-spark.jar
 WORKDIR /gatk
