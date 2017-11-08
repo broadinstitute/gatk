@@ -6,7 +6,6 @@ import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.jexl2.JexlException;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -1160,7 +1159,7 @@ public final class Utils {
      * @return A {@link List} of {@link String} tokens.
      */
     public static List<String> split(final String str, final char delimiter) {
-        List<String> tokens = ParsingUtils.split( str, delimiter );
+        final List<String> tokens = ParsingUtils.split( str, delimiter );
 
         // We must adjust for splitting on the last character so that the results here will be the same as
         // the results of String.split:
@@ -1181,26 +1180,24 @@ public final class Utils {
      * @return A {@link List} of {@link String} tokens.
      */
     public static List<String> split(final String str, final String delimiter, final int expectedNumTokens) {
-        List<String> result =  new ArrayList<>(expectedNumTokens);
+        final List<String> result;
 
         if ( str.isEmpty() ) {
+            result = new ArrayList<>(1);
             result.add("");
         }
         else if ( delimiter.isEmpty() ) {
+            result = new ArrayList<>( str.length() );
             for ( int i = 0; i < str.length(); ++i ) {
                 result.add( str.substring(i, i+1) );
             }
         }
         else if ( delimiter.length() == 1) {
-            result = ParsingUtils.split(str, delimiter.charAt(0));
-
-            // We must adjust for splitting on the last character so that the results here will be the same as
-            // the results of String.split:
-            if ( delimiter.charAt(0) == str.charAt(str.length() - 1)) {
-                result.remove( result.size() - 1 );
-            }
+            result = split(str, delimiter.charAt(0));
         }
         else {
+            result = new ArrayList<>(expectedNumTokens);
+
             int delimiterIdx = -1;
             int tokenStartIdx = delimiterIdx + 1;
             do {
