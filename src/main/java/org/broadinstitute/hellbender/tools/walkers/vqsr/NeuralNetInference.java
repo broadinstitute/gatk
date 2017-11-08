@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriterService;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -66,8 +67,11 @@ public class NeuralNetInference extends VariantWalker {
             doc = "Output file")
     private String outputFile = null; // output file produced by Python code
 
-    @Argument(fullName = "architecture", shortName = "a", doc = "Neural Net architecture and weights hd5 file", optional = false)
+    @Argument(fullName = "architecture", shortName = "a", doc = "Neural Net architecture configuration json file", optional = false)
     private String architecture = null;
+
+    @Argument(fullName = "use-reads", shortName = "ur", doc = "Make tensor with reads or just from reference.", optional = true)
+    private boolean useReads = false;
 
     @Argument(fullName = "window-size", shortName = "ws", doc = "Neural Net input window size", minValue = 0, optional = true)
     private int windowSize = 128;
@@ -144,11 +148,12 @@ public class NeuralNetInference extends VariantWalker {
             scoreFile = File.createTempFile(outputFile, ".temp");
             if (!keepTempFile){
                 scoreFile.deleteOnExit();
+            } else{
+                logger.info("Saving temp file from python:"+scoreFile.getAbsolutePath());
             }
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
-            pythonExecutor.sendSynchronousCommand("from keras.models import load_model" + NL);
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
-            pythonExecutor.sendSynchronousCommand(String.format("model = load_model('%s', custom_objects=vqsr_cnn.get_metric_dict())", architecture) + NL);
+            pythonExecutor.sendSynchronousCommand(String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL);
             logger.info("Loaded CNN architecture:"+architecture);
         } catch (IOException e) {
             throw new GATKException("Error when creating temp file and initializing python executor.", e);
@@ -159,7 +164,12 @@ public class NeuralNetInference extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         referenceContext.setWindow(windowStart, windowEnd);
-        transferToPythonViaFifo(variant, referenceContext);
+        if(useReads){
+            transferReadsToPythonViaFifo(variant, readsContext, referenceContext);
+        } else {
+            transferToPythonViaFifo(variant, referenceContext);
+        }
+        sendBatchIfReady();
     }
 
     private void transferToPythonViaFifo(final VariantContext variant, final ReferenceContext referenceContext) {
@@ -169,26 +179,81 @@ public class NeuralNetInference extends VariantWalker {
                     new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"),
                     getVariantInfoString(variant),
                     variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER");
-
-            if (curBatchSize == transferBatchSize) {
-                if (waitforBatchCompletion == true) {
-                    // wait for the last batch to complete before we start a new one
-                    asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
-                    waitforBatchCompletion = false;
-                    pythonExecutor.getAccumulatedOutput();
-                }
-                executePythonCommand();
-                waitforBatchCompletion = true;
-                curBatchSize = 0;
-                batchList = new ArrayList<>(transferBatchSize);
-            }
-
             batchList.add(outDat);
             curBatchSize++;
         } catch (UnsupportedEncodingException e) {
             throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
         }
 
+    }
+
+    private void sendBatchIfReady(){
+        if (curBatchSize == transferBatchSize) {
+            if (waitforBatchCompletion == true) {
+                // wait for the last batch to complete before we start a new one
+                asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
+                waitforBatchCompletion = false;
+                pythonExecutor.getAccumulatedOutput();
+            }
+            executePythonCommand();
+            waitforBatchCompletion = true;
+            curBatchSize = 0;
+            batchList = new ArrayList<>(transferBatchSize);
+        }
+    }
+
+    private void transferReadsToPythonViaFifo(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext) {
+        String readTensorString = null;
+        try {
+            readTensorString = String.format("%s\t%s\t%s\t%s\t",
+                    getVariantDataString(variant),
+                    new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"),
+                    getVariantInfoString(variant),
+                    variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER");
+        } catch (UnsupportedEncodingException e) {
+            throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
+        }
+        Iterator<GATKRead> readIt = readsContext.iterator();
+        while(readIt.hasNext()){
+            readTensorString += GATKReadToString(readIt.next());
+        }
+        readTensorString += "\n";
+        batchList.add(readTensorString);
+        curBatchSize++;
+    }
+
+    private String GATKReadToString(GATKRead read){
+        String readString = read.getBasesString() + "\t";
+        readString += baseQualityBytesToString(read.getBaseQualities())+ "\t";
+        readString += read.getCigar().toString() + "\t";
+        readString += read.isReverseStrand() + "\t";
+        readString += (read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t";
+        readString += read.isFirstOfPair() + "\t";
+        readString += read.getMappingQuality() + "\t";
+        readString += Integer.toString(read.getUnclippedStart()) + "\t";
+        return readString;
+
+    }
+
+    private String baseQualityBytesToString(byte[] qualities){
+        String qualityString = "";
+        for(int i = 0; i < qualities.length; i++){
+            qualityString += Integer.toString(qualities[i]) + ",";
+        }
+        return qualityString.substring(0, qualityString.length()-1);
+    }
+
+    private String referenceAndAnnotationsToString(final VariantContext variant, final ReferenceContext referenceContext){
+        try {
+            final String refAnnoString = String.format("%s\t%s\t%s\t%s\n",
+                getVariantDataString(variant),
+                new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"),
+                getVariantInfoString(variant),
+                variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER");
+            return refAnnoString;
+        } catch (UnsupportedEncodingException e) {
+            throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
+        }
     }
 
     private String getVariantDataString(final VariantContext variant){
@@ -233,17 +298,16 @@ public class NeuralNetInference extends VariantWalker {
 
     private void executePythonCommand(){
         final String pythonCommand = String.format(
-                "vqsr_cnn.score_and_write_batch(model, tempFile, fifoFile, %d, %d)", curBatchSize, inferenceBatchSize) + NL;
+                "vqsr_cnn.score_and_write_batch(args, model, tempFile, fifoFile, %d, %d)", curBatchSize, inferenceBatchSize) + NL;
         pythonExecutor.sendAsynchronousCommand(pythonCommand);
         asyncWriter.startAsynchronousBatchWrite(batchList);
     }
 
 
     private void writeOutputVCFWithScores(){
+        final VariantContextWriter vcfWriter = createVCFWriter(new File(outputFile));
 
-
-        try (final Scanner scoreScan = new Scanner(scoreFile);
-             final VariantContextWriter vcfWriter = createVCFWriter(new File(outputFile))) {
+        try (final Scanner scoreScan = new Scanner(scoreFile)) {
             scoreScan.useDelimiter("\\n");
             writeVCFHeader(vcfWriter);
             final VariantFilter variantfilter = makeVariantFilter();

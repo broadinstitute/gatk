@@ -15,7 +15,7 @@ import java.util.Arrays;
  * Created by sam on 1/8/18.
  */
 public class NeuralNetInferenceIntegrationTest extends CommandLineProgramTest {
-    private static String architectureHD5 = packageMainResourcesDir + "tools/walkers/vqsr/cnn_1d_annotations.hd5";
+    private static String architectureHD5 = packageMainResourcesDir + "tools/walkers/vqsr/1d_cnn_mix_train_full_bn.json";
 
     /**
      * Run the tool on a small test VCF.
@@ -47,7 +47,6 @@ public class NeuralNetInferenceIntegrationTest extends CommandLineProgramTest {
 //                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 //
 //        runCommandLine(argsBuilder);
-//
 //    }
 
 
