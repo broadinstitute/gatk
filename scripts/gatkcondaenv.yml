@@ -19,13 +19,14 @@ dependencies:
 - xz=5.2.3=0
 - zlib=1.2.11=0
 - pip:
+  - biopython==1.70
   - bleach==1.5.0
   - cycler==0.10.0
   - enum34==1.1.6
   - h5py==2.7.1
   - html5lib==0.9999999
   - joblib==0.11
-  - keras==2.1.1
+  - keras==2.1.4
   - markdown==2.6.9
   - matplotlib==2.1.0
   - numpy==1.13.3
@@ -34,9 +35,12 @@ dependencies:
   - protobuf==3.5.0.post1
   - pymc3==3.1
   - pyparsing==2.2.0
+  - pysam==0.13
   - python-dateutil==2.6.1
   - pytz==2017.3
+  - pyvcf==0.6.8
   - pyyaml==3.12
+  - scikit-learn==0.19.1
   - scipy==1.0.0
   - six==1.11.0
   - tensorflow==1.4.0
