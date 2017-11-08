@@ -11,7 +11,10 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
@@ -122,6 +125,44 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
         rd.submit(r1);
         rd.signalNoMoreReadsBefore(r2);//no op
         rd.submit(r2);
+    }
+
+    @Test
+    public void testDownsampleByMappingQuality() {
+        Utils.resetRandomGenerator();
+        final int targetSize = 10;
+        final ReservoirDownsampler rd = new ReservoirDownsampler(targetSize, false, true, Integer.MAX_VALUE);
+        final List<GATKRead> reads = IntStream.range(0, 100)
+                .mapToObj(n -> {
+                    final GATKRead read = ArtificialReadUtils.createArtificialRead("100M");
+                    read.setMappingQuality(n);
+                    return read;
+                }).collect(Collectors.toList());
+        Collections.shuffle(reads, Utils.getRandomGenerator());
+        rd.submit(reads);
+        rd.signalEndOfInput();
+        final List<GATKRead> downsampledReads = rd.consumeFinalizedItems();
+        Assert.assertEquals(downsampledReads.size(), targetSize);
+        final double averageMappingQuality = downsampledReads.stream()
+                .mapToInt(GATKRead::getMappingQuality).average().getAsDouble();
+        Assert.assertTrue(averageMappingQuality > 70);
+    }
+
+    @Test
+    public void testDepthToIgnoreLocus() {
+        Utils.resetRandomGenerator();
+        final int targetSize = 10;
+        final int numReads = 100;
+        final ReservoirDownsampler rd100 = new ReservoirDownsampler(targetSize, false, false, numReads);
+        final ReservoirDownsampler rd101 = new ReservoirDownsampler(targetSize, false, false, numReads + 1);
+        final List<GATKRead> reads = IntStream.range(0, numReads)
+                .mapToObj(n -> ArtificialReadUtils.createArtificialRead("100M")).collect(Collectors.toList());
+        rd100.submit(reads);
+        rd101.submit(reads);
+        rd100.signalEndOfInput();
+        rd101.signalEndOfInput();
+        Assert.assertEquals(rd100.consumeFinalizedItems().size(), 0);
+        Assert.assertEquals(rd101.consumeFinalizedItems().size(), targetSize);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

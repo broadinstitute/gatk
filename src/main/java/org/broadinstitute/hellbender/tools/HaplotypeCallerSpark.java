@@ -303,7 +303,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
 
             final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
-                new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
+                new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart) : null;
             return iteratorToStream(shards)
                 .map(shard -> new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler))
                 .flatMap(shardToRegion(assemblyArgs, header, referenceSource, hcEngine)).iterator();
