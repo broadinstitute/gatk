@@ -1066,9 +1066,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final int startPos = variant.getStart() + 1;
             final int endPos = variant.getStart() + variant.getReference().length() - 1;
 
-            return "g." + gtfFeature.getChromosomeName() +
-                    ":" + startPos + "_" + endPos +
-                    "del" + cleanAltAlleleString;
+            if ( startPos == endPos ) {
+                return "g." + gtfFeature.getChromosomeName() +
+                        ":" + startPos + "del" + cleanAltAlleleString;
+            }
+            else {
+                return "g." + gtfFeature.getChromosomeName() +
+                        ":" + startPos + "_" + endPos +
+                        "del" + cleanAltAlleleString;
+            }
         }
         // Check for SNP:
         else if ( variant.getReference().length() == 1 ) {
