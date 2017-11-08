@@ -36,30 +36,8 @@ import java.util.stream.Collectors;
  * between command/script/module execution. Using -i doesn't buy you anything (for this version of the executor, at
  * least) since the process is terminated after each command completes.
  */
-public class PythonScriptExecutor extends ScriptExecutor {
+public class PythonScriptExecutor extends PythonExecutorBase {
     private static final Logger logger = LogManager.getLogger(PythonScriptExecutor.class);
-
-    /**
-     * Enum of possible executables that can be launched by this executor.
-     */
-    public enum PythonExecutableName {
-
-        PYTHON("python"),
-        PYTHON3("python3");
-
-        private final String executableName;
-
-        PythonExecutableName (final String executableName) {
-            this.executableName = executableName;
-        }
-
-        public String getExecutableName() {
-            return executableName;
-        }
-    }
-
-    // File extension used for python scripts
-    public static final String PYTHON_EXTENSION = ".py";
 
     private final List<String> curatedCommandLineArgs = new ArrayList<>();
 
@@ -75,10 +53,7 @@ public class PythonScriptExecutor extends ScriptExecutor {
      * @param ensureExecutableExists throw if the python executable cannot be found
      */
     public PythonScriptExecutor(final PythonExecutableName pythonExecutableName, final boolean ensureExecutableExists) {
-        super(pythonExecutableName.getExecutableName());
-        if (ensureExecutableExists && !externalExecutableExists()) {
-            executableMissing();
-        }
+        super(pythonExecutableName, ensureExecutableExists);
     }
 
     /**
@@ -201,15 +176,6 @@ public class PythonScriptExecutor extends ScriptExecutor {
                 return false;
             }
         }
-    }
-
-    /**
-     * Return an exception specific to this executor type, to be thrown on error conditions.
-     * @param message
-     */
-    @Override
-    public ScriptExecutorException getScriptException(final String message) {
-        return new PythonScriptExecutorException(message.toString());
     }
 
     /**
