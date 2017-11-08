@@ -36,6 +36,7 @@ final public class GencodeGtfFeatureBaseData {
      */
     public GencodeGtfFeature.FeatureType           featureType;
 
+    //TODO: Make this a Strand, not a GenomicStrand.
     /**
      * Which strand this feature is on.
      */

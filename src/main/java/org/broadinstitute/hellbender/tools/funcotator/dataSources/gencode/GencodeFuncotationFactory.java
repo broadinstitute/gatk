@@ -286,6 +286,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             gencodeFuncotations.add(gencodeFuncotationBuilder.build());
         }
         else {
+
+            // TODO: check for complex INDEL and warn and skip.
+
             // Find the sub-feature of transcript that contains our variant:
             final GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variant, transcript);
 
@@ -783,7 +786,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * Creates a {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.SequenceComparison} object with the fields populated.
      * @param variant The {@link VariantContext} for the current variant.
      * @param alternateAllele The current alternate {@link Allele} for the variant.
-     * @param reference The {@link ReferenceContext} for the current sample set.
+     * @param referenceContext The {@link ReferenceContext} for the current sample set.
      * @param transcript The {@link GencodeGtfTranscriptFeature} for the current gene feature / alt allele.
      * @param exonPositionList A {@link List} of {@link htsjdk.samtools.util.Locatable} objects representing exon positions in the transcript.
      * @return A populated {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.SequenceComparison} object.
@@ -791,7 +794,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     @VisibleForTesting
     static FuncotatorUtils.SequenceComparison createSequenceComparison(final VariantContext variant,
                                                                 final Allele alternateAllele,
-                                                                final ReferenceContext reference,
+                                                                final ReferenceContext referenceContext,
                                                                 final GencodeGtfTranscriptFeature transcript,
                                                                 final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
                                                                 final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
@@ -824,10 +827,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindow + refAllele.length() - 1: referenceWindow + altAllele.length() - 1;
 
             // Set our reference window:
-            reference.setWindow(referenceWindow, endWindow);
+            referenceContext.setWindow(referenceWindow, endWindow);
 
             // Get the reference sequence:
-            referenceBases = new String(reference.getBases());
+            referenceBases = new String(referenceContext.getBases());
         }
         else {
             refAllele = Allele.create(ReadUtils.getBasesReverseComplement( variant.getReference().getBases() ), true);
@@ -837,10 +840,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindow + refAllele.length() - 1: referenceWindow + altAllele.length() - 1;
 
             // Set our reference window:
-            reference.setWindow(referenceWindow, endWindow);
+            referenceContext.setWindow(referenceWindow, endWindow);
 
             // Get the reference sequence:
-            referenceBases = ReadUtils.getBasesReverseComplement(reference.getBases());
+            referenceBases = ReadUtils.getBasesReverseComplement(referenceContext.getBases());
         }
 
         // Set our reference sequence in the SequenceComparison:
@@ -848,16 +851,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setReferenceWindow( referenceWindow );
 
         // Get the coding sequence for the transcript:
-        final String referenceCodingSequence;
-        if ( transcriptFastaReferenceDataSource != null ) {
-            referenceCodingSequence = getCodingSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource );
-        }
-        else {
-            referenceCodingSequence = FuncotatorUtils.getCodingSequence( reference, exonPositionList, strand );
-        }
+        final String transcriptSequence;
+        // NOTE: This can't be null because of the Funcotator input args.
+        transcriptSequence = getCodingSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource );
+//        else {
+//            transcriptSequence = FuncotatorUtils.getCodingSequence( referenceContext, exonPositionList, strand );
+//        }
 
-        // Get the reference sequence in the coding region as described by the given exonPositionList:
-        sequenceComparison.setReferenceCodingSequence(new ReferenceSequence(transcript.getTranscriptId(),transcript.getStart(),referenceCodingSequence.getBytes()));
+        // Get the transcript sequence as described by the given exonPositionList:
+        sequenceComparison.setTranscriptCodingSequence(new ReferenceSequence(transcript.getTranscriptId(),transcript.getStart(),transcriptSequence.getBytes()));
 
         // Get the ref allele:
         sequenceComparison.setReferenceAllele(refAllele.getBaseString());
@@ -865,17 +867,18 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Get the allele genomic start position:
         sequenceComparison.setAlleleStart(variant.getStart());
 
-        // Get the allele transcript start position:
+        // Get the allele transcript start position (including NTRs):
         sequenceComparison.setTranscriptAlleleStart(
                 FuncotatorUtils.getTranscriptAlleleStartPosition( variant.getStart(), transcript.getStart(), transcript.getEnd(), sequenceComparison.getStrand() )
         );
 
-        // Get the coding region start position (in the above computed reference coding region):
+        // Get the coding region start position (in the above computed transcript coding region):
         sequenceComparison.setCodingSequenceAlleleStart(
                 FuncotatorUtils.getStartPositionInTranscript( variant, exonPositionList, strand )
         );
 
         // Get the overlapping exon start / stop as an interval from the given variant:
+        //TODO: See the overlap detector for this:
         sequenceComparison.setExonPosition(
                 FuncotatorUtils.getOverlappingExonPositions( refAllele, altAllele, variant.getContig(), variant.getStart(), variant.getEnd(), strand, exonPositionList )
         );
@@ -905,7 +908,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // NOTE: We are calling this with Strand.POSITIVE because we have already reverse complemented the reference sequence.
         sequenceComparison.setAlignedCodingSequenceReferenceAllele(
                 FuncotatorUtils.getAlignedCodingSequenceAllele(
-                        sequenceComparison.getReferenceCodingSequence().getBaseString(),
+                        sequenceComparison.getTranscriptCodingSequence().getBaseString(),
                         sequenceComparison.getAlignedCodingSequenceAlleleStart(),
                         sequenceComparison.getAlignedReferenceAlleleStop(),
                         refAllele,
