@@ -89,7 +89,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     @Override
     public void setPosition( final String contig, final int start ) {
         if ( contig == null || contig.equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) || start < 1 ) {
-            throw new IllegalArgumentException("contig must be non-null and not equal to " + SAMRecord.NO_ALIGNMENT_REFERENCE_NAME + ", and start must be >= 1");
+            throw new IllegalArgumentException("contig must be non-null and not equal to " + SAMRecord.NO_ALIGNMENT_REFERENCE_NAME
+                    + ", and start must be >= 1 \ncontig = " + contig + "\nstart = " + start);
         }
 
         samRecord.setReferenceName(contig);
