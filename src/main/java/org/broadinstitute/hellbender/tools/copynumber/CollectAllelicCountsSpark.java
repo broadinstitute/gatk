@@ -7,8 +7,12 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerSpark;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollector;
@@ -18,9 +22,19 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSam
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
+/**
+ * See {@link CollectAllelicCounts}.  This behaves the same, except that it supports spark.
+ */
+@CommandLineProgramProperties(
+        summary = "Collects ref/alt counts at sites.",
+        oneLineSummary = "Collects ref/alt counts at sites.",
+        programGroup = CopyNumberProgramGroup.class
+)
 public class CollectAllelicCountsSpark extends LocusWalkerSpark {
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 
@@ -59,7 +73,7 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
         // rdd.map(pileupFunction(metadata, outputInsertLength, showVerbose)).saveAsTextFile(outputFile);
         final AllelicCountCollector finalAllelicCountCollector =
                 rdd.mapPartitions(distributedCount(sampleMetadataBroadcast.getValue(), minimumBaseQuality))
-                .reduce((a1, a2) -> combineAllelicCountCollectors(a1, a2));
+                .reduce((a1, a2) -> combineAllelicCountCollectors(a1, a2, sampleMetadataBroadcast.getValue()));
 
         finalAllelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
     }
@@ -81,8 +95,16 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
     }
 
     private static AllelicCountCollector combineAllelicCountCollectors(final AllelicCountCollector allelicCountCollector1,
-                                                                       final AllelicCountCollector allelicCountCollector2) {
-        allelicCountCollector1.collectFromCollector(allelicCountCollector2);
-        return allelicCountCollector1;
+                                                                       final AllelicCountCollector allelicCountCollector2,
+                                                                       final SampleMetadata sampleMetadata) {
+        return AllelicCountCollector.combine(allelicCountCollector1, allelicCountCollector2, sampleMetadata);
+    }
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> initialReadFilters = new ArrayList<>(super.getDefaultReadFilters());
+        initialReadFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+
+        return initialReadFilters;
     }
 }
