@@ -58,7 +58,7 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 public class AnnotateVcfWithExpectedAlleleFraction extends VariantWalker {
 
-    public static final String MIXING_FRACTIONS_TABLE_NAME = "mixingFractions";
+    public static final String MIXING_FRACTIONS_TABLE_NAME = "mixing-fractions";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

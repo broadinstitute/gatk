@@ -194,7 +194,7 @@ task ExpectedAlleleFraction {
     File mixing_fractions
 
     command {
-        java -jar ${gatk} AnnotateVcfWithExpectedAlleleFraction -V ${vcf} -O af_exp.vcf --mixingFractions  ${mixing_fractions}
+        java -jar ${gatk} AnnotateVcfWithExpectedAlleleFraction -V ${vcf} -O af_exp.vcf --mixing-fractions  ${mixing_fractions}
     }
 
     output {
