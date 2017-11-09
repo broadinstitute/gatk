@@ -97,7 +97,6 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final SimpleCountCollection expectedCounts = SimpleCountCollection.read(expectedOutputFile);
         final SimpleCountCollection resultCounts = SimpleCountCollection.read(resultOutputFile);
         Assert.assertEquals(expectedCounts, resultCounts);
-        Assert.assertNotSame(expectedCounts, resultCounts);
     }
 
     @Test(dataProvider = "testData")
@@ -113,7 +112,6 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final SimpleCountCollection expectedCounts = SimpleCountCollection.read(expectedOutputFile);
         final SimpleCountCollection resultCounts = SimpleCountCollection.read(new HDF5File(resultOutputFile));
         Assert.assertEquals(expectedCounts, resultCounts);
-        Assert.assertNotSame(expectedCounts, resultCounts);
     }
 
     @DataProvider(name = "artificialReadsData")

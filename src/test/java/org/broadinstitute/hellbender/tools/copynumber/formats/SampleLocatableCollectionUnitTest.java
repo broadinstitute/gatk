@@ -190,10 +190,8 @@ public final class SampleLocatableCollectionUnitTest extends GATKBaseTest {
     }
 
     private static void assertSimpleLocatableCollectionEqualsExpected(final SimpleSampleLocatableCollection simpleLocatableCollection) {
-        Assert.assertNotSame(simpleLocatableCollection, SIMPLE_LOCATABLE_COLLECTION_EXPECTED);
         Assert.assertEquals(simpleLocatableCollection, SIMPLE_LOCATABLE_COLLECTION_EXPECTED);
         Assert.assertEquals(simpleLocatableCollection.getSampleName(), SIMPLE_LOCATABLE_COLLECTION_EXPECTED.getSampleName());
-        Assert.assertNotSame(simpleLocatableCollection.getRecords(), SIMPLE_LOCATABLE_COLLECTION_EXPECTED.getRecords());
         Assert.assertEquals(simpleLocatableCollection.getRecords(), SIMPLE_LOCATABLE_COLLECTION_EXPECTED.getRecords());
     }
 }

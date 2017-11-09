@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SampleLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;

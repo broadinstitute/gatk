@@ -114,6 +114,5 @@ public final class CollectAllelicCountsIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
         final AllelicCountCollection countsResult = new AllelicCountCollection(outputFile);
         Assert.assertEquals(countsExpected, countsResult);
-        Assert.assertNotSame(countsExpected, countsResult);
     }
 }

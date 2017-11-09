@@ -8,13 +8,14 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * //TODO move into hdf5-java-bindings
+ * TODO move into hdf5-java-bindings
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -23,10 +24,19 @@ public final class HDF5Utils {
 
     //writing intervals as a string matrix is expensive,
     //so we instead store a map from integer indices to contig strings and
-    //store (index, start, end) in a double matrix
-
+    //store (index, start, end) in a double matrix;
+    //these are stored in the following sub-paths
     private static final String INTERVAL_CONTIG_NAMES_SUB_PATH = "/indexed_contig_names";
     private static final String INTERVAL_MATRIX_SUB_PATH = "/transposed_index_start_end";
+
+    //Java HDF5 has a hard limit on the number of elements in a matrix given by the following
+    private static final int MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX = Integer.MAX_VALUE / Byte.SIZE;
+    //this limit requires us to write matrices exceeding the limit as sets of submatrix chunks;
+    //we use the following sub-paths to store the necessary information
+    private static final String NUMBER_OF_ROWS_SUB_PATH = "/num_rows";
+    private static final String NUMBER_OF_COLUMNS_SUB_PATH = "/num_columns";
+    private static final String NUMBER_OF_CHUNKS_SUB_PATH = "/num_chunks";
+    private static final String CHUNK_INDEX_PATH_SUFFIX = "/chunk_";
 
     private enum IntervalField {
         CONTIG_INDEX (0),
@@ -43,6 +53,9 @@ public final class HDF5Utils {
 
     private HDF5Utils() {}
 
+    /**
+     * Reads a list of intervals from an HDF5 file using the sub-paths and conventions used by {@link #writeIntervals}.
+     */
     public static List<SimpleInterval> readIntervals(final HDF5File file,
                                                      final String path) {
         final String[] contigNames = file.readStringArray(path + INTERVAL_CONTIG_NAMES_SUB_PATH);
@@ -56,30 +69,32 @@ public final class HDF5Utils {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Given an HDF5 file and an HDF5 path, writes a list of intervals to hard-coded sub-paths.
+     * Contig names are represented by a string array, while intervals are represented by a double matrix,
+     * in which the contigs are represented by their index in the aforementioned string array.
+     */
     public static <T extends SimpleInterval> void writeIntervals(final HDF5File file,
                                                                  final String path,
                                                                  final List<T> intervals) {
-        final String[] contigNames = intervals.stream().map(SimpleInterval::getContig).distinct().toArray(String[]::new);
-        file.makeStringArray(path + INTERVAL_CONTIG_NAMES_SUB_PATH, contigNames);
-        final Map<String, Double> contigNamesToIndexMap = IntStream.range(0, contigNames.length).boxed()
-                .collect(Collectors.toMap(i -> contigNames[i], i -> (double) i));
+        final Map<String, Double> contigNamesToIndexMap = new LinkedHashMap<>();
         final double[][] matrix = new double[NUM_INTERVAL_FIELDS][intervals.size()];
         for (int i = 0; i < intervals.size(); i++) {
             final SimpleInterval interval = intervals.get(i);
+            contigNamesToIndexMap.putIfAbsent(interval.getContig(), (double) contigNamesToIndexMap.keySet().size());
             matrix[IntervalField.CONTIG_INDEX.index][i] = contigNamesToIndexMap.get(interval.getContig());
             matrix[IntervalField.START.index][i] = interval.getStart();
             matrix[IntervalField.END.index][i] = interval.getEnd();
         }
         file.makeDoubleMatrix(path + INTERVAL_MATRIX_SUB_PATH, matrix);
+        file.makeStringArray(path + INTERVAL_CONTIG_NAMES_SUB_PATH,
+                contigNamesToIndexMap.keySet().toArray(new String[contigNamesToIndexMap.keySet().size()]));
     }
 
-    private static final String NUMBER_OF_ROWS_SUB_PATH = "/num_rows";
-    private static final String NUMBER_OF_COLUMNS_SUB_PATH = "/num_columns";
-    private static final String NUMBER_OF_CHUNKS_SUB_PATH = "/num_chunks";
-    private static final String CHUNK_INDEX_PATH_SUFFIX = "/chunk_";
-
-    private static final int MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX = Integer.MAX_VALUE / Byte.SIZE;
-
+    /**
+     * Reads a large matrix stored as a set of chunks (submatrices) using the sub-paths and conventions
+     * used by {@link #writeChunkedDoubleMatrix}.
+     */
     public static double[][] readChunkedDoubleMatrix(final HDF5File file,
                                                      final String path) {
         Utils.nonNull(file);
@@ -116,6 +131,12 @@ public final class HDF5Utils {
     }
 
     /**
+     * Given a large matrix, chunks the matrix into equally sized subsets of rows
+     * (plus a subset containing the remainder, if necessary) and writes these submatrices to indexed sub-paths
+     * to avoid a hard limit in Java HDF5 on the number of elements in a matrix given by
+     * {@code MAX_NUM_VALUES_PER_HDF5_MATRIX}. The number of chunks is determined by {@code chunkDivisor},
+     * which should be set appropriately for the desired number of columns.
+     *
      * @param chunkDivisor  The maximum number of values in each chunk
      *                      is given by {@code MAX_NUM_VALUES_PER_HDF5_MATRIX} / {@code chunkDivisor},
      *                      so increasing this number will reduce heap usage when writing chunks,

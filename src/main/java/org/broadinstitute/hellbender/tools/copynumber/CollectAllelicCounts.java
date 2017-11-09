@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSam
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 /**

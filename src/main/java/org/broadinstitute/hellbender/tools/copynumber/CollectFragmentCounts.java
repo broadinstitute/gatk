@@ -28,7 +28,9 @@ import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -138,7 +140,8 @@ public final class CollectFragmentCounts extends ReadWalker {
 
         try {
             //getting the center of the fragment
-            //TODO make sure that center calculation always returns valid values
+            //TODO make sure that center calculation always returns valid values within contig
+            //TODO (some edge cases were encountered that returned negative fragment centers)
             final Locatable fragmentCenter = ReadOrientation.getFragmentCenter(read);
             final SimpleInterval overlappingInterval = intervalCachedOverlapDetector.getOverlap(fragmentCenter);
 
