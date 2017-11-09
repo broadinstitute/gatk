@@ -92,4 +92,13 @@ public final class AllelicCountCollector {
                 .sorted((b1, b2) -> Long.compare(baseCounts.get(b2), baseCounts.get(b1)))
                 .findFirst().get();
     }
+
+    /**
+     * Reminder that any additional information used through this method will not be able to enforce the minBaseQuality.
+     *
+     * @param allelicCountCollector input data to combine with this
+     */
+    public void collectFromCollector(final AllelicCountCollector allelicCountCollector) {
+        this.allelicCounts.addAll(allelicCountCollector.getAllelicCounts().getRecords());
+    }
 }
