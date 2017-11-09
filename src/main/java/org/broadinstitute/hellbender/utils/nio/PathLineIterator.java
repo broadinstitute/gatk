@@ -10,9 +10,11 @@ import java.util.stream.Stream;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 /**
- * Iterate through the lines of a file.
+ * Iterate through the lines of a Path. Works for anything you can point
+ * a Path to, such as a normal file or anything you have an NIO provider
+ * for (e.g. GCS).
  */
-public class LineIterator implements AutoCloseable, Iterable<String> {
+public class PathLineIterator implements AutoCloseable, Iterable<String> {
   private final Stream<String> lines;
 
   /**
@@ -27,41 +29,29 @@ public class LineIterator implements AutoCloseable, Iterable<String> {
    * @param path path to a text file.
    * @throws UserException if we cannot open the file for reading.
    */
-  public LineIterator(Path path) throws UserException {
+  public PathLineIterator(Path path) throws UserException {
     try {
       lines = Files.lines(path);
     } catch (IOException x) {
-      throw new UserException("Error reading " + path.toString() + ": " + x.getMessage());
+      throw new UserException("Error reading " + path.toString(), x);
     }
   }
 
-  /**
-   * @InheritDoc
-   */
   @Override
   public void close() {
     lines.close();
   }
 
-  /**
-   * @return an Iterator over the lines (as Strings).
-   */
   @Override
   public Iterator<String> iterator() {
     return lines.iterator();
   }
 
-  /**
-   * @InheritDoc
-   */
   @Override
   public void forEach(Consumer<? super String> action) {
     lines.forEach(action);
   }
 
-  /**
-   * @InheritDoc
-   */
   @Override
   public Spliterator<String> spliterator() {
     return lines.spliterator();

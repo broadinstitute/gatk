@@ -8,10 +8,11 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class LineIteratorTest {
+public class PathLineIteratorUnitTest extends GATKBaseTest {
 
   @Test
   public void testLineIteratorInForEach() throws IOException {
@@ -22,8 +23,10 @@ public class LineIteratorTest {
         bufferedWriter.write("What's new?");
       }
       ArrayList<String> got = new ArrayList<>();
-      for (String s: new LineIterator(path)) {
-        got.add(s);
+      try (PathLineIterator lines = new PathLineIterator(path)) {
+        for (String s: lines) {
+          got.add(s);
+        }
       }
       Assert.assertEquals(got.size(), 2);
       Assert.assertEquals(got.get(0), "Hello world");
@@ -40,7 +43,7 @@ public class LineIteratorTest {
         bufferedWriter.write("What's new?");
       }
       ArrayList<String> got = new ArrayList<>();
-      try (LineIterator lines = new LineIterator(path)) {
+      try (PathLineIterator lines = new PathLineIterator(path)) {
         lines.forEach(s -> got.add(s));
       }
       Assert.assertEquals(got.size(), 2);

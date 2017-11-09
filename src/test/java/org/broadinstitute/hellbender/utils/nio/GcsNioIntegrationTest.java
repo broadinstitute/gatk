@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.util.Random;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
@@ -82,6 +83,28 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
             throw x;
         }
     }
+
+    @Test(groups = {"bucket"})
+    public void pathLineIterator() throws IOException {
+        // this file, potentially unlike the others in the set, is not marked as "Public link".
+        final String privateFile = getGCPTestInputPath() + privateFilePath;
+
+        try {
+            Path path = Paths.get(URI.create((privateFile)));
+            try (PathLineIterator lines = new PathLineIterator(path)) {
+                int count = 0;
+                for (String s : lines) {
+                    count++;
+                }
+                Assert.assertEquals(count, 1, "Unexpected line count in " + privateFile);
+            }
+        } catch (Exception x) {
+            System.err.println("Unable to read " + privateFile);
+            helpDebugAuthError();
+            throw x;
+        }
+    }
+
 
     // TODO(jpmartin):uncomment once getAuthenticatedGcs is back
     /**
