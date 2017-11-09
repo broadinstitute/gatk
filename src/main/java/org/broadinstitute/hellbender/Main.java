@@ -222,15 +222,15 @@ public class Main {
      */
     protected void handleStorageException(final StorageException exception) {
         // HTTP error code
-        System.out.println("code:      " + exception.getCode());
+        System.err.println("code:      " + exception.getCode());
         // user-friendly message
-        System.out.println("message:   " + exception.getMessage());
+        System.err.println("message:   " + exception.getMessage());
         // short reason code, eg. "invalidArgument"
-        System.out.println("reason:    " + exception.getReason());
+        System.err.println("reason:    " + exception.getReason());
         // eg. the name of the argument that was invalid
-        System.out.println("location:  " + exception.getLocation());
+        System.err.println("location:  " + exception.getLocation());
         // true indicates the server thinks the same request may succeed later
-        System.out.println("retryable: " + exception.isRetryable());
+        System.err.println("retryable: " + exception.isRetryable());
         exception.printStackTrace();
     }
 
@@ -285,10 +285,10 @@ public class Main {
         classes.addAll(simpleNameToClass.values());
 
         if (args.length < 1) {
-            printUsage(classes, commandLineName);
+            printUsage(System.err, classes, commandLineName);
         } else {
             if (args[0].equals("-h") || args[0].equals("--help")) {
-                printUsage(classes, commandLineName);
+                printUsage(System.out, classes, commandLineName);
             } else {
                 if (simpleNameToClass.containsKey(args[0])) {
                     final Class<?> clazz = simpleNameToClass.get(args[0]);
@@ -302,7 +302,7 @@ public class Main {
                         throw new RuntimeException(e);
                     }
                 }
-                printUsage(classes, commandLineName);
+                printUsage(System.err, classes, commandLineName);
                 throw new UserException(getUnknownCommandMessage(classes, args[0]));
             }
         }
@@ -322,7 +322,7 @@ public class Main {
         }
     }
 
-    private static void printUsage(final Set<Class<?>> classes, final String commandLineName) {
+    private static void printUsage(final PrintStream destinationStream, final Set<Class<?>> classes, final String commandLineName) {
         final StringBuilder builder = new StringBuilder();
         builder.append(BOLDRED + "USAGE: " + commandLineName + " " + GREEN + "<program name>" + BOLDRED + " [-h]\n\n" + KNRM)
                 .append(BOLDRED + "Available Programs:\n" + KNRM);
@@ -388,7 +388,7 @@ public class Main {
             builder.append(String.format("\n"));
         }
         builder.append(WHITE + "--------------------------------------------------------------------------------------\n" + KNRM);
-        System.err.println(builder.toString());
+        destinationStream.println(builder.toString());
     }
 
     /**
