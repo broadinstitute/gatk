@@ -733,7 +733,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    public Object[][] provideDataForTestUtilsSplitString() {
+    public Iterator<Object[]> provideDataForTestUtilsSplitString() {
 
         final String stringData = "The quick fox jumped over the lazy brown dog.  " +
                 "Arma virumque cano, Troiae qui primus ab oris " +
@@ -754,13 +754,20 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         final List<String> repeatedSubstringsToSplitOn = Arrays.asList( "us", "is", "it", "et", " et", " et ", "que ", " mult" );
 
+        final String allDelimiterTestString = "::::::::::::::::::::::::::::::";
+        final String frontDelimiterTestString = "::::::::::1:23::::::::::456:7890";
+        final String middleDelimiterTestString = "1:23::::::::::456:7890";
+        final String backDelimiterTestString = "1:23::::::::::456:7890::::::::::";
+        final String fullDelimiterTestString = "::::::::::1:23::::::::::456:7890::::::::::";
+
         final List<Object[]> testCases = new ArrayList<>();
         testCases.addAll(
                 Arrays.asList(
                     new Object[] { "", "",   Arrays.asList( "".split(""  ) ) },
                     new Object[] { "", "1",  Arrays.asList( "".split("1" ) ) },
-                    new Object[] { stringData, "1",   Arrays.asList( stringData.split("1"  ) ) },
+                    new Object[] { ":", ":",   Arrays.asList( ":".split(":"  ) ) },
                     new Object[] { stringData, "",    Arrays.asList( stringData.split(""   ) ) },
+                    new Object[] { stringData, "1",   Arrays.asList( stringData.split("1"  ) ) },
                     new Object[] { stringData, "a",   Arrays.asList( stringData.split("a"  ) ) },
                     new Object[] { stringData, "b",   Arrays.asList( stringData.split("b"  ) ) },
                     new Object[] { stringData, "c",   Arrays.asList( stringData.split("c"  ) ) },
@@ -789,7 +796,17 @@ public final class UtilsUnitTest extends GATKBaseTest {
                     new Object[] { stringData, "z",   Arrays.asList( stringData.split("z"  ) ) },
                     new Object[] { stringData, " ",   Arrays.asList( stringData.split(" "  ) ) },
                     new Object[] { stringData, "T",   Arrays.asList( stringData.split("T"  ) ) },
-                    new Object[] { stringData, "9",   Arrays.asList( stringData.split("9") ) }
+                    new Object[] { stringData, "9",   Arrays.asList( stringData.split("9") ) },
+                    new Object[] { allDelimiterTestString,    ":",   Arrays.asList( allDelimiterTestString.split(":") ) },
+                    new Object[] { frontDelimiterTestString,  ":",   Arrays.asList( frontDelimiterTestString.split(":") ) },
+                    new Object[] { middleDelimiterTestString, ":",   Arrays.asList( middleDelimiterTestString.split(":") ) },
+                    new Object[] { backDelimiterTestString ,  ":",   Arrays.asList( backDelimiterTestString.split(":") ) },
+                    new Object[] { fullDelimiterTestString ,  ":",   Arrays.asList( fullDelimiterTestString.split(":") ) },
+                    new Object[] { allDelimiterTestString.replace(":", "TS"),    "TS",   Arrays.asList( allDelimiterTestString.replace(":", "TS").split("TS") ) },
+                    new Object[] { frontDelimiterTestString.replace(":", "TS"),  "TS",   Arrays.asList( frontDelimiterTestString.replace(":", "TS").split("TS") ) },
+                    new Object[] { middleDelimiterTestString.replace(":", "TS"), "TS",   Arrays.asList( middleDelimiterTestString.replace(":", "TS").split("TS") ) },
+                    new Object[] { backDelimiterTestString.replace(":", "TS") ,  "TS",   Arrays.asList( backDelimiterTestString.replace(":", "TS").split("TS") ) },
+                    new Object[] { fullDelimiterTestString.replace(":", "TS") ,  "TS",   Arrays.asList( fullDelimiterTestString.replace(":", "TS").split("TS") ) }
                 )
         );
 
@@ -803,12 +820,22 @@ public final class UtilsUnitTest extends GATKBaseTest {
             testCases.add( new Object[] { stringData, delim, Arrays.asList( stringData.split(delim) ) } );
         }
 
-        return testCases.toArray( new Object[][] {} );
+        return testCases.iterator();
     }
 
     @Test(dataProvider = "provideDataForTestUtilsSplitString")
     public void testUtilsSplitString( final String str, final String delimiter, final List<String> expected ) {
-        Assert.assertEquals( Utils.split(str, delimiter), expected );
-        Assert.assertEquals( Utils.split(str, delimiter, expected.size()), expected );
+
+        List<String> splitStrings;
+        if ( delimiter.length() == 1 ) {
+            splitStrings = Utils.split( str, delimiter.charAt(0) );
+            Assert.assertEquals( splitStrings, expected );
+        }
+
+        splitStrings = Utils.split(str, delimiter);
+        Assert.assertEquals( splitStrings, expected );
+
+        splitStrings = Utils.split(str, delimiter, expected.size());
+        Assert.assertEquals( splitStrings, expected );
     }
 }

@@ -1141,8 +1141,36 @@ public final class Utils {
 
     /**
      * Splits a String using indexOf instead of regex to speed things up.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str       the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return A {@link List} of {@link String} tokens.
+     */
+    public static List<String> split(final String str, final char delimiter) {
+
+        final List<String> tokens;
+
+        if ( str.isEmpty() ) {
+            tokens = new ArrayList<>(1);
+            tokens.add("");
+        }
+        else {
+            tokens = ParsingUtils.split(str, delimiter);
+            removeTrailingEmptyStringsFromEnd(tokens);
+        }
+
+        return tokens;
+    }
+
+    /**
+     * Splits a String using indexOf instead of regex to speed things up.
      * If given an empty delimiter, will return each character in the string as a token.
-     * @param str the string to split.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str       the string to split.
      * @param delimiter the delimiter used to split the string.
      * @return A {@link List} of {@link String} tokens.
      */
@@ -1152,30 +1180,13 @@ public final class Utils {
     }
 
     /**
-     * Splits a String using indexOf instead of regex to speed things up.
-     *
-     * @param str the string to split.
-     * @param delimiter the delimiter used to split the string.
-     * @return A {@link List} of {@link String} tokens.
-     */
-    public static List<String> split(final String str, final char delimiter) {
-        final List<String> tokens = ParsingUtils.split( str, delimiter );
-
-        // We must adjust for splitting on the last character so that the results here will be the same as
-        // the results of String.split:
-        if ( delimiter == str.charAt(str.length() - 1)) {
-            tokens.remove( tokens.size() - 1 );
-        }
-
-        return tokens;
-    }
-
-
-    /**
      * Splits a given {@link String} using {@link String#indexOf} instead of regex to speed things up.
      * If given an empty delimiter, will return each character in the string as a token.
-     * @param str The {@link String} to split.
-     * @param delimiter The delimiter used to split the {@link String}.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str               The {@link String} to split.
+     * @param delimiter         The delimiter used to split the {@link String}.
      * @param expectedNumTokens The number of tokens expected (used to initialize the capacity of the {@link ArrayList}).
      * @return A {@link List} of {@link String} tokens.
      */
@@ -1187,12 +1198,12 @@ public final class Utils {
             result.add("");
         }
         else if ( delimiter.isEmpty() ) {
-            result = new ArrayList<>( str.length() );
+            result = new ArrayList<>(str.length());
             for ( int i = 0; i < str.length(); ++i ) {
-                result.add( str.substring(i, i+1) );
+                result.add(str.substring(i, i + 1));
             }
         }
-        else if ( delimiter.length() == 1) {
+        else if ( delimiter.length() == 1 ) {
             result = split(str, delimiter.charAt(0));
         }
         else {
@@ -1205,16 +1216,21 @@ public final class Utils {
                 final String token = (delimiterIdx != -1 ? str.substring(tokenStartIdx, delimiterIdx) : str.substring(tokenStartIdx));
                 result.add(token);
                 tokenStartIdx = delimiterIdx + delimiter.length();
-            } while (delimiterIdx != -1);
+            } while ( delimiterIdx != -1 );
 
-            // Check to see if the last entry is empty.
-            // String.split doesn't give us empty last elements of the token list, so we remove it.
-            if ( result.get(result.size() - 1).isEmpty() ) {
-                result.remove( result.size() - 1 );
-            }
-
+            removeTrailingEmptyStringsFromEnd(result);
         }
 
         return result;
+    }
+
+    private static void removeTrailingEmptyStringsFromEnd(final List<String> result) {
+        // Remove all trailing empty strings to emulate the behavior of String.split:
+        // We remove items from the end of the list to our index
+        // so that we can take advantage of better performance of removing items from the end
+        // of certain concrete lists:
+        while ( (!result.isEmpty()) && (result.get(result.size() - 1).isEmpty()) ) {
+            result.remove(result.size() - 1);
+        }
     }
 }

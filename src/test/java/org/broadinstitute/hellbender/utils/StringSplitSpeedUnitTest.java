@@ -130,19 +130,18 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
     //==================================================================================================================
 
     // Disabled so that we don't waste time.
-    // It takes 216.95812968 seconds (about 3.5 minutes) to run this test.
     // Cached results here:
-//    --------------------------------------------------------------------------------
-//    Timing Results:
-//    --------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+//    Overall Elapsed Time: 194969742609ns, 194969.742609ms, 3.25min
+//--------------------------------------------------------------------------------
 //    Java Split String:
-//          Words Total Time:	131867865203ns	131867.865203ms	Per Split:	6048.98464233945ns		0.00604898464233945ms
-//	        "Chars" Total Time:	12917243085ns	12917.243085ms	Per Split:	3004.010019767442ns		0.003004010019767442ms
+//    Words Total Time:	123581339505ns	123581.339505ms	Per Split:	5668.868784633028ns		0.0056688687846330275ms
+//	"Chars" Total Time:	13324148242ns	13324.148242ms	Per Split:	3098.6391260465116ns		0.0030986391260465116ms
 //    HTSJDK ParsingUtils::split
-//	        "Chars" Total Time:	5882790859ns	5882.790859ms	Per Split:	1368.0908974418605ns	0.0013680908974418606ms
+//	"Chars" Total Time:	6054845269ns	6054.845269ms	Per Split:	1408.1035509302328ns		0.0014081035509302328ms
 //    GATK Utils::split
-//          Words Total Time:	38734463275ns	38734.463275ms	Per Split:	1776.8102419724771ns	0.0017768102419724772ms
-//	        "Chars" Total Time:	7120052467ns	7120.052467ms	Per Split:	1655.826155116279ns		0.0016558261551162792ms
+//    Words Total Time:	45913524687ns	45913.524687ms	Per Split:	2106.124985642202ns		0.002106124985642202ms
+//	"Chars" Total Time:	6095292091ns	6095.292091ms	Per Split:	1417.509788604651ns		0.001417509788604651ms
 //================================================================================
     @Test(enabled = false)
     void compareTimingForSplitString() {
