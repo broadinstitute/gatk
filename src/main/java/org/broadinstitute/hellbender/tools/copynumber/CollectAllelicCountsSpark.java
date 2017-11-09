@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerSpark;
@@ -13,11 +17,39 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNam
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.Iterator;
 
 public class CollectAllelicCountsSpark extends LocusWalkerSpark {
+    private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 
+    @Argument(
+            doc = "Output allelic-counts file.",
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
+    )
+    private File outputAllelicCountsFile;
+
+    @Argument(
+            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
+            fullName = "minimumBaseQuality",
+            shortName = "minBQ",
+            minValue = 0,
+            optional = true
+    )
+    private int minimumBaseQuality = 20;
+
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+
+    @Override
+    public boolean emitEmptyLoci() {return true;}
+
+    @Override
+    public boolean requiresReference() {return true;}
+
+    @Override
+    public boolean requiresIntervals() {return true;}
 
     @Override
     protected void processAlignments(JavaRDD<LocusWalkerContext> rdd, JavaSparkContext ctx) {
@@ -25,7 +57,11 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
         final SampleMetadata sampleMetadata = new SimpleSampleMetadata(sampleName);
         final Broadcast<SampleMetadata> sampleMetadataBroadcast = ctx.broadcast(sampleMetadata);
         // rdd.map(pileupFunction(metadata, outputInsertLength, showVerbose)).saveAsTextFile(outputFile);
-        rdd.mapPartitions(distributedCount(sampleMetadataBroadcast.getValue(), 20)).reduce();
+        final AllelicCountCollector finalAllelicCountCollector =
+                rdd.mapPartitions(distributedCount(sampleMetadataBroadcast.getValue(), minimumBaseQuality))
+                .reduce((a1, a2) -> combineAllelicCountCollectors(a1, a2));
+
+        finalAllelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
     }
 
     private static FlatMapFunction<Iterator<LocusWalkerContext>, AllelicCountCollector> distributedCount(final SampleMetadata sampleMetadata,
@@ -44,7 +80,9 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
         };
     }
 
-    private static AllelicCountCollector combineAllelicCountCollectors(final AllelicCountCollector allelicCountCollector1, final AllelicCountCollector allelicCountCollector2) {
-
+    private static AllelicCountCollector combineAllelicCountCollectors(final AllelicCountCollector allelicCountCollector1,
+                                                                       final AllelicCountCollector allelicCountCollector2) {
+        allelicCountCollector1.collectFromCollector(allelicCountCollector2);
+        return allelicCountCollector1;
     }
 }
