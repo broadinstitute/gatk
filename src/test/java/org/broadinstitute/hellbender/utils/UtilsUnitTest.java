@@ -1,24 +1,25 @@
 package org.broadinstitute.hellbender.utils;
 
 
-import static java.util.Arrays.asList;
-import static org.testng.Assert.assertEquals;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
-import java.io.File;
-import java.util.*;
-import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.util.Arrays.asList;
+import static org.testng.Assert.assertEquals;
 
 /**
  * Testing framework for general purpose utilities class.
