@@ -14,42 +14,40 @@ import org.testng.annotations.Test;
 
 public class PathLineIteratorUnitTest extends GATKBaseTest {
 
-  @Test
-  public void testLineIteratorInForEach() throws IOException {
-    try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
-      final Path path = jimfs.getPath("test.txt");
-      try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-        bufferedWriter.write("Hello world\n");
-        bufferedWriter.write("What's new?");
-      }
-      ArrayList<String> got = new ArrayList<>();
-      try (PathLineIterator lines = new PathLineIterator(path)) {
-        for (String s: lines) {
-          got.add(s);
-        }
-      }
-      Assert.assertEquals(got.size(), 2);
-      Assert.assertEquals(got.get(0), "Hello world");
-      Assert.assertEquals(got.get(1), "What's new?");
-    }
-  }
+    final String[] opus = {"Hello world", "What's new?"};
 
-  @Test
-  public void testLineIteratorAsResource() throws IOException {
-    try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
-      final Path path = jimfs.getPath("test.txt");
-      try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-        bufferedWriter.write("Hello world\n");
-        bufferedWriter.write("What's new?");
-      }
-      ArrayList<String> got = new ArrayList<>();
-      try (PathLineIterator lines = new PathLineIterator(path)) {
-        lines.forEach(s -> got.add(s));
-      }
-      Assert.assertEquals(got.size(), 2);
-      Assert.assertEquals(got.get(0), "Hello world");
-      Assert.assertEquals(got.get(1), "What's new?");
+    @Test
+    public void testLineIteratorInForEach() throws IOException {
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path path = jimfs.getPath("test.txt");
+            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
+                bufferedWriter.write(opus[0] + "\n");
+                bufferedWriter.write(opus[1]);
+            }
+            ArrayList<String> got = new ArrayList<>();
+            try (PathLineIterator lines = new PathLineIterator(path)) {
+                for (String s : lines) {
+                    got.add(s);
+                }
+            }
+            Assert.assertEquals(got.toArray(), opus);
+        }
     }
-  }
+
+    @Test
+    public void testLineIteratorAsResource() throws IOException {
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path path = jimfs.getPath("test.txt");
+            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
+                bufferedWriter.write("Hello world\n");
+                bufferedWriter.write("What's new?");
+            }
+            ArrayList<String> got = new ArrayList<>();
+            try (PathLineIterator lines = new PathLineIterator(path)) {
+                lines.forEach(s -> got.add(s));
+            }
+            Assert.assertEquals(got.toArray(), opus);
+        }
+    }
 
 }

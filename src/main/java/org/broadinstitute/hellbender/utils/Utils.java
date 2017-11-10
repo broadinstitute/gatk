@@ -4,10 +4,6 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
-import java.io.Closeable;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.function.Consumer;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -16,7 +12,6 @@ import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -1141,7 +1136,5 @@ public final class Utils {
         final List<T> sorted = values.stream().sorted().collect(Collectors.toList());
         return sorted.get(sorted.size() / 2);
     }
-
-
 
 }

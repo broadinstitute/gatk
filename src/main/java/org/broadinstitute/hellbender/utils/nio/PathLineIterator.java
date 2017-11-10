@@ -8,6 +8,7 @@ import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 /**
  * Iterate through the lines of a Path. Works for anything you can point
@@ -15,45 +16,45 @@ import org.broadinstitute.hellbender.exceptions.UserException;
  * for (e.g. GCS).
  */
 public class PathLineIterator implements AutoCloseable, Iterable<String> {
-  private final Stream<String> lines;
+    private final Stream<String> lines;
 
-  /**
-   * Returns an iterator so you can iterate over the lines in the text file like so:
-   * for (String line: new Utils.LineIterator(path)) {
-   *   // do something with the line
-   * }
-   *
-   * It's also closeable so you can close it when done, or use it in a try-with-resources
-   * to close it automatically.
-   *
-   * @param path path to a text file.
-   * @throws UserException if we cannot open the file for reading.
-   */
-  public PathLineIterator(Path path) throws UserException {
-    try {
-      lines = Files.lines(path);
-    } catch (IOException x) {
-      throw new UserException("Error reading " + path.toString(), x);
+    /**
+     * Returns an iterator so you can iterate over the lines in the text file like so:
+     * for (String line: new Utils.LineIterator(path)) {
+     *   // do something with the line
+     * }
+     *
+     * It's also closeable so you can close it when done, or use it in a try-with-resources
+     * to close it automatically.
+     *
+     * @param path path to a text file.
+     * @throws UserException if we cannot open the file for reading.
+     */
+    public PathLineIterator(Path path) throws UserException {
+        try {
+            lines = Files.lines(Utils.nonNull(path, "path shouldn't be null"));
+        } catch (IOException x) {
+            throw new UserException("Error reading " + path.toString(), x);
+        }
     }
-  }
 
-  @Override
-  public void close() {
-    lines.close();
-  }
+    @Override
+    public void close() {
+        lines.close();
+    }
 
-  @Override
-  public Iterator<String> iterator() {
-    return lines.iterator();
-  }
+    @Override
+    public Iterator<String> iterator() {
+        return lines.iterator();
+    }
 
-  @Override
-  public void forEach(Consumer<? super String> action) {
-    lines.forEach(action);
-  }
+    @Override
+    public void forEach(Consumer<? super String> action) {
+        lines.forEach(action);
+    }
 
-  @Override
-  public Spliterator<String> spliterator() {
-    return lines.spliterator();
-  }
+    @Override
+    public Spliterator<String> spliterator() {
+        return lines.spliterator();
+    }
 }
