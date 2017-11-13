@@ -21,8 +21,7 @@ public class PathLineIteratorUnitTest extends GATKBaseTest {
         try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
             final Path path = jimfs.getPath("test.txt");
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-                bufferedWriter.write(opus[0] + "\n");
-                bufferedWriter.write(opus[1]);
+                bufferedWriter.write(String.join("\n", opus));
             }
             ArrayList<String> got = new ArrayList<>();
             try (PathLineIterator lines = new PathLineIterator(path)) {
@@ -39,8 +38,7 @@ public class PathLineIteratorUnitTest extends GATKBaseTest {
         try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
             final Path path = jimfs.getPath("test.txt");
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-                bufferedWriter.write("Hello world\n");
-                bufferedWriter.write("What's new?");
+                bufferedWriter.write(String.join("\n", opus));
             }
             ArrayList<String> got = new ArrayList<>();
             try (PathLineIterator lines = new PathLineIterator(path)) {

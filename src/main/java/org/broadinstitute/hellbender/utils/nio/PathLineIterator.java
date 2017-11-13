@@ -34,7 +34,7 @@ public class PathLineIterator implements AutoCloseable, Iterable<String> {
         try {
             lines = Files.lines(Utils.nonNull(path, "path shouldn't be null"));
         } catch (IOException x) {
-            throw new UserException("Error reading " + path.toString(), x);
+            throw new UserException("Error reading " + path.toUri().toString(), x);
         }
     }
 
