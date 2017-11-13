@@ -73,7 +73,12 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
         final AllelicCountCollector finalAllelicCountCollector =
                 rdd.mapPartitions(distributedCount(sampleMetadataBroadcast.getValue(), minimumBaseQuality))
                 .reduce((a1, a2) -> combineAllelicCountCollectors(a1, a2, sampleMetadataBroadcast.getValue()));
-        final List<LocusWalkerContext> tmp = rdd.collect();
+        // TODO: In integration test, we come back with 8 entries, when we should get 11.  Also, at least one of those 8 will have incorrect counts.
+        // TODO: Delete the next line (and other TODOs) when the integration test is fixed.
+    //  final List<LocusWalkerContext> tmp = rdd.collect();
+        // TODO: mapPartitions --> map has same erroneous behavior
+        // TODO: emit empty loci = false  has same errorneous behavior (though the counts will change as expected).
+
 
         finalAllelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
     }
