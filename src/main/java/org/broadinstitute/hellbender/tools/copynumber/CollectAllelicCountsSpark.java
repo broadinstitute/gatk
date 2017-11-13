@@ -10,7 +10,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
@@ -70,10 +69,11 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
         final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
         final SampleMetadata sampleMetadata = new SimpleSampleMetadata(sampleName);
         final Broadcast<SampleMetadata> sampleMetadataBroadcast = ctx.broadcast(sampleMetadata);
-        // rdd.map(pileupFunction(metadata, outputInsertLength, showVerbose)).saveAsTextFile(outputFile);
+
         final AllelicCountCollector finalAllelicCountCollector =
                 rdd.mapPartitions(distributedCount(sampleMetadataBroadcast.getValue(), minimumBaseQuality))
                 .reduce((a1, a2) -> combineAllelicCountCollectors(a1, a2, sampleMetadataBroadcast.getValue()));
+        final List<LocusWalkerContext> tmp = rdd.collect();
 
         finalAllelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
     }
@@ -84,8 +84,7 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
             final AllelicCountCollector result = new AllelicCountCollector(sampleMetadata);
 
             contextIterator.forEachRemaining( ctx -> {
-                final ReferenceContext referenceContext = ctx.getReferenceContext();
-                final byte refAsByte = referenceContext.getBase();
+                final byte refAsByte = ctx.getReferenceContext().getBase();
                 result.collectAtLocus(Nucleotide.valueOf(refAsByte), ctx.getAlignmentContext().getBasePileup(),
                         ctx.getAlignmentContext().getLocation(), minimumBaseQuality);
                 }
