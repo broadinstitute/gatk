@@ -361,9 +361,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set the Codon and Protein changes:
 
         final String codonChange = FuncotatorUtils.getCodonChangeString( sequenceComparison );
-        final String codonChange2 = FuncotatorUtils.getCodonChangeString2( sequenceComparison );
 
-        gencodeFuncotationBuilder.setCodonChange(codonChange2)
+        gencodeFuncotationBuilder.setCodonChange(codonChange)
                                  .setProteinChange(FuncotatorUtils.getProteinChangeString(sequenceComparison));
 
         // Set the Variant Classification:
