@@ -25,31 +25,6 @@
 
 package org.broadinstitute.hellbender.tools.funcotator;
 
-/*
- * Copyright (c) 2010 The Broad Institute
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
-
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
@@ -65,6 +40,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -380,90 +356,19 @@ public class FuncotatorUtils {
         return (((regionLength - startPosition + 1) % 3) == 0);
     }
 
-    public static String getCodonChangeString2( final SequenceComparison seqComp ) {
-
-        // ONP:
-        if ( GATKProtectedVariantContextUtils.isOnp(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
-            return getCodonChangeStringForOnp(
-                    seqComp.getAlignedCodingSequenceReferenceAllele(),
-                    seqComp.getAlignedCodingSequenceAlternateAllele(),
-                    seqComp.getAlignedCodingSequenceAlleleStart(),
-                    seqComp.getAlignedReferenceAlleleStop()
-            );
-        }
-        // Insertion:
-        else if ( GATKProtectedVariantContextUtils.isInsertion(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele())  ) {
-
-            if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
-
-                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
-                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
-                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart() + 3) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
-                            nextRefCodon + "fs";
-                }
-                else {
-                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart()) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
-                            seqComp.getAlignedCodingSequenceReferenceAllele() + "fs";
-                }
-            }
-            else {
-                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
-                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
-                    return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
-                            (seqComp.getAlignedCodingSequenceReferenceAllele() + nextRefCodon) + ">" + (seqComp.getAlignedAlternateAllele() + nextRefCodon);
-                }
-                else {
-                    return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
-                            seqComp.getAlignedCodingSequenceReferenceAllele() + ">" + seqComp.getAlignedAlternateAllele();
-                }
-            }
-
-        }
-        // Deletion:
-        else {
-
-            if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
-                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
-                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
-                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart() + 3) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
-                            nextRefCodon + "fs";
-                }
-                else {
-                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart()) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
-                            seqComp.getAlignedCodingSequenceReferenceAllele() + "fs";
-                }
-            }
-            else {
-
-                // Determine how many codons to get:
-                final int numAdditionalCodonsToGet = (int)Math.ceil((seqComp.getAlternateAllele().length() + ((seqComp.getAlignedCodingSequenceAlleleStart() - seqComp.getCodingSequenceAlleleStart()) % 3)) / 3);
-
-                // This means that the deletion is aligned with a codon:
-                if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
-
-                    // Was this a clean deletion (just put DEL after it)?
-                    if ( (seqComp.getAlternateAllele().length() % 3) == 0 ) {
-
-                    }
-                    else {
-
-                    }
-
-                }
-                else {
-
-                }
-
-                return "c.(XX)YY";
-            }
-        }
-
-    }
-
+    /**
+     * Checks to see whether a given indel location occurs on a codon boundary.
+     * That is, whether the given indel location is not within a codon but is cleanly between two adjacent codons.
+     * @param codingSequenceAlleleStart The start position of the variant in the coding sequence.
+     * @param alignedCodingSequenceAlleleStart The start position of the first codon containing part of the variant in the coding sequence.
+     * @param refAllele A {@link String} containing the bases in the reference allele for the given variant.
+     * @return {@code true} if the given indel cleanly occurs between two adjacent codons; {@code false} otherwise.
+     */
     private static boolean isIndelBetweenCodons(final int codingSequenceAlleleStart,
                                                 final int alignedCodingSequenceAlleleStart,
                                                 final String refAllele ) {
-        final int codonOffset = alignedCodingSequenceAlleleStart - codingSequenceAlleleStart;
+
+        final int codonOffset = codingSequenceAlleleStart - alignedCodingSequenceAlleleStart;
         return (((codonOffset + refAllele.length()) % 3) == 0);
     }
 
@@ -550,6 +455,118 @@ public class FuncotatorUtils {
                     seqComp.getAlignedCodingSequenceAlleleStart(),
                     seqComp.getAlignedReferenceAlleleStop()
             );
+        }
+    }
+
+    /**
+     * Creates the string representation of the codon change for the given {@link SequenceComparison}.
+     * Requires that the given {@code seqComp} has the following fields defined with values that are not {@code null}:
+     *     alignedCodingSequenceAlleleStart
+     *     alignedReferenceAlleleStop
+     *     referenceAllele
+     *     alignedCodingSequenceReferenceAllele
+     *     alternateAllele
+     *     alignedCodingSequenceAlternateAllele
+     *     codingSequenceAlleleStart
+     * @param seqComp {@link SequenceComparison} representing the alternate and reference alleles for a DNA sequence.  Must not be {@code null}.
+     * @return A {@link String} representing the codon change for the given {@link SequenceComparison}.
+     */
+    public static String getCodonChangeString2( final SequenceComparison seqComp ) {
+
+        // ONP:
+        if ( GATKProtectedVariantContextUtils.isOnp(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+            return getCodonChangeStringForOnp(
+                    seqComp.getAlignedCodingSequenceReferenceAllele(),
+                    seqComp.getAlignedCodingSequenceAlternateAllele(),
+                    seqComp.getAlignedCodingSequenceAlleleStart(),
+                    seqComp.getAlignedReferenceAlleleStop()
+            );
+        }
+        // Insertion:
+        else if ( GATKProtectedVariantContextUtils.isInsertion(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele())  ) {
+
+            if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+
+                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
+                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart() + 3) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
+                            nextRefCodon.toLowerCase() + "fs";
+                }
+                else {
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart()) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
+                            seqComp.getAlignedCodingSequenceReferenceAllele().toLowerCase() + "fs";
+                }
+            }
+            else {
+                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
+                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+                    return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
+                            (seqComp.getAlignedCodingSequenceReferenceAllele() + nextRefCodon).toLowerCase() + ">" + (seqComp.getAlignedAlternateAllele() + nextRefCodon);
+                }
+                else {
+                    return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
+                            seqComp.getAlignedCodingSequenceReferenceAllele().toLowerCase() + ">" + seqComp.getAlignedAlternateAllele();
+                }
+            }
+
+        }
+        // Deletion:
+        else {
+
+            if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+                if ( isIndelBetweenCodons( seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele() ) ) {
+                    final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart() + 3) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
+                            nextRefCodon.toLowerCase() + "fs";
+                }
+                else {
+                    return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart()) + "-" + (seqComp.getAlignedCodingSequenceAlleleStart() + 2) + ")" +
+                            seqComp.getAlignedCodingSequenceReferenceAllele().toLowerCase() + "fs";
+                }
+            }
+            else {
+
+                // Determine how many codons to get:
+                final int numAdditionalCodonsToGet = (int)Math.ceil((seqComp.getAlternateAllele().length() + ((seqComp.getAlignedCodingSequenceAlleleStart() - seqComp.getCodingSequenceAlleleStart()) % 3)) / 3);
+
+                // Get the next few required reference codons:
+                final List<String> nextRefCodons = getNextReferenceCodons(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand(), numAdditionalCodonsToGet);
+
+                // Get the end position of the variant:
+                final int endPos = seqComp.getAlignedReferenceAlleleStop() + (3 * numAdditionalCodonsToGet);
+
+                // Get the string for all reference codons (including the next few codons we need):
+                final String allRefCodons = (seqComp.getAlignedCodingSequenceReferenceAllele() + String.join("", nextRefCodons)).toLowerCase();
+
+                // This means that the deletion is aligned with a codon:
+                if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
+
+                    // Was this a clean deletion?
+                    // That is, did an entire codon / set of codons get deleted?
+                    // (if so just put DEL after it)
+                    if ( (seqComp.getAlternateAllele().length() % 3) == 0 ) {
+
+                        return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + endPos
+                                + ")" + allRefCodons +"del";
+                    }
+                    else {
+                        // We can't just put a `del` at the end of the string.
+                        // We must report the old codons, and then the new codons together.
+
+                        return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + endPos
+                                + ")" + allRefCodons + ">" + seqComp.getAlignedCodingSequenceAlternateAllele() + String.join("", nextRefCodons);
+                    }
+
+                }
+                // Non-frameshift deletion starting within a codon:
+                else {
+                    // We must report all old codons and then the new codons.
+                    // However, for the new codons, we need to create a codon string that includes the new alternate
+                    // allele and ONLY the bases that follow it (rounding to the next codon boundary).
+                    return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" + endPos
+                            + ")" + allRefCodons + ">" + seqComp.getAlignedCodingSequenceAlternateAllele() + String.join("", nextRefCodons);
+                }
+            }
         }
     }
 
@@ -786,6 +803,33 @@ public class FuncotatorUtils {
             );
         }
         return nextRefCodon;
+    }
+
+    /**
+     * Gets the requested number of complete in-frame codons from the given {@link ReferenceSequence} that follow the given current codon position and strand.
+     * @param referenceSequence The {@link ReferenceSequence} for the current codon.  Must not be {@code null}.
+     * @param currentAlignedCodingSequenceAlleleStart The starting position (1-based, inclusive) of the current codon.  Must be > 0.
+     * @param currentAlignedCodingSequenceAlleleStop The ending position (1-based, inclusive) of the current codon.  Must be > 0.
+     * @param strand The {@link Strand} on which the current codon resides.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
+     * @param numAdditionalCodonsToGet The number of codons to return.
+     * @return The {@link List} of codons (as {@link String}s) in frame with the current codon as specified by the given current codon positions.
+     */
+    private static List<String> getNextReferenceCodons(final ReferenceSequence referenceSequence,
+                                                       final int currentAlignedCodingSequenceAlleleStart,
+                                                       final int currentAlignedCodingSequenceAlleleStop,
+                                                       final Strand strand,
+                                                       final int numAdditionalCodonsToGet) {
+
+        ParamUtils.isPositiveOrZero( numAdditionalCodonsToGet, "Must specify a positive number of codons to return (or zero)." );
+
+        final ArrayList<String> nextCodons = new ArrayList<>(numAdditionalCodonsToGet);
+
+        for (int i = 0; i < numAdditionalCodonsToGet; ++i) {
+            final String nextCodon = getNextReferenceCodon(referenceSequence, currentAlignedCodingSequenceAlleleStart + (i*3), currentAlignedCodingSequenceAlleleStop + (i*3), strand);
+            nextCodons.add(nextCodon);
+        }
+
+        return nextCodons;
     }
 
     /**
