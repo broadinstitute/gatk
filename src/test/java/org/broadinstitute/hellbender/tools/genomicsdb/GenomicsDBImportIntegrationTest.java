@@ -2,14 +2,19 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.intel.genomicsdb.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.bcf2.BCF2Codec;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFCodec;
-import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.Options;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -20,12 +25,15 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,6 +48,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
     private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
     private static final VCFHeader VCF_HEADER = VariantContextTestUtils.getCompleteHeader();
+
+
+    private static final String SAMPLE_NAME_KEY = "SN";
+    private static final String ANOTHER_ATTRIBUTE_KEY = "AA";
+
 
     @Override
     public String getTestedClassName() {
@@ -174,12 +187,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     private static void checkGenomicsDBAgainstExpected(final String workspace, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
         final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
-                new GenomicsDBFeatureReader<>(
-                        new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
-                        new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
-                        workspace,
-                        GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                        b38_reference_20_21, null, new BCF2Codec());
+                getGenomicsDBFeatureReader(workspace, b38_reference_20_21);
 
         final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
                 AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
@@ -261,10 +269,129 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         return getSampleMapFile(sampleFileContents);
     }
 
-    private static File getSampleMapFile(String sampleFileContents) {
+    private static File getSampleMapFile(final String sampleFileContents) {
         final File sampleNameMap = IOUtils.writeTempFile(sampleFileContents, "sampleNameMap", ".txt");
         sampleNameMap.deleteOnExit();
         return sampleNameMap;
+    }
+
+    private static File getSampleMapFile(final Map<String, String> mapping){
+        return getSampleMapFile(mapping.entrySet()
+                .stream()
+                .map( pair -> pair.getKey() + "\t" + pair.getValue())
+                .collect(Collectors.joining("\n")));
+    }
+
+    @DataProvider
+    public static Iterator<Object[]> getRenameCombinations() {
+        final Map<String,String> noRemapping = new LinkedHashMap<>();
+        noRemapping.put("s1", "s1");
+        noRemapping.put("s2", "s2");
+        noRemapping.put("s3", "s3");
+
+        final Map<String,String> sameInput = new LinkedHashMap<>();
+        sameInput.put("s1", "s1");
+        sameInput.put("s2", "s1");
+        sameInput.put("s3", "s1");
+
+
+        final Map<String,String> sameInputWeirdOrder = new LinkedHashMap<>();
+        sameInputWeirdOrder.put("s3", "s1");
+        sameInputWeirdOrder.put("s1", "s1");
+        sameInputWeirdOrder.put("s2", "s1");
+
+        final Map<String,String> swizzled = new LinkedHashMap<>();
+        swizzled.put("s2","s1");
+        swizzled.put("s3","s2");
+        swizzled.put("s1","s3");
+
+        final Map<String,String> multipleOutOfOrderRenamingsAcrossBatches = new LinkedHashMap<>();
+        multipleOutOfOrderRenamingsAcrossBatches.put("s1", "s1");
+        multipleOutOfOrderRenamingsAcrossBatches.put("s2", "s2");
+        multipleOutOfOrderRenamingsAcrossBatches.put("s1_Renamed", "s1");
+        multipleOutOfOrderRenamingsAcrossBatches.put("Renamed_s2", "s2");
+        multipleOutOfOrderRenamingsAcrossBatches.put("s4", "s3");
+        multipleOutOfOrderRenamingsAcrossBatches.put("s3", "s3");
+        multipleOutOfOrderRenamingsAcrossBatches.put("someOtherSample", "s4");
+
+
+        final List<Integer> batchSizes = Arrays.asList(0, 1, 4);
+        final List<Integer> threads = Arrays.asList(1, 2);
+        final List<Map<String, String>> mappings = Arrays.asList(noRemapping, sameInput, sameInputWeirdOrder, swizzled, multipleOutOfOrderRenamingsAcrossBatches);
+        final List<Object[]> out = new ArrayList<>();
+        for(final Map<String,String> mapping : mappings){
+            for(final int batchSize :batchSizes){
+                for(final int threading : threads){
+                    out.add( new Object[]{mapping, threading, batchSize});
+                }
+            }
+        }
+        return out.iterator();
+    }
+
+
+    @Test(dataProvider = "getRenameCombinations")
+    public void testRenamingSamples(final Map<String, String> renamingMap, final int threads, final int batchSize) throws IOException {
+        final LinkedHashMap<String, String> sampleMap = new LinkedHashMap<>(renamingMap);
+        sampleMap.replaceAll( (newSampleName, originalSampleName)-> createInputVCF(originalSampleName).getAbsolutePath());
+
+        final File sampleMapFile = getSampleMapFile(sampleMap);
+
+        final String workspace = createTempDir("workspace").getAbsolutePath();
+        Files.delete(Paths.get(workspace));
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, sampleMapFile.getAbsolutePath())
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, new File(workspace).getAbsolutePath())
+                .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads))
+                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_NAME, String.valueOf(batchSize))
+                .addArgument("L", IntervalUtils.locatableToString(INTERVAL));
+
+        runCommandLine(args);
+        final Set<String> expectedSampleNames = sampleMap.keySet();
+        try(final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> reader = getGenomicsDBFeatureReader(workspace, b37_reference_20_21)) {
+            final CloseableTribbleIterator<VariantContext> iterator = reader.iterator();
+            Assert.assertTrue(iterator.hasNext(), "expected to see a variant");
+            Assert.assertTrue(expectedSampleNames.size() > 0);
+            Assert.assertEquals(expectedSampleNames.size(), renamingMap.size());
+            iterator.forEachRemaining(vc -> {
+                   Assert.assertEquals(vc.getSampleNames(), expectedSampleNames);
+                expectedSampleNames.forEach( sample -> {
+                   Assert.assertEquals(vc.getGenotype(sample).getAnyAttribute(SAMPLE_NAME_KEY), renamingMap.get(sample));
+                   Assert.assertEquals(vc.getGenotype(sample).getAnyAttribute(ANOTHER_ATTRIBUTE_KEY), 10); //check another attribute just to make sure we're not mangling things
+                });
+            });
+        }
+
+    }
+
+    private static File createInputVCF(final String sampleName) {
+        final String contig = "chr20";
+        final SAMSequenceDictionary dict = new SAMSequenceDictionary(
+                Collections.singletonList(new SAMSequenceRecord(contig, 64444167)));
+
+        final VCFFormatHeaderLine formatField = new VCFFormatHeaderLine(SAMPLE_NAME_KEY, 1, VCFHeaderLineType.String,
+                                                                        "the name of the sample this genotype came from");
+        final Set<VCFHeaderLine> headerLines = new HashSet<>();
+        headerLines.add(formatField);
+        headerLines.add(new VCFFormatHeaderLine(ANOTHER_ATTRIBUTE_KEY, 1, VCFHeaderLineType.Integer, "Another value"));
+        headerLines.add(VCFStandardHeaderLines.getFormatLine("GT"));
+
+        final File out = createTempFile(sampleName +"_", ".vcf");
+        try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(out, dict, false,
+                                                                                         Options.INDEX_ON_THE_FLY)) {
+            final VCFHeader vcfHeader = new VCFHeader(headerLines, Collections.singleton(sampleName));
+            vcfHeader.setSequenceDictionary(dict);
+            writer.writeHeader(vcfHeader);
+            final Allele Aref = Allele.create("A", true);
+            final Allele C = Allele.create("C");
+            final List<Allele> alleles = Arrays.asList(Aref, C);
+            final VariantContext variant = new VariantContextBuilder("invented", contig, INTERVAL.getStart(), INTERVAL.getStart(), alleles)
+                    .genotypes(new GenotypeBuilder(sampleName, alleles).attribute(SAMPLE_NAME_KEY, sampleName)
+                                       .attribute(ANOTHER_ATTRIBUTE_KEY, 10).make())
+                    .make();
+            writer.add(variant);
+            return out;
+        }
     }
 
     @Test(expectedExceptions = CommandLineException.class)
@@ -293,15 +420,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(Arrays.asList(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting2.g.vcf"),
                           new SimpleInterval("chr20", 17959479, 17959479), workspace, 0, false, 0, 1);
 
-        try ( final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
-                new GenomicsDBFeatureReader<>(
-                        new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
-                        new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
-                        workspace,
-                        GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                        b38_reference_20_21, null, new BCF2Codec());
+        try (final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+                     getGenomicsDBFeatureReader(workspace, b38_reference_20_21);
 
-              final AbstractFeatureReader<VariantContext, LineIterator> inputGVCFReader =
+             final AbstractFeatureReader<VariantContext, LineIterator> inputGVCFReader =
                       AbstractFeatureReader.getFeatureReader(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", new VCFCodec(), true);
         ) {
             final SAMSequenceDictionary dictionaryFromGenomicsDB = ((VCFHeader)genomicsDBFeatureReader.getHeader()).getSequenceDictionary();
@@ -310,5 +432,16 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             Assert.assertEquals(dictionaryFromGenomicsDB, dictionaryFromInputGVCF, "Sequence dictionary from GenomicsDB does not match original sequence dictionary from input GVCF");
         }
 
+    }
+
+    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(final String workspace, final String reference) throws IOException {
+        return new GenomicsDBFeatureReader<>(
+                new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
+                new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
+                workspace,
+                GenomicsDBConstants.DEFAULT_ARRAY_NAME,
+                reference,
+                null,
+                new BCF2Codec());
     }
 }
