@@ -56,7 +56,7 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
         final File vcf1 = new File(PON_VCFS_DIR, "sample1.vcf");
         final File vcf2 = new File(PON_VCFS_DIR, "sample2.vcf");
 
-        final File vcfInputFile = createTempFile("vcfs", ".list");
+        final File vcfInputFile = createTempFile("vcfs", ".args");
         FileUtils.writeLines(vcfInputFile, Arrays.asList(vcf1.getAbsolutePath(), vcf2.getAbsolutePath()));
 
         final File outputVcf = createTempFile("pon", ".vcf");
