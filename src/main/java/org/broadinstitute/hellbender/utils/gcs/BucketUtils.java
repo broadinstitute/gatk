@@ -217,6 +217,19 @@ public final class BucketUtils {
     }
 
     /**
+     * A resource that deletes a file when closed.
+     * Useful to make sure temporary files get cleaned up by using try-with-resources statements.
+     */
+    public static class AutoDelete implements Closeable {
+        private String path;
+
+        public AutoDelete( final String path ) { this.path = path; }
+        public String getPath() { return path; }
+
+        @Override public void close() throws IOException { deleteFile(path); }
+    }
+
+    /**
      * Picks a random name, by putting some random letters between "prefix" and "suffix".
      *
      * @param stagingLocation The folder where you want the file to be. Must start with "gs://" or "hdfs://"

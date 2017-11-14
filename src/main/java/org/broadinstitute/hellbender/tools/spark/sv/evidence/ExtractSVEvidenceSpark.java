@@ -86,7 +86,8 @@ public final class ExtractSVEvidenceSpark extends GATKSparkTool {
     protected void runTool( final JavaSparkContext ctx ) {
         final JavaRDD<GATKRead> unfilteredReads = getUnfilteredReads();
         final SVReadFilter filter = new SVReadFilter(params);
-        final ReadMetadata readMetadata = buildMetadata(params, getHeaderForReads(), unfilteredReads, filter, logger);
+        final ReadMetadata readMetadata =
+                FindBreakpointEvidenceSpark.buildMetadata(params, getHeaderForReads(), unfilteredReads, filter, logger);
         final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
         final int allowedOverhang = params.allowedShortFragmentOverhang;
         final int minEvidenceMapQ = params.minEvidenceMapQ;
