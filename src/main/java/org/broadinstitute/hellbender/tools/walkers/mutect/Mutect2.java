@@ -220,6 +220,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected int defaultMaxProbPropagationDistance() { return 50; }
 
     @Override
+    protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
+
+    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return Mutect2Engine.makeStandardMutect2ReadFilters();
     }
