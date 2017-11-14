@@ -35,6 +35,9 @@ import java.util.List;
         programGroup = CopyNumberProgramGroup.class
 )
 public class CollectAllelicCountsSpark extends LocusWalkerSpark {
+
+    private static final long serialVersionUID = 1L;
+
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 
     @Argument(
