@@ -66,7 +66,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
     @Argument(
             doc = "Input annotated-interval file containing annotations for GC content in genomic intervals (output of AnnotateIntervals).  " +
                     "Intervals must be identical to and in the same order as those in the input read-count file.  " +
-                    "If a panel of normals containing annotations for GC content is provided, this input will be ignored.",
+                    "If a panel of normals is provided, this input will be ignored.",
             fullName = CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME,
             shortName = CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_SHORT_NAME,
             optional = true
@@ -115,8 +115,8 @@ public final class DenoiseReadCounts extends CommandLineProgram {
             try (final HDF5File hdf5PanelOfNormalsFile = new HDF5File(inputPanelOfNormalsFile)) {  //HDF5File implements AutoCloseable
                 final SVDReadCountPanelOfNormals panelOfNormals = HDF5SVDReadCountPanelOfNormals.read(hdf5PanelOfNormalsFile);
 
-                if (annotatedIntervalsFile != null && panelOfNormals.getOriginalIntervalGCContent() != null) {
-                    logger.warn("Panel of normals contains GC-content annotations; ignoring input GC-content annotations...");
+                if (annotatedIntervalsFile != null) {
+                    logger.warn("Panel of normals was provided; ignoring input GC-content annotations...");
                 }
 
                 //perform denoising and write result
