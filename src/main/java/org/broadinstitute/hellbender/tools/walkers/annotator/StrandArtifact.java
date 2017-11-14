@@ -7,9 +7,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import org.apache.commons.math3.distribution.BetaDistribution;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -21,6 +23,7 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
  *
  * Created by tsato on 4/19/17.
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filter (SA_POST_PROB, SA_MAP_AF)")
 public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
     public static final String POSTERIOR_PROBABILITIES_KEY = "SA_POST_PROB";
     public static final String MAP_ALLELE_FRACTIONS_KEY = "SA_MAP_AF";

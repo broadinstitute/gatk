@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTest;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -32,6 +34,7 @@ import java.util.OptionalDouble;
  * </ul>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific rank sum test of REF versus ALT base quality scores (AS_BaseQRankSum)")
 public class AS_BaseQualityRankSumTest extends AS_RankSumTest implements AS_StandardAnnotation {
 
     @Override
