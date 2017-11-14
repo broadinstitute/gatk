@@ -284,27 +284,23 @@ public class Main {
         final Set<Class<?>> classes = new LinkedHashSet<>();
         classes.addAll(simpleNameToClass.values());
 
-        if (args.length < 1) {
-            printUsage(System.err, classes, commandLineName);
+        if (args.length < 1 || args[0].equals("-h") || args[0].equals("--help")) {
+            printUsage(System.out, classes, commandLineName);
         } else {
-            if (args[0].equals("-h") || args[0].equals("--help")) {
-                printUsage(System.out, classes, commandLineName);
-            } else {
-                if (simpleNameToClass.containsKey(args[0])) {
-                    final Class<?> clazz = simpleNameToClass.get(args[0]);
-                    try {
-                        final Object commandLineProgram = clazz.newInstance();
-                        // wrap Picard CommandLinePrograms in a PicardCommandLineProgramExecutor
-                        return commandLineProgram instanceof picard.cmdline.CommandLineProgram ?
-                                new PicardCommandLineProgramExecutor((picard.cmdline.CommandLineProgram) commandLineProgram) :
-                                (CommandLineProgram) commandLineProgram;
-                    } catch (final InstantiationException | IllegalAccessException e) {
-                        throw new RuntimeException(e);
-                    }
+            if (simpleNameToClass.containsKey(args[0])) {
+                final Class<?> clazz = simpleNameToClass.get(args[0]);
+                try {
+                    final Object commandLineProgram = clazz.newInstance();
+                    // wrap Picard CommandLinePrograms in a PicardCommandLineProgramExecutor
+                    return commandLineProgram instanceof picard.cmdline.CommandLineProgram ?
+                            new PicardCommandLineProgramExecutor((picard.cmdline.CommandLineProgram) commandLineProgram) :
+                            (CommandLineProgram) commandLineProgram;
+                } catch (final InstantiationException | IllegalAccessException e) {
+                    throw new RuntimeException(e);
                 }
-                printUsage(System.err, classes, commandLineName);
-                throw new UserException(getUnknownCommandMessage(classes, args[0]));
             }
+            printUsage(System.err, classes, commandLineName);
+            throw new UserException(getUnknownCommandMessage(classes, args[0]));
         }
         return null;
     }
