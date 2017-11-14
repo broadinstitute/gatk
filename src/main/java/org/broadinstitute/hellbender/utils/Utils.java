@@ -8,7 +8,6 @@ import htsjdk.tribble.util.ParsingUtils;
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -20,7 +19,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -1172,7 +1170,6 @@ public final class Utils {
         return sorted.get(sorted.size() / 2);
     }
 
-
     /**
      * Splits a String using indexOf instead of regex to speed things up.
      * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
@@ -1265,6 +1262,35 @@ public final class Utils {
         // of certain concrete lists:
         while ( (!result.isEmpty()) && (result.get(result.size() - 1).isEmpty()) ) {
             result.remove(result.size() - 1);
+        }
+    }
+
+    /**
+     * Returns the number of elements in an iterable.
+     * @param elements the target iterable.
+     * @return 0 or greater.
+     */
+    public static int size(final Iterable<?> elements) {
+        Utils.nonNull(elements);
+        // Considerable speed-up for most {@link Collection} implementations:
+        if (elements instanceof Collection) {
+            return ((Collection)elements).size();
+        } else {
+            return (int) Utils.stream(elements).count();
+        }
+    }
+
+    /**
+     * Checks whether a iterable has any elements.
+     * @param elements the target iterable.
+     * @return {@code true} iff {@code elements} has elements.
+     */
+    public static boolean isEmpty(final Iterable<?> elements) {
+        Utils.nonNull(elements);
+        if (elements instanceof Collection) {
+            return ((Collection)elements).isEmpty();
+        } else {
+            return !elements.iterator().hasNext();
         }
     }
 }

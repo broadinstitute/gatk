@@ -1163,7 +1163,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
                 double secondBest = Double.NEGATIVE_INFINITY;
                 for (int a = 0; a < numberOfAlleles; a++) {
                     final double value = valuesBySampleIndex[s][a][r];
-                    if (value > best) {
+                      if (value > best) {
                         secondBest = best;
                         best = value;
                     } else if (value > secondBest) {

@@ -236,9 +236,9 @@ public final class SVContext extends VariantContext {
     private List<SimpleInterval> calculateReferenceIntervals(final int padding, final SAMSequenceDictionary dictionary,
                                                              final List<AlignedContig> contigs) {
         final List<SimpleInterval> breakPoints = getBreakPointIntervals(padding, dictionary, true);
-        SVIntervalLocator locator = new SVIntervalLocator(dictionary);
+        SVIntervalLocator locator = SVIntervalLocator.of(dictionary);
         final SVIntervalTree<SVInterval> tree = new SVIntervalTree<>();
-        Stream.concat(breakPoints.stream().map(si -> locator.toSVInterval(si)),
+        Stream.concat(breakPoints.stream().map(locator::toSVInterval),
                 contigs.stream().flatMap(ctg -> ctg.alignmentIntervals.stream())
                         .map(ai -> locator.toSVInterval(ai.referenceSpan, padding + 1)))
                 .forEach(svIntervalPlus -> {
@@ -466,5 +466,15 @@ public final class SVContext extends VariantContext {
 
     public Locatable getStopPositionInterval() {
         return new SimpleInterval(getContig(), getEnd(), getEnd());
+    }
+
+    @Override
+    public int hashCode() {
+        return getUniqueID().hashCode();
+    }
+
+    @Override
+    public boolean equals(final Object other) {
+        return other != null && other instanceof SVContext && ((SVContext) other).getUniqueID().equals(getUniqueID());
     }
 }

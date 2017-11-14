@@ -248,15 +248,15 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
      * @return a 2-D list, where in the case when multiple configurations are equally top-scored, all such configurations are picked up
      */
     @VisibleForTesting
-    static List<List<AlignmentInterval>> pickBestConfigurations(final AlignedContig alignedContig,
+    public static List<List<AlignmentInterval>> pickBestConfigurations(final AlignedContig alignedContig,
                                                                 final Set<String> canonicalChromosomes,
                                                                 final Double scoreDiffTolerance) {
-        return pickBestConfigurations(alignedContig.contigName, alignedContig.alignmentIntervals, canonicalChromosomes);
+        return pickBestConfigurations(alignedContig.contigName, alignedContig.alignmentIntervals, canonicalChromosomes, scoreDiffTolerance);
     }
 
     public static List<List<AlignmentInterval>> pickBestConfigurations(final String contigName,
                                                                        final List<AlignmentInterval> intervals,
-        final Set<String> canonicalChromosomes) {
+        final Set<String> canonicalChromosomes, final Double scoreDiffTolerance) {
 
 
             // group 1: get max aligner score of mappings to canonical chromosomes and speed up in case of too many mappings

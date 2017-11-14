@@ -40,7 +40,8 @@ EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                    "-Dsamjdk.compression_level=2 "
                    "-Dspark.executor.cores=1 " \
                    "-Dspark.executor.instances=1 " \
-                   "-Dspark.dynamicAllocation.enabled=false "
+                   "-Dspark.dynamicAllocation.enabled=false " \
+                   "-Dsnappy.disable=true "
 
 PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
                   "-Dsamjdk.use_async_io_write_samtools=true",
@@ -48,7 +49,8 @@ PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
                   "-Dsamjdk.compression_level=2",
                   "-Dspark.executor.cores=1",
                   "-Dspark.executor.instances=1",
-                  "-Dspark.dynamicAllocation.enabled=false"]
+                  "-Dspark.dynamicAllocation.enabled=false",
+                  "-Dsnappy.disable=true"]
 
 DEFAULT_SPARK_ARGS_PREFIX = '--conf'
 DEFAULT_SPARK_ARGS = {
@@ -351,13 +353,13 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
 
         dataprocargs = convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs)
 
-        sys.stderr.write("\nReplacing spark-submit style args with dataproc style args\n\n" + " ".join(sparkArgs) +" -> " + " ".join(dataprocargs) +"\n" )
-
+        sys.stderr.write("\nReplacing spark-submit style args with dataproc style args\n\n" + "".join(sparkArgs) +" -> " + "".join(dataprocargs) +"\n" )
         cmd = [ gcloudCmd, "dataproc", "jobs", "submit", "spark"] \
               + dataprocargs \
               + ["--jar", jarPath] \
               + ["--"] + gatkArgs + ["--spark-master", "yarn"]
         try:
+            sys.stderr.write("BAM:\n" + "<====>".join(cmd) + "\n")
             runCommand(cmd, dryrun)
         except OSError:
             raise GATKLaunchException("Tried to run gcloud but failed.\nMake sure gcloud is available in your path and you are properly authenticated")
@@ -423,6 +425,7 @@ def getSparkMasterSpecified(args):
 def convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs):
     replacements = {"--driver-memory": "spark.driver.memory",
                     "--driver-cores": "spark.driver.cores",
+                    "--driver-java-options" : "spark.driver.extraJavaOptions",
                     "--executor-memory": "spark.executor.memory",
                     "--executor-cores": "spark.executor.cores",
                     "--num-executors": "spark.executor.instances" }
@@ -462,14 +465,13 @@ def convertSparkSubmitToDataprocArgs(sparkConfArgs, sparkArgs):
         raise GATKLaunchException("Found an argument: " + arg + "with no matching value.")
 
     if not len(properties) is 0:
-        dataprocargs.append("--properties")
-        dataprocargs.append(",".join(properties))
+        dataprocargs.append("--properties=^><^" + "><".join(properties))
 
     if not len(filesToAdd) is 0:
         dataprocargs.append("--files")
         dataprocargs.append(",".join(filesToAdd))
 
-    return dataprocargs
+    return dataprocargs #map(str.strip, dataprocargs)
 
 
 if __name__ == "__main__":

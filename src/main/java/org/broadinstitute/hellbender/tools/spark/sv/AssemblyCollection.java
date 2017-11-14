@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.TemplateFragmentOrdinal;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import java.io.File;
@@ -25,23 +26,13 @@ public class AssemblyCollection implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private final Path fastqDir;
+    private final String fastqDir;
     private final String fastqFileFormat;
 
     private final WeakHashMap<Integer, List<Template>> templatesById;
 
     public AssemblyCollection(final String fastqDir, final String fastqFileFormat) {
-        Utils.nonNull(fastqDir);
-        URI fastqDirURI = URI.create(fastqDir);
-        if (fastqDirURI.getScheme() == null) {
-            fastqDirURI = new File(fastqDir).toURI();
-        }
-        try {
-            this.fastqDir = Paths.get(fastqDirURI);
-        } catch (final RuntimeException ex) {
-            fastqDirURI.toString();
-            throw ex;
-        }
+        this.fastqDir = Utils.nonNull(fastqDir);
         this.fastqFileFormat = Utils.nonNull(fastqFileFormat);
         this.templatesById = new WeakHashMap<>(10);
     }
@@ -56,9 +47,9 @@ public class AssemblyCollection implements Serializable {
 
     private List<Template> readTemplates(final int assemblyNumber) {
         Utils.nonNull(assemblyNumber);
-        final Path path = fastqDir.resolve(String.format(fastqFileFormat, assemblyNumber));
+        final String path = fastqDir + "/" + String.format(fastqFileFormat, assemblyNumber);
         final List<Template> result = new ArrayList<>();
-        if (!Files.exists(path)) {
+        if (!BucketUtils.fileExists(path)) {
             throw new UserException.CouldNotReadInput(path, "missing input file for assembly number " + assemblyNumber);
         } else {
             final List<SVFastqUtils.FastqRead> fastqReads = SVFastqUtils.readFastqFile(path.toString());

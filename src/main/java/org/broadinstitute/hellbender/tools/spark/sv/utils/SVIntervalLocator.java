@@ -1,6 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SerializableIntFunction;
@@ -10,23 +15,35 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * Created by valentin on 10/3/17.
  */
-public final class SVIntervalLocator implements Serializable {
+@DefaultSerializer(SVIntervalLocator.Serializer.class)
+public final class SVIntervalLocator {
 
     private static final long serialVersionUID = 1L;
 
-    private final SerializableToIntFunction<String> contigToIndex;
-    private final SerializableIntFunction<String> indexToContig;
+    private final List<String> contigByIndex;
+    private final Map<String, Integer> indexByContig;
 
-    public SVIntervalLocator(final SerializableToIntFunction<String> contigToIndex, final SerializableIntFunction<String> indexToContig) {
-        this.contigToIndex = Utils.nonNull(contigToIndex);
-        this.indexToContig = Utils.nonNull(indexToContig);
+
+
+    private SVIntervalLocator(final List<String> contigByIndex) {
+        this.contigByIndex = contigByIndex;
+        final int numberOfContigs = contigByIndex.size();
+        indexByContig = new HashMap<>(numberOfContigs);
+        for (int i = 0; i < numberOfContigs; i++) {
+            indexByContig.put(contigByIndex.get(i), i);
+        }
     }
 
     /**
@@ -35,9 +52,10 @@ public final class SVIntervalLocator implements Serializable {
      *  This locator will resolve the contig index using {@link SAMSequenceDictionary#getSequenceIndex(String)}.
      * </p>
      */
-    public SVIntervalLocator(final SAMSequenceDictionary dictionary) {
-        this(Utils.nonNull(dictionary, "the input dictionary cannot be null")::getSequenceIndex,
-                idx -> dictionary.getSequence(idx).getSequenceName());
+    public static SVIntervalLocator of(final SAMSequenceDictionary dictionary) {
+        return new SVIntervalLocator(Utils.nonNull(dictionary, "the input dictionary cannot be null")
+                .getSequences().stream()
+                .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList()));
     }
 
     /**
@@ -52,7 +70,8 @@ public final class SVIntervalLocator implements Serializable {
     public SVInterval toSVInterval(final Locatable loc, final int padding) {
         Utils.nonNull(loc);
         ParamUtils.isPositiveOrZero(padding, "padding must 0 or positive");
-        final int index = contigToIndex.applyAsInt(loc.getContig());
+        final Integer index = indexByContig.get(loc.getContig());
+        Utils.nonNull(index, "the input location has an unknown contig: "+ loc.getContig());
         final int start = Math.max(1, loc.getStart() - padding);
         final int end = loc.getEnd() + 1 + padding;
         return new SVInterval(index, start, end);
@@ -75,6 +94,30 @@ public final class SVIntervalLocator implements Serializable {
 
     public SimpleInterval toSimpleInterval(final SVInterval svInterval) {
         Utils.nonNull(svInterval);
-        return new SimpleInterval(indexToContig.apply(svInterval.getContig()), svInterval.getStart(), svInterval.getEnd() - 1);
+        final int index = svInterval.getContig();
+        Utils.validateArg(index >= 0 && index < contigByIndex.size(), "the input sv-interval index points to unexistent index");
+        return new SimpleInterval(contigByIndex.get(svInterval.getContig()), svInterval.getStart(), svInterval.getEnd() - 1);
+    }
+
+    public static class Serializer extends com.esotericsoftware.kryo.Serializer<SVIntervalLocator> {
+
+        @Override
+        public void write(final Kryo kryo, final Output output, final SVIntervalLocator object) {
+            final int numberOfContigs = object.contigByIndex.size();
+            output.writeInt(numberOfContigs);
+            for (int i = 0; i < numberOfContigs; i++) {
+                output.writeString(object.contigByIndex.get(i));
+            }
+        }
+
+        @Override
+        public SVIntervalLocator read(Kryo kryo, Input input, Class<SVIntervalLocator> type) {
+            final int numberOfContigs = input.readInt();
+            final List<String> contigsByIndex = new ArrayList<>(numberOfContigs);
+            for (int i = 0; i < numberOfContigs; i++) {
+                contigsByIndex.add(input.readString());
+            }
+            return new SVIntervalLocator(contigsByIndex);
+        }
     }
 }

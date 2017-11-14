@@ -47,6 +47,10 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public CouldNotReadInput(final Path path, final String message) {
+            this(path.toString(), message);
+        }
+
+        public CouldNotReadInput(final String path,final String message) {
             super(String.format("Couldn't read from '%s': %s", path, message));
         }
     }

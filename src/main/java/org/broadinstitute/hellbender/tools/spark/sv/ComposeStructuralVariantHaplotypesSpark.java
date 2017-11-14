@@ -231,7 +231,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 t -> t._2()._1().stream().map(readName -> new Tuple2<>(readName, (List<String>) new ArrayList<>(Collections.singleton(t._1().getUniqueID())))).iterator())
                 .reduceByKey((a, b) -> {a.addAll(b); return a; }).collectAsMap();
 
-        final SVIntervalLocator locator = new SVIntervalLocator(sequenceDictionary);
+        final SVIntervalLocator locator = SVIntervalLocator.of(sequenceDictionary);
         final SVIntervalTree<ShardBoundary> shardTree = wholeGenomeIntervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardSize, 0, sequenceDictionary).stream())
                 .collect(locator.toTreeCollector(Function.identity()));
@@ -664,7 +664,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                         .collect(Collectors.toList());
                 final AlignedContig allCombos = new AlignedContig(input.contigName, input.contigSequence, intervals, false);
                 final List<AlignmentInterval> bestComboIntervals =
-                        FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(allCombos, haplotypeNameSet).get(0);
+                        FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(allCombos, haplotypeNameSet, 0.0).get(0);
                 final AlignedContig bestCombo = new AlignedContig(input.contigName, input.contigSequence,
                         bestComboIntervals, false);
                 result.add(bestCombo);

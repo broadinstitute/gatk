@@ -127,45 +127,50 @@ public final class ShardPartitioner<T extends Locatable> extends Partitioner {
      * @param numberOfPartitions number of partitions for this partitioner.
      * @param <L> the shard type.
      */
-    public <L extends Locatable> ShardPartitioner(final Class<T> clazz, final Collection<L> shards, final int numberOfPartitions) {
+    public <L extends Locatable> ShardPartitioner(final Class<T> clazz, final Iterable<L> shards, final int numberOfPartitions) {
         Utils.nonNull(clazz);
         Utils.nonNull(shards);
         this.clazz = clazz;
-        ParamUtils.isNotEmpty(shards, "shard list");
+        final int numberOfShards = Utils.size(shards);
+        ParamUtils.isPositive(numberOfShards, "input shard iterable must not be empty");
         ParamUtils.isPositive(numberOfPartitions, "the number of input partitions must be 1 or greater");
-        final int numberOfShardsPerPartition = (int) Math.ceil(shards.size() / (float) numberOfPartitions);
+        final int numberOfShardsPerPartition = numberOfShards <= numberOfPartitions ? 1 : Math.round(numberOfShards / (float) numberOfPartitions);
         final Iterator<L> shardIterator = shards.iterator();
         partitions = new SVIntervalTree<>();
-
-        String currentContig = null;
-        int leftInPartition = numberOfShardsPerPartition; // number of shards left to be included to complete the current
+        L previousLocatable = shardIterator.next();
+        String currentContig = previousLocatable.getContig();
+        int leftInPartition = numberOfShardsPerPartition - 1; // number of shards left to be included to complete the current
                                                           // partition.
         int currentPartition = 0; // current partition index; first one is 0.
-        int currentContigIndex = -1; // current contig index; before the first one is -1.
-        int currentPartitionStart = 0; // current partition- start positions set to and open start.
-        L previousLocatable = null;
+        int currentContigIndex = 0; // current contig index; before the first one is -1.
+        int currentPartitionStart = 1; // current partition- start positions set to and open start.
+        contigToIndex.put(currentContig, currentContigIndex);
         while (shardIterator.hasNext()) {
             final L locatable = shardIterator.next();
             if (locatable.getContig().equals(currentContig)) {
                 if (previousLocatable.getStart() > locatable.getStart() || previousLocatable.getEnd() > locatable.getEnd()) {
                     throw new IllegalArgumentException("the input shard collection contains elements out of order or early elements reach beyond later elements");
                 }
-                if (leftInPartition == 0) {
-                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, locatable.getStart()), currentPartition);
-                    currentPartitionStart = locatable.getStart();
-                }
             } else {
-                if (currentContig != null) {
-                    partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
-                }
+                partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, Integer.MAX_VALUE), currentPartition);
                 currentContigIndex++;
                 currentPartitionStart = 1;
                 currentContig = locatable.getContig();
                 contigToIndex.put(currentContig, currentContigIndex);
+                if (leftInPartition == 0) { // it also happens to start a new partition:
+                    leftInPartition = numberOfShardsPerPartition;
+                    currentPartition++;
+                    currentPartitionStart = 1;
+                }
             }
             if (leftInPartition-- == 0) {
-                leftInPartition = numberOfShardsPerPartition;
+                partitions.put(new SVInterval(currentContigIndex, currentPartitionStart, locatable.getStart()), currentPartition);
+                currentPartitionStart = locatable.getStart();
+                leftInPartition = numberOfShardsPerPartition - 1;
                 currentPartition++;
+            }
+            if (currentPartition >= numberOfPartitions) { // make sure we don't overflow the partition number in case the last partition is the bigger one.
+                currentPartition--;
             }
             previousLocatable = locatable;
         }

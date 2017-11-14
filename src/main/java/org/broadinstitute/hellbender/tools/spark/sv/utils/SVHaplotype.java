@@ -80,7 +80,7 @@ public interface SVHaplotype {
         final List<AlignedContig> result = new ArrayList<>(intervals.size());
         final Set<String> haplotypeName = Collections.singleton(getName());
         for (int i = 0; i < intervals.size(); i++) {
-            final List<List<AlignmentInterval>> bestCombos = FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(names.get(i), intervals.get(i), haplotypeName);
+            final List<List<AlignmentInterval>> bestCombos = FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(names.get(i), intervals.get(i), haplotypeName, 0.0);
             final AlignedContig alignedContig = new AlignedContig(names.get(i), bases.get(i), bestCombos.get(0), bestCombos.size() > 1);
             result.add(alignedContig);
         }
