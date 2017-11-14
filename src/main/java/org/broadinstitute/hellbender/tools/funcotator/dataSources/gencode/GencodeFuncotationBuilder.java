@@ -227,8 +227,6 @@ public class GencodeFuncotationBuilder {
         return this;
     }
 
-
-
     /**
      * Set the CDNA Change {@link String} in the {@link GencodeFuncotation}.
      * @param cDnaChange The {@link String} containing the CDNA Change information for the {@link GencodeFuncotation}.
