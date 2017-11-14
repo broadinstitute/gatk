@@ -54,22 +54,20 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public int minCoherentEvidenceWeight = 7;
 
         @Argument(doc = "Minimum number of localizing kmers in a valid interval.", fullName="minKmersPerInterval")
-        public int minKmersPerInterval = 20;
+        public int minKmersPerInterval = 5;
 
-        @Argument(doc = "KmerCleaner maximum number of intervals for a localizing kmer.", fullName = "cleanerMaxIntervals")
+        @Argument(doc = "KmerCleaner maximum number of intervals for a localizing kmer."+
+                " If a kmer occurs in too many intervals, it isn't sufficiently local.", fullName = "cleanerMaxIntervals")
         public int cleanerMaxIntervals = 3;
 
-        @Argument(doc = "KmerCleaner minimum kmer count.", fullName = "cleanerMinKmerCount")
-        public int cleanerMinKmerCount = 3;
+        @Argument(doc = "KmerCleaner minimum kmer count for a localizing kmer."+
+                "  If we see it less often than this many times, we're guessing it's erroneous.",
+                fullName = "cleanerMinKmerCount")
+        public int cleanerMinKmerCount = 4;
 
-        @Argument(doc = "KmerCleaner maximum kmer count.", fullName = "cleanerMaxKmerCount")
-        public int cleanerMaxKmerCount = 125;
-
-        @Argument(doc = "KmerCleaner unique error-free kmers per partition", fullName = "cleanerKmersPerPartitionGuess")
-        public int cleanerKmersPerPartitionGuess = 600000;
-
-        @Argument(doc = "Maximum number of templates containing an assembly kmer.", fullName = "maxQNamesPerKmer")
-        public int maxQNamesPerKmer = 500;
+        @Argument(doc = "KmerCleaner maximum copy number (not count, but copy number) for a kmer."+
+                " Kmers observed too frequently are probably mismapped or ubiquitous.", fullName = "cleanerMaxCopyNumber")
+        public int cleanerMaxCopyNumber = 4;
 
         @Argument(doc = "Guess at the ratio of reads in the final assembly to the number reads mapped to the interval.",
                 fullName = "assemblyToMappedSizeRatioGuess")
@@ -95,6 +93,11 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Adapter sequence.", fullName = "adapterSequence", optional = true)
         public String adapterSequence;
+
+        // ---------- options -----------
+
+        @Argument(doc = "write gfa representation of assemblies in fastqDir", fullName = "writeGFAs", optional = true)
+        public boolean writeGFAs;
 
         // --------- locations ----------
 
@@ -127,9 +130,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "output dir for assembled fastqs", fullName = "fastqDir", optional = true)
         public String fastqDir;
-
-        @Argument(doc = "output dir for assemblies", fullName = "gfaDir", optional = true)
-        public String gfaDir;
 
         @Argument(doc = "output file for non-assembled breakpoints in bedpe format",
                 fullName = "targetLinkFile", optional = true)

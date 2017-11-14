@@ -22,7 +22,7 @@ import java.util.List;
 public class BreakpointEvidenceTest extends GATKBaseTest {
     private final static LibraryStatistics stats =
             new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
-                    60000000000L, 600000000L, 3000000000L);
+                    60000000000L, 600000000L, 1200000000000L, 3000000000L);
 
     @Test(groups = "sv")
     void restOfFragmentSizeForwardReadTest() {

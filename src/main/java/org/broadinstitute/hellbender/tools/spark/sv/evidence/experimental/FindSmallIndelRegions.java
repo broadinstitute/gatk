@@ -5,6 +5,8 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMFileHeader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -70,8 +72,9 @@ public final class FindSmallIndelRegions extends GATKSparkTool {
         final Set<Integer> crossContigIgnoreSet = Collections.emptySet();
         final int maxTrackedFragmentLength = params.maxTrackedFragmentLength;
         final SVReadFilter filter = new SVReadFilter(params);
+        final Logger logger = LogManager.getLogger(FindSmallIndelRegions.class);
         final ReadMetadata readMetadata =
-                new ReadMetadata(crossContigIgnoreSet, header, maxTrackedFragmentLength, allReads, filter);
+                new ReadMetadata(crossContigIgnoreSet, header, maxTrackedFragmentLength, allReads, filter, logger);
         if ( params.metadataFile != null ) {
             ReadMetadata.writeMetadata(readMetadata, params.metadataFile);
         }

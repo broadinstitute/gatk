@@ -34,7 +34,7 @@ public class KSWindowFinderUnitTest extends GATKBaseTest {
         final SVReadFilter filter = new SVReadFilter(params);
         final LibraryStatistics stats =
                 new LibraryStatistics(IntHistogramTest.genLogNormalSample(400, 175, 10000).getCDF(),
-                        60000000000L, 600000000L, 3000000000L);
+                        60000000000L, 600000000L, 1200000000000L, 3000000000L);
         final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
         crossContigIgnoreSet.add(2);
         final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, stats, null, 4L, 4L, 1);

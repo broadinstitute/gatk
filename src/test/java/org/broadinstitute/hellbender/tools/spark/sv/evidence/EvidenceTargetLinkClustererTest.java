@@ -25,12 +25,12 @@ public class EvidenceTargetLinkClustererTest extends GATKBaseTest {
     // todo: simplify; this was copied from BreakpointDensityFilterTest and we don't need all this prob
     private static ReadMetadata initMetadata() {
         final ReadMetadata.PartitionBounds[] partitionBounds = new ReadMetadata.PartitionBounds[3];
-        partitionBounds[0] = new ReadMetadata.PartitionBounds(0, 1, 0, 10000);
-        partitionBounds[1] = new ReadMetadata.PartitionBounds(0, 10001, 0, 20000);
-        partitionBounds[2] = new ReadMetadata.PartitionBounds(0, 20001, 0, 30000);
+        partitionBounds[0] = new ReadMetadata.PartitionBounds(0, 1, 0, 10000, 9999);
+        partitionBounds[1] = new ReadMetadata.PartitionBounds(0, 10001, 0, 20000, 9999);
+        partitionBounds[2] = new ReadMetadata.PartitionBounds(0, 20001, 0, 30000, 9999);
         return new ReadMetadata(Collections.emptySet(), artificialSamHeader,
                 new LibraryStatistics(new IntHistogram.CDF(IntHistogramTest.genLogNormalSample(350, 40, 10000)),
-                        60000000000L, 600000000L, 3000000000L),
+                        60000000000L, 600000000L, 1200000000000L, 3000000000L),
                 partitionBounds, 100, 10, 30);
     }
 
@@ -70,7 +70,7 @@ public class EvidenceTargetLinkClustererTest extends GATKBaseTest {
                 false),
                 0, 2, Collections.singleton("bar"), new HashSet<>()));
 
-        List<Object[]> tests = new ArrayList<>();
+        final List<Object[]> tests = new ArrayList<>();
 
         tests.add(new Object[] {evidenceList.iterator(), linkList.iterator()});
 
@@ -79,14 +79,15 @@ public class EvidenceTargetLinkClustererTest extends GATKBaseTest {
 
 
     @Test(dataProvider = "evidence", groups = "sv")
-    public void testClusterEvidence(Iterator<BreakpointEvidence> evidenceIterator, Iterator<EvidenceTargetLink> expectedResults) throws Exception {
-        EvidenceTargetLinkClusterer clusterer = new EvidenceTargetLinkClusterer(readMetadata, 0);
+    public void testClusterEvidence( final Iterator<BreakpointEvidence> evidenceIterator,
+                                     final Iterator<EvidenceTargetLink> expectedResults) throws Exception {
+        final EvidenceTargetLinkClusterer clusterer = new EvidenceTargetLinkClusterer(readMetadata, 0);
         final Iterator<EvidenceTargetLink> results = clusterer.cluster(evidenceIterator);
 
         while (expectedResults.hasNext()) {
-            EvidenceTargetLink nextExpected =  expectedResults.next();
+            final EvidenceTargetLink nextExpected =  expectedResults.next();
             assertTrue(results.hasNext());
-            EvidenceTargetLink nextActual =  results.next();
+            final EvidenceTargetLink nextActual =  results.next();
             assertEquals(nextActual, nextExpected);
         }
         assertTrue(!results.hasNext());
