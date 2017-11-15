@@ -21,7 +21,7 @@ public class AlignmentPenalties implements Serializable {
     public static final String MAXIMUM_TEMPLATE_SCORE_DIFF_FULL_NAME = "maximumTemplateScoreDifference";
     public static final String MAXIMUM_TEMPLATE_SCORE_DIFF_SHORT_NAME = "mtsd";
 
-    public static final double DEFAULT_UNMAPPED_FRAGMENT_PENALTY = 20;
+    public static final double DEFAULT_UNMAPPED_FRAGMENT_PENALTY = 60;
     public static final double DEFAULT_IMPROPER_PAIR_PENALTY = 20;
     public static final double MAXIMUM_LIKELIHOOD_DIFFERENCE_CAP_DEFAULT = 50;
 

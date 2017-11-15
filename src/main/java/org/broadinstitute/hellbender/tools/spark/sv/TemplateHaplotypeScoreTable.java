@@ -24,7 +24,9 @@ public class TemplateHaplotypeScoreTable implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    public final TemplateMappingInformation[][] mappingInfo;
+    private final TemplateMappingInformation[][] mappingInfo;
+
+    public final double[][] bestMappingScorePerFragment;
 
     private final double[][] values;
 
@@ -67,6 +69,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         this.haplotypes = CollectionUtils.collect(haplotypes, t -> t, new ArrayList<>());
         values = new double[this.haplotypes.size()][this.templates.size()];
         mappingInfo = new TemplateMappingInformation[this.haplotypes.size()][this.templates.size()];
+        bestMappingScorePerFragment = new double[this.templates.size()][2];
         this.templateIndex = composeTemplateIndex(this.templates);
     }
 
@@ -205,7 +208,22 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         return values[Utils.validIndex(i, values.length)].clone();
     }
 
-    public OptionalDouble getBestAlignmentScore(final int templateIndex, final int fragmentIndex) {
+    public void calculateBestMappingScores() {
+        for (int i = 0; i < templates.size(); i++) {
+            for (int j = 0; j < 2; j++) {
+                double best = Double.NEGATIVE_INFINITY;
+                for (int k = 0; k < haplotypes.size(); k++) {
+                    final OptionalDouble score = (j == 0 ? (mappingInfo[k][i].firstAlignmentScore) : (mappingInfo[k][i].secondAlignmentScore));
+                    if (score.isPresent() && score.getAsDouble() > best) {
+                        best = score.getAsDouble();
+                    }
+                }
+                bestMappingScorePerFragment[i][j] = best;
+            }
+        }
+    }
+
+    public OptionalDouble getWorstAlignmentScore(final int templateIndex, final int fragmentIndex) {
         if (fragmentIndex != 0 && fragmentIndex != 1) {
             throw new IllegalArgumentException("currently only two fragments are supported");
         }

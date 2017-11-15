@@ -236,6 +236,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final VCFHeader header = composeOutputHeader();
         header.addMetaDataLine(new VCFInfoHeaderLine("READ_COUNT", 1, VCFHeaderLineType.Integer, "number of reads"));
         header.addMetaDataLine(new VCFInfoHeaderLine("CONTIG_COUNT", 1, VCFHeaderLineType.Integer, "number of contigs"));
+        header.addMetaDataLine(new VCFInfoHeaderLine("REF_COVERED_RANGE", 2, VCFHeaderLineType.Integer, "ref haplotype offset covered range"));
+        header.addMetaDataLine(new VCFInfoHeaderLine("REF_COVERED_RATIO", 1, VCFHeaderLineType.Float, "ref covered effective length with total length ratio"));
+        header.addMetaDataLine(new VCFInfoHeaderLine("ALT_REF_COVERED_SIZE_RATIO", 1, VCFHeaderLineType.Float, "alt/ref covered length ratio"));
         SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
                 referenceArguments.getReferenceFileName(), calls, header, logger);
         tearDown(ctx);
@@ -304,7 +307,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
                 final List<Template> templates;
                 if (allTemplates.size() <= 5000) {
-                    templates = allTemplates;
+                   templates = allTemplates;
                 } else {
                     templates = new ArrayList<>(5000);
                     final Random rdn = new Random(variant._1().getUniqueID().hashCode());
@@ -369,40 +372,72 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
              //    resolve the missing mapping scores to the worst seen + a penalty.
                 for (int t = 0; t < templates.size(); t++) {
 
-                    final OptionalDouble bestFirstAlignmentScore = scoreTable.getBestAlignmentScore(t, 0);
+                    final OptionalDouble bestFirstAlignmentScore = scoreTable.getWorstAlignmentScore(t, 0);
                     if (bestFirstAlignmentScore.isPresent()) {
                         final double missingAlignmentScore = bestFirstAlignmentScore.getAsDouble() - 0.1 * penalties.unmappedFragmentPenalty;
                         scoreTable.applyMissingAlignmentScore(t, 0, missingAlignmentScore);
                     }
-                    final OptionalDouble bestSecondAlignmentScore = scoreTable.getBestAlignmentScore(t, 1);
+                    final OptionalDouble bestSecondAlignmentScore = scoreTable.getWorstAlignmentScore(t, 1);
                     if (bestSecondAlignmentScore.isPresent()) {
                         final double missingAlignmentScore = bestSecondAlignmentScore.getAsDouble() - 0.1 * penalties.unmappedFragmentPenalty;
                         scoreTable.applyMissingAlignmentScore(t, 1, missingAlignmentScore);
                     }
                 }
+                scoreTable.calculateBestMappingScores();
                 final ReadLikelihoods<GenotypingAllele> likelihoods = new ReadLikelihoods<>(SampleList.singletonSampleList("sample"),
                         new IndexedAlleleList<>(refAllele, altAllele), Collections.singletonMap("sample", reads));
+                final ReadLikelihoods<GenotypingAllele> likelihoodsFirst = new ReadLikelihoods<>(SampleList.singletonSampleList("sample"),
+                                new IndexedAlleleList<>(refAllele, altAllele), Collections.singletonMap("sample", reads));
+                final ReadLikelihoods<GenotypingAllele> likelihoodsSecond = new ReadLikelihoods<>(SampleList.singletonSampleList("sample"),
+                                new IndexedAlleleList<>(refAllele, altAllele), Collections.singletonMap("sample", reads));
+
                 final LikelihoodMatrix<GenotypingAllele> sampleLikelihoods = likelihoods.sampleMatrix(0);
-                sampleLikelihoods.fill(Double.NEGATIVE_INFINITY);
+                        final LikelihoodMatrix<GenotypingAllele> sampleLikelihoodsFirst = likelihoodsFirst.sampleMatrix(0);
+                        final LikelihoodMatrix<GenotypingAllele> sampleLikelihoodsSecond = likelihoodsSecond.sampleMatrix(0);
+
+                        sampleLikelihoods.fill(Double.NEGATIVE_INFINITY);
                 final int refIdx = likelihoods.indexOfAllele(refAllele);
                 final int altIdx = likelihoods.indexOfAllele(altAllele);
                 final List<SVContig> contigs = haplotypes.stream().filter(SVHaplotype::isContig).map(SVContig.class::cast)
                         .collect(Collectors.toList());
-
+                for (int t = 0; t < templates.size(); t++) {
+                    sampleLikelihoodsFirst.set(refIdx, t,
+                            scoreTable.getMappingInfo(refHaplotypeIndex, t).firstAlignmentScore.orElse(0));
+                    sampleLikelihoodsSecond.set(refIdx, t,
+                            scoreTable.getMappingInfo(refHaplotypeIndex, t).secondAlignmentScore.orElse(0));
+                    sampleLikelihoodsFirst.set(altIdx, t,
+                            scoreTable.getMappingInfo(altHaplotypeIndex, t).firstAlignmentScore.orElse(0));
+                    sampleLikelihoodsSecond.set(altIdx, t,
+                            scoreTable.getMappingInfo(altHaplotypeIndex, t).secondAlignmentScore.orElse(0));
+                }
                 for (int h = 0; h < contigs.size(); h++) {
                     final SVContig contig = contigs.get(h);
+                    final int mappingInfoIndex = haplotypes.indexOf(contig);
                     final double haplotypeAltScore = contig.getAlternativeScore();
                     final double haplotypeRefScore = contig.getReferenceScore();
                     for (int t = 0; t < templates.size(); t++) {
-                        final boolean noAlignment = !scoreTable.getMappingInfo(h, t).firstAlignmentScore.isPresent()
-                                && !scoreTable.getMappingInfo(h, t).secondAlignmentScore.isPresent();
+                        final boolean noAlignment = !scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.isPresent()
+                                && !scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.isPresent();
                         if (noAlignment) continue;
-                        final double firstMappingScore = scoreTable.getMappingInfo(h, t).firstAlignmentScore.orElse(0.0);
-                        final double secondMappingScore = scoreTable.getMappingInfo(h, t).secondAlignmentScore.orElse(0.0);
-                        sampleLikelihoods.set(refIdx, t,
-                                    Math.max(firstMappingScore + secondMappingScore + haplotypeRefScore, sampleLikelihoods.get(refIdx, t)));
-                        sampleLikelihoods.set(altIdx, t,
-                                    Math.max(firstMappingScore + secondMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t)));
+                        final double firstMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.orElse(0.0);
+                        final double secondMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.orElse(0.0);
+                        if (firstMappingScore == scoreTable.bestMappingScorePerFragment[t][0]) {
+                            sampleLikelihoodsFirst.set(refIdx, t,
+                                    Math.max(firstMappingScore + haplotypeRefScore, sampleLikelihoods.get(refIdx, t)));
+                            sampleLikelihoodsFirst.set(altIdx, t,
+                                    Math.max(firstMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t)));
+                        }
+                        if (secondMappingScore == scoreTable.bestMappingScorePerFragment[t][1]) {
+                            sampleLikelihoodsSecond.set(refIdx, t,
+                                    Math.max(secondMappingScore + haplotypeRefScore, sampleLikelihoods.get(refIdx, t)));
+                            sampleLikelihoodsSecond.set(altIdx, t,
+                                    Math.max(secondMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t)));
+                        }
+                    }
+                }
+                for (int i = 0; i < sampleLikelihoods.numberOfAlleles(); i++) {
+                    for (int j = 0; j < sampleLikelihoods.numberOfReads(); j++) {
+                        sampleLikelihoods.set(i, j, sampleLikelihoodsFirst.get(i, j) + sampleLikelihoodsSecond.get(i, j));
                     }
                 }
                 for (int t = 0; t < templates.size(); t++) {
@@ -419,10 +454,36 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
                     }
                 }
+                int minRefPos = ref.getLength();
+                int maxRefPos = 0;
+                for (int t = 0; t < scoreTable.numberOfTemplates(); t++) {
+                    final TemplateMappingInformation mappingInfo = scoreTable.getMappingInfo(refHaplotypeIndex, t);
+                    if (mappingInfo.minCoordinate < minRefPos) {
+                        minRefPos = mappingInfo.minCoordinate;
+                    }
+                    if (mappingInfo.maxCoordinate > maxRefPos) {
+                        maxRefPos = mappingInfo.maxCoordinate;
+                    }
+                }
+                minRefPos = Math.max(0, minRefPos - 1);
+                maxRefPos = Math.min(ref.getLength(), maxRefPos + 1);
                 final int dp = likelihoods.readCount();
                 likelihoods.removeUniformativeReads(0.0);
                 likelihoods.normalizeLikelihoods(true, -0.1 * penalties.maximumTemplateScoreDifference);
                 final int[] ad = new int[2];
+                for (int t = 0; t < scoreTable.numberOfTemplates(); t++) {
+                    final TemplateMappingInformation refMapping  = scoreTable.getMappingInfo(refHaplotypeIndex, t);
+                    final TemplateMappingInformation altMapping  = scoreTable.getMappingInfo(altHaplotypeIndex, t);
+                    final double refScore = refMapping.firstAlignmentScore.orElse(0) + refMapping.secondAlignmentScore.orElse(0);
+                    final double altScore = altMapping.firstAlignmentScore.orElse(0) + altMapping.secondAlignmentScore.orElse(0);
+                    if (refScore > altScore) {
+                        ad[0]++;
+                    } else if (altScore > refScore) {
+                        ad[1]++;
+                    }
+
+                }
+                ad[0] = 0; ad[1] = 0;
                 for (int r = 0; r < likelihoods.readCount(); r++) {
                     if (likelihoods.sampleMatrix(0).get(0, r) > likelihoods.sampleMatrix(0).get(1, r)) {
                         ad[0]++;
@@ -444,6 +505,11 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 final VariantContextBuilder newVariantBuilder = new VariantContextBuilder(variant._1());
                 newVariantBuilder.attribute("READ_COUNT", allTemplates.size() * 2);
                 newVariantBuilder.attribute("CONTIG_COUNT", haplotypes.size());
+                if (minRefPos <= maxRefPos) {
+                    newVariantBuilder.attribute("REF_COVERED_RANGE", new int[] { minRefPos + 1, maxRefPos - 1 });
+                    newVariantBuilder.attribute("REF_COVERED_RATIO", ((double) maxRefPos - minRefPos) / ref.getLength());
+                    newVariantBuilder.attribute("ALT_REF_COVERED_SIZE_RATIO", (alt.getLength() + (maxRefPos - minRefPos )- ref.getLength()) / ((double) maxRefPos - minRefPos));
+                }
                 newVariantBuilder.genotypes(
                         new GenotypeBuilder().name("sample")
                                 .PL(pl)
