@@ -6,6 +6,7 @@ set -e
 REPO=broadinstitute
 PROJECT=gatk
 REPO_PRJ=${REPO}/${PROJECT}
+GCR_REPO="us.gcr.io/broad-gatk/gatk"
 STAGING_CLONE_DIR=${PROJECT}_staging_temp
 
 #################################################
@@ -133,11 +134,21 @@ fi
 ## Push
 if [ -n "${IS_PUSH}" ]; then
 
+	echo "Pushing to ${REPO_PRJ}"
 	docker push ${REPO_PRJ}:${GITHUB_TAG}
 
+	echo "Pushing to ${GCR_REPO}"
+	docker tag ${REPO_PRJ}:${GITHUB_TAG} ${GCR_REPO}:${GITHUB_TAG}
+	gcloud docker -- push ${GCR_REPO}:${GITHUB_TAG}
+
 	if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
+		echo "Updating latest tag in ${REPO_PRJ}"
 		docker build -t ${REPO_PRJ}:latest .
 		docker push ${REPO_PRJ}:latest
+		
+		echo "Updating latest tag in ${GCR_REPO}"
+		docker tag ${GCR_REPO}:${GITHUB_TAG} ${GCR_REPO}:latest
+		gcloud docker -- push ${GCR_REPO}:latest
 	fi
 
 else
