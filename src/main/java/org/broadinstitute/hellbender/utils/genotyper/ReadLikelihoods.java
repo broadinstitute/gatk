@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -881,11 +880,11 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * @param nonRefAllele the non-ref allele.
      *
      * @throws IllegalArgumentException if {@code nonRefAllele} is anything but the designated &lt;NON_REF&gt;
-     * symbolic allele {@link org.broadinstitute.hellbender.utils.variant.GATKVCFConstants#NON_REF_SYMBOLIC_ALLELE}.
+     * symbolic allele {@link Allele#NON_REF_ALLELE}.
      */
     public void addNonReferenceAllele(final A nonRefAllele) {
         Utils.nonNull(nonRefAllele, "non-ref allele cannot be null");
-        if (!nonRefAllele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
+        if (!nonRefAllele.equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalArgumentException("the non-ref allele is not valid");
         } else if (alleles.containsAllele(nonRefAllele)) {
             return;
@@ -910,9 +909,9 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *
      * @param allelesToConsider
      */
-    @SuppressWarnings("unchecked")  // for the cast (A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE below
+    @SuppressWarnings("unchecked")  // for the cast (A) Allele.NON_REF_ALLELE below
     public void updateNonRefAlleleLikelihoods(final AlleleList<A> allelesToConsider) {
-        final int nonRefAlleleIndex = indexOfAllele((A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int nonRefAlleleIndex = indexOfAllele((A) Allele.NON_REF_ALLELE);
         if ( nonRefAlleleIndex < 0) {
             return;
         }

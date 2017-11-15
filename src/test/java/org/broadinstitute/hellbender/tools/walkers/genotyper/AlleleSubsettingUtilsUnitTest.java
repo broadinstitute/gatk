@@ -202,9 +202,12 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
                 {1, Arrays.asList(Aref, C, G), new double[]{0,2,5}, Arrays.asList(Aref, G)}, //second is best
                 {1, Arrays.asList(Aref, C, G), new double[]{0,1,1}, Arrays.asList(Aref, C)}, //tie chooses first
                 {1, Arrays.asList(Aref, C, G), new double[]{5,1,1}, Arrays.asList(Aref, C)}, //ref score is ignored chooses first
-                {2, Arrays.asList(Aref, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, G), new double[]{0,5,0,2}, Arrays.asList(Aref, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, G) }, //keep NON_REF in order
-                {1, Arrays.asList(Aref, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, G), new double[]{0,5,0,2}, Arrays.asList(Aref, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)}, //keep NON_REF in order when trimming
-                {1, Arrays.asList(Aref, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, G), new double[]{0,5,0,2}, Arrays.asList(Aref, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)}, //keep NON_REF in order when trimming
+                {2, Arrays.asList(Aref, C, Allele.NON_REF_ALLELE, G), new double[]{0,5,0,2}, Arrays.asList(Aref, C,
+                                                                                                           Allele.NON_REF_ALLELE, G) }, //keep NON_REF in order
+                {1, Arrays.asList(Aref, C, Allele.NON_REF_ALLELE, G), new double[]{0,5,0,2}, Arrays.asList(Aref, C,
+                                                                                                           Allele.NON_REF_ALLELE)}, //keep NON_REF in order when trimming
+                {1, Arrays.asList(Aref, C, Allele.NON_REF_ALLELE, G), new double[]{0,5,0,2}, Arrays.asList(Aref, C,
+                                                                                                           Allele.NON_REF_ALLELE)}, //keep NON_REF in order when trimming
         };
     }
 

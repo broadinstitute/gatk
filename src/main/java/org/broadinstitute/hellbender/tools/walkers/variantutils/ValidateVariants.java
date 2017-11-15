@@ -296,7 +296,7 @@ public final class ValidateVariants extends VariantWalker {
     }
 
     private void validateGVCFVariant(final VariantContext vc) {
-        if (!vc.hasAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
+        if (!vc.hasAllele(Allele.NON_REF_ALLELE)) {
             final UserException e = new UserException(String.format("In a GVCF all records must contain a %s allele. Offending record: %s",
                     GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, vc.toStringWithoutGenotypes()));
             throwOrWarn(e);

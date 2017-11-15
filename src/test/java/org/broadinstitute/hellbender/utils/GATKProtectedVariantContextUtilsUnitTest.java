@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -70,7 +69,7 @@ public class GATKProtectedVariantContextUtilsUnitTest extends GATKBaseTest {
     }
     @Test(expectedExceptions = IllegalStateException.class)
     public void testSymbolicRef() {
-        GATKProtectedVariantContextUtils.typeOfVariant(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, Allele.create("C"));
+        GATKProtectedVariantContextUtils.typeOfVariant(Allele.NON_REF_ALLELE, Allele.create("C"));
     }
 
     @DataProvider(name = "variantTypes")

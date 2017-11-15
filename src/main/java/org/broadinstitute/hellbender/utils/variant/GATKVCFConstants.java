@@ -157,7 +157,6 @@ public final class GATKVCFConstants {
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";
     public final static String NON_REF_SYMBOLIC_ALLELE_NAME = "NON_REF";
-    public final static Allele NON_REF_SYMBOLIC_ALLELE = Allele.create("<" + NON_REF_SYMBOLIC_ALLELE_NAME + ">", false); // represents any possible non-ref allele at this site
     public final static String SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED = "*:DEL";
     public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this si
 
