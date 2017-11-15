@@ -154,6 +154,11 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      */
     protected abstract int defaultMaxProbPropagationDistance();
 
+    /**
+     * @return If true, include reads with deletions at the current locus in the pileups passed to the AssemblyRegionEvaluator.
+     */
+    protected abstract boolean includeReadsWithDeletionsInIsActivePileups();
+
     @Override
     public final boolean requiresReads() { return true; }
 
@@ -305,7 +310,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * @param features FeatureManager
      */
     private void processReadShard(Shard<GATKRead> shard, ReferenceDataSource reference, FeatureManager features ) {
-        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance);
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups());
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
