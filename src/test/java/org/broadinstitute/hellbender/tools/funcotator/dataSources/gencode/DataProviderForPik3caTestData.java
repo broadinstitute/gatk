@@ -66,6 +66,7 @@ public class DataProviderForPik3caTestData {
                 new Object[] { "PIK3CA", 3, 178948158, 178948158, GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS, GencodeFuncotation.VariantType.INS, "T",          "TGAATT", "g.chr3:178948158_178948159insGAATT",    "+", "c.2930_2931insGAATT",     "c.(2929-2931)tttfs",      "p.F977fs" },
 
                 // Problemmatic case from Oncotator, but Funcotator provides reasonable output, so ground-truth is changed:
+                // TODO: Check this case against issue #3482 - https://github.com/broadinstitute/gatk/issues/3842
 //                new Object[] { "PIK3CA", 3, 178948163, 178948163, GencodeFuncotation.VariantClassification.SPLICE_SITE,     GencodeFuncotation.VariantType.INS, "A",          "ATGA",   "g.chr3:178948163_178948164insTGA",      "+", "c.2935_2936insTGA",       "c.(2935-2937)agg>aTGAgg", "p.978_979insM" },
                 new Object[] { "PIK3CA", 3, 178948163, 178948163, GencodeFuncotation.VariantClassification.SPLICE_SITE,     GencodeFuncotation.VariantType.INS, "A",          "ATGA",   "g.chr3:178948163_178948164insTGA",      "+", "c.2935_2936insTGA",       "c.(2935-2937)agg>aTGAgg", "p.979_979R>MR" },
 
@@ -117,6 +118,7 @@ public class DataProviderForPik3caTestData {
                 new Object[] { "PIK3CA", 3, 178916620, 178916620, GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS, GencodeFuncotation.VariantType.INS, "C",       "CTATT",      "g.chr3:178916620_178916621insTATT",      "+", "c.7_8insTATT",       "c.(7-9)ccafs",              "p.P3fs" },
 
                 // Problemmatic case from Oncotator, but Funcotator provides reasonable output, so ground-truth is changed:
+                // TODO: Check this case against issue #3482 - https://github.com/broadinstitute/gatk/issues/3842
 //                new Object[] { "PIK3CA", 3, 178916618, 178916621, GencodeFuncotation.VariantClassification.IN_FRAME_DEL,    GencodeFuncotation.VariantType.DEL, "CTCC",     "C",         "g.chr3:178916619_178916621delTCC",       "+", "c.6_8delTCC",        "c.(4-9)cctcca>cca",         "p.2_3PP>P" },
                 new Object[] { "PIK3CA", 3, 178916618, 178916621, GencodeFuncotation.VariantClassification.IN_FRAME_DEL,    GencodeFuncotation.VariantType.DEL, "CTCC",     "C",         "g.chr3:178916619_178916621delTCC",       "+", "c.6_8delTCC",        "c.(4-9)cctcca>cca",         "p.P3del" },
 
@@ -126,6 +128,7 @@ public class DataProviderForPik3caTestData {
                 new Object[] { "PIK3CA", 3, 178916621, 178916624, GencodeFuncotation.VariantClassification.IN_FRAME_DEL,    GencodeFuncotation.VariantType.DEL, "CACG",     "C",         "g.chr3:178916622_178916624delACG",       "+", "c.9_11delACG",       "c.(7-12)ccacga>cca",        "p.R4del" },
 
                 // Problemmatic case from Oncotator, but Funcotator provides reasonable output, so ground-truth is changed:
+                // TODO: Check this case against issue #3482 - https://github.com/broadinstitute/gatk/issues/3842
 //                new Object[] { "PIK3CA", 3, 178916618, 178916620, GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL, GencodeFuncotation.VariantType.DEL, "CTC",      "C",         "g.chr3:178916619_178916620delTC",        "+", "c.6_7delTC",         "c.(4-9)cctccafs",           "p.PP2fs" },
                 new Object[] { "PIK3CA", 3, 178916618, 178916620, GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL, GencodeFuncotation.VariantType.DEL, "CTC",      "C",         "g.chr3:178916619_178916620delTC",        "+", "c.6_7delTC",         "c.(4-9)cctccafs",           "p.P3fs" },
 
