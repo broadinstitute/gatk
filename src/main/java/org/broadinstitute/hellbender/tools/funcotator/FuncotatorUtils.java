@@ -784,22 +784,32 @@ public class FuncotatorUtils {
                                 createAminoAcidSequence(seqComp.getAlignedAlternateAllele().substring(3));
                     }
                     else {
-                        // Get the number of extra codons to get:
-                        // NOTE: We only ever get 1 extra codon if we might overlap with the next codon
-                        //       (as per oncotator conventions):
-                        final int numAdditionalCodonsToGet = ((seqComp.getCodingSequenceAlleleStart() + 1) % 3 == 0 ? 1 : 0);
-
-                        // Get the next few required reference codons:
-                        final List<String> nextRefCodons = getNextReferenceCodons(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand(), numAdditionalCodonsToGet);
-
                         // TODO: Problem 1 is here!
+
                         // TODO: must do head / tail matching on the protein strings to deterimine what the positions of the protein change string actually are.
                         //       That is, you can have a mutation in protein position 979 that results in an amino acid insertion
                         //       between pp978 and pp979:
                         //          g.chr3:178948163_178948164insTGA ==>> c.(2935-2937)agg>aTGAgg ==>> R->MR ==>> p.978_979insM
 
-                        return "p." + protChangeStartPos + "_" + (protChangeStartPos + numAdditionalCodonsToGet) +
-                                createAminoAcidSequence(seqComp.getAlignedCodingSequenceReferenceAllele() + String.join("", nextRefCodons)) + ">" + createAminoAcidSequence(seqComp.getAlignedAlternateAllele() + String.join("", nextRefCodons));
+                        if ( protChangeStartPos.equals(protChangeEndPos) ) {
+                            // We have an insertion in a single base here.
+                            // We have a different notation for this:
+                            return "p." + protChangeStartPos + "ins" + createAminoAcidSequence(seqComp.getAlignedAlternateAllele());
+                        }
+                        else {
+
+                            // Get the number of extra codons to get:
+                            // NOTE: We only ever get 1 extra codon if we might overlap with the next codon
+                            //       (as per oncotator conventions):
+                            final int numAdditionalCodonsToGet = ((seqComp.getCodingSequenceAlleleStart() + 1) % 3 == 0 ? 1 : 0);
+
+                            // Get the next few required reference codons:
+                            final List<String> nextRefCodons = getNextReferenceCodons(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand(), numAdditionalCodonsToGet);
+
+
+                            return "p." + protChangeStartPos + "_" + (protChangeStartPos + numAdditionalCodonsToGet) +
+                                    createAminoAcidSequence(seqComp.getAlignedCodingSequenceReferenceAllele() + String.join("", nextRefCodons)) + ">" + createAminoAcidSequence(seqComp.getAlignedAlternateAllele() + String.join("", nextRefCodons));
+                        }
                     }
                 }
 
