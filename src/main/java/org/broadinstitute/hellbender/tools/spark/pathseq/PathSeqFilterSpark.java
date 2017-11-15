@@ -89,20 +89,15 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
 
         filterArgs.doReadFilterArgumentWarnings(getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class), logger);
         final SAMFileHeader header = PSUtils.checkAndClearHeaderSequences(getHeaderForReads(), filterArgs, logger);
-        final PSFilterLogger filterLogger;
-        if (metricsFileUri != null) {
-            filterLogger = new PSFilterFileLogger(getMetricsFile(), metricsFileUri);
-        } else {
-            filterLogger = new PSFilterEmptyLogger();
-        }
-
-        final PSFilter filter = new PSFilter(ctx, filterArgs, header);
 
         final JavaRDD<GATKRead> reads = getReads();
-        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> result = filter.doFilter(reads, filterLogger);
-        final JavaRDD<GATKRead> pairedReads = result._1;
-        final JavaRDD<GATKRead> unpairedReads = result._2;
-        filterLogger.close();
+        final PSFilter filter = new PSFilter(ctx, filterArgs, header);
+        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> filterResult;
+        try (final PSFilterLogger filterLogger = metricsFileUri != null ? new PSFilterFileLogger(getMetricsFile(), metricsFileUri) : new PSFilterEmptyLogger()) {
+            filterResult = filter.doFilter(reads, filterLogger);
+        }
+        final JavaRDD<GATKRead> pairedReads = filterResult._1;
+        final JavaRDD<GATKRead> unpairedReads = filterResult._2;
 
         if (!pairedReads.isEmpty()) {
             header.setSortOrder(SAMFileHeader.SortOrder.queryname);

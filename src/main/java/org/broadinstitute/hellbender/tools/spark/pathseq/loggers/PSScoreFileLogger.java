@@ -21,6 +21,7 @@ public final class PSScoreFileLogger implements PSScoreLogger {
         this.metricsOutputPath = metricsOutputPath;
     }
 
+    @Override
     public void logReadCounts(final JavaRDD<GATKRead> reads) {
         final long numReads = reads.count();
         final long numMappedReads = reads.filter(read -> read.hasAttribute(PSScorer.HITS_TAG)).count();
@@ -29,6 +30,7 @@ public final class PSScoreFileLogger implements PSScoreLogger {
         metrics.MAPPED_READS = numMappedReads;
     }
 
+    @Override
     public void close() {
         metricsFile.addMetric(metrics);
         MetricsUtils.saveMetrics(metricsFile, metricsOutputPath);

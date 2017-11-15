@@ -174,9 +174,9 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         final PSScorer scorer = new PSScorer(scoreArgs);
         final JavaRDD<GATKRead> readsFinal = scorer.scoreReads(ctx, pairedReads, unpairedReads, header);
         if (metricsFileUri != null) {
-            final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), metricsFileUri);
-            scoreLogger.logReadCounts(readsFinal);
-            scoreLogger.close();
+            try (final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), metricsFileUri)) {
+                scoreLogger.logReadCounts(readsFinal);
+            }
         }
 
         //Write reads to BAM, if specified

@@ -8,12 +8,19 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  */
 public final class PSFilterEmptyLogger implements PSFilterLogger {
 
+    @Override
     public void logPrimaryReads(final JavaRDD<GATKRead> reads) {}
+    @Override
     public void logReadsAfterPrealignedHostFilter(final JavaRDD<GATKRead> reads) {}
+    @Override
     public void logReadsAfterQualityFilter(final JavaRDD<GATKRead> reads) {}
+    @Override
     public void logReadsAfterHostFilter(final JavaRDD<GATKRead> reads) {}
+    @Override
     public void logReadsAfterDeduplication(final JavaRDD<GATKRead> reads) {}
+    @Override
     public void logFinalPairedReads(final JavaRDD<GATKRead> reads) {}
+    @Override
     public void close() {}
 
 }

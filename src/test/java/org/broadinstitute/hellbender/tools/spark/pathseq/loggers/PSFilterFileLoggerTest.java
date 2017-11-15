@@ -13,7 +13,6 @@ import java.io.File;
 import java.util.Collections;
 
 public class PSFilterFileLoggerTest  extends GATKBaseTest {
- 
     @Test
     public void test() {
         final MetricsFile<PSFilterMetrics, Long> metricsFile = new MetricsFile<>();

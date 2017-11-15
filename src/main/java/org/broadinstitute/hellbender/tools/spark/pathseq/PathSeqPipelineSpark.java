@@ -122,18 +122,14 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         }
 
         //Filter
-        final PSFilterLogger filterLogger;
-        if (filterMetricsFileUri != null) {
-            filterLogger = new PSFilterFileLogger(getMetricsFile(), filterMetricsFileUri);
-        } else {
-            filterLogger = new PSFilterEmptyLogger();
-        }
+        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> filterResult;
         final PSFilter filter = new PSFilter(ctx, filterArgs, header);
-        final JavaRDD<GATKRead> inputReads = getReads();
-        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> result = filter.doFilter(inputReads, filterLogger);
-        JavaRDD<GATKRead> pairedReads = result._1;
-        JavaRDD<GATKRead> unpairedReads = result._2;
-        filterLogger.close();
+        try (final PSFilterLogger filterLogger = filterMetricsFileUri != null ? new PSFilterFileLogger(getMetricsFile(), filterMetricsFileUri) : new PSFilterEmptyLogger()) {
+            final JavaRDD<GATKRead> inputReads = getReads();
+            filterResult = filter.doFilter(inputReads, filterLogger);
+        }
+        JavaRDD<GATKRead> pairedReads = filterResult._1;
+        JavaRDD<GATKRead> unpairedReads = filterResult._2;
 
         //Counting forces an action on the RDDs to guarantee we're done with the Bwa image and kmer filter
         final long numPairedReads = pairedReads.count();
@@ -171,9 +167,9 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         //Log read counts
         if (scoreMetricsFileUri != null) {
-            final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), scoreMetricsFileUri);
-            scoreLogger.logReadCounts(readsFinal);
-            scoreLogger.close();
+            try (final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), scoreMetricsFileUri)) {
+                scoreLogger.logReadCounts(readsFinal);
+            }
         }
 
         //Write reads to BAM, if specified

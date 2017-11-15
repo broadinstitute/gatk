@@ -27,7 +27,7 @@ import java.util.List;
 
 public class PSFilterTest extends CommandLineProgramTest {
 
-    private static final String BWA_IMAGE_PATH = publicTestDir + PSFilter.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
+    private static final String BWA_IMAGE_PATH = publicTestDir + "hg19mini.fasta.img";
 
     private static final GATKRead fastqRecordToGATKRead(final FastqRecord rec) {
         final GATKRead read = new SAMRecordToGATKReadAdapter(new SAMRecord(null));

@@ -20,13 +20,19 @@ public final class PSFilterFileLogger implements PSFilterLogger {
         this.metricsOutputPath = metricsOutputPath;
     }
 
+    @Override
     public void logPrimaryReads(final JavaRDD<GATKRead> reads) { metrics.PRIMARY_READS = reads.count(); }
     public void logReadsAfterPrealignedHostFilter(final JavaRDD<GATKRead> reads) { metrics.READS_AFTER_PREALIGNED_HOST_FILTER = reads.count(); }
+    @Override
     public void logReadsAfterQualityFilter(final JavaRDD<GATKRead> reads) { metrics.READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER = reads.count(); }
+    @Override
     public void logReadsAfterHostFilter(final JavaRDD<GATKRead> reads) { metrics.READS_AFTER_HOST_FILTER = reads.count(); }
+    @Override
     public void logReadsAfterDeduplication(final JavaRDD<GATKRead> reads) { metrics.READS_AFTER_DEDUPLICATION = reads.count(); }
+    @Override
     public void logFinalPairedReads(final JavaRDD<GATKRead> reads) { metrics.FINAL_PAIRED_READS = reads.count(); }
 
+    @Override
     public void close() {
         metrics.computeDerivedMetrics();
         metricsFile.addMetric(metrics);

@@ -16,7 +16,7 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
 
     static final String baseResourcePath = publicTestDir + PathSeqPipelineSpark.class.getPackage().getName().replace(".", "/");
     static final String kmerLibraryPath = baseResourcePath + "/hg19mini.hss";
-    static final String filterImagePath =  baseResourcePath + "/hg19mini.fasta.img";
+    static final String filterImagePath =  publicTestDir + "/hg19mini.fasta.img";
 
     @DataProvider(name = "pathseqPipelineTestData")
     public Object[][] getTestData() {

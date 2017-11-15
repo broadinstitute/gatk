@@ -13,7 +13,7 @@ import java.io.File;
 
 public class PathSeqFilterSparkIntegrationTest extends CommandLineProgramTest {
 
-    static final String imagePath = publicTestDir + PathSeqFilterSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.img";
+    static final String imagePath = publicTestDir + "hg19mini.fasta.img";
     static final String libraryPath = publicTestDir + PathSeqFilterSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
 
     @DataProvider(name = "pathseqFilterTestData")
