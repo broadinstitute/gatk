@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * A better duplication marking algorithm that handles all cases including clipped
@@ -203,17 +204,17 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
         final int maxInMemory = (int) ((Runtime.getRuntime().maxMemory() * SORTING_COLLECTION_SIZE_RATIO) / ReadEndsForMarkDuplicates.SIZE_OF);
         logger.info("Will retain up to " + maxInMemory + " data points before spilling to disk.");
 
-        this.pairSort = SortingCollection.newInstance(ReadEndsForMarkDuplicates.class,
+        this.pairSort = SortingCollection.newInstanceFromPaths(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR);
+                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
 
-        this.fragSort = SortingCollection.newInstance(ReadEndsForMarkDuplicates.class,
+        this.fragSort = SortingCollection.newInstanceFromPaths(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR);
+                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
 
         try(final SamHeaderAndIterator headerAndIterator = openInputs()) {
             final SAMFileHeader header = headerAndIterator.header;

@@ -149,9 +149,9 @@ public final class BwaMemIntegrationTest extends GATKBaseTest {
     }
 
     private void assertPrimaryUnpairedOutput(final SAMRecord input, final BwaMemAlignment output) {
-        Assert.assertTrue(SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(output.getSamFlag()));
+        Assert.assertTrue(SAMFlag.SECONDARY_ALIGNMENT.isUnset(output.getSamFlag()));
         Assert.assertEquals(SAMFlag.READ_REVERSE_STRAND.isSet(output.getSamFlag()), input.getReadNegativeStrandFlag());
-        Assert.assertTrue(SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(output.getSamFlag()));
+        Assert.assertTrue(SAMFlag.SECONDARY_ALIGNMENT.isUnset(output.getSamFlag()));
         Assert.assertTrue(SAMFlag.PROPER_PAIR.isUnset(output.getSamFlag()));
         Assert.assertTrue(SAMFlag.READ_UNMAPPED.isUnset(output.getSamFlag()));
         Assert.assertTrue(SAMFlag.READ_PAIRED.isUnset(output.getSamFlag()));
