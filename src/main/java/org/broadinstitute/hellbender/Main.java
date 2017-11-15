@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender;
 
+import htsjdk.utils.ClassFinder;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
