@@ -1012,7 +1012,7 @@ public final class MathUtils {
      * @param n number of coin flips
      * @return probability density function evaluated at k
      */
-    public static double log10BetaBinomialDensity(final int k, final int n, final double alpha, final double beta){
+    public static double log10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta){
         Utils.validateArg(k <= n, "k must be less than or equal to n");
         return log10BinomialCoefficient(n, k) + Beta.logBeta(k + alpha, n - k + beta) * LOG10_OF_E -
                 Beta.logBeta(alpha, beta) * LOG10_OF_E;

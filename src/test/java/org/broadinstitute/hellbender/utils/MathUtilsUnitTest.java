@@ -1085,15 +1085,15 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name = "log10BetaBinomialData")
     public Object[][] getLog10BetaBinomialData() {
         return new Object[][] {
-                { 2, 20, 3, 7, -0.804103},
-                { 1, 3, 8.7, 9.5, -0.1169066}
+                { 2, 20, 3.0, 7.0, -1.09347}, // log10[PDF[BetaBinomialDistribution[3, 7, 20], 2]] in Wolfram alpha
+                { 1, 3, 8.7, 9.5, -0.433171} // log10[PDF[BetaBinomialDistribution[8.7, 9.5, 3], 1]]
         };
     }
 
-    @Test
-    public void testLog10BetaBinomialDensity(final int k, final int n, final double alpha, final double beta,
+    @Test(dataProvider = "log10BetaBinomialData")
+    public void testLog10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta,
                                              final double expected){
         final double EPSILON = 1e-3;
-        Assert.assertEquals(MathUtils.log10BetaBinomialDensity(k, n, alpha, beta), expected, EPSILON);
+        Assert.assertEquals(MathUtils.log10BetaBinomialProbability(k, n, alpha, beta), expected, EPSILON);
     }
 }
