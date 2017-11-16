@@ -17,7 +17,7 @@ public final class OptionalIntervalArgumentCollection extends IntervalArgumentCo
     protected final List<String> intervalStrings = new ArrayList<>();
 
     @Override
-    protected List<String> getIntervalStrings() {
+    public List<String> getIntervalStrings() {
         return intervalStrings;
     }
 

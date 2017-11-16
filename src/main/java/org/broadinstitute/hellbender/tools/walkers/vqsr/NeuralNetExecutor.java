@@ -53,7 +53,7 @@ public final class NeuralNetExecutor extends VariantWalker {
             throw new UserException.CouldNotReadInputFile(outputFile, e);
         }
 
-        System.out.println("output vcf is:"+outputFile.getAbsolutePath());
+        System.out.println("Output vcf:"+outputFile.getAbsolutePath()+"\nIntervals:"+intervalArgumentCollection.getIntervalStrings().get(0));
     }
 
     @Override
@@ -81,7 +81,9 @@ public final class NeuralNetExecutor extends VariantWalker {
                         "--reference_fasta",
                         referenceArguments.getReferenceFileName(),
                         "--batch_size",
-                        batchSize
+                        batchSize,
+                        "--interval_list",
+                        intervalArgumentCollection.getIntervalStrings().get(0)
                 )
 
         );

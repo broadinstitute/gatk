@@ -22,7 +22,7 @@ import pysam
 import argparse
 import numpy as np
 from Bio import Seq, SeqIO
-from collections import Counter
+from collections import Counter, defaultdict
 
 # Keras Imports
 from keras.models import load_model
@@ -43,7 +43,10 @@ reference_fasta = data_path + 'Homo_sapiens_assembly19.fasta'
 dna_symbols = {'A':0, 'C':1, 'G':2, 'T':3}
 inputs_indel = {'A':0, 'C':1, 'G':2, 'T':3, indel_char:4}
 input_symbols = dna_symbols
+
 annotations = ['MQ', 'DP', 'SOR', 'FS', 'QD', 'MQRankSum', 'ReadPosRankSum']
+#annotations = ['MQ', 'DP', 'SOR', 'FS', 'QD', 'MQRankSum', 'ReadPosRankSum', 'DP_MEDIAN', 'DREF_MEDIAN', 'GQ_MEDIAN', 'AB_MEDIAN']
+
 cigar_code = {'M':0, 'I':1, 'D':2, 'N':3, 'S':4}
 
 # Base calling ambiguities, See https://www.bioinformatics.org/sms/iupac.html
@@ -59,13 +62,14 @@ def run():
 	model = load_model(args.architecture)
 	model.summary()
 
+	#annotate_vcf_1d_per_allele(args, model)
 	annotate_vcf_1d(args, model)
 
 
 def parse_args():
 	parser = argparse.ArgumentParser()
 
-	parser.add_argument('--architecture', help='hd5 file of with model architecture and weights.')
+	parser.add_argument('--architecture', help='hd5 file with model architecture and weights.')
 	parser.add_argument('--input_vcf', help='Path to a VCF to read and annotate with Neural Network Scores')
 	parser.add_argument('--output_vcf', default='./out.vcf', help='Path to a VCF to write annotated with Neural Network Scores')
 	parser.add_argument('--tensors', help='Directory containing tensors to evaluate with the model.')
@@ -77,6 +81,7 @@ def parse_args():
 	parser.add_argument('--read_limit', default=128, type=int, help='Maximum number of reads to load.')	
 	parser.add_argument('--window_size', default=128, type=int, help='Size of sequence window to use as input, typically centered at a variant.')
 	parser.add_argument('--bam_file', help='Path to a BAM file to train from or generate tensors with.')
+	parser.add_argument('--interval_list', help='Path to a picard style interval list file.')
 	parser.add_argument('--tensor_map', default='2d_mapping_quality', help='Key which looks up the map from tensor channels to their meaning.')
 	parser.add_argument('--channels_last', default=False, dest='channels_last', action='store_true', help='Store the channels in the last axis of tensors, tensorflow->true, theano->false')	
 	parser.add_argument('--base_quality_mode', default='phot', choices=['phot', 'phred', '1hot'], help='How to treat base qualities, must be in {phot, phred, 1hot}')
@@ -100,19 +105,125 @@ def predict_on_tensors(args, model):
 	print('SNP Predictions:\n', snp_dict, '\n\nINDEL Predictions:\n', indel_dict)
 
 
-
 def annotate_vcf_1d(args, model):
 	stats = Counter()
 
-	vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
-	vcf_writer = vcf.Writer(open(args.output_vcf, 'w'), vcf_reader)
+	vcf_reader = pysam.VariantFile(args.input_vcf, "r")
+	vcf_reader.header.info.add("CNN_SCORE", "1", "Float", "Site-level Score from 1D Convolutional Neural Net.")
+	vcf_writer = pysam.VariantFile(args.output_vcf, 'w', header=vcf_reader.header)
 	print('got vcfs.')
+
+	intervals = interval_file_to_dict(args.interval_list)
+	print('got intervals.')
 
 	reference = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
 	print('got ref.')
 
 	tensor_channel_map = get_tensor_channel_map_from_args(args)
 
+	positions = []
+	variant_batch = []
+	time_batch = time.time()
+	annotation_batch = np.zeros((args.batch_size, len(annotations)))
+	dna_batch = np.zeros((args.batch_size, args.window_size, len(input_symbols)))
+	
+	print('iterate over intervals...')
+	for k in intervals:
+		for start,stop in zip(intervals[k][0], intervals[k][1]):
+			for variant in vcf_reader.fetch(k, start, stop):
+				idx_offset, ref_start, ref_end = get_variant_window(args, variant)
+
+				contig = reference[variant.contig]
+				record = contig[variant.pos-idx_offset: variant.pos+idx_offset]
+
+				if not args.exclude_annotations:
+					if all(map(lambda x: x not in variant.info and x != "QUAL", annotations)):
+						stats['Missing ALL annotations'] += 1
+						continue # Require at least 1 annotation...
+
+					annotation_data = np.zeros(( len(annotations), ))
+					qual_and_dp_normalizer = 1000000.0
+
+					for i,a in enumerate(annotations):
+						if a == "QUAL":
+							annotation_data[i] = variant.qual
+						elif a in variant.info:
+							annotation_data[i] = variant.info[a]
+
+						if a == "DP" or a == "QUAL":
+							 annotation_data[i] /= qual_and_dp_normalizer
+
+					annotation_batch[stats['annotations_in_batch']] = annotation_data
+					stats['annotations_in_batch'] += 1
+
+				if not args.exclude_dna:
+					dna_data = np.zeros( (args.window_size, len(input_symbols)) )
+					assert(len(record.seq) == args.window_size)
+					for i,b in enumerate(record.seq):
+						if b in input_symbols:
+							dna_data[i, input_symbols[b]] = 1.0
+						elif b in ambiguity_codes:
+							dna_data[i] = ambiguity_codes[b]
+						else:
+							print('Error! Unknown code:', b)
+							stats['Error! Unknown input symbol:'+b] += 1
+							continue
+
+					dna_batch[stats['reference_tensors_in_batch']] = dna_data
+					stats['reference_tensors_in_batch'] += 1
+
+				positions.append(variant.contig + '_' + str(variant.pos))
+				variant_batch.append(variant)
+
+				if stats['reference_tensors_in_batch'] == args.batch_size or stats['annotations_in_batch'] == args.batch_size:
+					apply_model_to_batch(args, model, dna_batch, annotation_batch, variant_batch, vcf_writer, stats)
+
+					# Reset the batch
+					positions = []
+					variant_batch = []
+					dna_batch = np.zeros((args.batch_size, args.window_size, len(input_symbols)))
+					annotation_batch = np.zeros((args.batch_size,len(annotations)))
+					stats['reference_tensors_in_batch'] = stats['annotations_in_batch'] = 0
+
+	if stats['reference_tensors_in_batch'] != 0 or stats['annotations_in_batch'] != 0: # get scores for the remaining variants
+		apply_model_to_batch(args, model, dna_batch, annotation_batch, variant_batch, vcf_writer, stats)
+
+	for s in stats.keys():
+		print(s, 'has:', stats[s])
+
+
+def apply_model_to_batch(args, model, dna_batch, annotation_batch, variant_batch, vcf_writer, stats):
+	predictions = model.predict([dna_batch, annotation_batch], batch_size=args.batch_size)
+	snp_dict = predictions_to_snp_scores(args, predictions, positions)
+	indel_dict = predictions_to_indel_scores(args, predictions, positions)
+
+	# loop over the batch of variants and write them out with a score
+	for v_out in variant_batch:
+		position = v_out.contig + '_' + str(v_out.pos)
+
+		if len(v_out.ref) == 1 and len(v_out.alleles[1][0]) == 1: # SNP means ref and alt both are length 1
+			v_out.info['CNN_SCORE'] = float(snp_dict[position])
+		else:
+			v_out.info['CNN_SCORE'] = float(indel_dict[position])
+
+		vcf_writer.write(v_out)
+		stats['variants_written'] += 1
+
+
+def annotate_vcf_1d_per_allele(args, model):
+	stats = Counter()
+
+	score_key = 'AS_CNN'
+	vcf_reader = pysam.VariantFile(args.input_vcf, "r")
+	vcf_reader.header.info.add(score_key, '.', 'Float', 'Allele specific score from 1D Convolutional Neural Net.')
+	vcf_writer = pysam.VariantFile(args.output_vcf, 'w', header=vcf_reader.header)
+
+	print('got vcfs.')
+
+	reference = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
+	print('got ref.')
+
+	tensor_channel_map = get_tensor_channel_map_from_args(args)
 
 	positions = []
 	variant_batch = []
@@ -122,82 +233,91 @@ def annotate_vcf_1d(args, model):
 	
 	print('iterate over vcf...')
 	for variant in vcf_reader:
-		idx_offset, ref_start, ref_end = get_variant_window(args, variant)
+		for allele_index, allele in enumerate(variant.alts):
+			idx_offset, ref_start, ref_end = get_variant_window(args, variant)
 
-		contig = reference[variant.CHROM]	
-		record = contig[variant.POS-idx_offset: variant.POS+idx_offset]
+			contig = reference[variant.contig]
+			record = contig[variant.pos-idx_offset: variant.pos+idx_offset]
 
-		if not args.exclude_annotations:
-			if all(map(lambda x: x not in variant.INFO and x != "QUAL", annotations)):
-				stats['Missing ALL annotations'] += 1
-				continue # Require at least 1 annotation...
+			if not args.exclude_annotations:
+				if all(map(lambda x: x not in variant.info and x != "QUAL", annotations)):
+					stats['Missing ALL annotations'] += 1
+					continue # Require at least 1 annotation...
 
-			annotation_data = np.zeros(( len(annotations), ))
-			qual_and_dp_normalizer = 1000000.0
+				annotation_data = np.zeros(( len(annotations), ))
 
-			for i,a in enumerate(annotations):
-				if a == "QUAL":
-					annotation_data[i] = ariant.QUAL
-				elif a in variant.INFO:
-					annotation_data[i] = variant.INFO[a]
+				qual_and_dp_normalizer = 1000000.0
+				as_normalizer = 100.0
 
-				if a == "DP" or a == "QUAL":
-					 annotation_data[i] /= qual_and_dp_normalizer	
-			
-			annotation_batch[stats['annotations_in_batch']] = annotation_data
-			stats['annotations_in_batch'] += 1
-				
+				for i,a in enumerate(annotations):
+					if a in ['DP_MEDIAN', 'DREF_MEDIAN', 'GQ_MEDIAN', 'AB_MEDIAN']:
+						annotation_data[i] = variant.info[a][allele_index]
+					elif a == "QUAL":				
+						annotation_data[i] = variant.qual
+					elif a in variant.info:
+						annotation_data[i] = variant.info[a]
 
-		if not args.exclude_dna:
-			dna_data = np.zeros( (args.window_size, len(input_symbols)) )
-			assert(len(record.seq) == args.window_size)
-			for i,b in enumerate(record.seq):
-				if b in input_symbols:
-					dna_data[i, input_symbols[b]] = 1.0
-				elif b in ambiguity_codes:
-					dna_data[i] = ambiguity_codes[b]
-				else:
-					print('Error! Unknown code:', b)
-					stats['Error! Unknown input symbol:'+b] += 1
-					continue
-	
-			dna_batch[stats['reference_tensors_in_batch']] = dna_data
-			stats['reference_tensors_in_batch'] += 1
+					if a == "DP" or a == "QUAL":
+						 annotation_data[i] /= qual_and_dp_normalizer	
+		
+					if a == "DP_MEDIAN" or a == "GQ_MEDIAN":
+						 annotation_data[i] /= as_normalizer
 
-		 		
-		positions.append(variant.CHROM + '_' + str(variant.POS))
-		variant_batch.append(variant)
+				annotation_batch[stats['annotations_in_batch']] = annotation_data
+				stats['annotations_in_batch'] += 1
+					
+			if not args.exclude_dna:
+				dna_data = np.zeros( (args.window_size, len(input_symbols)) )
+				assert(len(record.seq) == args.window_size)
+				for i,b in enumerate(record.seq):
+					if b in input_symbols:
+						dna_data[i, input_symbols[b]] = 1.0
+					elif b in ambiguity_codes:
+						dna_data[i] = ambiguity_codes[b]
+					else:
+						print('Error! Unknown code:', b)
+						stats['Error! Unknown input symbol:'+b] += 1
+						continue
+		
+				dna_batch[stats['reference_tensors_in_batch']] = dna_data
+				stats['reference_tensors_in_batch'] += 1
+		
+			positions.append(variant.contig + '_' + str(variant.pos) + '_' + str(allele_index))
+			variant_batch.append((variant, allele_index))
+			if stats['reference_tensors_in_batch'] == args.batch_size or stats['annotations_in_batch'] == args.batch_size:
+				break
 
-		if stats['reference_tensors_in_batch'] == args.batch_size or stats['annotations_in_batch'] == args.batch_size:
-			
+		if stats['reference_tensors_in_batch'] >= args.batch_size or stats['annotations_in_batch'] >= args.batch_size:
 			t0 = time.time()
 			predictions = model.predict([dna_batch, annotation_batch], batch_size=args.batch_size)	
 			snp_dict = predictions_to_snp_scores(args, predictions, positions)
 			indel_dict = predictions_to_indel_scores(args, predictions, positions)
 			t1 = time.time()
-			
+			time_batch = time.time()
 			if (stats['variants_written']) % (args.batch_size*50) == 0:
 				print('CNN Batch predictions took:',(t1-t0), 'seconds. \nWhole batch time:', (t1-time_batch), 'Time per variant:', ((t1-time_batch)/args.batch_size))
-				print('SNP Predictions:\n', snp_dict, '\n\nINDEL Predictions:\n', indel_dict, '\n\nLast variant:', variant)
-				for s in stats.keys():
-					print(s, 'has:', stats[s])
-
-			time_batch = time.time()
-			
-			# loop over the batch of variants and write them out with a score
-			for v_out in variant_batch:
-				position = v_out.CHROM + '_' + str(v_out.POS)
-				
-				if v_out.is_snp:
-					v_out.INFO['CNN_SCORE'] = snp_dict[position]
-				elif v_out.is_indel:
-					v_out.INFO['CNN_SCORE'] = indel_dict[position]
+								
+			# loop over the batch of variants and add per allele scores
+			scores = defaultdict(list)
+			variants_to_write = {}
+			for v_out, allele_index in variant_batch:
+				g_position = v_out.contig + '_' + str(v_out.pos)
+				a_position = g_position + '_' + str(allele_index)
+				variants_to_write[g_position] = v_out
+				if len(v_out.ref) == 1 and len(v_out.alts[allele_index]) == 1: # SNP means ref and alt both are length 1
+					scores[g_position].append(float(snp_dict[a_position]))
 				else:
-					stats['Not SNP or INDEL'] += 1
-
-				vcf_writer.write_record(v_out)
+					scores[g_position].append(float(indel_dict[a_position]))
+				
+			for k in sorted(variants_to_write.iterkeys()):
+				variants_to_write[k].info[score_key] = tuple(scores[k])
+				vcf_writer.write(variants_to_write[k])
 				stats['variants_written'] += 1
-
+				if (stats['variants_written']) % (args.batch_size*50) == 0:
+					print('SNP Predictions:\n', snp_dict, '\n\nINDEL Predictions:\n', indel_dict, '\n\nLast variant:', variants_to_write[k])
+					for s in stats.keys():
+						print(s, 'has:', stats[s])
+			
 			# Reset the batch
 			positions = []		
 			variant_batch = []
@@ -580,8 +700,8 @@ def reads_to_tensor(args, sequences, qualities=None, reference_seq=None):
 
 def get_variant_window(args, variant):
 	index_offset = (args.window_size//2)
-	reference_start = variant.POS-(index_offset+1)
-	reference_end = variant.POS+index_offset
+	reference_start = variant.pos-(index_offset+1)
+	reference_end = variant.pos+index_offset
 
 	return index_offset, reference_start, reference_end
 
@@ -735,6 +855,45 @@ def load_tensors_and_annotations_from_class_dirs(args):
 			print(str(e), '\nValue error at:', tp)
 
 	return (np.asarray(tensors), np.asarray(annotations), np.asarray(positions))
+
+
+
+def interval_file_to_dict(interval_file, shift1=0, skip=['@']):
+	''' Create a dict to store intervals from a interval list file.
+
+	Arguments:
+		interval_file: the file to load either a bed file -> shift1 should be 1
+			or a picard style interval_list file -> shift1 should be 0
+		shift1: Shift the intervals 1 position over to align with 1-indexed VCFs
+		skip: Comment character to ignore
+	Returns:
+		intervals: dict where keys in the dict are contig ids
+			values are a tuple of arrays the first array 
+			in the tuple contains the start positions
+			the second array contains the end positions.
+	'''
+	intervals = {}
+
+	with open(interval_file)as f:
+		for line in f:
+			if line[0] in skip:
+				continue
+
+			parts = line.split()
+			contig = parts[0]
+			lower = int(parts[1])+shift1
+			upper = int(parts[2])+shift1
+
+			if contig not in intervals:
+				intervals[contig] = ([], [])
+
+			intervals[contig][0].append(lower)
+			intervals[contig][1].append(upper)
+
+	for k in intervals.keys():
+		intervals[k] = (np.array(intervals[k][0]), np.array(intervals[k][1]))		
+
+	return intervals
 
 
 if __name__=='__main__':

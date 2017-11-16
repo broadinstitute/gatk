@@ -34,7 +34,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
      *
      * @return string gathered from the command line -L argument to be parsed into intervals to include
      */
-    protected abstract List<String> getIntervalStrings();
+    public abstract List<String> getIntervalStrings();
 
     /**
      * Add an extra interval string to the intervals to include.
