@@ -200,7 +200,7 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
 
         if (depth == 0 && pileup.size() > 0) {
             // I have seen this happen before. I'll leave this here until I reproduce this. If I cannot reproduce I will remove.
-            logger.warn(String.format("Encountered depth = 0 at %s but pileup size was %d > 0",
+            throw new UserException(String.format("Encountered depth = 0 at %s but pileup size was %d > 0",
                     referenceContext.getInterval(), pileup.size()));
         }
 
