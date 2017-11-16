@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -36,6 +37,7 @@ import java.io.File;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class CallCopyRatioSegments extends CommandLineProgram {
 
     @Argument(

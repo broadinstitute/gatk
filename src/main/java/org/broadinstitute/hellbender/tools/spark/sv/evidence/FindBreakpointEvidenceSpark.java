@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -47,6 +48,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEv
  * The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference.
  * Final output is a SAM file of aligned contigs to be called for structural variants.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary="Find reads that evidence breakpoints."+
         "  Pull reads for local assemblies in breakpoint regions using shared kmers."+
         "  Assemble breakpoint regions with FermiLite, and align assembled contigs to reference.",

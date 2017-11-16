@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
@@ -16,6 +17,7 @@ import java.util.Collection;
 /**
  * SparkTool to build kmer hash set or Bloom filter from a given host reference. The output file is required by PathSeqFilterSpark.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Builds a database of host reference k-mers for filtering host reads in the " +
         "PathSeqFilterSpark tool. By default, it builds a hash set of k-mers. If --bloomFalsePositiveProbability is " +
         "specified and greater than zero, it will build a Bloom filter of the k-mers. Bloom filters are smaller and " +

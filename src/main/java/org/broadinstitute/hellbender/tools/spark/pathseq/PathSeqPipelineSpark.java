@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Combined tool that performs all steps: read filtering, pathogen alignment, and abundance " +
         "scoring. Note that reducing reads per partition increases parallelism of pathogen alignment on Spark.",
         oneLineSummary = "Combined tool that performs all steps: read filtering, pathogen alignment, and abundance scoring",

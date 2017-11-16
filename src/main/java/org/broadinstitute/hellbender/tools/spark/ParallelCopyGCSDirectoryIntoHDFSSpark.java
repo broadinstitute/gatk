@@ -7,6 +7,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
  * inefficient if you have lots of files smaller than the block size). After all chunks are copied, the HDFS
  * concat method is used to stitch together chunks into single files without re-copying them.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary="Parallel copy a file or directory (non-recursive) from GCS into HDFS",
         oneLineSummary="Parallel copy a file or directory from GCS into HDFS.",
         programGroup = SparkProgramGroup.class)

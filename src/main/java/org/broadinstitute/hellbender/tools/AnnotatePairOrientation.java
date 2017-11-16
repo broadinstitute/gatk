@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -30,6 +31,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import java.io.File;
 import java.util.*;
 
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "(Experimental) This adds fields normally emitted by M2 to a VCF.  There should never be a need to run this tool on a VCF that was produced by M2." +
                 "\n  The output of this tool should be usable with FilterByOrientationBias." +

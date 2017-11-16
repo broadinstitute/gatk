@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -49,6 +50,7 @@ import java.io.IOException;
  * taxon with minimal coverage and identity.
  */
 
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Performs taxonomic classification of reads that have been aligned to a pathogen " +
         "reference and generates a table of abundance scores. Briefly, an alignment is considered a 'hit' if it meets " +
         "minimum query coverage and identity criteria. For paired reads, hits that appear in only one mate and not the " +

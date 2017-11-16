@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -14,6 +15,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 
+@DocumentedFeature
 @CommandLineProgramProperties(
 	summary = "Fixes Illumina base quality scores in a SAM/BAM/CRAM file",
     oneLineSummary = "Fix Illumina base quality scores in a SAM/BAM/CRAM file",

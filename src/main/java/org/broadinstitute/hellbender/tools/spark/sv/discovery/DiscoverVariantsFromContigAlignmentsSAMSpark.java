@@ -19,6 +19,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -55,6 +56,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
  * two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than
  * or equal to minAlignmentLength.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
         oneLineSummary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
         programGroup = StructuralVariationSparkProgramGroup.class)
