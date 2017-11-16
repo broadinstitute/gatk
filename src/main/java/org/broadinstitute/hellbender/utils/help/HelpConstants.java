@@ -65,7 +65,10 @@ public final class HelpConstants {
     public final static String DOC_CAT_VARDISC = "Variant Discovery Tools";
     public final static String DOC_CAT_VAREVAL = "Variant Evaluation Tools";
     public final static String DOC_CAT_VARMANIP = "Variant Manipulation Tools";
-
+    
+    public final static String DOC_CAT_ANNOTATORS = "Variant Annotations";
+    public final static String DOC_CAT_ANNOTATORS_SUMMARY = "Annotations available to HaplotypeCaller, Mutect2 and VariantAnnotator";
+    
     public final static String DOC_CAT_EXAMPLE = "Example Tools";
     public final static String DOC_CAT_EXAMPLE_SUMMARY = "Example tools that show developers how to implement new tools";
 
@@ -98,6 +101,7 @@ public final class HelpConstants {
 
             // supercat Utilities
             groupToSuperCategory.put(DOC_CAT_READFILTERS, DOC_SUPERCAT_UTILITIES);
+            groupToSuperCategory.put(DOC_CAT_ANNOTATORS, DOC_SUPERCAT_UTILITIES);
 
             // supercat Exclude
             groupToSuperCategory.put(DOC_CAT_EXAMPLE, DOC_SUPERCAT_EXCLUDE);
