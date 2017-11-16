@@ -236,4 +236,14 @@ public class GencodeFuncotationBuilder {
         gencodeFuncotation.setcDnaChange( cDnaChange );
         return this;
     }
+
+    /**
+     * Set the Reference Context {@link String} in the {@link GencodeFuncotation}.
+     * @param referenceContext The {@link String} containing the ReferenceContext for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setReferenceContext(final String referenceContext) {
+        gencodeFuncotation.setReferenceContext( referenceContext );
+        return this;
+    }
  }

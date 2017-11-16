@@ -41,6 +41,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     final static private int spliceSiteVariantWindowBases = 2;
 
     /**
+     * The window around a variant to include in the reference context annotation.
+     * Also used for context from which to get surrounding codon changes and protein changes.
+     */
+    final static private int referenceWindow = 10;
+
+    /**
      * The set of {@link GencodeFuncotation.VariantClassification} types that are valid for coding regions.
      */
     private static final Set<GencodeFuncotation.VariantClassification> codingVariantClassifications =
@@ -296,7 +302,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             if (containingSubfeature == null) {
 
                 // We have an IGR variant
-                gencodeFuncotations.add( createIgrFuncotation(altAllele) );
+                gencodeFuncotations.add( createIgrFuncotation(variant.getReference(), altAllele, reference ) );
 
             } else if (GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
 
@@ -311,7 +317,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             } else if (GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
 
                 // We have an intron variant
-                gencodeFuncotations.add( createIntronFuncotation(variant, altAllele, gtfFeature, transcript) );
+                gencodeFuncotations.add( createIntronFuncotation(variant, altAllele, gtfFeature, transcript, reference) );
 
             } else {
 
@@ -382,6 +388,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         if ( isInCodingRegion ) {
             gencodeFuncotationBuilder.setcDnaChange(FuncotatorUtils.getCodingSequenceChangeString(sequenceComparison));
         }
+
+        // Set the reference context with the bases from the sequence comparison:
+        gencodeFuncotationBuilder.setReferenceContext( sequenceComparison.getReferenceBases() );
 
         return gencodeFuncotationBuilder.build();
     }
@@ -621,6 +630,30 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
 
+        // Determine the strand for the variant:
+        final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
+        FuncotatorUtils.assertValidStrand(strand);
+
+        // Get the strand-corrected alleles from the inputs.
+        // Also get the reference sequence for the variant region.
+        // (spanning the entire length of both the reference and the variant, regardless of which is longer).
+        final Allele strandCorrectedRefAllele;
+        final Allele strandCorrectedAltAllele;
+
+        if ( strand == Strand.POSITIVE ) {
+            strandCorrectedRefAllele = variant.getReference();
+            strandCorrectedAltAllele = altAllele;
+        }
+        else {
+            strandCorrectedRefAllele = Allele.create(ReadUtils.getBasesReverseComplement( variant.getReference().getBases() ), true);
+            strandCorrectedAltAllele = Allele.create(ReadUtils.getBasesReverseComplement( altAllele.getBases() ), false);
+        }
+
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(strandCorrectedRefAllele, strandCorrectedAltAllele, strand, referenceWindow, reference);
+
+        // Set our reference sequence in the Gencode Funcotation Builder:
+        gencodeFuncotationBuilder.setReferenceContext( referenceBases );
+
         // Set whether it's the 5' or 3' UTR:
         if ( is5PrimeUtr(utr, transcript) ) {
 
@@ -629,7 +662,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // Get our coding sequence for this region:
             final List<Locatable> activeRegions = Collections.singletonList(utr);
-            final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
 
             final String referenceCodingSequence;
             if ( transcriptFastaReferenceDataSource != null ) {
@@ -671,12 +703,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param altAllele The {@link Allele} in the given {@code variant} for which to create a {@link GencodeFuncotation}.
      * @param gtfFeature The {@link GencodeGtfGeneFeature} in which the given {@code variant} occurs.
      * @param transcript The {@link GencodeGtfTranscriptFeature} in which the given {@code variant} occurs.
+     * @param referenceContext The {@link ReferenceContext} in which the given variant appears.
      * @return A {@link GencodeFuncotation} containing information about the given {@code variant} given the corresponding {@code transcript}.
      */
     private static GencodeFuncotation createIntronFuncotation(final VariantContext variant,
-                                                       final Allele altAllele,
-                                                       final GencodeGtfGeneFeature gtfFeature,
-                                                       final GencodeGtfTranscriptFeature transcript) {
+                                                              final Allele altAllele,
+                                                              final GencodeGtfGeneFeature gtfFeature,
+                                                              final GencodeGtfTranscriptFeature transcript,
+                                                              final ReferenceContext referenceContext) {
 
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
@@ -684,6 +718,26 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Determine the strand for the variant:
         final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
         FuncotatorUtils.assertValidStrand(strand);
+
+        // Get the strand-corrected alleles from the inputs.
+        // Also get the reference sequence for the variant region.
+        // (spanning the entire length of both the reference and the variant, regardless of which is longer).
+        final Allele strandCorrectedRefAllele;
+        final Allele strandCorrectedAltAllele;
+
+        if ( strand == Strand.POSITIVE ) {
+            strandCorrectedRefAllele = variant.getReference();
+            strandCorrectedAltAllele = altAllele;
+        }
+        else {
+            strandCorrectedRefAllele = Allele.create(ReadUtils.getBasesReverseComplement( variant.getReference().getBases() ), true);
+            strandCorrectedAltAllele = Allele.create(ReadUtils.getBasesReverseComplement( altAllele.getBases() ), false);
+        }
+
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(strandCorrectedRefAllele, strandCorrectedAltAllele, strand, referenceWindow, referenceContext);
+
+        // Set our reference sequence in the Gencode Funcotation Builder:
+        gencodeFuncotationBuilder.setReferenceContext( referenceBases );
 
         // Set as default INTRON variant classification:
         gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
@@ -819,40 +873,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final Allele refAllele;
         final Allele altAllele;
 
-        // TODO: Make this a parameter:
-        final int referenceWindow = 10;
-        final String referenceBases;
-
         if ( strand == Strand.POSITIVE ) {
             refAllele = variant.getReference();
             altAllele = alternateAllele;
-
-            // Calculate our window to include any extra bases but also have the right referenceWindow:
-            final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindow + refAllele.length() - 1: referenceWindow + altAllele.length() - 1;
-
-            // Set our reference window:
-            referenceContext.setWindow(referenceWindow, endWindow);
-
-            // Get the reference sequence:
-            referenceBases = new String(referenceContext.getBases());
         }
         else {
             refAllele = Allele.create(ReadUtils.getBasesReverseComplement( variant.getReference().getBases() ), true);
             altAllele = Allele.create(ReadUtils.getBasesReverseComplement( alternateAllele.getBases() ), false);
-
-            // Calculate our window to include any extra bases but also have the right referenceWindow:
-            final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindow + refAllele.length() - 1: referenceWindow + altAllele.length() - 1;
-
-            // Set our reference window:
-            referenceContext.setWindow(referenceWindow, endWindow);
-
-            // Get the reference sequence:
-            referenceBases = ReadUtils.getBasesReverseComplement(referenceContext.getBases());
         }
 
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, altAllele, strand, referenceWindow, referenceContext);
+
         // Set our reference sequence in the SequenceComparison:
-        sequenceComparison.setReferenceBases( referenceBases );
         sequenceComparison.setReferenceWindow( referenceWindow );
+        sequenceComparison.setReferenceBases( referenceBases );
 
         // Get the coding sequence for the transcript:
         final String transcriptSequence;
@@ -1120,8 +1154,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * Creates a {@link List} of {@link GencodeFuncotation}s based on the given {@link VariantContext} with type
      * {@link GencodeFuncotation.VariantClassification#IGR}.
-     * @param variant The variant to annotate.
-     * @param reference The reference against which to compare the given variant.
+     * @param variant The {@link VariantContext} for which to create {@link Funcotation}s.
+     * @param reference The {@link ReferenceContext} against which to compare the given {@link VariantContext}.
      * @return A list of IGR annotations for the given variant.
      */
     private static List<GencodeFuncotation> createIgrFuncotations(final VariantContext variant, final ReferenceContext reference) {
@@ -1132,7 +1166,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
 
         for ( final Allele allele : variant.getAlternateAlleles() ) {
-            gencodeFuncotations.add( createIgrFuncotation(allele) );
+            gencodeFuncotations.add( createIgrFuncotation(variant.getReference(), allele, reference) );
         }
 
         return gencodeFuncotations;
@@ -1141,17 +1175,29 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * Creates a {@link GencodeFuncotation}s based on the given {@link Allele} with type
      * {@link GencodeFuncotation.VariantClassification#IGR}.
-     * @param altAllele The alternate allele to use for this funcotation.
+     * Reports reference bases as if they are on the {@link Strand#POSITIVE} strand.
+     * @param refAllele The reference {@link Allele} to use for this Funcotation.
+     * @param altAllele The alternate {@link Allele} to use for this Funcotation.
+     * @param altAllele The {@link ReferenceContext} in which the given {@link Allele}s appear.
      * @return An IGR funcotation for the given allele.
      */
-    private static GencodeFuncotation createIgrFuncotation(final Allele altAllele){
-        final GencodeFuncotation gencodeFuncotation = new GencodeFuncotation();
+    private static GencodeFuncotation createIgrFuncotation(final Allele refAllele,
+                                                           final Allele altAllele,
+                                                           final ReferenceContext referenceContext){
 
-        gencodeFuncotation.setVariantClassification( GencodeFuncotation.VariantClassification.IGR );
-        gencodeFuncotation.setTumorSeqAllele1( altAllele.getBaseString() );
-        gencodeFuncotation.setTumorSeqAllele2( altAllele.getBaseString() );
+        final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
-        return gencodeFuncotation;
+        funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.IGR );
+        funcotationBuilder.setRefAlleleAndStrand( refAllele, Strand.POSITIVE );
+        funcotationBuilder.setTumorSeqAllele1( altAllele.getBaseString() );
+        funcotationBuilder.setTumorSeqAllele2( altAllele.getBaseString() );
+
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, altAllele, Strand.POSITIVE, referenceWindow, referenceContext);
+
+        // Set our reference context in the the FuncotatonBuilder:
+        funcotationBuilder.setReferenceContext( referenceBases );
+
+        return funcotationBuilder.build();
     }
 
     /**

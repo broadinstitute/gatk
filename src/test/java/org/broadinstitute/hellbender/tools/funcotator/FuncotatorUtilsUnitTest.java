@@ -5,11 +5,12 @@ import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,6 +33,13 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     private static final String TEST_REFERENCE_CONTIG = "1";
     private static final int TEST_REFERENCE_START = 12000;
     private static final int TEST_REFERENCE_END = 16000;
+
+    private static final ReferenceDataSource refDataSourceHg19Ch3;
+
+    // Initialization of static variables:
+    static {
+        refDataSourceHg19Ch3 = ReferenceDataSource.of(new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME));
+    }
 
     //==================================================================================================================
     // Helper Methods:
@@ -74,62 +82,55 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     private void printReferenceBases(final File refFile, final String contig, final int start, final int end) {
         final ReferenceContext ref = new ReferenceContext(new ReferenceFileSource(refFile), new SimpleInterval(contig, start, end));
 
-        // Ones place:
-        final StringBuilder sb_o = new StringBuilder();
-        for( int i = 0 ; i < ref.getBases().length; ++i ) {
-            sb_o.append(i % 10);
+        final int numReferenceRows = (int)Math.ceil(Math.log10( end - start ) + 1);
+        final ArrayList<StringBuilder> referenceIndexStringBuilders = new ArrayList<>();
+
+        for ( int j = 0; j < numReferenceRows ; ++j ) {
+            final StringBuilder sb = new StringBuilder();
+            for ( int i = 0; i < ref.getBases().length; ++i ) {
+                sb.append((int)(i / Math.pow(10, j)) % 10);
+            }
+            referenceIndexStringBuilders.add(sb);
         }
-        // Tens place:
-        final StringBuilder sb_t = new StringBuilder();
-        for( int i = 0 ; i < ref.getBases().length; ++i ) {
-            sb_t.append((int)(i / 10.0) % 10);
-        }
-        // Hundreds place:
-        final StringBuilder sb_h = new StringBuilder();
-        for( int i = 0 ; i < ref.getBases().length; ++i ) {
-            sb_h.append((int)(i / 100.0) % 10);
-        }
-        // Thousands place:
-        final StringBuilder sb_th = new StringBuilder();
-        for( int i = 0 ; i < ref.getBases().length; ++i ) {
-            sb_th.append((int)(i / 1000.0) % 10);
-        }
-        // Ten Thousands place:
-        final StringBuilder sb_tth = new StringBuilder();
-        for( int i = 0 ; i < ref.getBases().length; ++i ) {
-            sb_tth.append((int)(i / 10000.0) % 10);
-        }
+
 
         try (Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("refBases_"+contig+"_"+start+"-"+end+".txt")))) {
             writer.write("Location: " + contig + ":" + start + ":" + end + "\n");
             writer.write("=================================================================================\n");
-            writer.write( sb_tth.toString() + "\n");
-            writer.write( sb_th.toString() + "\n");
-            writer.write( sb_h.toString() + "\n" );
-            writer.write( sb_t.toString() + "\n" );
-            writer.write( sb_o.toString() + "\n" );
+            for ( final StringBuilder sb : referenceIndexStringBuilders ) {
+                writer.write( sb.toString() );
+                writer.write( "\n" );
+            }
             writer.write( new String(ref.getBases()) + "\n\n" );
         }
         catch ( final IOException ex ) {
             throw new GATKException("Could not create an output file!", ex);
         }
-
-        System.out.println();
-        System.out.println("Location: " + contig + ":" + start + ":" + end);
-        System.out.println("=================================================================================");
-        System.out.println( sb_tth.toString() );
-        System.out.println( sb_th.toString() );
-        System.out.println( sb_h.toString() );
-        System.out.println( sb_t.toString() );
-        System.out.println( sb_o.toString() );
-        System.out.println( new String(ref.getBases()) );
     }
 
 //    @Test
 //    void createRefBaseFile() {
-//        printReferenceBases(new File("/Users/jonn/Development/references/GRCh37.p13.genome.fasta"), "chr1", 860000,  880000);
-//        printReferenceBases();
+////        printReferenceBases(new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME), "chr3", 100000000, 110000000);
+////        printReferenceBases(new File("/Users/jonn/Development/references/GRCh37.p13.genome.fasta"), "chr1", 860000,  880000);
+////        printReferenceBases();
 //    }
+
+    private static Object[] helpCreateDataForTestGetBasesInWindowAroundReferenceAllele(final String refAlelleBases,
+                                                                                       final String altAlleleBases,
+                                                                                       final String strand,
+                                                                                       final int windowSizeInBases,
+                                                                                       final int startPos,
+                                                                                       final int endPos,
+                                                                                       final String expected) {
+        return new Object[] {
+            Allele.create(refAlelleBases, true),
+                Allele.create(altAlleleBases),
+                Strand.toStrand(strand),
+                windowSizeInBases,
+                new ReferenceContext( refDataSourceHg19Ch3, new SimpleInterval("chr3", startPos, endPos) ),
+                expected
+        };
+    }
 
     //==================================================================================================================
     // Data Providers:
@@ -923,7 +924,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    Object[][] provideDataFortestIsPositionInFrame() {
+    Object[][] provideDataForTestIsPositionInFrame() {
         return new  Object[][] {
                 {   1, true },
                 {   2, false },
@@ -942,6 +943,80 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 { 293, false },
                 { 294, false },
 
+        };
+    }
+
+    @DataProvider
+    Object[][] provideDataForTestGetBasesInWindowAroundReferenceAllele() {
+
+        final int offset = 100000000;
+
+        return new Object[][] {
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  1, 500000 + offset, 500000 + offset,          "TAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  2, 500000 + offset, 500000 + offset,         "GTACA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  3, 500000 + offset, 500000 + offset,        "AGTACAT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  4, 500000 + offset, 500000 + offset,       "TAGTACATT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  5, 500000 + offset, 500000 + offset,      "TTAGTACATTA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  6, 500000 + offset, 500000 + offset,     "GTTAGTACATTAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  7, 500000 + offset, 500000 + offset,    "AGTTAGTACATTAAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  8, 500000 + offset, 500000 + offset,   "TAGTTAGTACATTAACA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  9, 500000 + offset, 500000 + offset,  "CTAGTTAGTACATTAACAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+", 10, 500000 + offset, 500000 + offset, "ACTAGTTAGTACATTAACAAT"),
+
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  1, 500000 + offset, 500000 + offset,          "TACATT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  2, 500000 + offset, 500000 + offset,         "GTACATTA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  3, 500000 + offset, 500000 + offset,        "AGTACATTAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  4, 500000 + offset, 500000 + offset,       "TAGTACATTAAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  5, 500000 + offset, 500000 + offset,      "TTAGTACATTAACA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  6, 500000 + offset, 500000 + offset,     "GTTAGTACATTAACAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  7, 500000 + offset, 500000 + offset,    "AGTTAGTACATTAACAAT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  8, 500000 + offset, 500000 + offset,   "TAGTTAGTACATTAACAATG"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  9, 500000 + offset, 500000 + offset,  "CTAGTTAGTACATTAACAATGA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+", 10, 500000 + offset, 500000 + offset, "ACTAGTTAGTACATTAACAATGAC"),
+
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  1, 500000 + offset, 500000 + offset,          "TACATT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  2, 500000 + offset, 500000 + offset,         "GTACATTA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  3, 500000 + offset, 500000 + offset,        "AGTACATTAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  4, 500000 + offset, 500000 + offset,       "TAGTACATTAAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  5, 500000 + offset, 500000 + offset,      "TTAGTACATTAACA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  6, 500000 + offset, 500000 + offset,     "GTTAGTACATTAACAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  7, 500000 + offset, 500000 + offset,    "AGTTAGTACATTAACAAT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  8, 500000 + offset, 500000 + offset,   "TAGTTAGTACATTAACAATG"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  9, 500000 + offset, 500000 + offset,  "CTAGTTAGTACATTAACAATGA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+", 10, 500000 + offset, 500000 + offset, "ACTAGTTAGTACATTAACAATGAC"),
+
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  1, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(         "TAC".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  2, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(        "GTACA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  3, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(       "AGTACAT".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  4, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(      "TAGTACATT".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  5, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(     "TTAGTACATTA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  6, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(    "GTTAGTACATTAA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  7, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(   "AGTTAGTACATTAAC".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  8, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(  "TAGTTAGTACATTAACA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  9, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement( "CTAGTTAGTACATTAACAA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-", 10, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement("ACTAGTTAGTACATTAACAAT".getBytes() )) ) ,
+
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  1, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(          "TACATT".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  2, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(         "GTACATTA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  3, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(        "AGTACATTAA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  4, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(       "TAGTACATTAAC".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  5, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(      "TTAGTACATTAACA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  6, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(     "GTTAGTACATTAACAA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  7, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(    "AGTTAGTACATTAACAAT".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  8, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(   "TAGTTAGTACATTAACAATG".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  9, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(  "CTAGTTAGTACATTAACAATGA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-", 10, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement( "ACTAGTTAGTACATTAACAATGAC".getBytes() )) ),
+
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  1, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(          "TACATT".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  2, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(         "GTACATTA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  3, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(        "AGTACATTAA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  4, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(       "TAGTACATTAAC".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  5, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(      "TTAGTACATTAACA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  6, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(     "GTTAGTACATTAACAA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  7, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(    "AGTTAGTACATTAACAAT".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  8, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(   "TAGTTAGTACATTAACAATG".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  9, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(  "CTAGTTAGTACATTAACAATGA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-", 10, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement( "ACTAGTTAGTACATTAACAATGAC".getBytes() )) ),
         };
     }
 
@@ -1169,8 +1244,17 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         FuncotatorUtils.assertValidStrand( strand );
     }
 
-    @Test (dataProvider = "provideDataFortestIsPositionInFrame")
+    @Test (dataProvider = "provideDataForTestIsPositionInFrame")
     void testIsPositionInFrame( final int position, final boolean expected ) {
         Assert.assertEquals( FuncotatorUtils.isPositionInFrame(position), expected );
+    }
+
+    @Test (dataProvider = "provideDataForTestGetBasesInWindowAroundReferenceAllele")
+    void testGetBasesInWindowAroundReferenceAllele(final Allele refAllele, final Allele altAllele, final Strand strand,
+                                                   final int referenceWindow, final ReferenceContext referenceContext,
+                                                   final String expected) {
+
+        final String basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, altAllele, strand, referenceWindow, referenceContext);
+        Assert.assertEquals( basesInWindow, expected );
     }
 }

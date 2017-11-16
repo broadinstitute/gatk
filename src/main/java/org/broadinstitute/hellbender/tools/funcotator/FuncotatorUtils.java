@@ -1541,6 +1541,53 @@ public class FuncotatorUtils {
     }
 
     /**
+     * Get a string of bases around a variant (specified by reference and alternate alleles), including the reference allele itself.
+     * ASSUMES: that the given {@link ReferenceContext} is already centered on the variant location.
+     * SIDE EFFECT: Will change the window size of the given {@link ReferenceContext} to include {@code referenceWindowInBases} additional bases on either side of the variant.
+     * @param refAllele The reference {@link Allele} for the variant in question.  If on {@link Strand#NEGATIVE}, must have already been reverse complemented.  Must not be {@code null}.
+     * @param altAllele The alternate {@link Allele} for the variant in question.  If on {@link Strand#NEGATIVE}, must have already been reverse complemented.  Must not be {@code null}.
+     * @param strand The {@link Strand} on which the variant in question lives.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
+     * @param referenceWindowInBases The number of bases to the left and right of the variant to return.  Must be > 0.
+     * @param referenceContext The {@link ReferenceContext} centered around the variant in question.  Must not be {@code null}.
+     * @return A string containing {@code referenceWindowInBases} bases to either side of the specified refAllele.
+     */
+    public static String getBasesInWindowAroundReferenceAllele( final Allele refAllele,
+                                                                final Allele altAllele,
+                                                                final Strand strand,
+                                                                final int referenceWindowInBases,
+                                                                final ReferenceContext referenceContext) {
+        Utils.nonNull( refAllele );
+        Utils.nonNull( altAllele );
+        assertValidStrand( strand );
+        Utils.nonNull( referenceContext );
+
+        final String referenceBases;
+
+        if ( strand == Strand.POSITIVE ) {
+            // Calculate our window to include any extra bases but also have the right referenceWindowInBases:
+            final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindowInBases + refAllele.length() - 1 : referenceWindowInBases + altAllele.length() - 1;
+
+            // Set our reference window:
+            referenceContext.setWindow(referenceWindowInBases, endWindow);
+
+            // Get the reference sequence:
+            referenceBases = new String(referenceContext.getBases());
+        }
+        else {
+            // Calculate our window to include any extra bases but also have the right referenceWindowInBases:
+            final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindowInBases + refAllele.length() - 1: referenceWindowInBases + altAllele.length() - 1;
+
+            // Set our reference window:
+            referenceContext.setWindow(referenceWindowInBases, endWindow);
+
+            // Get the reference sequence:
+            referenceBases = ReadUtils.getBasesReverseComplement(referenceContext.getBases());
+        }
+
+        return referenceBases;
+    }
+
+    /**
      * Get the Protein change start position (1-based, inclusive) given the aligned position of the coding sequence.
      * @param alignedCodingSequenceAlleleStart Position (1-based, inclusive) of the start of the allele in the coding sequence.  Must not be {@code null}.  Must be > 0.
      * @return The position (1-based, inclusive) of the protein change in the amino acid sequence.
