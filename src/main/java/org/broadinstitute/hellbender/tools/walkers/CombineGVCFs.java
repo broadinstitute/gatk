@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
@@ -65,6 +64,9 @@ import java.util.*;
  * for every position) that GenotypeGVCFs requires for its operation.</p>
  * <p>If the gVCF files contain allele specific annotations, add -G Standard -G AS_Standard to the command line.</p>
  *
+ * <p>Users generating large callsets (1000+ samples) may prefer GenomicsDBImport, which uses Intel's GenomicsDB and is capable of scaling to much larger sample sizes than CombineGVCFs.
+ * This tool provides a pure java reference implementation of the combine operation which is available on all architectures.<p/>
+ *
  */
 @CommandLineProgramProperties(summary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", oneLineSummary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", programGroup = VariantProgramGroup.class)
 @DocumentedFeature
@@ -105,31 +107,30 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     /**
      * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set when appropriate. Note that dbSNP is not used in any way for the calculations themselves.
      */
-    // the annotation engine
     @ArgumentCollection
     protected DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
 
     // State that gets accumulated between calls of apply()
-    private final LinkedList<VariantContext> VariantContextsOverlappingCurrentMerge = new LinkedList<>();
+    private final LinkedList<VariantContext> variantContextsOverlappingCurrentMerge = new LinkedList<>();
     private final Set<String> samples = new HashSet<>();
     private SimpleInterval prevPos = null;
     private byte refAfterPrevPos;
     private ReferenceContext storedReferenceContext;
 
-
+    @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
         // If we need to stop at an intermediate site since the last apply, do so (caused by gvcfBlocks, contexts ending, etc...)
-        if (!VariantContextsOverlappingCurrentMerge.isEmpty()) {
-            Locatable last = prevPos==null ? VariantContextsOverlappingCurrentMerge.get(0) : prevPos;
+        if (!variantContextsOverlappingCurrentMerge.isEmpty()) {
+            Locatable last = prevPos==null ? variantContextsOverlappingCurrentMerge.get(0) : prevPos;
             // If on a different contig, close out all the queued states on the current contig
             int end = last.getContig().equals(referenceContext.getWindow().getContig())
                     ? referenceContext.getInterval().getStart() - 1
-                    : VariantContextsOverlappingCurrentMerge.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
+                    : variantContextsOverlappingCurrentMerge.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
 
             createIntermediateVariants( new SimpleInterval(last.getContig(), last.getStart(), end));
         }
 
-        mergeWithnewVCs(variantContexts, referenceContext);
+        mergeWithNewVCs(variantContexts, referenceContext);
 
         // Update the stored reference if it has a later stop position than the current stored reference
         if ( (storedReferenceContext == null) ||
@@ -140,7 +141,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     }
 
     /**
-     * Method that calculates if there are any sites in the provided interval where we should expect the tool to create
+     * calculates if there are any sites in the provided interval where we should expect the tool to create
      * a new variant context object by calling endPreviousStates() and closes them by providing appropriate reference
      * information and an empty list of new variant contexts.
      *
@@ -158,7 +159,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         }
 
         // If any variant contexts ended (or were spanning deletions) the last context compute where we should stop them
-        for (VariantContext vc : VariantContextsOverlappingCurrentMerge) {
+        for (VariantContext vc : variantContextsOverlappingCurrentMerge) {
 
             // Asking if the number of alleles > 2 is a shorthand for a variant being present, as we expect <non-ref>
             // symbolic alleles to be present in all VariantContext. This might also be the case if we saw a spanning
@@ -250,7 +251,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      * @param variantContexts list of variant contexts with the same start position to be reduced
      * @param referenceContext ReferenceContext object overlapping the provided VariantContexts
      */
-    public void mergeWithnewVCs(final List<VariantContext> variantContexts, final ReferenceContext referenceContext) {
+    public void mergeWithNewVCs(final List<VariantContext> variantContexts, final ReferenceContext referenceContext) {
         if ( !variantContexts.isEmpty() ) {
             if ( ! okayToSkipThisSite(variantContexts, referenceContext) ) {
                 SimpleInterval loc = referenceContext.getInterval();
@@ -259,8 +260,8 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
                         variantContexts,
                         false);
             }
-            VariantContextsOverlappingCurrentMerge.addAll(variantContexts);
-            for(final VariantContext vc : VariantContextsOverlappingCurrentMerge){
+            variantContextsOverlappingCurrentMerge.addAll(variantContexts);
+            for(final VariantContext vc : variantContextsOverlappingCurrentMerge){
                 samples.addAll(vc.getSampleNames());
             }
         }
@@ -278,7 +279,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         intersection.retainAll(samples);
 
         //if there's a starting VC with a sample that's already in a current VC, don't skip this position
-        return prevPos != null && referenceContext.getInterval().getStart() == prevPos.getStart() + 1 && intersection.isEmpty(); //TODO off by 1 bug
+        return prevPos != null && referenceContext.getInterval().getStart() == prevPos.getStart() + 1 && intersection.isEmpty();
     }
 
     private Set<String> getSamples(List<VariantContext> variantContexts) {
@@ -303,10 +304,10 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         // will be advanced one base
         final byte refNextBase = (forceOutputAtCurrentPosition) ? (refBases.length > 1 ? refBases[1] : (byte)'N' ): refBase;
 
-        final List<VariantContext> stoppedVCs = new ArrayList<>(VariantContextsOverlappingCurrentMerge.size());
+        final List<VariantContext> stoppedVCs = new ArrayList<>(variantContextsOverlappingCurrentMerge.size());
 
-        for (int i = VariantContextsOverlappingCurrentMerge.size() - 1; i >= 0; i-- ) {
-            final VariantContext vc = VariantContextsOverlappingCurrentMerge.get(i);
+        for (int i = variantContextsOverlappingCurrentMerge.size() - 1; i >= 0; i-- ) {
+            final VariantContext vc = variantContextsOverlappingCurrentMerge.get(i);
             //the VC for the previous state will be stopped if its position is previous to the current position or it we've moved to a new contig
             if ( vc.getStart() <= pos.getStart() || !vc.contigsMatch(pos)) {
 
@@ -316,7 +317,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
                 // or if ending vc is the same sample as a starting VC, then remove it from the future state
                 if((vc.getEnd() == pos.getStart()) || (variantContexts.size() > 0 && !forceOutputAtCurrentPosition && newSamples.containsAll(vc.getSampleNames()))) {
                     samples.removeAll(vc.getSampleNames());
-                    VariantContextsOverlappingCurrentMerge.remove(i);
+                    variantContextsOverlappingCurrentMerge.remove(i);
                 }
             }
         }
@@ -345,13 +346,13 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      * Combine a list of reference block VariantContexts.
      * We can't use GATKVariantContextUtils.simpleMerge() because it is just too slow for this sort of thing.
      *
-     * @param VCs   the variant contexts to merge
+     * @param vcs   the variant contexts to merge
      * @param end   the end of this block (inclusive)
      * @return a new merged VariantContext
      */
-    private VariantContext referenceBlockMerge(final List<VariantContext> VCs, final int end) {
+    private VariantContext referenceBlockMerge(final List<VariantContext> vcs, final int end) {
 
-        final VariantContext first = VCs.get(0);
+        final VariantContext first = vcs.get(0);
 
         // ref allele and start
         final Allele refAllele;
@@ -372,7 +373,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         // genotypes
         final GenotypesContext genotypes = GenotypesContext.create();
-        for ( final VariantContext vc : VCs ) {
+        for ( final VariantContext vc : vcs ) {
             for ( final Genotype g : vc.getGenotypes() ) {
                 genotypes.add(new GenotypeBuilder(g).alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).make());
             }
@@ -387,11 +388,12 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      * @param VCs  list of VariantContexts
      * @return true if there are one or more variantContexts that contain a true alternate allele, false otherwise
      */
-    private boolean containsTrueAltAllele(final List<VariantContext> VCs) {
+    private static boolean containsTrueAltAllele(final List<VariantContext> VCs) {
 
         for ( final VariantContext vc : VCs ) {
-            if ( vc.getNAlleles() > 2 )
+            if ( vc.getNAlleles() > 2 ) {
                 return true;
+            }
         }
         return false;
     }
@@ -404,13 +406,13 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             return null;
         }
 
-        SimpleInterval interval = prevPos != null ? new SimpleInterval(prevPos.getContig(), prevPos.getStart(), VariantContextsOverlappingCurrentMerge.stream().map(VariantContext::getEnd).max(Comparator.naturalOrder()).get()) :
+        SimpleInterval interval = prevPos != null ? new SimpleInterval(prevPos.getContig(), prevPos.getStart(), variantContextsOverlappingCurrentMerge.stream().map(VariantContext::getEnd).max(Comparator.naturalOrder()).get()) :
                 storedReferenceContext.getInterval();
 
         createIntermediateVariants(interval);
 
         // there shouldn't be any state left unless the user cut in the middle of a gVCF block
-        if ( !VariantContextsOverlappingCurrentMerge.isEmpty() ) {
+        if ( !variantContextsOverlappingCurrentMerge.isEmpty() ) {
             logger.warn("You have asked for an interval that cuts in the middle of one or more gVCF blocks. Please note that this will cause you to lose records that don't end within your interval.");
         }
 

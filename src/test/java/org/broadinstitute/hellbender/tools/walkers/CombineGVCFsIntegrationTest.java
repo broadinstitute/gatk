@@ -7,7 +7,9 @@ import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
@@ -48,10 +50,9 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @DataProvider(name = "gvcfsToGenotype")
-    public Object[][] gvcfsToGenotype() {
+    @DataProvider
+    public Object[][] gvcfsToCombine() {
         return new Object[][]{
-                //combine not supported yet, see https://github.com/broadinstitute/gatk/issues/2429 and https://github.com/broadinstitute/gatk/issues/2584
                 // Simple Test, spanning deletions
                 {new File[]{getTestFile("spanningDel.1.g.vcf"),getTestFile("spanningDel.2.g.vcf")}, getTestFile("spanningDeletionRestrictToStartExpected.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
                 // Simple Test, multiple spanning deletions for one file
@@ -63,7 +64,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 // Testing BasePairResolutionInputs
                 {new File[]{getTestFile("gvcf.basepairResolution.vcf")}, getTestFile("testBasepairResolutionInput.vcf"), Arrays.asList("-A", "ClippingRankSumTest"), b37_reference_20_21},
                 // Interval Test
-                {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("IntervalTest.vcf"), Arrays.asList(" -L ",  "20:69485-69791"), b37_reference_20_21}, //TODO figure out about MQ
+                {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("IntervalTest.vcf"), Arrays.asList(" -L ",  "20:69485-69791"), b37_reference_20_21},
                 // convertToBasePairResolution argument test
                 {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("convertToBasePairResolution.vcf"), Arrays.asList(" -L ",  "20:69485-69791", "--convertToBasePairResolution"), b37_reference_20_21},
                 // Testing the breakBands argument " -L 1:69485-69791 --breakBandsAtMultiplesOf 5"
@@ -90,7 +91,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
     This method should be removed after GenotypeGVCFs has been completely validated against GATK3.
      */
-    @Test(dataProvider = "gvcfsToGenotype", enabled = false)
+    @Test(dataProvider = "gvcfsToCombine", enabled = false)
     public void compareToGATK3(File[] inputs, File outputFile, List<String> extraArgs, String reference) throws IOException, NoSuchAlgorithmException {
         final String GATK3_PATH = "/Users/emeryj/hellbender/gsa-unstable/target/package/GenomeAnalysisTK.jar";
         final String params = GATK3_PATH + inputs[0].getAbsolutePath() + extraArgs.stream().collect(Collectors.joining()) + reference;
@@ -126,7 +127,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         assertVariantContextsMatch(Arrays.asList(inputs), gatk3Result, extraArgs, reference);
     }
 
-    @Test(dataProvider = "gvcfsToGenotype")
+    @Test(dataProvider = "gvcfsToCombine")
     public void compareToGATK3ExpectedResults(File[] inputs, File outputFile, List<String> extraArgs, String reference) throws IOException, NoSuchAlgorithmException {
         assertVariantContextsMatch(Arrays.asList(inputs), outputFile, extraArgs, reference);
     }
@@ -178,27 +179,18 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
      * @return list of VariantContext records
      * @throws IOException if the file does not exist or can not be opened
      */
+    @SuppressWarnings({"unchecked"})
     private static List<VariantContext> getVariantContexts(final File vcfFile) throws IOException {
-        final VCFCodec codec = new VCFCodec();
-        final FileInputStream s = new FileInputStream(vcfFile);
-        final LineIterator lineIteratorVCF = codec.makeSourceFromStream(new PositionalBufferedStream(s));
-        codec.readHeader(lineIteratorVCF);
-
-        final List<VariantContext> VCs = new ArrayList<>();
-        while (lineIteratorVCF.hasNext()) {
-            final String line = lineIteratorVCF.next();
-            Assert.assertFalse(line == null);
-            VCs.add(codec.decode(line));
+        try(final FeatureDataSource<VariantContext> variantContextFeatureDataSource = new FeatureDataSource<>(vcfFile)) {
+            return IteratorUtils.toList(variantContextFeatureDataSource.iterator());
         }
-
-        return VCs;
     }
 
     private static VCFHeader getHeaderFromFile(final File vcfFile) throws IOException {
-        SeekablePathStream stream = new SeekablePathStream(vcfFile.toPath());
-        VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(vcfFile.toPath()));
-        stream.close();
-        return header;
+        try (SeekablePathStream stream = new SeekablePathStream(vcfFile.toPath())) {
+            VCFHeader header = VCFHeaderReader.readHeaderFrom(stream);
+            return header;
+        }
     }
 
     @Test
@@ -234,7 +226,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test()
-    public void testTetraploidRun() {
+    public void testTetraploidRun() throws IOException {
         final File output = createTempFile("genotypegvcf", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -247,14 +239,11 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args);
 
-        try {
-            final List<VariantContext> expectedVC = getVariantContexts(getTestFile("tetraploidRun.GATK3.g.vcf"));
-            final List<VariantContext> actualVC = getVariantContexts(output);
-            final VCFHeader header = getHeaderFromFile(output);
-            assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
-        } catch (IOException e) {
-            Assert.assertFalse(true);
-        }
+        final List<VariantContext> expectedVC = getVariantContexts(getTestFile("tetraploidRun.GATK3.g.vcf"));
+        final List<VariantContext> actualVC = getVariantContexts(output);
+        final VCFHeader header = getHeaderFromFile(output);
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
+
     }
 
     @Test

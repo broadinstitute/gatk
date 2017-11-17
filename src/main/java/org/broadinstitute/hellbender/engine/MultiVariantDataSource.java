@@ -396,6 +396,9 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
         };
     }
 
+    /**
+     * Return lexicographically sorted set of uniquified sample names merged from across input data sources
+     */
     public SortedSet<String> getSamples() {
         return mergedSamples;
     }

@@ -3,14 +3,15 @@ package org.broadinstitute.hellbender.engine;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.MultiVariantWalker;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 import java.util.*;
 
@@ -21,7 +22,7 @@ import java.util.*;
  * some tools.
  *
  * As such, the argument '-ignore_variants_starting_outside_interval' has been provided to mimic GATK3's behavior
- * only presenting variant that start inside the requested interval regardless of whether there is a spanning variant.
+ * only presenting variants that start inside the requested interval regardless of whether there is a spanning variant.
  *
  * Client tools must implement apply(List<VariantContext> variantContexts, ReferenceContext referenceContext)
  */
@@ -33,7 +34,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
     public static final String IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL = "ignore_variants_starting_outside_interval";
 
     /**
-     * This option can only be activated if intervals are specified.
+     * this option has no effect unless intervals are specified.
      * <p>
      * This exists to mimic GATK3 interval traversal patterns
      */
@@ -47,17 +48,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
      * This method keeps track of all the variants it is passed and will feed all the variants that start at the same
      * site to the reduce method.
      *
-     * @param variant          Current variant being processed.
-     * @param readsContext     Reads overlapping the current variant. Will be an empty, but non-null, context object
-     *                         if there is no backing source of reads data (in which case all queries on it will return
-     *                         an empty array/iterator)
-     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
-     *                         if there is no backing source of reference data (in which case all queries on it will return
-     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
-     *                         by invoking {@link ReferenceContext#setWindow}
-     *                         on this object before calling {@link ReferenceContext#getBases}
-     * @param featureContext   Features spanning the current variant. Will be an empty, but non-null, context object
-     *                         if there is no backing source of Feature data (in which case all queries on it will return an
+     * {@inheritDoc}
      */
     @Override
     public final void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
@@ -73,37 +64,43 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
         } else if (!currentVariants.get(0).contigsMatch(variant)
                 || currentVariants.get(0).getStart() < variant.getStart()) {
             // Emptying any sites which should emit a new VC since the last one
-            apply(currentVariants, spanningReferenceContext);
+            apply(new ArrayList<>(currentVariants), spanningReferenceContext);
             currentVariants.clear();
             currentVariants.add(variant);
         } else {
             currentVariants.add(variant);
         }
-        referenceContext.setWindow(1, 1);
-        spanningReferenceContext = updatePositionalState(currentVariants, spanningReferenceContext, referenceContext);
+        if (referenceContext.hasBackingDataSource()){
+            referenceContext.setWindow(1, 1);
+        }
+        spanningReferenceContext = getExpandedReferenceContext(currentVariants, spanningReferenceContext, referenceContext);
     }
 
     /**
-     * Primary traversal, feeds a list of variant contexts across driving variant files with matching start locations in
-     * sorted order based on start location.
+     * This method must be implemented by tool authors.
+     *
+     * This is the primary traversal for any MultiVariantWalkerGroupedOnStart walkers. Will traverse over input variant contexts
+     * and call #apply() exactly once for each unique reference start position. All variants starting at each locus
+     * across source files will be grouped and passed as a list of VariantContext objects.
      *
      * @param variantContexts  VariantContexts from driving variants with matching start positon
+     *                         NOTE: This will never be empty
      * @param referenceContext  ReferenceContext object covering the reference of the longest spanning VariantContext
      *                          with one base on either end as window padding.
      */
     public abstract void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext);
 
     /**
-     * Method which updates that the currentQueuedContextState object to add a new reference context making sure
-     * to hold the longest set of reference bases it has seen, which should all originate from the same source
-     *
-     * @param currentVariants
+     * Helper method that ensures the reference context it returns is adequate to span the length of all the accumulated
+     * VariantContexts. It makes the assumption that all variant contexts in currentVariants start at the same location and
+     * that currentReferenceContext corresponds to the correct span for the longest variantContexts the first N-1 VariantContexts
+     * and that newReferenceContext corresponds to the correct span for the Nth item.
      */
     @VisibleForTesting
-    final static ReferenceContext updatePositionalState(List<VariantContext> currentVariants,
-                                                        ReferenceContext currentReferenceContext,
-                                                        ReferenceContext newReferenceContext) {
-        if (currentVariants.size() == 1 || newReferenceContext.getWindow().getEnd() > currentReferenceContext.getWindow().getEnd()) {
+    final static ReferenceContext getExpandedReferenceContext(List<VariantContext> currentVariants,
+                                                              ReferenceContext currentReferenceContext,
+                                                              ReferenceContext newReferenceContext) {
+        if ((currentReferenceContext==null)||(currentVariants.size() == 1 || newReferenceContext.getWindow().getEnd() > currentReferenceContext.getWindow().getEnd())) {
             return newReferenceContext;
         }
         return currentReferenceContext;
@@ -119,7 +116,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
     /**
      * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalStart} instead.
      */
-    protected final void beforeTraverse() {
+    private void beforeTraverse() {
         overlapDetector = hasIntervals() ? OverlapDetector.create(intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary())) : null;
     }
 
@@ -127,14 +124,14 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
      * @param loc locatable to query
      * @return true if the query loc is entirely contained by the interval, true if no interval
      */
-    public final boolean isWithinInterval(Locatable loc) {
+    protected final boolean isWithinInterval(Locatable loc) {
         return (overlapDetector==null || overlapDetector.overlapsAny(loc));
     }
 
     /**
      * Clear accumulated reads before {@link #onTraversalSuccess()} is accessed
      */
-    public void afterTraverse() {
+    private void afterTraverse() {
         // Clearing the accumulator
         if (currentVariants.isEmpty()) {
             logger.warn("Error: The requested interval contained no data in source VCF files");
