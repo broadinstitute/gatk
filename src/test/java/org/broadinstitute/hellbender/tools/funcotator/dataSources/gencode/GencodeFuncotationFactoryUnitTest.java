@@ -3,13 +3,16 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
+import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -124,6 +127,18 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         }
 
         return outList;
+    }
+
+    private Set<String> getValidTranscriptsForGene(final String expectedGeneName) {
+
+        final Set<String> requestedTranscriptIds = new HashSet<>();
+        if ( expectedGeneName.equals("PIK3CA") ) {
+            requestedTranscriptIds.add( "ENST00000263967.3" );
+        }
+        else if ( expectedGeneName.equals("MUC16") ) {
+            requestedTranscriptIds.add( "ENST00000397910.4" );
+        }
+        return requestedTranscriptIds;
     }
 
     //==================================================================================================================
@@ -423,15 +438,25 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature) gtfFeatureIterator.next();
         final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch19, variantInterval );
 
+        // TODO: Make this an input argument:
+        final Set<String> requestedTranscriptIds = getValidTranscriptsForGene("MUC16");
+
         // Create a factory for our funcotations:
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), requestedTranscriptIds)) {
 
-        // Generate our funcotations:
-        final List<GencodeFuncotation> funcotations = testMuc16SnpCreateFuncotationsFuncotationFactory.createFuncotations(variantContext, altAllele, gene, referenceContext);
+            // Generate our funcotations:
+            final List<Feature> featureList = new ArrayList<>();
+            featureList.add( gene );
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(variantContext, referenceContext, featureList);
 
-        // Make sure we get what we expected:
-        Assert.assertEquals(funcotations.size(), 1);
-        Assert.assertEquals(funcotations.get(0).getVariantClassification(), expectedVariantClassification);
-        Assert.assertEquals(funcotations.get(0).getVariantType(), expectedVariantType);
+            // Make sure we get what we expected:
+            Assert.assertEquals(funcotations.size(), 1);
+
+            final GencodeFuncotation funcotation = (GencodeFuncotation)funcotations.get(0);
+
+            Assert.assertEquals(funcotation.getVariantClassification(), expectedVariantClassification);
+            Assert.assertEquals(funcotation.getVariantType(), expectedVariantType);
+        }
     }
 
     @Test (dataProvider = "provideDataForCreateFuncotations")
@@ -482,16 +507,20 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature) gtfFeatureIterator.next();
         final ReferenceContext referenceContext = new ReferenceContext(referenceDataSource, variantInterval );
 
-        // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(transcriptFastaFile))) {
+        // TODO: Make this an input argument:
+        final Set<String> requestedTranscriptIds = getValidTranscriptsForGene(expectedGeneName);
 
-            // Generate our funcotations:
-            final List<GencodeFuncotation> funcotations = funcotationFactory.createFuncotations(variantContext, altAllele, gene, referenceContext);
+        // Create a factory for our funcotations:
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(transcriptFastaFile), requestedTranscriptIds)) {
+
+            final List<Feature> featureList = new ArrayList<>();
+            featureList.add( gene );
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(variantContext, referenceContext, featureList);
 
             // Make sure we get what we expected:
             Assert.assertEquals(funcotations.size(), 1);
 
-            final GencodeFuncotation funcotation = funcotations.get(0);
+            final GencodeFuncotation funcotation = (GencodeFuncotation)funcotations.get(0);
 
             final boolean geneNameCorrect              = Objects.equals( funcotation.getHugoSymbol(), expectedGeneName );
             final boolean variantClassificationCorrect = Objects.equals( funcotation.getVariantClassification(), expectedVariantClassification );
