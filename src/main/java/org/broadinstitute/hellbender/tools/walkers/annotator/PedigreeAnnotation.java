@@ -17,7 +17,7 @@ import java.util.*;
  * in the provided pedigree file. If no founderIDs or pedigreeFiles are present, then it defaults to returning all genotypes.
  */
 public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
-    private final Collection<String> founderIds;
+    private Collection<String> founderIds;
     private File pedigreeFile = null;
     private boolean hasAddedPedigreeFounders = false;
 
@@ -48,5 +48,18 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
         final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
         sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
         return sampleDBBuilder.getFinalSampleDB().getFounderIds();
+    }
+
+    /**
+     * Setter for pedigree file and founderIDs to be used by the GATKAnnotationPluginDescriptor to handle duplicated annotaiton
+     * arguments between InbreedingCoeff and ExcessHet
+     */
+    public void setPedigreeFile(File pedigreeFile) {
+        this.pedigreeFile = pedigreeFile;
+        hasAddedPedigreeFounders = false;
+    }
+    public void setFounderIds(List<String> founderIds) {
+        this.founderIds = founderIds;
+        hasAddedPedigreeFounders = false;
     }
 }

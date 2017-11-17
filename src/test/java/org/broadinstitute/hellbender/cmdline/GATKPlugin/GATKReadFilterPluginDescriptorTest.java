@@ -470,6 +470,28 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         Assert.assertEquals(rf.maxReadLength.intValue(), 13);
     }
 
+    // TODO this test is enforcing the expected behavior that if a tool declares a default annotation with an optional argument
+    // TODO and if the user then disables and reenables that argument, that the tools default optional argument value will be
+    // TODO used over the global default, which seems wrong. See https://github.com/broadinstitute/gatk/issues/3848
+    @Test (enabled = false)
+    public void testDisableDefaultsAndReenableWithDifferentArgsDefaultValue() {
+        GATKReadFilterPluginDescriptor rfDesc = new GATKReadFilterPluginDescriptor(
+                Collections.singletonList(new ReadLengthReadFilter(1, 10)));
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(rfDesc),
+                Collections.emptySet());
+        clp.parseArguments(nullMessageStream, new String[] {
+                "--disableToolDefaultReadFilters",
+                "--readFilter", ReadLengthReadFilter.class.getSimpleName(),
+                "--maxReadLength", "13"}
+        );
+        List<ReadFilter> allFilters = rfDesc.getResolvedInstances();
+        ReadLengthReadFilter rf = (ReadLengthReadFilter) allFilters.get(0);
+        Assert.assertEquals(rf.maxReadLength.intValue(), 13);
+        Assert.assertEquals(rf.minReadLength, 1);
+    }
+
     @Test
     public void testDisableDefaultsAndReorderWithUserEnabledFirts() {
         final ReadLengthReadFilter rlrf = new ReadLengthReadFilter(2, 10);

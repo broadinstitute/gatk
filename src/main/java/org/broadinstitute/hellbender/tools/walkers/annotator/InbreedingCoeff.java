@@ -55,7 +55,7 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements Standar
 
     public InbreedingCoeff(final Set<String> founderIds){
         super(founderIds);
-    }
+     }
 
     public InbreedingCoeff(final File pedigreeFile){
         super(pedigreeFile);
