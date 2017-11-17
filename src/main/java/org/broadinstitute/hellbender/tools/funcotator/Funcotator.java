@@ -66,7 +66,13 @@ public class Funcotator extends VariantWalker {
 
     //-----------------------------------------------------
     // Optional args:
-    
+
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
+            fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_SHORT_NAME,
+            optional = true,
+            doc = "Method of detailed transcript selection.")
+    protected FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT;
 
     //==================================================================================================================
 
@@ -86,7 +92,7 @@ public class Funcotator extends VariantWalker {
 
         // Set up our data source factories:
         // TODO: this should be set up based on the input CLI arguments.
-        dataSourceFactories.add(new GencodeFuncotationFactory(gencodeTranscriptFastaFile));
+        dataSourceFactories.add(new GencodeFuncotationFactory(gencodeTranscriptFastaFile, transcriptSelectionMode));
 
         // Set up our output renderer:
         // TODO: in the future this should be encapsulated into a factory for output renderers based on an input argument.
