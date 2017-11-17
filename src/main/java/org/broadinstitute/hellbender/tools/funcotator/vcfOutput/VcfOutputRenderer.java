@@ -25,6 +25,11 @@ public class VcfOutputRenderer extends OutputRenderer {
      */
     public static final String FUNCOTATOR_VCF_FIELD_NAME = "FUNCOTATION";
 
+    /**
+     * The delimiter in the header for the list of fields that each funcotation has.
+     */
+    public static final String HEADER_LISTED_FIELD_DELIMITER = "|";
+
     //==================================================================================================================
 
     private final VariantContextWriter vcfWriter;
@@ -113,6 +118,6 @@ public class VcfOutputRenderer extends OutputRenderer {
         return dataSourceFactories.stream()
                         .map(DataSourceFuncotationFactory::getSupportedFuncotationFields)
                         .flatMap(List::stream)
-                        .map(Object::toString).collect(Collectors.joining(";"));
+                        .map(Object::toString).collect(Collectors.joining(HEADER_LISTED_FIELD_DELIMITER));
     }
 }
