@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfGeneFeature;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +18,8 @@ public class GencodeFuncotation extends Funcotation {
 
     //==================================================================================================================
 
+    //------------------------------------------------------------
+    // Fields for serialization:
     private String                  hugoSymbol;                         // TRIVIAL (i.e. by the time we match to a transcript, we have this info regardless to where in the transcript the variant lies)
     private String                  ncbiBuild;                          // TRIVIAL
     private String                  chromosome;                         // TRIVIAL
@@ -34,12 +35,20 @@ public class GencodeFuncotation extends Funcotation {
     private String                  genomeChange;                       // TRIVIAL
     private String                  annotationTranscript;               // TRIVIAL
     private String                  transcriptStrand;                   // TRIVIAL
-    private Integer transcriptExon;                     //           CDS / UTRs
+    private Integer                 transcriptExon;                     //           CDS / UTRs
     private Integer                 transcriptPos;                      // TRIVIAL
     private String                  cDnaChange;                         //           CDS
     private String                  codonChange;                        //           CDS
     private String                  proteinChange;                      //           CDS
     private List<String>            otherTranscripts;                   // TRIVIAL
+
+    //------------------------------------------------------------
+    // Non-serialized fields:
+
+    // These are included because they help determine the transcript selection
+    private Integer                             locusLevel;
+    private GencodeGtfGeneFeature.FeatureTag    apprisRank;
+    private Integer                             transcriptLength;
 
     //==================================================================================================================
 
@@ -62,15 +71,29 @@ public class GencodeFuncotation extends Funcotation {
      */
     public static List<String> getSerializedFieldNames() {
 
-        final List<String> fields = new ArrayList<>();
-
-        for(final Field f : GencodeFuncotation.class.getDeclaredFields() ) {
-            if ( !Modifier.isStatic(f.getModifiers()) ) {
-                fields.add( f.getName() );
-            }
-        }
-
-        return fields;
+        // This is
+        return Arrays.asList(
+                    "hugoSymbol",
+                    "ncbiBuild",
+                    "chromosome",
+                    "start",
+                    "end",
+                    "variantClassification",
+                    "secondaryVariantClassification",
+                    "variantType",
+                    "refAllele",
+                    "tumorSeqAllele1",
+                    "tumorSeqAllele2",
+                    "genomeChange",
+                    "annotationTranscript",
+                    "transcriptStrand",
+                    "transcriptExon",
+                    "transcriptPos",
+                    "cDnaChange",
+                    "codonChange",
+                    "proteinChange",
+                    "otherTranscripts"
+                );
     }
 
     //==================================================================================================================
@@ -107,39 +130,43 @@ public class GencodeFuncotation extends Funcotation {
     //==================================================================================================================
 
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+    public boolean equals(Object o) {
+        if ( this == o ) return true;
+        if ( o == null || getClass() != o.getClass() ) return false;
 
-        final GencodeFuncotation that = (GencodeFuncotation) o;
+        GencodeFuncotation that = (GencodeFuncotation) o;
 
-        if (start != that.start) return false;
-        if (end != that.end) return false;
-        if (hugoSymbol != null ? !hugoSymbol.equals(that.hugoSymbol) : that.hugoSymbol != null) return false;
-        if (ncbiBuild != null ? !ncbiBuild.equals(that.ncbiBuild) : that.ncbiBuild != null) return false;
-        if (chromosome != null ? !chromosome.equals(that.chromosome) : that.chromosome != null) return false;
-        if (variantClassification != that.variantClassification) return false;
-        if (secondaryVariantClassification != that.secondaryVariantClassification) return false;
-        if (variantType != that.variantType) return false;
-        if (refAllele != null ? !refAllele.equals(that.refAllele) : that.refAllele != null) return false;
-        if (tumorSeqAllele1 != null ? !tumorSeqAllele1.equals(that.tumorSeqAllele1) : that.tumorSeqAllele1 != null)
+        if ( start != that.start ) return false;
+        if ( end != that.end ) return false;
+        if ( hugoSymbol != null ? !hugoSymbol.equals(that.hugoSymbol) : that.hugoSymbol != null ) return false;
+        if ( ncbiBuild != null ? !ncbiBuild.equals(that.ncbiBuild) : that.ncbiBuild != null ) return false;
+        if ( chromosome != null ? !chromosome.equals(that.chromosome) : that.chromosome != null ) return false;
+        if ( variantClassification != that.variantClassification ) return false;
+        if ( secondaryVariantClassification != that.secondaryVariantClassification ) return false;
+        if ( variantType != that.variantType ) return false;
+        if ( refAllele != null ? !refAllele.equals(that.refAllele) : that.refAllele != null ) return false;
+        if ( tumorSeqAllele1 != null ? !tumorSeqAllele1.equals(that.tumorSeqAllele1) : that.tumorSeqAllele1 != null )
             return false;
-        if (tumorSeqAllele2 != null ? !tumorSeqAllele2.equals(that.tumorSeqAllele2) : that.tumorSeqAllele2 != null)
+        if ( tumorSeqAllele2 != null ? !tumorSeqAllele2.equals(that.tumorSeqAllele2) : that.tumorSeqAllele2 != null )
             return false;
-        if (genomeChange != null ? !genomeChange.equals(that.genomeChange) : that.genomeChange != null) return false;
-        if (annotationTranscript != null ? !annotationTranscript.equals(that.annotationTranscript) : that.annotationTranscript != null)
+        if ( genomeChange != null ? !genomeChange.equals(that.genomeChange) : that.genomeChange != null ) return false;
+        if ( annotationTranscript != null ? !annotationTranscript.equals(that.annotationTranscript) : that.annotationTranscript != null )
             return false;
-        if (transcriptStrand != null ? !transcriptStrand.equals(that.transcriptStrand) : that.transcriptStrand != null)
+        if ( transcriptStrand != null ? !transcriptStrand.equals(that.transcriptStrand) : that.transcriptStrand != null )
             return false;
-        if (transcriptExon != null ? !transcriptExon.equals(that.transcriptExon) : that.transcriptExon != null)
+        if ( transcriptExon != null ? !transcriptExon.equals(that.transcriptExon) : that.transcriptExon != null )
             return false;
-        if (transcriptPos != null ? !transcriptPos.equals(that.transcriptPos) : that.transcriptPos != null)
+        if ( transcriptPos != null ? !transcriptPos.equals(that.transcriptPos) : that.transcriptPos != null )
             return false;
-        if (cDnaChange != null ? !cDnaChange.equals(that.cDnaChange) : that.cDnaChange != null) return false;
-        if (codonChange != null ? !codonChange.equals(that.codonChange) : that.codonChange != null) return false;
-        if (proteinChange != null ? !proteinChange.equals(that.proteinChange) : that.proteinChange != null)
+        if ( cDnaChange != null ? !cDnaChange.equals(that.cDnaChange) : that.cDnaChange != null ) return false;
+        if ( codonChange != null ? !codonChange.equals(that.codonChange) : that.codonChange != null ) return false;
+        if ( proteinChange != null ? !proteinChange.equals(that.proteinChange) : that.proteinChange != null )
             return false;
-        return otherTranscripts != null ? otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts == null;
+        if ( otherTranscripts != null ? !otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts != null )
+            return false;
+        if ( locusLevel != null ? !locusLevel.equals(that.locusLevel) : that.locusLevel != null ) return false;
+        if ( apprisRank != null ? !apprisRank.equals(that.apprisRank) : that.apprisRank != null ) return false;
+        return transcriptLength != null ? transcriptLength.equals(that.transcriptLength) : that.transcriptLength == null;
     }
 
     @Override
@@ -164,6 +191,9 @@ public class GencodeFuncotation extends Funcotation {
         result = 31 * result + (codonChange != null ? codonChange.hashCode() : 0);
         result = 31 * result + (proteinChange != null ? proteinChange.hashCode() : 0);
         result = 31 * result + (otherTranscripts != null ? otherTranscripts.hashCode() : 0);
+        result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
+        result = 31 * result + (apprisRank != null ? apprisRank.hashCode() : 0);
+        result = 31 * result + (transcriptLength != null ? transcriptLength.hashCode() : 0);
         return result;
     }
 
@@ -190,10 +220,13 @@ public class GencodeFuncotation extends Funcotation {
                 ", codonChange='" + codonChange + '\'' +
                 ", proteinChange='" + proteinChange + '\'' +
                 ", otherTranscripts=" + otherTranscripts +
+                ", locusLevel=" + locusLevel +
+                ", apprisRank='" + apprisRank + '\'' +
+                ", transcriptLength=" + transcriptLength +
                 '}';
     }
 
-//==================================================================================================================
+    //==================================================================================================================
 
     public String getHugoSymbol() {
         return hugoSymbol;
@@ -355,6 +388,29 @@ public class GencodeFuncotation extends Funcotation {
         this.otherTranscripts = otherTranscripts;
     }
 
+    public Integer getLocusLevel() {
+        return locusLevel;
+    }
+
+    public void setLocusLevel(final Integer locusLevel) {
+        this.locusLevel = locusLevel;
+    }
+
+    public GencodeGtfGeneFeature.FeatureTag getApprisRank() {
+        return apprisRank;
+    }
+
+    public void setApprisRank(final GencodeGtfGeneFeature.FeatureTag apprisRank) {
+        this.apprisRank = apprisRank;
+    }
+
+    public Integer getTranscriptLength() {
+        return transcriptLength;
+    }
+
+    public void setTranscriptLength(final Integer transcriptLength) {
+        this.transcriptLength = transcriptLength;
+    }
 
     //==================================================================================================================
 
@@ -449,5 +505,10 @@ public class GencodeFuncotation extends Funcotation {
         VariantClassification(final int sev) {
             relativeSeverity = sev;
         }
+
+        /**
+         * @return The {@link VariantClassification#relativeSeverity} of {@code this} {@link VariantClassification}.
+         */
+        public int getSeverity() { return relativeSeverity; }
     }
 }
