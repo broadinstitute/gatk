@@ -8,6 +8,8 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -33,6 +35,10 @@ import java.util.regex.Pattern;
 public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
+    /**
+     * Standard Logger.
+     */
+    protected static final Logger logger = LogManager.getLogger(GencodeFuncotationFactory.class);
 
     /**
      * The window around splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
@@ -69,11 +75,29 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private final Map<String, MappedTranscriptIdInfo> transcriptIdMap;
 
+    /**
+     * The mode to select the "best" transcript (i.e. the transcript with detailed information) from the list of
+     * possible transcripts.
+     *
+     * For more information on the specifics of the differences go here:
+     * https://gatkforums.broadinstitute.org/gatk/discussion/4220/what-is-the-difference-between-tx-mode-best-effect-vs-canonical
+     */
+    private final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode;
+
     //==================================================================================================================
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile) {
         transcriptFastaReferenceDataSource = ReferenceDataSource.of(gencodeTranscriptFastaFile);
         transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
+
+        transcriptSelectionMode = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT;
+    }
+
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode) {
+        transcriptFastaReferenceDataSource = ReferenceDataSource.of(gencodeTranscriptFastaFile);
+        transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
+
+        this.transcriptSelectionMode = transcriptSelectionMode;
     }
 
     //==================================================================================================================
@@ -283,6 +307,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 //TODO: This should never happen, but needs to be here for some known issues with transcripts, such as HG19 MUC16 ENST00000599436.1
                 //      There may be other erroneous transcripts too.
                 otherTranscriptsCondensedAnnotations.add( "ERROR_ON_" + transcript.getTranscriptId() );
+
+                logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
+                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
+                );
             }
         }
 
@@ -297,12 +325,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Create a {@link GencodeFuncotation} for a given variant and transcript.
-     * @param variant
-     * @param altAllele
-     * @param gtfFeature
-     * @param reference
-     * @param transcript
-     * @return
+     * @param variant The {@link VariantContext} to annotate.
+     * @param altAllele The alternate {@link Allele} to annotate.
+     * @param gtfFeature The corresponding {@link GencodeGtfFeature} from which to create annotations.
+     * @param reference The {@link ReferenceContext} for the given {@link VariantContext}.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} in which the given {@code variant} occurs.
+     * @return A {@link GencodeFuncotation}
      */
     private GencodeFuncotation createGencodeFuncotationOnTranscript(final VariantContext variant,
                                                                     final Allele altAllele,
