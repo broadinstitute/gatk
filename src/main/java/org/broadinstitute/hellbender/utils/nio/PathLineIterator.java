@@ -20,7 +20,7 @@ public class PathLineIterator implements AutoCloseable, Iterable<String> {
 
     /**
      * Returns an iterator so you can iterate over the lines in the text file like so:
-     * for (String line: new Utils.LineIterator(path)) {
+     * for (String line: new PathLineIterator(path)) {
      *   // do something with the line
      * }
      *
