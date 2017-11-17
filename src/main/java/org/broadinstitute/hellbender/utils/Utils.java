@@ -12,7 +12,6 @@ import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -1137,4 +1136,5 @@ public final class Utils {
         final List<T> sorted = values.stream().sorted().collect(Collectors.toList());
         return sorted.get(sorted.size() / 2);
     }
+
 }
