@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
+import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfGeneFeature;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
@@ -234,6 +235,36 @@ public class GencodeFuncotationBuilder {
      */
     public GencodeFuncotationBuilder setcDnaChange( final String cDnaChange ) {
         gencodeFuncotation.setcDnaChange( cDnaChange );
+        return this;
+    }
+
+    /**
+     * Set the LocusLevel {@link Integer} in the {@link GencodeFuncotation}.
+     * @param locusLevel The {@link Integer} containing the locus level for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setLocusLevel( final Integer locusLevel ) {
+        gencodeFuncotation.setLocusLevel( locusLevel );
+        return this;
+    }
+
+    /**
+     * Set the Appris Rank in the {@link GencodeFuncotation}.
+     * @param apprisRank The {@link GencodeGtfGeneFeature.FeatureTag} containing the Appris Rank for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setApprisRank( final GencodeGtfGeneFeature.FeatureTag apprisRank ) {
+        gencodeFuncotation.setApprisRank( apprisRank );
+        return this;
+    }
+
+    /**
+     * Set the Transcript Length {@link Integer} in the {@link GencodeFuncotation}.
+     * @param transcriptLength The {@link Integer} containing the Transcript Length for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setTranscriptLength( final Integer transcriptLength ) {
+        gencodeFuncotation.setTranscriptLength( transcriptLength );
         return this;
     }
  }
