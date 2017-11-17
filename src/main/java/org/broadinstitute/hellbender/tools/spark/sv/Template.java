@@ -39,11 +39,13 @@ public class Template implements Serializable {
         private final byte[] bases;
         private final int[] qualities;
         private final int length;
-        private final String name;
+        public final String name;
         private final TemplateFragmentOrdinal number;
+        public final String mapping;
 
-        public Fragment(final String name, final TemplateFragmentOrdinal number, final byte[] bases, final int[] qualities) {
+        public Fragment(final String name, final TemplateFragmentOrdinal number, final String mapping, final byte[] bases, final int[] qualities) {
             this.name = name;
+            this.mapping = mapping;
             this.bases = Utils.nonNull(bases);
             this.qualities = Utils.nonNull(qualities);
             this.length = bases.length;

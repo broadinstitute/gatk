@@ -227,7 +227,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 final Stream<Template> allTemplates = assemblyNumbers
                                         .boxed()
                                         .flatMap(i -> assemblyCollection.templates(i).stream())
-                                        .distinct();
+                                        .distinct()
+                                        .filter(tt -> tt.fragments().stream().map(f -> f.mapping).filter(s -> s.contains("chr10,2480")).count() > 0);
                                 return new Tuple2<>(t._1(), new Tuple2<>(t._2(), (Iterable<Template>) allTemplates.collect(Collectors.toList())));
                             }).iterator();
                 });
@@ -254,7 +255,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         .entrySet()
                         .stream()
                         .map(entry -> Template.create(entry.getKey(),
-                                removeRepeatedReads(entry.getValue()), read -> new Template.Fragment(read.getName(), read.getFragmentOrdinal(), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
+                                removeRepeatedReads(entry.getValue()), read -> new Template.Fragment(read.getName(), read.getFragmentOrdinal(), read.getMapping().getAllIntervals().stream().filter(iv -> iv.mapQual > 10).map(iv -> iv.toSATagString()).collect(Collectors.joining(";")), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
                         ).collect(Collectors.toList()))));
     }
 
@@ -367,7 +368,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 secondIntervals, template.fragments().get(1).length());
                         scoreTable.setMappingInfo(h, i, mappingInformation);
                     }
-
                 }
              //    resolve the missing mapping scores to the worst seen + a penalty.
                 for (int t = 0; t < templates.size(); t++) {
@@ -410,7 +410,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     sampleLikelihoodsSecond.set(altIdx, t,
                             scoreTable.getMappingInfo(altHaplotypeIndex, t).secondAlignmentScore.orElse(0));
                 }
-                for (int h = 0; h < contigs.size(); h++) {
+                for (int h = 0; h < contigs.size() && false; h++) {
                     final SVContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
                     final double haplotypeAltScore = contig.getAlternativeScore();
@@ -453,6 +453,12 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     } else {
                         sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
                     }
+                }
+                for (int t = 0; t < templates.size(); t++) {
+                    final double base = Math.max(sampleLikelihoods.get(refIdx, t), sampleLikelihoods.get(altIdx, t));
+                    final int maxIndex = sampleLikelihoods.get(refIdx, t) == base ? refIdx : altIdx;
+                    final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
+                    sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
                 }
                 int minRefPos = ref.getLength();
                 int maxRefPos = 0;

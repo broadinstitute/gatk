@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Represents a collection of assembly files  of file in the assembly collection
@@ -71,7 +72,8 @@ public class AssemblyCollection implements Serializable {
                             String.format("first in pair fragment number is not 2 (%s) for '%s' in '%s'", second.getFragmentOrdinal().nameSuffix(), first.getName(), path));
                 } else {
                     final Template template = Template.create(first.getName(), Arrays.asList(first, second),
-                            r -> new Template.Fragment(r.getName(), r.getFragmentOrdinal(), r.getBases(), ArrayUtils.toInts(r.getQuals(), false)));
+                            r -> new Template.Fragment(r.getName(), r.getFragmentOrdinal(),
+                                    r.getMapping().getAllIntervals().stream().filter(iv -> iv.mapQual > -1).map(iv -> iv.toSATagString()).collect(Collectors.joining(";")), r.getBases(), ArrayUtils.toInts(r.getQuals(), false)));
                     result.add(template);
                 }
             }
