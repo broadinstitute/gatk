@@ -40,6 +40,10 @@ public class Funcotator extends VariantWalker {
     public static final String GENCODE_FASTA_ARG_NAME = "fasta";
 
     //==================================================================================================================
+    // Arguments:
+
+    //-----------------------------------------------------
+    // Required args:
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -59,6 +63,10 @@ public class Funcotator extends VariantWalker {
             doc = "A GENCODE GTF file containing annotated genes."
     )
     private FeatureInput<GencodeGtfFeature> gtfVariants;
+
+    //-----------------------------------------------------
+    // Optional args:
+    
 
     //==================================================================================================================
 

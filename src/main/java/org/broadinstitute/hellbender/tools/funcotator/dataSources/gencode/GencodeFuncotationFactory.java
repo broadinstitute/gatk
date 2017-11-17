@@ -24,7 +24,6 @@ import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * A factory to create {@link GencodeFuncotation}s.
@@ -257,33 +256,76 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     List<GencodeFuncotation> createFuncotations(final VariantContext variant, final Allele altAllele, final GencodeGtfGeneFeature gtfFeature, final ReferenceContext reference) {
         // For each applicable transcript, create an annotation.
 
-        final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
+        final List<GencodeFuncotation> reportableGencodeFuncotations = new ArrayList<>();
 
-        // TODO: instead of getting the best one here, we do them all, then in the renderer we condense them into 1 annotation based on worst effect.
-        // Get our "best" transcript:
+        // Get our "best" transcript, and remove it from the list:
         final int bestTranscriptIndex = getBestTranscriptIndex(gtfFeature, variant);
         if ( bestTranscriptIndex == -1 ) {
-            throw new GATKException("Could not get a good transcript for the given feature: " + gtfFeature.toString());
+            throw new GATKException("Could not get the \"best\" transcript for the given feature: " + gtfFeature.toString());
         }
-        final GencodeGtfTranscriptFeature transcript = gtfFeature.getTranscripts().remove(bestTranscriptIndex);
+        final GencodeGtfTranscriptFeature bestTranscript = gtfFeature.getTranscripts().remove(bestTranscriptIndex);
 
-        final GencodeGtfFeature.GeneTranscriptType geneType = gtfFeature.getGeneType();
+        // Annotate our best transcript:
+        final GencodeFuncotation bestFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, bestTranscript);
+
+        // Go through and annotate all our non-best transcripts:
+        final List<String> otherTranscriptsCondensedAnnotations = new ArrayList<>();
+        for ( final GencodeGtfTranscriptFeature transcript : gtfFeature.getTranscripts() ) {
+
+            // Try to create the annotation:
+            try {
+                final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
+
+                // Add it into our transcript:
+                otherTranscriptsCondensedAnnotations.add( condenseGencodeFuncotation(gencodeFuncotation) );
+
+            } catch (final Exception ex) {
+                //TODO: This should never happen, but needs to be here for some known issues with transcripts, such as HG19 MUC16 ENST00000599436.1
+                //      There may be other erroneous transcripts too.
+                otherTranscriptsCondensedAnnotations.add( "ERROR_ON_" + transcript.getTranscriptId() );
+            }
+        }
+
+        // Set our `other transcripts` annotation in our best funcotation:
+        bestFuncotation.setOtherTranscripts( otherTranscriptsCondensedAnnotations );
+
+        // Add our best funcotation to the output:
+        reportableGencodeFuncotations.add(bestFuncotation);
+
+        return reportableGencodeFuncotations;
+    }
+
+    /**
+     * Create a {@link GencodeFuncotation} for a given variant and transcript.
+     * @param variant
+     * @param altAllele
+     * @param gtfFeature
+     * @param reference
+     * @param transcript
+     * @return
+     */
+    private GencodeFuncotation createGencodeFuncotationOnTranscript(final VariantContext variant,
+                                                                    final Allele altAllele,
+                                                                    final GencodeGtfGeneFeature gtfFeature,
+                                                                    final ReferenceContext reference,
+                                                                    final GencodeGtfTranscriptFeature transcript) {
+        final GencodeFuncotation gencodeFuncotation;
 
         // We only fully process protein-coding regions.
         // For other gene types, we do trivial processing and label them as either LINCRNA or RNA:
         // TODO: Add more types to Variant Classification to be more explicit and a converter function to go from gene type to variant classification.
-        if ( geneType != GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING) {
+        if ( gtfFeature.getGeneType() != GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING ) {
 
             // Setup the "trivial" fields of the gencodeFuncotation:
             final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
-            if ( geneType == GencodeGtfFeature.GeneTranscriptType.LINCRNA) {
+            if ( gtfFeature.getGeneType() == GencodeGtfFeature.GeneTranscriptType.LINCRNA ) {
                 gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.LINCRNA);
             }
             else {
                 gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.RNA);
             }
-            gencodeFuncotations.add(gencodeFuncotationBuilder.build());
+            gencodeFuncotation = gencodeFuncotationBuilder.build();
         }
         else {
 
@@ -293,34 +335,28 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variant, transcript);
 
             // Determine what kind of region we're in and handle it in it's own way:
-            if (containingSubfeature == null) {
-
+            if ( containingSubfeature == null ) {
                 // We have an IGR variant
-                gencodeFuncotations.add( createIgrFuncotation(altAllele) );
-
-            } else if (GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
-
+                gencodeFuncotation = createIgrFuncotation(altAllele);
+            }
+            else if ( GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have a coding region variant
-                gencodeFuncotations.add( createCodingRegionFuncotation(variant, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature) );
-
-            } else if (GencodeGtfUTRFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
-
+                gencodeFuncotation = createCodingRegionFuncotation(variant, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature);
+            }
+            else if ( GencodeGtfUTRFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have a UTR variant
-                gencodeFuncotations.add( createUtrFuncotation(variant, altAllele, reference, gtfFeature, transcript, (GencodeGtfUTRFeature) containingSubfeature) );
-
-            } else if (GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
-
+                gencodeFuncotation = createUtrFuncotation(variant, altAllele, reference, gtfFeature, transcript, (GencodeGtfUTRFeature) containingSubfeature);
+            }
+            else if ( GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have an intron variant
-                gencodeFuncotations.add( createIntronFuncotation(variant, altAllele, gtfFeature, transcript) );
-
-            } else {
-
+                gencodeFuncotation = createIntronFuncotation(variant, altAllele, gtfFeature, transcript);
+            }
+            else {
                 // Uh-oh!  Problemz.
                 throw new GATKException.ShouldNeverReachHereException("Unable to determine type of variant-containing subfeature: " + containingSubfeature.getClass().getName());
             }
         }
-
-        return gencodeFuncotations;
+        return gencodeFuncotation;
     }
 
     /**
@@ -359,7 +395,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setTranscriptExonNumber( exon.getExonNumber() );
 
         // Set the Codon and Protein changes:
-
         final String codonChange = FuncotatorUtils.getCodonChangeString( sequenceComparison );
         final String proteinChange = FuncotatorUtils.getProteinChangeString2( sequenceComparison );
 
@@ -1006,9 +1041,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                  .setAnnotationTranscript(transcript.getTranscriptId())
                  .setTranscriptPos(
                          FuncotatorUtils.getTranscriptAlleleStartPosition(variant.getStart(), transcript.getStart(), transcript.getEnd(), strand)
-                 )
-                 .setOtherTranscripts(
-                         gtfFeature.getTranscripts().stream().map(GencodeGtfTranscriptFeature::getTranscriptId).collect(Collectors.toList())
                  );
 
          return gencodeFuncotationBuilder;
@@ -1127,8 +1159,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private static List<GencodeFuncotation> createIgrFuncotations(final VariantContext variant, final ReferenceContext reference) {
         // for each allele, create an annotation.
 
-        // TODO: NEED TO FIX THIS LOGIC TO INCLUDE MORE INFO!
-
         final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
 
         for ( final Allele allele : variant.getAlternateAlleles() ) {
@@ -1139,6 +1169,36 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
+     * Condenses a given {@link GencodeFuncotation} into a string for the `other transcripts` annotation.
+     * @param funcotation The {@link GencodeFuncotation} to condense.
+     * @return A {@link String} representing the given {@link GencodeFuncotation}.
+     */
+    private static String condenseGencodeFuncotation( final GencodeFuncotation funcotation ) {
+        Utils.nonNull( funcotation );
+
+        final StringBuilder condensedFuncotationStringBuilder = new StringBuilder();
+
+        if ( !funcotation.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR) ) {
+            condensedFuncotationStringBuilder.append(funcotation.getHugoSymbol());
+            condensedFuncotationStringBuilder.append("_");
+            condensedFuncotationStringBuilder.append(funcotation.getAnnotationTranscript());
+            condensedFuncotationStringBuilder.append("_");
+            condensedFuncotationStringBuilder.append(funcotation.getVariantClassification());
+
+            if ( !(funcotation.getVariantClassification().equals(GencodeFuncotation.VariantClassification.INTRON ) ||
+                    ((funcotation.getSecondaryVariantClassification() != null) && funcotation.getSecondaryVariantClassification().equals(GencodeFuncotation.VariantClassification.INTRON))) ) {
+                condensedFuncotationStringBuilder.append("_");
+                condensedFuncotationStringBuilder.append(funcotation.getProteinChange());
+            }
+        }
+        else {
+            //TODO: This is known issue #3849:
+            condensedFuncotationStringBuilder.append("IGR_ANNOTATON");
+        }
+        return condensedFuncotationStringBuilder.toString();
+    }
+
+    /**
      * Creates a {@link GencodeFuncotation}s based on the given {@link Allele} with type
      * {@link GencodeFuncotation.VariantClassification#IGR}.
      * @param altAllele The alternate allele to use for this funcotation.
@@ -1146,6 +1206,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private static GencodeFuncotation createIgrFuncotation(final Allele altAllele){
         final GencodeFuncotation gencodeFuncotation = new GencodeFuncotation();
+
+        // TODO: NEED TO FIX THIS LOGIC TO INCLUDE MORE INFO!
 
         gencodeFuncotation.setVariantClassification( GencodeFuncotation.VariantClassification.IGR );
         gencodeFuncotation.setTumorSeqAllele1( altAllele.getBaseString() );

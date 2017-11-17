@@ -33,7 +33,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "provideDataForIntegrationTest")
     public void testRun(final String gtfFileName, final String referenceFileName, final String fastaFileName, final String variantFileName) throws IOException {
-        final File outputFile = createTempFile("funcotator_tmp_out", ".vcf");
+//        final File outputFile = createTempFile("funcotator_tmp_out", ".vcf");
+        final File outputFile = new File( "Funcotator_integration_test_out.vcf" );
         final List<String> arguments = new ArrayList<>();
 
         arguments.add("-" + Funcotator.GTF_FILE_ARG_SHORT_NAME);
