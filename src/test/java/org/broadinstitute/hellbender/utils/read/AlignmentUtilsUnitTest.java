@@ -150,9 +150,12 @@ public final class AlignmentUtilsUnitTest {
         // example where left-align generates a leading deletion
         {
             final String ref = "CTGAACGTAACCAAAATCAATATGGATACTGAGAAATACTATTTAATAAAGACATAAATTAGACTGCTAAAAAAAATTAAAGAAATTTCAAAAGAGAATCCACCTCTTTTCCTTGCCAGTGCTCAAAAGTGAGTGTGAATCTGGTGGCTGTGGGGCTGTTTTTGGTGTGGCTCTTTGGACCAGCCTGCCTGGTAATTCAAGCCTGCCTCTCATTTCTG";
+            // ref-to-hap:      ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||.|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
             final String hap = "CTGAACGTAACCAAAATCAATATGGATACTGAGAAATACTATTTAATAAAGACATAAATTAGACTGCTAAAAAAAATTAAAGAAATTTCAAAAGAGAATCCACCTCTTTTCCTTGCCAGTGCTCAAAAGTGAGTGTGAATCTGGTGGCTGCGGGGCTGTTTTTGGTGTGGCTCTTTGGACCAGCCTGCCTGGTAATTCAAGCCTGCCTCTCATTTCTG";
-            final String hapCigar = "218M";
+            // hap-to-read:                                                                                                                                                               ||||.|||||||||||||||||
+            // aligned read:                                                                                                                                                              GCTGCTTTTGGTGTGGCTCTTT
             final String readBases = "GCTGCTTTTGGTGTGGCTCTTT";
+            final String hapCigar = "218M";
             final GATKRead read = makeReadForAlignedToRefTest(readBases);
             final int refStart = 215239171;
             final int hapStart = 575;
@@ -162,16 +165,19 @@ public final class AlignmentUtilsUnitTest {
             badHap.setAlignmentStartHapwrtRef(hapStart);
             final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
 
-            final int expectedPos = 215239900;
+            final int expectedPos = 215239900; // = 215239171 + 575 + 154 (alignment offset)
             tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
          }
 
         // example where the haplotype has an indel relative to reference
         {
             final String ref = "GGGATCCTGCTACAAAGGTGAAACCCAGGAGAGTGTGGAGTCCAGAGTGTTGCCAGGACCCAGGCACAGGCATTAGTGCCCGTTGGAGAAAACAGGGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            // ref-to-hap:      |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||^^||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
             final String hap = "GGGATCCTGCTACAAAGGTGAAACCCAGGAGAGTGTGGAGTCCAGAGTGTTGCCAGGACCCAGGCACAGGCATTAGTGCCCGTTGGAGAAAACGGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
-            final String hapCigar = "93M2D92M";
+            // hap-to-read:                                                                                                                              .|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+            // aligned read:                                                                                                                             CCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC
             final String readBases = "CCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            final String hapCigar = "93M2D92M";
             final GATKRead read = makeReadForAlignedToRefTest(readBases);
             final int refStart = 13011;
             final int hapStart = 553;
@@ -181,7 +187,7 @@ public final class AlignmentUtilsUnitTest {
             badHap.setAlignmentStartHapwrtRef(hapStart);
             final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
 
-            final int expectedPos = 13684;
+            final int expectedPos = 13684; // = 13011 + 553 + 120 (alignemnt offset)
             tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
          }
 
