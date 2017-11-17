@@ -15,6 +15,8 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -29,7 +31,7 @@ import java.util.*;
 public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
-    // Static Variables:
+    // Multi-Test Static Variables:
 
     private static final FeatureReader<GencodeGtfFeature> muc16FeatureReader;
     private static final FeatureReader<GencodeGtfFeature> pik3caFeatureReader;
@@ -37,12 +39,33 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final ReferenceDataSource refDataSourceHg19Ch19;
     private static final ReferenceDataSource refDataSourceHg19Ch3;
 
+    private static GencodeFuncotationFactory testMuc16SnpCreateFuncotationsFuncotationFactory;
+
     // Initialization of static variables:
     static {
         muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         refDataSourceHg19Ch19 = ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME) );
         refDataSourceHg19Ch3 = ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME) );
+
+        // Gets cleaned up in `cleanupAfterTests()`
+        // NOTE: This is initialized here to save time in testing.
+        testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE));
+    }
+
+    //==================================================================================================================
+    // Setup and Breakdown Methods with Hooks:
+
+    @BeforeClass
+    public static void setupBeforeTests() {
+        System.out.println("Setting up before tests...");
+    }
+
+    @AfterClass
+    public static void cleanupAfterTests() {
+        System.out.println("Cleaning up after tests...");
+
+        testMuc16SnpCreateFuncotationsFuncotationFactory.close();
     }
 
     //==================================================================================================================
@@ -141,6 +164,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     Object[][] provideMuc16SnpDataForGetVariantClassification() {
         final List<Object[]> l = new ArrayList<>();
 
+        l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_0() );
         l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_1() );
         l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_2() );
         l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_3() );
@@ -152,6 +176,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     Object[][] provideMuc16SnpDataForGetVariantClassificationWithOutOfCdsData() {
         final List<Object[]> l = new ArrayList<>();
 
+        l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_0() );
         l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_1() );
         l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_2() );
         l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_3() );
@@ -337,7 +362,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedExonAndStartStopPositions(transcript);
 
         final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE));
-        final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory.createTranscriptIdMap(muc16TranscriptDataSource);
+        final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory. createTranscriptIdMap(muc16TranscriptDataSource);
 
         final FuncotatorUtils.SequenceComparison seqComp =
                 GencodeFuncotationFactory.createSequenceComparison(
@@ -399,15 +424,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch19, variantInterval );
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE))) {
-            // Generate our funcotations:
-            final List<GencodeFuncotation> funcotations = funcotationFactory.createFuncotations(variantContext, altAllele, gene, referenceContext);
 
-            // Make sure we get what we expected:
-            Assert.assertEquals(funcotations.size(), 1);
-            Assert.assertEquals(funcotations.get(0).getVariantClassification(), expectedVariantClassification);
-            Assert.assertEquals(funcotations.get(0).getVariantType(), expectedVariantType);
-        }
+        // Generate our funcotations:
+        final List<GencodeFuncotation> funcotations = testMuc16SnpCreateFuncotationsFuncotationFactory.createFuncotations(variantContext, altAllele, gene, referenceContext);
+
+        // Make sure we get what we expected:
+        Assert.assertEquals(funcotations.size(), 1);
+        Assert.assertEquals(funcotations.get(0).getVariantClassification(), expectedVariantClassification);
+        Assert.assertEquals(funcotations.get(0).getVariantType(), expectedVariantType);
     }
 
     @Test (dataProvider = "provideDataForCreateFuncotations")
