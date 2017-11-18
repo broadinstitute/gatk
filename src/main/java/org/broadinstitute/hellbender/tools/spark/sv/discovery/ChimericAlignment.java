@@ -8,7 +8,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -280,32 +279,41 @@ public class ChimericAlignment {
      * See {@link #isNotSimpleTranslocation()} for logic.
      */
     @VisibleForTesting
-    static boolean isLikelySimpleTranslocation(final AlignmentInterval regionWithLowerCoordOnContig,
-                                               final AlignmentInterval regionWithHigherCoordOnContig,
-                                               final StrandSwitch strandSwitch) {
+    public static boolean isLikelySimpleTranslocation(final AlignmentInterval regionWithLowerCoordOnContig,
+                                                      final AlignmentInterval regionWithHigherCoordOnContig,
+                                                      final StrandSwitch strandSwitch) {
 
         if (!regionWithLowerCoordOnContig.referenceSpan.getContig()
                 .equals(regionWithHigherCoordOnContig.referenceSpan.getContig()))
             return true;
 
-        if (strandSwitch.equals(StrandSwitch.NO_SWITCH)) {
-            if (regionWithLowerCoordOnContig.forwardStrand) {
-                return regionWithLowerCoordOnContig.referenceSpan.getStart() > regionWithHigherCoordOnContig.referenceSpan.getStart();
-            } else {
-                return regionWithLowerCoordOnContig.referenceSpan.getEnd() < regionWithHigherCoordOnContig.referenceSpan.getEnd();
-            }
-        } else {
+        if ( !strandSwitch.equals(StrandSwitch.NO_SWITCH) )
             return false;
+
+        final SimpleInterval referenceSpanOne = regionWithLowerCoordOnContig.referenceSpan,
+                             referenceSpanTwo = regionWithHigherCoordOnContig.referenceSpan;
+
+        if (referenceSpanOne.contains(referenceSpanTwo) || referenceSpanTwo.contains(referenceSpanOne))
+            return false;
+
+        if (regionWithLowerCoordOnContig.forwardStrand) {
+            return referenceSpanOne.getStart() > referenceSpanTwo.getEnd();
+        } else {
+            return referenceSpanTwo.getStart() > referenceSpanOne.getEnd();
         }
     }
 
     /**
      * Determine if the chimeric alignment indicates a simple translocation.
      * Simple translocations are defined here and at this time as:
+     * <ul>
      *  <li>inter-chromosomal translocations, i.e. novel adjacency between different reference chromosomes, or</li>
      *  <li>intra-chromosomal translocation that DOES NOT involve a strand switch, i.e.
-     *      novel adjacency between reference locations on the same chromosome involving NO strand switch but reference interval order switch</li>
-     * <p>
+     *      novel adjacency between reference locations on the same chromosome involving NO strand switch,
+     *      but in the meantime, the two inducing alignments CANNOT overlap each other since that would point to
+     *      incomplete picture, hence not "simple" anymore.
+     *  </li>
+     * </ul>
      * A caveat is that this does not cover the case when the novel adjacency suggested by the CA is between
      * two reference locations on the same chromosome, but involves a strand switch,
      * which could be a translocation or inversion breakpoint.
