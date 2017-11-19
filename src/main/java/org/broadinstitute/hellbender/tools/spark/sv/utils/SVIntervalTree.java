@@ -274,6 +274,27 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
         return false;
     }
 
+    public int smallestGapLength(final SVInterval interval) {
+        return smallestGapLength(root, interval);
+    }
+
+    private int smallestGapLength(final Node<V> node, final SVInterval interval) {
+        if (node == null) {
+            return Integer.MAX_VALUE;
+        } else if (node.getMaxEndInterval().isUpstreamOf(interval)) {
+            return node.getMaxEndInterval().gapLen(interval);
+        } else if (node.getInterval().overlaps(interval)) {
+            return 0;
+        } else if (node.getLeft() == null && node.getRight() == null) {
+            return node.getInterval().gapLen(interval);
+        } else if (interval.isUpstreamOf(node.getInterval())) {
+            return Math.min(node.getInterval().gapLen(interval), smallestGapLength(node.getLeft(), interval));
+        } else {
+            return Math.min(node.getInterval().gapLen(interval), Math.min(smallestGapLength(node.getLeft(), interval),
+                    smallestGapLength(node.getRight(), interval)));
+        }
+    }
+
     /**
      * Find the earliest interval in the tree that overlaps the specified interval.
      *

@@ -54,6 +54,12 @@ public final class SVInterval implements Comparable<SVInterval> {
         return !overlaps(that);
     }
 
+    /**
+     * Returns true when input interval is upstream of this interval.
+     * TODO This name is misleading.
+     * @param that
+     * @return
+     */
     public boolean isUpstreamOf( final SVInterval that ) {
         return this.contig < that.contig || (this.contig == that.contig && this.end <= that.start);
     }

@@ -6,12 +6,17 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import scala.Tuple2;
+import scala.Tuple3;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -49,7 +54,6 @@ public class TemplateMappingInformation implements Serializable {
         Utils.nonNull(secondIntervals);
         ParamUtils.isPositive(firstLength, "the first length must be 1 or greater");
         ParamUtils.isPositive(secondLength, "the second length must be 1 or greater");
-
         if (firstIntervals.isEmpty() && secondIntervals.isEmpty()) {
             return new TemplateMappingInformation();
         } else if (secondIntervals.isEmpty()) {
@@ -176,5 +180,15 @@ public class TemplateMappingInformation implements Serializable {
         return intervals.stream()
                 .mapToInt(ai -> ai.referenceSpan.getEnd())
                 .max().getAsInt();
+    }
+
+    public boolean crossesBreakPoint(final int[] breakPoints) {
+        if (minCoordinate > maxCoordinate) return false;
+        for (final int breakPoint : breakPoints) {
+            if (minCoordinate <= breakPoint && maxCoordinate >= breakPoint) {
+                return true;
+            }
+        }
+        return false;
     }
 }

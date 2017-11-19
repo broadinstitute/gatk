@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.common.base.Functions;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.SAMRecord;
@@ -13,6 +17,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.avro.generic.GenericData;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -35,6 +40,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLo
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ArraySVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalLocator;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
@@ -61,6 +68,7 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import scala.Tuple2;
+import scala.Tuple3;
 
 import java.io.File;
 import java.io.IOException;
@@ -208,14 +216,23 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final ShardPartitioner<SVContext> partitioner = sharder.partitioner(SVContext.class, parallelism);
         final String fastqDir = this.fastqDir;
         final String fastqFileFormat = "asm%06d.fastq";
+        final Broadcast<SVIntervalLocator> locatorBroadcast = ctx.broadcast(SVIntervalLocator.of(getReferenceSequenceDictionary()));
+        final Broadcast<InsertSizeDistribution> insertSizeDistributionBroadcast = ctx.broadcast(insertSizeDistribution);
 
-        final JavaPairRDD<SVContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> variantHaplotypesAndTemplates =
+        final JavaPairRDD<SVContext, Tuple3<Iterable<SVHaplotype>, Iterable<Template>, Iterable<int[]>>> variantHaplotypesAndTemplates =
             variantAndHaplotypes.mapPartitionsToPair(it -> {
 
 //            variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
                     final AssemblyCollection assemblyCollection = new AssemblyCollection(fastqDir, fastqFileFormat);
                     return Utils.stream(it)
                             .map(t -> {
+                                final SVIntervalLocator locator = locatorBroadcast.getValue();
+                                final InsertSizeDistribution insertSizeDistribution = insertSizeDistributionBroadcast.getValue();
+                                final SVIntervalTree<SimpleInterval> coveredReference = Utils.stream(t._2())
+                                        .filter(h -> !h.isContig())
+                                        .flatMap(h -> h.getReferenceAlignmentIntervals().stream())
+                                        .flatMap(ai -> ai.referenceCoveredIntervals().stream())
+                                        .collect(locator.toTreeCollector(si -> si));
                                 final IntStream assemblyNumbers = Utils.stream(t._2())
                                         .filter(SVHaplotype::isContig)
                                         .map(SVHaplotype::getName)
@@ -224,12 +241,17 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                         .mapToInt(Integer::parseInt)
                                         .sorted()
                                         .distinct();
-                                final Stream<Template> allTemplates = assemblyNumbers
+                                final List<Template> allTemplates = assemblyNumbers
                                         .boxed()
                                         .flatMap(i -> assemblyCollection.templates(i).stream())
                                         .distinct()
-                                        .filter(tt -> tt.fragments().stream().map(f -> f.mapping).filter(s -> s.contains("chr10,2480")).count() > 0);
-                                return new Tuple2<>(t._1(), new Tuple2<>(t._2(), (Iterable<Template>) allTemplates.collect(Collectors.toList())));
+                                        .collect(Collectors.toList());
+                             //           .filter(tt -> tt.fragments().stream().map(f -> AlignmentInterval.encode(f.alignmentIntervals())).filter(s -> s.contains("chr10,2480")).count() > 0);
+                                final Stream<int[]> allTemplatesMaxMappingQualities = allTemplates.stream()
+                                        .map(tt -> tt.maximumMappingQuality(coveredReference, locator, insertSizeDistribution));
+                                return new Tuple2<>(t._1(), new Tuple3<>(t._2(),
+                                        (Iterable<Template>) allTemplates,
+                                        (Iterable<int[]>) allTemplatesMaxMappingQualities.collect(Collectors.toList())));
                             }).iterator();
                 });
 
@@ -251,11 +273,11 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 .mapToPair(tuple -> new Tuple2<>(tuple._1(), new Tuple2<>(tuple._2()._1(), Utils.stream(tuple._2()._1())
                         .map(id -> String.format("%s/%s.fastq", fastqDir, id))
                         .flatMap(file -> SVFastqUtils.readFastqFile(file).stream())
-                        .collect(Collectors.groupingBy(r -> r.getName()))
+                        .collect(Collectors.groupingBy(SVFastqUtils.FastqRead::getName))
                         .entrySet()
                         .stream()
                         .map(entry -> Template.create(entry.getKey(),
-                                removeRepeatedReads(entry.getValue()), read -> new Template.Fragment(read.getName(), read.getFragmentOrdinal(), read.getMapping().getAllIntervals().stream().filter(iv -> iv.mapQual > 10).map(iv -> iv.toSATagString()).collect(Collectors.joining(";")), read.getBases(), ArrayUtils.toInts(read.getQuals(), false)))
+                                removeRepeatedReads(entry.getValue()), Template.Fragment::of)
                         ).collect(Collectors.toList()))));
     }
 
@@ -282,14 +304,14 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         }
     }
 
-    private JavaRDD<SVContext> processVariants(final JavaPairRDD<SVContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>> input, final JavaSparkContext ctx) {
+    private JavaRDD<SVContext> processVariants(final JavaPairRDD<SVContext, Tuple3<Iterable<SVHaplotype>, Iterable<Template>, Iterable<int[]>>> input, final JavaSparkContext ctx) {
         final Broadcast<SAMSequenceDictionary> broadCastDictionary = ctx.broadcast(getReferenceSequenceDictionary());
         final SerializableBiFunction<String, byte[], File> imageCreator =  GenotypeStructuralVariantsSpark::createTransientImageFile;
         final AlignmentPenalties penalties = this.penalties;
         final InsertSizeDistribution insertSizeDistribution = this.insertSizeDistribution;
         return input.mapPartitions(it -> {
             final SAMSequenceDictionary dictionary = broadCastDictionary.getValue();
-            final Stream<Tuple2<SVContext, Tuple2<Iterable<SVHaplotype>, Iterable<Template>>>> variants =
+            final Stream<Tuple2<SVContext, Tuple3<Iterable<SVHaplotype>, Iterable<Template>, Iterable<int[]>>>> variants =
                     Utils.stream(it);
             final Map<String, File> imagesByName = new HashMap<>();
             final SAMFileHeader header = new SAMFileHeader();
@@ -302,18 +324,37 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     .map(variant -> {
                 final List<Template> allTemplates = Utils.stream(variant._2()._2())
                         .collect(Collectors.toList());
+                final List<int[]> allMapQuals = Utils.stream(variant._2()._3())
+                        .collect(Collectors.toList());
+
+                final List<Template> allInformativeTemplates = new ArrayList<>(allTemplates.size());
+                final List<int[]> allInformativeMapQuals = new ArrayList<>(allTemplates.size());
+                for (int i = 0; i < allTemplates.size(); i++) {
+                    for (final int mq : allMapQuals.get(i)) {
+                        if (mq > 0) {
+                            allInformativeMapQuals.add(allMapQuals.get(i));
+                            allInformativeTemplates.add(allTemplates.get(i));
+                        }
+                    }
+                }
+
 
                 final List<SVHaplotype> haplotypes = Utils.stream(variant._2()._1())
                         .collect(Collectors.toList());
 
                 final List<Template> templates;
-                if (allTemplates.size() <= 5000) {
-                   templates = allTemplates;
+                final List<int[]> mapQuals;
+                if (allInformativeTemplates.size() <= 5000) {
+                   templates = allInformativeTemplates;
+                   mapQuals = allInformativeMapQuals;
                 } else {
                     templates = new ArrayList<>(5000);
+                    mapQuals = new ArrayList<>(5000);
                     final Random rdn = new Random(variant._1().getUniqueID().hashCode());
                     for (int i = 0; i < 5000; i++) {
-                        templates.add(allTemplates.get(rdn.nextInt(allTemplates.size())));
+                        final int idx = rdn.nextInt(allInformativeTemplates.size());
+                        templates.add(allInformativeTemplates.get(idx));
+                        mapQuals.add(allInformativeMapQuals.get(idx));
                     }
                 }
                 final List<byte[]> sequences = templates.stream()
@@ -335,7 +376,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 //    return SVContext.of(newVariantBuilder.make());
                 //}
                 final SVHaplotype ref = haplotypes.stream().filter(h -> h.getName().equals("ref")).findFirst().get();
+                final int[] refBreakPoints = calculateBreakPoints(ref, variant._1(), dictionary);
                 final SVHaplotype alt = haplotypes.stream().filter(h -> h.getName().equals("alt")).findFirst().get();
+                final int[] altBreakPoints = calculateBreakPoints(alt, variant._1(), dictionary);
                 final GenotypingAllele refAllele = GenotypingAllele.of(ref, variant._1());
                 final GenotypingAllele altAllele = GenotypingAllele.of(alt, variant._1());
                 final int refHaplotypeIndex = haplotypes.indexOf(ref);
@@ -410,7 +453,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     sampleLikelihoodsSecond.set(altIdx, t,
                             scoreTable.getMappingInfo(altHaplotypeIndex, t).secondAlignmentScore.orElse(0));
                 }
-                for (int h = 0; h < contigs.size() && false; h++) {
+                for (int h = 0; h < contigs.size(); h++) {
                     final SVContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
                     final double haplotypeAltScore = contig.getAlternativeScore();
@@ -423,16 +466,28 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         final double secondMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.orElse(0.0);
                         if (firstMappingScore == scoreTable.bestMappingScorePerFragment[t][0]) {
                             sampleLikelihoodsFirst.set(refIdx, t,
-                                    Math.max(firstMappingScore + haplotypeRefScore, sampleLikelihoods.get(refIdx, t)));
+                                    Math.max(firstMappingScore + haplotypeRefScore, sampleLikelihoodsFirst.get(refIdx, t)));
                             sampleLikelihoodsFirst.set(altIdx, t,
-                                    Math.max(firstMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t)));
+                                    Math.max(firstMappingScore + haplotypeAltScore, sampleLikelihoodsFirst.get(altIdx, t)));
                         }
                         if (secondMappingScore == scoreTable.bestMappingScorePerFragment[t][1]) {
                             sampleLikelihoodsSecond.set(refIdx, t,
-                                    Math.max(secondMappingScore + haplotypeRefScore, sampleLikelihoods.get(refIdx, t)));
+                                    Math.max(secondMappingScore + haplotypeRefScore, sampleLikelihoodsSecond.get(refIdx, t)));
                             sampleLikelihoodsSecond.set(altIdx, t,
-                                    Math.max(secondMappingScore + haplotypeAltScore, sampleLikelihoods.get(altIdx, t)));
+                                    Math.max(secondMappingScore + haplotypeAltScore, sampleLikelihoodsSecond.get(altIdx, t)));
                         }
+                    }
+                }
+                for (int t = 0; t < templates.size(); t++) {
+                    for (int f = 0; f < 1; f++) {
+                        final int maxMq = mapQuals.get(t)[f];
+                        final LikelihoodMatrix<GenotypingAllele> matrix = f == 0 ? sampleLikelihoodsFirst : sampleLikelihoodsSecond;
+                        final double base = Math.max(matrix.get(refIdx, t), matrix.get(altIdx, t));
+                        final int maxIndex = matrix.get(refIdx, t) == base ? refIdx : altIdx;
+                        final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
+                        matrix.set(minIndex, t, Math.max(matrix.get(maxIndex, t) - 0.1 * maxMq, matrix.get(minIndex, t)));
+                       //         Math.min(matrix.get(maxIndex, t), matrix.get(minIndex, t) - base)));
+                    //    matrix.set(minIndex, t,  Math.min(matrix.get(maxIndex, t), matrix.get(minIndex, t) - base));
                     }
                 }
                 for (int i = 0; i < sampleLikelihoods.numberOfAlleles(); i++) {
@@ -440,25 +495,29 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         sampleLikelihoods.set(i, j, sampleLikelihoodsFirst.get(i, j) + sampleLikelihoodsSecond.get(i, j));
                     }
                 }
-                for (int t = 0; t < templates.size(); t++) {
+                        for (int t = 0; t < templates.size(); t++) {
+                            final double base = Math.max(sampleLikelihoods.get(refIdx, t), sampleLikelihoods.get(altIdx, t));
+                            final int maxIndex = sampleLikelihoods.get(refIdx, t) == base ? refIdx : altIdx;
+                            final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
+                            sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
+                        }
+
+                        for (int t = 0; t < templates.size(); t++) {
                     final TemplateMappingInformation refMapping = scoreTable.getMappingInfo(refHaplotypeIndex, t);
                     final TemplateMappingInformation altMapping = scoreTable.getMappingInfo(altHaplotypeIndex, t);
                     if (refMapping.pairOrientation.isProper() == altMapping.pairOrientation.isProper()) {
-                        if (refMapping.pairOrientation.isProper()) {
+                        if (refMapping.pairOrientation.isProper() && (scoreTable.getMappingInfo(refHaplotypeIndex, t).crossesBreakPoint(refBreakPoints) || scoreTable.getMappingInfo(altHaplotypeIndex, t).crossesBreakPoint(altBreakPoints))) {
                             sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) + insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10));
                             sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) + insertSizeDistribution.logProbability(altMapping.insertSize.getAsInt()) / Math.log(10));
+                        }
+                        if (refMapping.pairOrientation.isProper() && (!scoreTable.getMappingInfo(refHaplotypeIndex, t).crossesBreakPoint(refBreakPoints) && !scoreTable.getMappingInfo(altHaplotypeIndex, t).crossesBreakPoint(altBreakPoints))) {
+                            sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t));
                         }
                     } else if (refMapping.pairOrientation.isProper()) {
                         sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
                     } else {
                         sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
                     }
-                }
-                for (int t = 0; t < templates.size(); t++) {
-                    final double base = Math.max(sampleLikelihoods.get(refIdx, t), sampleLikelihoods.get(altIdx, t));
-                    final int maxIndex = sampleLikelihoods.get(refIdx, t) == base ? refIdx : altIdx;
-                    final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
-                    sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
                 }
                 int minRefPos = ref.getLength();
                 int maxRefPos = 0;
@@ -526,6 +585,40 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 return SVContext.of(newVariantBuilder.make());
            }).iterator();
         });
+    }
+
+    private static int[] calculateBreakPoints(final SVHaplotype haplotype, final SVContext context, final SAMSequenceDictionary dictionary) {
+        final List<AlignmentInterval> intervals = haplotype.getReferenceAlignmentIntervals();
+        final List<SimpleInterval> breakPoints = context.getBreakPointIntervals(0, dictionary, false);
+        final List<Integer> result = new ArrayList<>(breakPoints.size());
+        for (final SimpleInterval breakPoint : breakPoints) {
+            for (final AlignmentInterval interval : intervals) {
+                final Cigar cigar = interval.cigarAlongReference();
+                if (interval.referenceSpan.overlaps(breakPoint)) {
+                    int refPos = interval.referenceSpan.getStart();
+                    int hapPos = interval.startInAssembledContig;
+                    for (final CigarElement element : cigar) {
+                        final CigarOperator operator = element.getOperator();
+                        final int length = element.getLength();
+                        if (operator.consumesReferenceBases() && breakPoint.getStart() >= refPos && breakPoint.getStart() < refPos + length) {
+                            if (operator.isAlignment()) {
+                                result.add(hapPos + breakPoint.getStart() - refPos);
+                            } else {
+                                result.add(hapPos);
+                            }
+                        }
+                        if (operator.consumesReferenceBases()) {
+                            refPos += length;
+                        }
+                        if (operator.consumesReadBases() || operator.isClipping()) {
+                            hapPos += length;
+                        }
+                    }
+                }
+            }
+        }
+        Collections.sort(result);
+        return result.stream().mapToInt(i -> i).toArray();
     }
 
     private static SVContext processVariant(final SVContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {

@@ -8,7 +8,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
@@ -20,7 +19,6 @@ import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import scala.Tuple2;
-import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 
 import java.util.*;
 import java.util.ArrayList;
@@ -186,7 +184,7 @@ public final class AlignmentInterval {
         this.referenceSpan = new SimpleInterval(contig, start, start + cigar.getReferenceLength() - 1);
         this.startInAssembledContig = 1 + CigarUtils.countLeftClippedBases(this.cigarAlong5to3DirectionOfContig);
         this.endInAssembledContig = CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countRightClippedBases(cigar);
-        this.alnModType = AlnModType.NONE;
+        this.alnModType = ContigAlignmentsModifier.AlnModType.NONE;
         this.alnScore = alnScore;
         this.mapQual = mapQual;
         this.mismatches = mismatches;
@@ -472,6 +470,14 @@ public final class AlignmentInterval {
         Utils.nonNull(str);
         final String[] parts = str.replaceAll(";$", "").split(";");
         return Stream.of(parts).map(String::trim).filter(s -> !s.isEmpty() && !s.equals("*")).map(AlignmentInterval::new).collect(Collectors.toList());
+    }
+
+    public static String encode(final List<AlignmentInterval> intervals) {
+        Utils.nonNull(intervals);
+        ParamUtils.doesNotContainNulls(intervals);
+        return intervals.stream()
+                .map(AlignmentInterval::toSATagString)
+                .collect(Collectors.joining(";"));
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentInterval> {
@@ -892,4 +898,21 @@ public final class AlignmentInterval {
                 referenceLength - referenceSpan.getEnd(), CigarOperator.H);
         return new AlignmentInterval(newReferenceSpan, newStartInAssembledContig, newEndInAssembledContig, cigar, forwardStrand, mapQual, mismatches, alnScore, alnModType);
     }
+
+    public List<SimpleInterval> referenceCoveredIntervals() {
+        int referencePos = referenceSpan.getStart();
+        final Cigar cigar = cigarAlongReference();
+        final List<SimpleInterval> result = new ArrayList<>(cigar.numCigarElements());
+        for (final CigarElement element : cigar) {
+            final CigarOperator operator = element.getOperator();
+            if (operator.isAlignment()) {
+                result.add(new SimpleInterval(referenceSpan.getContig(), referencePos, referencePos + element.getLength() - 1));
+            }
+            if (operator.consumesReadBases()) {
+                referencePos += element.getLength();
+            }
+        }
+        return result;
+    }
+
 }
