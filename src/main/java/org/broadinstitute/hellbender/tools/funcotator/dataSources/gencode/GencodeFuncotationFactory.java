@@ -1016,7 +1016,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setReferenceWindow( referenceWindow );
 
         // Set our GC content:
-        sequenceComparison.setGcContent( calculateGcContent( referenceContext, strand, gcContentWindowSizeBases ) );
+        sequenceComparison.setGcContent( calculateGcContent( referenceContext, gcContentWindowSizeBases ) );
 
         // Get the coding sequence for the transcript:
         final String transcriptSequence;
@@ -1135,17 +1135,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Calculates the fraction of Guanine and Cytosine bases in a window of a given size around a variant.
+     * Note: Since Guanine and Cytosine are complementary bases, strandedness makes no difference.
      * @param referenceContext The {@link ReferenceContext} for a variant.  Assumed to already be centered on the variant of interest.  Must not be {@code null}.
-     * @param strand The {@link Strand} for the given variant.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
      * @param windowSize The number of bases to the left and right of the given {@code variant} to calculate the GC Content.  Must be >=1.
      * @return The fraction of Guanine and Cytosine bases / total bases in a window of size {@code windowSize} around a variant.
      */
     public static double calculateGcContent( final ReferenceContext referenceContext,
-                                             final Strand strand,
                                              final int windowSize) {
 
         Utils.nonNull( referenceContext );
-        FuncotatorUtils.assertValidStrand( strand );
         ParamUtils.isPositive( windowSize, "Window size must be >= 1." );
 
         // Create a placeholder for the bases:
@@ -1162,12 +1160,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             referenceContext.setWindow(windowSize, windowSize);
 
             // Get the bases:
-            if ( strand == Strand.POSITIVE ) {
-                bases = referenceContext.getBases();
-            }
-            else {
-                bases = ReadUtils.getBasesReverseComplement(referenceContext.getBases()).getBytes();
-            }
+            bases = referenceContext.getBases();
 
             // Preserve the old reference values:
             referenceContext.setWindow(oldLeadingBases, oldTrailingBases);
