@@ -144,9 +144,9 @@ public final class GenomicsDBImport extends GATKTool {
             shortName = SAMPLE_NAME_MAP_LONG_NAME,
             doc = "Path to file containing a mapping of sample name to file uri in tab delimited format.  If this is " +
                     "specified then the header from the first sample will be treated as the merged header rather than " +
-                    "merging the headers, and the sample names will be taken from this file.  This is a performance optimization " +
-                    "that relaxes the normal checks for consistent headers.  Using vcfs with incompatible headers may result " +
-                    "in silent data corruption.",
+                    "merging the headers, and the sample names will be taken from this file.  This may be used to rename " +
+                    "input samples. This is a performance optimization that relaxes the normal checks for consistent " +
+                    "headers.  Using vcfs with incompatible headers may result in silent data corruption.",
             optional = true,
             mutex = {StandardArgumentDefinitions.VARIANT_LONG_NAME})
     private String sampleNameMapFile;
