@@ -144,9 +144,9 @@ public final class GenomicsDBImport extends GATKTool {
             shortName = SAMPLE_NAME_MAP_LONG_NAME,
             doc = "Path to file containing a mapping of sample name to file uri in tab delimited format.  If this is " +
                     "specified then the header from the first sample will be treated as the merged header rather than " +
-                    "merging the headers, and the sample names will be taken from this file.  This is a performance optimization " +
-                    "that relaxes the normal checks for consistent headers.  Using vcfs with incompatible headers may result " +
-                    "in silent data corruption.",
+                    "merging the headers, and the sample names will be taken from this file.  This may be used to rename " +
+                    "input samples. This is a performance optimization that relaxes the normal checks for consistent " +
+                    "headers.  Using vcfs with incompatible headers may result in silent data corruption.",
             optional = true,
             mutex = {StandardArgumentDefinitions.VARIANT_LONG_NAME})
     private String sampleNameMapFile;
@@ -494,11 +494,11 @@ public final class GenomicsDBImport extends GATKTool {
                                                                                    final int batchSize, final int lowerSampleIndex) {
         final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap = new TreeMap<>();
         logger.info("Starting batch input file preload");
-        final List<Future<FeatureReader<VariantContext>>> futures = new ArrayList<>();
+        final Map<String, Future<FeatureReader<VariantContext>>> futures = new LinkedHashMap<>();
         final List<String> sampleNames = new ArrayList<>(sampleNametoPath.keySet());
         for(int i = lowerSampleIndex; i < sampleNametoPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
-            futures.add(inputPreloadExecutorService.submit(() -> {
+            futures.put(sampleName, inputPreloadExecutorService.submit(() -> {
                 final Path variantPath = sampleNametoPath.get(sampleName);
                 try {
                     return new InitializedQueryWrapper(getReaderFromPath(variantPath), intervals.get(0));
@@ -508,19 +508,15 @@ public final class GenomicsDBImport extends GATKTool {
             }));
         }
 
-        for (final Future<FeatureReader<VariantContext>> f : futures) {
+        futures.forEach((sampleName, future) -> {
             try {
-                final FeatureReader<VariantContext> reader = f.get();
-                final List<String> genotypeSamples = ((VCFHeader) reader.getHeader()).getGenotypeSamples();
-                assert genotypeSamples.size() == 1;
-                final String sampleName = genotypeSamples.get(0);
-                assert sampleNametoPath.containsKey(sampleName);
+                final FeatureReader<VariantContext> reader = future.get();
                 sampleToReaderMap.put(sampleName, reader);
             } catch (InterruptedException | ExecutionException e) {
                 throw new UserException.CouldNotReadInputFile("Failure while waiting for FeatureReader to initialize ",
                                                               e);
             }
-        }
+        });
         logger.info("Finished batch preload");
         return sampleToReaderMap;
     }
@@ -532,7 +528,6 @@ public final class GenomicsDBImport extends GATKTool {
         for(int i = lowerSampleIndex; i < sampleNameToPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
             final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(sampleNameToPath.get(sampleName));
-            assert sampleName.equals(((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0));
             sampleToReaderMap.put(sampleName, reader);
         }
         return sampleToReaderMap;
@@ -728,7 +723,7 @@ public final class GenomicsDBImport extends GATKTool {
         }
 
         @Override
-        public CloseableTribbleIterator<VariantContext> query(final String chr, final int start, final int end) throws IOException {
+        public CloseableTribbleIterator<VariantContext> query(final String chr, final int start, final int end) {
             final SimpleInterval queryInterval = new SimpleInterval(chr, start, end);
             if( !interval.equals(queryInterval)){
                 throw new GATKException("Cannot call query with different interval, expected:" + this.interval + " queried with: " + queryInterval);
@@ -743,7 +738,7 @@ public final class GenomicsDBImport extends GATKTool {
         }
 
         @Override
-        public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
+        public CloseableTribbleIterator<VariantContext> iterator() {
             throw new UnsupportedOperationException("iterator() not supported, this should not have been called and indicates an issue with GenomicsDB integration");
         }
 
