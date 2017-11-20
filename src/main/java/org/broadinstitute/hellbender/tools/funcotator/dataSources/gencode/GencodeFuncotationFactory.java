@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -46,7 +47,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * The window around splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
      */
-    final static private int spliceSiteVariantWindowBases = 2;
+    private static final int spliceSiteVariantWindowBases = 2;
+
+    /**
+     * Number of bases to the left and right of a variant in which to calculate the GC content.
+     */
+    private static final int gcContentWindowSizeBases = 200;
 
     /**
      * The set of {@link GencodeFuncotation.VariantClassification} types that are valid for coding regions.
@@ -517,7 +523,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final String proteinChange = FuncotatorUtils.getProteinChangeString2( sequenceComparison );
 
         gencodeFuncotationBuilder.setCodonChange(codonChange)
-                                 .setProteinChange(proteinChange);
+                                 .setProteinChange(proteinChange)
+                                 .setGcContent( sequenceComparison.getGcContent() );
 
         // Set the Variant Classification:
         final GencodeFuncotation.VariantClassification varClass = createVariantClassification( variant, altAllele, variantType, exon, sequenceComparison );
@@ -1007,13 +1014,13 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setReferenceBases( referenceBases );
         sequenceComparison.setReferenceWindow( referenceWindow );
 
+        // Set our GC content:
+        sequenceComparison.setGcContent( calculateGcContent( variant, referenceContext, strand, gcContentWindowSizeBases ) );
+
         // Get the coding sequence for the transcript:
         final String transcriptSequence;
         // NOTE: This can't be null because of the Funcotator input args.
         transcriptSequence = getCodingSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource );
-//        else {
-//            transcriptSequence = FuncotatorUtils.getCodingSequence( referenceContext, exonPositionList, strand );
-//        }
 
         // Get the transcript sequence as described by the given exonPositionList:
         sequenceComparison.setTranscriptCodingSequence(new ReferenceSequence(transcript.getTranscriptId(),transcript.getStart(),transcriptSequence.getBytes()));
@@ -1073,8 +1080,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                         Strand.POSITIVE )
         );
 
-        // TODO: Check from here down for where you should use the coding sequence VS the raw reference alleles:
-
         // Get the amino acid sequence of the reference allele:
         sequenceComparison.setReferenceAminoAcidSequence(
                 FuncotatorUtils.createAminoAcidSequence( sequenceComparison.getAlignedCodingSequenceReferenceAllele() )
@@ -1125,6 +1130,60 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         );
 
         return sequenceComparison;
+    }
+
+    /**
+     * Calculates the fraction of Guanine and Cytosine bases in a window of a given size around the given {@link VariantContext}.
+     * @param variant The {@link VariantContext} around which to calculate the GC content.
+     * @param referenceContext The {@link ReferenceContext} for the given {@code variant}.
+     * @param strand The {@link Strand} for the given variant.
+     * @param windowSize The number of bases to the left and right of the given {@code variant} to calculate the GC Content.
+     * @return The fraction of Guanine and Cytosine bases / total bases in a window of size {@code windowSize} around the given {@code variant}.
+     */
+    private static double calculateGcContent(final VariantContext variant,
+                                             final ReferenceContext referenceContext,
+                                             final Strand strand,
+                                             final int windowSize) {
+
+        Utils.nonNull( variant );
+        Utils.nonNull( referenceContext );
+        FuncotatorUtils.assertValidStrand( strand );
+
+        // Create a placeholder for the bases:
+        final byte[] bases;
+
+        // Since we're messing with the window this seems prudent:
+        synchronized ( referenceContext ) {
+
+            // Save the old reference values:
+            final int oldLeadingBases  = referenceContext.numWindowLeadingBases();
+            final int oldTrailingBases = referenceContext.numWindowTrailingBases();
+
+            // Set our reference window:
+            referenceContext.setWindow(windowSize, windowSize);
+
+            // Get the bases:
+            if ( strand == Strand.POSITIVE ) {
+                bases = referenceContext.getBases();
+            }
+            else {
+                bases = ReadUtils.getBasesReverseComplement(referenceContext.getBases()).getBytes();
+            }
+
+            // Preserve the old reference values:
+            referenceContext.setWindow(oldLeadingBases, oldTrailingBases);
+        }
+
+        // Get the gcCount:
+        long gcCount = 0;
+        for ( final byte base : bases ) {
+            if ( BaseUtils.basesAreEqual(base, BaseUtils.Base.G.base) || BaseUtils.basesAreEqual(base, BaseUtils.Base.C.base) ) {
+                ++gcCount;
+            }
+        }
+
+        // Calculate the ratio itself:
+        return ((double)gcCount) / ((double) bases.length);
     }
 
     /**
@@ -1257,27 +1316,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Return the index of the "best" transcript in this gene.
-     * @param geneFeature A {@link GencodeGtfGeneFeature} from which to get the index of the "best" transcript.
-     * @param variant The {@link VariantContext} for which we want to get the best index.
-     * @return The index of the "best" {@link GencodeGtfTranscriptFeature} in the given {@link GencodeGtfGeneFeature}.  Returns -1 if no transcript is present.
-     */
-    private static int getBestTranscriptIndex(final GencodeGtfGeneFeature geneFeature, final VariantContext variant) {
-        if ( geneFeature.getTranscripts().size() == 0 ) {
-            return -1;
-        }
-
-        for ( int i = 0 ; i < geneFeature.getTranscripts().size() ; ++i ) {
-            if ( geneFeature.getTranscripts().get(i).getGenomicPosition().overlaps(variant) ) {
-                return i;
-            }
-        }
-
-        // Oops... we didn't find anything.
-        return -1;
-    }
-
-    /**
      * Sort the given list of funcotations such that the list becomes sorted in "best"->"worst" order by each funcotation's
      * transcript.
      * @param funcotationList The {@link List} of {@link GencodeFuncotation} to sort.
@@ -1286,10 +1324,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         //TODO: Make this sort go from "worst" -> "best" so we can just pop the last element off and save some time.
 
         if ( transcriptSelectionMode == FuncotatorArgumentDefinitions.TranscriptSelectionMode.BEST_EFFECT ) {
-            Collections.sort(funcotationList, new BestEffectGencodeFuncotationComparator(userRequestedTranscripts));
+            funcotationList.sort(new BestEffectGencodeFuncotationComparator(userRequestedTranscripts));
         }
         else {
-            Collections.sort(funcotationList, new CannonicalGencodeFuncotationComparator(userRequestedTranscripts));
+            funcotationList.sort(new CannonicalGencodeFuncotationComparator(userRequestedTranscripts));
         }
     }
 

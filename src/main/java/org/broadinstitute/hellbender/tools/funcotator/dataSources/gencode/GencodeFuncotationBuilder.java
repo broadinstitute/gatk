@@ -267,4 +267,14 @@ public class GencodeFuncotationBuilder {
         gencodeFuncotation.setTranscriptLength( transcriptLength );
         return this;
     }
+
+    /**
+     * Set the GC Content {@link Double} in the {@link GencodeFuncotation}.
+     * @param gcContent The {@link Double} containing the GC Content for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setGcContent( final Double gcContent ) {
+        gencodeFuncotation.setGcContent( gcContent );
+        return this;
+    }
  }

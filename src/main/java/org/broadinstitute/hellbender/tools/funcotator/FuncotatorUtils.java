@@ -1820,6 +1820,11 @@ public class FuncotatorUtils {
         private Integer referenceWindow                   = null;
 
         /**
+         * The fraction of Guanine and Cytosine bases / total bases in a window of 200 bases around the variant locus.
+         */
+        private Double gcContent                          = null;
+
+        /**
          * The reference coding sequence for a the transcript of this sequence comparison.
          * This does NOT include introns.
          * Stored in the forward reading direction.  For NEGATIVE strand reads, must
@@ -1971,6 +1976,14 @@ public class FuncotatorUtils {
 
         public void setReferenceWindow(final Integer referenceWindow) {
             this.referenceWindow = referenceWindow;
+        }
+
+        public Double getGcContent() {
+            return gcContent;
+        }
+
+        public void setGcContent(final Double gcContent) {
+            this.gcContent = gcContent;
         }
 
         /**

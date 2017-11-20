@@ -40,6 +40,7 @@ public class GencodeFuncotation extends Funcotation {
     private String                  cDnaChange;                         //           CDS
     private String                  codonChange;                        //           CDS
     private String                  proteinChange;                      //           CDS
+    private Double                  gcContent;
     private List<String>            otherTranscripts;                   // TRIVIAL
 
     //------------------------------------------------------------
@@ -92,6 +93,7 @@ public class GencodeFuncotation extends Funcotation {
                     "cDnaChange",
                     "codonChange",
                     "proteinChange",
+                    "gcContent",
                     "otherTranscripts"
                 );
     }
@@ -124,6 +126,7 @@ public class GencodeFuncotation extends Funcotation {
                 (cDnaChange != null ? cDnaChange : "") + FIELD_DELIMITER +
                 (codonChange != null ? codonChange : "") + FIELD_DELIMITER +
                 (proteinChange != null ? proteinChange : "") + FIELD_DELIMITER +
+                (gcContent != null ? gcContent : "") + FIELD_DELIMITER +
                 (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(OTHER_TRANSCRIPT_DELIMITER)) : "");
     }
 
@@ -162,10 +165,11 @@ public class GencodeFuncotation extends Funcotation {
         if ( codonChange != null ? !codonChange.equals(that.codonChange) : that.codonChange != null ) return false;
         if ( proteinChange != null ? !proteinChange.equals(that.proteinChange) : that.proteinChange != null )
             return false;
+        if ( gcContent != null ? !gcContent.equals(that.gcContent) : that.gcContent != null ) return false;
         if ( otherTranscripts != null ? !otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts != null )
             return false;
         if ( locusLevel != null ? !locusLevel.equals(that.locusLevel) : that.locusLevel != null ) return false;
-        if ( apprisRank != null ? !apprisRank.equals(that.apprisRank) : that.apprisRank != null ) return false;
+        if ( apprisRank != that.apprisRank ) return false;
         return transcriptLength != null ? transcriptLength.equals(that.transcriptLength) : that.transcriptLength == null;
     }
 
@@ -190,6 +194,7 @@ public class GencodeFuncotation extends Funcotation {
         result = 31 * result + (cDnaChange != null ? cDnaChange.hashCode() : 0);
         result = 31 * result + (codonChange != null ? codonChange.hashCode() : 0);
         result = 31 * result + (proteinChange != null ? proteinChange.hashCode() : 0);
+        result = 31 * result + (gcContent != null ? gcContent.hashCode() : 0);
         result = 31 * result + (otherTranscripts != null ? otherTranscripts.hashCode() : 0);
         result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
         result = 31 * result + (apprisRank != null ? apprisRank.hashCode() : 0);
@@ -219,14 +224,15 @@ public class GencodeFuncotation extends Funcotation {
                 ", cDnaChange='" + cDnaChange + '\'' +
                 ", codonChange='" + codonChange + '\'' +
                 ", proteinChange='" + proteinChange + '\'' +
+                ", gcContent=" + gcContent +
                 ", otherTranscripts=" + otherTranscripts +
                 ", locusLevel=" + locusLevel +
-                ", apprisRank='" + apprisRank + '\'' +
+                ", apprisRank=" + apprisRank +
                 ", transcriptLength=" + transcriptLength +
                 '}';
     }
 
-    //==================================================================================================================
+//==================================================================================================================
 
     public String getHugoSymbol() {
         return hugoSymbol;
@@ -378,6 +384,14 @@ public class GencodeFuncotation extends Funcotation {
 
     public void setProteinChange(final String proteinChange) {
         this.proteinChange = proteinChange;
+    }
+
+    public Double getGcContent() {
+        return gcContent;
+    }
+
+    public void setGcContent(final Double gcContent) {
+        this.gcContent = gcContent;
     }
 
     public List<String> getOtherTranscripts() {
