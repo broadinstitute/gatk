@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -37,6 +38,7 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
  * The first read includes the bases that are to the left of the first N element, while the part of the read that is to the right of the N
  * (including the Ns) is hard clipped and so on for the rest of the new reads.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Splits reads that contain Ns in their cigar string (e.g. spanning splicing events).",
         oneLineSummary = "Split Reads with N in Cigar",

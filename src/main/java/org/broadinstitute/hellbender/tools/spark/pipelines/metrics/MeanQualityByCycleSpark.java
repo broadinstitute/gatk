@@ -11,6 +11,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
@@ -37,6 +38,7 @@ import java.util.List;
  *
  * This is the Spark implementation of this tool.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
 summary = "Program to generate a data table and pdf chart of " +
         "mean base quality by cycle from a SAM/BAM file.  Works best on a single lane/run of data, but can be applied to " +

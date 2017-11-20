@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
@@ -24,6 +25,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateF
 import java.util.Collections;
 import java.util.List;
 
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary ="Marks duplicates on spark",
         oneLineSummary ="MarkDuplicates on Spark",

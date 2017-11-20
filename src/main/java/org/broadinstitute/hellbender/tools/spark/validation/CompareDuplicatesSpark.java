@@ -12,6 +12,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -32,6 +33,7 @@ import java.util.Set;
  * The goal of this program is to load two potentially identical BAMs and determine if the BAMs contain the same
  * reads marked as duplicates. It fails if the BAMs don't have the same number of reads or total duplicates.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Compares two BAMs for duplicates", oneLineSummary = "Compares two BAMs for duplicates",
         programGroup = TestSparkProgramGroup.class)
 @BetaFeature

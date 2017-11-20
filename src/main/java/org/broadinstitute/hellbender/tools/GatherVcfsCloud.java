@@ -29,6 +29,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
@@ -52,6 +53,7 @@ import java.util.stream.Collectors;
  *
  * @author Tim Fennell
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Gathers multiple VCF files from a scatter operation into a single VCF file. Input files " +
                 "must be supplied in genomic order and must not have events at overlapping positions.",

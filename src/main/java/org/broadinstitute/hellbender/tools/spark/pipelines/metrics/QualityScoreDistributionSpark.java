@@ -11,6 +11,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
@@ -33,6 +34,7 @@ import java.util.List;
  *
  * This is the spark version of the tool.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Program to chart " +
                 "quality score distributions in a SAM/BAM file.",

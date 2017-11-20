@@ -14,6 +14,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -42,6 +43,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
  * Tool to run the sv pipeline up to and including variant discovery.
  * Expected input is a BAM with around 30x coverage.  Coverage much lower than that probably won't work well.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary="Master tool to run the structural variation discovery pipeline",
         oneLineSummary="Master tool to run the structural variation discovery pipeline",
         programGroup = StructuralVariationSparkProgramGroup.class)

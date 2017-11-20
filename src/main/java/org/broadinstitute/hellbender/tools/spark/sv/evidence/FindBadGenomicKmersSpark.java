@@ -9,6 +9,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -31,6 +32,7 @@ import java.util.List;
 /**
  * SparkTool to identify 63-mers in the reference that occur more than 3 times.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary="Find the set of high copy number kmers in a reference.",
         oneLineSummary="find ref kmers with high copy number",
         programGroup = StructuralVariationSparkProgramGroup.class)

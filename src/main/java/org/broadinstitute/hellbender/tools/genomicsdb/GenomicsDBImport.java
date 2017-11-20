@@ -20,6 +20,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -51,6 +52,7 @@ import java.util.function.Function;
  *
  * To read data from GenomicsDB, use the query interface GenomicsDBFeatureReader
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
     summary = "Import VCFs to GenomicsDB",
     oneLineSummary = "Import VCFs to GenomicsDB",

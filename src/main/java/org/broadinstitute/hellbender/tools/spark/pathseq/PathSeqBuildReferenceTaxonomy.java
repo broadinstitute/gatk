@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
@@ -28,6 +29,7 @@ import java.util.*;
  * <p>
  * The database is written to an output file, which is required by the ClassifyReads tool.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Builds a taxonomic database of the pathogen reference that " +
         "is required to run the scoring tool. User must supply a pathogen reference, NCBI catalog, and NCBI taxonomy " +
         "'taxdump' archive.",

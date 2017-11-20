@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -23,6 +24,7 @@ import scala.Tuple2;
 
 import java.io.IOException;
 
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Aligns reads to a reference using Bwa-mem. This is a specialized version of " +
         "BwaSpark designed for the PathSeq pipeline. User must supply unaligned paired read and/or unpaired reads " +
         "(do not use --input) and a BWA reference image file created using BwaMemIndexImageCreator. For small " +

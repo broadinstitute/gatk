@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.BwaMemUtilitiesProgramGroup;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 /**
  * Simply creates the reference index image file.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Creates the image file for use by BwaMemAligner",
         oneLineSummary = "Creates the image file for use by BwaMemAligner",

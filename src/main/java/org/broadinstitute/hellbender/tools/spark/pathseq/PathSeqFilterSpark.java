@@ -7,6 +7,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
@@ -47,6 +48,7 @@ import java.io.IOException;
  *     outputPath.unpaired.bam. This improves performance by avoiding shuffles but violates the SAM format specification.
  *
  */
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "First, low-quality and repetitive sequences reads are filtered: \n\t(1) Remove secondary and " +
         "supplementary alignments; \n\t(2) trim adapter sequences; \n\t(3) mask sequences with excessive A/T or G/C content; " +
         "\n\t(4) mask repetitive sequences using the sDUST algorithm; \n\t(5) hard clip according to masked " +
