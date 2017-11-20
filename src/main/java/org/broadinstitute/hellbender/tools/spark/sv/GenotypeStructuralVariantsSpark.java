@@ -100,6 +100,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
+
+    private final boolean ignoreReadsThatDontOverlapBreakingPoint = true;
+
     @ArgumentCollection
     private RequiredVariantInputArgumentCollection variantArguments = new RequiredVariantInputArgumentCollection();
 
@@ -308,6 +311,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final Broadcast<SAMSequenceDictionary> broadCastDictionary = ctx.broadcast(getReferenceSequenceDictionary());
         final SerializableBiFunction<String, byte[], File> imageCreator =  GenotypeStructuralVariantsSpark::createTransientImageFile;
         final AlignmentPenalties penalties = this.penalties;
+        final boolean ignoreReadsThatDontOverlapBreakingPoint = this.ignoreReadsThatDontOverlapBreakingPoint;
         final InsertSizeDistribution insertSizeDistribution = this.insertSizeDistribution;
         return input.mapPartitions(it -> {
             final SAMSequenceDictionary dictionary = broadCastDictionary.getValue();
@@ -490,9 +494,22 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     //    matrix.set(minIndex, t,  Math.min(matrix.get(maxIndex, t), matrix.get(minIndex, t) - base));
                     }
                 }
-                for (int i = 0; i < sampleLikelihoods.numberOfAlleles(); i++) {
-                    for (int j = 0; j < sampleLikelihoods.numberOfReads(); j++) {
-                        sampleLikelihoods.set(i, j, sampleLikelihoodsFirst.get(i, j) + sampleLikelihoodsSecond.get(i, j));
+                for (int j = 0; j < sampleLikelihoods.numberOfReads(); j++) {
+                    final boolean considerFirstFragment;
+                    final boolean considerSecondFragment;
+                    if (ignoreReadsThatDontOverlapBreakingPoint) {
+                        considerFirstFragment = scoreTable.getMappingInfo(refHaplotypeIndex, j).crossesBreakPoint(refBreakPoints, 0)
+                                || scoreTable.getMappingInfo(altHaplotypeIndex, j).crossesBreakPoint(altBreakPoints, 0);
+                        considerSecondFragment = scoreTable.getMappingInfo(refHaplotypeIndex, j).crossesBreakPoint(refBreakPoints, 1)
+                                || scoreTable.getMappingInfo(altHaplotypeIndex, j).crossesBreakPoint(altBreakPoints, 1);
+                    } else {
+                        considerFirstFragment = true;
+                        considerSecondFragment = true;
+                    }
+                    for (int i = 0; i < sampleLikelihoods.numberOfAlleles(); i++) {
+                        sampleLikelihoods.set(i, j, (considerFirstFragment ? sampleLikelihoodsFirst.get(i, j) : 0) +
+                                ((considerSecondFragment) ? sampleLikelihoodsSecond.get(i, j) : 0));
+
                     }
                 }
                         for (int t = 0; t < templates.size(); t++) {
@@ -620,59 +637,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         Collections.sort(result);
         return result.stream().mapToInt(i -> i).toArray();
     }
-
-    private static SVContext processVariant(final SVContext variant, final Iterable<GATKRead> haplotypesAndContigs, final Iterable<Template> templates) {
-        Haplotype refHaplotype = null;
-        Haplotype altHaplotype = null;
-        final List<GenotypingContig> alignedContigs = new ArrayList<>();
-        for (final GATKRead haplotypeOrContig : haplotypesAndContigs) {
-            final String call = haplotypeOrContig.getAttributeAsString("HP");
-            if (call == null) {
-                throw new IllegalArgumentException("missing call in record: " + haplotypeOrContig);
-            }
-            if (haplotypeOrContig.getReadGroup().equals("HAP")) {
-                if (call == ".") {
-                    throw new IllegalArgumentException("the call cannot be . for a haplotype record: " + haplotypeOrContig);
-                } else if (call == "ref") {
-                    refHaplotype = Haplotype.fromGATKRead(haplotypeOrContig, true);
-                } else if (call == "alt") {
-                    altHaplotype = Haplotype.fromGATKRead(haplotypeOrContig, false);
-                } else {
-                    throw new IllegalArgumentException("illegal call string: " + call);
-                }
-            } else if (haplotypeOrContig.getReadGroup().equals("CTG")) {
-                final GenotypingContig genotypingContig = new GenotypingContig(haplotypeOrContig);
-                alignedContigs.add(genotypingContig);
-            }
-
-        }
-        //final BwaVariantTemplateScoreCalculator calculator = new BwaVariantTemplateScoreCalculator();
-
-     /*   input.collect().forEach(vt -> {
-            logger.debug("Doing  " + vt._1().getContig() + ":" + vt._1().getStart());
-            if (structuralVariantAlleleIsSupported(vt._1().getStructuralVariantAllele())) {
-                System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " " + vt._2().size() + " templates ");
-                final List<Haplotype> haplotypes = new ArrayList<>(2);
-                haplotypes.add(vt._1().composeHaplotype(0, padding, reference));
-                haplotypes.add(vt._1().composeHaplotype(1, padding, reference));
-                final TemplateHaplotypeScoreTable table = new TemplateHaplotypeScoreTable(vt._2(), haplotypes);
-                calculator.calculate(table);
-                table.dropUninformativeTemplates();
-                System.err.println("table.0 is " + Arrays.toString(table.getRow(0)));
-                System.err.println("table.1 is " + Arrays.toString(table.getRow(1)));
-                System.err.println("table.n is " + Arrays.toString(table.templates().stream().map(Template::name).toArray()));
-                final GenotypeLikelihoods likelihoods = table.calculateGenotypeLikelihoods(2);
-                System.err.println("likelihoods = " + likelihoods.getAsString());
-            } else {
-                System.err.println("" + vt._1().getContig() + ":" + vt._1().getStart() + " not supported ");
-            }
-        });
-        return variants;*/
-        return null;
-    }
-
-
-
 
     private static List<AlignmentInterval> composeAlignmentIntervals(final SVContig haplotype, final Template template, final int fragmentIndex, final List<BwaMemAlignment> alignerOutput) {
         if (alignerOutput.isEmpty() || alignerOutput.size() == 1 && SAMFlag.READ_UNMAPPED.isSet(alignerOutput.get(0).getSamFlag())) {
