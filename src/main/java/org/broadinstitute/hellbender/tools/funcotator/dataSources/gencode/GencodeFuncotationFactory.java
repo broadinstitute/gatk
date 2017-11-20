@@ -450,6 +450,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             else {
                 gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.RNA);
             }
+
+            // Get GC Content:
+            gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+
             gencodeFuncotation = gencodeFuncotationBuilder.build();
         }
         else {
@@ -462,7 +466,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // Determine what kind of region we're in and handle it in it's own way:
             if ( containingSubfeature == null ) {
                 // We have an IGR variant
-                gencodeFuncotation = createIgrFuncotation(altAllele);
+                gencodeFuncotation = createIgrFuncotation(altAllele, reference);
             }
             else if ( GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have a coding region variant
@@ -474,7 +478,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
             else if ( GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have an intron variant
-                gencodeFuncotation = createIntronFuncotation(variant, altAllele, gtfFeature, transcript);
+                gencodeFuncotation = createIntronFuncotation(variant, altAllele, reference, gtfFeature, transcript);
             }
             else {
                 // Uh-oh!  Problemz.
@@ -782,6 +786,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
 
+        // Set GC Content:
+        gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+
         // Set whether it's the 5' or 3' UTR:
         if ( is5PrimeUtr(utr, transcript) ) {
 
@@ -830,14 +837,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * Create a {@link GencodeFuncotation} for a {@code variant} that occurs in an intron in the given {@code transcript}.
      * @param variant The {@link VariantContext} for which to create a {@link GencodeFuncotation}.
      * @param altAllele The {@link Allele} in the given {@code variant} for which to create a {@link GencodeFuncotation}.
+     * @param reference The {@link ReferenceContext} for the given {@code variant}.
      * @param gtfFeature The {@link GencodeGtfGeneFeature} in which the given {@code variant} occurs.
      * @param transcript The {@link GencodeGtfTranscriptFeature} in which the given {@code variant} occurs.
      * @return A {@link GencodeFuncotation} containing information about the given {@code variant} given the corresponding {@code transcript}.
      */
     private static GencodeFuncotation createIntronFuncotation(final VariantContext variant,
-                                                       final Allele altAllele,
-                                                       final GencodeGtfGeneFeature gtfFeature,
-                                                       final GencodeGtfTranscriptFeature transcript) {
+                                                              final Allele altAllele,
+                                                              final ReferenceContext reference,
+                                                              final GencodeGtfGeneFeature gtfFeature,
+                                                              final GencodeGtfTranscriptFeature transcript) {
 
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
@@ -848,6 +857,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Set as default INTRON variant classification:
         gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
+
+        // Set GC Content:
+        gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
 
         // Need to check if we're within the window for splice site variants:
         final GencodeGtfExonFeature spliceSiteExon = getExonWithinSpliceSiteWindow(variant, transcript, spliceSiteVariantWindowBases);
@@ -1326,8 +1338,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * Creates a {@link List} of {@link GencodeFuncotation}s based on the given {@link VariantContext} with type
      * {@link GencodeFuncotation.VariantClassification#IGR}.
-     * @param variant The variant to annotate.
-     * @param reference The reference against which to compare the given variant.
+     * @param variant The {@link VariantContext} to annotate.
+     * @param reference The {@link ReferenceContext} against which to compare the given variant.
      * @return A list of IGR annotations for the given variant.
      */
     private static List<GencodeFuncotation> createIgrFuncotations(final VariantContext variant, final ReferenceContext reference) {
@@ -1336,7 +1348,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
 
         for ( final Allele allele : variant.getAlternateAlleles() ) {
-            gencodeFuncotations.add( createIgrFuncotation(allele) );
+            gencodeFuncotations.add( createIgrFuncotation(allele, reference) );
         }
 
         return gencodeFuncotations;
@@ -1375,13 +1387,18 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * Creates a {@link GencodeFuncotation}s based on the given {@link Allele} with type
      * {@link GencodeFuncotation.VariantClassification#IGR}.
-     * @param altAllele The alternate allele to use for this funcotation.
+     * @param altAllele The alternate {@link Allele} to use for this funcotation.
+     * @param reference The {@link ReferenceContext} of the given {@link Allele}.
      * @return An IGR funcotation for the given allele.
      */
-    private static GencodeFuncotation createIgrFuncotation(final Allele altAllele){
+    private static GencodeFuncotation createIgrFuncotation(final Allele altAllele,
+                                                           final ReferenceContext reference){
         final GencodeFuncotation gencodeFuncotation = new GencodeFuncotation();
 
         // TODO: NEED TO FIX THIS LOGIC TO INCLUDE MORE INFO!
+
+        // Get GC Content:
+        gencodeFuncotation.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
 
         gencodeFuncotation.setVariantClassification( GencodeFuncotation.VariantClassification.IGR );
         gencodeFuncotation.setTumorSeqAllele1( altAllele.getBaseString() );
