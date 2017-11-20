@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Iterator;
 
@@ -68,7 +69,9 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
             final ReadCoordinateComparator comparator = new ReadCoordinateComparator(reads.getHeader());
             while(iter.hasNext()){
                 final GATKRead current = iter.next();
-                Assert.assertTrue(comparator.compare(previous, current) <= 0);
+                if( previous != null) {
+                    Assert.assertTrue(comparator.compare(previous, current) <= 0);
+                }
                 previous = current;
             }
         }
