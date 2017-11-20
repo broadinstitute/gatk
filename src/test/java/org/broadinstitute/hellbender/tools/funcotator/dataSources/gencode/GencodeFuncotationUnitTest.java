@@ -26,7 +26,8 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                                         final String annotationTranscript, final String transcriptStrand,
                                                         final Integer transcriptExon, final Integer transcriptPos,
                                                         final String cDnaChange, final String codonChange,
-                                                        final String proteinChange, final List<String> otherTranscripts) {
+                                                        final String proteinChange, final Double gcContent,
+                                                        final List<String> otherTranscripts) {
 
         final GencodeFuncotation gencodeFuncotation = new GencodeFuncotation();
 
@@ -50,6 +51,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         gencodeFuncotation.setcDnaChange( cDnaChange );
         gencodeFuncotation.setCodonChange( codonChange );
         gencodeFuncotation.setProteinChange( proteinChange );
+        gencodeFuncotation.setGcContent( gcContent );
         gencodeFuncotation.setOtherTranscripts( otherTranscripts );
 
         return gencodeFuncotation;
@@ -76,158 +78,169 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
 
         return new Object[][] {
                 {
+                        createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
+                                GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
+                                "A", "T", "T", "big changes", "T1",
+                                "3'", 1, 1, "A", "ATC", "Lys", null, Arrays.asList("ONE", "TWO", "THREE")),
+
+                        "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
+                                GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
+                                "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + D + "ONE;TWO;THREE"
+                },
+                {
                     createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                             GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                             "A", "T", "T", "big changes", "T1",
-                            "3'", 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                            "3'", 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
                         
                     "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                             GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                             "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                            "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                            "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", "Lys", null),
+                                "3'", 1, 1, "A", "ATC", "Lys", 0.332, null),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D
                 },
                 {
                         createFuncotation(null, "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", null, "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", null, 50, 60,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + D + 50 + D + 60 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 null, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, null, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, null,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "G", "C", "C", null, "T1",
-                                "3'", 1, 1, "A", "ACC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ACC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "G" + D + "C" + D + "C" + D + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ACC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ACC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", null,
-                                null, 1, 1, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                null, 1, 1, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + D +
-                                D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", null, null, "A", "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", null, null, "A", "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + D + D + "A" + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + D + D + "A" + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, null,  "ATC", "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, null,  "ATC", "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + D + "ATC" + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + D + "ATC" + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", null, "Lys", Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", null, "Lys", 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + D + "Lys" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + D + "Lys" + D + "0.332" + D + "ONE;TWO;THREE"
                 },
                 {
                         createFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "T", "big changes", "T1",
-                                "3'", 1, 1, "A", "ATC", null, Arrays.asList("ONE", "TWO", "THREE")),
+                                "3'", 1, 1, "A", "ATC", null, 0.332, Arrays.asList("ONE", "TWO", "THREE")),
 
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + D + "0.332" + D + "ONE;TWO;THREE"
                 },
         };
     }
@@ -259,6 +272,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                 "cDnaChange",
                 "codonChange",
                 "proteinChange",
+                "gcContent",
                 "otherTranscripts");
 
         Assert.assertEquals(serializedFieldNames, expectedFieldNames);

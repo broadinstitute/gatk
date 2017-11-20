@@ -1,22 +1,27 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureReader;
+import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -678,6 +683,36 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         };
     }
 
+    @DataProvider
+    Object[][] provideDataForTestCalculateGcContent() {
+
+//        final ReferenceContext referenceContext,
+//        final Strand strand,
+//        final int windowSize,
+//        final double expected
+
+        // Create an in-memory ReferenceContext:
+        final byte[] bases = "AAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCC".getBytes();
+        final SimpleInterval wholeReferenceInterval = new SimpleInterval( "chrTest", 1, bases.length );
+        final ReferenceContext referenceContext = new ReferenceContext(
+                new ReferenceMemorySource(
+                        new ReferenceBases(bases, wholeReferenceInterval),
+                        new SAMSequenceDictionary(
+                                Collections.singletonList(
+                                        new SAMSequenceRecord(wholeReferenceInterval.getContig(), wholeReferenceInterval.getEnd() - wholeReferenceInterval.getStart() + 1)
+                                )
+                        )
+                ),
+                new SimpleInterval(wholeReferenceInterval.getContig(), 1, 1)
+        );
+
+        return new Object[][] {
+                {
+
+                }
+        };
+    }
+
     //==================================================================================================================
     // Tests:
 
@@ -751,7 +786,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final GencodeGtfTranscriptFeature transcript = getMuc16Transcript(gene);
         final GencodeGtfExonFeature             exon = getExonForVariant( gene, variantInterval );
 
-        final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch19, variantInterval );
+        final ReferenceContext referenceContext = new ReferenceContext( refDataSourceHg19Ch19, variantInterval );
 
         final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedExonAndStartStopPositions(transcript);
 
@@ -989,5 +1024,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                    final GencodeFuncotation b,
                                                    final int expected) {
         Assert.assertEquals( comparator.compare(a,b), expected );
+    }
+
+    @Test (dataProvider = "provideDataForTestCalculateGcContent")
+    void testCalculateGcContent(final ReferenceContext referenceContext,
+                                final Strand strand,
+                                final int windowSize,
+                                final double expected) {
+        Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( referenceContext, strand, windowSize ), expected );
     }
 }

@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.testng.collections.Sets;
 
@@ -1015,7 +1016,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setReferenceWindow( referenceWindow );
 
         // Set our GC content:
-        sequenceComparison.setGcContent( calculateGcContent( variant, referenceContext, strand, gcContentWindowSizeBases ) );
+        sequenceComparison.setGcContent( calculateGcContent( referenceContext, strand, gcContentWindowSizeBases ) );
 
         // Get the coding sequence for the transcript:
         final String transcriptSequence;
@@ -1133,21 +1134,19 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Calculates the fraction of Guanine and Cytosine bases in a window of a given size around the given {@link VariantContext}.
-     * @param variant The {@link VariantContext} around which to calculate the GC content.
-     * @param referenceContext The {@link ReferenceContext} for the given {@code variant}.
-     * @param strand The {@link Strand} for the given variant.
-     * @param windowSize The number of bases to the left and right of the given {@code variant} to calculate the GC Content.
-     * @return The fraction of Guanine and Cytosine bases / total bases in a window of size {@code windowSize} around the given {@code variant}.
+     * Calculates the fraction of Guanine and Cytosine bases in a window of a given size around a variant.
+     * @param referenceContext The {@link ReferenceContext} for a variant.  Assumed to already be centered on the variant of interest.  Must not be {@code null}.
+     * @param strand The {@link Strand} for the given variant.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
+     * @param windowSize The number of bases to the left and right of the given {@code variant} to calculate the GC Content.  Must be >=1.
+     * @return The fraction of Guanine and Cytosine bases / total bases in a window of size {@code windowSize} around a variant.
      */
-    private static double calculateGcContent(final VariantContext variant,
-                                             final ReferenceContext referenceContext,
+    public static double calculateGcContent( final ReferenceContext referenceContext,
                                              final Strand strand,
                                              final int windowSize) {
 
-        Utils.nonNull( variant );
         Utils.nonNull( referenceContext );
         FuncotatorUtils.assertValidStrand( strand );
+        ParamUtils.isPositive( windowSize, "Window size must be >= 1." );
 
         // Create a placeholder for the bases:
         final byte[] bases;
