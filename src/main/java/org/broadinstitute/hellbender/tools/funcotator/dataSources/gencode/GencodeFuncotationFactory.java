@@ -118,11 +118,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile) {
-        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT, new HashSet<>());
+        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>());
     }
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final Set<String> userRequestedTranscripts) {
-        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT, userRequestedTranscripts);
+        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts);
     }
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode) {
@@ -136,7 +136,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
 
         this.transcriptSelectionMode = transcriptSelectionMode;
-        this.userRequestedTranscripts = userRequestedTranscripts;
+
+        // Go through each requested transcript and remove the version numbers from them if they exist:
+        this.userRequestedTranscripts = new HashSet<>();
+        for ( final String transcript : userRequestedTranscripts ) {
+            this.userRequestedTranscripts.add( getTranscriptIdWithoutVersionNumber(transcript) );
+        }
     }
 
     //==================================================================================================================
@@ -184,9 +189,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
-        if ( !userRequestedTranscripts.isEmpty() ) {
-            gencodeFuncotations.removeIf( f -> !userRequestedTranscripts.contains(f.getAnnotationTranscript()) );
-        }
+        filterAnnotationsByUserTranscripts( gencodeFuncotations, userRequestedTranscripts );
 
         // TODO: this is sloppy:
         final List<Funcotation> outputList = new ArrayList<>();
@@ -196,6 +199,46 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     //==================================================================================================================
+
+    /**
+     * Filter the given list of {@link GencodeFuncotation} to only contain those funcotations that have transcriptIDs that
+     * appear in the given {@code acceptableTranscripts}.
+     * Ignores transcript version numbers.
+     * @param funcotations The {@link List} of {@link GencodeFuncotation} to filter.
+     * @param acceptableTranscripts The {@link Set} of transcript IDs to keep in the given {@code funcotations}.
+     */
+    static void filterAnnotationsByUserTranscripts( final List<GencodeFuncotation> funcotations,
+                                                    final Set<String> acceptableTranscripts ) {
+        if ( !acceptableTranscripts.isEmpty() ) {
+            funcotations.removeIf( f -> !isFuncotationInTranscriptList(f, acceptableTranscripts) );
+        }
+    }
+
+    /**
+     * Determines whether the given {@code funcotation} has a transcript ID that is in the given {@code acceptableTranscripts}.
+     * Ignores transcript version numbers.
+     * @param funcotation The {@link GencodeFuncotation} to check against the set of {@code acceptableTranscripts}.
+     * @param acceptableTranscripts The {@link Set} of transcript IDs that are OK to keep.
+     * @return {@code true} if funcotation.annotationTranscript is in {@code acceptableTranscripts} (ignoring transcript version); {@code false} otherwise.
+     */
+    static boolean isFuncotationInTranscriptList( final GencodeFuncotation funcotation,
+                                                  final Set<String> acceptableTranscripts ) {
+        if ( funcotation.getAnnotationTranscript() != null ) {
+            return acceptableTranscripts.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
+     * Removes the transcript ID version number from the given transcript ID (if it exists).
+     * @param transcriptId The transcript from which to remove the version number.
+     * @return The {@link String} corresponding to the given {@code transcriptId} without a version number.
+     */
+    static String getTranscriptIdWithoutVersionNumber( final String transcriptId ) {
+        return transcriptId.replaceAll("\\.\\d+$", "");
+    }
 
     /**
      * Creates a map of Transcript IDs for use in looking up transcripts from the FASTA dictionary for the GENCODE Transcripts.
@@ -1371,6 +1414,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
 
+    // TODO: MAKE A UNIT TEST FOR THIS!
     /**
      * Comparator class for Best Effect order.
      * Complex enough that a Lambda would be utter madness.
@@ -1387,10 +1431,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
             // 1)
             // Choose the transcript that is on the custom list specified by the user:
-            if ( userRequestedTranscripts.contains( a.getAnnotationTranscript() ) && (!userRequestedTranscripts.contains(b.getAnnotationTranscript())) ) {
+            if ( isFuncotationInTranscriptList(a, userRequestedTranscripts) && (!isFuncotationInTranscriptList(b, userRequestedTranscripts)) ) {
                 return -1;
             }
-            else if ( (!userRequestedTranscripts.contains( a.getAnnotationTranscript() )) && userRequestedTranscripts.contains(b.getAnnotationTranscript()) ) {
+            else if ( (!isFuncotationInTranscriptList(a, userRequestedTranscripts)) && isFuncotationInTranscriptList(b, userRequestedTranscripts) ) {
                 return 1;
             }
 
@@ -1468,6 +1512,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
     }
 
+    // TODO: MAKE A UNIT TEST FOR THIS!
     /**
      * Comparator class for Cannonical order.
      * Complex enough that a Lambda would be utter madness.
@@ -1485,10 +1530,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // 1)
             // Choose the transcript that is on the custom list specified by the user:
-            if ( userRequestedTranscripts.contains( a.getAnnotationTranscript() ) && (!userRequestedTranscripts.contains(b.getAnnotationTranscript())) ) {
+            if ( isFuncotationInTranscriptList(a, userRequestedTranscripts) && (!isFuncotationInTranscriptList(b, userRequestedTranscripts)) ) {
                 return -1;
             }
-            else if ( (!userRequestedTranscripts.contains( a.getAnnotationTranscript() )) && userRequestedTranscripts.contains(b.getAnnotationTranscript()) ) {
+            else if ( (!isFuncotationInTranscriptList(a, userRequestedTranscripts)) && isFuncotationInTranscriptList(b, userRequestedTranscripts) ) {
                 return 1;
             }
 

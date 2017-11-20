@@ -5,6 +5,7 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureReader;
+import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -141,6 +142,44 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         return requestedTranscriptIds;
     }
 
+    private static GencodeFuncotation createFuncotation(final String geneName, final String ncbiBuild,
+                                                        final String chromosome, final int start, final int end,
+                                                        final GencodeFuncotation.VariantClassification variantClassification,
+                                                        final GencodeFuncotation.VariantClassification secondaryVariantClassification,
+                                                        final GencodeFuncotation.VariantType variantType,
+                                                        final Allele refAllele, final Allele tumorSeqAllele1,
+                                                        final Allele tumorSeqAllele2, final String genomeChange,
+                                                        final String annotationTranscript, final Strand strand,
+                                                        final Integer transcriptExon, final Integer transcriptPos,
+                                                        final String cDnaChange, final String codonChange,
+                                                        final String proteinChange, final List<String> otherTranscripts) {
+
+        final GencodeFuncotationBuilder gencodeFuncotationBuilder = new GencodeFuncotationBuilder();
+
+        gencodeFuncotationBuilder.setHugoSymbol( geneName );
+        gencodeFuncotationBuilder.setNcbiBuild( ncbiBuild );
+        gencodeFuncotationBuilder.setChromosome( chromosome );
+        gencodeFuncotationBuilder.setStart( start );
+        gencodeFuncotationBuilder.setEnd( end );
+        gencodeFuncotationBuilder.setVariantClassification( variantClassification );
+        gencodeFuncotationBuilder.setSecondaryVariantClassification(secondaryVariantClassification);
+        gencodeFuncotationBuilder.setVariantType( variantType );
+        gencodeFuncotationBuilder.setRefAlleleAndStrand( refAllele, strand );
+        gencodeFuncotationBuilder.setTumorSeqAllele1( tumorSeqAllele1.getBaseString() );
+        gencodeFuncotationBuilder.setTumorSeqAllele2( tumorSeqAllele2.getBaseString() );
+
+        gencodeFuncotationBuilder.setGenomeChange( genomeChange );
+        gencodeFuncotationBuilder.setAnnotationTranscript( annotationTranscript );
+        gencodeFuncotationBuilder.setTranscriptExonNumber( transcriptExon );
+        gencodeFuncotationBuilder.setTranscriptPos( transcriptPos );
+        gencodeFuncotationBuilder.setcDnaChange( cDnaChange );
+        gencodeFuncotationBuilder.setCodonChange( codonChange );
+        gencodeFuncotationBuilder.setProteinChange( proteinChange );
+        gencodeFuncotationBuilder.setOtherTranscripts( otherTranscripts );
+
+        return gencodeFuncotationBuilder.build();
+    }
+
     //==================================================================================================================
     // Data Providers:
 
@@ -221,8 +260,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // PIK3CA Other Indels:
         outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
-        final Object[][] outArray = outList.toArray(new Object[][]{{}});
-        return outArray;
+        return outList.toArray(new Object[][]{{}});
     }
 
     @DataProvider
@@ -298,6 +336,62 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 {GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantClassification.MISSENSE, true},
         };
     }
+
+//    @DataProvider
+//    Object[][] provideDataForTestGencodeFuncotationComparatorUnitTest() {
+//
+//        // 7 cases for each comparator.
+//        // Need 14 tests per comparator to test each if.
+//        // Need tests with and without transcript list.
+//
+//        final Set<String> transcriptSet = new HashSet<>( Arrays.asList("TRANSCRIPT1", "TRANSCRIPT2") );
+//
+//        //final String geneName
+//        //final String ncbiBuild
+//        //final String chromosome
+//        //final int start
+//        //final int end
+//        //final GencodeFuncotation.VariantClassification variantClassification
+//        //final GencodeFuncotation.VariantClassification secondaryVariantClassification
+//        //final GencodeFuncotation.VariantType variantType
+//        //final Allele refAllele
+//        //final Allele tumorSeqAllele1
+//        //final Allele tumorSeqAllele2
+//        //final String genomeChange
+//        //final String annotationTranscript
+//        //final Strand strand
+//        //final Integer transcriptExon
+//        //final Integer transcriptPos
+//        //final String cDnaChange
+//        //final String codonChange
+//        //final String proteinChange
+//        //final List<String> otherTranscripts
+//
+//        // 1)
+//        // Choose the transcript that is on the custom list specified by the user:
+//        // 2)
+//        // Check locus/curation levels:
+//        // 2.5)
+//        // Check to see if one is an IGR.  IGR's have only a subset of the information in them, so it's easier to
+//        // order them if they're IGRs:
+//        // 3)
+//        // Check highest variant classification:
+//        // 4)
+//        // Check the appris annotation:
+//        // 5)
+//        // Check transcript sequence length:
+//        // 6)
+//        // Default to ABC order by transcript name:
+//
+//        return new Object[][] {
+//                {
+//                    new GencodeFuncotationFactory.CannonicalGencodeFuncotationComparator(transcriptSet),
+//                    createFuncotation(),
+//                    createFuncotation(),
+//                    1
+//                }
+//        };
+//    }
 
     //==================================================================================================================
     // Tests:
@@ -534,28 +628,60 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             final StringBuilder errorMessageStringBuilder = new StringBuilder();
 
             if (!geneNameCorrect) {
-                errorMessageStringBuilder.append("\n\tGene Name is not correct!\n\t\tExpected:  [" + expectedGeneName + "]\n\t\tBut found: [" + funcotation.getHugoSymbol() + "]");
+                errorMessageStringBuilder.append("\n\tGene Name is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedGeneName);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getHugoSymbol());
+                errorMessageStringBuilder.append("]");
             }
             if (!variantClassificationCorrect) {
-                errorMessageStringBuilder.append("\n\tVariant Classification is not correct!\n\t\tExpected:  [" + expectedVariantClassification + "]\n\t\tBut found: [" + funcotation.getVariantClassification() + "]");
+                errorMessageStringBuilder.append("\n\tVariant Classification is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedVariantClassification);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getVariantClassification());
+                errorMessageStringBuilder.append("]");
             }
             if (!variantTypeCorrect) {
-                errorMessageStringBuilder.append("\n\tVariant Type is not correct!\n\t\tExpected:  [" + expectedVariantType + "]\n\t\tBut found: [" + funcotation.getVariantType() + "]");
+                errorMessageStringBuilder.append("\n\tVariant Type is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedVariantType);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getVariantType());
+                errorMessageStringBuilder.append("]");
             }
             if (!genomeChangeCorrect) {
-                errorMessageStringBuilder.append("\n\tGenome Change is not correct!\n\t\tExpected:  [" + expectedGenomeChange + "]\n\t\tBut found: [" + funcotation.getGenomeChange() + "]");
+                errorMessageStringBuilder.append("\n\tGenome Change is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedGenomeChange);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getGenomeChange());
+                errorMessageStringBuilder.append("]");
             }
             if (!strandCorrect) {
-                errorMessageStringBuilder.append("\n\tStrand is not correct!\n\t\tExpected:  [" + expectedStrand + "]\n\t\tBut found: [" + funcotation.getTranscriptStrand() + "]");
+                errorMessageStringBuilder.append("\n\tStrand is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedStrand);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getTranscriptStrand());
+                errorMessageStringBuilder.append("]");
             }
             if (!cDnaChangeCorrect) {
-                errorMessageStringBuilder.append("\n\tCDna Change is not correct!\n\t\tExpected:  [" + expectedCDnaChange + "]\n\t\tBut found: [" + funcotation.getcDnaChange() + "]");
+                errorMessageStringBuilder.append("\n\tCDna Change is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedCDnaChange);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getcDnaChange());
+                errorMessageStringBuilder.append("]");
             }
             if (!codonChangeCorrect) {
-                errorMessageStringBuilder.append("\n\tCodon Change is not correct!\n\t\tExpected:  [" + expectedCodonChange + "]\n\t\tBut found: [" + funcotation.getCodonChange() + "]");
+                errorMessageStringBuilder.append("\n\tCodon Change is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedCodonChange);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getCodonChange());
+                errorMessageStringBuilder.append("]");
             }
             if (!proteinChangeCorrect) {
-                errorMessageStringBuilder.append("\n\tProtein Change is not correct!\n\t\tExpected:  [" + expectedProteinChange + "]\n\t\tBut found: [" + funcotation.getProteinChange() + "]");
+                errorMessageStringBuilder.append("\n\tProtein Change is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedProteinChange);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getProteinChange());
+                errorMessageStringBuilder.append("]");
             }
 
             Assert.assertTrue(
@@ -571,4 +697,12 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     void testIsVariantInCodingRegion(final GencodeFuncotation.VariantClassification varClass, final GencodeFuncotation.VariantClassification secondaryVarClass, final boolean expected) {
         Assert.assertEquals( GencodeFuncotationFactory.isVariantInCodingRegion(varClass, secondaryVarClass), expected );
     }
+
+//    @Test ( dataProvider = "provideDataForTestGencodeFuncotationComparatorUnitTest")
+//    void testGencodeFuncotationComparatorUnitTest( final Comparator<GencodeFuncotation> comparator,
+//                                                   final GencodeFuncotation a,
+//                                                   final GencodeFuncotation b,
+//                                                   final int expected) {
+//        Assert.assertEquals( comparator.compare(a,b), expected );
+//    }
 }
