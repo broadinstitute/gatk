@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Class to store argument definitions specific to {@link Funcotator}.
  * Created by jonn on 11/17/17.
@@ -8,7 +11,11 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcriptSelectionMode";
     public static final String TRANSCRIPT_SELECTION_MODE_SHORT_NAME = "tm";
-    public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT = TranscriptSelectionMode.CANNONICAL;
+    public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANNONICAL;
+
+    public static final String TRANSCRIPT_LIST_LONG_NAME = "transcriptList";
+    public static final String TRANSCRIPT_LIST_SHORT_NAME = "tl";
+    public static final Set<String> TRANSCRIPT_LIST_DEFAULT_VALUE = new HashSet<>();
 
     /**
      * The manner to select a single transcript from a set of transcripts to report as the "best" or main transcript.
