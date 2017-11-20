@@ -1414,7 +1414,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
 
-    // TODO: MAKE A UNIT TEST FOR THIS!
     /**
      * Comparator class for Best Effect order.
      * Complex enough that a Lambda would be utter madness.
@@ -1452,10 +1451,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // 2)
             // Check highest variant classification:
-            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
+            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
                 return -1;
             }
-            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
+            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
                 return 1;
             }
 
@@ -1503,6 +1502,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() != null) ) {
                 return 1;
             }
+            // Need a default case in case all the comparison criteria are the same:
             else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() == null) ) {
                 return -1;
             }
@@ -1512,7 +1512,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
     }
 
-    // TODO: MAKE A UNIT TEST FOR THIS!
     /**
      * Comparator class for Cannonical order.
      * Complex enough that a Lambda would be utter madness.
@@ -1521,7 +1520,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final Set<String> userRequestedTranscripts;
 
-        public CannonicalGencodeFuncotationComparator( final Set<String> userRequestedTranscripts) {
+        public CannonicalGencodeFuncotationComparator( final Set<String> userRequestedTranscripts ) {
             this.userRequestedTranscripts = userRequestedTranscripts;
         }
 
@@ -1563,10 +1562,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // 3)
             // Check highest variant classification:
-            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
+            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
                 return -1;
             }
-            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
+            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
                 return 1;
             }
 
@@ -1602,6 +1601,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() != null) ) {
                 return 1;
             }
+            // Need a default case in case all the comparison criteria are the same:
             else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() == null) ) {
                 return -1;
             }
