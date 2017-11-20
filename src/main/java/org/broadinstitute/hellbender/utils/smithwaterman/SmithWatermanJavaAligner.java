@@ -388,6 +388,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
 
     @Override
     public void close() {
-        logger.debug(String.format("Total compute time in java Smith-Waterman : %.2f sec", totalComputeTime * 1e-9));
+        logger.info(String.format("Total compute time in java Smith-Waterman : %.2f sec", totalComputeTime * 1e-9));
     }
 }
