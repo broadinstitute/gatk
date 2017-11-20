@@ -115,8 +115,9 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
         final String[] args = {"--variant", getTestFile("gvcfExample1.vcf").getAbsolutePath(), "--"+MultiVariantWalkerGroupedOnStart.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL, "-L", "20:69500-69540"};
         tool.instanceMain(args);
 
-        Assert.assertEquals(tool.seenVariants.size(), 6);
+        Assert.assertEquals(tool.seenVariants.size(), 3);
         Assert.assertEquals(tool.seenVariants.get(0).get(0).getStart(), 69511); //Asserting that we skipped the first read which was partially in the window
+        Assert.assertEquals(tool.seenVariants.get(2).get(0).getStart(), 69522); //Asserting that the last read which ends after the region is still present
     }
 
     @Test
