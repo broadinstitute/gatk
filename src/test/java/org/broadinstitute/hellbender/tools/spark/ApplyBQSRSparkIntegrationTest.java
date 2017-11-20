@@ -117,7 +117,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"spark", "cloud"}, enabled = false)
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"spark", "bucket"}, enabled = false)
     public void testPR_Cloud(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +

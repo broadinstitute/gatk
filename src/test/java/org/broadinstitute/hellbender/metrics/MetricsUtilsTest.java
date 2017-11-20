@@ -44,7 +44,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
         public Integer value2 = 0;
     }
 
-    @Test(dataProvider = "metricsPaths", groups = "cloud")
+    @Test(dataProvider = "metricsPaths", groups = "bucket")
     public void testSaveMetrics(String destinationPrefix) throws IOException {
         final String outputPath = BucketUtils.getTempFilePath(destinationPrefix, ".txt");
         TestMetric testMetric = new TestMetric();
