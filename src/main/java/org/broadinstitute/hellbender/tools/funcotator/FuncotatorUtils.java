@@ -1561,27 +1561,34 @@ public class FuncotatorUtils {
         assertValidStrand( strand );
         Utils.nonNull( referenceContext );
 
+        // Calculate our window to include any extra bases but also have the right referenceWindowInBases:
+        final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindowInBases + refAllele.length() - 1 : referenceWindowInBases + altAllele.length() - 1;
+
         final String referenceBases;
 
-        if ( strand == Strand.POSITIVE ) {
-            // Calculate our window to include any extra bases but also have the right referenceWindowInBases:
-            final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindowInBases + refAllele.length() - 1 : referenceWindowInBases + altAllele.length() - 1;
+        synchronized ( referenceContext ) {
 
-            // Set our reference window:
-            referenceContext.setWindow(referenceWindowInBases, endWindow);
+            // Get the old window size:
+            final int oldNumLeadingBases = referenceContext.numWindowLeadingBases();
+            final int oldNumTrailingBases = referenceContext.numWindowTrailingBases();
 
-            // Get the reference sequence:
-            referenceBases = new String(referenceContext.getBases());
-        }
-        else {
-            // Calculate our window to include any extra bases but also have the right referenceWindowInBases:
-            final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindowInBases + refAllele.length() - 1: referenceWindowInBases + altAllele.length() - 1;
+            if ( strand == Strand.POSITIVE ) {
+                // Set our reference window:
+                referenceContext.setWindow(referenceWindowInBases, endWindow);
 
-            // Set our reference window:
-            referenceContext.setWindow(referenceWindowInBases, endWindow);
+                // Get the reference sequence:
+                referenceBases = new String(referenceContext.getBases());
+            }
+            else {
+                // Set our reference window:
+                referenceContext.setWindow(referenceWindowInBases, endWindow);
 
-            // Get the reference sequence:
-            referenceBases = ReadUtils.getBasesReverseComplement(referenceContext.getBases());
+                // Get the reference sequence:
+                referenceBases = ReadUtils.getBasesReverseComplement(referenceContext.getBases());
+            }
+
+            // Set back our window:
+            referenceContext.setWindow( oldNumLeadingBases, oldNumTrailingBases );
         }
 
         return referenceBases;
