@@ -7,7 +7,6 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureReader;
-import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -40,6 +39,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Multi-Test Static Variables:
+
+    private static final double doubleEqualsEpsilon = 0.000001;
 
     private static final FeatureReader<GencodeGtfFeature> muc16FeatureReader;
     private static final FeatureReader<GencodeGtfFeature> pik3caFeatureReader;
@@ -146,44 +147,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         return requestedTranscriptIds;
     }
 
-//    private static GencodeFuncotation createFuncotation(final String geneName, final String ncbiBuild,
-//                                                        final String chromosome, final int start, final int end,
-//                                                        final GencodeFuncotation.VariantClassification variantClassification,
-//                                                        final GencodeFuncotation.VariantClassification secondaryVariantClassification,
-//                                                        final GencodeFuncotation.VariantType variantType,
-//                                                        final Allele refAllele, final Allele tumorSeqAllele1,
-//                                                        final Allele tumorSeqAllele2, final String genomeChange,
-//                                                        final String annotationTranscript, final Strand strand,
-//                                                        final Integer transcriptExon, final Integer transcriptPos,
-//                                                        final String cDnaChange, final String codonChange,
-//                                                        final String proteinChange, final List<String> otherTranscripts) {
-//
-//        final GencodeFuncotationBuilder gencodeFuncotationBuilder = new GencodeFuncotationBuilder();
-//
-//        gencodeFuncotationBuilder.setHugoSymbol( geneName );
-//        gencodeFuncotationBuilder.setNcbiBuild( ncbiBuild );
-//        gencodeFuncotationBuilder.setChromosome( chromosome );
-//        gencodeFuncotationBuilder.setStart( start );
-//        gencodeFuncotationBuilder.setEnd( end );
-//        gencodeFuncotationBuilder.setVariantClassification( variantClassification );
-//        gencodeFuncotationBuilder.setSecondaryVariantClassification(secondaryVariantClassification);
-//        gencodeFuncotationBuilder.setVariantType( variantType );
-//        gencodeFuncotationBuilder.setRefAlleleAndStrand( refAllele, strand );
-//        gencodeFuncotationBuilder.setTumorSeqAllele1( tumorSeqAllele1.getBaseString() );
-//        gencodeFuncotationBuilder.setTumorSeqAllele2( tumorSeqAllele2.getBaseString() );
-//
-//        gencodeFuncotationBuilder.setGenomeChange( genomeChange );
-//        gencodeFuncotationBuilder.setAnnotationTranscript( annotationTranscript );
-//        gencodeFuncotationBuilder.setTranscriptExonNumber( transcriptExon );
-//        gencodeFuncotationBuilder.setTranscriptPos( transcriptPos );
-//        gencodeFuncotationBuilder.setcDnaChange( cDnaChange );
-//        gencodeFuncotationBuilder.setCodonChange( codonChange );
-//        gencodeFuncotationBuilder.setProteinChange( proteinChange );
-//        gencodeFuncotationBuilder.setOtherTranscripts( otherTranscripts );
-//
-//        return gencodeFuncotationBuilder.build();
-//    }
-
     private static GencodeFuncotation createFuncotationForTestGencodeFuncotationComparatorUnitTest(
             final String geneName,
             final GencodeGtfFeature.FeatureTag apprisLevel,
@@ -201,6 +164,26 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         builder.setTranscriptLength( transcriptLength );
 
         return builder.build();
+    }
+
+    private static ReferenceContext referenceHelperForTestCalculateGcContent(final String sequence,
+                                                                             final String contigName,
+                                                                             final int refStartPos,
+                                                                             final int refEndPos) {
+        // Create an in-memory ReferenceContext:
+        final SimpleInterval wholeReferenceInterval = new SimpleInterval( contigName, 1, sequence.length() );
+
+        return new ReferenceContext(
+                new ReferenceMemorySource(
+                        new ReferenceBases(sequence.getBytes(), wholeReferenceInterval),
+                        new SAMSequenceDictionary(
+                                Collections.singletonList(
+                                        new SAMSequenceRecord(contigName, sequence.length())
+                                )
+                        )
+                ),
+                new SimpleInterval( contigName, refStartPos, refEndPos )
+        );
     }
 
     //==================================================================================================================
@@ -686,30 +669,34 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] provideDataForTestCalculateGcContent() {
 
-//        final ReferenceContext referenceContext,
-//        final Strand strand,
-//        final int windowSize,
-//        final double expected
-
-        // Create an in-memory ReferenceContext:
-        final byte[] bases = "AAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCC".getBytes();
-        final SimpleInterval wholeReferenceInterval = new SimpleInterval( "chrTest", 1, bases.length );
-        final ReferenceContext referenceContext = new ReferenceContext(
-                new ReferenceMemorySource(
-                        new ReferenceBases(bases, wholeReferenceInterval),
-                        new SAMSequenceDictionary(
-                                Collections.singletonList(
-                                        new SAMSequenceRecord(wholeReferenceInterval.getContig(), wholeReferenceInterval.getEnd() - wholeReferenceInterval.getStart() + 1)
-                                )
-                        )
-                ),
-                new SimpleInterval(wholeReferenceInterval.getContig(), 1, 1)
-        );
+                          //1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                          //0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
+                          //0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        final String seq = "AAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCC";
+        final String contig = "test";
 
         return new Object[][] {
-                {
+                { referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  1, 0.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  9, 0.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,  1,  1), 10, 1.0/11.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,100,100),  1, 1 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,100,100),  9, 1 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,100,100), 10, 10.0/11.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  1, 1.0/3.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  9, 9.0/19.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 10, 11.0/21.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 50, 50.0/100.0 },
 
-                }
+                { referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   1, 0.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   9, 4.0 / 14.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),  10, 5.0/15.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,95,100),   1, 1 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,95,100),   9, 10.0/15.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,95,100),  10, 10.0/16.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   1, 6.0/8.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   9, 10.0/24.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  10, 11.0/26.0 },
+                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  50, 50.0/100.0 },
         };
     }
 
@@ -1028,9 +1015,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test (dataProvider = "provideDataForTestCalculateGcContent")
     void testCalculateGcContent(final ReferenceContext referenceContext,
-                                final Strand strand,
                                 final int windowSize,
                                 final double expected) {
-        Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( referenceContext, strand, windowSize ), expected );
+        Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( referenceContext, windowSize ), expected, doubleEqualsEpsilon);
     }
 }
