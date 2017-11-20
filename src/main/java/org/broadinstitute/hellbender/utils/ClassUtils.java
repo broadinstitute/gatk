@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import htsjdk.utils.ClassFinder;
+import org.broadinstitute.barclay.argparser;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.lang.reflect.Modifier;
