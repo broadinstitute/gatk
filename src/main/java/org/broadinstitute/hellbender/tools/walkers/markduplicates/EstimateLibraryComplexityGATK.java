@@ -19,6 +19,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
@@ -37,6 +38,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.lang.Math.pow;
 
@@ -268,11 +270,11 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
 
         final List<SAMReadGroupRecord> readGroups = new ArrayList<>();
         final int recordsRead = 0;
-        final SortingCollection<PairedReadSequence> sorter = SortingCollection.newInstance(PairedReadSequence.class,
+        final SortingCollection<PairedReadSequence> sorter = SortingCollection.newInstanceFromPaths(PairedReadSequence.class,
                 new PairedReadCodec(),
                 new PairedReadComparator(),
                 MAX_RECORDS_IN_RAM,
-                TMP_DIR);
+                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
 
         // Loop through the input files and pick out the read sequences etc.
         final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");

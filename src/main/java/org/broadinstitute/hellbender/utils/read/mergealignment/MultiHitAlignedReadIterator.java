@@ -132,11 +132,11 @@ public final class MultiHitAlignedReadIterator implements CloseableIterator<Hits
             // No HI tags needed if only a single hit
             if (hits.getFirstOfPair(0) != null) {
                 hits.getFirstOfPair(0).setAttribute(SAMTag.HI.name(), null);
-                hits.getFirstOfPair(0).setNotPrimaryAlignmentFlag(false);
+                hits.getFirstOfPair(0).setSecondaryAlignment(false);
             }
             if (hits.getSecondOfPair(0) != null) {
                 hits.getSecondOfPair(0).setAttribute(SAMTag.HI.name(), null);
-                hits.getSecondOfPair(0).setNotPrimaryAlignmentFlag(false);
+                hits.getSecondOfPair(0).setSecondaryAlignment(false);
             }
         } else {
             primaryAlignmentSelectionStrategy.pickPrimaryAlignment(hits);

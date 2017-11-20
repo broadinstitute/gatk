@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Alle
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -134,7 +133,7 @@ public final class ReferenceConfidenceVariantContextMerger {
         // handle the alternate alleles
         for ( final Allele allele : vc.getAlternateAlleles() ) {
             final Allele replacement;
-            if ( allele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) ) {
+            if ( allele.equals(Allele.NON_REF_ALLELE) ) {
                 replacement = allele;
             } else if ( allele.length() < vc.getReference().length() ) {
                 replacement = Allele.SPAN_DEL;
@@ -197,7 +196,7 @@ public final class ReferenceConfidenceVariantContextMerger {
         }
 
         private Stream<Allele> filterAllelesForFinalSet() {
-            return newAlleles.stream().filter(a -> !a.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+            return newAlleles.stream().filter(a -> !a.equals(Allele.NON_REF_ALLELE))
                     .filter(a -> !a.isReference())
                     .filter(a -> !(a.isSymbolic() && vc.isSymbolic())) // skip <*DEL> if there isn't a real alternate allele.
                     .filter(Allele::isCalled) ; // skip NO_CALL
@@ -243,7 +242,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             finalAlleleSet.add(Allele.SPAN_DEL);
         }
         if (!removeNonRefSymbolicAllele) {
-            finalAlleleSet.add(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+            finalAlleleSet.add(Allele.NON_REF_ALLELE);
         }
 
         return new ArrayList<>(finalAlleleSet);
@@ -496,11 +495,11 @@ public final class ReferenceConfidenceVariantContextMerger {
         Utils.nonEmpty(remappedAlleles);
         Utils.nonEmpty(targetAlleles);
 
-        if ( !remappedAlleles.contains(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) ) {
-            throw new UserException("The list of input alleles must contain " + GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE + " as an allele but that is not the case at position " + position + "; please use the Haplotype Caller with gVCF output to generate appropriate records");
+        if ( !remappedAlleles.contains(Allele.NON_REF_ALLELE) ) {
+            throw new UserException("The list of input alleles must contain " + Allele.NON_REF_ALLELE + " as an allele but that is not the case at position " + position + "; please use the Haplotype Caller with gVCF output to generate appropriate records");
         }
 
-        final int indexOfNonRef = remappedAlleles.indexOf(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int indexOfNonRef = remappedAlleles.indexOf(Allele.NON_REF_ALLELE);
         final int[] indexMapping = new int[targetAlleles.size()];
 
         // the reference likelihoods should always map to each other (even if the alleles don't)

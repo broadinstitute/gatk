@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.pulldown;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.filter.DuplicateReadFilter;
-import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
+import htsjdk.samtools.filter.SecondaryAlignmentFilter;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.IntervalList;
@@ -181,7 +181,7 @@ public final class HetPulldownCalculator {
                     totalNumberOfSNPs < MAX_INTERVALS_FOR_INDEX);
 
             //set read and locus filters [note: read counts match IGV, but off by a few from pysam.mpileup]
-            final List<SamRecordFilter> samFilters = Arrays.asList(new NotPrimaryAlignmentFilter(),
+            final List<SamRecordFilter> samFilters = Arrays.asList(new SecondaryAlignmentFilter(),
                     new DuplicateReadFilter());
             locusIterator.setSamFilters(samFilters);
             locusIterator.setEmitUncoveredLoci(false);

@@ -38,7 +38,7 @@ public class BwaMemAlignmentUtils {
         byte[] bases = basesArg;
         byte[] quals = qualsArg == null ? new byte[0] : qualsArg;
         if ( SAMFlag.READ_REVERSE_STRAND.isSet(samFlag) &&
-                SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(samFlag) ) {
+                SAMFlag.SECONDARY_ALIGNMENT.isUnset(samFlag) ) {
             bases = BaseUtils.simpleReverseComplement(bases);
             quals = Arrays.copyOf(quals, quals.length);
             SequenceUtil.reverseQualities(quals);
@@ -81,7 +81,7 @@ public class BwaMemAlignmentUtils {
             else if ( alignment.getRefStart() >= 0 ) samRecord.setMateAlignmentStart(alignment.getRefStart() + 1);
             if ( alignment.getTemplateLen() != 0 ) samRecord.setInferredInsertSize(alignment.getTemplateLen());
         }
-        if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(samFlag) ) {
+        if ( SAMFlag.SECONDARY_ALIGNMENT.isUnset(samFlag) ) {
             samRecord.setReadBases(bases);
             samRecord.setBaseQualities(quals);
         } else {
@@ -103,7 +103,7 @@ public class BwaMemAlignmentUtils {
         final String[] selfTags = new String[nAlignments];
         for ( int idx = 0; idx != nAlignments; ++idx ) {
             final BwaMemAlignment alignment = alignments.get(idx);
-            if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(alignment.getSamFlag()) ) {
+            if ( SAMFlag.SECONDARY_ALIGNMENT.isUnset(alignment.getSamFlag()) ) {
                 selfTags[idx] = asTag(alignment, refNames);
             }
         }
@@ -111,7 +111,7 @@ public class BwaMemAlignmentUtils {
         final Map<BwaMemAlignment,String> saTags = new HashMap<>(SVUtils.hashMapCapacity(nAlignments));
         for ( int idx = 0; idx != nAlignments; ++idx ) {
             final BwaMemAlignment alignment = alignments.get(idx);
-            if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isSet(alignment.getSamFlag()) ) continue;
+            if ( SAMFlag.SECONDARY_ALIGNMENT.isSet(alignment.getSamFlag()) ) continue;
 
             final StringBuilder saTag = new StringBuilder();
             for ( int idx2 = 0; idx2 != nAlignments; ++idx2 ) {

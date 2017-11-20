@@ -208,7 +208,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                             }
                     )
                     .map(forOneContig ->
-                            forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.getNotPrimaryAlignmentFlag())
+                            forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.isSecondaryAlignment())
                                     .collect(Collectors.toList()))
                     .filter(list -> !list.isEmpty())
                     .map(forOneContig ->
@@ -274,7 +274,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
             return contigAlignments.stream()
                     .filter( bwaMemAlignment ->  bwaMemAlignment.getRefId() >= 0
-                            && SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwaMemAlignment.getSamFlag())) // mapped and not XA (i.e. not secondary)
+                            && SAMFlag.SECONDARY_ALIGNMENT.isUnset(bwaMemAlignment.getSamFlag())) // mapped and not XA (i.e. not secondary)
                     .map(bwaMemAlignment -> BwaMemAlignmentUtils.applyAlignment(contigName, contigSequence, null,
                             null, bwaMemAlignment, refNames, header, false, false))
                     .map(AlignmentInterval::new)

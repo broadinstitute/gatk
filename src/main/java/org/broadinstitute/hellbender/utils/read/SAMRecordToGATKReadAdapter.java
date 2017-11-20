@@ -439,12 +439,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public boolean isSecondaryAlignment() {
-        return samRecord.getNotPrimaryAlignmentFlag();
+        return samRecord.isSecondaryAlignment();
     }
 
     @Override
     public void setIsSecondaryAlignment( final boolean isSecondaryAlignment ) {
-        samRecord.setNotPrimaryAlignmentFlag(isSecondaryAlignment);
+        samRecord.setSecondaryAlignment(isSecondaryAlignment);
     }
 
     @Override

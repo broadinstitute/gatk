@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.barclay.help.BashTabCompletionDoclet;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.testng.annotations.Test;

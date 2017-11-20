@@ -47,7 +47,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
 
     @Override
     protected boolean forceKeepAllele(final Allele allele) {
-        return allele == GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE ||
+        return allele == Allele.NON_REF_ALLELE ||
                 configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ||
                 configuration.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
     }
@@ -197,7 +197,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         } else {
             readAlleleLikelihoodsForAnnotations = readHaplotypeLikelihoods.marginalize(alleleMapper, loc);
             if (emitReferenceConfidence) {
-                readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
         }
 
@@ -432,7 +432,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele, false otherwise
      */
     private static boolean isBiallelic(final VariantContext vc) {
-        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
     }
 
     /**

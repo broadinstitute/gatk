@@ -72,7 +72,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
     private static final List<Integer> standardPartition = ImmutableList.of(1, 10, 20);
     private static final Allele REF = Allele.create("G", true);
     private static final Allele ALT = Allele.create("A");
-    private static final List<Allele> ALLELES = ImmutableList.of(REF, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+    private static final List<Allele> ALLELES = ImmutableList.of(REF, Allele.NON_REF_ALLELE);
     private static final String SAMPLE_NAME = "XXYYZZ";
 
 
@@ -250,10 +250,10 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         Assert.assertEquals(vc.getStart(), start);
         Assert.assertEquals(vc.getEnd(), stop);
         if ( nonRef ) {
-            Assert.assertNotEquals(vc.getAlternateAllele(0), GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+            Assert.assertNotEquals(vc.getAlternateAllele(0), Allele.NON_REF_ALLELE);
         } else {
             Assert.assertEquals(vc.getNAlleles(), 2);
-            Assert.assertEquals(vc.getAlternateAllele(0), GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+            Assert.assertEquals(vc.getAlternateAllele(0), Allele.NON_REF_ALLELE);
             Assert.assertEquals(vc.getAttributeAsInt(VCFConstants.END_KEY, -1), stop);
             Assert.assertTrue(vc.hasGenotypes());
             Assert.assertTrue(vc.hasGenotype(SAMPLE_NAME));
@@ -526,17 +526,20 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
                 .DP(35)
                 .GQ(57)
                 .PL(new int[]{0, 57, 855});
-        final VariantContextBuilder block1 = new VariantContextBuilder(null, "1", 14663, 14663, Arrays.asList(REF_C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+        final VariantContextBuilder block1 = new VariantContextBuilder(null, "1", 14663, 14663, Arrays.asList(REF_C,
+                                                                                                              Allele.NON_REF_ALLELE))
                 .genotypes(block1GenotypeBuilder.make());
 
-        final VariantContextBuilder block2 = new VariantContextBuilder(null, "1", 14667, 14667, Arrays.asList(REF_G, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+        final VariantContextBuilder block2 = new VariantContextBuilder(null, "1", 14667, 14667, Arrays.asList(REF_G,
+                                                                                                              Allele.NON_REF_ALLELE))
                 .genotypes(new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF_G,REF_G))
                         .DP(34)
                         .GQ(60)
                         .PL(new int[]{0, 60, 900})
                         .make());
 
-        final VariantContext snp = new VariantContextBuilder(null, "1", 14673, 14673, Arrays.asList(REF_G, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+        final VariantContext snp = new VariantContextBuilder(null, "1", 14673, 14673, Arrays.asList(REF_G, C,
+                                                                                                    Allele.NON_REF_ALLELE))
                 .log10PError(541.77 / -10 )
                 .attribute(GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY, "-1.814")
                 .attribute(GATKVCFConstants.CLIPPING_RANK_SUM_KEY, "2.599")
@@ -561,7 +564,8 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
                 .GQ(54)
                 .PL(new int[]{0, 54, 810});
 
-        final VariantContextBuilder block3 = new VariantContextBuilder(null, "1", 14674, 14674, Arrays.asList(REF_G, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+        final VariantContextBuilder block3 = new VariantContextBuilder(null, "1", 14674, 14674, Arrays.asList(REF_G,
+                                                                                                              Allele.NON_REF_ALLELE))
                 .genotypes(block3genotypeBuilder.make());
 
         try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
