@@ -823,9 +823,41 @@ public final class UtilsUnitTest extends GATKBaseTest {
         return testCases.iterator();
     }
 
-    @Test(dataProvider = "provideDataForTestUtilsSplitString")
-    public void testUtilsSplitString( final String str, final String delimiter, final List<String> expected ) {
+    @DataProvider
+    private Iterator<Object[]> provideDataForTestUtilsSplitStringExhaustively() {
 
+        // Length that we want to test through:
+        final int maxStringLength = 7;
+
+        // Create single character delimiter strings:
+        final String singleCharDelimiter = "o";
+        final List<String> singleCharTestStrings = Arrays.asList("X", singleCharDelimiter);
+        final List<List<String>> exhaustiveListsForSingleChar = Utils.makePermutations( singleCharTestStrings, maxStringLength, true );
+
+        // Create multi-character delimiter strings:
+        final String multiCharDelimiter = "oz";
+        // Must include the individual characters of the multi-char delimiter here:
+        final List<String> multiCharTestStrings = Arrays.asList("X", "o", "z", multiCharDelimiter);
+        final List<List<String>> exhaustiveListsForMultiChar = Utils.makePermutations( multiCharTestStrings, maxStringLength, true );
+
+        final List<Object[]> testCases = new ArrayList<>();
+
+        // Add single-char cases:
+        for ( final List<String> testCase : exhaustiveListsForSingleChar ) {
+            testCases.add( new Object[] { String.join( "", testCase ), singleCharDelimiter, Arrays.asList( String.join( "", testCase ).split(singleCharDelimiter)) } );
+        }
+
+        // Add multi-char cases:
+        for ( final List<String> testCase : exhaustiveListsForMultiChar ) {
+            testCases.add( new Object[] { String.join( "", testCase ), multiCharDelimiter, Arrays.asList( String.join( "", testCase ).split(multiCharDelimiter)) } );
+        }
+
+        return testCases.iterator();
+    }
+
+    private void exhaustiveStringSplitHelper(final String str,
+                                             final String delimiter,
+                                             final List<String> expected) {
         List<String> splitStrings;
         if ( delimiter.length() == 1 ) {
             splitStrings = Utils.split( str, delimiter.charAt(0) );
@@ -837,5 +869,15 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         splitStrings = Utils.split(str, delimiter, expected.size());
         Assert.assertEquals( splitStrings, expected );
+    }
+
+    @Test(dataProvider = "provideDataForTestUtilsSplitString")
+    public void testUtilsSplitString( final String str, final String delimiter, final List<String> expected ) {
+        exhaustiveStringSplitHelper(str, delimiter, expected);
+    }
+
+    @Test(dataProvider = "provideDataForTestUtilsSplitStringExhaustively")
+    public void testUtilsSplitStringExhaustively( final String str, final String delimiter, final List<String> expected ) {
+        exhaustiveStringSplitHelper(str, delimiter, expected);
     }
 }
