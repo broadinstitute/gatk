@@ -66,13 +66,13 @@ public final class DataprocTestUtils {
         logger.info("Starting Dataproc cluster creation.");
         final String clusterName = "gatk-test-" + UUID.randomUUID();
         final String[] command = new String[]{
-                getGCloudPath(), "beta", "dataproc", "clusters", "create",
-                "--max-idle", "10m",
-                "--max-age", "30m",
-                "--num-workers", "2",
-                "--master-machine-type", "n1-highmem-2",
-                "--worker-machine-type", "n1-highmem-2",
-                clusterName
+            getGCloudPath(), "beta", "dataproc", "clusters", "create",
+            "--max-idle", "10m",
+            "--max-age", "30m",
+            "--num-workers", "2",
+            "--master-machine-type", "n1-highmem-2",
+            "--worker-machine-type", "n1-highmem-2",
+            clusterName
         };
         BaseTest.runProcess(ProcessController.getThreadLocal(), command, "Couldn't create dataproc cluster");
         logger.info("Finished Dataproc cluster creation: cluster named" + clusterName);

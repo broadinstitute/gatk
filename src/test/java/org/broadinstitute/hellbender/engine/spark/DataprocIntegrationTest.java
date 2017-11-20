@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.spark.pipelines.PrintVariantsSpark;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.DataprocTestUtils;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -51,6 +52,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addArgument("input", gcsInputPath)
                 .addArgument("output", outputPath)
+                //set the partition size to something small enough that we force multiple partitions to be written
                 .addArgument("bamPartitionSize", String.valueOf(10*1024*1024));
         DataprocTestUtils.launchGatkTool(PrintReadsSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
         final File expected = copyLocally(gcsInputPath, "expected");
@@ -62,15 +64,15 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     private static void assertReadsAreInCoordinatishOrder(final File bam) {
         try(final ReadsDataSource reads = new ReadsDataSource(bam.toPath())){
             final Iterator<GATKRead> iter = reads.iterator();
-            Locatable previous = null;
+            GATKRead previous = null;
+            final ReadCoordinateComparator comparator = new ReadCoordinateComparator(reads.getHeader());
             while(iter.hasNext()){
                 final GATKRead current = iter.next();
-                if ( previous != null && previous.contigsMatch(current)){
-                    Assert.assertTrue(previous.getStart() <= current.getStart());
-                }
+                Assert.assertTrue(comparator.compare(previous, current) <= 0);
                 previous = current;
             }
         }
+
     }
 
     //disabled due to https://github.com/broadinstitute/gatk/issues/3840
