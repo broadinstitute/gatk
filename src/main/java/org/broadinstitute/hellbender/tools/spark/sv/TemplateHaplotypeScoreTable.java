@@ -245,7 +245,7 @@ public class TemplateHaplotypeScoreTable implements Serializable {
         for (int h = 0; h < haplotypes.size(); h++) {
             if (fragment == 0 && !getMappingInfo(h, template).firstAlignmentScore.isPresent())
                 getMappingInfo(h, template).firstAlignmentScore = score;
-            else if (!getMappingInfo(h, template).secondAlignmentScore.isPresent())
+            else if ( fragment == 1 && !getMappingInfo(h, template).secondAlignmentScore.isPresent())
                 getMappingInfo(h, template).secondAlignmentScore = score;
         }
     }
