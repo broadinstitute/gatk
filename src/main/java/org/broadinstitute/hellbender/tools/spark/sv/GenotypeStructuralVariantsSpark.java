@@ -128,6 +128,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             optional = true)
     private int shardSize = 100000;
 
+    @Argument(doc = "parallelism factor", shortName = "pfactor", fullName = "parallelismFactor", optional = true)
+    private int parallelismFactor = 4;
+
     @Argument(doc = "insert size distribution",
             shortName = INSERT_SIZE_DISTR_SHORT_NAME,
             fullName = INSERT_SIZE_DISTR_FULL_NAME,
@@ -154,7 +157,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private void setUp(final JavaSparkContext ctx) {
 
-        parallelism = ctx.defaultParallelism() * 4;
+        parallelism = ctx.defaultParallelism() * parallelismFactor;
         variantsSource = new VariantsSparkSource(ctx);
         haplotypesAndContigsSource = new ReadsSparkSource(ctx);
     }
@@ -460,8 +463,11 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 for (int h = 0; h < contigs.size(); h++) {
                     final SVContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
-                    final double haplotypeAltScore = contig.getAlternativeScore();
-                    final double haplotypeRefScore = contig.getReferenceScore();
+                    double haplotypeAltScore = contig.getAlternativeScore();
+                    double haplotypeRefScore = contig.getReferenceScore();
+                    final double base = Math.max(haplotypeAltScore, haplotypeRefScore);
+                    haplotypeAltScore -= base;
+                    haplotypeRefScore -= base;
                     for (int t = 0; t < templates.size(); t++) {
                         final boolean noAlignment = !scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.isPresent()
                                 && !scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.isPresent();
@@ -527,13 +533,10 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) + insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10));
                             sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) + insertSizeDistribution.logProbability(altMapping.insertSize.getAsInt()) / Math.log(10));
                         }
-                        if (refMapping.pairOrientation.isProper() && (!scoreTable.getMappingInfo(refHaplotypeIndex, t).crossesBreakPoint(refBreakPoints) && !scoreTable.getMappingInfo(altHaplotypeIndex, t).crossesBreakPoint(altBreakPoints))) {
-                            sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t));
-                        }
                     } else if (refMapping.pairOrientation.isProper()) {
-                        sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
+                    //    sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
                     } else {
-                        sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
+                    //    sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
                     }
                 }
                 int minRefPos = ref.getLength();
