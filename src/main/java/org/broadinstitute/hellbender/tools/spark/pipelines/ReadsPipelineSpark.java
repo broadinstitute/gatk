@@ -123,13 +123,13 @@ public class ReadsPipelineSpark extends GATKSparkTool {
 
         final JavaRDD<GATKRead> alignedReads;
         final SAMFileHeader header;
-        final BwaSparkEngine engine;
+        final BwaSparkEngine bwaEngine;
         if (align) {
-                engine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary());
-                alignedReads = !bwaArgs.singleEndAlignment ? engine.alignPaired(getReads()) : engine.alignUnpaired(getReads());
-                header = engine.getHeader();
+                bwaEngine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary());
+                alignedReads = !bwaArgs.singleEndAlignment ? bwaEngine.alignPaired(initialReads) : bwaEngine.alignUnpaired(initialReads);
+                header = bwaEngine.getHeader();
         } else {
-            engine = null;
+            bwaEngine = null;
             alignedReads = initialReads;
             header = getHeaderForReads();
         }
@@ -172,8 +172,8 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
         HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(getAuthHolder(), ctx, filteredReadsForHC, header, getReference(), intervals, hcArgs, shardingArgs, numReducers, output);
 
-        if (engine != null) {
-            engine.close();
+        if (bwaEngine != null) {
+            bwaEngine.close();
         }
     }
 }
