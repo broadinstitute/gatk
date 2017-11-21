@@ -71,6 +71,14 @@ public class SVContig extends ArraySVHaplotype {
 
     }
 
+    public List<AlignmentInterval> getReferenceAlignment() {
+        return referenceAlignment;
+    }
+
+    public List<AlignmentInterval> getAlternativeAlignment() {
+        return alternativeAlignment;
+    }
+
     private static AlignmentScore getOptionalAlignmentScore(final GATKRead read, final String tag) {
         final String str = read.getAttributeAsString(tag);
         return str == null ? null : AlignmentScore.valueOf(str);

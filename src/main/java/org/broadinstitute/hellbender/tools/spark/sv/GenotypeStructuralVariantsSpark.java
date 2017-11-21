@@ -463,8 +463,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 for (int h = 0; h < contigs.size(); h++) {
                     final SVContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
-                    double haplotypeAltScore = contig.getAlternativeScore();
-                    double haplotypeRefScore = contig.getReferenceScore();
+                    double haplotypeAltScore = AlignmentScore.calculate(contig.getLength(), contig.getAlternativeAlignment()).getValue();
+                    double haplotypeRefScore = AlignmentScore.calculate(contig.getLength(), contig.getReferenceAlignment()).getValue();
                     final double base = Math.max(haplotypeAltScore, haplotypeRefScore);
                     haplotypeAltScore -= base;
                     haplotypeRefScore -= base;

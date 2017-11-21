@@ -68,13 +68,15 @@ class AlignmentScore {
                 } else {
                     final AlignmentInterval left = ai.forwardStrand ? prev : ai;
                     final AlignmentInterval right = ai.forwardStrand ? ai : prev;
-                    if (left.referenceSpan.getEnd() < right.referenceSpan.getStart()) {
+                    final int refIndelLength = right.referenceSpan.getStart() - left.referenceSpan.getEnd();
+                    final int ctgIndelLength = prev.endInAssembledContig - ai.startInAssembledContig;
+                    if (refIndelLength != 1) {
                         totalIndels++;
-                        totalIndelLength += right.referenceSpan.getStart() - left.referenceSpan.getEnd();
+                        totalIndelLength += Math.abs(refIndelLength - 1);
                     }
-                    if (left.endInAssembledContig < right.startInAssembledContig) {
+                    if (ctgIndelLength != 1) {
                         totalIndels++;
-                        totalIndelLength += right.startInAssembledContig - left.endInAssembledContig - 1;
+                        totalIndelLength += Math.abs(ctgIndelLength - 1);
                     }
                 }
             }
