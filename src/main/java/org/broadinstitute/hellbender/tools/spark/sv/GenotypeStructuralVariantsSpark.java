@@ -226,9 +226,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final Broadcast<InsertSizeDistribution> insertSizeDistributionBroadcast = ctx.broadcast(insertSizeDistribution);
 
         final JavaPairRDD<SVContext, Tuple3<Iterable<SVHaplotype>, Iterable<Template>, Iterable<int[]>>> variantHaplotypesAndTemplates =
-            variantAndHaplotypes.mapPartitionsToPair(it -> {
-
-//            variantAndHaplotypes.partitionBy(partitioner).mapPartitionsToPair(it -> {
+                variantAndHaplotypes.mapPartitionsToPair(it -> {
                     final AssemblyCollection assemblyCollection = new AssemblyCollection(fastqDir, fastqFileFormat);
                     return Utils.stream(it)
                             .map(t -> {
@@ -341,6 +339,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         if (mq > 0) {
                             allInformativeMapQuals.add(allMapQuals.get(i));
                             allInformativeTemplates.add(allTemplates.get(i));
+                            break;
                         }
                     }
                 }
