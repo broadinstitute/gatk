@@ -212,10 +212,10 @@ public class TemplateMappingInformation implements Serializable {
         for (final AlignmentInterval ai : intervals) {
             final SimpleInterval refSpan = ai.referenceSpan;
             final Cigar cigar = ai.cigarAlongReference();
-            final int minRef = refSpan.getStart() + CigarUtils.countLeftClippedBases(cigar);
+            final int minRef = refSpan.getStart() - CigarUtils.countLeftClippedBases(cigar);
             final int maxRef = refSpan.getEnd() + CigarUtils.countRightClippedBases(cigar);
             if (minRef < minCoordinate) minCoordinate = minRef;
-            if (maxRef < maxCoordinate) maxCoordinate = maxRef;
+            if (maxRef > maxCoordinate) maxCoordinate = maxRef;
         }
         for (final int breakPoint : breakPoints) {
             if (breakPoint >= minCoordinate && breakPoint <= maxCoordinate) {

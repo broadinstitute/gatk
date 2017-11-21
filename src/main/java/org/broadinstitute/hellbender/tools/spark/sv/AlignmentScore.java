@@ -98,7 +98,7 @@ class AlignmentScore {
             totalIndels++;
         } else {
             if (intervals.get(0).startInAssembledContig > 1) {
-                totalIndelLength += intervals.get(0).startInAssembledContig - 1;
+                totalIndelLength += Math.min(intervals.get(0).startInAssembledContig - 1, intervals.get(0).referenceSpan.getStart() - 1);
                 totalIndels++;
             }
             if (intervals.get(intervals.size() - 1).endInAssembledContig < sequenceLength) {
