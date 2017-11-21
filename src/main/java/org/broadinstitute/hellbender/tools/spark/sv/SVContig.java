@@ -167,4 +167,18 @@ public class SVContig extends ArraySVHaplotype {
         }
     }
 
+    public boolean isPerfectReferenceMap() {
+        return referenceAlignment.size() == 1 && referenceAlignment.get(0).cigarAlong5to3DirectionOfContig.numCigarElements() == 1
+                && referenceAlignment.get(0).cigarAlong5to3DirectionOfContig.getCigarElement(0).getOperator().isAlignment()
+                && referenceAlignment.get(0).cigarAlong5to3DirectionOfContig.getCigarElement(0).getLength() == getLength()
+                && referenceAlignment.get(0).mismatches == 0;
+    }
+
+    public boolean isPerfectAlternativeMap() {
+        return alternativeAlignment.size() == 1 && alternativeAlignment.get(0).cigarAlong5to3DirectionOfContig.numCigarElements() == 1
+                && alternativeAlignment.get(0).cigarAlong5to3DirectionOfContig.getCigarElement(0).getOperator().isAlignment()
+                && alternativeAlignment.get(0).cigarAlong5to3DirectionOfContig.getCigarElement(0).getLength() == getLength()
+                && alternativeAlignment.get(0).mismatches == 0;
+    }
+
 }

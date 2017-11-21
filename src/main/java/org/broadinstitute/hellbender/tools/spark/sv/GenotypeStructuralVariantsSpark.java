@@ -217,7 +217,31 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<Localized<SVContext>, Iterable<Localized<SVHaplotype>>> variantAndHaplotypesLocalized = sharder
                 .matchLeftByKey(variantAndHaplotypesSharded, x -> x.get().getUniqueID(), x -> x.get().getVariantId());
         final JavaPairRDD<SVContext, Iterable<SVHaplotype>> variantAndHaplotypes = variantAndHaplotypesLocalized
-                .mapToPair(tuple -> new Tuple2<>(tuple._1().get(), Utils.stream(tuple._2().iterator()).map(Localized::get).collect(Collectors.toList())));
+                .mapToPair(tuple -> new Tuple2<>(tuple._1().get(), Utils.stream(tuple._2().iterator()).map(Localized::get).collect(Collectors.toList())))
+                .mapValues(haplotypes -> {
+                    if (haplotypes.size() <= 2) {
+                        return haplotypes;
+                    } else {
+                        final Set<SVHaplotype> result = new LinkedHashSet<>(haplotypes.size());
+                        hapLoop: for (final SVHaplotype haplotype : haplotypes) {
+                            if (haplotype.getName().equals("ref") || haplotype.getName().equals("alt")) {
+                                result.add(haplotype);
+                            } else {
+                                final SVContig contig = (SVContig) haplotype;
+                                if (contig.isPerfectAlternativeMap() && contig.isPerfectReferenceMap()) {
+                                    continue;
+                                }
+                                for (final SVHaplotype added : result) {
+                                    if (Arrays.equals(contig.getBases(), added.getBases())) {
+                                        continue hapLoop;
+                                    }
+                                }
+                                result.add(contig);
+                            }
+                        }
+                        return result;
+                    }
+                });
 
         final ShardPartitioner<SVContext> partitioner = sharder.partitioner(SVContext.class, parallelism);
         final String fastqDir = this.fastqDir;
@@ -488,7 +512,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     }
                 }
                 for (int t = 0; t < templates.size(); t++) {
-                    for (int f = 0; f < 1; f++) {
+                    for (int f = 0; f < 2; f++) {
                         final int maxMq = mapQuals.get(t)[f];
                         final LikelihoodMatrix<GenotypingAllele> matrix = f == 0 ? sampleLikelihoodsFirst : sampleLikelihoodsSecond;
                         final double base = Math.max(matrix.get(refIdx, t), matrix.get(altIdx, t));
