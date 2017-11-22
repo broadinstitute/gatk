@@ -319,7 +319,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @DataProvider(name="outputFileVariations")
-    public Object[][] getBamoutVariations() {
+    public Object[][] getOutputFileVariations() {
         return new Object[][]{
                 // bamout index, bamout md5, vcf index, vcf md5
                 { true, true, true, true },
@@ -337,6 +337,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             final boolean createVCFOutMD5) {
         Utils.resetRandomGenerator();
 
+        // run on small interval to test index/md5 outputs
         final String testInterval = "20:10000000-10001000";
 
         final File vcfOutput = createTempFile("testOutputFileArgumentVariations", ".vcf");
