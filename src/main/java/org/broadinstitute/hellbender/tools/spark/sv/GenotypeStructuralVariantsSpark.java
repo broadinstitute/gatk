@@ -513,18 +513,18 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         if (noAlignment) continue;
                         final double firstMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.orElse(0.0);
                         final double secondMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.orElse(0.0);
-                   //     if (firstMappingScore == scoreTable.bestMappingScorePerFragment[t][0]) {
+                       if (firstMappingScore == scoreTable.bestMappingScorePerFragment[t][0]) {
                             sampleLikelihoodsFirst.set(refIdx, t,
                                     Math.max(firstMappingScore + haplotypeRefScore, sampleLikelihoodsFirst.get(refIdx, t)));
                             sampleLikelihoodsFirst.set(altIdx, t,
                                     Math.max(firstMappingScore + haplotypeAltScore, sampleLikelihoodsFirst.get(altIdx, t)));
-                  //      }
-                  //      if (secondMappingScore == scoreTable.bestMappingScorePerFragment[t][1]) {
+                       }
+                        if (secondMappingScore == scoreTable.bestMappingScorePerFragment[t][1]) {
                             sampleLikelihoodsSecond.set(refIdx, t,
                                     Math.max(secondMappingScore + haplotypeRefScore, sampleLikelihoodsSecond.get(refIdx, t)));
                             sampleLikelihoodsSecond.set(altIdx, t,
                                     Math.max(secondMappingScore + haplotypeAltScore, sampleLikelihoodsSecond.get(altIdx, t)));
-                  //      }
+                       }
                     }
                 }
                 for (int t = 0; t < templates.size(); t++) {
@@ -563,7 +563,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             final double base = Math.max(sampleLikelihoods.get(refIdx, t), sampleLikelihoods.get(altIdx, t));
                             final int maxIndex = sampleLikelihoods.get(refIdx, t) == base ? refIdx : altIdx;
                             final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
-        //                    sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
+                   //        sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
                         }
 
                     final int[] adi = new int[2];

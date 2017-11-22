@@ -169,7 +169,7 @@ public class Template implements Serializable {
         if (definedMappingQualities == result.length) {
             return result;
         } else if (definedMappingQualities == 0) {
-            Arrays.fill(result, 60);
+            Arrays.fill(result, 10);
             return result;
         } else if (maxQual == 0) {
             Arrays.fill(result, 0);
