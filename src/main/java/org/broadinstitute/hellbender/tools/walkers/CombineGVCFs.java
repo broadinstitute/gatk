@@ -379,7 +379,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             }
         }
 
-        return new VariantContextBuilder("", first.getContig(), start, end, Arrays.asList(refAllele, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)).attributes(attrs).genotypes(genotypes).make();
+        return new VariantContextBuilder("", first.getContig(), start, end, Arrays.asList(refAllele, Allele.NON_REF_ALLELE)).attributes(attrs).genotypes(genotypes).make();
     }
 
     /**
