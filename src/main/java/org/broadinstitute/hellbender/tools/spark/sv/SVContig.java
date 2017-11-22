@@ -181,4 +181,8 @@ public class SVContig extends ArraySVHaplotype {
                 && alternativeAlignment.get(0).mismatches == 0;
     }
 
+    public int getMinimumMappingQuality() {
+        return getReferenceAlignment().stream().mapToInt(ai -> ai.alnScore).filter(score -> score != AlignmentInterval.NO_AS).max().orElse(0);
+    }
+
 }

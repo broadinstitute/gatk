@@ -14,7 +14,9 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.avro.generic.GenericData;
@@ -130,6 +132,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     @Argument(doc = "parallelism factor", shortName = "pfactor", fullName = "parallelismFactor", optional = true)
     private int parallelismFactor = 4;
+
+    @Argument(doc = "minimum likelihood (Phred) difference to consider that a template or read support an allele over any other", shortName = "infoTLD", fullName = "informativeTemplateLikelihoodDifference", optional = true)
+    private double informativeTemplateDifferencePhred = 2.0;
 
     @Argument(doc = "insert size distribution",
             shortName = INSERT_SIZE_DISTR_SHORT_NAME,
@@ -290,6 +295,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         header.addMetaDataLine(new VCFInfoHeaderLine("REF_COVERED_RANGE", 2, VCFHeaderLineType.Integer, "ref haplotype offset covered range"));
         header.addMetaDataLine(new VCFInfoHeaderLine("REF_COVERED_RATIO", 1, VCFHeaderLineType.Float, "ref covered effective length with total length ratio"));
         header.addMetaDataLine(new VCFInfoHeaderLine("ALT_REF_COVERED_SIZE_RATIO", 1, VCFHeaderLineType.Float, "alt/ref covered length ratio"));
+        header.addMetaDataLine(new VCFFormatHeaderLine("ADM", VCFHeaderLineCount.R, VCFHeaderLineType.Float, "average Phred likelihood likelihood difference between this and the next best allele for templates supporting this allele (AD)"));
+        header.addMetaDataLine(new VCFFormatHeaderLine("ADI", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on insert length only"));
+        header.addMetaDataLine(new VCFFormatHeaderLine("ADR", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on read-mapping likelihoods only"));
         SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
                 referenceArguments.getReferenceFileName(), calls, header, logger);
         tearDown(ctx);
@@ -337,6 +345,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final SerializableBiFunction<String, byte[], File> imageCreator =  GenotypeStructuralVariantsSpark::createTransientImageFile;
         final AlignmentPenalties penalties = this.penalties;
         final boolean ignoreReadsThatDontOverlapBreakingPoint = this.ignoreReadsThatDontOverlapBreakingPoint;
+        final double informativeTemplateDifferencePhred = this.informativeTemplateDifferencePhred;
         final InsertSizeDistribution insertSizeDistribution = this.insertSizeDistribution;
         return input.mapPartitions(it -> {
             final SAMSequenceDictionary dictionary = broadCastDictionary.getValue();
@@ -488,9 +497,15 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
                     double haplotypeAltScore = AlignmentScore.calculate(contig.getLength(), contig.getAlternativeAlignment()).getValue();
                     double haplotypeRefScore = AlignmentScore.calculate(contig.getLength(), contig.getReferenceAlignment()).getValue();
+                    final double maxMQ = contig.getMinimumMappingQuality();
                     final double base = Math.max(haplotypeAltScore, haplotypeRefScore);
                     haplotypeAltScore -= base;
                     haplotypeRefScore -= base;
+                    if (haplotypeAltScore < haplotypeRefScore) {
+                        haplotypeAltScore = Math.max(haplotypeRefScore, haplotypeRefScore - 0.1 * maxMQ);
+                    } else {
+                        haplotypeRefScore = Math.max(haplotypeRefScore, haplotypeAltScore - 0.1 * maxMQ);
+                    }
                     for (int t = 0; t < templates.size(); t++) {
                         final boolean noAlignment = !scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.isPresent()
                                 && !scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.isPresent();
@@ -523,6 +538,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     //    matrix.set(minIndex, t,  Math.min(matrix.get(maxIndex, t), matrix.get(minIndex, t) - base));
                     }
                 }
+                boolean[] dpRelevant = new boolean[sampleLikelihoods.numberOfReads()];
                 for (int j = 0; j < sampleLikelihoods.numberOfReads(); j++) {
                     final boolean considerFirstFragment;
                     final boolean considerSecondFragment;
@@ -535,6 +551,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         considerFirstFragment = true;
                         considerSecondFragment = true;
                     }
+                    dpRelevant[j] = considerFirstFragment || considerSecondFragment;
                     for (int i = 0; i < sampleLikelihoods.numberOfAlleles(); i++) {
                         sampleLikelihoods.set(i, j, (considerFirstFragment ? sampleLikelihoodsFirst.get(i, j) : 0) +
                                 ((considerSecondFragment) ? sampleLikelihoodsSecond.get(i, j) : 0));
@@ -545,16 +562,28 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             final double base = Math.max(sampleLikelihoods.get(refIdx, t), sampleLikelihoods.get(altIdx, t));
                             final int maxIndex = sampleLikelihoods.get(refIdx, t) == base ? refIdx : altIdx;
                             final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
-                            sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
+        //                    sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
                         }
 
+                    final int[] adi = new int[2];
+                    int dpi = 0;
                         for (int t = 0; t < templates.size(); t++) {
                     final TemplateMappingInformation refMapping = scoreTable.getMappingInfo(refHaplotypeIndex, t);
                     final TemplateMappingInformation altMapping = scoreTable.getMappingInfo(altHaplotypeIndex, t);
                     if (refMapping.pairOrientation.isProper() == altMapping.pairOrientation.isProper()) {
                         if (refMapping.pairOrientation.isProper() && (scoreTable.getMappingInfo(refHaplotypeIndex, t).crossesBreakPoint(refBreakPoints) || scoreTable.getMappingInfo(altHaplotypeIndex, t).crossesBreakPoint(altBreakPoints))) {
-                            sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) + insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10));
-                            sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) + insertSizeDistribution.logProbability(altMapping.insertSize.getAsInt()) / Math.log(10));
+                            dpRelevant[t] = true;
+                            dpi++;
+                            final double refInsertSizeLog10Prob = insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10);
+                            final double altInsertSizeLog10Prob = insertSizeDistribution.logProbability(altMapping.insertSize.getAsInt()) / Math.log(10);
+                            final double phredDiff = 10 * (refInsertSizeLog10Prob - altInsertSizeLog10Prob);
+                            if (phredDiff >= informativeTemplateDifferencePhred) {
+                                adi[0]++;
+                            } else if (-phredDiff >= informativeTemplateDifferencePhred) {
+                                adi[1]++;
+                            }
+                            sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) + refInsertSizeLog10Prob);
+                            sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) + altInsertSizeLog10Prob);
                         }
                     } else if (refMapping.pairOrientation.isProper()) {
                     //    sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
@@ -575,30 +604,42 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 }
                 minRefPos = Math.max(0, minRefPos - 1);
                 maxRefPos = Math.min(ref.getLength(), maxRefPos + 1);
-                final int dp = likelihoods.readCount();
                 likelihoods.removeUniformativeReads(0.0);
                 likelihoods.normalizeLikelihoods(true, -0.1 * penalties.maximumTemplateScoreDifference);
                 final int[] ad = new int[2];
+                int dp = 0;
+                final int[] rld = new int[2];
                 for (int t = 0; t < scoreTable.numberOfTemplates(); t++) {
+                    if (!dpRelevant[t]) break;
                     final TemplateMappingInformation refMapping  = scoreTable.getMappingInfo(refHaplotypeIndex, t);
                     final TemplateMappingInformation altMapping  = scoreTable.getMappingInfo(altHaplotypeIndex, t);
                     final double refScore = refMapping.firstAlignmentScore.orElse(0) + refMapping.secondAlignmentScore.orElse(0);
                     final double altScore = altMapping.firstAlignmentScore.orElse(0) + altMapping.secondAlignmentScore.orElse(0);
-                    if (refScore > altScore) {
-                        ad[0]++;
-                    } else if (altScore > refScore) {
-                        ad[1]++;
+                    final double phredDiff = 10 * (refScore - altScore);
+                    if (phredDiff >= informativeTemplateDifferencePhred) {
+                        rld[0]++;
+                    } else if (-phredDiff >= informativeTemplateDifferencePhred) {
+                        rld[1]++;
                     }
 
                 }
                 ad[0] = 0; ad[1] = 0;
+                //        header.addMetaDataLine(new VCFFormatHeaderLine("MLD", VCFHeaderLineCount.R, VCFHeaderLineType.Float, "average Phred likelihood likelihood difference between this and the next best allele for templates supporting this allele (AD)"));
+                //        header.addMetaDataLine(new VCFFormatHeaderLine("IAD", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on insert length only"));
+                //        header.addMetaDataLine(new VCFFormatHeaderLine("RAD", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on read-mapping likelihoods only"));
+                final double[] diffs = new double[2];
                 for (int r = 0; r < likelihoods.readCount(); r++) {
-                    if (likelihoods.sampleMatrix(0).get(0, r) > likelihoods.sampleMatrix(0).get(1, r)) {
+                    final double phredDiff = 10 * ( likelihoods.sampleMatrix(0).get(refIdx, r) - likelihoods.sampleMatrix(0).get(altIdx, r));
+                    if (phredDiff >= informativeTemplateDifferencePhred) {
                         ad[0]++;
-                    } else {
+                        diffs[0] += phredDiff;
+                    } else if (-phredDiff >= informativeTemplateDifferencePhred){
                         ad[1]++;
+                        diffs[1] -= phredDiff;
                     }
                 }
+                final String[] diffStrings = new String[] { ad[0] == 0 ? "." : String.format("%.1f", diffs[0] / ad[0]),
+                                                            ad[1] == 0 ? "." : String.format("%.1f", diffs[1] / ad[1])};
                 final GenotypeLikelihoods likelihoods1 = genotypeCalculator.genotypeLikelihoods(sampleLikelihoods);
                 final int pl[] = likelihoods1.getAsPLs();
                 final int bestGenotypeIndex = MathUtils.maxElementIndex(likelihoods1.getAsVector());
@@ -624,6 +665,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 .GQ(gq)
                                 .DP(dp)
                                 .AD(ad)
+                                .attribute("ADM", diffStrings)
+                                .attribute("ADR", rld)
+                                .attribute("ADI", adi)
                                 .alleles(genotypeAlleles).make());
                 return SVContext.of(newVariantBuilder.make());
            }).iterator();
