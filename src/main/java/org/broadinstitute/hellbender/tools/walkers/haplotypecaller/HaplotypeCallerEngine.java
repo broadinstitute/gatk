@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -321,11 +322,19 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param readsDictionary sequence dictionary for the reads
      * @return a VCF or GVCF writer as appropriate, ready to use
      */
-    public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary ) {
+    public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary,
+                                               final boolean createOutputVariantIndex, final boolean  createOutputVariantMD5 ) {
         Utils.nonNull(outputVCF);
         Utils.nonNull(readsDictionary);
 
-        VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(new File(outputVCF), readsDictionary, false);
+        VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
+                new File(outputVCF),
+                readsDictionary,
+                createOutputVariantMD5,
+                createOutputVariantIndex ?
+                        new Options[]{Options.INDEX_ON_THE_FLY} :
+                        new Options[0]
+        );
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
             try {
