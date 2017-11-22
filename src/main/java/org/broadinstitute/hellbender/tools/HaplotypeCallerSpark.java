@@ -258,24 +258,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     }
 
     /**
-     * WriteVariants, this is currently going to be horribly slow and explosive on a full size file since it performs a collect.
-     *
-     * This will be replaced by a parallel writer similar to what's done with {@link org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink}
-     */
-    private static void writeVariants(String outputFile, JavaRDD<VariantContext> variants, HaplotypeCallerEngine hcEngine, SAMSequenceDictionary sequenceDictionary) {
-        final List<VariantContext> collectedVariants = variants.collect();
-
-        final List<VariantContext> sortedVariants = collectedVariants.stream()
-            .sorted((o1, o2) -> IntervalUtils.compareLocatables(o1, o2, sequenceDictionary))
-            .collect(Collectors.toList());
-
-        try(final VariantContextWriter writer = hcEngine.makeVCFWriter(outputFile, sequenceDictionary)) {
-            hcEngine.writeHeader(writer, sequenceDictionary, new HashSet<>());
-            sortedVariants.forEach(writer::add);
-        }
-    }
-
-    /**
      * @return a list of {@link ShardBoundary}
      * based on the -L intervals
      */

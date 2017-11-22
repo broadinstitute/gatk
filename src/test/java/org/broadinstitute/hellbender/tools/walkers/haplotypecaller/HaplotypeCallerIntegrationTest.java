@@ -1,17 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SamFiles;
+import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsIntegrationTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +19,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
@@ -280,19 +279,23 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in AS GVCF mode is < 99% (" +  concordance + ")");
     }
 
-    @DataProvider(name="bamoutVariations")
+    @DataProvider(name="outputFileVariations")
     public Object[][] getBamoutVariations() {
         return new Object[][]{
                 // index, md5
-                { true, true },
-                { true, false },
-                { false, true },
-                { false, false },
+                { true, true, true, true },
+                { true, false, true, false },
+                { false, true, false, true },
+                { false, false, false, false },
         };
     }
 
-    @Test(dataProvider = "bamoutVariations")
-    public void testBamoutProducesReasonablySizedOutput(final boolean createBamoutIndex, final boolean createBamoutMD5) {
+    @Test(dataProvider = "outputFileVariations")
+    public void testBamoutProducesReasonablySizedOutput(
+            final boolean createBamoutIndex,
+            final boolean createBamoutMD5,
+            final boolean createVCFOutIndex,
+            final boolean createVCFOutMD5) {
         Utils.resetRandomGenerator();
 
         // We will test that when running with -bamout over the testInterval, we produce
@@ -315,8 +318,10 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addArgument("L", testInterval);
         argBuilder.addArgument("bamout", bamOutput.getAbsolutePath());
         argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
-        argBuilder.addBooleanArgument("createOutputBamIndex", createBamoutIndex);
-        argBuilder.addBooleanArgument("createOutputBamMD5", createBamoutMD5);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, createVCFOutIndex);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME, createVCFOutMD5);
 
         runCommandLine(argBuilder.getArgsArray());
 
@@ -331,14 +336,23 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                                "-bamout produced a bam with over 10% fewer/more reads than expected");
         }
 
+        Assert.assertTrue(vcfOutput.exists(), "No VCF output file was not created");
+
+        // validate vcfout companion files
+        final File vcfOutFileIndex = new File(vcfOutput.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION);
+        final File vcfOutFileMD5 = new File(vcfOutput.getAbsolutePath() + ".md5");
+        Assert.assertEquals(vcfOutFileIndex.exists(), createVCFOutIndex, "The index file argument was not honored");
+        Assert.assertEquals(vcfOutFileMD5.exists(), createVCFOutMD5, "The md5 file argument was not honored");
+
+        // validate bamout companion files
         if (createBamoutIndex) {
             Assert.assertNotNull(SamFiles.findIndex(bamOutput));
         } else {
             Assert.assertNull(SamFiles.findIndex(bamOutput));
         }
 
-        final File expectedMD5File = new File(bamOutput.getAbsolutePath() + ".md5");
-        Assert.assertEquals(expectedMD5File.exists(), createBamoutMD5);
+        final File expectedBamoutMD5File = new File(bamOutput.getAbsolutePath() + ".md5");
+        Assert.assertEquals(expectedBamoutMD5File.exists(), createBamoutMD5);
     }
 
     @Test
