@@ -124,7 +124,6 @@ public final class VariantAnnotatorEngine {
         return new VariantOverlapAnnotator(dbSNPInput, overlaps);
     }
 
-
     /**
      * Returns the list of genotype annotations that will be applied.
      * Note: The returned list is unmodifiable.

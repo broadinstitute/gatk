@@ -9,9 +9,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -219,20 +221,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
      * @return list of VariantContext records
      * @throws IOException if the file does not exist or can not be opened
      */
+    @SuppressWarnings({"unchecked"})
     private static List<VariantContext> getVariantContexts(final File vcfFile) throws IOException {
-        final VCFCodec codec = new VCFCodec();
-        final FileInputStream s = new FileInputStream(vcfFile);
-        final LineIterator lineIteratorVCF = codec.makeSourceFromStream(new PositionalBufferedStream(s));
-        codec.readHeader(lineIteratorVCF);
-
-        final List<VariantContext> VCs = new ArrayList<>();
-        while (lineIteratorVCF.hasNext()) {
-            final String line = lineIteratorVCF.next();
-            Assert.assertFalse(line == null);
-            VCs.add(codec.decode(line));
+        try(final FeatureDataSource<VariantContext> variantContextFeatureDataSource = new FeatureDataSource<>(vcfFile)) {
+            return IteratorUtils.toList(variantContextFeatureDataSource.iterator());
         }
-
-        return VCs;
     }
 
     @Test
