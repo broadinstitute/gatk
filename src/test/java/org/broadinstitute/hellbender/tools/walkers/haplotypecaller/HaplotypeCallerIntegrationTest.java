@@ -279,23 +279,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in AS GVCF mode is < 99% (" +  concordance + ")");
     }
 
-    @DataProvider(name="outputFileVariations")
-    public Object[][] getBamoutVariations() {
-        return new Object[][]{
-                // index, md5
-                { true, true, true, true },
-                { true, false, true, false },
-                { false, true, false, true },
-                { false, false, false, false },
-        };
-    }
-
-    @Test(dataProvider = "outputFileVariations")
-    public void testBamoutProducesReasonablySizedOutput(
-            final boolean createBamoutIndex,
-            final boolean createBamoutMD5,
-            final boolean createVCFOutIndex,
-            final boolean createVCFOutMD5) {
+    @Test
+    public void testBamoutProducesReasonablySizedOutput() {
         Utils.resetRandomGenerator();
 
         // We will test that when running with -bamout over the testInterval, we produce
@@ -318,10 +303,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addArgument("L", testInterval);
         argBuilder.addArgument("bamout", bamOutput.getAbsolutePath());
         argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, createVCFOutIndex);
-        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME, createVCFOutMD5);
 
         runCommandLine(argBuilder.getArgsArray());
 
@@ -333,10 +314,50 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
             final int readCountDifference = Math.abs(actualBamoutNumReads - gatk3BamoutNumReads);
             Assert.assertTrue(((double)readCountDifference / gatk3BamoutNumReads) < 0.10,
-                               "-bamout produced a bam with over 10% fewer/more reads than expected");
+                    "-bamout produced a bam with over 10% fewer/more reads than expected");
         }
+    }
 
-        Assert.assertTrue(vcfOutput.exists(), "No VCF output file was not created");
+    @DataProvider(name="outputFileVariations")
+    public Object[][] getBamoutVariations() {
+        return new Object[][]{
+                // bamout index, bamout md5, vcf index, vcf md5
+                { true, true, true, true },
+                { true, false, true, false },
+                { false, true, false, true },
+                { false, false, false, false },
+        };
+    }
+
+    @Test(dataProvider = "outputFileVariations")
+    public void testOutputFileArgumentVariations(
+            final boolean createBamoutIndex,
+            final boolean createBamoutMD5,
+            final boolean createVCFOutIndex,
+            final boolean createVCFOutMD5) {
+        Utils.resetRandomGenerator();
+
+        final String testInterval = "20:10000000-10001000";
+
+        final File vcfOutput = createTempFile("testOutputFileArgumentVariations", ".vcf");
+        final File bamOutput = createTempFile("testOutputFileArgumentVariations", ".bam");
+
+        ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+
+        argBuilder.addInput(new File(NA12878_20_21_WGS_bam));
+        argBuilder.addReference(new File(b37_reference_20_21));
+        argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
+        argBuilder.addArgument("L", testInterval);
+        argBuilder.addArgument("bamout", bamOutput.getAbsolutePath());
+        argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, createVCFOutIndex);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME, createVCFOutMD5);
+
+        runCommandLine(argBuilder.getArgsArray());
+
+        Assert.assertTrue(vcfOutput.exists(), "No VCF output file was created");
 
         // validate vcfout companion files
         final File vcfOutFileIndex = new File(vcfOutput.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION);
