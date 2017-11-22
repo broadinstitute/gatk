@@ -118,19 +118,22 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             throw new UserException.Require2BitReferenceForBroadcast();
         }
 
-        //TOOO: should this use getUnfilteredReads? getReads will apply default and command line filters
-        final JavaRDD<GATKRead> initialReads = getReads();
-
         final JavaRDD<GATKRead> alignedReads;
         final SAMFileHeader header;
         final BwaSparkEngine bwaEngine;
         if (align) {
-                bwaEngine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary());
-                alignedReads = !bwaArgs.singleEndAlignment ? bwaEngine.alignPaired(initialReads) : bwaEngine.alignUnpaired(initialReads);
-                header = bwaEngine.getHeader();
+            bwaEngine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary());
+            if (bwaArgs.singleEndAlignment) {
+                alignedReads = bwaEngine.alignUnpaired(getReads());
+            } else {
+                // filter reads after alignment in the case of paired reads since filtering does not know about pairs
+                final ReadFilter filter = makeReadFilter(bwaEngine.getHeader());
+                alignedReads = bwaEngine.alignPaired(getUnfilteredReads()).filter(filter::test);
+            }
+            header = bwaEngine.getHeader();
         } else {
             bwaEngine = null;
-            alignedReads = initialReads;
+            alignedReads = getReads();
             header = getHeaderForReads();
         }
 

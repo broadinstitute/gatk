@@ -101,7 +101,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy OVERLAPS_PARTITIONER --readShardPadding 1000 --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
 
                 // BWA-MEM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwaMemIndexImage " + GRCh37Ref_2021_img + " --disableSequenceDictionaryValidation true --joinStrategy BROADCAST --knownSites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwaMemIndexImage " + GRCh37Ref_2021_img + " --disable-sequence-dictionary-validation true --joinStrategy BROADCAST --knownSites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
         };
     }
 

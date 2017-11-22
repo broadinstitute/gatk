@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -46,12 +47,18 @@ public final class BwaSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        try ( final BwaSparkEngine engine =
+        try ( final BwaSparkEngine bwaEngine =
                       new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
-            final JavaRDD<GATKRead> reads = !bwaArgs.singleEndAlignment ? engine.alignPaired(getReads()) : engine.alignUnpaired(getReads());
-
+            final JavaRDD<GATKRead> reads;
+            if (bwaArgs.singleEndAlignment) {
+                reads = bwaEngine.alignUnpaired(getReads());
+            } else {
+                // filter reads after alignment in the case of paired reads since filtering does not know about pairs
+                final ReadFilter filter = makeReadFilter(bwaEngine.getHeader());
+                reads = bwaEngine.alignPaired(getUnfilteredReads()).filter(filter::test);
+            }
             try {
-                ReadsSparkSink.writeReads(ctx, output, null, reads, engine.getHeader(),
+                ReadsSparkSink.writeReads(ctx, output, null, reads, bwaEngine.getHeader(),
                                             shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
             } catch (final IOException e) {
                 throw new GATKException("Unable to write aligned reads", e);

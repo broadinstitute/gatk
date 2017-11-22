@@ -324,9 +324,16 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * composition methods.
      */
     public ReadFilter makeReadFilter() {
+        return makeReadFilter(getHeaderForReads());
+    }
+
+    /**
+     * Like {@link #makeReadFilter()} but with the ability to pass a different SAMFileHeader.
+     */
+    protected ReadFilter makeReadFilter(SAMFileHeader samFileHeader) {
         final GATKReadFilterPluginDescriptor readFilterPlugin =
                 getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        return readFilterPlugin.getMergedReadFilter(getHeaderForReads());
+        return readFilterPlugin.getMergedReadFilter(samFileHeader);
     }
 
     /**
