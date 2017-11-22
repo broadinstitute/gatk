@@ -132,7 +132,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         assertVariantContextsMatch(Arrays.asList(inputs), outputFile, extraArgs, reference);
     }
 
-    protected static void runProcess(ProcessController processController, String[] command) {
+    public static void runProcess(ProcessController processController, String[] command) {
         final ProcessSettings prs = new ProcessSettings(command);
         prs.getStderrSettings().printStandard(true);
         prs.getStdoutSettings().printStandard(true);

@@ -47,7 +47,7 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
         when(referenceContext4.getBases()).thenReturn(new byte[]{'T'});
 
         List<VariantContext> VCs = new ArrayList<>();
-        VariantContext A = new VariantContextBuilder().loc("20",1001,1099).alleles(Arrays.asList(REF, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)).attribute(VCFConstants.END_KEY, 1099).make();
+        VariantContext A = new VariantContextBuilder().loc("20",1001,1099).alleles(Arrays.asList(REF, Allele.NON_REF_ALLELE)).attribute(VCFConstants.END_KEY, 1099).make();
 
         VCs.add(A);
         ReferenceContext contextState = MultiVariantWalkerGroupedOnStart.getExpandedReferenceContext(VCs, null, referenceContext1);
