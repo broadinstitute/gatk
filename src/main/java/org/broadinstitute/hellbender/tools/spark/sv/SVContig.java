@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
@@ -182,7 +183,7 @@ public class SVContig extends ArraySVHaplotype {
     }
 
     public int getMinimumMappingQuality() {
-        return getReferenceAlignment().stream().mapToInt(ai -> ai.alnScore).filter(score -> score != AlignmentInterval.NO_AS).max().orElse(0);
+        return getReferenceAlignment().stream().mapToInt(ai -> ai.mapQual).filter(mq -> mq != SAMRecord.UNKNOWN_MAPPING_QUALITY).max().orElse(0);
     }
 
 }

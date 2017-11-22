@@ -298,6 +298,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         header.addMetaDataLine(new VCFFormatHeaderLine("ADM", VCFHeaderLineCount.R, VCFHeaderLineType.Float, "average Phred likelihood likelihood difference between this and the next best allele for templates supporting this allele (AD)"));
         header.addMetaDataLine(new VCFFormatHeaderLine("ADI", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on insert length only"));
         header.addMetaDataLine(new VCFFormatHeaderLine("ADR", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on read-mapping likelihoods only"));
+        header.addMetaDataLine(new VCFFormatHeaderLine("DPI", 1, VCFHeaderLineType.Integer, ""));
         SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
                 referenceArguments.getReferenceFileName(), calls, header, logger);
         tearDown(ctx);
@@ -502,9 +503,9 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     haplotypeAltScore -= base;
                     haplotypeRefScore -= base;
                     if (haplotypeAltScore < haplotypeRefScore) {
-                        haplotypeAltScore = Math.max(haplotypeRefScore, haplotypeRefScore - 0.1 * maxMQ);
+                        haplotypeAltScore = Math.min(haplotypeRefScore, haplotypeRefScore - 0.1 * maxMQ);
                     } else {
-                        haplotypeRefScore = Math.max(haplotypeRefScore, haplotypeAltScore - 0.1 * maxMQ);
+                        haplotypeRefScore = Math.min(haplotypeRefScore, haplotypeAltScore - 0.1 * maxMQ);
                     }
                     for (int t = 0; t < templates.size(); t++) {
                         final boolean noAlignment = !scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.isPresent()
@@ -512,18 +513,18 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         if (noAlignment) continue;
                         final double firstMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.orElse(0.0);
                         final double secondMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.orElse(0.0);
-                        if (firstMappingScore == scoreTable.bestMappingScorePerFragment[t][0]) {
+                   //     if (firstMappingScore == scoreTable.bestMappingScorePerFragment[t][0]) {
                             sampleLikelihoodsFirst.set(refIdx, t,
                                     Math.max(firstMappingScore + haplotypeRefScore, sampleLikelihoodsFirst.get(refIdx, t)));
                             sampleLikelihoodsFirst.set(altIdx, t,
                                     Math.max(firstMappingScore + haplotypeAltScore, sampleLikelihoodsFirst.get(altIdx, t)));
-                        }
-                        if (secondMappingScore == scoreTable.bestMappingScorePerFragment[t][1]) {
+                  //      }
+                  //      if (secondMappingScore == scoreTable.bestMappingScorePerFragment[t][1]) {
                             sampleLikelihoodsSecond.set(refIdx, t,
                                     Math.max(secondMappingScore + haplotypeRefScore, sampleLikelihoodsSecond.get(refIdx, t)));
                             sampleLikelihoodsSecond.set(altIdx, t,
                                     Math.max(secondMappingScore + haplotypeAltScore, sampleLikelihoodsSecond.get(altIdx, t)));
-                        }
+                  //      }
                     }
                 }
                 for (int t = 0; t < templates.size(); t++) {
@@ -538,7 +539,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     //    matrix.set(minIndex, t,  Math.min(matrix.get(maxIndex, t), matrix.get(minIndex, t) - base));
                     }
                 }
-                boolean[] dpRelevant = new boolean[sampleLikelihoods.numberOfReads()];
+                final boolean[] dpRelevant = new boolean[sampleLikelihoods.numberOfReads()];
                 for (int j = 0; j < sampleLikelihoods.numberOfReads(); j++) {
                     final boolean considerFirstFragment;
                     final boolean considerSecondFragment;
@@ -610,7 +611,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 int dp = 0;
                 final int[] rld = new int[2];
                 for (int t = 0; t < scoreTable.numberOfTemplates(); t++) {
-                    if (!dpRelevant[t]) break;
+                    if (!dpRelevant[t]) continue;
+                    dp++;
                     final TemplateMappingInformation refMapping  = scoreTable.getMappingInfo(refHaplotypeIndex, t);
                     final TemplateMappingInformation altMapping  = scoreTable.getMappingInfo(altHaplotypeIndex, t);
                     final double refScore = refMapping.firstAlignmentScore.orElse(0) + refMapping.secondAlignmentScore.orElse(0);
@@ -621,7 +623,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     } else if (-phredDiff >= informativeTemplateDifferencePhred) {
                         rld[1]++;
                     }
-
                 }
                 ad[0] = 0; ad[1] = 0;
                 //        header.addMetaDataLine(new VCFFormatHeaderLine("MLD", VCFHeaderLineCount.R, VCFHeaderLineType.Float, "average Phred likelihood likelihood difference between this and the next best allele for templates supporting this allele (AD)"));
@@ -668,6 +669,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 .attribute("ADM", diffStrings)
                                 .attribute("ADR", rld)
                                 .attribute("ADI", adi)
+                                .attribute("DPI", dpi)
                                 .alleles(genotypeAlleles).make());
                 return SVContext.of(newVariantBuilder.make());
            }).iterator();
