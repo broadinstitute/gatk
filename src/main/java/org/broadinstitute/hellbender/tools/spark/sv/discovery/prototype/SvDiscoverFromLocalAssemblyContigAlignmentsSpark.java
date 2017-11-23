@@ -21,13 +21,9 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.RDDUtils;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.IOException;
@@ -101,7 +97,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary = ctx.broadcast(refSequenceDictionary);
         final String sampleId = SVUtils.getSampleId(headerForReads);
 
-        final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes =
+        final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes =
                 preprocess(reads, headerBroadcast, broadcastSequenceDictionary, nonCanonicalChromosomeNamesFile, outputDir, writeSAMFiles, localLogger);
 
         dispatchJobs(sampleId, contigsByPossibleRawTypes, referenceMultiSourceBroadcast, broadcastSequenceDictionary);
@@ -109,63 +105,77 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
     //==================================================================================================================
 
-    private static EnumMap<RawTypes, JavaRDD<AlignedContig>> preprocess(final JavaRDD<GATKRead> reads,
-                                                                        final Broadcast<SAMFileHeader> headerBroadcast,
-                                                                        final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
-                                                                        final String nonCanonicalChromosomeNamesFile,
-                                                                        final String outputDir,
-                                                                        final boolean writeSAMFiles,
-                                                                        final Logger localLogger) {
+    private static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> preprocess(final JavaRDD<GATKRead> reads,
+                                                                                                final Broadcast<SAMFileHeader> headerBroadcast,
+                                                                                                final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                                                final String nonCanonicalChromosomeNamesFile,
+                                                                                                final String outputDir,
+                                                                                                final boolean writeSAMFiles,
+                                                                                                final Logger localLogger) {
         // filter alignments and split the gaps, hence the name "reconstructed"
-        final JavaRDD<AlignedContig> contigsWithAlignmentsReconstructed =
-                FilterLongReadAlignmentsSAMSpark.filterByScore(reads, headerBroadcast.getValue(), nonCanonicalChromosomeNamesFile, 0.0, localLogger)
+        final JavaRDD<AlignedContig> contigsWithChimericAlignmentsReconstructed =
+                FilterLongReadAlignmentsSAMSpark
+                        .filterByScore(reads, headerBroadcast.getValue(), nonCanonicalChromosomeNamesFile, 0.0, localLogger)
                         .filter(lr -> lr.alignmentIntervals.size() > 1).cache();
+        localLogger.info( contigsWithChimericAlignmentsReconstructed.count() +
+                " contigs with chimeric alignments potentially giving SV signals.");
 
-        // classify and divert assembly contigs by their possible type of SV
-        final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes =
-                AssemblyContigAlignmentSignatureClassifier.classifyContigs(contigsWithAlignmentsReconstructed,
-                        broadcastSequenceDictionary, localLogger);
+        // classify assembly contigs by their possible type of SV based on studying alignment signature
+        final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes =
+                AssemblyContigAlignmentSignatureClassifier.classifyContigs(contigsWithChimericAlignmentsReconstructed, broadcastSequenceDictionary, localLogger);
 
-        try {
-            IOUtils.createDirectory(outputDir);
-        } catch (final IOException x) {
-            throw new UserException.CouldNotCreateOutputFile("Could not create file at path:" + outputDir + " due to " + x.getMessage(), x);
-        }
-
-        if (writeSAMFiles) {
-            contigsByPossibleRawTypes.forEach((k, v) -> writeSAM(v, k.name(), reads, headerBroadcast, outputDir, localLogger));
-        }
+        debug(reads, contigsByPossibleRawTypes, headerBroadcast, outputDir, writeSAMFiles, localLogger);
 
         return contigsByPossibleRawTypes;
     }
 
     //==================================================================================================================
 
+    // TODO: 11/21/17 insertion mappings are dropped here in this implementation, must get them back for ticket #3647
     private void dispatchJobs(final String sampleId,
-                              final EnumMap<RawTypes, JavaRDD<AlignedContig>> contigsByPossibleRawTypes,
+                              final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
                               final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast,
                               final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary) {
 
         new InsDelVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), outputDir+"/"+ RawTypes.InsDel.name()+".vcf",
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel).map(decoratedTig -> decoratedTig.contig),
+                        outputDir+"/"+ RawTypes.InsDel.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
         new SimpleStrandSwitchVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch), outputDir+"/"+ RawTypes.IntraChrStrandSwitch.name()+".vcf",
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch).map(decoratedTig -> decoratedTig.contig),
+                        outputDir+"/"+ RawTypes.IntraChrStrandSwitch.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
         new SuspectedTransLocDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt),
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt).map(decoratedTig -> decoratedTig.contig),
                         outputDir+"/"+ RawTypes.MappedInsertionBkpt.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
     }
 
-    private static void writeSAM(final JavaRDD<AlignedContig> filteredContigs, final String rawTypeString,
+    //==================================================================================================================
+    
+    private static void debug(final JavaRDD<GATKRead> reads, 
+                              final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes, 
+                              final Broadcast<SAMFileHeader> headerBroadcast,
+                              final String outputDir, final boolean writeSAMFiles, final Logger localLogger) {
+        try {
+            IOUtils.createDirectory(outputDir);
+            if (writeSAMFiles) {
+                contigsByPossibleRawTypes.forEach((k, v) -> writeSAM(v, k.name(), reads, headerBroadcast, outputDir, localLogger));
+            }
+        } catch (final IOException x) {
+            throw new UserException.CouldNotCreateOutputFile("Could not create file at path:" + outputDir + 
+                    " due to " + x.getMessage(), x);
+        }
+    }
+    
+    private static void writeSAM(final JavaRDD<AssemblyContigWithFineTunedAlignments> filteredContigs, final String rawTypeString,
                                  final JavaRDD<GATKRead> originalContigs, final Broadcast<SAMFileHeader> headerBroadcast,
                                  final String outputDir, final Logger toolLogger) {
 
-        final Set<String> filteredReadNames = new HashSet<>( filteredContigs.map(tig -> tig.contigName).distinct().collect() );
-        toolLogger.info(filteredReadNames.size() + " long reads indicating " + rawTypeString);
+        final Set<String> filteredReadNames = new HashSet<>( filteredContigs.map(decoratedTig -> decoratedTig.contig).map(tig -> tig.contigName).distinct().collect() );
+        toolLogger.info(filteredReadNames.size() + " contigs indicating " + rawTypeString);
         final JavaRDD<SAMRecord> splitLongReads = originalContigs.filter(read -> filteredReadNames.contains(read.getName()))
                 .map(read -> read.convertToSAMRecord(headerBroadcast.getValue()));
         SVFileUtils.writeSAMFile(outputDir+"/"+rawTypeString+".sam", splitLongReads.collect().iterator(), headerBroadcast.getValue(),
