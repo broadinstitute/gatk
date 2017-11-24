@@ -181,7 +181,7 @@ final class AssemblyContigWithFineTunedAlignments {
         if (head.forwardStrand) {
             return referenceSpanHead.getStart() >= referenceSpanTail.getStart();
         } else {
-            return referenceSpanHead.getEnd() <= referenceSpanHead.getEnd();
+            return referenceSpanHead.getEnd() <= referenceSpanTail.getEnd();
         }
     }
 
