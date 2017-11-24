@@ -30,19 +30,20 @@ final class SimpleStrandSwitchVariantDetector implements VariantDetectorFromLoca
     static final int MORE_RELAXED_ALIGNMENT_MIN_MQ = 20;
 
     @Override
-    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> contigs, final String vcfOutputFileName,
+    public void inferSvAndWriteVCF(final String vcfOutputFileName, final String sampleId,
+                                   final JavaRDD<AssemblyContigWithFineTunedAlignments> contigs,
                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
-                                   final Logger toolLogger,
-                                   final String sampleId) {
+                                   final Logger toolLogger) {
 
         toolLogger.info(contigs.count() + " chimeras indicating either 1) simple strand-switch breakpoints, or 2) inverted duplication.");
 
+        // TODO: 11/23/17 take insertion mappings from the input and add them to VC
         // split between suspected inv dup VS strand-switch breakpoints
         // logic flow: split the input reads into two classes--those judged by IsLikelyInvertedDuplication are likely invdup and those aren't
         //             finally send the two split reads down different path, one for inv dup and one for BND records
         final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> invDupAndStrandSwitchBreakpoints =
-                RDDUtils.split(contigs,
+                RDDUtils.split(contigs.map( decoratedTig -> decoratedTig.contig),
                         contig -> ChimericAlignment.isLikelyInvertedDuplication(contig.alignmentIntervals.get(0),
                                 contig.alignmentIntervals.get(1)), false);
 

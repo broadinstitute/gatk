@@ -190,9 +190,9 @@ public final class AssemblyContigAlignmentSignatureClassifier {
      * convenience struct holding 4 classes:
      *      1) contigs with 2 good alignments and bad alignments encoded as strings
      *      2) contigs with more than 2 good alignments and seemingly have picture complete as defined by
-     *          {@link AssemblyContigWithFineTunedAlignments#hasIncomePicture()}
+     *          {@link AssemblyContigWithFineTunedAlignments#hasIncompletePicture()}
      *      3) contigs with more than 2 good alignments but doesn't seem to have picture complete as defined by
-     *          {@link AssemblyContigWithFineTunedAlignments#hasIncomePicture()}
+     *          {@link AssemblyContigWithFineTunedAlignments#hasIncompletePicture()}
      *      4) non-informative contigs who after fine tuning has 0 or 1 good alignment left
      */
     static final class MultipleAlignmentReclassificationResults {
@@ -237,37 +237,24 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
         // first take down non-informative assembly contigs
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> informativeAndNotSo =
-                RDDUtils.split(contigsWithFineTunedAlignments, AssemblyContigAlignmentSignatureClassifier::isInformative, false);
+                RDDUtils.split(contigsWithFineTunedAlignments, AssemblyContigWithFineTunedAlignments::isInformative, false);
         final JavaRDD<AssemblyContigWithFineTunedAlignments> garbage = informativeAndNotSo._2;
 
         // assembly contigs with 2 good alignments and bad alignments encoded as strings
         final JavaRDD<AssemblyContigWithFineTunedAlignments> informativeContigs = informativeAndNotSo._1;
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> split =
-                RDDUtils.split(informativeContigs, AssemblyContigAlignmentSignatureClassifier::hasOnly2GoodAlignments, false);
+                RDDUtils.split(informativeContigs, AssemblyContigWithFineTunedAlignments::hasOnly2GoodAlignments, false);
         final JavaRDD<AssemblyContigWithFineTunedAlignments> twoGoodAlignments = split._1;
 
         // assembly contigs with more than 2 good alignments: without and with a complete picture
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignments = split._2;
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> split1 =
-                RDDUtils.split(multipleAlignments, AssemblyContigAlignmentSignatureClassifier::hasIncompletePicture, false);
+                RDDUtils.split(multipleAlignments, AssemblyContigWithFineTunedAlignments::hasIncompletePicture, false);
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignmentsIncompletePicture = split1._1;
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignmentsCompletePicture = split1._2;
 
         return new MultipleAlignmentReclassificationResults(twoGoodAlignments, multipleAlignmentsCompletePicture,
                 multipleAlignmentsIncompletePicture, garbage);
-    }
-
-    // below are dummy predicates
-    private static boolean isInformative(final AssemblyContigWithFineTunedAlignments contig) {
-        return contig.isInformative();
-    }
-
-    private static boolean hasOnly2GoodAlignments(final AssemblyContigWithFineTunedAlignments contig) {
-        return contig.hasOnly2GoodAlignments();
-    }
-
-    private static boolean hasIncompletePicture(final AssemblyContigWithFineTunedAlignments contig) {
-        return contig.hasIncomePicture();
     }
 
     /**

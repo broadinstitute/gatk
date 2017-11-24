@@ -31,7 +31,7 @@ public final class AlignedContig {
                          final boolean hasEquallyGoodAlnConfigurations) {
         this.contigName = contigName;
         this.contigSequence = contigSequence;
-        this.alignmentIntervals = Utils.stream(alignmentIntervals)
+        this.alignmentIntervals = Utils.stream( Utils.nonNull(alignmentIntervals) )
                 .sorted(getAlignmentIntervalComparator()).collect(Collectors.toList());
         this.hasEquallyGoodAlnConfigurations = hasEquallyGoodAlnConfigurations;
     }
@@ -62,9 +62,30 @@ public final class AlignedContig {
         return comparePos.thenComparing(compareRefTig).thenComparing(compareRefSpanStart);
     }
 
-    // needs this due to Java naive lambda NOT Spark serializable, and we need a serializable callable
-    public static boolean hasOnly2Alignments(final AlignedContig contigWithOnlyOneConfig) {
-        return contigWithOnlyOneConfig.alignmentIntervals.size() == 2;
+    public boolean hasOnly2Alignments() {
+        return alignmentIntervals.size() == 2;
+    }
+
+    public boolean isInformative() {
+        return alignmentIntervals.size() > 1;
+    }
+
+    /**
+     * @return first alignment of the contig, {@code null} if it is unmapped.
+     */
+    public AlignmentInterval getHeadAlignment() {
+        if (alignmentIntervals.isEmpty())
+            return null;
+        return alignmentIntervals.get(0);
+    }
+
+    /**
+     * @return last alignment of the contig, {@code null} if it is unmapped.
+     */
+    public AlignmentInterval getTailAlignment() {
+        if (alignmentIntervals.isEmpty())
+            return null;
+        return alignmentIntervals.get(alignmentIntervals.size() - 1);
     }
 
     @Override
@@ -73,8 +94,33 @@ public final class AlignedContig {
                 new Tuple2<>(contigName, alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())));
     }
 
-    public static String formatContigInfo(final Tuple2<String, List<String>> pair) {
-        return "(" + pair._1 + ",[" + pair._2 + "])";
+    /**
+     * Format provided {@code tigNameAndMappings} for debugging.
+     */
+    public static String formatContigInfo(final Tuple2<String, List<String>> tigNameAndMappings) {
+        return "(" + tigNameAndMappings._1 + ", " + tigNameAndMappings._2 + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        AlignedContig that = (AlignedContig) o;
+
+        if (hasEquallyGoodAlnConfigurations != that.hasEquallyGoodAlnConfigurations) return false;
+        if (!contigName.equals(that.contigName)) return false;
+        if (!Arrays.equals(contigSequence, that.contigSequence)) return false;
+        return alignmentIntervals.equals(that.alignmentIntervals);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = contigName.hashCode();
+        result = 31 * result + Arrays.hashCode(contigSequence);
+        result = 31 * result + alignmentIntervals.hashCode();
+        result = 31 * result + (hasEquallyGoodAlnConfigurations ? 1 : 0);
+        return result;
     }
 
     void serialize(final Kryo kryo, final Output output) {
@@ -102,27 +148,5 @@ public final class AlignedContig {
         public AlignedContig read(final Kryo kryo, final Input input, final Class<AlignedContig> clazz) {
             return new AlignedContig(kryo, input);
         }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        AlignedContig that = (AlignedContig) o;
-
-        if (hasEquallyGoodAlnConfigurations != that.hasEquallyGoodAlnConfigurations) return false;
-        if (!contigName.equals(that.contigName)) return false;
-        if (!Arrays.equals(contigSequence, that.contigSequence)) return false;
-        return alignmentIntervals.equals(that.alignmentIntervals);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = contigName.hashCode();
-        result = 31 * result + Arrays.hashCode(contigSequence);
-        result = 31 * result + alignmentIntervals.hashCode();
-        result = 31 * result + (hasEquallyGoodAlnConfigurations ? 1 : 0);
-        return result;
     }
 }
