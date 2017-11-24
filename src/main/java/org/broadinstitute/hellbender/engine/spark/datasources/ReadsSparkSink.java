@@ -227,7 +227,7 @@ public final class ReadsSparkSink {
             final SAMFileHeader header, final int numReducers) throws IOException {
 
         final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
-        String outputPartsDirectory = IOUtils.getPath(outputFile).getParent().toString();
+        String outputPartsDirectory = IOUtils.getPath(outputFile).getParent().toAbsolutePath().toUri().toString();
         if (outputPartsDirectory.endsWith("/")) {
             System.out.println("tw: outputPartsDirectory does not end with /: " + outputPartsDirectory);
             outputPartsDirectory = outputPartsDirectory + "/";
