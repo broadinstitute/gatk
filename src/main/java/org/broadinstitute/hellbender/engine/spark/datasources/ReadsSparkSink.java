@@ -227,7 +227,11 @@ public final class ReadsSparkSink {
             final SAMFileHeader header, final int numReducers) throws IOException {
 
         final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
-        final String outputPartsDirectory = outputFile + ".parts/";
+        String outputPartsDirectory = IOUtils.getPath(outputFile).getParent().toString();
+        if (outputPartsDirectory.endsWith("/")) {
+            System.out.println("tw: outputPartsDirectory does not end with /: " + outputPartsDirectory);
+            outputPartsDirectory = outputPartsDirectory + "/";
+        }
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         FileSystem fs = FileSystem.get(ctx.hadoopConfiguration());
         SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header, fs);
