@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.cram.build.CramIO;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileAlreadyExistsException;
@@ -228,7 +229,8 @@ public final class ReadsSparkSink {
         final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
         final String outputPartsDirectory = outputFile + ".parts/";
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
-        SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header);
+        FileSystem fs = FileSystem.get(ctx.hadoopConfiguration());
+        SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header, fs);
     }
 
     private static Class<? extends OutputFormat<NullWritable, SAMRecordWritable>> getOutputFormat(final SAMFormat samFormat, final boolean writeHeader) {
