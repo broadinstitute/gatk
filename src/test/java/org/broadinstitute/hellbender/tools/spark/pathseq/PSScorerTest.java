@@ -288,19 +288,19 @@ public class PSScorerTest extends CommandLineProgramTest {
                         _recordA_, _empty_},
 
                 //Suprathreshold insertions
-                {100, _0_, _0_, _20_, _0_,
+                {100, _20_, _0_, _20_, _0_,
                         _recordA_, _1_},
 
                 //Subthreshold insertions + mismatches
-                {100, Arrays.asList(1), _0_, _20_, _0_,
+                {100, Arrays.asList(21), _0_, _20_, _0_,
                         _recordA_, _empty_},
 
                 //Suprathreshold deletions
-                {100, _0_, _0_, _0_, _20_,
+                {100, _20_, _0_, _0_, _20_,
                         _recordA_, _1_},
 
                 //Subthreshold deletions
-                {100, _0_, _0_, _0_, _21_,
+                {100, _21_, _0_, _0_, _21_,
                         _recordA_, _empty_},
 
                 //Two taxa
