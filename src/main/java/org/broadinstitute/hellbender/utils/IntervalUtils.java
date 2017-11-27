@@ -1264,7 +1264,7 @@ public final class IntervalUtils {
      * @param locatables List of locatables to test.  {@code null} will never throw an exception.
      * @param <T> Locatable class
      */
-    private static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
+    public static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
         // Do not throw an exception for empty or null lists.
         if (CollectionUtils.isEmpty(locatables)) {
             return;
