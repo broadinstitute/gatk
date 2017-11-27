@@ -253,7 +253,8 @@ final class AssemblyContigAlignmentSignatureClassifier {
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignmentsIncompletePicture = split1._1;
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignmentsCompletePicture = split1._2;
 
-        return new MultipleAlignmentReclassificationResults(twoGoodAlignments, multipleAlignmentsIncompletePicture, multipleAlignmentsCompletePicture, garbage);
+        return new MultipleAlignmentReclassificationResults(twoGoodAlignments, multipleAlignmentsCompletePicture,
+                multipleAlignmentsIncompletePicture, garbage);
     }
 
     // below are dummy predicates
