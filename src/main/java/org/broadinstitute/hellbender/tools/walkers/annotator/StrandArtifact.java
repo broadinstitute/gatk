@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -25,6 +26,8 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filter (SA_POST_PROB, SA_MAP_AF)")
 public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+
     public static final String POSTERIOR_PROBABILITIES_KEY = "SA_POST_PROB";
     public static final String MAP_ALLELE_FRACTIONS_KEY = "SA_MAP_AF";
 
@@ -72,6 +75,11 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
 
         // We use the allele with highest LOD score
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, -1);
+
+        if (tumorLods==null) {
+            warning.warn("One or more variant contexts is missing the 'TLOD' annotation, StrandArtifact will not be computed for these VariantContexts");
+            return;
+        }
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
         final Allele altAlelle = vc.getAlternateAllele(indexOfMaxTumorLod);
 
