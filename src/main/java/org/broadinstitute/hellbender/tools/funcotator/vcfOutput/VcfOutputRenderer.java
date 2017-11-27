@@ -57,6 +57,7 @@ public class VcfOutputRenderer extends OutputRenderer {
                              final List<DataSourceFuncotationFactory> dataSources,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations) {
+
         this.vcfWriter = vcfWriter;
         this.existingHeader = existingHeader;
         this.dataSourceFactories = dataSources;
