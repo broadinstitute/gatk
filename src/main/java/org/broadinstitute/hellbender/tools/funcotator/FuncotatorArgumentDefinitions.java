@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -16,6 +18,14 @@ public class FuncotatorArgumentDefinitions {
     public static final String TRANSCRIPT_LIST_LONG_NAME = "transcriptList";
     public static final String TRANSCRIPT_LIST_SHORT_NAME = "tl";
     public static final Set<String> TRANSCRIPT_LIST_DEFAULT_VALUE = new HashSet<>();
+
+    public static final String ANNOTATION_DEFAULTS_LONG_NAME = "annotation-default";
+    public static final String ANNOTATION_DEFAULTS_SHORT_NAME = "d";
+    public static final List<String> ANNOTATION_DEFAULTS_DEFAULT_VALUE = new ArrayList<>();
+
+    public static final String ANNOTATION_OVERRIDES_LONG_NAME = "annotation-override";
+    public static final String ANNOTATION_OVERRIDES_SHORT_NAME = "a";
+    public static final List<String> ANNOTATION_OVERRIDES_DEFAULT_VALUE = new ArrayList<>();
 
     /**
      * The manner to select a single transcript from a set of transcripts to report as the "best" or main transcript.

@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfGeneFeature;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -12,9 +13,6 @@ import java.util.stream.Collectors;
  * Created by jonn on 8/22/17.
  */
 public class GencodeFuncotation extends Funcotation {
-
-    private static final String FIELD_DELIMITER = "|";
-    private static final String OTHER_TRANSCRIPT_DELIMITER = ";";
 
     //==================================================================================================================
 
@@ -42,7 +40,7 @@ public class GencodeFuncotation extends Funcotation {
     private String                  proteinChange;                      //           CDS
     private Double                  gcContent;
     private List<String>            otherTranscripts;                   // TRIVIAL
-
+    
     //------------------------------------------------------------
     // Non-serialized fields:
 
@@ -51,12 +49,39 @@ public class GencodeFuncotation extends Funcotation {
     private GencodeGtfGeneFeature.FeatureTag    apprisRank;
     private Integer                             transcriptLength;
 
+    //------------------------------------------------------------
+    // Fields for overriding serialized values:
+    private String hugoSymbolSerializedOverride = null;
+    private String ncbiBuildSerializedOverride = null;
+    private String chromosomeSerializedOverride = null;
+    private String startSerializedOverride = null;
+    private String endSerializedOverride = null;
+    private String variantClassificationSerializedOverride = null;
+    private String secondaryVariantClassificationSerializedOverride = null;
+    private String variantTypeSerializedOverride = null;
+    private String refAlleleSerializedOverride = null;
+    private String tumorSeqAllele1SerializedOverride = null;
+    private String tumorSeqAllele2SerializedOverride = null;
+
+    private String genomeChangeSerializedOverride = null;
+    private String annotationTranscriptSerializedOverride = null;
+    private String transcriptStrandSerializedOverride = null;
+    private String transcriptExonSerializedOverride = null;
+    private String transcriptPosSerializedOverride = null;
+    private String cDnaChangeSerializedOverride = null;
+    private String codonChangeSerializedOverride = null;
+    private String proteinChangeSerializedOverride = null;
+    private String gcContentSerializedOverride = null;
+    private String otherTranscriptsSerializedOverride = null;
+
     //==================================================================================================================
 
     /**
      * Basic constructor for a {@link GencodeFuncotation}.
      */
     public GencodeFuncotation() {}
+
+    //==================================================================================================================
 
     /**
      * @return A new builder for a {@link GencodeFuncotation}.
@@ -65,15 +90,12 @@ public class GencodeFuncotation extends Funcotation {
         return new GencodeFuncotationBuilder();
     }
 
-    //==================================================================================================================
-
     /**
-     * @return An ordered {@link List} of {@link String} containing the field names that {@link GencodeFuncotation} produces.
+     * @return An ordered {@link LinkedHashSet} of {@link String} containing the field names that {@link GencodeFuncotation} produces.
      */
-    public static List<String> getSerializedFieldNames() {
+    public static LinkedHashSet<String> getSerializedFieldNames() {
 
-        // This is
-        return Arrays.asList(
+        return new LinkedHashSet<>(Arrays.asList(
                     "hugoSymbol",
                     "ncbiBuild",
                     "chromosome",
@@ -95,49 +117,83 @@ public class GencodeFuncotation extends Funcotation {
                     "proteinChange",
                     "gcContent",
                     "otherTranscripts"
-                );
+                ));
     }
 
     //==================================================================================================================
 
-    /**
-     * Converts this {@link GencodeFuncotation} to a string suitable for insertion into a VCF file.
-     * @return a {@link String} representing this {@link GencodeFuncotation} suitable for insertion into a VCF file.
-     */
     @Override
     public String serializeToVcfString() {
+        return serializeToVcfString("");
+    }
 
-        return (hugoSymbol != null ? hugoSymbol : "") + FIELD_DELIMITER +
-                (ncbiBuild != null ? ncbiBuild : "") + FIELD_DELIMITER +
-                (chromosome != null ? chromosome : "") + FIELD_DELIMITER +
-                start + FIELD_DELIMITER +
-                end + FIELD_DELIMITER +
-                (variantClassification != null ? variantClassification : "") + FIELD_DELIMITER +
-                (secondaryVariantClassification != null ? secondaryVariantClassification : "") + FIELD_DELIMITER +
-                (variantType != null ? variantType : "") + FIELD_DELIMITER +
-                (refAllele != null ? refAllele : "") + FIELD_DELIMITER +
-                (tumorSeqAllele1 != null ? tumorSeqAllele1 : "") + FIELD_DELIMITER +
-                (tumorSeqAllele2 != null ? tumorSeqAllele2 : "") + FIELD_DELIMITER +
-                (genomeChange != null ? genomeChange : "") + FIELD_DELIMITER +
-                (annotationTranscript != null ? annotationTranscript : "") + FIELD_DELIMITER +
-                (transcriptStrand != null ? transcriptStrand : "") + FIELD_DELIMITER +
-                (transcriptExon != null ? transcriptExon : "") + FIELD_DELIMITER +
-                (transcriptPos != null ? transcriptPos : "") + FIELD_DELIMITER +
-                (cDnaChange != null ? cDnaChange : "") + FIELD_DELIMITER +
-                (codonChange != null ? codonChange : "") + FIELD_DELIMITER +
-                (proteinChange != null ? proteinChange : "") + FIELD_DELIMITER +
-                (gcContent != null ? gcContent : "") + FIELD_DELIMITER +
-                (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(OTHER_TRANSCRIPT_DELIMITER)) : "");
+    @Override
+    public String serializeToVcfString(final String manualAnnotationString) {
+
+        // Alias for the FIELD_DELIMITER so we can have nicer looking code:
+        final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
+
+        // After the manual string, we check to see if we have an override first and if not we get the set field value:
+        return  manualAnnotationString +
+                (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")) + DELIMITER +
+                (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")) + DELIMITER +
+                (chromosomeSerializedOverride != null ? chromosomeSerializedOverride : (chromosome != null ? chromosome : "")) + DELIMITER +
+                (startSerializedOverride != null ? startSerializedOverride : start) + DELIMITER +
+                (endSerializedOverride != null ? endSerializedOverride : end) + DELIMITER +
+                (variantClassificationSerializedOverride != null ? variantClassificationSerializedOverride : (variantClassification != null ? variantClassification : "")) + DELIMITER +
+                (secondaryVariantClassificationSerializedOverride != null ? secondaryVariantClassificationSerializedOverride : (secondaryVariantClassification != null ? secondaryVariantClassification : "")) + DELIMITER +
+                (variantTypeSerializedOverride != null ? variantTypeSerializedOverride : (variantType != null ? variantType : "")) + DELIMITER +
+                (refAlleleSerializedOverride != null ? refAlleleSerializedOverride : (refAllele != null ? refAllele : "")) + DELIMITER +
+                (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (tumorSeqAllele1 != null ? tumorSeqAllele1 : "")) + DELIMITER +
+                (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride : (tumorSeqAllele2 != null ? tumorSeqAllele2 : "")) + DELIMITER +
+                (genomeChangeSerializedOverride != null ? genomeChangeSerializedOverride : (genomeChange != null ? genomeChange : "")) + DELIMITER +
+                (annotationTranscriptSerializedOverride != null ? annotationTranscriptSerializedOverride : (annotationTranscript != null ? annotationTranscript : "")) + DELIMITER +
+                (transcriptStrandSerializedOverride != null ? transcriptStrandSerializedOverride : (transcriptStrand != null ? transcriptStrand : "")) + DELIMITER +
+                (transcriptExonSerializedOverride != null ? transcriptExonSerializedOverride : (transcriptExon != null ? transcriptExon : "")) + DELIMITER +
+                (transcriptPosSerializedOverride != null ? transcriptPosSerializedOverride : (transcriptPos != null ? transcriptPos : "")) + DELIMITER +
+                (cDnaChangeSerializedOverride != null ? cDnaChangeSerializedOverride : (cDnaChange != null ? cDnaChange : "")) + DELIMITER +
+                (codonChangeSerializedOverride != null ? codonChangeSerializedOverride : (codonChange != null ? codonChange : "")) + DELIMITER +
+                (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride : (proteinChange != null ? proteinChange : "")) + DELIMITER +
+                (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? gcContent : "")) + DELIMITER +
+                (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""));
+    }
+
+    @Override
+    public void setFieldSerializationOverrideValue( final String field, final String overrideValue ) {
+        switch (field) {
+            case "hugoSymbol": hugoSymbolSerializedOverride = overrideValue; break;
+            case "ncbiBuild": ncbiBuildSerializedOverride = overrideValue; break;
+            case "chromosome": chromosomeSerializedOverride = overrideValue; break;
+            case "start": startSerializedOverride = overrideValue; break;
+            case "end": endSerializedOverride = overrideValue; break;
+            case "variantClassification": variantClassificationSerializedOverride = overrideValue; break;
+            case "secondaryVariantClassification": secondaryVariantClassificationSerializedOverride = overrideValue; break;
+            case "variantType": variantTypeSerializedOverride = overrideValue; break;
+            case "refAllele": refAlleleSerializedOverride = overrideValue; break;
+            case "tumorSeqAllele1": tumorSeqAllele1SerializedOverride = overrideValue; break;
+            case "tumorSeqAllele2": tumorSeqAllele2SerializedOverride = overrideValue; break;
+            case "genomeChange": genomeChangeSerializedOverride = overrideValue; break;
+            case "annotationTranscript": annotationTranscriptSerializedOverride = overrideValue; break;
+            case "transcriptStrand": transcriptStrandSerializedOverride = overrideValue; break;
+            case "transcriptExon": transcriptExonSerializedOverride = overrideValue; break;
+            case "transcriptPos": transcriptPosSerializedOverride = overrideValue; break;
+            case "cDnaChange": cDnaChangeSerializedOverride = overrideValue; break;
+            case "codonChange": codonChangeSerializedOverride = overrideValue; break;
+            case "proteinChange": proteinChangeSerializedOverride = overrideValue; break;
+            case "gcContent": gcContentSerializedOverride = overrideValue; break;
+            case "otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
+            default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + field + " (value was: " + overrideValue + ")");
+        }
     }
 
     //==================================================================================================================
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if ( this == o ) return true;
         if ( o == null || getClass() != o.getClass() ) return false;
 
-        GencodeFuncotation that = (GencodeFuncotation) o;
+        final GencodeFuncotation that = (GencodeFuncotation) o;
 
         if ( start != that.start ) return false;
         if ( end != that.end ) return false;
@@ -170,7 +226,49 @@ public class GencodeFuncotation extends Funcotation {
             return false;
         if ( locusLevel != null ? !locusLevel.equals(that.locusLevel) : that.locusLevel != null ) return false;
         if ( apprisRank != that.apprisRank ) return false;
-        return transcriptLength != null ? transcriptLength.equals(that.transcriptLength) : that.transcriptLength == null;
+        if ( transcriptLength != null ? !transcriptLength.equals(that.transcriptLength) : that.transcriptLength != null )
+            return false;
+        if ( hugoSymbolSerializedOverride != null ? !hugoSymbolSerializedOverride.equals(that.hugoSymbolSerializedOverride) : that.hugoSymbolSerializedOverride != null )
+            return false;
+        if ( ncbiBuildSerializedOverride != null ? !ncbiBuildSerializedOverride.equals(that.ncbiBuildSerializedOverride) : that.ncbiBuildSerializedOverride != null )
+            return false;
+        if ( chromosomeSerializedOverride != null ? !chromosomeSerializedOverride.equals(that.chromosomeSerializedOverride) : that.chromosomeSerializedOverride != null )
+            return false;
+        if ( startSerializedOverride != null ? !startSerializedOverride.equals(that.startSerializedOverride) : that.startSerializedOverride != null )
+            return false;
+        if ( endSerializedOverride != null ? !endSerializedOverride.equals(that.endSerializedOverride) : that.endSerializedOverride != null )
+            return false;
+        if ( variantClassificationSerializedOverride != null ? !variantClassificationSerializedOverride.equals(that.variantClassificationSerializedOverride) : that.variantClassificationSerializedOverride != null )
+            return false;
+        if ( secondaryVariantClassificationSerializedOverride != null ? !secondaryVariantClassificationSerializedOverride.equals(that.secondaryVariantClassificationSerializedOverride) : that.secondaryVariantClassificationSerializedOverride != null )
+            return false;
+        if ( variantTypeSerializedOverride != null ? !variantTypeSerializedOverride.equals(that.variantTypeSerializedOverride) : that.variantTypeSerializedOverride != null )
+            return false;
+        if ( refAlleleSerializedOverride != null ? !refAlleleSerializedOverride.equals(that.refAlleleSerializedOverride) : that.refAlleleSerializedOverride != null )
+            return false;
+        if ( tumorSeqAllele1SerializedOverride != null ? !tumorSeqAllele1SerializedOverride.equals(that.tumorSeqAllele1SerializedOverride) : that.tumorSeqAllele1SerializedOverride != null )
+            return false;
+        if ( tumorSeqAllele2SerializedOverride != null ? !tumorSeqAllele2SerializedOverride.equals(that.tumorSeqAllele2SerializedOverride) : that.tumorSeqAllele2SerializedOverride != null )
+            return false;
+        if ( genomeChangeSerializedOverride != null ? !genomeChangeSerializedOverride.equals(that.genomeChangeSerializedOverride) : that.genomeChangeSerializedOverride != null )
+            return false;
+        if ( annotationTranscriptSerializedOverride != null ? !annotationTranscriptSerializedOverride.equals(that.annotationTranscriptSerializedOverride) : that.annotationTranscriptSerializedOverride != null )
+            return false;
+        if ( transcriptStrandSerializedOverride != null ? !transcriptStrandSerializedOverride.equals(that.transcriptStrandSerializedOverride) : that.transcriptStrandSerializedOverride != null )
+            return false;
+        if ( transcriptExonSerializedOverride != null ? !transcriptExonSerializedOverride.equals(that.transcriptExonSerializedOverride) : that.transcriptExonSerializedOverride != null )
+            return false;
+        if ( transcriptPosSerializedOverride != null ? !transcriptPosSerializedOverride.equals(that.transcriptPosSerializedOverride) : that.transcriptPosSerializedOverride != null )
+            return false;
+        if ( cDnaChangeSerializedOverride != null ? !cDnaChangeSerializedOverride.equals(that.cDnaChangeSerializedOverride) : that.cDnaChangeSerializedOverride != null )
+            return false;
+        if ( codonChangeSerializedOverride != null ? !codonChangeSerializedOverride.equals(that.codonChangeSerializedOverride) : that.codonChangeSerializedOverride != null )
+            return false;
+        if ( proteinChangeSerializedOverride != null ? !proteinChangeSerializedOverride.equals(that.proteinChangeSerializedOverride) : that.proteinChangeSerializedOverride != null )
+            return false;
+        if ( gcContentSerializedOverride != null ? !gcContentSerializedOverride.equals(that.gcContentSerializedOverride) : that.gcContentSerializedOverride != null )
+            return false;
+        return otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride.equals(that.otherTranscriptsSerializedOverride) : that.otherTranscriptsSerializedOverride == null;
     }
 
     @Override
@@ -199,6 +297,27 @@ public class GencodeFuncotation extends Funcotation {
         result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
         result = 31 * result + (apprisRank != null ? apprisRank.hashCode() : 0);
         result = 31 * result + (transcriptLength != null ? transcriptLength.hashCode() : 0);
+        result = 31 * result + (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride.hashCode() : 0);
+        result = 31 * result + (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride.hashCode() : 0);
+        result = 31 * result + (chromosomeSerializedOverride != null ? chromosomeSerializedOverride.hashCode() : 0);
+        result = 31 * result + (startSerializedOverride != null ? startSerializedOverride.hashCode() : 0);
+        result = 31 * result + (endSerializedOverride != null ? endSerializedOverride.hashCode() : 0);
+        result = 31 * result + (variantClassificationSerializedOverride != null ? variantClassificationSerializedOverride.hashCode() : 0);
+        result = 31 * result + (secondaryVariantClassificationSerializedOverride != null ? secondaryVariantClassificationSerializedOverride.hashCode() : 0);
+        result = 31 * result + (variantTypeSerializedOverride != null ? variantTypeSerializedOverride.hashCode() : 0);
+        result = 31 * result + (refAlleleSerializedOverride != null ? refAlleleSerializedOverride.hashCode() : 0);
+        result = 31 * result + (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride.hashCode() : 0);
+        result = 31 * result + (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride.hashCode() : 0);
+        result = 31 * result + (genomeChangeSerializedOverride != null ? genomeChangeSerializedOverride.hashCode() : 0);
+        result = 31 * result + (annotationTranscriptSerializedOverride != null ? annotationTranscriptSerializedOverride.hashCode() : 0);
+        result = 31 * result + (transcriptStrandSerializedOverride != null ? transcriptStrandSerializedOverride.hashCode() : 0);
+        result = 31 * result + (transcriptExonSerializedOverride != null ? transcriptExonSerializedOverride.hashCode() : 0);
+        result = 31 * result + (transcriptPosSerializedOverride != null ? transcriptPosSerializedOverride.hashCode() : 0);
+        result = 31 * result + (cDnaChangeSerializedOverride != null ? cDnaChangeSerializedOverride.hashCode() : 0);
+        result = 31 * result + (codonChangeSerializedOverride != null ? codonChangeSerializedOverride.hashCode() : 0);
+        result = 31 * result + (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride.hashCode() : 0);
+        result = 31 * result + (gcContentSerializedOverride != null ? gcContentSerializedOverride.hashCode() : 0);
+        result = 31 * result + (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride.hashCode() : 0);
         return result;
     }
 
@@ -229,10 +348,31 @@ public class GencodeFuncotation extends Funcotation {
                 ", locusLevel=" + locusLevel +
                 ", apprisRank=" + apprisRank +
                 ", transcriptLength=" + transcriptLength +
+                ", hugoSymbolSerializedOverride='" + hugoSymbolSerializedOverride + '\'' +
+                ", ncbiBuildSerializedOverride='" + ncbiBuildSerializedOverride + '\'' +
+                ", chromosomeSerializedOverride='" + chromosomeSerializedOverride + '\'' +
+                ", startSerializedOverride='" + startSerializedOverride + '\'' +
+                ", endSerializedOverride='" + endSerializedOverride + '\'' +
+                ", variantClassificationSerializedOverride='" + variantClassificationSerializedOverride + '\'' +
+                ", secondaryVariantClassificationSerializedOverride='" + secondaryVariantClassificationSerializedOverride + '\'' +
+                ", variantTypeSerializedOverride='" + variantTypeSerializedOverride + '\'' +
+                ", refAlleleSerializedOverride='" + refAlleleSerializedOverride + '\'' +
+                ", tumorSeqAllele1SerializedOverride='" + tumorSeqAllele1SerializedOverride + '\'' +
+                ", tumorSeqAllele2SerializedOverride='" + tumorSeqAllele2SerializedOverride + '\'' +
+                ", genomeChangeSerializedOverride='" + genomeChangeSerializedOverride + '\'' +
+                ", annotationTranscriptSerializedOverride='" + annotationTranscriptSerializedOverride + '\'' +
+                ", transcriptStrandSerializedOverride='" + transcriptStrandSerializedOverride + '\'' +
+                ", transcriptExonSerializedOverride='" + transcriptExonSerializedOverride + '\'' +
+                ", transcriptPosSerializedOverride='" + transcriptPosSerializedOverride + '\'' +
+                ", cDnaChangeSerializedOverride='" + cDnaChangeSerializedOverride + '\'' +
+                ", codonChangeSerializedOverride='" + codonChangeSerializedOverride + '\'' +
+                ", proteinChangeSerializedOverride='" + proteinChangeSerializedOverride + '\'' +
+                ", gcContentSerializedOverride='" + gcContentSerializedOverride + '\'' +
+                ", otherTranscriptsSerializedOverride='" + otherTranscriptsSerializedOverride + '\'' +
                 '}';
     }
 
-//==================================================================================================================
+    //==================================================================================================================
 
     public String getHugoSymbol() {
         return hugoSymbol;
