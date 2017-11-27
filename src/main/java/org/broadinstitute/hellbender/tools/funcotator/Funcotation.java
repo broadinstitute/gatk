@@ -40,4 +40,4 @@ public abstract class Funcotation {
      * @return a {@link String} representing this {@link Funcotation} suitable for insertion into a VCF file.
      */
     public abstract String serializeToVcfString(final String manualAnnotationString);
-}
+} 
