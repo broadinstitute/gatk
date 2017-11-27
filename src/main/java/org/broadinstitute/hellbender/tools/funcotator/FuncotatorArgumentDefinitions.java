@@ -11,6 +11,19 @@ import java.util.Set;
  */
 public class FuncotatorArgumentDefinitions {
 
+    public static final char MAP_NAME_VALUE_DELIMITER = ':';
+
+    // ------------------------------------------------------------
+    // Definitions for required arguments:
+
+    public static final String GTF_FILE_ARG_LONG_NAME = "gtfFile";
+    public static final String GTF_FILE_ARG_SHORT_NAME = "gtf";
+
+    public static final String GENCODE_FASTA_ARG_NAME = "fasta";
+
+    // ------------------------------------------------------------
+    // Definitions for optional arguments:
+
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcriptSelectionMode";
     public static final String TRANSCRIPT_SELECTION_MODE_SHORT_NAME = "tm";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANNONICAL;
@@ -26,6 +39,9 @@ public class FuncotatorArgumentDefinitions {
     public static final String ANNOTATION_OVERRIDES_LONG_NAME = "annotation-override";
     public static final String ANNOTATION_OVERRIDES_SHORT_NAME = "a";
     public static final List<String> ANNOTATION_OVERRIDES_DEFAULT_VALUE = new ArrayList<>();
+
+    // ------------------------------------------------------------
+    // Helper Types:
 
     /**
      * The manner to select a single transcript from a set of transcripts to report as the "best" or main transcript.

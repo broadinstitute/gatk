@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -36,10 +37,6 @@ import java.util.*;
 @BetaFeature
 public class Funcotator extends VariantWalker {
 
-    public static final String GTF_FILE_ARG_LONG_NAME = "gtfFile";
-    public static final String GTF_FILE_ARG_SHORT_NAME = "gtf";
-    public static final String GENCODE_FASTA_ARG_NAME = "fasta";
-
     //==================================================================================================================
     // Arguments:
 
@@ -53,14 +50,14 @@ public class Funcotator extends VariantWalker {
     protected File outputFile;
 
     @Argument(
-            shortName = GENCODE_FASTA_ARG_NAME,
-            fullName  = GENCODE_FASTA_ARG_NAME,
+            shortName = FuncotatorArgumentDefinitions.GENCODE_FASTA_ARG_NAME,
+            fullName  = FuncotatorArgumentDefinitions.GENCODE_FASTA_ARG_NAME,
             doc = "GENCODE Transcript FASTA File.")
     protected File gencodeTranscriptFastaFile;
 
     @Argument(
-            fullName = GTF_FILE_ARG_LONG_NAME,
-            shortName = GTF_FILE_ARG_SHORT_NAME,
+            fullName =  FuncotatorArgumentDefinitions.GTF_FILE_ARG_LONG_NAME,
+            shortName = FuncotatorArgumentDefinitions.GTF_FILE_ARG_SHORT_NAME,
             doc = "A GENCODE GTF file containing annotated genes."
     )
     private FeatureInput<GencodeGtfFeature> gtfVariants;
@@ -178,13 +175,13 @@ public class Funcotator extends VariantWalker {
      * @return A {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
      */
     private LinkedHashMap<String, String> getUnaccountedForAnnotations( final List<DataSourceFuncotationFactory> dataSourceFactories,
-                                                              final Map<String, String> annotationMap ) {
+                                                                        final Map<String, String> annotationMap ) {
         final LinkedHashMap<String, String> outAnnotations = new LinkedHashMap<>();
 
         // Check each field in each factory:
-        for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
-            for ( final String field : funcotationFactory.getSupportedFuncotationFields() ) {
-                if ( annotationMap.containsKey(field) ) {
+        for ( final String field : annotationMap.keySet() ) {
+            for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
+                if ( !funcotationFactory.getSupportedFuncotationFields().contains(field) ) {
                     outAnnotations.put(field, annotationMap.get(field));
                 }
             }
@@ -223,12 +220,12 @@ public class Funcotator extends VariantWalker {
         final LinkedHashMap<String, String> annotationMap = new LinkedHashMap<>();
 
         for ( final String s : annotationArgs ) {
-            final String[] keyVal = s.split(":");
-            if ( keyVal.length != 2) {
+            final List<String> keyVal = ParsingUtils.split(s, FuncotatorArgumentDefinitions.MAP_NAME_VALUE_DELIMITER);
+            if ( keyVal.size() != 2) {
                 throw new UserException.BadInput( "Argument annotation incorrectly formatted: " + s );
             }
 
-            annotationMap.put( keyVal[0], keyVal[1] );
+            annotationMap.put( keyVal.get(0), keyVal.get(1) );
         }
 
         return annotationMap;
