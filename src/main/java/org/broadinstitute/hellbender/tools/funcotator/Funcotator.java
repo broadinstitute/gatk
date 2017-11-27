@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
@@ -83,6 +84,22 @@ public class Funcotator extends VariantWalker {
     )
     protected Set<String> transcriptList = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_DEFAULT_VALUE;
 
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME,
+            optional = true,
+            doc = "Default values for annotations that are not added (in the format <ANNOTATION>:<VALUE>)"
+    )
+    protected List<String> annotationDefaults = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_DEFAULT_VALUE;
+
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME,
+            optional = true,
+            doc = "Override values for annotations.  Replaces existing matchihng annotations with given values (in the format <ANNOTATION>:<VALUE>)"
+    )
+    protected List<String> annotationOverrides = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_DEFAULT_VALUE;
+
     //==================================================================================================================
 
     private OutputRenderer outputRenderer;
@@ -99,12 +116,29 @@ public class Funcotator extends VariantWalker {
     public void onTraversalStart() {
         logger.info("Beginning traversal");
 
+        final LinkedHashMap<String, String> annotationDefaultsMap = splitAnnotationArgsIntoMap(annotationDefaults);
+        final LinkedHashMap<String, String> annotationOverridesMap = splitAnnotationArgsIntoMap(annotationOverrides);
+
         // Set up our data source factories:
-        dataSourceFactories.add(new GencodeFuncotationFactory(gencodeTranscriptFastaFile, transcriptSelectionMode, transcriptList));
+        dataSourceFactories.add(
+                new GencodeFuncotationFactory(gencodeTranscriptFastaFile,
+                        transcriptSelectionMode,
+                        transcriptList,
+                        annotationOverridesMap)
+        );
+
+        // Need to determine which annotations are accounted for (by the funcotation factories) and which are not.
+        final LinkedHashMap<String, String> unaccountedForDefaultAnnotations = getUnaccountedForAnnotations( dataSourceFactories, annotationDefaultsMap );
+        final LinkedHashMap<String, String> unaccountedForOverrideAnnotations = getUnaccountedForAnnotations( dataSourceFactories, annotationOverridesMap );
 
         // Set up our output renderer:
         // TODO: in the future this should be encapsulated into a factory for output renderers based on an input argument.
-        outputRenderer = new VcfOutputRenderer(getHeaderForVariants(), createVCFWriter(outputFile), dataSourceFactories);
+        outputRenderer = new VcfOutputRenderer(getHeaderForVariants(),
+                                                createVCFWriter(outputFile),
+                                                dataSourceFactories,
+                                                unaccountedForDefaultAnnotations,
+                                                unaccountedForOverrideAnnotations);
+
         outputRenderer.open();
     }
 
@@ -138,6 +172,28 @@ public class Funcotator extends VariantWalker {
     //==================================================================================================================
 
     /**
+     * Creates a {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
+     * @param dataSourceFactories {@link List} of {@link DataSourceFuncotationFactory} to check for whether each annotation in the {@code annotationMap} is handled.
+     * @param annotationMap {@link Map} (of ANNOTATION_NAME : ANNOTATION_VALUE) to check
+     * @return A {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
+     */
+    private LinkedHashMap<String, String> getUnaccountedForAnnotations( final List<DataSourceFuncotationFactory> dataSourceFactories,
+                                                              final Map<String, String> annotationMap ) {
+        final LinkedHashMap<String, String> outAnnotations = new LinkedHashMap<>();
+
+        // Check each field in each factory:
+        for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
+            for ( final String field : funcotationFactory.getSupportedFuncotationFields() ) {
+                if ( annotationMap.containsKey(field) ) {
+                    outAnnotations.put(field, annotationMap.get(field));
+                }
+            }
+        }
+
+        return outAnnotations;
+    }
+
+    /**
      * Creates an annotation on the given {@code variant} or enqueues it to be processed during a later call to this method.
      * @param variant {@link VariantContext} to annotate.
      * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
@@ -153,5 +209,28 @@ public class Funcotator extends VariantWalker {
             funcotations.addAll( funcotationFactory.createFuncotations(variant, referenceContext, featureList) );
         }
         outputRenderer.write(variant, funcotations);
+    }
+
+    /**
+     * Split each element of the given {@link List} into a key and value.
+     * Assumes each element of the given {@link List} is formatted as follows:
+     *     KEY:VALUE
+     * @param annotationArgs {@link List} of strings formatted KEY:VALUE to turn into a {@link Map}.
+     * @return A {@link LinkedHashMap} of KEY:VALUE pairs corresponding to entries in the given list.
+     */
+    private LinkedHashMap<String, String> splitAnnotationArgsIntoMap( final List<String> annotationArgs ) {
+
+        final LinkedHashMap<String, String> annotationMap = new LinkedHashMap<>();
+
+        for ( final String s : annotationArgs ) {
+            final String[] keyVal = s.split(":");
+            if ( keyVal.length != 2) {
+                throw new UserException.BadInput( "Argument annotation incorrectly formatted: " + s );
+            }
+
+            annotationMap.put( keyVal[0], keyVal[1] );
+        }
+
+        return annotationMap;
     }
 }

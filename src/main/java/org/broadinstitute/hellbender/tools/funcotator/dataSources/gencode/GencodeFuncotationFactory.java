@@ -125,20 +125,27 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile) {
-        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>());
+        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>(), new LinkedHashMap<>());
     }
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final Set<String> userRequestedTranscripts) {
-        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts);
+        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts, new LinkedHashMap<>());
     }
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode) {
-        this(gencodeTranscriptFastaFile, transcriptSelectionMode, new HashSet<>());
+        this(gencodeTranscriptFastaFile, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
     }
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile,
                                      final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts) {
+        this(gencodeTranscriptFastaFile, transcriptSelectionMode, userRequestedTranscripts, new LinkedHashMap<>());
+    }
+
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile,
+                                     final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
+                                     final Set<String> userRequestedTranscripts,
+                                     final LinkedHashMap<String, String> annotationOverrides) {
         transcriptFastaReferenceDataSource = ReferenceDataSource.of(gencodeTranscriptFastaFile);
         transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
 
@@ -149,6 +156,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         for ( final String transcript : userRequestedTranscripts ) {
             this.userRequestedTranscripts.add( getTranscriptIdWithoutVersionNumber(transcript) );
         }
+
+        // Initialize overrides / defaults:
+        initializeAnnotationOverrides( annotationOverrides );
     }
 
     //==================================================================================================================
@@ -159,7 +169,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     @Override
-    public List<String> getSupportedFuncotationFields() {
+    public String getName() {
+        return "Gencode";
+    }
+
+    @Override
+    public LinkedHashSet<String> getSupportedFuncotationFields() {
         return GencodeFuncotation.getSerializedFieldNames();
     }
 
@@ -197,6 +212,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
         filterAnnotationsByUserTranscripts( gencodeFuncotations, userRequestedTranscripts );
+
+        // Now we set the overrides and default values for each annotation:
+
+
 
         // TODO: this is sloppy:
         final List<Funcotation> outputList = new ArrayList<>();

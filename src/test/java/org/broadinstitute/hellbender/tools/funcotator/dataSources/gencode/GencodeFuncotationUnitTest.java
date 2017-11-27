@@ -6,6 +6,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
@@ -250,9 +251,9 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
 
     @Test
     void testGetSerializedFieldNames() {
-        final List<String> serializedFieldNames = GencodeFuncotation.getSerializedFieldNames();
+        final LinkedHashSet<String> serializedFieldNames = GencodeFuncotation.getSerializedFieldNames();
 
-        final List<String> expectedFieldNames = Arrays.asList(
+        final LinkedHashSet<String> expectedFieldNames = new LinkedHashSet<>(Arrays.asList(
                 "hugoSymbol",
                 "ncbiBuild",
                 "chromosome",
@@ -273,7 +274,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                 "codonChange",
                 "proteinChange",
                 "gcContent",
-                "otherTranscripts");
+                "otherTranscripts"));
 
         Assert.assertEquals(serializedFieldNames, expectedFieldNames);
     }

@@ -668,7 +668,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideDataForTestCalculateGcContent() {
-  
+
                           // Base Position:
                           //
                           //1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
