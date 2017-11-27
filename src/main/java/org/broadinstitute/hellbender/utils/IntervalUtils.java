@@ -10,8 +10,6 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.Feature;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -27,6 +25,8 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -1415,7 +1415,7 @@ public final class IntervalUtils {
      * @param locatables List of locatables to test.  {@code null} will never throw an exception.
      * @param <T> Locatable class
      */
-    private static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
+    public static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
         // Do not throw an exception for empty or null lists.
         if (CollectionUtils.isEmpty(locatables)) {
             return;

@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -29,9 +30,9 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
     public void testBasic() {
         // This test is simply running the full tool and making sure that there are no serious errors.
         //  No variants should validate, since the validation bam is not the same one used for calling.
-        final File outputFile = IOUtils.createTempFile("basicTest", ".txt");
+        final File outputFile = IOUtils.createTempFile("basicTest", ".seg");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME);
+        arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("synthetic.challenge.set1.tumor");
         arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CASE);
         arguments.add("synthetic.challenge.set1.tumor");
@@ -60,8 +61,8 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
 
         Assert.assertTrue(outputFile.exists());
 
-        final List<SimpleAnnotatedGenomicRegion> variantValidationResults =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers)));
+        final List<AnnotatedInterval> variantValidationResults =
+                AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
 
         Assert.assertEquals(variantValidationResults.size(), 2);
 
@@ -84,9 +85,9 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         // This test is simply running the full tool and making sure that there are no serious errors.
         //  All variants should validate (or be unpowered)
 
-        final File outputFile = IOUtils.createTempFile("basicTest", ".txt");
+        final File outputFile = IOUtils.createTempFile("basicTest", ".seg");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME);
+        arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("IS3.snv.indel.sv");
         arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CASE);
         arguments.add("IS3.snv.indel.sv");
@@ -117,8 +118,8 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
 
         Assert.assertTrue(outputFile.exists());
 
-        final List<SimpleAnnotatedGenomicRegion> variantValidationResults =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers)));
+        final List<AnnotatedInterval> variantValidationResults =
+                AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
 
         Assert.assertEquals(variantValidationResults.size(), 336);
 
@@ -138,12 +139,12 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
                 37);  // One read has low BQ in the insertion, so 9, instead of 10
     }
 
-    private void assertValidationResult(final List<SimpleAnnotatedGenomicRegion> variantValidationResults,
+    private void assertValidationResult(final List<AnnotatedInterval> variantValidationResults,
                                         final SimpleInterval firstBaseInVariant, final String refString,
                                         final String altString, int gtValidationAltCoverage, int gtValidationRefCoverage,
                                         int gtDiscoveryAltCoverage, int gtDiscoveryRefCoverage) {
-        final OverlapDetector<SimpleAnnotatedGenomicRegion> overlapDetector = OverlapDetector.create(variantValidationResults);
-        final SimpleAnnotatedGenomicRegion indel = overlapDetector.getOverlaps(firstBaseInVariant).iterator().next();
+        final OverlapDetector<AnnotatedInterval> overlapDetector = OverlapDetector.create(variantValidationResults);
+        final AnnotatedInterval indel = overlapDetector.getOverlaps(firstBaseInVariant).iterator().next();
         final SortedMap<String, String> indelAnnotations = indel.getAnnotations();
 
         Assert.assertEquals(indelAnnotations.get(ValidateBasicSomaticShortMutations.REF), refString);

@@ -1,0 +1,5 @@
+gene	segment_contig	segment_start	segment_start_gene	segment_start_exon	segment_end	segment_end_gene	segment_end_exon	segment_num_probes	segment_mean	segment_call	build	sample
+Foogene1	1	5000	HERE1	2+	60000	HERE5	11-	100	-0.04	0	hg19	SAMPLE1
+Foogene2	1	70000	HERE2	3-	100000	HERE6	11-	100	-0.8	-	hg19	SAMPLE1
+Foogene3	1	120000	HERE3	11-	220000	HERE7	11-	100	-0.1	0	hg19	SAMPLE1
+FooGene4	1	230000	HERE4	10+	300000	HERE8	11-	300	-0.8	-	hg19	SAMPLE1

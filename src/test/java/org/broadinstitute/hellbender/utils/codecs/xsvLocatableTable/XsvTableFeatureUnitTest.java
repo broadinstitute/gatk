@@ -85,7 +85,7 @@ public class XsvTableFeatureUnitTest extends GATKBaseTest {
     @Test
     public void testGetHeaderWithoutLocationColumns () {
         Assert.assertEquals(
-            exampleFile1Feature.getHeaderWithoutLocationColuns(),
+            exampleFile1Feature.getHeaderWithoutLocationColumns(),
             Arrays.asList("XSV_LOCATABLE_TEST_NAME_Villain",
                     "XSV_LOCATABLE_TEST_NAME_test_val",
                     "XSV_LOCATABLE_TEST_NAME_Bond")

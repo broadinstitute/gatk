@@ -91,7 +91,7 @@ public class TableFuncotation implements Funcotation {
 
     public TableFuncotation(final XsvTableFeature xsvTableFeature, final Allele altAllele, final String dataSourceName) {
 
-        final List<String> keys = xsvTableFeature.getHeaderWithoutLocationColuns();
+        final List<String> keys = xsvTableFeature.getHeaderWithoutLocationColumns();
         final List<String> values = xsvTableFeature.getValuesWithoutLocationColumns();
 
         fieldMap = new LinkedHashMap<>(keys.size());

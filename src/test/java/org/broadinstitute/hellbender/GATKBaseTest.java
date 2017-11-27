@@ -10,7 +10,10 @@ import org.testng.annotations.BeforeClass;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * This is the base test class for all of our test cases.  All test cases should extend from this
@@ -75,6 +78,7 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String v37_chr17_1Mb_Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
 
     public static final String hg19_chr1_1M_Reference = publicTestDir + "Homo_sapiens_assembly19_chr1_1M.fasta";
+    public static final String hg19_chr1_1M_dict = publicTestDir + "Homo_sapiens_assembly19_chr1_1M.dict";
     public static final String hg19_chr1_1M_dbSNP = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
 
     // the following file has been modified such that the first chromosome length is 1M; this is sometimes

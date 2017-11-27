@@ -1,4 +1,5 @@
-#SAMPLE_NAME=SAMPLE1
+# This is another comment
+# This is yet another comment
 CONTIG	START	END	NUM_POINTS	MEAN_LOG2_COPY_RATIO	CALL
 1	10001	10500	100	-0.03	0
 1	52500	109750	200	-0.76	-

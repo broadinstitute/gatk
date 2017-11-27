@@ -203,7 +203,7 @@ public class XsvTableFeature implements Feature {
      *  {@link XsvTableFeature#endColumn}
      * @return The header for this {@link XsvTableFeature} without location columns.
      */
-    public List<String> getHeaderWithoutLocationColuns() {
+    public List<String> getHeaderWithoutLocationColumns() {
         final List<String> outList = new ArrayList<>(columnNames);
         for ( final int indx : locationColumnRemoveIndiciesInOrder ) {
             outList.remove(indx);
