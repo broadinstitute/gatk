@@ -214,8 +214,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         filterAnnotationsByUserTranscripts( gencodeFuncotations, userRequestedTranscripts );
 
         // Now we set the overrides and default values for each annotation:
-
-
+        for ( final GencodeFuncotation gencodeFuncotation : gencodeFuncotations ) {
+            gencodeFuncotation.setFieldSerializationOverrideValues( annotationOverrideMap );
+        }
 
         // TODO: this is sloppy:
         final List<Funcotation> outputList = new ArrayList<>();
@@ -385,6 +386,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             return codingVariantClassifications.contains(varClass);
         }
     }
+
+    //==================================================================================================================
 
     /**
      * Creates a {@link List} of {@link GencodeFuncotation}s based on the given {@link VariantContext}, {@link Allele}, and {@link GencodeGtfGeneFeature}.

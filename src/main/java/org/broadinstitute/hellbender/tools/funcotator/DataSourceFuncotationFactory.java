@@ -27,7 +27,7 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
     protected void initializeAnnotationOverrides(final LinkedHashMap<String, String> annotationOverrides) {
         // Go through the Annotation Maps and check to see if the default/override annotation names are applicable for
         // this FuncotationFactory:
-        final LinkedHashSet<String> supportedFuncotations = new LinkedHashSet<>( getSupportedFuncotationFields() );
+        final Set<String> supportedFuncotations = getSupportedFuncotationFields();
         this.annotationOverrideMap = new HashMap<>();
         for ( final String annotationOverrideKey : annotationOverrides.keySet() ) {
             if ( supportedFuncotations.contains(annotationOverrideKey) ) {
