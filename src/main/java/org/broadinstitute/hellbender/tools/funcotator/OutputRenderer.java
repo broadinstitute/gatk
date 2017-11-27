@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.variant.variantcontext.VariantContext;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -17,6 +14,20 @@ import java.util.List;
  * Created by jonn on 8/30/17.
  */
 public abstract class OutputRenderer {
+
+    //==================================================================================================================
+    /**
+     * {@link LinkedHashMap} of manually specified annotations to add to each output in addition to annotations provided
+     * to {@link OutputRenderer#write(VariantContext, List)}.
+     */
+    protected LinkedHashMap<String, String> manualAnnotations;
+
+    /**
+     * {@link String} representation of {@link OutputRenderer#manualAnnotations} serialized to the output format of this {@link OutputRenderer}.
+     */
+    protected String manualAnnotationSerializedString;
+
+    //==================================================================================================================
 
     /**
      * Open the {@link OutputRenderer} for writing.
