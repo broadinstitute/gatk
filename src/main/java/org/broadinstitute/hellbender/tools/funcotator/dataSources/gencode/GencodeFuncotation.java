@@ -81,6 +81,57 @@ public class GencodeFuncotation extends Funcotation {
      */
     public GencodeFuncotation() {}
 
+    /**
+     * Copy constructor for a {@link GencodeFuncotation}.
+     */
+    public GencodeFuncotation(final GencodeFuncotation that) {
+        this.hugoSymbol = that.hugoSymbol;
+        this.ncbiBuild = that.ncbiBuild;
+        this.chromosome = that.chromosome;
+        this.start = that.start;
+        this.end = that.end;
+        this.variantClassification = that.variantClassification;
+        this.secondaryVariantClassification = that.secondaryVariantClassification;
+        this.variantType = that.variantType;
+        this.refAllele = that.refAllele;
+        this.tumorSeqAllele1 = that.tumorSeqAllele1;
+        this.tumorSeqAllele2 = that.tumorSeqAllele2;
+        this.genomeChange = that.genomeChange;
+        this.annotationTranscript = that.annotationTranscript;
+        this.transcriptStrand = that.transcriptStrand;
+        this.transcriptExon = that.transcriptExon;
+        this.transcriptPos = that.transcriptPos;
+        this.cDnaChange = that.cDnaChange;
+        this.codonChange = that.codonChange;
+        this.proteinChange = that.proteinChange;
+        this.gcContent = that.gcContent;
+        this.otherTranscripts = that.otherTranscripts;
+        this.locusLevel = that.locusLevel;
+        this.apprisRank = that.apprisRank;
+        this.transcriptLength = that.transcriptLength;
+        this.hugoSymbolSerializedOverride = that.hugoSymbolSerializedOverride;
+        this.ncbiBuildSerializedOverride = that.ncbiBuildSerializedOverride;
+        this.chromosomeSerializedOverride = that.chromosomeSerializedOverride;
+        this.startSerializedOverride = that.startSerializedOverride;
+        this.endSerializedOverride = that.endSerializedOverride;
+        this.variantClassificationSerializedOverride = that.variantClassificationSerializedOverride;
+        this.secondaryVariantClassificationSerializedOverride = that.secondaryVariantClassificationSerializedOverride;
+        this.variantTypeSerializedOverride = that.variantTypeSerializedOverride;
+        this.refAlleleSerializedOverride = that.refAlleleSerializedOverride;
+        this.tumorSeqAllele1SerializedOverride = that.tumorSeqAllele1SerializedOverride;
+        this.tumorSeqAllele2SerializedOverride = that.tumorSeqAllele2SerializedOverride;
+        this.genomeChangeSerializedOverride = that.genomeChangeSerializedOverride;
+        this.annotationTranscriptSerializedOverride = that.annotationTranscriptSerializedOverride;
+        this.transcriptStrandSerializedOverride = that.transcriptStrandSerializedOverride;
+        this.transcriptExonSerializedOverride = that.transcriptExonSerializedOverride;
+        this.transcriptPosSerializedOverride = that.transcriptPosSerializedOverride;
+        this.cDnaChangeSerializedOverride = that.cDnaChangeSerializedOverride;
+        this.codonChangeSerializedOverride = that.codonChangeSerializedOverride;
+        this.proteinChangeSerializedOverride = that.proteinChangeSerializedOverride;
+        this.gcContentSerializedOverride = that.gcContentSerializedOverride;
+        this.otherTranscriptsSerializedOverride = that.otherTranscriptsSerializedOverride;
+    }
+
     //==================================================================================================================
 
     /**
@@ -133,8 +184,10 @@ public class GencodeFuncotation extends Funcotation {
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
 
+        final String prependedAnnotations = (manualAnnotationString == null ? "" : manualAnnotationString);
+
         // After the manual string, we check to see if we have an override first and if not we get the set field value:
-        return  manualAnnotationString +
+        return  prependedAnnotations +
                 (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")) + DELIMITER +
                 (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")) + DELIMITER +
                 (chromosomeSerializedOverride != null ? chromosomeSerializedOverride : (chromosome != null ? chromosome : "")) + DELIMITER +
