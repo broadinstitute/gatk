@@ -4,6 +4,7 @@ import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegionCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -61,7 +62,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
 
         final List<SimpleAnnotatedGenomicRegion> variantValidationResults =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers)));
+                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
 
         Assert.assertEquals(variantValidationResults.size(), 2);
 
@@ -118,7 +119,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
 
         final List<SimpleAnnotatedGenomicRegion> variantValidationResults =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers)));
+                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
 
         Assert.assertEquals(variantValidationResults.size(), 336);
 

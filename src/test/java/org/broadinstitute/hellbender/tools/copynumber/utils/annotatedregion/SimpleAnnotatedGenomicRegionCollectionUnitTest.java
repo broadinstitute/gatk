@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion;
 
 import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.testng.collections.Sets;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,21 +15,23 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class SimpleAnnotatedGenomicRegionUnitTest extends GATKBaseTest {
+public class SimpleAnnotatedGenomicRegionCollectionUnitTest  extends GATKBaseTest {
+
     private static final File TEST_FILE = new File(toolsTestDir,
             "copynumber/utils/combine-segment-breakpoints-with-legacy-header-learning-combined-copy-number.tsv");
+
 
     @Test
     public void basicTest() throws IOException {
         final Set<String> headersOfInterest = Sets.newHashSet(Arrays.asList("name", "learning_SAMPLE_0"));
-        final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
-                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(TEST_FILE, headersOfInterest).getRecords();
+        final SimpleAnnotatedGenomicRegionCollection simpleAnnotatedGenomicRegions =
+                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(TEST_FILE, headersOfInterest);
 
         Assert.assertEquals(simpleAnnotatedGenomicRegions.size(), 15);
-        Assert.assertTrue(simpleAnnotatedGenomicRegions.stream()
+        Assert.assertTrue(simpleAnnotatedGenomicRegions.getRecords().stream()
                 .mapToInt(s -> s.getAnnotations().entrySet().size())
                 .allMatch(i -> i == headersOfInterest.size()));
-        Assert.assertTrue(simpleAnnotatedGenomicRegions.stream().allMatch(s -> s.getAnnotations().keySet().containsAll(headersOfInterest)));
+        Assert.assertTrue(simpleAnnotatedGenomicRegions.getRecords().stream().allMatch(s -> s.getAnnotations().keySet().containsAll(headersOfInterest)));
 
         // Grab the first 15 and test values
         List<SimpleAnnotatedGenomicRegion> gtRegions = Arrays.asList(
@@ -49,63 +52,30 @@ public class SimpleAnnotatedGenomicRegionUnitTest extends GATKBaseTest {
                 new SimpleAnnotatedGenomicRegion(new SimpleInterval("1", 878630, 878759), ImmutableSortedMap.of("name", "target_15_SAMD11", "learning_SAMPLE_0", "2"))
         );
 
-        Assert.assertEquals(simpleAnnotatedGenomicRegions.subList(0, gtRegions.size()), gtRegions);
+        Assert.assertEquals(simpleAnnotatedGenomicRegions.getRecords().subList(0, gtRegions.size()), gtRegions);
+    }
+
+    @Test
+    public void testCreationFromList() {
+        final Set<String> headersOfInterest = Sets.newHashSet(Arrays.asList("name", "learning_SAMPLE_0"));
+        final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
+                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(TEST_FILE, headersOfInterest);
+        final SimpleAnnotatedGenomicRegionCollection collection = SimpleAnnotatedGenomicRegionCollection.create(simpleAnnotatedGenomicRegions,
+                ReferenceUtils.loadFastaDictionary(new File(hg19_chr1_1M_dict)), Lists.newArrayList("name", "learning_SAMPLE_0"));
+
+        Assert.assertEquals(collection.getRecords(), simpleAnnotatedGenomicRegions);
     }
 
     @Test
     public void basicTestWithAllColumnsFile() throws IOException {
 
         // If no columns of interest are given in a read call, the method will try to load all columns as "interesting".
-        final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
-                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(TEST_FILE).getRecords();
+        final SimpleAnnotatedGenomicRegionCollection simpleAnnotatedGenomicRegions =
+                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(TEST_FILE);
 
         Assert.assertEquals(simpleAnnotatedGenomicRegions.size(), 15);
-        Assert.assertTrue(simpleAnnotatedGenomicRegions.stream()
+        Assert.assertTrue(simpleAnnotatedGenomicRegions.getRecords().stream()
                 .mapToInt(s -> s.getAnnotations().entrySet().size())
                 .allMatch(i -> i == 101)); // The number of columns in the TEST_FILE (name, learning_SAMPLE_0...99
-    }
-
-    @Test(dataProvider = "equalsTests")
-    public void testEquals(SimpleAnnotatedGenomicRegion test1, SimpleAnnotatedGenomicRegion test2, boolean gt) {
-        Assert.assertEquals(test1.equals(test2), gt);
-    }
-
-    @DataProvider(name = "equalsTests")
-    public Object [][] createEqualsTests() {
-
-        return new Object[][] {
-
-                {
-                        new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                                ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
-                        new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                                ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
-                        true
-                }, {
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                        ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar2")),
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                        ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
-                false
-        }, {
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                        ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                        ImmutableSortedMap.of("Foo", "bar", "Foobar1", "bar1")),
-                false
-        }, {
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 1000, 2000),
-                        ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                        ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
-                false
-        }, {
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                        ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
-                new SimpleAnnotatedGenomicRegion( new SimpleInterval("1", 100, 200),
-                        ImmutableSortedMap.of("Foo", "bar")),
-                false
-        }
-        };
     }
 }

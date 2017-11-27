@@ -31,7 +31,7 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
     /**
      * @param metadata records are sorted using the contained {@link SAMSequenceDictionary}
      */
-    AbstractLocatableCollection(final METADATA metadata,
+    protected AbstractLocatableCollection(final METADATA metadata,
                                 final List<RECORD> records,
                                 final TableColumnCollection mandatoryColumns,
                                 final Function<DataLine, RECORD> recordFromDataLineDecoder,
@@ -43,7 +43,7 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
     /**
      * @throws IllegalArgumentException if records are not sorted according to the {@link SAMSequenceDictionary} contained in the input file
      */
-    AbstractLocatableCollection(final File inputFile,
+    protected AbstractLocatableCollection(final File inputFile,
                                 final TableColumnCollection mandatoryColumns,
                                 final Function<DataLine, RECORD> recordFromDataLineDecoder,
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {

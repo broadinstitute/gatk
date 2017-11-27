@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,7 +25,7 @@ final public class SimpleAnnotatedGenomicRegion implements Locatable {
     public final static String START_HEADER = "START";
     public final static String END_HEADER = "END";
 
-    private final SimpleInterval interval;
+    private SimpleInterval interval;
     private final SortedMap<String, String> annotations;
 
     public SimpleAnnotatedGenomicRegion(final SimpleInterval interval, final SortedMap<String, String> annotations) {
@@ -59,6 +56,34 @@ final public class SimpleAnnotatedGenomicRegion implements Locatable {
         return interval.getEnd();
     }
 
+    public void setInterval(final Locatable interval) {
+        this.interval = new SimpleInterval(interval);
+    }
+
+    public void setEnd(final int end) {
+        this.interval = new SimpleInterval(this.interval.getContig(), this.interval.getStart(), end);
+    }
+
+    public String getAnnotationValue(final String annotationName) {
+        return annotations.get(annotationName);
+    }
+
+    public boolean hasAnnotation(final String annotationName) {
+        return annotations.containsKey(annotationName);
+    }
+
+    /**
+     * Creates the annotation if it does not exist.
+     *
+     * @param annotationName the name for the annotation
+     * @param annotationValue the value
+     * @return the previous value or null
+     */
+    public String setAnnotation(final String annotationName, final String annotationValue) {
+        return annotations.put(annotationName, annotationValue);
+    }
+
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -85,23 +110,29 @@ final public class SimpleAnnotatedGenomicRegion implements Locatable {
     }
 
     /**
-     *  Reads entire TSV file in one command and stores in RAM.  Please see {@link SimpleAnnotatedGenomicRegion::CONTIG_HEADER},
-     *  {@link SimpleAnnotatedGenomicRegion::START_HEADER}, and
-     *  {@link SimpleAnnotatedGenomicRegion::END_HEADER} for defining the genomic region.
+     *
+     * This method will likely be removed in future releases.
+     *
+     *  See {@link SimpleAnnotatedGenomicRegion#readAnnotatedRegions(File, Set)}, except that all columns (except those to define the interval)
+     *   are considered headers of interest.
      *
      * @param tsvRegionFile -- File containing tsv of genomic regions and annotations per line.  E.g. a segment file.
-     * @param headersOfInterest -- should not include any headers that are used to define the region (e.g. contig, start, end)
-     * @return annotated regions with one line in the input file for each entry of the list.  Never {@code null}
+     * @return annotated regions with one line in the input file for each entry of the list.  Never {<@UNVERIFIED|@code> null}
      */
-    public static List<SimpleAnnotatedGenomicRegion> readAnnotatedRegions(final File tsvRegionFile, final Set<String> headersOfInterest) {
+    public static List<SimpleAnnotatedGenomicRegion> readAnnotatedRegions(final File tsvRegionFile) {
         try (final TableReader<SimpleAnnotatedGenomicRegion> reader = new TableReader<SimpleAnnotatedGenomicRegion>(tsvRegionFile) {
 
             @Override
-            protected SimpleAnnotatedGenomicRegion createRecord(final DataLine dataLine) {
-                final Set<String> headersOfInterestPresent = Sets.intersection(headersOfInterest, new HashSet<>(this.columns().names()));
-                final Map<String, String> annotationMap = headersOfInterestPresent.stream()
-                        .collect(Collectors.toMap(Function.identity(), dataLine::get));
+            protected boolean isCommentLine(final String[] line) {
+                return super.isCommentLine(line) || line[0].startsWith("@");
+            }
 
+            @Override
+            protected SimpleAnnotatedGenomicRegion createRecord(final DataLine dataLine) {
+                final Set<String> headersOfInterestPresent = Sets.difference(new HashSet<>(this.columns().names()),
+                        Sets.newHashSet(CONTIG_HEADER, START_HEADER, END_HEADER));
+                final Map<String, String> annotationMap = headersOfInterestPresent.stream()
+                        .collect(Collectors.toMap(Function.identity(), s -> dataLine.get(s)));
                 return new SimpleAnnotatedGenomicRegion( new SimpleInterval(dataLine.get(CONTIG_HEADER), dataLine.getInt(START_HEADER), dataLine.getInt(END_HEADER)),
                         new TreeMap<>(annotationMap));
             }
@@ -113,35 +144,44 @@ final public class SimpleAnnotatedGenomicRegion implements Locatable {
     }
 
     /**
-     *  Write a tsv file of annotated regions with the specified strings for the position headers.
+     *  This method will likely be removed in future releases.
      *
-     * @param regions list of locatables and associated annotations for writing.  One per line.
-     * @param outputFile location of the output file.
+     *  Reads entire TSV file in one command and stores in RAM.  Please see {@link SimpleAnnotatedGenomicRegion::CONTIG_HEADER},
+     *  {@link SimpleAnnotatedGenomicRegion::START_HEADER}, and
+     *  {@link SimpleAnnotatedGenomicRegion::END_HEADER} for defining the genomic region.
+     *
+     * @param tsvRegionFile -- File containing tsv of genomic regions and annotations per line.  E.g. a segment file.
+     * @param headersOfInterest -- The columns that should be in the resulting annotated region.  This list should
+     *                          not include any headers that are used to define the region (e.g. contig, start, end)
+     * @return annotated regions with one line in the input file for each entry of the list.  Never {<@UNVERIFIED|@code> null}
      */
-    public static void writeAnnotatedRegionsAsTsv(final List<SimpleAnnotatedGenomicRegion> regions, final File outputFile) {
+    public static List<SimpleAnnotatedGenomicRegion> readAnnotatedRegions(final File tsvRegionFile, final Set<String> headersOfInterest) {
+        try (final TableReader<SimpleAnnotatedGenomicRegion> reader = new TableReader<SimpleAnnotatedGenomicRegion>(tsvRegionFile) {
 
-        // Can't do Arrays.asList, since we will be adding to this list.
-        final List<String> columnHeaders = Lists.newArrayList(CONTIG_HEADER, START_HEADER, END_HEADER);
-        final List<String> otherHeaders = new ArrayList<>(regions.get(0).getAnnotations().keySet());
-        otherHeaders.sort(String::compareTo);
-
-        columnHeaders.addAll(otherHeaders);
-        TableColumnCollection outputColumns = new TableColumnCollection(columnHeaders);
-
-        try (final TableWriter<SimpleAnnotatedGenomicRegion> writer = new TableWriter<SimpleAnnotatedGenomicRegion>(outputFile, outputColumns) {
             @Override
-            protected void composeLine(SimpleAnnotatedGenomicRegion record, DataLine dataLine) {
-                dataLine.set(CONTIG_HEADER, record.getContig());
-                dataLine.set(START_HEADER, record.getStart());
-                dataLine.set(END_HEADER, record.getEnd());
-                otherHeaders.forEach(h -> dataLine.set(h, record.getAnnotations().getOrDefault(h, "")));
+            protected boolean isCommentLine(final String[] line) {
+                return super.isCommentLine(line) || line[0].startsWith("@");
+            }
+
+            @Override
+            protected SimpleAnnotatedGenomicRegion createRecord(final DataLine dataLine) {
+                final Set<String> headersOfInterestPresent = Sets.intersection(headersOfInterest, new HashSet<>(this.columns().names()));
+                final Map<String, String> annotationMap = headersOfInterestPresent.stream()
+                        .collect(Collectors.toMap(Function.identity(), dataLine::get));
+                return new SimpleAnnotatedGenomicRegion( new SimpleInterval(dataLine.get(CONTIG_HEADER), dataLine.getInt(START_HEADER), dataLine.getInt(END_HEADER)),
+                        new TreeMap<>(annotationMap));
             }
         }) {
-
-            writer.writeHeaderIfApplies();
-            writer.writeAllRecords(regions);
+            return reader.toList();
         } catch (final IOException ioe) {
-            throw new UserException.CouldNotCreateOutputFile("Cannot write file: " + outputFile.getAbsolutePath(), ioe);
+            throw new UserException.CouldNotReadInputFile("Cannot read input file: " + tsvRegionFile.getAbsolutePath(), ioe);
         }
+    }
+
+    /**
+     * @return list of all of the annotations (not the values) in this annotated region.
+     */
+    public List<String> getAnnotationNames() {
+        return getAnnotations().keySet().stream().sorted().collect(Collectors.toList());
     }
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -14,12 +15,13 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegionCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.testng.collections.Lists;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -78,8 +80,11 @@ public class CombineSegmentBreakpoints extends GATKTool {
     @Override
     public void traverse() {
 
-        final List<SimpleAnnotatedGenomicRegion> segments1 = SimpleAnnotatedGenomicRegion.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);
-        final List<SimpleAnnotatedGenomicRegion> segments2 = SimpleAnnotatedGenomicRegion.readAnnotatedRegions(segmentFiles.get(1), columnsOfInterest);
+        final SimpleAnnotatedGenomicRegionCollection simpleAnnotatedGenomicRegionCollection1 = SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(segmentFiles.get(0), columnsOfInterest);
+        final List<SimpleAnnotatedGenomicRegion> segments1 = simpleAnnotatedGenomicRegionCollection1.getRecords();
+
+        final SimpleAnnotatedGenomicRegionCollection simpleAnnotatedGenomicRegionCollection2 = SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(segmentFiles.get(1), columnsOfInterest);
+        final List<SimpleAnnotatedGenomicRegion> segments2 = simpleAnnotatedGenomicRegionCollection2.getRecords();
 
         // Check to see if we should warn the user that one or more columns of interest were not seen in any input file.
         final Set<String> allSeenAnnotations = Sets.union(segments1.get(0).getAnnotations().keySet(), segments2.get(0).getAnnotations().keySet());
@@ -105,9 +110,11 @@ public class CombineSegmentBreakpoints extends GATKTool {
         intersectingAnnotations.forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
 
         final List<SimpleAnnotatedGenomicRegion> finalList = annotateCombinedIntervals(segments1, segments2,
-                Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap), getBestAvailableSequenceDictionary());
+                Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap), getBestAvailableSequenceDictionary(),
+                l -> progressMeter.update(l));
 
-        SimpleAnnotatedGenomicRegion.writeAnnotatedRegionsAsTsv(finalList, outputFile);
+        final SimpleAnnotatedGenomicRegionCollection finalCollection = SimpleAnnotatedGenomicRegionCollection.create(finalList, getBestAvailableSequenceDictionary(), new ArrayList<>(finalList.get(0).getAnnotations().keySet()));
+        finalCollection.write(outputFile);
     }
 
     /**
@@ -125,7 +132,8 @@ public class CombineSegmentBreakpoints extends GATKTool {
      */
     private List<SimpleAnnotatedGenomicRegion> annotateCombinedIntervals(final List<SimpleAnnotatedGenomicRegion> segments1, final List<SimpleAnnotatedGenomicRegion> segments2,
                                                                          final List<Map<String, String>> inputToOutputHeaderMaps,
-                                                                         final SAMSequenceDictionary dictionary) {
+                                                                         final SAMSequenceDictionary dictionary,
+                                                                         final Consumer<Locatable> progressUpdater) {
 
         final List<List<SimpleAnnotatedGenomicRegion>> segmentLists = Arrays.asList(segments1, segments2);
 
@@ -135,12 +143,14 @@ public class CombineSegmentBreakpoints extends GATKTool {
                 segmentLists.get(1).stream().map(SimpleAnnotatedGenomicRegion::getInterval)
                         .collect(Collectors.toList()), dictionary);
 
+        logger.info("Creating map of overlaps...");
         // Create a list of maps where each entry corresponds to overlapping intervals of the combined intervals.
         final List<Map<Locatable, List<SimpleAnnotatedGenomicRegion>>> combinedIntervalsToSegmentsMaps = segmentLists.stream()
                 .map(segs -> IntervalUtils.createOverlapMap(combinedIntervals, segs, dictionary)).collect(Collectors.toList());
 
         final List<SimpleAnnotatedGenomicRegion> result = new ArrayList<>();
 
+        logger.info("Annotating...");
         for (final Locatable interval: combinedIntervals) {
             final SortedMap<String, String> intervalAnnotationMap = new TreeMap<>();
 
@@ -161,6 +171,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
             }
 
             result.add(new SimpleAnnotatedGenomicRegion(new SimpleInterval(interval), intervalAnnotationMap));
+            progressUpdater.accept(interval);
         }
         return result;
     }
