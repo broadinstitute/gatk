@@ -205,12 +205,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                         // Add the filtered funcotations here:
                         outputFuncotations.addAll(gencodeFuncotationList);
                     }
-
-                    // NOTE: If we don't have any gencodeFuncotations for this feature, it's OK.
-                    //       However, this means that some other DataSourceFuncotationFactory must be producing a
-                    //       funcotation for this variant.
-                    //       For it is decreed that all variants must have a funcotation, even if that funcotation be
-                    //       empty.
                     // TODO: Actually you may want to put another IGR creation here for now...  This may be a more difficult thing if we determine it in here.  There is no way to know if these are IGRs or simply not included in this particular data set.
                 }
             }

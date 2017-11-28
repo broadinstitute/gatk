@@ -5,8 +5,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -72,6 +74,30 @@ public class XSVFuncotation extends Funcotation {
 
     //==================================================================================================================
     // Instance Methods:
+
+    /**
+     * Get the value in this {@link XSVFuncotation} corresponding to the given key.
+     * If the key is not in this {@link XSVFuncotation}, returns {@code null}.
+     * @param key Key to get from this {@link XSVFuncotation}.
+     * @return The value corresponding to the given key or {@code null}.
+     */
+    public String get(final String key) {
+        return fieldMap.get(key);
+    }
+
+    /**
+     * @return The {@link Set} of field names in this {@link XSVFuncotation}.
+     */
+    public Set<String> keySet() {
+        return fieldMap.keySet();
+    }
+
+    /**
+     * @return The {@link Collection} of field values in this {@link XSVFuncotation}.
+     */
+    public Collection<String> values() {
+        return fieldMap.values();
+    }
 
     //==================================================================================================================
     // Helper Data Types:
