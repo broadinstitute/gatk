@@ -50,7 +50,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
                 final String sampleName = "Sample_" + String.valueOf(i);
                 String sampleNameInHeader;
                 if ( samplesInHeaderCanMismatch && i % 10 == 0 ) {
-                    sampleNameInHeader = sampleName + "_FromHeader";
+                    sampleNameInHeader = "FromHeader_" + sampleName;
                 } else {
                     sampleNameInHeader = sampleName;
                 }
@@ -121,7 +121,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
                 {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 50, 1, null},
                 {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile("badlySorted1000-batch-size50.vcf.gz"), 50, 1, null},
                 {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile("badlySorted1000-batch-size13.vcf"), 13, 1, null},
-                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads4-samplesInHeaderAreDifferent.vcf"), 50, 4, getTestFile("reverseOrderedWithHeaderMismatches.gvcfToHeaderSampleMapFile")}
+                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads5-samplesInHeaderAreDifferent.vcf"), 50, 5, getTestFile("reverseOrderedWithHeaderMismatches.gvcfToHeaderSampleMapFile")}
         };
     }
 
