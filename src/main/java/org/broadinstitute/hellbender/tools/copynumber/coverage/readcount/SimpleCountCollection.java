@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SampleLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -57,10 +58,19 @@ public final class SimpleCountCollection extends SampleLocatableCollection<Simpl
 
     public static SimpleCountCollection read(final File file) {
         IOUtils.canReadFile(file);
+        try {
+            return readHDF5(new HDF5File(file));
+        } catch (final HDF5LibException e) {
+            return readTSV(file);
+        }
+    }
+
+    private static SimpleCountCollection readTSV(final File file) {
+        IOUtils.canReadFile(file);
         return new SimpleCountCollection(file);
     }
 
-    public static SimpleCountCollection read(final HDF5File file) {
+    private static SimpleCountCollection readHDF5(final HDF5File file) {
         Utils.nonNull(file);
         final HDF5SimpleCountCollection hdf5CountCollection = new HDF5SimpleCountCollection(file);
         final SampleMetadata sampleMetadata = hdf5CountCollection.getSampleMetadata();
@@ -74,9 +84,10 @@ public final class SimpleCountCollection extends SampleLocatableCollection<Simpl
 
     public void writeHDF5(final File file) {
         Utils.nonNull(file);
-        final double[] counts = getRecords().stream()
-                .mapToDouble(SimpleCount::getCount)
-                .toArray();
-        HDF5SimpleCountCollection.write(file, getSampleName(), getIntervals(), counts);
+        HDF5SimpleCountCollection.write(file, getSampleName(), getIntervals(), getCounts());
+    }
+
+    public double[] getCounts() {
+        return getRecords().stream().mapToDouble(SimpleCount::getCount).toArray();
     }
 }

@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.copynumber.utils;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
@@ -17,11 +17,11 @@ import java.util.List;
 import java.util.Set;
 
 public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_RESOURCE_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/";
-    public static final String COMBINE_SEG_FILE_INPUT = TEST_RESOURCE_DIR + "combine-segment-breakpoints-with-legacy-header.tsv";
-    public static final String COMBINE_SEG_FILE_INPUT_GT = TEST_RESOURCE_DIR + "combine-segment-breakpoints-with-legacy-header-ground-truth.tsv";
-    public static final String COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS = TEST_RESOURCE_DIR + "combine-segment-breakpoints-different-annotation-headers-with-legacy-header.tsv";
-    public static final String REF = hg19_chr1_1M_Reference;
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/";
+    private static final String INPUT_SEGMENTS_FILE = TEST_SUB_DIR + "combine-segment-breakpoints-with-legacy-header.tsv";
+    private static final String GROUND_TRUTH_SEGMENTS_FILE = TEST_SUB_DIR + "combine-segment-breakpoints-with-legacy-header-ground-truth.tsv";
+    private static final String INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS = TEST_SUB_DIR + "combine-segment-breakpoints-different-annotation-headers-with-legacy-header.tsv";
+    public static final String REFERENCE_FILE = hg19_chr1_1M_Reference;
 
     @Test
     public void testRunWithExactSegments() throws IOException {
@@ -29,14 +29,14 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final Set<String> columnSet = Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", "Segment_Mean", "Segment_Call");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT);
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(INPUT_SEGMENTS_FILE);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-        arguments.add(REF);
+        arguments.add(REFERENCE_FILE);
 
-        columnSet.stream().forEach(s -> {
+        columnSet.forEach(s -> {
             arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
             arguments.add(s);
         });
@@ -60,11 +60,11 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-        arguments.add(REF);
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT);
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT);
+        arguments.add(REFERENCE_FILE);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(INPUT_SEGMENTS_FILE);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(INPUT_SEGMENTS_FILE);
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("MEAN_LOG2_COPY_RATIO");
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
@@ -91,11 +91,11 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-        arguments.add(REF);
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS);
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT_GT);
+        arguments.add(REFERENCE_FILE);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(GROUND_TRUTH_SEGMENTS_FILE);
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Mean");
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
@@ -154,11 +154,11 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-        arguments.add(REF);
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT_DIFFERENT_HEADERS);
-        arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
-        arguments.add(COMBINE_SEG_FILE_INPUT_GT);
+        arguments.add(REFERENCE_FILE);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add(GROUND_TRUTH_SEGMENTS_FILE);
         arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
         arguments.add(TEST);
         arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);

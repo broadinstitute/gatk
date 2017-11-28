@@ -110,7 +110,7 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
         final SimpleCountCollection expectedCounts = SimpleCountCollection.read(expectedOutputFile);
-        final SimpleCountCollection resultCounts = SimpleCountCollection.read(new HDF5File(resultOutputFile));
+        final SimpleCountCollection resultCounts = SimpleCountCollection.read(resultOutputFile);
         Assert.assertEquals(expectedCounts, resultCounts);
     }
 

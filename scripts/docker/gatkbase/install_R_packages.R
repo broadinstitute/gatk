@@ -14,8 +14,8 @@ if (!("data.table" %in% rownames(installed.packages()))) {
     install.packages(datatableUrl, repos=NULL, type="source")
 }
 dependencies = c("naturalsort","ggplot2","gplots","reshape","gsalib")
-repos <- c("http://cran.cnr.Berkeley.edu", 
-           "https://cran.mtu.edu", 
+repos <- c("http://cran.cnr.Berkeley.edu",
+           "https://cran.mtu.edu",
            "http://lib.stat.cmu.edu/R/CRAN/")
 missing <- which(!(dependencies %in% rownames(installed.packages())))
 try <- 1

@@ -7,11 +7,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -34,13 +34,14 @@ public class CombineSegmentBreakpoints extends GATKTool {
 
     public static final String COLUMNS_OF_INTEREST_LONG_NAME = "columnsOfInterest";
     public static final String COLUMNS_OF_INTEREST_SHORT_NAME = "cols";
+
     public static final String LABELS_LONG_NAME = "labels";
     public static final String LABELS_SHORT_NAME = "lbls";
 
     @Argument(
             doc = "Input segment files -- must be specified twice, but order does not matter.",
-            fullName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME,
-            shortName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME,
+            fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
+            shortName = CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME,
             maxElements = 2,
             minElements = 2
     )
@@ -96,11 +97,11 @@ public class CombineSegmentBreakpoints extends GATKTool {
         // These are mappings that take the header name from the segment files and map to an output header to avoid conflicts.
         final Map<String, String> input1ToOutputHeaderMap = segments1.get(0).getAnnotations().keySet().stream().filter(a -> !intersectingAnnotations.contains(a))
                 .collect(Collectors.toMap(Function.identity(), Function.identity()));
-        intersectingAnnotations.stream().forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(0)));
+        intersectingAnnotations.forEach(a -> input1ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(0)));
 
         final Map<String, String> input2ToOutputHeaderMap = segments2.get(0).getAnnotations().keySet().stream().filter(a -> !intersectingAnnotations.contains(a))
                 .collect(Collectors.toMap(Function.identity(), Function.identity()));
-        intersectingAnnotations.stream().forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
+        intersectingAnnotations.forEach(a -> input2ToOutputHeaderMap.put(a, a + "_" + segmentFileLabels.get(1)));
 
         final List<SimpleAnnotatedGenomicRegion> finalList = annotateCombinedIntervals(segments1, segments2,
                 Arrays.asList(input1ToOutputHeaderMap, input2ToOutputHeaderMap), getBestAvailableSequenceDictionary());

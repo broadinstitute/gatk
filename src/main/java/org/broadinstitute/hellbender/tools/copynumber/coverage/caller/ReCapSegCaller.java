@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * <p>This caller mimics the legacy ReCapSeg Caller that was originally implemented in ReCapSeg v1.4.5.0.</p>
  *
  * <p>There is a small difference.  The python code was using the same algorithm as intersectBed, which was causing it to drop
- *  the first target of each segment in calculations of the copy neutral targets.  The code here does
+ *  the first interval of each segment in calculations of the copy-neutral intervals.  The code here does
  *  not do this.  This difference in the two codebases can cause a slight difference in the T calculation.  Hence, the
  *  results of this code and the python code will not be exactly the same, but will be
  *  very close.  A fix (to make this code match the python) has been deemed unworthy of our time.</p>
@@ -28,7 +28,7 @@ public final class ReCapSegCaller {
 
     //bounds on log_2 coverage for high-confidence neutral segments
     private static final double COPY_NEUTRAL_CUTOFF = 0.1;
-    // Number of standard deviations before assuming that a target was an outlier in a segment
+    // Number of standard deviations before assuming that an interval was an outlier in a segment
     private static final double Z_THRESHOLD = 2;
 
     private final CopyRatioSegmentCollection copyRatioSegments;
@@ -48,10 +48,10 @@ public final class ReCapSegCaller {
     private static LinkedHashMap<CopyRatioSegment,Set<CopyRatio>> constructSegmentToCopyRatiosMap(final CopyRatioCollection denoisedCopyRatios,
                                                                                                   final CopyRatioSegmentCollection copyRatioSegments) {
         final LinkedHashMap<CopyRatioSegment, Set<CopyRatio>> segmentToCopyRatiosMap = new LinkedHashMap<>();
-        final OverlapDetector<CopyRatio> copyRatioOverlapDetector = denoisedCopyRatios.getOverlapDetector();
+        final OverlapDetector<CopyRatio> copyRatioMidpointOverlapDetector = denoisedCopyRatios.getMidpointOverlapDetector();
         for (final CopyRatioSegment segment : copyRatioSegments.getRecords()) {
             final int numPointsExpected = segment.getNumPoints();
-            final Set<CopyRatio> copyRatiosInSegment = copyRatioOverlapDetector.getOverlaps(segment);
+            final Set<CopyRatio> copyRatiosInSegment = copyRatioMidpointOverlapDetector.getOverlaps(segment);
             if (copyRatiosInSegment.size() != numPointsExpected) {
                 throw new IllegalArgumentException("Denoised copy ratios and copy-ratio segments are not consistent.");
             }
@@ -62,24 +62,24 @@ public final class ReCapSegCaller {
 
     private double calculateT() {
         //Get the segments that are likely copy neutral.
-        // Math.abs removed to mimic python...
+        //Math.abs removed to mimic python...
         final List<CopyRatioSegment> copyNeutralSegments = segmentToCopyRatiosMap.keySet().stream()
                 .filter(s -> s.getMeanLog2CopyRatio() < COPY_NEUTRAL_CUTOFF).collect(Collectors.toList());
 
-        // Get the targets that correspond to the copyNeutralSegments... note that individual targets, due to noise,
-        //  can be far away from copy neutral
-        final double[] copyNeutralTargetsCopyRatio = copyNeutralSegments.stream()
+        //Get the intervals that correspond to the copyNeutralSegments... note that individual intervals, due to noise,
+        //can be far away from copy neutral
+        final double[] copyNeutralIntervals = copyNeutralSegments.stream()
                 .flatMap(s -> segmentToCopyRatiosMap.get(s).stream())
                 .mapToDouble(CopyRatio::getLog2CopyRatioValue).toArray();
 
-        final double meanCopyNeutralTargets = new Mean().evaluate(copyNeutralTargetsCopyRatio);
-        final double sigmaCopyNeutralTargets = new StandardDeviation().evaluate(copyNeutralTargetsCopyRatio);
+        final double meanCopyNeutralIntervals = new Mean().evaluate(copyNeutralIntervals);
+        final double sigmaCopyNeutralIntervals = new StandardDeviation().evaluate(copyNeutralIntervals);
 
         // Now we filter outliers by only including those w/in 2 standard deviations.
-        final double [] filteredCopyNeutralTargetsCopyRatio = Arrays.stream(copyNeutralTargetsCopyRatio)
-                .filter(c -> Math.abs(c - meanCopyNeutralTargets) < sigmaCopyNeutralTargets * Z_THRESHOLD).toArray();
+        final double [] filteredCopyNeutralIntervals = Arrays.stream(copyNeutralIntervals)
+                .filter(c -> Math.abs(c - meanCopyNeutralIntervals) < sigmaCopyNeutralIntervals * Z_THRESHOLD).toArray();
 
-        return new StandardDeviation().evaluate(filteredCopyNeutralTargetsCopyRatio);
+        return new StandardDeviation().evaluate(filteredCopyNeutralIntervals);
     }
 
     public CalledCopyRatioSegmentCollection makeCalls() {
