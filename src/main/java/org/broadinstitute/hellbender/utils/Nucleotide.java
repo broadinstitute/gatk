@@ -150,6 +150,17 @@ public enum Nucleotide {
         return maskToValue[this.acgtMask & other.acgtMask];
     }
 
+    public boolean isComplementOf(final Nucleotide other) {
+        switch (this) {
+            case A: return other == T;
+            case C: return other == G;
+            case G: return other == C;
+            case T: return other == A;
+            default:
+                return false;
+        }
+    }
+
     /**
      * Helper class to count the number of occurrences of each nucleotide code in
      * a sequence.

@@ -65,6 +65,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
@@ -224,7 +225,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaPairRDD<SVContext, Iterable<SVHaplotype>> variantAndHaplotypes = variantAndHaplotypesLocalized
                 .mapToPair(tuple -> new Tuple2<>(tuple._1().get(), Utils.stream(tuple._2().iterator()).map(Localized::get).collect(Collectors.toList())))
                 .mapValues(haplotypes -> {
-                    if (haplotypes.size() <= 2) {
+                    if (haplotypes.size() > -1) {
                         return haplotypes;
                     } else {
                         final Set<SVHaplotype> result = new LinkedHashSet<>(haplotypes.size());
@@ -233,7 +234,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 result.add(haplotype);
                             } else {
                                 final SVContig contig = (SVContig) haplotype;
-                                if (contig.isPerfectAlternativeMap() && contig.isPerfectReferenceMap()) {
+                                if (contig.isPerfectAlternativeMap() || contig.isPerfectReferenceMap()) {
                                     continue;
                                 }
                                 for (final SVHaplotype added : result) {
@@ -452,6 +453,38 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         scoreTable.setMappingInfo(h, i, mappingInformation);
                     }
                 }
+
+                for (int t = 0; t < templates.size(); t++) {
+                      for (int f = 0; f < 2; f++) {
+                          final List<AlignmentInterval> newRefMapping = f == 0
+                                  ? scoreTable.getMappingInfo(refHaplotypeIndex, t).firstAlignmentIntervals
+                                  : scoreTable.getMappingInfo(refHaplotypeIndex, t).secondAlignmentIntervals;
+                          if (newRefMapping == null || newRefMapping.isEmpty()) {
+                              continue;
+                          }
+                          final Template.Fragment fragment = templates.get(t).fragments().get(f);
+                          final List<AlignmentInterval> oldRefMapping = fragment.alignmentIntervals();
+                          if (oldRefMapping == null || oldRefMapping.isEmpty()) {
+                              continue;
+                          }
+                          if (newRefMapping.size() != oldRefMapping.size()) {
+                              mapQuals.get(t)[f] = 0;
+                          } else {
+                              for (final AlignmentInterval newInterval : newRefMapping) {
+                                  if (!oldRefMapping.stream().anyMatch(old ->
+                                          old.startInAssembledContig == newInterval.startInAssembledContig
+                                        && old.endInAssembledContig == newInterval.endInAssembledContig
+                                        && CigarUtils.equals(old.cigarAlong5to3DirectionOfContig, newInterval.cigarAlong5to3DirectionOfContig)
+                                        && old.referenceSpan.getContig().equals(haplotypes.get(refHaplotypeIndex).getReferenceSpan().getContig())
+                                        && old.referenceSpan.getStart() == haplotypes.get(refHaplotypeIndex).getReferenceSpan().getStart() + newInterval.referenceSpan.getStart() - 1)) {
+                                      mapQuals.get(t)[f] = 0;
+                                      break;
+                                  }
+                              }
+                          }
+                      }
+                }
+
              //    resolve the missing mapping scores to the worst seen + a penalty.
                 for (int t = 0; t < templates.size(); t++) {
 
@@ -496,8 +529,12 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 for (int h = 0; h < contigs.size(); h++) {
                     final SVContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
-                    double haplotypeAltScore = AlignmentScore.calculate(contig.getLength(), contig.getAlternativeAlignment()).getValue();
-                    double haplotypeRefScore = AlignmentScore.calculate(contig.getLength(), contig.getReferenceAlignment()).getValue();
+   //                 System.err.println("alt " + contig.getName() );
+                    double haplotypeAltScore = AlignmentScore.calculate(haplotypes.get(altHaplotypeIndex).getBases(), contig.getBases(), contig.getAlternativeAlignment()).getValue();
+   //                 System.err.println("ref " + contig.getName() );
+                    double haplotypeRefScore = AlignmentScore.calculate(haplotypes.get(refHaplotypeIndex).getBases(), contig.getBases(), contig.getReferenceAlignment()).getValue();
+   //                 double haplotypeAltScore = Double.NEGATIVE_INFINITY;
+   //                 double haplotypeRefScore = Double.NEGATIVE_INFINITY;
                     final double maxMQ = contig.getMinimumMappingQuality();
                     final double base = Math.max(haplotypeAltScore, haplotypeRefScore);
                     haplotypeAltScore -= base;
@@ -540,17 +577,25 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     }
                 }
                 final boolean[] dpRelevant = new boolean[sampleLikelihoods.numberOfReads()];
+
                 for (int j = 0; j < sampleLikelihoods.numberOfReads(); j++) {
                     final boolean considerFirstFragment;
                     final boolean considerSecondFragment;
                     if (ignoreReadsThatDontOverlapBreakingPoint) {
-                        considerFirstFragment = scoreTable.getMappingInfo(refHaplotypeIndex, j).crossesBreakPoint(refBreakPoints, 0)
-                                || scoreTable.getMappingInfo(altHaplotypeIndex, j).crossesBreakPoint(altBreakPoints, 0);
-                        considerSecondFragment = scoreTable.getMappingInfo(refHaplotypeIndex, j).crossesBreakPoint(refBreakPoints, 1)
-                                || scoreTable.getMappingInfo(altHaplotypeIndex, j).crossesBreakPoint(altBreakPoints, 1);
+                        considerFirstFragment = scoreTable.getMappingInfo(refHaplotypeIndex, j).crossesBreakPoint(refBreakPoints)
+                                || scoreTable.getMappingInfo(altHaplotypeIndex, j).crossesBreakPoint(altBreakPoints);
+                        considerSecondFragment = scoreTable.getMappingInfo(refHaplotypeIndex, j).crossesBreakPoint(refBreakPoints)
+                                || scoreTable.getMappingInfo(altHaplotypeIndex, j).crossesBreakPoint(altBreakPoints);
                     } else {
                         considerFirstFragment = true;
                         considerSecondFragment = true;
+                    }
+                    for (int k = 0; k < 2; k++) {
+                        final LikelihoodMatrix<GenotypingAllele> matrix = k == 0 ? sampleLikelihoodsFirst : sampleLikelihoodsSecond;
+                        final double base = Math.max(matrix.get(refIdx, j), matrix.get(altIdx, j));
+                        final int maxIndex = matrix.get(refIdx, j) == base ? refIdx : altIdx;
+                        final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
+                        matrix.set(minIndex, j, Math.min(matrix.get(maxIndex, j), matrix.get(minIndex, j) - base));
                     }
                     dpRelevant[j] = considerFirstFragment || considerSecondFragment;
                     for (int i = 0; i < sampleLikelihoods.numberOfAlleles(); i++) {
@@ -559,12 +604,12 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
                     }
                 }
-                        for (int t = 0; t < templates.size(); t++) {
-                            final double base = Math.max(sampleLikelihoods.get(refIdx, t), sampleLikelihoods.get(altIdx, t));
-                            final int maxIndex = sampleLikelihoods.get(refIdx, t) == base ? refIdx : altIdx;
-                            final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
-                   //        sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
-                        }
+  //                      for (int t = 0; t < templates.size(); t++) {
+  //                          final double base = Math.max(sampleLikelihoods.get(refIdx, t), sampleLikelihoods.get(altIdx, t));
+  //                          final int maxIndex = sampleLikelihoods.get(refIdx, t) == base ? refIdx : altIdx;
+  //                          final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
+   //                        sampleLikelihoods.set(minIndex, t, Math.min(sampleLikelihoods.get(maxIndex, t), sampleLikelihoods.get(minIndex, t) - base));
+   //                     }
 
                     final int[] adi = new int[2];
                     int dpi = 0;
@@ -575,21 +620,28 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         if (refMapping.pairOrientation.isProper() && (scoreTable.getMappingInfo(refHaplotypeIndex, t).crossesBreakPoint(refBreakPoints) || scoreTable.getMappingInfo(altHaplotypeIndex, t).crossesBreakPoint(altBreakPoints))) {
                             dpRelevant[t] = true;
                             dpi++;
-                            final double refInsertSizeLog10Prob = insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10);
-                            final double altInsertSizeLog10Prob = insertSizeDistribution.logProbability(altMapping.insertSize.getAsInt()) / Math.log(10);
+                            double refInsertSizeLog10Prob = insertSizeDistribution.logProbability(refMapping.insertSize.getAsInt()) / Math.log(10);
+                            double altInsertSizeLog10Prob = insertSizeDistribution.logProbability(altMapping.insertSize.getAsInt()) / Math.log(10);
                             final double phredDiff = 10 * (refInsertSizeLog10Prob - altInsertSizeLog10Prob);
                             if (phredDiff >= informativeTemplateDifferencePhred) {
                                 adi[0]++;
                             } else if (-phredDiff >= informativeTemplateDifferencePhred) {
                                 adi[1]++;
                             }
+                            if (Math.abs(phredDiff) > penalties.improperPairPenalty) {
+                                if (phredDiff > 0) {
+                                    altInsertSizeLog10Prob = refInsertSizeLog10Prob - 0.1 * penalties.improperPairPenalty;
+                                } else {
+                                    refInsertSizeLog10Prob = altInsertSizeLog10Prob - 0.1 * penalties.improperPairPenalty;
+                                }
+                            }
                             sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) + refInsertSizeLog10Prob);
                             sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) + altInsertSizeLog10Prob);
                         }
                     } else if (refMapping.pairOrientation.isProper()) {
-                    //    sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
+              //          sampleLikelihoods.set(altIdx, t, sampleLikelihoods.get(altIdx, t) - 0.1 * penalties.improperPairPenalty);
                     } else {
-                    //    sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
+              //          sampleLikelihoods.set(refIdx, t, sampleLikelihoods.get(refIdx, t) - 0.1 * penalties.improperPairPenalty);
                     }
                 }
                 int minRefPos = ref.getLength();
@@ -641,7 +693,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 }
                 final String[] diffStrings = new String[] { ad[0] == 0 ? "." : String.format("%.1f", diffs[0] / ad[0]),
                                                             ad[1] == 0 ? "." : String.format("%.1f", diffs[1] / ad[1])};
-                final GenotypeLikelihoods likelihoods1 = genotypeCalculator.genotypeLikelihoods(sampleLikelihoods);
+                final GenotypeLikelihoods likelihoods1 = genotypeCalculator.genotypeLikelihoods(likelihoods.sampleMatrix(0));
                 final int pl[] = likelihoods1.getAsPLs();
                 final int bestGenotypeIndex = MathUtils.maxElementIndex(likelihoods1.getAsVector());
                 final int gq = GATKVariantContextUtils.calculateGQFromPLs(pl);
@@ -689,11 +741,15 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     for (final CigarElement element : cigar) {
                         final CigarOperator operator = element.getOperator();
                         final int length = element.getLength();
-                        if (operator.consumesReferenceBases() && breakPoint.getStart() >= refPos && breakPoint.getStart() < refPos + length) {
+                        if (operator.consumesReferenceBases() && breakPoint.getStart() >= refPos && breakPoint.getStart() <= refPos + length) {
                             if (operator.isAlignment()) {
                                 result.add(hapPos + breakPoint.getStart() - refPos);
-                            } else {
+                            } else { // deletion.
                                 result.add(hapPos);
+                            }
+                        } else if (!operator.consumesReferenceBases() && breakPoint.getStart() == refPos - 1) {
+                            if (operator.consumesReadBases()) {
+                                result.add(hapPos + length);
                             }
                         }
                         if (operator.consumesReferenceBases()) {

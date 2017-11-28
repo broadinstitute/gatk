@@ -648,4 +648,27 @@ public final class CigarUtils {
                 .mapToInt(CigarElement::getLength)
                 .sum();
     }
+
+    public static boolean equals(final Cigar a, final Cigar b) {
+        if (a == null || b == null) {
+            return false;
+        } else if (a == b) {
+            return true;
+        } else if (a.numCigarElements() != b.numCigarElements()) {
+            return false;
+        } else {
+            for (int i = 0; i < a.numCigarElements(); i++) {
+                if (!a.getCigarElement(i).equals(b.getCigarElement(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    public static int countIndelBases(final Cigar cigar) {
+        return Utils.nonNull(cigar).getCigarElements().stream()
+                .filter(ce -> ce.getOperator().isIndel())
+                .mapToInt(CigarElement::getLength).sum();
+    }
 }

@@ -915,4 +915,8 @@ public final class AlignmentInterval {
         return result;
     }
 
+    public int getBaseMismatches() {
+        return mismatches == NO_NM ? NO_NM : mismatches - CigarUtils.countIndelBases(cigarAlong5to3DirectionOfContig);
+    }
+
 }
