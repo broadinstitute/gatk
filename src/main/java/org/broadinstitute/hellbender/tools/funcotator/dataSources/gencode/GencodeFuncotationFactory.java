@@ -188,7 +188,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * create funcotations for the given variant and reference.
      */
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
-        final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
+        final List<Funcotation> outputFuncotations = new ArrayList<>();
 
         // If we have features we need to annotate, go through them and create annotations:
         if ( featureList.size() > 0 ) {
@@ -197,7 +197,13 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
                     // Get the kind of feature we want here:
                     if ( GencodeGtfGeneFeature.class.isAssignableFrom(feature.getClass()) ) {
-                        gencodeFuncotations.addAll(createFuncotations(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext));
+                        final List<GencodeFuncotation> gencodeFuncotationList = createFuncotations(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext);
+
+                        // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
+                        filterAnnotationsByUserTranscripts( gencodeFuncotationList, userRequestedTranscripts );
+
+                        // Add the filtered funcotations here:
+                        outputFuncotations.addAll(gencodeFuncotationList);
                     }
 
                     // NOTE: If we don't have any gencodeFuncotations for this feature, it's OK.
@@ -210,23 +216,19 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
         else {
-            // This is an IGR.
-            gencodeFuncotations.addAll( createIgrFuncotations(variant, referenceContext) );
+            // This is an IGR.  Only bother with it if the User has not asked for a specific transcript (because IGRs
+            // by definition have no associated transcript).
+            if ( userRequestedTranscripts.size() == 0 ) {
+                outputFuncotations.addAll(createIgrFuncotations(variant, referenceContext));
+            }
         }
-
-        // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
-        filterAnnotationsByUserTranscripts( gencodeFuncotations, userRequestedTranscripts );
 
         // Now we set the override values for each annotation:
-        for ( final GencodeFuncotation gencodeFuncotation : gencodeFuncotations ) {
-            gencodeFuncotation.setFieldSerializationOverrideValues( annotationOverrideMap );
+        for ( final Funcotation funcotation : outputFuncotations ) {
+            funcotation.setFieldSerializationOverrideValues( annotationOverrideMap );
         }
 
-        // TODO: this is sloppy - need to fix the issue of List<Funcotation> being different from List<GencodeFuncotation>
-        final List<Funcotation> outputList = new ArrayList<>();
-        outputList.addAll( gencodeFuncotations );
-
-        return outputList;
+        return outputFuncotations;
     }
 
     @Override
@@ -250,7 +252,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     static void filterAnnotationsByUserTranscripts( final List<GencodeFuncotation> funcotations,
                                                     final Set<String> acceptableTranscripts ) {
-        if ( !acceptableTranscripts.isEmpty() ) {
+        if ( (acceptableTranscripts != null) && (!acceptableTranscripts.isEmpty()) ) {
             funcotations.removeIf( f -> !isFuncotationInTranscriptList(f, acceptableTranscripts) );
         }
     }
