@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import java.io.File;
-
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+
+import java.io.File;
 
 /**
  * A class to hold the constants for the Funcotator Tests.
@@ -27,4 +26,8 @@ public class FuncotatorTestConstants {
     public static final String GENCODE_TRANSCRIPT_FASTA_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "gencode.v19.pc_transcripts.fasta";
 
     public static final String VARIANT_FILE_HG19_CHR3 = FUNCOTATOR_TEST_DIR + "singleSnpTest_chr3_hg19.vcf";
+
+    public static final String XSV_CSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_testFile.csv";
+    public static final String XSV_TSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_TSV_testFile.csv";
+    public static final String XSV_DEADBEEFSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_DEADBEEFSV_testFile.csv";
 }

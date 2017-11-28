@@ -42,7 +42,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     /**
      * Path to the given XSV file.
      */
-    private final Path xsvFilePath;
+    private final Path xsvInputPath;
 
     /**
      * The column (0-indexed) containing the key for this XSV file.
@@ -81,7 +81,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         this.name = name;
 
         delimiter = delim;
-        xsvFilePath = filePath;
+        xsvInputPath = filePath;
 
         this.keyColumn = keyColumn;
         this.keyType = keyType;
@@ -90,7 +90,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         annotationMap = new HashMap<>();
 
         // Create our iterator:
-        try ( final PathLineIterator pathLineIterator = new PathLineIterator(xsvFilePath) ) {
+        try ( final PathLineIterator pathLineIterator = new PathLineIterator(xsvInputPath) ) {
 
             // Get a line iterator for our lines:
             final Iterator<String> it = pathLineIterator.iterator();
@@ -177,7 +177,8 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      * @param lineIterator An iterator at the start of an XSV file from which to get the header columns.
      * @param numHeaderLinesToIgnore The number of lines at the start of the file to ignore before beginning parsing.
      */
-    private List<String> createColumnNames(final Iterator<String> lineIterator, final int numHeaderLinesToIgnore) {
+    private List<String> createColumnNames(final Iterator<String> lineIterator,
+                                            final int numHeaderLinesToIgnore) {
         // Ignore the leading lines that we were told to ignore:
         for ( int i = 0; i < numHeaderLinesToIgnore ; ++i ) {
             lineIterator.next();
@@ -189,7 +190,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         // If the number of columns is < 2, we don't have any data (because we don't add in the column containing
         // the key).  This is an error:
         if ( annotationColumnNames.size() < 2 ) {
-            throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvFilePath.toUri().toString() + ") - contains too few columns (" + annotationColumnNames.size() + ")!");
+            throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvInputPath.toUri().toString() + ") - contains too few columns (" + annotationColumnNames.size() + ")!");
         }
 
         // Pull out the column containing the key so it doesn't appear in our data:
@@ -204,17 +205,34 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      * @param it An {@link Iterator} of {@link String} starting at the first data line in the file to parse.
      */
     private void populateAnnotationMap(final Iterator<String> it) {
+
+        boolean emptyLineFlag = false;
+
         // Parse the rest of the data:
         while ( it.hasNext() ) {
-            final List<String> dataRow = new ArrayList<>( Arrays.asList(it.next().split(delimiter)) );
 
-            // Make sure we have the same number of columns:
-            if ( dataRow.size() != annotationColumnNames.size() ) {
-                throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvFilePath.toUri().toString() + ") - row does not contain the same number of columns as header (" + dataRow.size() + " != " + annotationColumnNames.size() + ")!");
+            // Check for an empty line.
+            // The only permissible place is at the end of the file.
+            final String rawRow = it.next();
+            if ( rawRow.length() == 0 ) {
+                if ( !emptyLineFlag ) {
+                    emptyLineFlag = true;
+                    continue;
+                }
+                else {
+                    throw new UserException.MalformedFile("File contains an empty line.  All lines must have data.");
+                }
             }
+
+            final List<String> dataRow = new ArrayList<>( Arrays.asList(rawRow.split(delimiter)) );
 
             // Remove the key column:
             final String rowKey = dataRow.remove(keyColumn);
+
+            // Make sure we have the same number of columns:
+            if ( (dataRow.size() != annotationColumnNames.size()) ) {
+                throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvInputPath.toUri().toString() + ") - row does not contain the same number of columns as header (" + dataRow.size() + " != " + annotationColumnNames.size() + ")!");
+            }
 
             // Store this in our map:
             annotationMap.put(rowKey, dataRow);
