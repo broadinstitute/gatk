@@ -31,7 +31,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
     private static final String REVERSE_ORDERED_SAMPLE_MAP = "reverseOrdered.sample_map";
     private static final String BADLY_SORTED1000_BATCH_SIZE50_VCF = "badlySorted1000-batch-size50.vcf";
 
-    private static File writeManyVCFs(int howMany, boolean samplesInHeaderCanMismatch) throws IOException {
+    private static File writeManyVCFs(int howMany, boolean samplesInHeaderCanMismatch, boolean addDuplicateHeaderSamples) throws IOException {
         final Map<String,File> nameToFileMap = new LinkedHashMap<>();
         final String contig = "chr20";
         final SAMSequenceDictionary dict = new SAMSequenceDictionary(
@@ -49,7 +49,9 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
             try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(out, dict, false, Options.INDEX_ON_THE_FLY)) {
                 final String sampleName = "Sample_" + String.valueOf(i);
                 String sampleNameInHeader;
-                if ( samplesInHeaderCanMismatch && i % 10 == 0 ) {
+                if ( samplesInHeaderCanMismatch && addDuplicateHeaderSamples && (i == 100 || i == 700) ) {
+                    sampleNameInHeader = "FromHeader_DUPLICATE_NAME";
+                } else if ( samplesInHeaderCanMismatch && i % 10 == 0 ) {
                     sampleNameInHeader = "FromHeader_" + sampleName;
                 } else {
                     sampleNameInHeader = sampleName;
@@ -77,15 +79,15 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
     }
 
     /**
-     * this was used to generate some of the vcf files used in {@link #testUnshufflingRestoresCorrectSamples(File, File, int, int , File)}
-     * it's kept around in case we need to generate new test cases or examine how they were made
+     * This was used to generate some of the vcf files used in {@link #testUnshufflingRestoresCorrectSamples(File, File, int, int , File)}
+     * it's kept around in case we need to generate new test cases or examine how they were made.
      *
      * This method generates VCFs in which the sample names in the VCF headers all match the sample names in the
      * generated sample name map file.
      */
     @Test(enabled = false)
     public void generateVCFs() throws IOException {
-        final File file = writeManyVCFs(1000, false);
+        final File file = writeManyVCFs(1000, false, false);
         System.out.println(file);
     }
 
@@ -93,17 +95,19 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
      * this was used to generate some of the vcf files used in {@link #testUnshufflingRestoresCorrectSamples(File, File, int, int , File)}
      * it's kept around in case we need to generate new test cases or examine how they were made
      *
+     * This was run two ways: once with addDuplicateHeaderSamples == false, and once with addDuplicateHeaderSamples == true.
+     *
      * This method generates VCFs in which some of the sample names in the VCF headers don't match the sample names in the
      * generated sample name map file.
      */
     @Test(enabled = false)
     public void generateVCFsWithMismatchingSampleNamesInHeaders() throws IOException {
-        final File file = writeManyVCFs(1000, true);
+        final File file = writeManyVCFs(1000, true, true);
         System.out.println(file);
     }
 
     /**
-     *   Test files were created by generating mangled files using the {@link #writeManyVCFs(int, boolean)} methods.
+     *   Test files were created by generating mangled files using the {@link #writeManyVCFs(int, boolean, boolean)} methods.
      *   These were then imported to GenomicsDB using GATK 4.beta.5-66-g9609cb3-SNAPSHOT which is before the fix for
      *   GenomicsDBImport sample name ordering was applied.
      *
@@ -121,7 +125,8 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
                 {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 50, 1, null},
                 {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile("badlySorted1000-batch-size50.vcf.gz"), 50, 1, null},
                 {getTestFile(REVERSE_ORDERED_SAMPLE_MAP), getTestFile("badlySorted1000-batch-size13.vcf"), 13, 1, null},
-                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads5-samplesInHeaderAreDifferent.vcf"), 50, 5, getTestFile("reverseOrderedWithHeaderMismatches.gvcfToHeaderSampleMapFile")}
+                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads5-samplesInHeaderAreDifferent.vcf"), 50, 5, getTestFile("reverseOrderedWithHeaderMismatches.gvcfToHeaderSampleMapFile")},
+                {getTestFile("reverseOrderedWithHeaderMismatchesAndDuplicateSample.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads5-samplesInHeaderAreDifferent-withDuplicateSample.vcf"), 50, 5, getTestFile("reverseOrderedWithHeaderMismatchesAndDuplicateSample.gvcfToHeaderSampleMapFile")}
         };
     }
 
@@ -161,9 +166,9 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
                 // samples in sample map don't match badly sorted vcf
                 {getTestFile("mismatched.sample_map"), getTestFile(BADLY_SORTED1000_BATCH_SIZE50_VCF), 1, 1, null},
                 // readerThreads > 1, but no gvcfToHeaderSampleMapFile provided
-                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads4-samplesInHeaderAreDifferent.vcf"), 50, 4, null},
+                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads5-samplesInHeaderAreDifferent.vcf"), 50, 5, null},
                 // readerThreads == 1, but a gvcfToHeaderSampleMapFile provided
-                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads4-samplesInHeaderAreDifferent.vcf"), 50, 1, getTestFile("reverseOrderedWithHeaderMismatches.gvcfToHeaderSampleMapFile")}
+                {getTestFile("reverseOrderedWithHeaderMismatches.sample_map"), getTestFile("badlysorted1000-batchSize50-readerThreads5-samplesInHeaderAreDifferent.vcf"), 50, 1, getTestFile("reverseOrderedWithHeaderMismatches.gvcfToHeaderSampleMapFile")}
         };
     }
 
