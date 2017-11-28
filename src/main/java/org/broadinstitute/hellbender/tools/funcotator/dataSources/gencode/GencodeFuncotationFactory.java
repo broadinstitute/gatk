@@ -622,7 +622,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // Get our coding sequence for this region:
             final List<Locatable> activeRegions = Collections.singletonList(utr);
-            final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
+            final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
 
             final String referenceCodingSequence;
             if ( transcriptFastaReferenceDataSource != null ) {
@@ -675,7 +675,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
         // Determine the strand for the variant:
-        final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
+        final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
         FuncotatorUtils.assertValidStrand(strand);
 
         // Set as default INTRON variant classification:
@@ -803,7 +803,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setContig(variant.getContig());
 
         // Get the strand:
-        final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
+        final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
         sequenceComparison.setStrand(strand);
 
         // Get the alleles from the inputs
@@ -982,7 +982,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
 
          final GencodeFuncotationBuilder gencodeFuncotationBuilder = new GencodeFuncotationBuilder();
-         final Strand strand = Strand.toStrand(transcript.getGenomicStrand().toString());
+         final Strand strand = Strand.decode(transcript.getGenomicStrand().toString());
 
          gencodeFuncotationBuilder.setRefAlleleAndStrand(variant.getReference(), strand)
                  .setHugoSymbol(gtfFeature.getGeneName())
