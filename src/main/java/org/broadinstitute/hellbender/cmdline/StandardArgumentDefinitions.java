@@ -13,7 +13,7 @@ public final class StandardArgumentDefinitions {
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
     public static final String INTERVALS_LONG_NAME = "intervals";
-    public static final String READ_INDEX_LONG_NAME = "readIndex";
+    public static final String READ_INDEX_LONG_NAME = "read-index";
     public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "use-original-qualities";
     public static final String LENIENT_LONG_NAME = "lenient";
     public static final String VERBOSITY_NAME = "verbosity";
@@ -37,6 +37,8 @@ public final class StandardArgumentDefinitions {
     public static final String ANNOTATION_LONG_NAME = "annotation";
     public static final String ANNOTATION_GROUP_LONG_NAME = "annotation-group";
     public static final String ANNOTATIONS_TO_EXCLUDE_LONG_NAME = "annotations-to-exclude";
+    public static final String SAMPLE_NAME_LONG_NAME = "sample-name";
+    public static final String PEDIGREE_FILE_LONG_NAME = "pedigree";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
@@ -72,6 +74,8 @@ public final class StandardArgumentDefinitions {
     public static final String ANNOTATION_SHORT_NAME = "A";
     public static final String ANNOTATION_GROUP_SHORT_NAME = "G";
     public static final String ANNOTATIONS_TO_EXCLUDE_SHORT_NAME = "AX";
+    public static final String SAMPLE_NAME_SHORT_NAME = "sn";
+    public static final String PEDIGREE_FILE_SHORT_NAME = "ped";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
 

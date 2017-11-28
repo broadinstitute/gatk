@@ -294,7 +294,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
-                "--genotyping_mode", "GENOTYPE_GIVEN_ALLELES",
+                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
                 "--alleles", new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf").getAbsolutePath()
         };
 
@@ -317,7 +317,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
-                "--genotyping_mode", "GENOTYPE_GIVEN_ALLELES",
+                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
                 "--alleles", new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf").getAbsolutePath(),
                 "-ERC", "GVCF"
         };
@@ -436,7 +436,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:11363580-11363600",
                 "-O", output.getAbsolutePath(),
                 "-ploidy", "4",
-                "-maxGT", "15",
+                "--max-genotype-count", "15",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
         runCommandLine(args);
@@ -472,8 +472,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10003000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--assemblyRegionOut", assemblyRegionOut.getAbsolutePath(),
-                "--activityProfileOut", activityProfileOut.getAbsolutePath()
+                "--" + HaplotypeCaller.ASSEMBLY_REGION_OUT_LONG_NAME, assemblyRegionOut.getAbsolutePath(),
+                "--" + HaplotypeCaller.PROFILE_OUT_LONG_NAME, activityProfileOut.getAbsolutePath()
         };
 
         runCommandLine(args);

@@ -41,7 +41,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
     //only test the first 20 variants to save time
     public void testMissingPriors() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                        "-useACoff" +
+                        "--discovered-allele-count-priors-off" +
                         " -O %s" +
                         " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,001,432" +
@@ -55,12 +55,12 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
     @Test
     public void testInputINDELs() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                        "-useACoff" +
+                        "--discovered-allele-count-priors-off" +
                         " -O %s" +
                         " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,100,000" +
                         " -V " + dir + "NA12878.Jan2013.haplotypeCaller.subset.indels.vcf" +
-                        " -supporting " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
+                        " --supporting-callsets " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(dir + "expectedCGP_testInputINDELs.vcf")
         );
@@ -70,11 +70,11 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
     @Test
     public void testFamilyPriors() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                        "-useACoff" +
+                        "--discovered-allele-count-priors-off" +
                         " -O %s" +
                         " -ped " + CEUtrioFamilyFile +
                         " -V " + CEUtrioTest +
-                        " -supporting " + CEUtrioPopPriorsTest +
+                        " --supporting-callsets " + CEUtrioPopPriorsTest +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(dir + "expectedCGP_testFamilyPriors_chr1.vcf")
         );
@@ -87,7 +87,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -O %s" +
                         " -ped " + threeMemberNonTrioFamilyFile +
                         " -V " + getThreeMemberNonTrioTest +
-                        " -skipPop" +
+                        " --skip-population-priors" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(dir + "expectedCGP_testSingleParentFamily_chr1.vcf")
         );

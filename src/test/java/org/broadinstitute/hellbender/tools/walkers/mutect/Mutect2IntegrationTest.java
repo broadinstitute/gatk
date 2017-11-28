@@ -70,7 +70,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-XL", mask.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--downsampling-stride", "20",
-                "--maxReadsPerAlignmentStart", "4",
+                "--max-reads-per-alignment-start", "4",
                 "--max-suspicious-reads-per-alignment-start", "4"
         };
 

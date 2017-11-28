@@ -61,7 +61,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                     "--resource",
                     "truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
                     "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
-                    "--trustAllPolymorphic", // for speed
+                    "--trust-all-polymorphic", // for speed
                     "-mode", "SNP",
                     "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
                 }
@@ -144,7 +144,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         File tranchesOut = createTempFile("testVarRecalMaxAttempts", ".txt");
         args.addAll(addTempFileArgs(recalOut, tranchesOut));
 
-        args.add("--max_attempts");
+        args.add("--max-attempts");
         args.add("4"); // it takes for for this test to wind up with enough training data
 
         runCommandLine(args);
@@ -157,7 +157,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         List<java.lang.String> args = new ArrayList<>(2);
         args.add("--output");
         args.add(recalOutFile.getAbsolutePath());
-        args.add("--tranches_file");
+        args.add("--tranches-file");
         args.add(tranchesOutFile.getAbsolutePath());
         return args;
     }
@@ -174,10 +174,10 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 " --variant " + inputFile +
                 " -L 20:1,000,000-10,000,000" +
                 " -an QD -an ReadPosRankSum -an HaplotypeScore" +
-                " -mode INDEL -mG 3" +
-                " --trustAllPolymorphic" + // for speed
+                " -mode INDEL -max-gaussians 3" +
+                " --trust-all-polymorphic" + // for speed
                 " --output %s" +
-                " -tranchesFile %s" +
+                " -tranches-file %s" +
                 " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(
                         // the "expected" vcf is not in the expected dir because its used
@@ -202,12 +202,12 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 " --resource truth_training1,truth=true,training=true,prior=15.0:" + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
                 " --resource truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
                 " -an QD -an HaplotypeScore -an HRun" +
-                " --trustAllPolymorphic" + // for speed
+                " --trust-all-polymorphic" + // for speed
                 " --output %s" +
-                " -tranchesFile %s" +
-                " --output_model " + modelReportFilename +
-                " -mode SNP -mG 3" +  //reduce max gaussians so we have negative training data with the sampled input
-                " -sampleEvery 2" +
+                " -tranches-file %s" +
+                " --output-model " + modelReportFilename +
+                " -mode SNP --max-gaussians 3" +  //reduce max gaussians so we have negative training data with the sampled input
+                " -sample-every 2" +
                 " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(
                         modelReportRecal,
@@ -226,12 +226,12 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                         " --resource truth_training1,truth=true,training=true,prior=15.0:" + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
                         " --resource truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
                         " -an QD -an HaplotypeScore -an HRun" +
-                        " --trustAllPolymorphic" + // for speed
+                        " --trust-all-polymorphic" + // for speed
                         " --output %s" +
-                        " -tranchesFile %s" +
-                        " --input_model " + modelReportFilename +
-                        " -mode SNP -mG 3" +  //reduce max gaussians so we have negative training data with the sampled input
-                        " -sampleEvery 2" +
+                        " -tranches-file %s" +
+                        " --input-model " + modelReportFilename +
+                        " -mode SNP -max-gaussians 3" +  //reduce max gaussians so we have negative training data with the sampled input
+                        " -sample-every 2" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(
                         modelReportRecal,
@@ -254,22 +254,22 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                                 "--resource",
                                 "truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
                                 "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
-                                "--trustAllPolymorphic", // for speed
+                                "-trust-all-polymorphic", // for speed
                                 "-mode", "SNP",
                                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
-                                "-scatterTranches",
-                                "--VQSLODtranche", "10.0",
-                                "--VQSLODtranche", "8.0",
-                                "--VQSLODtranche", "6.0",
-                                "--VQSLODtranche", "4.0",
-                                "--VQSLODtranche", "2.0",
-                                "--VQSLODtranche", "0.0",
-                                "--VQSLODtranche", "-2.0",
-                                "--VQSLODtranche", "-4.0",
-                                "--VQSLODtranche", "-6.0",
-                                "--VQSLODtranche", "-8.0",
-                                "--VQSLODtranche", "-10.0",
-                                "--VQSLODtranche", "-12.0"
+                                "--output-tranches-for-scatter",
+                                "--vqslod-tranche", "10.0",
+                                "--vqslod-tranche", "8.0",
+                                "--vqslod-tranche", "6.0",
+                                "--vqslod-tranche", "4.0",
+                                "--vqslod-tranche", "2.0",
+                                "--vqslod-tranche", "0.0",
+                                "--vqslod-tranche", "-2.0",
+                                "--vqslod-tranche", "-4.0",
+                                "--vqslod-tranche", "-6.0",
+                                "--vqslod-tranche", "-8.0",
+                                "--vqslod-tranche", "-10.0",
+                                "--vqslod-tranche", "-12.0"
                         }
                 },
         };

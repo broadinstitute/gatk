@@ -66,13 +66,13 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
 
-    @Argument(fullName = "use_jdk_deflater", shortName = "jdk_deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
+    @Argument(fullName = "use-jdk-deflater", shortName = "jdk-deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
     public boolean useJdkDeflater = false;
 
-    @Argument(fullName = "use_jdk_inflater", shortName = "jdk_inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
+    @Argument(fullName = "use-jdk-inflater", shortName = "jdk-inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
     public boolean useJdkInflater = false;
 
-    @Argument(fullName = "gcs_max_retries", shortName = "gcs_retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
+    @Argument(fullName = "gcs-max-retries", shortName = "gcs-retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
     public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
 
     // This option is here for documentation completeness.

@@ -85,18 +85,18 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
  * <h4>Single-sample GVCF calling (outputs intermediate GVCF)</h4>
  * <pre>
  * gatk --java-options "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.g.vcf \
+ *   -O output.g.vcf.gz \
  *   -ERC GVCF
  * </pre>
  *
  * <h4>Single-sample GVCF calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=9622'>allele-specific annotations</a></h4>
  * <pre>
  * gatk --java-options "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.g.vcf \
+ *   -O output.g.vcf.gz \
  *   -ERC GVCF \
  *   -G Standard \
  *   -G AS_Standard
@@ -105,9 +105,9 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
  * <h4>Variant calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=5484'>bamout</a> to show realigned reads</h4>
  * <pre>
  * gatk --java-options "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.vcf \
+ *   -O output.vcf.gz \
  *   -bamout bamout.bam
  * </pre>
  *
@@ -141,6 +141,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 @BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
+    //NOTE: many of these settings are referenced by HaplotypeCallerSpark
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
     public static final int DEFAULT_ASSEMBLY_REGION_PADDING = 100;
@@ -159,7 +160,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private HaplotypeCallerEngine hcEngine;
-    
+
     @Override
     protected int defaultMinAssemblyRegionSize() { return DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
 

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardHCAnnotation;
@@ -35,7 +36,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * is especially useful if your samples are all in the same file but you need to run them individually through HC
      * in -ERC GVC mode (which is the recommended usage). Note that the name is case-sensitive.
      */
-    @Argument(fullName = "sample_name", shortName = "sn", doc = "Name of single sample to use from a multi-sample bam", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.SAMPLE_NAME_LONG_NAME, shortName = StandardArgumentDefinitions.SAMPLE_ALIAS_SHORT_NAME, doc = "Name of single sample to use from a multi-sample bam", optional = true)
     public String sampleNameToUse = null;
 
     // -----------------------------------------------------------------------------------------------
@@ -56,7 +57,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * and end at 100 (exclusive).
      */
     @Advanced
-    @Argument(fullName = "GVCFGQBands", shortName = "GQB", doc= "Exclusive upper bounds for reference confidence GQ bands " +
+    @Argument(fullName = "gvcf-gq-bands", shortName = "GQB", doc= "Exclusive upper bounds for reference confidence GQ bands " +
             "(must be in [1, 100] and specified in increasing order)", optional = true)
     public List<Integer> GVCFGQBands = new ArrayList<>(70);
     {
@@ -74,11 +75,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * position in the genome, given its alignment to the reference.
      */
     @Advanced
-    @Argument(fullName = "indelSizeToEliminateInRefModel", shortName = "ERCIS", doc = "The size of an indel to check for in the reference model", optional = true)
+    @Argument(fullName = "indel-size-to-eliminate-in-ref-model", doc = "The size of an indel to check for in the reference model", optional = true)
     public int indelSizeToEliminateInRefModel = 10;
 
 
     @Advanced
-    @Argument(fullName = "useAllelesTrigger", shortName = "allelesTrigger", doc = "Use additional trigger on variants found in an external alleles file", optional = true)
+    @Argument(fullName = "use-alleles-trigger", doc = "Use additional trigger on variants found in an external alleles file", optional = true)
     public boolean USE_ALLELES_TRIGGER = false;
 }

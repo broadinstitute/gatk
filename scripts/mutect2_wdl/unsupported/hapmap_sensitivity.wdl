@@ -280,7 +280,7 @@ task Jaccard {
         count=0
         for vcf in ${sep = ' ' calls}; do
             ((count++))
-            java -jar ${gatk} SelectVariants -V $vcf -selectType ${type} -O ${type}_only_$count.vcf
+            java -jar ${gatk} SelectVariants -V $vcf --select-type-to-include ${type} -O ${type}_only_$count.vcf
         done
 
         for file1 in ${type}_only*.vcf; do
