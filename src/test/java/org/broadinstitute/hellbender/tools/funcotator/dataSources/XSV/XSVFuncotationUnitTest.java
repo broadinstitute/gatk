@@ -7,6 +7,8 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A Unit Test class for {@link XSVFuncotation}
@@ -126,7 +128,16 @@ public class XSVFuncotationUnitTest extends GATKBaseTest {
         Assert.assertEquals( funcotation.serializeToVcfString(), expected );
     }
 
-//    @Test(dataProvider = "provideListOfStrings")
-//    public void test
+    @Test(dataProvider = "provideListOfStrings")
+    public void testKeySet(final List<String> kvNames) {
+        final XSVFuncotation funcotation = new XSVFuncotation(kvNames, kvNames.stream().map(s -> s + "VVV").collect(Collectors.toList()));
+        Assert.assertEquals( funcotation.keySet(), kvNames);
+    }
+
+    @Test(dataProvider = "provideListOfStrings")
+    public void testValues(final List<String> kvNames) {
+        final XSVFuncotation funcotation = new XSVFuncotation(kvNames.stream().map(s -> s + "KEY").collect(Collectors.toList()), kvNames);
+        Assert.assertEquals( funcotation.values(), kvNames);
+    }
 
 }
