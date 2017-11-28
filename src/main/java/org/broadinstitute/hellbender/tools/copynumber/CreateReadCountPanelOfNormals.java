@@ -240,9 +240,9 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
         return readCounts.getIntervals();
     }
 
-    private RealMatrix constructReadCountMatrix(final Logger logger,
-                                                final List<File> inputReadCountFiles,
-                                                final List<SimpleInterval> intervals) {
+    private static RealMatrix constructReadCountMatrix(final Logger logger,
+                                                       final List<File> inputReadCountFiles,
+                                                       final List<SimpleInterval> intervals) {
         logger.info("Validating and aggregating input read-count files...");
         final int numSamples = inputReadCountFiles.size();
         final int numIntervals = intervals.size();

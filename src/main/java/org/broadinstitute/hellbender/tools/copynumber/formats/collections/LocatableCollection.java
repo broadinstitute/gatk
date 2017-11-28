@@ -34,10 +34,10 @@ public abstract class LocatableCollection<RECORD extends Locatable> extends Reco
     /**
      * Records are sorted using {@code LEXICOGRAPHICAL_ORDER_COMPARATOR}.
      */
-    public LocatableCollection(final List<RECORD> records,
-                               final TableColumnCollection mandatoryColumns,
-                               final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                               final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    protected LocatableCollection(final List<RECORD> records,
+                                  final TableColumnCollection mandatoryColumns,
+                                  final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                  final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(
                 Utils.nonNull(records).stream().sorted(LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList()),
                 mandatoryColumns,
@@ -49,10 +49,10 @@ public abstract class LocatableCollection<RECORD extends Locatable> extends Reco
     /**
      * @throws IllegalArgumentException if records are not sorted using {@code LEXICOGRAPHICAL_ORDER_COMPARATOR}
      */
-    public LocatableCollection(final File inputFile,
-                               final TableColumnCollection mandatoryColumns,
-                               final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                               final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    protected LocatableCollection(final File inputFile,
+                                  final TableColumnCollection mandatoryColumns,
+                                  final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                  final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
         validateIntervals(getRecords());
     }
@@ -60,7 +60,7 @@ public abstract class LocatableCollection<RECORD extends Locatable> extends Reco
     //check for ordering, duplicates, and overlaps
     private static <T extends Locatable> void validateIntervals(final List<T> records) {
         if (!Ordering.from(LEXICOGRAPHICAL_ORDER_COMPARATOR).isStrictlyOrdered(records)) {
-            throw new IllegalArgumentException("Records fwere not strictly sorted in lexicographical order.");
+            throw new IllegalArgumentException("Records were not strictly sorted in lexicographical order.");
         }
         final OptionalInt failureIndex = IntStream.range(1, records.size())
                 .filter(i -> IntervalUtils.overlaps(records.get(i - 1), records.get(i)))

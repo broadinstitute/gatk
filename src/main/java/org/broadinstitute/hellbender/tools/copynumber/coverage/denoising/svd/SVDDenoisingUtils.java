@@ -27,6 +27,9 @@ import java.util.stream.IntStream;
 /**
  * Utility class for package-private methods for performing SVD-based denoising and related operations.
  *
+ * These methods are specifically tailored for the SVD-denoising methods used in the GATK CNV pipeline
+ * and are not intended for wide reuse.
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class SVDDenoisingUtils {
@@ -175,6 +178,11 @@ public final class SVDDenoisingUtils {
         return result;
     }
 
+    /**
+     * This method is purposely written as a single contiguous chunk of code rather than broken up into sub-methods.
+     * This is to make efficient reuse of intermediate results without requiring them to be passed by reference.
+     * Please do not refactor or extract code without a very good reason.
+     */
     private static PreprocessedStandardizedResult preprocessPanel(final RealMatrix readCounts,
                                                                   final double[] intervalGCContent,
                                                                   final double minimumIntervalMedianPercentile,
