@@ -40,6 +40,7 @@ import static org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfFeatu
 public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
+    // Private Static Members:
     /**
      * Standard Logger.
      */
@@ -94,6 +95,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     );
 
     //==================================================================================================================
+    // Private Members:
 
     /**
      * ReferenceSequenceFile for the transcript reference file.
@@ -123,6 +125,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private final Set<String> userRequestedTranscripts;
 
     //==================================================================================================================
+    // Constructors:
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile) {
         this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>(), new LinkedHashMap<>());
@@ -162,6 +165,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     //==================================================================================================================
+    // Override Methods:
 
     @Override
     public void close() {
@@ -175,7 +179,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     @Override
     public LinkedHashSet<String> getSupportedFuncotationFields() {
-        return GencodeFuncotation.getSerializedFieldNames();
+        return new LinkedHashSet<>(GencodeFuncotation.getSerializedFieldNames().stream().map(f -> getName() + "_" + f).collect(Collectors.toList()));
     }
 
     @Override
@@ -213,19 +217,29 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
         filterAnnotationsByUserTranscripts( gencodeFuncotations, userRequestedTranscripts );
 
-        // Now we set the overrides and default values for each annotation:
+        // Now we set the override values for each annotation:
         for ( final GencodeFuncotation gencodeFuncotation : gencodeFuncotations ) {
             gencodeFuncotation.setFieldSerializationOverrideValues( annotationOverrideMap );
         }
 
-        // TODO: this is sloppy:
+        // TODO: this is sloppy - need to fix the issue of List<Funcotation> being different from List<GencodeFuncotation>
         final List<Funcotation> outputList = new ArrayList<>();
         outputList.addAll( gencodeFuncotations );
 
         return outputList;
     }
 
+    @Override
+    /**
+     * {@inheritDoc}
+     * This method should never be called on a {@link GencodeFuncotationFactory}, as that would imply a time-loop.
+     */
+    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
+        throw new GATKException("This method should never be called on a "+ this.getClass().getName());
+    }
+
     //==================================================================================================================
+    // Static Methods:
 
     /**
      * Filter the given list of {@link GencodeFuncotation} to only contain those funcotations that have transcriptIDs that
@@ -388,6 +402,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     //==================================================================================================================
+    // Normal Methods:
 
     /**
      * Creates a {@link List} of {@link GencodeFuncotation}s based on the given {@link VariantContext}, {@link Allele}, and {@link GencodeGtfGeneFeature}.
@@ -819,7 +834,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // Get our coding sequence for this region:
             final List<Locatable> activeRegions = Collections.singletonList(utr);
-            final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
+            final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
 
             final String referenceCodingSequence;
             if ( transcriptFastaReferenceDataSource != null ) {
@@ -874,7 +889,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
         // Determine the strand for the variant:
-        final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
+        final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
         FuncotatorUtils.assertValidStrand(strand);
 
         // Set as default INTRON variant classification:
@@ -1005,7 +1020,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setContig(variant.getContig());
 
         // Get the strand:
-        final Strand strand = Strand.toStrand( transcript.getGenomicStrand().toString() );
+        final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
         sequenceComparison.setStrand(strand);
 
         // Get the alleles from the inputs
@@ -1226,7 +1241,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                                                         final GencodeGtfTranscriptFeature transcript) {
 
          final GencodeFuncotationBuilder gencodeFuncotationBuilder = new GencodeFuncotationBuilder();
-         final Strand strand = Strand.toStrand(transcript.getGenomicStrand().toString());
+         final Strand strand = Strand.decode(transcript.getGenomicStrand().toString());
 
          gencodeFuncotationBuilder.setRefAlleleAndStrand(variant.getReference(), strand)
                  .setHugoSymbol(gtfFeature.getGeneName())
@@ -1482,6 +1497,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     //==================================================================================================================
+    // Helper Data Types:
 
     /**
      * Comparator class for Best Effect order.

@@ -142,11 +142,11 @@ public class GencodeFuncotation extends Funcotation {
     }
 
     /**
-     * @return An ordered {@link LinkedHashSet} of {@link String} containing the field names that {@link GencodeFuncotation} produces.
+     * @return A {@link List} of {@link String} containing the field names that {@link GencodeFuncotation} produces.
      */
-    public static LinkedHashSet<String> getSerializedFieldNames() {
+    public static List<String> getSerializedFieldNames() {
 
-        return new LinkedHashSet<>(Arrays.asList(
+        return Arrays.asList(
                     "hugoSymbol",
                     "ncbiBuild",
                     "chromosome",
@@ -168,27 +168,18 @@ public class GencodeFuncotation extends Funcotation {
                     "proteinChange",
                     "gcContent",
                     "otherTranscripts"
-                ));
+                );
     }
 
     //==================================================================================================================
 
     @Override
     public String serializeToVcfString() {
-        return serializeToVcfString("");
-    }
-
-    @Override
-    public String serializeToVcfString(final String manualAnnotationString) {
-
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
 
-        final String prependedAnnotations = (manualAnnotationString == null ? "" : manualAnnotationString);
-
         // After the manual string, we check to see if we have an override first and if not we get the set field value:
-        return  prependedAnnotations +
-                (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")) + DELIMITER +
+        return  (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")) + DELIMITER +
                 (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")) + DELIMITER +
                 (chromosomeSerializedOverride != null ? chromosomeSerializedOverride : (chromosome != null ? chromosome : "")) + DELIMITER +
                 (startSerializedOverride != null ? startSerializedOverride : start) + DELIMITER +
@@ -212,8 +203,8 @@ public class GencodeFuncotation extends Funcotation {
     }
 
     @Override
-    public void setFieldSerializationOverrideValue( final String field, final String overrideValue ) {
-        switch (field) {
+    public void setFieldSerializationOverrideValue( final String fieldName, final String overrideValue ) {
+        switch (fieldName) {
             case "hugoSymbol": hugoSymbolSerializedOverride = overrideValue; break;
             case "ncbiBuild": ncbiBuildSerializedOverride = overrideValue; break;
             case "chromosome": chromosomeSerializedOverride = overrideValue; break;
@@ -235,7 +226,7 @@ public class GencodeFuncotation extends Funcotation {
             case "proteinChange": proteinChangeSerializedOverride = overrideValue; break;
             case "gcContent": gcContentSerializedOverride = overrideValue; break;
             case "otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
-            default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + field + " (value was: " + overrideValue + ")");
+            default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + fieldName + " (value was: " + overrideValue + ")");
         }
     }
 

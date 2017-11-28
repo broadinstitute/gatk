@@ -12,12 +12,14 @@ import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
+import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfFeature;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Funcotator (FUNCtional annOTATOR) performs functional analysis on given variants
@@ -101,6 +103,7 @@ public class Funcotator extends VariantWalker {
 
     private OutputRenderer outputRenderer;
     private final List<DataSourceFuncotationFactory> dataSourceFactories = new ArrayList<>();
+    private GencodeFuncotationFactory gencodeFuncotationFactory;
 
     //==================================================================================================================
 
@@ -116,12 +119,16 @@ public class Funcotator extends VariantWalker {
         final LinkedHashMap<String, String> annotationDefaultsMap = splitAnnotationArgsIntoMap(annotationDefaults);
         final LinkedHashMap<String, String> annotationOverridesMap = splitAnnotationArgsIntoMap(annotationOverrides);
 
+        // Set up our gencode factory:
+        gencodeFuncotationFactory = new GencodeFuncotationFactory(gencodeTranscriptFastaFile,
+                                                                 transcriptSelectionMode,
+                                                                 transcriptList,
+                                                                 annotationOverridesMap);
+
         // Set up our data source factories:
+        // TODO: Set up ALL datasource factories based on config file:
         dataSourceFactories.add(
-                new GencodeFuncotationFactory(gencodeTranscriptFastaFile,
-                        transcriptSelectionMode,
-                        transcriptList,
-                        annotationOverridesMap)
+                gencodeFuncotationFactory
         );
 
         // Need to determine which annotations are accounted for (by the funcotation factories) and which are not.
@@ -131,10 +138,10 @@ public class Funcotator extends VariantWalker {
         // Set up our output renderer:
         // TODO: in the future this should be encapsulated into a factory for output renderers based on an input argument.
         outputRenderer = new VcfOutputRenderer(getHeaderForVariants(),
-                                                createVCFWriter(outputFile),
-                                                dataSourceFactories,
-                                                unaccountedForDefaultAnnotations,
-                                                unaccountedForOverrideAnnotations);
+                                               createVCFWriter(outputFile),
+                                               dataSourceFactories,
+                                               unaccountedForDefaultAnnotations,
+                                               unaccountedForOverrideAnnotations);
 
         outputRenderer.open();
     }
@@ -199,11 +206,31 @@ public class Funcotator extends VariantWalker {
     private void enqueueAndHandleVariant(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
         final List<Feature> featureList = new ArrayList<>();
+
+        // TODO: Need to add all features here for any kind of Data Source:
         featureList.addAll( featureContext.getValues(gtfVariants) );
 
+        // Create a place to keep our funcotations:
         final List<Funcotation> funcotations = new ArrayList<>();
+
+        // Annotate with Gencode first:
+        final List<Funcotation> funcotationsFromGencodeFactory = gencodeFuncotationFactory.createFuncotations(variant, referenceContext, featureList);
+        funcotations.addAll( funcotationsFromGencodeFactory );
+
+        // Create a list of GencodeFuncotation to use for other Data Sources:
+        final List<GencodeFuncotation> gencodeFuncotations =
+                funcotationsFromGencodeFactory.stream()
+                    .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
+
+        // Annotate with the rest of the data sources:
         for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
-            funcotations.addAll( funcotationFactory.createFuncotations(variant, referenceContext, featureList) );
+
+            // Make sure we don't double up on the Gencodes:
+            if ( funcotationFactory.equals(gencodeFuncotationFactory) ) {
+                continue;
+            }
+
+            funcotations.addAll( funcotationFactory.createFuncotations(variant, referenceContext, featureList, gencodeFuncotations) );
         }
         outputRenderer.write(variant, funcotations);
     }

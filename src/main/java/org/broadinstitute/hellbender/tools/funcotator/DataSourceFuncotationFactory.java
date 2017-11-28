@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 
 import java.util.*;
 
@@ -44,6 +45,17 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
     public void close() {}
 
     /**
+     * Apply the override values in {@link DataSourceFuncotationFactory#annotationOverrideMap} to every
+     * {@link Funcotation} in the given {@code outputFuncotations}.
+     * @param funcotationList {@link List} of {@link Funcotation} to which to apply override values.
+     */
+    public void setOverrideValuesInFuncotations(final List<Funcotation> funcotationList) {
+        for ( final Funcotation funcotation : funcotationList ) {
+            funcotation.setFieldSerializationOverrideValues( annotationOverrideMap );
+        }
+    }
+
+    /**
      * @return The name of the data source corresponding to this {@link DataSourceFuncotationFactory}.
      */
     public abstract String getName();
@@ -61,4 +73,18 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
      * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
      */
     public abstract List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList);
+
+    /**
+     * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, {@code featureContext}, and {@code gencodeFuncotations}.
+     * For some Data Sources knowledge of Gene Name or Transcript ID is required for annotation.
+     * @param variant {@link VariantContext} to annotate.
+     * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
+     * @param featureList {@link List} of {@link Feature} corresponding to the given {@code variant}.
+     * @param gencodeFuncotations {@link List} of {@link GencodeFuncotation} that have already been created for the given {@code variant}/{@code referenceContext}/{@code featureContext}.
+     * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
+     */
+    public abstract List<Funcotation> createFuncotations(final VariantContext variant,
+                                                         final ReferenceContext referenceContext,
+                                                         final List<Feature> featureList,
+                                                         final List<GencodeFuncotation> gencodeFuncotations);
 }
