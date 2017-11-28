@@ -596,7 +596,7 @@ task FilterByOrientationBias {
     sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
       "${pre_adapter_metrics}" > "gatk.pre_adapter_detail_metrics"
 
-     java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
+     java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} FilterByOrientationBias -AM ${sep=" -AM " artifact_modes} \
        -V ${input_vcf} -P gatk.pre_adapter_detail_metrics --output "${output_vcf_name}-filtered.vcf"
   }
 

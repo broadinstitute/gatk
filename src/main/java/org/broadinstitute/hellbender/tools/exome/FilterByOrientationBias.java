@@ -18,8 +18,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterer;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
-import picard.analysis.artifacts.SequencingArtifactMetrics;
 import org.broadinstitute.hellbender.utils.artifacts.Transition;
+import picard.analysis.artifacts.SequencingArtifactMetrics;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -89,7 +89,7 @@ public class FilterByOrientationBias extends VariantWalker {
 
     public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME = "P";
     public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_FULL_NAME = "preAdapterDetailFile";
-    public static final String ARTIFACT_MODES_SHORT_NAME = "A";
+    public static final String ARTIFACT_MODES_SHORT_NAME = "AM";
     public static final String ARTIFACT_MODES_FULL_NAME = "artifactModes";
 
     public static final String DEFAULT_ARTIFACT_MODE = "G/T";
