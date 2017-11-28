@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
+import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.PrintStream;
@@ -246,7 +247,7 @@ public class Main {
     /**
      * Returns the command line program specified, or prints the usage and exits with exit code 1 *
      */
-    private static CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
+    private CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
 
         /** Get the set of classes that are our command line programs **/
         final ClassFinder classFinder = new ClassFinder();
@@ -314,11 +315,11 @@ public class Main {
 
         @Override
         public int compare(final Class<?> aClass, final Class<?> bClass) {
-            return aClass.getSimpleName().compareTo(bClass.getSimpleName());
+            return RuntimeUtils.toolDisplayName(aClass).compareTo(RuntimeUtils.toolDisplayName(bClass));
         }
     }
 
-    private static void printUsage(final PrintStream destinationStream, final Set<Class<?>> classes, final String commandLineName) {
+    private void printUsage(final PrintStream destinationStream, final Set<Class<?>> classes, final String commandLineName) {
         final StringBuilder builder = new StringBuilder();
         builder.append(BOLDRED + "USAGE: " + commandLineName + " " + GREEN + "<program name>" + BOLDRED + " [-h]\n\n" + KNRM)
                 .append(BOLDRED + "Available Programs:\n" + KNRM);
@@ -375,16 +376,24 @@ public class Main {
                         betaFeature == null ?
                                 String.format("%s%s", CYAN, property.oneLineSummary()) :
                                 String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, property.oneLineSummary());
+                final String annotatedToolName = getDisplayNameForToolClass(clazz);
                 if (clazz.getSimpleName().length() >= 45) {
-                    builder.append(String.format("%s    %s    %s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
+                    builder.append(String.format("%s    %s    %s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
                 } else {
-                    builder.append(String.format("%s    %-45s%s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
+                    builder.append(String.format("%s    %-45s%s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
                 }
             }
             builder.append(String.format("\n"));
         }
         builder.append(WHITE + "--------------------------------------------------------------------------------------\n" + KNRM);
         destinationStream.println(builder.toString());
+    }
+
+    /**
+     * @return A display name to be used for the tool who's class is {@code clazz}.
+     */
+    protected String getDisplayNameForToolClass(Class<?> clazz) {
+        return RuntimeUtils.toolDisplayName(clazz);
     }
 
     /**

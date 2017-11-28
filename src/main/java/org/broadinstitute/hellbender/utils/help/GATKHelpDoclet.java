@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.help;
 import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.RootDoc;
 
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.GSONWorkUnit;
@@ -59,7 +58,7 @@ public class GATKHelpDoclet extends HelpDoclet {
             final ClassDoc classDoc,
             final Class<?> clazz)
     {
-        return new DocWorkUnit(
+        return new GATKDocWorkUnit(
                 new GATKHelpDocWorkUnitHandler(this),
                 documentedFeature,
                 classDoc,
