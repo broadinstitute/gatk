@@ -24,12 +24,15 @@ public abstract class Funcotation {
 
     /**
      * Override fields with values as specified by the input map (for when it comes time to serialize and write this {@link Funcotation}).
-     * If the given {@code field} is not contained in this {@link Funcotation} then a {@link org.broadinstitute.hellbender.exceptions.UserException} will be thrown.
+     * If the given overrides map is null, will not override any field.
+     * If the given overrides map is not null and if the given {@code field} is not contained in this {@link Funcotation} then a {@link org.broadinstitute.hellbender.exceptions.UserException} will be thrown.
      * @param fieldSerializationOverrides A {@link Map} containing fields to override in this {@link Funcotation}.
      */
     public void setFieldSerializationOverrideValues(final Map<String,String> fieldSerializationOverrides) {
-        for ( final String field : fieldSerializationOverrides.keySet() ) {
-            setFieldSerializationOverrideValue(field, fieldSerializationOverrides.get(field));
+        if (fieldSerializationOverrides != null) {
+            for ( final String field : fieldSerializationOverrides.keySet() ) {
+                setFieldSerializationOverrideValue(field, fieldSerializationOverrides.get(field));
+            }
         }
     }
 

@@ -1,7 +1,17 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV;
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,17 +31,47 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static final int squareSize = 20;
     private static final String defaultName = "XSVCSV";
-    private static final List<List<String>> headerOffsetStrings;
+    private static final List<List<String>> headerRowTable;
+    private static final List<List<String>> dataTable;
+
+    // Default locus is in PIK3CA:
+    private static final String defaultContig = "chr3";
+    private static final int defaultStart = 178921337;
+    private static final int defaultEnd = 178921337;
+    private static final Allele defaultRefAllele = Allele.create("A", true);
+    private static final Allele defaultAltAllele = Allele.create("T");
+
+    private static final VariantContext defaultVariantContext;
+    private static final ReferenceContext defaultReferenceContext;
 
     static {
-        headerOffsetStrings = new ArrayList<>(squareSize);
+        // Initialize Static members:
+        headerRowTable = new ArrayList<>(squareSize);
+        dataTable = new ArrayList<>(squareSize);
         for ( int i = 0; i < squareSize; ++i ) {
-            final List<String> singleRow = new ArrayList<>(squareSize);
+            final List<String> headerRow = new ArrayList<>(squareSize);
+            final List<String> dataRow = new ArrayList<>(squareSize);
             for ( int j = 0; j < squareSize; ++j ) {
-                singleRow.add( defaultName + "_R" + (i+1) + "C"+ (j+1) );
+                headerRow.add( defaultName + "_R" + (i+1) + "C"+ (j+1) );
+                dataRow.add( "R" + (i+1) + "C"+ (j+1) );
             }
-            headerOffsetStrings.add(singleRow);
+            headerRowTable.add(headerRow);
+            dataTable.add(dataRow);
         }
+
+        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
+                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+                defaultContig,
+                defaultStart,
+                defaultEnd,
+                Arrays.asList(defaultRefAllele, defaultAltAllele)
+        );
+        defaultVariantContext = variantContextBuilder.make();
+
+        defaultReferenceContext = new ReferenceContext(
+                ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME) ),
+                new SimpleInterval(defaultContig, defaultStart, defaultEnd)
+        );
     }
 
     //==================================================================================================================
@@ -40,6 +80,14 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Helper Methods:
 
+    private <T> List<T> removeHelper(final List<T> list, final int index) {
+        final ArrayList<T> tmpList = new ArrayList<>(list);
+
+        tmpList.remove(index);
+
+        return tmpList;
+    }
+
     private void helpPopulateForGetSupportedFuncotationFields(final List<Object[]> outList,
                                                               final List<Integer> keyColumns,
                                                               final String path,
@@ -47,13 +95,72 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         for ( int i = 0; i < squareSize; ++i ) {
             for ( final int keyCol : keyColumns ) {
 
-                final List<String> headers = new ArrayList<>(headerOffsetStrings.get(i));
+                final List<String> headers = new ArrayList<>(headerRowTable.get(i));
                 headers.remove(keyCol);
 
                 outList.add(
                         new Object[]{
                                 new File(path).toPath(), i, defaultName, delim, keyCol, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME,
                                 new LinkedHashSet<>(headers)
+                        }
+                );
+            }
+        }
+    }
+
+    private void helpPopulateDataForCreateFuncotations(final List<Object[]> outList,
+                                                       final String path,
+                                                       final String delim) {
+
+        // Programmatically make our entries:
+        for ( int keyColumn = 0 ; keyColumn < squareSize ; ++keyColumn ) {
+            for ( int startingHeaderRow = 0 ; startingHeaderRow < squareSize - 1 ; ++startingHeaderRow ) {
+
+                // Add an entry for the Gene Name Key:
+                outList.add(
+                        new Object[]{
+                                new SimpleKeyXsvFuncotationFactory(
+                                        defaultName,
+                                        new File(path).toPath(),
+                                        delim,
+                                        keyColumn,
+                                        SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME,
+                                        new HashMap<>(),
+                                        startingHeaderRow
+                                ),
+                                Collections.singletonList(
+                                        new GencodeFuncotationBuilder().setHugoSymbol(dataTable.get(startingHeaderRow+1).get(keyColumn)).build()
+                                ),
+                                Collections.singletonList(
+                                        new XSVFuncotation(
+                                                removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
+                                                removeHelper(dataTable.get(startingHeaderRow+1), keyColumn)
+                                        )
+                                )
+                        }
+                );
+
+                // Add an entry for the Transcript ID Key:
+                outList.add(
+                        new Object[]{
+                                new SimpleKeyXsvFuncotationFactory(
+                                        defaultName,
+                                        new File(path).toPath(),
+                                        delim,
+                                        keyColumn,
+                                        SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID,
+                                        new HashMap<>(),
+                                        startingHeaderRow
+                                ),
+                                Collections.singletonList(
+                                        new GencodeFuncotationBuilder().setAnnotationTranscript(dataTable.get(startingHeaderRow+1).get(keyColumn)).build()
+                                ),
+                                Collections.singletonList(
+                                        new XSVFuncotation(
+                                                removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
+                                                removeHelper(dataTable.get(startingHeaderRow+1), keyColumn)
+                                        )
+                                )
                         }
                 );
             }
@@ -68,9 +175,125 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final List<Object[]> outList = new ArrayList<>();
 
-        helpPopulateForGetSupportedFuncotationFields(outList, Arrays.asList(1,5,17), FuncotatorTestConstants.XSV_CSV_FILE_PATH, ",");
-        helpPopulateForGetSupportedFuncotationFields(outList, Arrays.asList(1,5,17), FuncotatorTestConstants.XSV_TSV_FILE_PATH, "\t");
-        helpPopulateForGetSupportedFuncotationFields(outList, Arrays.asList(1,5,17), FuncotatorTestConstants.XSV_DEADBEEFSV_FILE_PATH, "DEADBEEF");
+        final List<Integer> keyColumnChoices = Arrays.asList(1,5,17);
+
+        helpPopulateForGetSupportedFuncotationFields(outList, keyColumnChoices, FuncotatorTestConstants.XSV_CSV_FILE_PATH, ",");
+        helpPopulateForGetSupportedFuncotationFields(outList, keyColumnChoices, FuncotatorTestConstants.XSV_TSV_FILE_PATH, "\t");
+        helpPopulateForGetSupportedFuncotationFields(outList, keyColumnChoices, FuncotatorTestConstants.XSV_DEADBEEFSV_FILE_PATH, "DEADBEEF");
+
+        return outList.iterator();
+    }
+
+    @DataProvider
+    Object[][] provideForGetName() {
+        return new Object[][] {
+                {
+                    new SimpleKeyXsvFuncotationFactory(
+                            defaultName,
+                            new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                            ",",
+                            0,
+                            SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                    ),
+                    defaultName
+                },
+                {
+                        new SimpleKeyXsvFuncotationFactory(
+                                "Donatello",
+                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                ",",
+                                0,
+                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                        ),
+                        "Donatello"
+                },
+                {
+                        new SimpleKeyXsvFuncotationFactory(
+                                "Leonardo",
+                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                ",",
+                                0,
+                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                        ),
+                        "Leonardo"
+                },
+                {
+                        new SimpleKeyXsvFuncotationFactory(
+                                "Michelangelo",
+                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                ",",
+                                0,
+                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                        ),
+                        "Michelangelo"
+                },
+                {
+                new SimpleKeyXsvFuncotationFactory(
+                        "Raphael",
+                        new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                        ",",
+                        0,
+                        SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                ),
+                "Raphael"
+                },
+        };
+    }
+
+    @DataProvider
+    Iterator<Object[]> provideDataForCreateFuncotations() {
+
+        final List<Object[]> outList = new ArrayList<>();
+
+        // Trivial cases:
+        outList.add(
+                new Object[] {
+                        new SimpleKeyXsvFuncotationFactory(
+                                defaultName,
+                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                ",",
+                                0,
+                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                        ),
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                }
+        );
+        outList.add(
+                new Object[] {
+                        new SimpleKeyXsvFuncotationFactory(
+                                defaultName,
+                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                ",",
+                                0,
+                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                        ),
+                        Collections.singletonList(
+                                new GencodeFuncotationBuilder().setHugoSymbol("NOT THE RIGHT GENE NAME").build()
+                        ),
+                        Collections.emptyList()
+                }
+        );
+        outList.add(
+                new Object[] {
+                        new SimpleKeyXsvFuncotationFactory(
+                                defaultName,
+                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                ",",
+                                0,
+                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID
+                        ),
+                        Collections.singletonList(
+                                new GencodeFuncotationBuilder().setAnnotationTranscript("NOT THE RIGHT TRANSCRIPT ID").build()
+                        ),
+                        Collections.emptyList()
+                }
+        );
+        
+        // Add in cases from helper function:
+        helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_CSV_FILE_PATH, ",");
+        helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_TSV_FILE_PATH, "\t");
+        helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_DEADBEEFSV_FILE_PATH, "DEADBEEF");
 
         return outList.iterator();
     }
@@ -78,11 +301,8 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Tests:
 
-    // CreateFuncotations (x2)
-
-    // GetSupportedfuncotationFields
     @Test(dataProvider = "provideForTestGetSupportedFuncotationFields")
-    public void testGetSupportedfuncotationFields(final Path inputPath,
+    public void testGetSupportedFuncotationFields(final Path inputPath,
                                                   final int headerLinesToIgnore,
                                                   final String name,
                                                   final String delimiter,
@@ -90,14 +310,60 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                                   final SimpleKeyXsvFuncotationFactory.XsvDataKeyType dataKeyType,
                                                   final LinkedHashSet<String> expected) {
 
-        final SimpleKeyXsvFuncotationFactory xsvFuncotationFactory =
-                new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType, headerLinesToIgnore);
+        final SimpleKeyXsvFuncotationFactory xsvFuncotationFactory;
+        if ( headerLinesToIgnore == 0 ) {
+            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType);
+        }
+        else {
+            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType, new HashMap<>(), headerLinesToIgnore);
+        }
 
         final LinkedHashSet<String> supportedFields = xsvFuncotationFactory.getSupportedFuncotationFields();
 
         Assert.assertEquals( supportedFields, expected );
     }
 
-    // constructors
+    @Test(dataProvider = "provideForGetName")
+    public void testGetName( final SimpleKeyXsvFuncotationFactory factory, final String expected ) {
+        Assert.assertEquals( factory.getName(), expected );
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testCreateFuncotationsNoGencodeInput() {
+        final SimpleKeyXsvFuncotationFactory simpleKeyXsvFuncotationFactory =
+                new SimpleKeyXsvFuncotationFactory(
+                    defaultName,
+                    new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                    ",",
+                    0,
+                    SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+                );
+
+        simpleKeyXsvFuncotationFactory.createFuncotations(defaultVariantContext, defaultReferenceContext, Collections.emptyList());
+    }
+
+    @Test(dataProvider = "provideDataForCreateFuncotations")
+    public void testCreateFuncotations(final SimpleKeyXsvFuncotationFactory xsvFuncotationFactory,
+                                       final List<GencodeFuncotation> gencodeFuncotations,
+                                       final List<Funcotation> expectedFuncotationsList) {
+
+        final List<Funcotation> funcotations = xsvFuncotationFactory.createFuncotations(defaultVariantContext, defaultReferenceContext, Collections.emptyList(), gencodeFuncotations);
+
+        Assert.assertEquals( funcotations.size(), expectedFuncotationsList.size(),
+                "Wrong number of funcotations created (" + funcotations.size() + ")  Expected: " + expectedFuncotationsList.size() );
+
+        for (int i = 0; i < funcotations.size(); ++i) {
+
+            final XSVFuncotation computed = (XSVFuncotation)funcotations.get(i);
+            final XSVFuncotation expected = (XSVFuncotation)expectedFuncotationsList.get(i);
+
+            Assert.assertEquals(computed.size(), expected.size(),
+                    "Funcotations at index " + i + " do not have the same number of elements: computed " + computed.size() + " != " + expected.size() + " expected");
+
+            Assert.assertEquals(computed, expected,
+                    "Funcotations at index " + i + " are not equal:" + "\n\tComputed: " + computed + "\n\tExpected: " + expected);
+
+        }
+    }
 
 }

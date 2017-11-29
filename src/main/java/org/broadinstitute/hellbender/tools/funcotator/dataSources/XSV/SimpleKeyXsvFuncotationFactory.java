@@ -56,6 +56,11 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     private final XsvDataKeyType keyType;
 
     /**
+     * The number of lines at the top of the file to ignore before starting to parse the input file.
+     */
+    private final int numHeaderLinesToIgnore;
+
+    /**
      * The names of the columns containing values that will be added to the resulting {@link XSVFuncotation}.
      */
     private final List<String> annotationColumnNames;
@@ -69,7 +74,11 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     // Constructors:
 
     public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType) {
-        this(name, filePath, delim, keyColumn, keyType, 0);
+        this(name, filePath, delim, keyColumn, keyType, new HashMap<>(), 0);
+    }
+
+    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType, final Map<String, String> annotationOverrides) {
+        this(name, filePath, delim, keyColumn, keyType, annotationOverrides, 0);
     }
 
     public SimpleKeyXsvFuncotationFactory(final String name,
@@ -77,6 +86,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                                           final String delim,
                                           final int keyColumn,
                                           final XsvDataKeyType keyType,
+                                          final Map<String, String> annotationOverrides,
                                           final int numHeaderLinesToIgnore) {
         this.name = name;
 
@@ -85,6 +95,10 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
 
         this.keyColumn = keyColumn;
         this.keyType = keyType;
+
+        annotationOverrideMap = annotationOverrides;
+
+        this.numHeaderLinesToIgnore = numHeaderLinesToIgnore;
 
         // Initialize our annotations map:
         annotationMap = new HashMap<>();
@@ -99,7 +113,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             annotationColumnNames = createColumnNames( it, numHeaderLinesToIgnore );
 
             // Populate our annotation map:
-            populateAnnotationMap(it);
+            populateAnnotationMap( it );
         }
     }
 
@@ -113,7 +127,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
 
     @Override
     public LinkedHashSet<String> getSupportedFuncotationFields() {
-        return new LinkedHashSet<>(annotationColumnNames.stream().map(f -> getName() + "_" + f).collect(Collectors.toList()));
+        return new LinkedHashSet<>(annotationColumnNames);
     }
 
     @Override
@@ -185,7 +199,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         }
 
         // We're at the header, so we need to initialize the header columns:
-        final List<String> annotationColumnNames = new ArrayList<>( Arrays.asList(lineIterator.next().split(delimiter)) );
+        final List<String> annotationColumnNames = Arrays.stream(lineIterator.next().split(delimiter)).map(n -> getName() + "_" + n).collect(Collectors.toCollection(ArrayList::new));
 
         // If the number of columns is < 2, we don't have any data (because we don't add in the column containing
         // the key).  This is an error:
@@ -211,17 +225,18 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         // Parse the rest of the data:
         while ( it.hasNext() ) {
 
+            final String rawRow = it.next();
+
             // Check for an empty line.
             // The only permissible place is at the end of the file.
-            final String rawRow = it.next();
             if ( rawRow.length() == 0 ) {
                 if ( !emptyLineFlag ) {
                     emptyLineFlag = true;
                     continue;
                 }
-                else {
+            }
+            if ( emptyLineFlag ) {
                     throw new UserException.MalformedFile("File contains an empty line.  All lines must have data.");
-                }
             }
 
             final List<String> dataRow = new ArrayList<>( Arrays.asList(rawRow.split(delimiter)) );

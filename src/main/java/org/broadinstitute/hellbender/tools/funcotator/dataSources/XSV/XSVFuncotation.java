@@ -69,6 +69,28 @@ public class XSVFuncotation extends Funcotation {
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if ( this == o ) return true;
+        if ( o == null || getClass() != o.getClass() ) return false;
+
+        final XSVFuncotation that = (XSVFuncotation) o;
+
+        return fieldMap != null ? fieldMap.equals(that.fieldMap) : that.fieldMap == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return fieldMap != null ? fieldMap.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "XSVFuncotation{" +
+                "fieldMap={" + fieldMap.keySet().stream().map(k -> k + ":" + fieldMap.get(k)).collect(Collectors.joining(" , ")) + '}' +
+                '}';
+    }
+
     //==================================================================================================================
     // Static Methods:
 
@@ -97,6 +119,13 @@ public class XSVFuncotation extends Funcotation {
      */
     public Collection<String> values() {
         return fieldMap.values();
+    }
+
+    /**
+     * @return The number of key-value pairs in this {@link XSVFuncotation}.
+     */
+    public int size() {
+        return fieldMap.size();
     }
 
     //==================================================================================================================
