@@ -45,7 +45,6 @@ public final class DownloadHeadersAndGenerateOneLineGVCFs extends CommandLinePro
     public static final String SAMPLE_NAME_KEY = "SN";
     public static final String ORIGINAL_FILE_NAME_KEY = "OF";
 
-    public static final String SKIP_PROMPT_LONG_NAME = "skipPrompt";
     private static final String CHR_1 = "chr1";
 
     @Argument(fullName = GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME,
@@ -69,8 +68,7 @@ public final class DownloadHeadersAndGenerateOneLineGVCFs extends CommandLinePro
     @Override
     protected Object doWork() {
 
-        final LinkedHashMap<String, Path> sampleNameMap = GenomicsDBImport.loadSampleNameMapFile(
-                IOUtils.getPath(sampleNameMapPath));
+        final LinkedHashMap<String, Path> sampleNameMap = GenomicsDBImport.loadSampleNameMapFile(IOUtils.getPath(sampleNameMapPath));
         final ThreadPoolExecutor executorService = initializeExecutorService(threads);
 
         try {
@@ -80,8 +78,7 @@ public final class DownloadHeadersAndGenerateOneLineGVCFs extends CommandLinePro
         }
 
         final List<Future<Path>> futures = sampleNameMap.entrySet().stream()
-                .map(e -> executorService.submit(
-                        () -> getHeaderAndWriteNewGVCF(e.getValue(), e.getKey(), IOUtils.getPath(output))))
+                .map(e -> executorService.submit(() -> getHeaderAndWriteNewGVCF(e.getValue(), e.getKey(), IOUtils.getPath(output))))
                 .collect(Collectors.toList());
         
         executorService.shutdown();
