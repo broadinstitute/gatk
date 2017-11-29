@@ -147,27 +147,27 @@ public class GencodeFuncotation extends Funcotation {
     public static List<String> getSerializedFieldNames() {
 
         return Arrays.asList(
-                    "hugoSymbol",
-                    "ncbiBuild",
-                    "chromosome",
-                    "start",
-                    "end",
-                    "variantClassification",
-                    "secondaryVariantClassification",
-                    "variantType",
-                    "refAllele",
-                    "tumorSeqAllele1",
-                    "tumorSeqAllele2",
-                    "genomeChange",
-                    "annotationTranscript",
-                    "transcriptStrand",
-                    "transcriptExon",
-                    "transcriptPos",
-                    "cDnaChange",
-                    "codonChange",
-                    "proteinChange",
-                    "gcContent",
-                    "otherTranscripts"
+                    "Gencode_hugoSymbol",
+                    "Gencode_ncbiBuild",
+                    "Gencode_chromosome",
+                    "Gencode_start",
+                    "Gencode_end",
+                    "Gencode_variantClassification",
+                    "Gencode_secondaryVariantClassification",
+                    "Gencode_variantType",
+                    "Gencode_refAllele",
+                    "Gencode_tumorSeqAllele1",
+                    "Gencode_tumorSeqAllele2",
+                    "Gencode_genomeChange",
+                    "Gencode_annotationTranscript",
+                    "Gencode_transcriptStrand",
+                    "Gencode_transcriptExon",
+                    "Gencode_transcriptPos",
+                    "Gencode_cDnaChange",
+                    "Gencode_codonChange",
+                    "Gencode_proteinChange",
+                    "Gencode_gcContent",
+                    "Gencode_otherTranscripts"
                 );
     }
 
@@ -205,27 +205,27 @@ public class GencodeFuncotation extends Funcotation {
     @Override
     public void setFieldSerializationOverrideValue( final String fieldName, final String overrideValue ) {
         switch (fieldName) {
-            case "hugoSymbol": hugoSymbolSerializedOverride = overrideValue; break;
-            case "ncbiBuild": ncbiBuildSerializedOverride = overrideValue; break;
-            case "chromosome": chromosomeSerializedOverride = overrideValue; break;
-            case "start": startSerializedOverride = overrideValue; break;
-            case "end": endSerializedOverride = overrideValue; break;
-            case "variantClassification": variantClassificationSerializedOverride = overrideValue; break;
-            case "secondaryVariantClassification": secondaryVariantClassificationSerializedOverride = overrideValue; break;
-            case "variantType": variantTypeSerializedOverride = overrideValue; break;
-            case "refAllele": refAlleleSerializedOverride = overrideValue; break;
-            case "tumorSeqAllele1": tumorSeqAllele1SerializedOverride = overrideValue; break;
-            case "tumorSeqAllele2": tumorSeqAllele2SerializedOverride = overrideValue; break;
-            case "genomeChange": genomeChangeSerializedOverride = overrideValue; break;
-            case "annotationTranscript": annotationTranscriptSerializedOverride = overrideValue; break;
-            case "transcriptStrand": transcriptStrandSerializedOverride = overrideValue; break;
-            case "transcriptExon": transcriptExonSerializedOverride = overrideValue; break;
-            case "transcriptPos": transcriptPosSerializedOverride = overrideValue; break;
-            case "cDnaChange": cDnaChangeSerializedOverride = overrideValue; break;
-            case "codonChange": codonChangeSerializedOverride = overrideValue; break;
-            case "proteinChange": proteinChangeSerializedOverride = overrideValue; break;
-            case "gcContent": gcContentSerializedOverride = overrideValue; break;
-            case "otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
+            case "Gencode_hugoSymbol": hugoSymbolSerializedOverride = overrideValue; break;
+            case "Gencode_ncbiBuild": ncbiBuildSerializedOverride = overrideValue; break;
+            case "Gencode_chromosome": chromosomeSerializedOverride = overrideValue; break;
+            case "Gencode_start": startSerializedOverride = overrideValue; break;
+            case "Gencode_end": endSerializedOverride = overrideValue; break;
+            case "Gencode_variantClassification": variantClassificationSerializedOverride = overrideValue; break;
+            case "Gencode_secondaryVariantClassification": secondaryVariantClassificationSerializedOverride = overrideValue; break;
+            case "Gencode_variantType": variantTypeSerializedOverride = overrideValue; break;
+            case "Gencode_refAllele": refAlleleSerializedOverride = overrideValue; break;
+            case "Gencode_tumorSeqAllele1": tumorSeqAllele1SerializedOverride = overrideValue; break;
+            case "Gencode_tumorSeqAllele2": tumorSeqAllele2SerializedOverride = overrideValue; break;
+            case "Gencode_genomeChange": genomeChangeSerializedOverride = overrideValue; break;
+            case "Gencode_annotationTranscript": annotationTranscriptSerializedOverride = overrideValue; break;
+            case "Gencode_transcriptStrand": transcriptStrandSerializedOverride = overrideValue; break;
+            case "Gencode_transcriptExon": transcriptExonSerializedOverride = overrideValue; break;
+            case "Gencode_transcriptPos": transcriptPosSerializedOverride = overrideValue; break;
+            case "Gencode_cDnaChange": cDnaChangeSerializedOverride = overrideValue; break;
+            case "Gencode_codonChange": codonChangeSerializedOverride = overrideValue; break;
+            case "Gencode_proteinChange": proteinChangeSerializedOverride = overrideValue; break;
+            case "Gencode_gcContent": gcContentSerializedOverride = overrideValue; break;
+            case "Gencode_otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
             default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + fieldName + " (value was: " + overrideValue + ")");
         }
     }

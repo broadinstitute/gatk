@@ -179,7 +179,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     @Override
     public LinkedHashSet<String> getSupportedFuncotationFields() {
-        return new LinkedHashSet<>(GencodeFuncotation.getSerializedFieldNames().stream().map(f -> getName() + "_" + f).collect(Collectors.toList()));
+        return new LinkedHashSet<>(GencodeFuncotation.getSerializedFieldNames());
     }
 
     @Override

@@ -12,12 +12,16 @@ import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -62,22 +66,66 @@ public class Funcotator extends VariantWalker {
             shortName = FuncotatorArgumentDefinitions.GTF_FILE_ARG_SHORT_NAME,
             doc = "A GENCODE GTF file containing annotated genes."
     )
-    private FeatureInput<GencodeGtfFeature> gtfVariants;
+    protected FeatureInput<GencodeGtfFeature> gtfVariants;
 
     //-----------------------------------------------------
     // Optional args:
 
     @Argument(
-            shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
-            fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_SHORT_NAME,
+            shortName = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_LONG_NAME,
+            optional = true,
+            doc = "Additional data source file (csv/tsv/<DELIMITER>separated value file).  " +
+                  "Delimiters for files are specified with the " + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME + " argument.  " +
+                    "If no delimiters are specified, files are assumed to be in Comma Separated Value (CSV) format.  " +
+                    "If delimiters are specified, exactly one delimiter must be specified for each additional data source in the order of the data sources."
+    )
+    protected List<String> xsvInputPaths = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_DEFAULT_VALUE;
+
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_LONG_NAME,
+            fullName  = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME,
+            optional = true,
+            doc = "Delimiter for additional data source file (csv/tsv/<DELIMITER>separated value file)." +
+                    "If no delimiters are specified, files are assumed to be in Comma Separated Value (CSV) format."
+    )
+    protected List<String> xsvInputDelimiters = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_DEFAULT_VALUE;
+
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_LONG_NAME,
+            optional = true,
+            doc = "The column number (0-based) in the XSV file(s) to use as the matching field.  "
+    )
+    protected List<Integer> xsvKeyColumns = FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_DEFAULT_VALUE;
+
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_LONG_NAME,
+            optional = true,
+            doc = "The type of match to perform on each XSV file."
+    )
+    protected List<SimpleKeyXsvFuncotationFactory.XsvDataKeyType> xsvFileTypes = FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_DEFAULT_VALUE;
+
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.XSV_NAME_ARG_LONG_NAME,
+            optional = true,
+            doc = "The name for each XSV Data Source."
+    )
+    protected List<String> xsvDataSourceNames = FuncotatorArgumentDefinitions.XSV_NAME_ARG_DEFAULT_VALUE;
+
+    @Argument(
+            shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
             optional = true,
             doc = "Method of detailed transcript selection."
     )
     protected FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE;
 
     @Argument(
-            shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME,
-            fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_SHORT_NAME,
+            shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME,
             optional = true,
             doc = "List of transcripts to use for annotation."
     )
@@ -119,19 +167,37 @@ public class Funcotator extends VariantWalker {
         final LinkedHashMap<String, String> annotationDefaultsMap = splitAnnotationArgsIntoMap(annotationDefaults);
         final LinkedHashMap<String, String> annotationOverridesMap = splitAnnotationArgsIntoMap(annotationOverrides);
 
-        // Set up our gencode factory:
+        // Set up and add our gencode factory:
         gencodeFuncotationFactory = new GencodeFuncotationFactory(gencodeTranscriptFastaFile,
                                                                  transcriptSelectionMode,
                                                                  transcriptList,
                                                                  annotationOverridesMap);
+        dataSourceFactories.add( gencodeFuncotationFactory );
 
-        // Set up our data source factories:
-        // TODO: Set up ALL datasource factories based on config file:
-        dataSourceFactories.add(
-                gencodeFuncotationFactory
-        );
+        // Set up our other data source factories:
+        // TODO: Set up ALL datasource factories based on config files / directory:
+        assertXsvInputsAreValid();
 
-        // Need to determine which annotations are accounted for (by the funcotation factories) and which are not.
+        // Go through and set up each XSV factory:
+        for ( int i = 0 ; i < xsvInputPaths.size() ; ++i ) {
+
+            // Create our SimpleKeyXsvFuncotationFactory:
+            final SimpleKeyXsvFuncotationFactory factory =
+                    //final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType
+                    new SimpleKeyXsvFuncotationFactory(
+                            xsvDataSourceNames.get(i),
+                            IOUtils.getPath(xsvInputPaths.get(i)),
+                            xsvInputDelimiters.get(i),
+                            xsvKeyColumns.get(i),
+                            xsvFileTypes.get(i),
+                            annotationOverridesMap
+                    );
+
+            // Add it to our sources:
+            dataSourceFactories.add( factory );
+        }
+
+        // Determine which annotations are accounted for (by the funcotation factories) and which are not.
         final LinkedHashMap<String, String> unaccountedForDefaultAnnotations = getUnaccountedForAnnotations( dataSourceFactories, annotationDefaultsMap );
         final LinkedHashMap<String, String> unaccountedForOverrideAnnotations = getUnaccountedForAnnotations( dataSourceFactories, annotationOverridesMap );
 
@@ -174,6 +240,44 @@ public class Funcotator extends VariantWalker {
     }
 
     //==================================================================================================================
+
+    /**
+     * Verifies that the given inputs for XSV files are valid.
+     * If they are valid, this method does nothing.
+     * If they are invalid, this method throws a {@link UserException.BadInput}.
+     */
+    private void assertXsvInputsAreValid() {
+
+        if ( !(xsvInputPaths.isEmpty() && xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty()) ) {
+            if ((xsvInputPaths.size() != xsvInputDelimiters.size() && (!xsvInputDelimiters.isEmpty()))) {
+                throw new UserException.BadInput("Must specify the same number of XSV input files and XSV delimiters (or no delimiters to assume CSV format).");
+            }
+            else if ( (xsvInputPaths.size() != xsvDataSourceNames.size()) && (xsvInputPaths.size() != xsvFileTypes.size()) && (xsvInputPaths.size() != xsvKeyColumns.size()) ) {
+                throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
+            }
+
+            // Quick existence checks here:
+            for ( final String inputPath : xsvInputPaths ) {
+                final Path filePath = IOUtils.getPath(inputPath);
+
+                if ( !Files.exists(filePath) ) {
+                    throw new UserException.BadInput("Specified XSV file does not exist: " + filePath.toUri().toString());
+                }
+
+                if ( !Files.isReadable(filePath) ) {
+                    throw new UserException.BadInput("Cannot read specified XSV file: " + filePath.toUri().toString());
+                }
+
+                if ( Files.isDirectory(filePath) ) {
+                    throw new UserException.BadInput("Given XSV file path is a directory, but should be a file: " + filePath.toUri().toString());
+                }
+            }
+        }
+        else if ( xsvInputPaths.isEmpty() && !(xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty()) ) {
+            throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
+        }
+
+    }
 
     /**
      * Creates a {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.

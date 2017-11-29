@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -100,7 +101,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
                 outList.add(
                         new Object[]{
-                                new File(path).toPath(), i, defaultName, delim, keyCol, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME,
+                                IOUtils.getPath(path), i, defaultName, delim, keyCol, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME,
                                 new LinkedHashSet<>(headers)
                         }
                 );
@@ -121,11 +122,11 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new Object[]{
                                 new SimpleKeyXsvFuncotationFactory(
                                         defaultName,
-                                        new File(path).toPath(),
+                                        IOUtils.getPath(path),
                                         delim,
                                         keyColumn,
                                         SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME,
-                                        new HashMap<>(),
+                                        new LinkedHashMap<>(),
                                         startingHeaderRow
                                 ),
                                 Collections.singletonList(
@@ -145,11 +146,11 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new Object[]{
                                 new SimpleKeyXsvFuncotationFactory(
                                         defaultName,
-                                        new File(path).toPath(),
+                                        IOUtils.getPath(path),
                                         delim,
                                         keyColumn,
                                         SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID,
-                                        new HashMap<>(),
+                                        new LinkedHashMap<>(),
                                         startingHeaderRow
                                 ),
                                 Collections.singletonList(
@@ -190,7 +191,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 {
                     new SimpleKeyXsvFuncotationFactory(
                             defaultName,
-                            new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                            IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                             ",",
                             0,
                             SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -200,7 +201,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 {
                         new SimpleKeyXsvFuncotationFactory(
                                 "Donatello",
-                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -210,7 +211,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 {
                         new SimpleKeyXsvFuncotationFactory(
                                 "Leonardo",
-                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -220,7 +221,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 {
                         new SimpleKeyXsvFuncotationFactory(
                                 "Michelangelo",
-                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -230,7 +231,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 {
                 new SimpleKeyXsvFuncotationFactory(
                         "Raphael",
-                        new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                        IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                         ",",
                         0,
                         SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -250,7 +251,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 new Object[] {
                         new SimpleKeyXsvFuncotationFactory(
                                 defaultName,
-                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -263,7 +264,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 new Object[] {
                         new SimpleKeyXsvFuncotationFactory(
                                 defaultName,
-                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -278,7 +279,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 new Object[] {
                         new SimpleKeyXsvFuncotationFactory(
                                 defaultName,
-                                new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID
@@ -315,7 +316,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
             xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType);
         }
         else {
-            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType, new HashMap<>(), headerLinesToIgnore);
+            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType, new LinkedHashMap<>(), headerLinesToIgnore);
         }
 
         final LinkedHashSet<String> supportedFields = xsvFuncotationFactory.getSupportedFuncotationFields();
@@ -333,7 +334,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         final SimpleKeyXsvFuncotationFactory simpleKeyXsvFuncotationFactory =
                 new SimpleKeyXsvFuncotationFactory(
                     defaultName,
-                    new File(FuncotatorTestConstants.XSV_CSV_FILE_PATH).toPath(),
+                    IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
                     ",",
                     0,
                     SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME

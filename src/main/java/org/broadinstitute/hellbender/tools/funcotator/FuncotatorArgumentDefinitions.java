@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.SimpleKeyXsvFuncotationFactory;
+
+import java.util.*;
 
 /**
  * Class to store argument definitions specific to {@link Funcotator}.
@@ -23,6 +22,26 @@ public class FuncotatorArgumentDefinitions {
 
     // ------------------------------------------------------------
     // Definitions for optional arguments:
+
+    public static final String XSV_INPUT_ARG_LONG_NAME = "xsvInput";
+    public static final String XSV_INPUT_ARG_SHORT_NAME = "xsv";
+    public static final List<String> XSV_INPUT_ARG_DEFAULT_VALUE = new ArrayList<>();
+
+    public static final String XSV_DELIMITER_ARG_LONG_NAME = "xsvDelimiter";
+    public static final String XSV_DELIMITER_ARG_SHORT_NAME = "xsvD";
+    public static final List<String> XSV_DELIMITER_ARG_DEFAULT_VALUE = new ArrayList<>();
+
+    public static final String XSV_KEY_COLUMN_ARG_LONG_NAME = "xsvKeyColumn";
+    public static final String XSV_KEY_COLUMN_ARG_SHORT_NAME = "xsvKeyCol";
+    public static final List<Integer> XSV_KEY_COLUMN_ARG_DEFAULT_VALUE = new ArrayList<>();
+
+    public static final String XSV_FILE_TYPE_ARG_LONG_NAME = "xsvFileType";
+    public static final String XSV_FILE_TYPE_ARG_SHORT_NAME = "xsvType";
+    public static final List<SimpleKeyXsvFuncotationFactory.XsvDataKeyType> XSV_FILE_TYPE_ARG_DEFAULT_VALUE = new ArrayList<>();
+
+    public static final String XSV_NAME_ARG_LONG_NAME = "xsvName";
+    public static final String XSV_NAME_ARG_SHORT_NAME = "xsvName";
+    public static final List<String> XSV_NAME_ARG_DEFAULT_VALUE = new ArrayList<>();
 
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcriptSelectionMode";
     public static final String TRANSCRIPT_SELECTION_MODE_SHORT_NAME = "tm";

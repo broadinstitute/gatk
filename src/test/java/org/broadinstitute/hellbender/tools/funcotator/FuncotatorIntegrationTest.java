@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.SimpleKeyXsvFuncotationFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -75,11 +76,24 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("-" + FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_SHORT_NAME);
         arguments.add("ENST00000263967.3");
 
+        // XSV Args:
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME);
+        arguments.add(FuncotatorTestConstants.XSV_CSV_PIK3CA_PATH);
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME);
+        arguments.add(",");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_SHORT_NAME);
+        arguments.add("0");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_SHORT_NAME);
+        arguments.add(SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME.toString());
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME);
+        arguments.add("TEST_XSV_INPUT");
+
+        // Override Args:
         arguments.add("-" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_SHORT_NAME);
         arguments.add("GARBAGEDAY:SPUMONI");
 
         arguments.add("-" + FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_SHORT_NAME);
-        arguments.add("hugoSymbol:Freddie Mercury");
+        arguments.add("Gencode_hugoSymbol:Freddie Mercury");
 
         runCommandLine(arguments);
     }

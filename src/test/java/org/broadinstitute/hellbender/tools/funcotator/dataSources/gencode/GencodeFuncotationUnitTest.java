@@ -406,27 +406,27 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         final List<String> serializedFieldNames = GencodeFuncotation.getSerializedFieldNames();
 
         final List<String> expectedFieldNames = Arrays.asList(
-                "hugoSymbol",
-                "ncbiBuild",
-                "chromosome",
-                "start",
-                "end",
-                "variantClassification",
-                "secondaryVariantClassification",
-                "variantType",
-                "refAllele",
-                "tumorSeqAllele1",
-                "tumorSeqAllele2",
-                "genomeChange",
-                "annotationTranscript",
-                "transcriptStrand",
-                "transcriptExon",
-                "transcriptPos",
-                "cDnaChange",
-                "codonChange",
-                "proteinChange",
-                "gcContent",
-                "otherTranscripts");
+                "Gencode_hugoSymbol",
+                "Gencode_ncbiBuild",
+                "Gencode_chromosome",
+                "Gencode_start",
+                "Gencode_end",
+                "Gencode_variantClassification",
+                "Gencode_secondaryVariantClassification",
+                "Gencode_variantType",
+                "Gencode_refAllele",
+                "Gencode_tumorSeqAllele1",
+                "Gencode_tumorSeqAllele2",
+                "Gencode_genomeChange",
+                "Gencode_annotationTranscript",
+                "Gencode_transcriptStrand",
+                "Gencode_transcriptExon",
+                "Gencode_transcriptPos",
+                "Gencode_cDnaChange",
+                "Gencode_codonChange",
+                "Gencode_proteinChange",
+                "Gencode_gcContent",
+                "Gencode_otherTranscripts");
 
         Assert.assertEquals(serializedFieldNames, expectedFieldNames);
     }
