@@ -67,8 +67,9 @@ public final class HelpConstants {
     public final static String DOC_CAT_VARMANIP = "Variant Manipulation Tools";
     
     public final static String DOC_CAT_ANNOTATORS = "Variant Annotations";
-    public final static String DOC_CAT_ANNOTATORS_SUMMARY = "Annotations available to HaplotypeCaller, Mutect2 and VariantAnnotator";
-    
+    public final static String DOC_CAT_ANNOTATORS_SUMMARY = "Annotations available to HaplotypeCaller, Mutect2, VariantAnnotator and GenotypeGVCFs. " +
+            "See note at https://software.broadinstitute.org/gatk/documentation/article?id=10836.";
+
     public final static String DOC_CAT_EXAMPLE = "Example Tools";
     public final static String DOC_CAT_EXAMPLE_SUMMARY = "Example tools that show developers how to implement new tools";
 
