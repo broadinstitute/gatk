@@ -523,13 +523,21 @@ public final class IOUtils {
      * to load the filesystem provider using the thread context classloader. This is needed when the filesystem
      * provider is loaded using a URL classloader (e.g. in spark-submit).
      *
-     * @param uriString the URI to convert
+     * Also makes an attempt to interpret the argument as a file name if it's not a URI.
+     *
+     * @param uriString the URI to convert.
      * @return the resulting {@code Path}
      * @throws UserException if an I/O error occurs when creating the file system
      */
     public static Path getPath(String uriString) {
         Utils.nonNull(uriString);
-        URI uri = URI.create(uriString);
+        URI uri;
+        try {
+            uri = URI.create(uriString);
+        } catch (IllegalArgumentException x) {
+            // not a valid URI. Caller probably just gave us a file name.
+            return Paths.get(uriString);
+        }
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.
             if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
