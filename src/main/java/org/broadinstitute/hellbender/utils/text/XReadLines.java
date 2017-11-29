@@ -23,6 +23,9 @@ import java.util.List;
  * }
  *
  * Please use this class for reading lines in a file.
+ *
+ * Note: If you need to read lines in a Path (perhaps one that points to a Google bucket),
+ * you can use PathLineIterator.
  */
 public final class XReadLines implements Iterator<String>, Iterable<String>, AutoCloseable {
     private final BufferedReader in;      // The stream we're reading from

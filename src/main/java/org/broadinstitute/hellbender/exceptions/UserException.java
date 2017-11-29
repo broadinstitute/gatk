@@ -88,6 +88,10 @@ public class UserException extends RuntimeException {
             this(file, getMessage(e), e);
         }
 
+        public CouldNotReadInputFile(Path path, Exception e) {
+            this(path, getMessage(e), e);
+        }
+
         public CouldNotReadInputFile(String message) {
             super(message);
         }
@@ -210,6 +214,14 @@ public class UserException extends RuntimeException {
 
         public MalformedFile(File f, String message, Exception e) {
             super(String.format("File %s is malformed: %s caused by %s", f.getAbsolutePath(), message, getMessage(e)), e);
+        }
+
+        public MalformedFile(Path p, String message) {
+            super(String.format("File %s is malformed: %s", p.toUri(), message));
+        }
+
+        public MalformedFile(Path p, String message, Exception e) {
+            super(String.format("File %s is malformed: %s caused by %s", p.toUri(), message, getMessage(e)), e);
         }
     }
 
