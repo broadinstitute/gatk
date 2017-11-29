@@ -20,8 +20,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
-
 
 final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyContigAlignments {
 
@@ -78,7 +76,8 @@ final class InsDelVariantDetector implements VariantDetectorFromLocalAssemblyCon
             }
 
             final ChimericAlignment ca = new ChimericAlignment(current, next, insertionMappings, contig.contigName, referenceDictionary);
-            if (!ca.isNotSimpleTranslocation())
+            final boolean validStateForThisPath = ca.isNeitherSimpleTranslocationNorIncompletePicture();
+            if ( ! validStateForThisPath )
                 throw new GATKException.ShouldNeverReachHereException("Mapped assembled contigs are sent down the wrong path: " +
                         "contig suggesting \"translocation\" is sent down the insert/deletion path.\n" + contig.toString());
             results.add(ca);
