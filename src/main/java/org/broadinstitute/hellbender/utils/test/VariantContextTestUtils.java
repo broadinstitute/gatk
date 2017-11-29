@@ -22,7 +22,9 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class VariantContextTestUtils {
 
@@ -76,7 +78,19 @@ public final class VariantContextTestUtils {
     static Object normalizeScientificNotation(final Object attribute){
         if (attribute instanceof String){
             try {
-                return Double.parseDouble((String) attribute);
+                if (((String) attribute).contains("|")) {
+                    // If the attribute is an allele specific attribute separated by '|', then we want to remap
+                    // each of its contained values (which could be comma separated lists) separately
+                    String[] split = ((String) attribute).split("\\|",-1);
+                    return Arrays.stream(split).map(
+                            s -> {return Arrays.stream(s.split(",",-1))
+                                    .map(d -> {if (d.equals("")) return d;
+                                               else return Double.toString(Double.parseDouble(d));})
+                                    .collect(Collectors.joining(","));})
+                            .collect(Collectors.joining("|"));
+                } else {
+                    return Double.parseDouble((String) attribute);
+                }
             } catch ( final NumberFormatException e) {
                 return attribute;
             }
@@ -230,7 +244,6 @@ public final class VariantContextTestUtils {
         }
         return Collections.singletonList(attribute);
     }
-
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
         Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");
