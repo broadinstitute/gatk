@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -63,48 +64,11 @@ final class AssemblyContigWithFineTunedAlignments {
     //==================================================================================================================
 
     boolean hasIncompletePictureFromTwoAlignments() {
-        return hasIncompletePictureDueToRefSpanContainment()
-                ||
-                (firstAndLastAlignmentMappedToSameChr() && hasIncompletePictureDueToOverlappingRefOrderSwitch());
-    }
-
-    boolean hasIncompletePictureDueToRefSpanContainment() {
-
-        final AlignmentInterval one = contig.alignmentIntervals.get(0);
-        final AlignmentInterval two = contig.alignmentIntervals.get(1);
-        return one.referenceSpan.contains(two.referenceSpan)
-                ||
-                two.referenceSpan.contains(one.referenceSpan);
-    }
-
-    boolean hasIncompletePictureDueToOverlappingRefOrderSwitch() {
-
-        final AlignmentInterval one = contig.alignmentIntervals.get(0);
-        final AlignmentInterval two = contig.alignmentIntervals.get(1);
-        final SimpleInterval referenceSpanOne = one.referenceSpan;
-        final SimpleInterval referenceSpanTwo = two.referenceSpan;
-
-        if (referenceSpanOne.contains(referenceSpanTwo) || referenceSpanTwo.contains(referenceSpanOne))
-            return true;
-
-        // TODO: 10/29/17 this obsoletes the inverted duplication call code we have now, but those could be used to figure out how to annotate which known ref regions are invert duplicated
-        if (one.forwardStrand != two.forwardStrand) {
-            return referenceSpanOne.overlaps(referenceSpanTwo);
-        } else {
-            if (one.forwardStrand) {
-                return referenceSpanOne.getStart() > referenceSpanTwo.getStart() &&
-                        referenceSpanOne.getStart() <= referenceSpanTwo.getEnd();
-            } else {
-                return referenceSpanTwo.getStart() > referenceSpanOne.getStart() &&
-                        referenceSpanTwo.getStart() <= referenceSpanOne.getEnd();
-            }
-        }
+        return ChimericAlignment.hasIncompletePictureFromTwoAlignments(contig.alignmentIntervals.get(0),
+                                                                        contig.alignmentIntervals.get(1));
     }
 
     boolean firstAndLastAlignmentMappedToSameChr() {
-        Utils.validateArg(!hasIncompletePictureDueToRefSpanContainment(),
-                "assumption that input contig has alignments whose ref span is not completely covered by the other's is violated \n" +
-                        contig.toString());
 
         final String firstMappedChr = this.contig.alignmentIntervals.get(0).referenceSpan.getContig();
         final String lastMappedChr  = this.contig.alignmentIntervals.get(this.contig.alignmentIntervals.size() - 1).referenceSpan.getContig();

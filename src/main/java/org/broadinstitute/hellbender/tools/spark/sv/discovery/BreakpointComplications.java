@@ -176,12 +176,12 @@ public final class BreakpointComplications {
     BreakpointComplications(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
 
         // if-else testing order matters here:
-        // if the two segments in the input chimeric alignment suggests simple translocation {@see ChimericAlignment#isNotSimpleTranslocation()}, then
+        // if the two segments in the input chimeric alignment suggests simple translocation {@see ChimericAlignment#isLikelySimpleTranslocation()}, then
         //  we need other types of evidence to fully resolve type of event, until then we can only say a novel adjacency (BND) is detected;
         // if the two segments in the input chimeric alignment map to the same chromosome, then
         //  the segment with lower coordinate on the locally-assembled contig could map to a higher reference coordinate region
         //  under two basic types of SV's: inversion (strand switch necessary) and "translocation" (no strand switch necessary)
-        final boolean suggestsSimpleTranslocation = !chimericAlignment.isNotSimpleTranslocation();
+        final boolean suggestsSimpleTranslocation = chimericAlignment.isLikelySimpleTranslocation();
         if (suggestsSimpleTranslocation) {
             initForSuspectedTranslocation(chimericAlignment, contigSeq);
         } else if (chimericAlignment.strandSwitch != StrandSwitch.NO_SWITCH) { // TODO: 9/9/17 the case involves an inversion, could be retired once same chr strand-switch BND calls are evaluated.

@@ -175,7 +175,7 @@ public class ChimericAlignment {
             final ChimericAlignment chimericAlignment = new ChimericAlignment(current, next, insertionMappings,
                     alignedContig.contigName, referenceDictionary);
             // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
-            if (chimericAlignment.isNotSimpleTranslocation())
+            if (chimericAlignment.isNeitherSimpleTranslocationNorIncompletePicture())
                 results.add(chimericAlignment);
 
             current = next;
@@ -276,7 +276,7 @@ public class ChimericAlignment {
     }
 
     /**
-     * See {@link #isNotSimpleTranslocation()} for logic.
+     * See {@link #isLikelySimpleTranslocation()} for logic.
      */
     @VisibleForTesting
     public static boolean isLikelySimpleTranslocation(final AlignmentInterval regionWithLowerCoordOnContig,
@@ -319,8 +319,66 @@ public class ChimericAlignment {
      * which could be a translocation or inversion breakpoint.
      * But to fully resolve this case, we need other types of evidence, hence should not be the task of this function.
      */
-    public boolean isNotSimpleTranslocation() {
-        return !isLikelySimpleTranslocation(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig, strandSwitch);
+    public boolean isLikelySimpleTranslocation() {
+        return isLikelySimpleTranslocation(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig, strandSwitch);
+    }
+
+    /**
+     * This predicate tests if an assembly contig has the full event (i.e. alt haplotype) assembled
+     * Of course, the grand problem of SV is always not getting the big-enough picture
+     * but here we have a more workable definition of what is definitely not big-enough:
+     *
+     * If the assembly contig, with its two (picked) alignments, shows any of the following signature,
+     * it is definitely not giving the whole picture of the alt haplotype,
+     * hence without other types of evidence (or linking breakpoints, which itself needs other evidence anyway),
+     * human-friendly interpretation for them is unreliable.
+     * <ul>
+     *     <li>
+     *         first and second alignment contain each other in terms of their reference span,
+     *         regardless if strand switch is involved;
+     *     </li>
+     *     <li>
+     *         todo: this obsoletes the actual use of {@link #isLikelyInvertedDuplication()} and related inverted duplication call code we have now, but those could be used to figure out how to annotate which known ref regions are invert duplicated
+     *         first and second alignment involve strand switch, but their reference span overlap;
+     *     </li>
+     *     <li>
+     *         first and second alignment have reference order switch but their reference span overlaps;
+     *     </li>
+     * </ul>
+     */
+    public static boolean hasIncompletePictureFromTwoAlignments(final AlignmentInterval one, final AlignmentInterval two) {
+        final SimpleInterval referenceSpanOne = one.referenceSpan;
+        final SimpleInterval referenceSpanTwo = two.referenceSpan;
+
+        // inter contig mapping will not be treated as incomplete picture for 2-alignment reads
+        if ( ! referenceSpanOne.getContig().equals(referenceSpanTwo.getContig()) )
+            return false;
+
+        // ref span containment
+        if (referenceSpanOne.contains(referenceSpanTwo) || referenceSpanTwo.contains(referenceSpanOne))
+            return true;
+
+        // overlapping strand-switch
+        // TODO: 10/29/17 this obsoletes the inverted duplication call code we have now,
+        //      but those could be used to figure out how to annotate which known ref regions are invert duplicated
+        if (one.forwardStrand != two.forwardStrand &&
+                referenceSpanOne.overlaps(referenceSpanTwo))
+            return true;
+
+        // no strand switch but overlapping reference order switch
+        if (one.forwardStrand) {
+            return referenceSpanOne.getStart() > referenceSpanTwo.getStart() &&
+                    referenceSpanOne.getStart() <= referenceSpanTwo.getEnd();
+        } else {
+            return referenceSpanTwo.getStart() > referenceSpanOne.getStart() &&
+                    referenceSpanTwo.getStart() <= referenceSpanOne.getEnd();
+        }
+    }
+
+    public boolean isNeitherSimpleTranslocationNorIncompletePicture() {
+        return !isLikelySimpleTranslocation()
+                &&
+                !hasIncompletePictureFromTwoAlignments(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig);
     }
 
     /**
