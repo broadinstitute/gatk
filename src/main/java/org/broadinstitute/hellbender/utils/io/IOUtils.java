@@ -6,6 +6,7 @@ import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
+import java.nio.file.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -29,11 +30,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Reader;
 import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.zip.GZIPInputStream;
@@ -551,6 +547,10 @@ public final class IOUtils {
                     throw e;
                 }
                 return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+            }
+            catch (ProviderNotFoundException x) {
+                // not a valid URI. Caller probably just gave us a file name or "chr1:1-2".
+                return Paths.get(uriString);
             }
             catch ( IOException io ) {
                 throw new UserException(uriString + " is not a supported path", io);
