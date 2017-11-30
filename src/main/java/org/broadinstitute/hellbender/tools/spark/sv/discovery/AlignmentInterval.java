@@ -232,6 +232,9 @@ public final class AlignmentInterval {
     @VisibleForTesting
     public AlignmentInterval(final SAMRecord samRecord) {
 
+        Utils.validateArg( ! Utils.nonNull(samRecord).getReadUnmappedFlag(),
+                "sam record being used to construct AlignmentInterval is unmapped: " + samRecord.toString());
+
         final boolean isMappedReverse = samRecord.getReadNegativeStrandFlag();
         this.referenceSpan = new SimpleInterval(samRecord);
         this.startInAssembledContig = getAlignmentStartInOriginalContig(samRecord);
@@ -253,7 +256,10 @@ public final class AlignmentInterval {
      * @throws IllegalArgumentException if {@code read} is {@code null}.
      */
     public AlignmentInterval(final GATKRead read) {
-        Utils.nonNull(read, "the input read cannot be null");
+
+        Utils.validateArg( ! Utils.nonNull(read).isUnmapped(),
+                "read being used to construct AlignmentInterval is unmapped: " + read.toString());
+
         final boolean isMappedReverse = read.isReverseStrand();
         this.referenceSpan = new SimpleInterval(read);
         this.startInAssembledContig = ReadUtils.getFirstAlignedReadPosition(read);

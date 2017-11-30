@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.collect.Iterables;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
@@ -13,12 +15,14 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -179,5 +183,16 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
                 {"CTG=1START=20fd0END=200000"},
                 {"CTG=1START=20END=19"}
         };
+    }
+
+    @Test(groups = "sv")
+    public void testConvertUnmappedRecords() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final SAMRecord unmappedSam = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{}, new byte[]{}).convertToSAMRecord(header);
+        AlignedContig unmappedContig =
+                DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.
+                        parseReadsAndOptionallySplitGappedAlignments(Collections.singletonList(unmappedSam),
+                                GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
+        Assert.assertTrue(unmappedContig.alignmentIntervals.isEmpty());
     }
 }

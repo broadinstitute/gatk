@@ -243,8 +243,8 @@ public final class AlignedAssemblyOrExcuse {
 
     // =================================================================================================================
 
-    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames,
-                                                                     final SAMReadGroupRecord contigAlignmentsReadGroup) {
+    public Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames,
+                                                                    final SAMReadGroupRecord contigAlignmentsReadGroup) {
         return IntStream.range(0, contigAlignments.size()).boxed()
                 .flatMap(contigIdx ->
                         BwaMemAlignmentUtils.toSAMStreamForRead(formatContigName(assemblyId, contigIdx),
