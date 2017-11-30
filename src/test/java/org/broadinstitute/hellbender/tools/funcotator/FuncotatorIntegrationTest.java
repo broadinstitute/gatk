@@ -24,8 +24,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @DataProvider
     Object[][] provideDataForBasicMarbleRoll() {
         return new Object[][] {
-                {FuncotatorTestConstants.GTF_CHR3_FILE_NAME, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT},
-                {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT},
+                {FuncotatorTestConstants.GTF_CHR3_FILE_NAME, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME, 0},
+                {FuncotatorTestConstants.GTF_CHR3_FILE_NAME, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
+                {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME, 0},
+                {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
         };
     }
 
@@ -38,7 +40,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                 final String referenceFileName,
                                 final String fastaFileName,
                                 final String variantFileName,
-                                final String transcriptName) throws IOException {
+                                final String transcriptName,
+                                final SimpleKeyXsvFuncotationFactory.XsvDataKeyType xsvMatchType,
+                                final int xsvMatchColumn) throws IOException {
         final File outputFile = createTempFile("funcotator_tmp_out", ".vcf");
         final List<String> arguments = new ArrayList<>();
 
@@ -61,9 +65,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                        final String referenceFileName,
                                        final String fastaFileName,
                                        final String variantFileName,
-                                       final String transcriptName) throws IOException {
+                                       final String transcriptName,
+                                       final SimpleKeyXsvFuncotationFactory.XsvDataKeyType xsvMatchType,
+                                       final int xsvMatchColumn) throws IOException {
 
-        final String outFileName = "funcotator_tmp_out_" + transcriptName + ".vcf";
+        final String outFileName = "funcotator_tmp_out_" + xsvMatchType.toString() + "_" + xsvMatchColumn + "_" + transcriptName + ".vcf";
 
 //        final File outputFile = createTempFile(outFileName.substring(0,outFileName.length()-4), outFileName.substring(outFileName.length()-4));
         final File outputFile = new File(outFileName);
@@ -95,9 +101,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME);
         arguments.add(",");
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_SHORT_NAME);
-        arguments.add("0");
+        arguments.add(Integer.toString(xsvMatchColumn));
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_SHORT_NAME);
-        arguments.add(SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME.toString());
+        arguments.add(xsvMatchType.toString());
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME);
         arguments.add("PIK3CA_XSV_INPUT");
 
@@ -107,9 +113,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME);
         arguments.add(",");
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_SHORT_NAME);
-        arguments.add("0");
+        arguments.add(Integer.toString(xsvMatchColumn));
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_SHORT_NAME);
-        arguments.add(SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME.toString());
+        arguments.add(xsvMatchType.toString());
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME);
         arguments.add("MUC16_XSV_INPUT");
 
