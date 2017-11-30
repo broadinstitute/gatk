@@ -106,7 +106,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static GencodeGtfTranscriptFeature getMuc16Transcript(final GencodeGtfGeneFeature gene) {
         final Optional<GencodeGtfTranscriptFeature> transcriptOption = gene.getTranscripts().stream()
-                .filter( x -> x.getTranscriptId().equals(FuncotatorTestConstants.MUC_16_TRANSCRIPT) )
+                .filter( x -> x.getTranscriptId().equals(FuncotatorTestConstants.MUC16_TRANSCRIPT) )
                 .findFirst();
 
         return transcriptOption.orElseThrow( () -> new GATKException("Could not get the MUC16 transcript from the MUC16 gene!  The test has mutated!  No good!") );
@@ -139,10 +139,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final Set<String> requestedTranscriptIds = new HashSet<>();
         if ( expectedGeneName.equals("PIK3CA") ) {
-            requestedTranscriptIds.add( "ENST00000263967.3" );
+            requestedTranscriptIds.add( FuncotatorTestConstants.PIK3CA_TRANSCRIPT );
         }
         else if ( expectedGeneName.equals("MUC16") ) {
-            requestedTranscriptIds.add( "ENST00000397910.4" );
+            requestedTranscriptIds.add( FuncotatorTestConstants.MUC16_TRANSCRIPT );
         }
         return requestedTranscriptIds;
     }
