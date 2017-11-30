@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender.tools;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLineCount;
-import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -55,6 +52,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
     public void onTraversalStart() {
         final VCFHeader headerForVariants = getHeaderForVariants();
         final VCFHeader newHeader = new VCFHeader(headerForVariants);
+        newHeader.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
         newHeader.addMetaDataLine(new VCFFormatHeaderLine("Qual", 1, VCFHeaderLineType.Integer, "The quality of the call (number of supporting barcodes)"));
         newHeader.addMetaDataLine(new VCFFormatHeaderLine("PS", 1, VCFHeaderLineType.Integer, "Phase set for the breakend"));
         newHeader.addMetaDataLine(new VCFFormatHeaderLine("Pairs", 1, VCFHeaderLineType.Integer, "Supporting pairs"));
@@ -66,6 +64,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
         Utils.validate(genotypeSamples.size() == 1, "This tool reuqires a single-sample 10x Long Ranger SV VCF");
         sample = genotypeSamples.get(0);
         vcfWriter.setHeader(newHeader);
+        vcfWriter.writeHeader(newHeader);
 
         try {
             referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceFile());
@@ -78,7 +77,12 @@ public class NormalizeTenxSVVCF extends VariantWalker {
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final Genotype genotype = variant.getGenotype(sample);
         final List<Allele> originalAlleles = variant.getAlleles();
+        variant.getAlternateAllele(0).getDisplayString();
+        String originalVariantId = variant.getID();
         if (variant.getAttribute(GATKSVVCFConstants.SVTYPE).equals(GATKSVVCFConstants.BREAKEND_STR)) {
+            String[] originalVariantIdFields = originalVariantId.split("_");
+            final String callSuffix = originalVariantIdFields[originalVariantIdFields.length - 1];
+            final String id = originalVariantId + "_" + sample + "_BND_" + variant.getAttribute("SVTYPE2") + "_" + callSuffix;
             final VariantContextBuilder builder = new VariantContextBuilder(variant);
             final List<Allele> alleles = new ArrayList<>(variant.getAlleles().size());
             alleles.add(Allele.create(referenceContext.getBase(), true));
@@ -96,13 +100,14 @@ public class NormalizeTenxSVVCF extends VariantWalker {
 
 
             final VariantContext vc = builder
+                    .id(id)
                     .alleles(alleles)
                     .genotypes(genotypeBuilder.make())
                     .make();
 
             variants.add(vc);
         } else if (variant.getAttribute(GATKSVVCFConstants.SVTYPE).equals(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL)) {
-            final String id = variant.getID();
+            final String id = originalVariantId + "_" + sample + "_DEL";
             final int end = variant.getEnd();
             final byte baseAtPos = referenceContext.getBase();
             final byte baseAtEnd = referenceReader.getSubsequenceAt(variant.getContig(), variant.getEnd(), variant.getEnd()).getBases()[0];
@@ -163,7 +168,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
             variants.add(bnd1);
             variants.add(bnd2);
         } else if (variant.getAttribute(GATKSVVCFConstants.SVTYPE).equals(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP)) {
-            final String id = variant.getID();
+            final String id = originalVariantId + "_" + sample + "_DUP";
             final int end = variant.getEnd();
             final byte baseAtPos = referenceContext.getBase();
             final byte baseAtEnd = referenceReader.getSubsequenceAt(variant.getContig(), variant.getEnd(), variant.getEnd()).getBases()[0];
@@ -197,7 +202,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
 
             final List<Allele> alleles2 = new ArrayList<>(2);
             alleles2.add(Allele.create(baseAtEnd, true));
-            alleles2.add(Allele.create((char) baseAtPos + "[" + variant.getContig() + ":" + end + "["));
+            alleles2.add(Allele.create((char) baseAtEnd + "[" + variant.getContig() + ":" + variant.getStart() + "["));
 
             final VariantContext bnd2 = new VariantContextBuilder(variant)
                     .id(id + "_2")
@@ -225,7 +230,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
             variants.add(bnd1);
             variants.add(bnd2);
         } else if (variant.getAttribute(GATKSVVCFConstants.SVTYPE).equals(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV)) {
-            final String id = variant.getID();
+            final String id = originalVariantId + "_" + sample + "_INV";
             final int end = variant.getEnd();
             final byte baseAtPos = referenceContext.getBase();
             final byte baseAfterPos = referenceReader.getSubsequenceAt(variant.getContig(), variant.getStart() + 1, variant.getStart() + 1).getBases()[0];
@@ -260,7 +265,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
 
             final List<Allele> alleles2 = new ArrayList<>(2);
             alleles2.add(Allele.create(baseAtEnd, true));
-            alleles2.add(Allele.create(baseAtEnd + "]" + variant.getContig() + ":" + variant.getStart() + "]"));
+            alleles2.add(Allele.create((char) baseAtEnd + "]" + variant.getContig() + ":" + variant.getStart() + "]"));
 
             final VariantContext bnd2 = new VariantContextBuilder(variant)
                     .id(id + "_2")
@@ -287,11 +292,11 @@ public class NormalizeTenxSVVCF extends VariantWalker {
 
             final List<Allele> alleles3 = new ArrayList<>(2);
             alleles3.add(Allele.create(baseAfterPos, true));
-            alleles3.add(Allele.create("[" + variant.getContig() + ":" + (variant.getEnd() + 1) + "[" + baseAfterPos));
+            alleles3.add(Allele.create("[" + variant.getContig() + ":" + (variant.getEnd() + 1) + "[" + (char) baseAfterPos));
 
             final VariantContext bnd3 = new VariantContextBuilder(variant)
                     .id(id + "_3")
-                    .start(end)
+                    .start(variant.getStart() + 1)
                     .alleles(alleles3)
                     .log10PError(variant.getLog10PError())
                     .attribute(GATKSVVCFConstants.SVTYPE, "BND")
@@ -314,11 +319,11 @@ public class NormalizeTenxSVVCF extends VariantWalker {
 
             final List<Allele> alleles4 = new ArrayList<>(2);
             alleles4.add(Allele.create(baseAfterEnd, true));
-            alleles4.add(Allele.create("[" + variant.getContig() + ":" + (variant.getStart() + 1) + "[" + baseAfterEnd));
+            alleles4.add(Allele.create("[" + variant.getContig() + ":" + (variant.getStart() + 1) + "[" + (char) baseAfterEnd));
 
             final VariantContext bnd4 = new VariantContextBuilder(variant)
                     .id(id + "_4")
-                    .start(end)
+                    .start(end + 1)
                     .alleles(alleles4)
                     .log10PError(variant.getLog10PError())
                     .attribute(GATKSVVCFConstants.SVTYPE, "BND")
@@ -343,6 +348,31 @@ public class NormalizeTenxSVVCF extends VariantWalker {
             variants.add(bnd2);
             variants.add(bnd3);
             variants.add(bnd4);
+        } else if (variant.getAttribute(GATKSVVCFConstants.SVTYPE).equals("UNK")) {
+            final String id = originalVariantId + "_" + sample + "_UNK";
+            final VariantContextBuilder builder = new VariantContextBuilder(variant);
+            final List<Allele> alleles = new ArrayList<>(variant.getAlleles().size());
+            alleles.add(Allele.create(referenceContext.getBase(), true));
+            alleles.addAll(variant.getAlternateAlleles());
+
+            final GenotypeBuilder genotypeBuilder =
+                    new GenotypeBuilder(sample)
+                            .alleles(Arrays.asList(alleles.get(originalAlleles.indexOf(genotype.getAllele(0))),
+                                    alleles.get(originalAlleles.indexOf(genotype.getAllele(1)))))
+                            .attribute("Qual", variant.getPhredScaledQual())
+                            .attribute("PS", variant.getAttribute("PS"))
+                            .attribute("Pairs", variant.getAttribute("Pairs"))
+                            .attribute("Split", variant.getAttribute("Split"))
+                            .attribute("FT", variant.getFilters());
+
+
+            final VariantContext vc = builder
+                    .id(id)
+                    .alleles(alleles)
+                    .genotypes(genotypeBuilder.make())
+                    .make();
+
+            variants.add(vc);
         } else {
             System.err.println("Unknown variant type " + variant + ", skipping");
         }
