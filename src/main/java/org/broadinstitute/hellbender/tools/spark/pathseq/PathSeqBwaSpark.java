@@ -6,10 +6,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.StorageLevel;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -23,33 +21,126 @@ import scala.Tuple2;
 
 import java.io.IOException;
 
-@DocumentedFeature
-@CommandLineProgramProperties(summary = "Aligns reads to a reference using Bwa-mem. This is a specialized version of " +
-        "BwaSpark designed for the PathSeq pipeline. User must supply unaligned paired read and/or unpaired reads " +
-        "(do not use --input) and a BWA reference image file created using BwaMemIndexImageCreator. For small " +
-        "input, it is recommended that the user reduce --bam-partition-size in order to increase parallelism.",
-        oneLineSummary = "Step 2: Aligns reads to the pathogen reference",
+/**
+ * Align reads to a microbe reference using BWA-MEM and Spark. Second step in the PathSeq pipeline.
+ *
+ * <p>See PathSeqPipelineSpark for an overview of the PathSeq pipeline.</p>
+ *
+ * <p>This is a specialized version of BwaSpark designed for the PathSeq pipeline. The main difference is that alignments
+ * with SAM bit flag 0x100 or 0x800 (indicating secondary or supplementary alignment) are omitted in the output.</p>
+ *
+ * <h3>Inputs</h3>
+ *
+ * <ul>
+ *     <li>Unaligned queryname-sorted BAM file containing only paired reads (paired-end reads with mates)</li>
+ *     <li>Unaligned BAM file containing only unpaired reads (paired-end reads without mates and/or single-end reads)</li>
+ *     <li>*Microbe reference BWA-MEM index image generated using BwaMemIndexImageCreator</li>
+ *     <li>*Indexed microbe reference FASTA file</li>
+ * </ul>
+ *
+ * <p>*A standard microbe reference is available in the <a href="https://software.broadinstitute.org/gatk/download/bundle">GATK Resource Bundle</a>.</p>
+ *
+ * <h3>Output</h3>
+ *
+ * <ul>
+ *     <li>Aligned BAM file containing the paired reads (paired-end reads with mates)</li>
+ *     <li>Aligned BAM file containing the unpaired reads (paired-end reads without mates and/or single-end reads)</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ *
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a> for an example
+ * of how to set up and run a Spark tool on a cloud Spark cluster.</p>
+ *
+ * <h4>Local mode:</h4>
+ *
+ * <pre>
+ * gatk PathSeqBwaSpark  \
+ *   --paired-input input_reads_paired.bam \
+ *   --unpaired-input input_reads_unpaired.bam \
+ *   --paired-output output_reads_paired.bam \
+ *   --unpaired-output output_reads_unpaired.bam \
+ *   --microbe-bwa-image reference.img \
+ *   --microbe-fasta reference.fa
+ * </pre>
+ *
+ * <h4>Spark cluster on Google Cloud DataProc with 6 32-core / 208GB memory worker nodes:</h4>
+ *
+ * <pre>
+ * gatk PathSeqBwaSpark  \
+ *   --paired-input gs://my-gcs-bucket/input_reads_paired.bam \
+ *   --unpaired-input gs://my-gcs-bucket/input_reads_unpaired.bam \
+ *   --paired-output gs://my-gcs-bucket/output_reads_paired.bam \
+ *   --unpaired-output gs://my-gcs-bucket/output_reads_unpaired.bam \
+ *   --microbe-bwa-image /references/reference.img \
+ *   --microbe-fasta hdfs://my-cluster-m:8020//references/reference.fa \
+ *   --bam-partition-size 4000000 \
+ *   -- \
+ *   --sparkRunner GCS \
+ *   --cluster my_cluster \
+ *   --driver-memory 8G \
+ *   --executor-memory 32G \
+ *   --num-executors 4 \
+ *   --executor-cores 30 \
+ *   --conf spark.yarn.executor.memoryOverhead=132000
+ * </pre>
+ *
+ * <p>Note that the microbe BWA image must be copied to the same path on every worker node. The microbe FASTA
+ * may also be copied to a single path on every worker node or to HDFS.</p>
+ *
+ * <h3>Notes</h3>
+ *
+ * <p>For small input BAMs, it is recommended that the user reduce the BAM partition size in order to increase parallelism. Note
+ * that insert size is estimated separately for each Spark partition. Consequently partition size and other Spark
+ * parameters can affect the output for paired-end alignment.</p>
+ *
+ * <p>To minimize output file size, header lines are included only for sequences with at least one alignment.</p>
+ *
+ * @author Mark Walker &lt;markw@broadinstitute.org&gt;
+ */
+
+@CommandLineProgramProperties(summary = "Align reads to a microbe reference using BWA-MEM and Spark. Second step in the PathSeq pipeline.",
+        oneLineSummary = "Step 2: Aligns reads to the microbe reference",
         programGroup = MetagenomicsProgramGroup.class)
-@BetaFeature
+@DocumentedFeature
 public final class PathSeqBwaSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "Base uri for the output file(s). Paired and unpaired reads will be written to uri appended with" +
-            " '.paired.bam' and '.unpaired.bam'",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    public String ouputUri;
+    public static final String PAIRED_INPUT_LONG_NAME = "paired-input";
+    public static final String PAIRED_INPUT_SHORT_NAME = "PI";
+    public static final String UNPAIRED_INPUT_LONG_NAME = "unpaired-input";
+    public static final String UNPAIRED_INPUT_SHORT_NAME = "UI";
+    public static final String PAIRED_OUTPUT_LONG_NAME = "paired-output";
+    public static final String PAIRED_OUTPUT_SHORT_NAME = "PO";
+    public static final String UNPAIRED_OUTPUT_LONG_NAME = "unpaired-output";
+    public static final String UNPAIRED_OUTPUT_SHORT_NAME = "UO";
 
-    @Argument(doc = "URI to paired reads BAM",
-            fullName = "pairedInput",
+    @Argument(doc = "Input queryname-sorted BAM containing only paired reads",
+            fullName = PAIRED_INPUT_LONG_NAME,
+            shortName = PAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String inputPaired = null;
 
-    @Argument(doc = "URI to unpaired reads BAM",
-            fullName = "unpairedInput",
+    @Argument(doc = "Input BAM containing only unpaired reads",
+            fullName = UNPAIRED_INPUT_LONG_NAME,
+            shortName = UNPAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String inputUnpaired = null;
+
+    @Argument(doc = "Output BAM containing only paired reads",
+            fullName = PAIRED_OUTPUT_LONG_NAME,
+            shortName = PAIRED_OUTPUT_SHORT_NAME,
+            optional = true)
+    public String outputPaired = null;
+
+    @Argument(doc = "Output BAM containing only unpaired reads",
+            fullName = UNPAIRED_OUTPUT_LONG_NAME,
+            shortName = UNPAIRED_OUTPUT_SHORT_NAME,
+            optional = true)
+    public String outputUnpaired = null;
 
     @ArgumentCollection
     public PSBwaArgumentCollection bwaArgs = new PSBwaArgumentCollection();
@@ -80,19 +171,18 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     private void writeBam(final JavaRDD<GATKRead> reads, final String inputBamPath, final boolean isPaired,
                           final JavaSparkContext ctx, SAMFileHeader header) {
 
-
         //Only retain header sequences that were aligned to.
         //This invokes an action and therefore the reads must be cached.
         reads.persist(StorageLevel.MEMORY_AND_DISK_SER());
         header = PSBwaUtils.removeUnmappedHeaderSequences(header, reads, logger);
 
+        final String outputPath = isPaired ? outputPaired : outputUnpaired;
         try {
-            final String outputSuffix = isPaired ? ".paired.bam" : ".unpaired.bam";
-            ReadsSparkSink.writeReads(ctx, ouputUri + outputSuffix, bwaArgs.referencePath, reads, header,
+            ReadsSparkSink.writeReads(ctx, outputPath, bwaArgs.referencePath, reads, header,
                     shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
                     PSUtils.pathseqGetRecommendedNumReducers(inputBamPath, numReducers, getTargetPartitionSize()));
         } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(ouputUri, "writing failed", e);
+            throw new UserException.CouldNotCreateOutputFile(outputPath, "Writing failed", e);
         }
     }
 

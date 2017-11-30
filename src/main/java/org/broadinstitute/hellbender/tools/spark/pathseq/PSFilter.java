@@ -248,8 +248,8 @@ public final class PSFilter implements AutoCloseable {
         filterLogger.logReadsAfterQualityFilter(reads);
 
         //Kmer filtering
-        if (filterArgs.kmerLibPath != null) {
-            reads = doKmerFiltering(reads, filterArgs.kmerLibPath, filterArgs.hostKmerThresh);
+        if (filterArgs.kmerFilePath != null) {
+            reads = doKmerFiltering(reads, filterArgs.kmerFilePath, filterArgs.hostKmerThresh);
         }
 
         //Redistribute reads
@@ -266,17 +266,17 @@ public final class PSFilter implements AutoCloseable {
 
         //Filter duplicates
         if (filterArgs.filterDuplicates) {
-            reads = setPairFlags(reads, filterArgs.readsPerPartition);
+            reads = setPairFlags(reads, filterArgs.filterReadsPerPartition);
             reads = filterDuplicateSequences(reads);
         }
         filterLogger.logReadsAfterDeduplication(reads);
 
         //Sets pairedness flags properly
-        reads = setPairFlags(reads, filterArgs.readsPerPartition);
+        reads = setPairFlags(reads, filterArgs.filterReadsPerPartition);
         reads = clearAllAlignments(reads, header);
 
         //Unset paired read flags for reads that are not paired
-        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.readsPerPartition, false);
+        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.filterReadsPerPartition, false);
         final JavaRDD<GATKRead> pairedReads = splitter.getPairedReads();
         final JavaRDD<GATKRead> unpairedReads = splitter.getUnpairedReads();
         filterLogger.logFinalPairedReads(pairedReads);

@@ -64,15 +64,15 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(inputBamFile);
         args.addOutput(outputBamFile);
-        args.addFileArgument("scoresOutputPath", outputScoresFile);
-        args.addArgument("kmerLibraryPath", kmerLibraryPath);
-        args.addArgument("filterBwaImage", filterImagePath);
-        args.addBooleanArgument("isHostAligned", isHostAligned);
-        args.addFileArgument("pathogenBwaImage", pathogenBwaImage);
-        args.addFileArgument("pathogenFasta", pathogenFasta);
-        args.addFileArgument("taxonomicDatabasePath", taxonomyDatabase);
-        args.addFileArgument("filterMetricsFile", outputFilterMetricsFile);
-        args.addFileArgument("scoreMetricsFile", outputScoreMetricsFile);
+        args.addFileArgument(PSScoreArgumentCollection.SCORES_OUTPUT_LONG_NAME, outputScoresFile);
+        args.addArgument(PSFilterArgumentCollection.KMER_FILE_PATH_LONG_NAME, kmerLibraryPath);
+        args.addArgument(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, filterImagePath);
+        args.addBooleanArgument(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
+        args.addFileArgument(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, pathogenBwaImage);
+        args.addFileArgument(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, pathogenFasta);
+        args.addFileArgument(PSScoreArgumentCollection.TAXONOMIC_DATABASE_LONG_NAME, taxonomyDatabase);
+        args.addFileArgument(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputFilterMetricsFile);
+        args.addFileArgument(PSScoreArgumentCollection.SCORE_METRICS_FILE_LONG_NAME, outputScoreMetricsFile);
         this.runCommandLine(args);
 
         SamAssertionUtils.assertEqualBamFiles(outputBamFile, expectedBamFile, true, ValidationStringency.STRICT);

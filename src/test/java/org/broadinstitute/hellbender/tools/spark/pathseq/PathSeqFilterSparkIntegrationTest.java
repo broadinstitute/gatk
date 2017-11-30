@@ -66,32 +66,32 @@ public class PathSeqFilterSparkIntegrationTest extends CommandLineProgramTest {
         final File inputBamFile = getTestFile(inputBamFilename);
         final File expectedMetricsFile = getTestFile(expectedMetricsFilename);
 
-        final File tmpDir = createTempDir("tmp_pathseqFilterTest");
-        final File outputBamFilebase = new File(tmpDir.getAbsolutePath(), "output");
-        final String outputBamBasePath = outputBamFilebase.getAbsolutePath();
+        final File outputPairedBamFile = createTempFile("output_paired", ".bam");
+        final File outputUnpairedBamFile = createTempFile("output_unpaired", ".bam");
         final File outputMetricsFile = createTempFile("metrics", ".txt");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addBooleanArgument("isHostAligned", isHostAligned);
-        args.addBooleanArgument("skipFilters", skipFilters);
-        args.addBooleanArgument("filterDuplicates", filterDuplicates);
+        args.addBooleanArgument(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
+        args.addBooleanArgument(PSFilterArgumentCollection.SKIP_FILTERS_LONG_NAME, skipFilters);
+        args.addBooleanArgument(PSFilterArgumentCollection.FILTER_DUPLICATES_LONG_NAME, filterDuplicates);
         args.addInput(inputBamFile);
-        args.addArgument("output", outputBamBasePath);
-        args.addFileArgument("filterMetricsFile", outputMetricsFile);
+        args.addFileArgument(PathSeqFilterSpark.PAIRED_OUTPUT_LONG_NAME, outputPairedBamFile);
+        args.addFileArgument(PathSeqFilterSpark.UNPAIRED_OUTPUT_LONG_NAME, outputUnpairedBamFile);
+        args.addFileArgument(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputMetricsFile);
         if (useKmerFilter) {
-            args.addFileArgument("kmerLibraryPath", new File(libraryPath));
+            args.addFileArgument(PSFilterArgumentCollection.KMER_FILE_PATH_LONG_NAME, new File(libraryPath));
         }
         if (useBwaFilter) {
-            args.addFileArgument("filterBwaImage", new File(imagePath));
+            args.addFileArgument(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, new File(imagePath));
         }
 
         this.runCommandLine(args.getArgsArray());
 
         if (expectedPairedBamFilename != null) {
-            SamAssertionUtils.assertSamsEqual(new File(outputBamBasePath + ".paired.bam"), getTestFile(expectedPairedBamFilename), ValidationStringency.LENIENT, null);
+            SamAssertionUtils.assertSamsEqual(outputPairedBamFile, getTestFile(expectedPairedBamFilename), ValidationStringency.LENIENT, null);
         }
         if (expectedUnpairedBamFilename != null) {
-            SamAssertionUtils.assertSamsEqual(new File(outputBamBasePath + ".unpaired.bam"), getTestFile(expectedUnpairedBamFilename), ValidationStringency.LENIENT, null);
+            SamAssertionUtils.assertSamsEqual(outputUnpairedBamFile, getTestFile(expectedUnpairedBamFilename), ValidationStringency.LENIENT, null);
         }
         Assert.assertTrue(MetricsFile.areMetricsEqual(outputMetricsFile, expectedMetricsFile));
     }

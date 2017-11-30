@@ -36,7 +36,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
             Assert.fail();
         }
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument("referencePath", ref);
+        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
 
@@ -62,8 +62,8 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
             Assert.fail();
         }
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument("referencePath", ref);
-        args.addArgument("bloomFalsePositiveProbability", Double.toString(BLOOM_FPP));
+        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
+        args.addArgument(PathSeqBuildKmers.BLOOM_FILTER_FALSE_POSITIVE_P_LONG_NAME, Double.toString(BLOOM_FPP));
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
 
@@ -100,9 +100,9 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
             Assert.fail();
         }
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument("referencePath", ref);
+        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
+        args.addArgument(PathSeqBuildKmers.KMER_MASK_LONG_NAME, "4,15");
         args.addOutput(output);
-        args.addArgument("kmerMask", "4,15");
         this.runCommandLine(args.getArgsArray());
 
         final Input inputExpected = new Input(FileUtils.openInputStream(expectedFile));
@@ -118,17 +118,15 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
     @DataProvider(name = "badArgs")
     public Object[][] getBadArguments() {
         return new Object[][]{
-                {"kSize", "0"},
-                {"kSize", "2"},
-                {"kSize", "32"},
-                {"kSize", "33"},
-                {"bloomFalsePositiveProbability", "-0.1"},
-                {"bloomFalsePositiveProbability", "1"},
-                {"kmerMask", "0,32"},
-                {"kmerMask", "-1,15"},
-                {"kmerSpacing", "0"},
-                {"downsampleProbability", "0"},
-                {"downsampleProbability", "1.1"}
+                {PathSeqBuildKmers.KMER_SIZE_LONG_NAME, "0"},
+                {PathSeqBuildKmers.KMER_SIZE_LONG_NAME, "2"},
+                {PathSeqBuildKmers.KMER_SIZE_LONG_NAME, "32"},
+                {PathSeqBuildKmers.KMER_SIZE_LONG_NAME, "33"},
+                {PathSeqBuildKmers.BLOOM_FILTER_FALSE_POSITIVE_P_LONG_NAME, "-0.1"},
+                {PathSeqBuildKmers.BLOOM_FILTER_FALSE_POSITIVE_P_LONG_NAME, "1"},
+                {PathSeqBuildKmers.KMER_MASK_LONG_NAME, "0,32"},
+                {PathSeqBuildKmers.KMER_MASK_LONG_NAME, "-1,15"},
+                {PathSeqBuildKmers.KMER_SPACING_LONG_NAME, "0"}
         };
     }
 
@@ -137,7 +135,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
         final File ref = new File(hg19MiniReference);
         final File output = createTempFile("test", ".hss");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addFileArgument("referencePath", ref);
+        args.addFileArgument(PathSeqBuildKmers.REFERENCE_LONG_NAME, ref);
         args.addArgument(argName, argVal);
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());

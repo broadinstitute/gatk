@@ -42,7 +42,7 @@ public final class PSScorer {
 
         //Group reads into pairs
         final JavaRDD<Iterable<GATKRead>> groupedReads = groupReadsIntoPairs(pairedReads,
-                unpairedReads, scoreArgs.readsPerPartition);
+                unpairedReads, scoreArgs.readsPerPartitionEstimate);
 
         //Load taxonomy database, created by running PathSeqBuildReferenceTaxonomy with this reference
         final PSTaxonomyDatabase taxDB = readTaxonomyDatabase(scoreArgs.taxonomyDatabasePath);
