@@ -291,10 +291,15 @@ public class Funcotator extends VariantWalker {
 
         // Check each field in each factory:
         for ( final String field : annotationMap.keySet() ) {
+            boolean accountedFor = false;
             for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
-                if ( !funcotationFactory.getSupportedFuncotationFields().contains(field) ) {
-                    outAnnotations.put(field, annotationMap.get(field));
+                if ( funcotationFactory.getSupportedFuncotationFields().contains(field) ) {
+                    accountedFor = true;
+                    break;
                 }
+            }
+            if ( !accountedFor ) {
+                outAnnotations.put(field, annotationMap.get(field));
             }
         }
 
