@@ -127,8 +127,6 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         try (final PSFilterLogger filterLogger = filterMetricsFileUri != null ? new PSFilterFileLogger(getMetricsFile(), filterMetricsFileUri) : new PSFilterEmptyLogger()) {
             final JavaRDD<GATKRead> inputReads = getReads();
             filterResult = filter.doFilter(inputReads, filterLogger);
-        } catch (final Exception e) {
-            throw new GATKException("Error occurred while filtering", e);
         }
         JavaRDD<GATKRead> pairedReads = filterResult._1;
         JavaRDD<GATKRead> unpairedReads = filterResult._2;
@@ -171,8 +169,6 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
         if (scoreMetricsFileUri != null) {
             try (final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), scoreMetricsFileUri)) {
                 scoreLogger.logReadCounts(readsFinal);
-            } catch (final Exception e) {
-                throw new GATKException("Error logging score metrics", e);
             }
         }
 

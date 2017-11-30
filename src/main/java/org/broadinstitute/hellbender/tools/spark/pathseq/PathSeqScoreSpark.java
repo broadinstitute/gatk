@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreFileLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreLogger;
@@ -177,8 +176,6 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         if (metricsFileUri != null) {
             try (final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), metricsFileUri)) {
                 scoreLogger.logReadCounts(readsFinal);
-            } catch (final Exception e) {
-                throw new GATKException("Error logging score metrics", e);
             }
         }
 

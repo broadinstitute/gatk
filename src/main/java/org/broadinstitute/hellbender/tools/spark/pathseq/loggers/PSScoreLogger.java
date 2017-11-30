@@ -9,5 +9,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 public interface PSScoreLogger extends AutoCloseable {
 
     void logReadCounts(final JavaRDD<GATKRead> reads);
+    @Override
+    void close();
 
 }
