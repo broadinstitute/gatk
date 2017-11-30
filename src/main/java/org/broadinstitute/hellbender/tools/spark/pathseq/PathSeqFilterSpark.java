@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterEmptyLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterFileLogger;
@@ -95,6 +96,8 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> filterResult;
         try (final PSFilterLogger filterLogger = metricsFileUri != null ? new PSFilterFileLogger(getMetricsFile(), metricsFileUri) : new PSFilterEmptyLogger()) {
             filterResult = filter.doFilter(reads, filterLogger);
+        } catch (final Exception e) {
+            throw new GATKException("Error occurred while running the filter", e);
         }
         final JavaRDD<GATKRead> pairedReads = filterResult._1;
         final JavaRDD<GATKRead> unpairedReads = filterResult._2;
@@ -111,7 +114,6 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         } else {
             logger.info("No unpaired reads to write - BAM will not be written.");
         }
-
         filter.close();
     }
 

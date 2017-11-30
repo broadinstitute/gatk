@@ -38,20 +38,21 @@ public class PSFilterTest extends CommandLineProgramTest {
     }
 
     private static final List<GATKRead> getReadsFromFastq(final File fastqFile) {
-        final FastqReader reader = new FastqReader(fastqFile);
-        final List<GATKRead> readList = new ArrayList<>();
-        reader.forEachRemaining(read -> readList.add(fastqRecordToGATKRead(read)));
-        return readList;
+        try (final FastqReader reader = new FastqReader(fastqFile)) {
+            final List<GATKRead> readList = new ArrayList<>();
+            reader.forEachRemaining(read -> readList.add(fastqRecordToGATKRead(read)));
+            return readList;
+        }
     }
 
     private static final List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
         final List<GATKRead> readList1 = getReadsFromFastq(fastqFile1);
         final List<GATKRead> readList2 = getReadsFromFastq(fastqFile2);
-        for (GATKRead gatkRead : readList1) {
+        for (final GATKRead gatkRead : readList1) {
             gatkRead.setIsPaired(true);
             gatkRead.setIsFirstOfPair();
         }
-        for (GATKRead gatkRead : readList2) {
+        for (final GATKRead gatkRead : readList2) {
             gatkRead.setIsPaired(true);
             gatkRead.setIsSecondOfPair();
         }

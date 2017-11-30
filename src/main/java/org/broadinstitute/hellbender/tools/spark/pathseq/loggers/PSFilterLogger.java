@@ -14,7 +14,5 @@ public interface PSFilterLogger extends AutoCloseable {
     void logReadsAfterHostFilter(final JavaRDD<GATKRead> reads);
     void logReadsAfterDeduplication(final JavaRDD<GATKRead> reads);
     void logFinalPairedReads(final JavaRDD<GATKRead> reads);
-    @Override
-    void close();
 
 }
