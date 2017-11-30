@@ -529,12 +529,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                 for (int h = 0; h < contigs.size(); h++) {
                     final SVContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
-   //                 System.err.println("alt " + contig.getName() );
                     double haplotypeAltScore = AlignmentScore.calculate(haplotypes.get(altHaplotypeIndex).getBases(), contig.getBases(), contig.getAlternativeAlignment()).getValue();
-   //                 System.err.println("ref " + contig.getName() );
                     double haplotypeRefScore = AlignmentScore.calculate(haplotypes.get(refHaplotypeIndex).getBases(), contig.getBases(), contig.getReferenceAlignment()).getValue();
-   //                 double haplotypeAltScore = Double.NEGATIVE_INFINITY;
-   //                 double haplotypeRefScore = Double.NEGATIVE_INFINITY;
                     final double maxMQ = contig.getMinimumMappingQuality();
                     final double base = Math.max(haplotypeAltScore, haplotypeRefScore);
                     haplotypeAltScore -= base;
@@ -547,7 +543,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     for (int t = 0; t < templates.size(); t++) {
                         final boolean noAlignment = !scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.isPresent()
                                 && !scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.isPresent();
-                        if (noAlignment) continue;
+                        if (noAlignment || true) continue;
                         final double firstMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).firstAlignmentScore.orElse(0.0);
                         final double secondMappingScore = scoreTable.getMappingInfo(mappingInfoIndex, t).secondAlignmentScore.orElse(0.0);
                        if (firstMappingScore == scoreTable.bestMappingScorePerFragment[t][0]) {
@@ -571,7 +567,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         final double base = Math.max(matrix.get(refIdx, t), matrix.get(altIdx, t));
                         final int maxIndex = matrix.get(refIdx, t) == base ? refIdx : altIdx;
                         final int minIndex = maxIndex == refIdx ? altIdx : refIdx;
-                        matrix.set(minIndex, t, Math.max(matrix.get(maxIndex, t) - 0.1 * maxMq, matrix.get(minIndex, t)));
+    //                    matrix.set(minIndex, t, Math.max(matrix.get(maxIndex, t) - 0.1 * maxMq, matrix.get(minIndex, t)));
                        //         Math.min(matrix.get(maxIndex, t), matrix.get(minIndex, t) - base)));
                     //    matrix.set(minIndex, t,  Math.min(matrix.get(maxIndex, t), matrix.get(minIndex, t) - base));
                     }
