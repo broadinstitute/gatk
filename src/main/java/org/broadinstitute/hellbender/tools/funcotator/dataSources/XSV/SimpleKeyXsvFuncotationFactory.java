@@ -26,8 +26,6 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     //==================================================================================================================
     // Public Static Members:
 
-    final String FUNCOTATOR_DATA_SOURCE_CACHE_EXTENSION = ".FUNCOTATOR_CACHE";
-
     //==================================================================================================================
     // Private Static Members:
 
@@ -191,24 +189,6 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     //==================================================================================================================
     // Static Methods:
 
-    // TODO: Finish implementing caching functionality.
-//    final Path getFuncotatorCachedMapPath(final Path dataFilePath) {
-//        return IOUtil.addExtension( dataFilePath, FUNCOTATOR_DATA_SOURCE_CACHE_EXTENSION );
-//    }
-//
-//    final boolean pathsHaveEquivalentData(final Path pathA,
-//                                          final Path pathB) {
-//
-//        final FileTime fileTimeA;
-//        final FileTime fileTimeB;
-//
-//        // Get the file modification times:
-//        try { fileTimeA = Files.getLastModifiedTime(pathA); }
-//        catch (final IOException e) { throw new GATKException( "Unable to read information about file: " + pathA.toUri().toString() ); }
-//        try { fileTimeB = Files.getLastModifiedTime(pathB); }
-//        catch (final IOException e) { throw new GATKException( "Unable to read information about file: " + pathA.toUri().toString() ); }
-//    }
-
     //==================================================================================================================
     // Instance Methods:
 
@@ -296,6 +276,4 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
          */
         TRANSCRIPT_ID
     }
-
-
 }
