@@ -67,7 +67,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
 //        final File outputFile = createTempFile(outFileName.substring(0,outFileName.length()-4), outFileName.substring(outFileName.length()-4));
         final File outputFile = new File(outFileName);
-     :   final List<String> arguments = new ArrayList<>();
+
+        final List<String> arguments = new ArrayList<>();
 
         // Required Args:
         arguments.add("-" + FuncotatorArgumentDefinitions.GTF_FILE_ARG_SHORT_NAME);
