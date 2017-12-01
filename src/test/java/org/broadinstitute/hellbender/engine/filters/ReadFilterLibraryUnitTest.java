@@ -399,8 +399,12 @@ public final class ReadFilterLibraryUnitTest {
         header.getReadGroup(read.getReadGroup()).setLibrary(foo);
 
         Assert.assertFalse(f.test(read), read.toString());//fail
-        f.libraryToKeep = foo;
+        f.libraryToKeep = Collections.singleton(foo);
         Assert.assertTrue(f.test(read), read.toString());//pass
+        f.libraryToKeep = new HashSet<>(Arrays.asList("A", "B"));
+        Assert.assertFalse(f.test(read), read.toString());
+        f.libraryToKeep.add(foo);
+        Assert.assertTrue(f.test(read), read.toString());
     }
 
     @Test
