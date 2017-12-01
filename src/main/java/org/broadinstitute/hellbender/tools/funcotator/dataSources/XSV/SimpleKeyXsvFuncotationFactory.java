@@ -77,11 +77,15 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     // Constructors:
 
     public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType) {
-        this(name, filePath, delim, keyColumn, keyType, new LinkedHashMap<>(), 0);
+        this(name, filePath, delim, keyColumn, keyType, new LinkedHashMap<>(), 0, false);
     }
 
     public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType, final LinkedHashMap<String, String> annotationOverrides) {
-        this(name, filePath, delim, keyColumn, keyType, annotationOverrides, 0);
+        this(name, filePath, delim, keyColumn, keyType, annotationOverrides, 0, false);
+    }
+
+    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType, final LinkedHashMap<String, String> annotationOverrides, final int numHeaderLinesToIgnore) {
+        this(name, filePath, delim, keyColumn, keyType, annotationOverrides, numHeaderLinesToIgnore, false);
     }
 
     public SimpleKeyXsvFuncotationFactory(final String name,
@@ -90,7 +94,8 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                                           final int keyColumn,
                                           final XsvDataKeyType keyType,
                                           final LinkedHashMap<String, String> annotationOverrides,
-                                          final int numHeaderLinesToIgnore) {
+                                          final int numHeaderLinesToIgnore,
+                                          final boolean permissiveColumns ) {
         this.name = name;
 
         delimiter = delim;
@@ -116,7 +121,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             annotationColumnNames = createColumnNames( it, numHeaderLinesToIgnore );
 
             // Populate our annotation map:
-            populateAnnotationMap( it );
+            populateAnnotationMap( it, permissiveColumns );
         }
 
         // Initialize overrides / defaults:
@@ -223,10 +228,16 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      * Populates {@link SimpleKeyXsvFuncotationFactory#annotationMap} with data from the given iterator.
      * Assumes that {@link SimpleKeyXsvFuncotationFactory#annotationColumnNames} is populated.
      * @param it An {@link Iterator} of {@link String} starting at the first data line in the file to parse.
+     * @param permissiveColumnNumbers A flag which if true indicates to allow mismatches between the number of columns in the header row and data rows.
+     *                                In the event of a mismatch, the data row with either be padded to the number of columns in the header
+     *                                or it will be truncated to match the number of columns in the header.
      */
-    private void populateAnnotationMap(final Iterator<String> it) {
+    private void populateAnnotationMap(final Iterator<String> it,
+                                       boolean permissiveColumnNumbers) {
 
         boolean emptyLineFlag = false;
+
+        int dataRowNum = numHeaderLinesToIgnore + 2;
 
         // Parse the rest of the data:
         while ( it.hasNext() ) {
@@ -242,7 +253,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                 }
             }
             if ( emptyLineFlag ) {
-                    throw new UserException.MalformedFile("File contains an empty line.  All lines must have data.");
+                    throw new UserException.MalformedFile("File contains an empty line (" + dataRowNum + ").  All lines must have data.");
             }
 
             final List<String> dataRow = new ArrayList<>( Arrays.asList(rawRow.split(delimiter)) );
@@ -252,11 +263,24 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
 
             // Make sure we have the same number of columns:
             if ( (dataRow.size() != annotationColumnNames.size()) ) {
-                throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvInputPath.toUri().toString() + ") - row does not contain the same number of columns as header (" + dataRow.size() + " != " + annotationColumnNames.size() + ")!");
+                if ( !permissiveColumnNumbers ) {
+                    throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvInputPath.toUri().toString() + ") - row " + dataRowNum + " does not contain the same number of columns as header (" + dataRow.size() + " != " + annotationColumnNames.size() + ")!");
+                }
+                else if ( dataRow.size() > annotationColumnNames.size() ) {
+                    dataRow.remove(dataRow.size()-1);
+                }
+                else {
+                    while ( dataRow.size() < annotationColumnNames.size() ) {
+                        dataRow.add( "" );
+                    }
+                }
             }
 
             // Store this in our map:
             annotationMap.put(rowKey, dataRow);
+
+            // Increment our row counter:
+            ++dataRowNum;
         }
     }
 

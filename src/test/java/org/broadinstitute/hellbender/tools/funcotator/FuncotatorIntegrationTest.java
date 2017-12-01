@@ -95,7 +95,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("-" + FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_SHORT_NAME);
         arguments.add(transcriptName);
 
-        // XSV Args:
+        // Arbitrary XSV Args:
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME);
         arguments.add(FuncotatorTestConstants.XSV_CSV_PIK3CA_PATH);
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME);
@@ -106,8 +106,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add(xsvMatchType.toString());
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME);
         arguments.add("PIK3CA_XSV_INPUT");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
+        arguments.add("true");
 
-        // XSV Args:
+        // Arbitrary XSV Args:
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME);
         arguments.add(FuncotatorTestConstants.XSV_CSV_MUC16_PATH);
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME);
@@ -118,6 +120,39 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add(xsvMatchType.toString());
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME);
         arguments.add("MUC16_XSV_INPUT");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
+        arguments.add("true");
+
+        // --------------------------------------------------------------------
+        // Packaged Test Data Source Arguments:
+
+        // hgnc:
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME);
+        arguments.add(FuncotatorTestConstants.HGNC_HG19_TSV_PATH);
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME);
+        arguments.add("\t");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_SHORT_NAME);
+        arguments.add(Integer.toString(1));
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_SHORT_NAME);
+        arguments.add(SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME.toString());
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME);
+        arguments.add("hgnc");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
+        arguments.add("true");
+
+        // simple_uniprot:
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME);
+        arguments.add(FuncotatorTestConstants.SIMPLE_UNIPROT_HG19_TSV_PATH);
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME);
+        arguments.add("\t");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_SHORT_NAME);
+        arguments.add(Integer.toString(0));
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_SHORT_NAME);
+        arguments.add(SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME.toString());
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME);
+        arguments.add("simple_uniprot");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
+        arguments.add("true");
 
         // Override Args:
         arguments.add("-" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_SHORT_NAME);
@@ -126,6 +161,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("-" + FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_SHORT_NAME);
         arguments.add("Gencode_hugoSymbol:Freddie Mercury");
 
+        // Run the beast:
         runCommandLine(arguments);
     }
 }

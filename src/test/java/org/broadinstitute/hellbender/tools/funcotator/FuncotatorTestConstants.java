@@ -29,9 +29,16 @@ public class FuncotatorTestConstants {
     public static final String VARIANT_FILE_HG19_CHR3 = FUNCOTATOR_TEST_DIR + "snpTest_chr3_hg19.vcf";
     public static final String VARIANT_FILE_HG19_CHR19 = FUNCOTATOR_TEST_DIR + "snpTest_chr19_hg19.vcf";
 
+    // ----------------------------------------------------------------------
+    // Data source variables:
+
     public static final String XSV_CSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_testFile.csv";
     public static final String XSV_TSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_TSV_testFile.csv";
     public static final String XSV_DEADBEEFSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_DEADBEEFSV_testFile.csv";
     public static final String XSV_CSV_PIK3CA_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_PIK3CA.csv";
     public static final String XSV_CSV_MUC16_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_MUC16.csv";
+
+    public static final String DATA_SOURCES_FOLDER_PATH = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "dataSources" + File.separator;
+    public static final String HGNC_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "hgnc" + File.separator + "hg19" + File.separator + "hgnc_download_Nov302017.tsv";
+    public static final String SIMPLE_UNIPROT_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "simple_uniprot" + File.separator + "hg19" + File.separator + "simple_uniprot_Dec012014.tsv";
 }

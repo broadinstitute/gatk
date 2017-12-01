@@ -43,6 +43,10 @@ public class FuncotatorArgumentDefinitions {
     public static final String XSV_NAME_ARG_SHORT_NAME = "xsvName";
     public static final List<String> XSV_NAME_ARG_DEFAULT_VALUE = new ArrayList<>();
 
+    public static final String XSV_PERMISSIVE_COLS_ARG_LONG_NAME = "xsvPermitColumns";
+    public static final String XSV_PERMISSIVE_COLS_ARG_SHORT_NAME = "xsvPc";
+    public static final List<Boolean> XSV_PERMISSIVE_COLS_ARG_DEFAULT_VALUE = new ArrayList<>();
+
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcriptSelectionMode";
     public static final String TRANSCRIPT_SELECTION_MODE_SHORT_NAME = "tm";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANNONICAL;

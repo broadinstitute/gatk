@@ -116,6 +116,14 @@ public class Funcotator extends VariantWalker {
     protected List<String> xsvDataSourceNames = FuncotatorArgumentDefinitions.XSV_NAME_ARG_DEFAULT_VALUE;
 
     @Argument(
+            shortName = FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME,
+            fullName  = FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_LONG_NAME,
+            optional = true,
+            doc = "Whether to permissively match the number of columns in the header and data rows."
+    )
+    protected List<Boolean> xsvPermissiveColumns = FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_DEFAULT_VALUE;
+
+    @Argument(
             shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_SHORT_NAME,
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
             optional = true,
@@ -190,7 +198,9 @@ public class Funcotator extends VariantWalker {
                             xsvInputDelimiters.get(i),
                             xsvKeyColumns.get(i),
                             xsvFileTypes.get(i),
-                            annotationOverridesMap
+                            annotationOverridesMap,
+                            0,
+                            xsvPermissiveColumns.get(i)
                     );
 
             // Add it to our sources:
@@ -248,11 +258,11 @@ public class Funcotator extends VariantWalker {
      */
     private void assertXsvInputsAreValid() {
 
-        if ( !(xsvInputPaths.isEmpty() && xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty()) ) {
+        if ( !(xsvInputPaths.isEmpty() && xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
             if ((xsvInputPaths.size() != xsvInputDelimiters.size() && (!xsvInputDelimiters.isEmpty()))) {
                 throw new UserException.BadInput("Must specify the same number of XSV input files and XSV delimiters (or no delimiters to assume CSV format).");
             }
-            else if ( (xsvInputPaths.size() != xsvDataSourceNames.size()) && (xsvInputPaths.size() != xsvFileTypes.size()) && (xsvInputPaths.size() != xsvKeyColumns.size()) ) {
+            else if ( (xsvInputPaths.size() != xsvDataSourceNames.size()) && (xsvInputPaths.size() != xsvFileTypes.size()) && (xsvInputPaths.size() != xsvKeyColumns.size()) && (xsvInputPaths.size() != xsvPermissiveColumns.size()) ) {
                 throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
             }
 
@@ -273,7 +283,7 @@ public class Funcotator extends VariantWalker {
                 }
             }
         }
-        else if ( xsvInputPaths.isEmpty() && !(xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty()) ) {
+        else if ( xsvInputPaths.isEmpty() && !(xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
             throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
         }
 
