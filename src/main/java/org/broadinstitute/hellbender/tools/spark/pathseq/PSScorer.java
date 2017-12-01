@@ -451,7 +451,6 @@ public final class PSScorer {
         }
     }
 
-
     /**
      * Helper class for storing alignment hit information
      */
@@ -466,9 +465,17 @@ public final class PSScorer {
             this.cigar = cigar;
         }
 
-        public int getNumMatches() { return numMatches; }
-        public String getAccession() { return accession; }
-        public Cigar getCigar() { return cigar; }
+        public int getNumMatches() {
+            return numMatches;
+        }
+
+        public String getAccession() {
+            return accession;
+        }
+
+        public Cigar getCigar() {
+            return cigar;
+        }
     }
 
 }

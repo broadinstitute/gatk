@@ -16,6 +16,8 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreFileLogger;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreLogger;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -86,6 +88,11 @@ public class PathSeqScoreSpark extends GATKSparkTool {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             optional = true)
     public String outputPath = null;
+
+    @Argument(doc = "Log counts of mapped and unmapped reads to this file. May increase run time.",
+            fullName = "scoreMetricsFile",
+            optional = true)
+    public String metricsFileUri = null;
 
     @ArgumentCollection
     public PSScoreArgumentCollection scoreArgs = new PSScoreArgumentCollection();
@@ -166,6 +173,11 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         //Main tool routine
         final PSScorer scorer = new PSScorer(scoreArgs);
         final JavaRDD<GATKRead> readsFinal = scorer.scoreReads(ctx, pairedReads, unpairedReads, header);
+        if (metricsFileUri != null) {
+            try (final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), metricsFileUri)) {
+                scoreLogger.logReadCounts(readsFinal);
+            }
+        }
 
         //Write reads to BAM, if specified
         //Note writeReads() is not used because we determine recommendedNumReducers differently with 2 input BAMs

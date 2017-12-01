@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
+import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -71,94 +73,52 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(groups = "spark")
-    public void test() throws IOException {
-        final File expectedFile = getTestFile("expected_paired.txt");
-        final File inputFile = getTestFile("alignment_paired.bam");
-        final File taxFile = getTestFile("tax.db");
-        final File output = createTempFile("test", ".txt");
-        final File bamOut = createTempFile("output", ".bam");
-        if (!output.delete() || !bamOut.delete()) {
-            Assert.fail();
-        }
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("pairedInput", inputFile.getAbsolutePath());
-        args.addOutput(bamOut);
-        args.addFileArgument("taxonomicDatabasePath", taxFile);
-        args.addFileArgument("scoresOutputPath", output);
-        this.runCommandLine(args.getArgsArray());
-
-        final String input_expected = FileUtils.readFileToString(expectedFile);
-        final String input_test = FileUtils.readFileToString(output);
-        compareScoreTables(input_expected, input_test);
+    @DataProvider(name = "pathseqScoreTestData")
+    public Object[][] getTestData() {
+        return new Object[][]{
+                {"expected_paired.txt", "expected_paired.metrics",
+                        "alignment_paired.bam", null, false, false},
+                {"expected_unpaired.txt", "expected_unpaired.metrics",
+                        null, "alignment_unpaired.bam", false, false},
+                {"expected_paired_genome_length.txt", "expected_paired_genome_length.metrics",
+                        "alignment_paired.bam", null, true, false},
+                {"expected_paired_kingdom_false.txt", "expected_paired_kingdom_false.metrics",
+                        "alignment_paired.bam", null, false, true}
+        };
     }
-
-    @Test(groups = "spark")
-    public void testUnpaired() throws IOException {
-        final File expectedFile = getTestFile("expected_unpaired.txt");
-        final File inputFile = getTestFile("alignment_unpaired.bam");
+    @Test(dataProvider = "pathseqScoreTestData", groups = "spark")
+    public void testPathSeqScoreSpark(final String expectedScoresFilename, final String expectedMetricsFilename,
+                     final String inputPairedBamFilename, final String inputUnpairedBamFilename,
+                     final boolean divideByGenomeLength, final boolean notNormalizedByKingdom) throws IOException {
+        final File expectedScoresFile =  getTestFile(expectedScoresFilename);
+        final File expectedMetricsFile = getTestFile(expectedMetricsFilename);
+        final File inputPairedBamFile = inputPairedBamFilename == null ? null : getTestFile(inputPairedBamFilename);
+        final File inputUnpairedBamFile = inputUnpairedBamFilename == null ? null : getTestFile(inputUnpairedBamFilename);
         final File taxFile = getTestFile("tax.db");
-        final File output = createTempFile("test", ".txt");
-        final File warnings = createTempFile("warnings", ".txt");
-        if (!output.delete() || !warnings.delete()) {
-            Assert.fail();
-        }
+        final File outputScoresFile = createTempFile("test", ".txt");
+        final File outputBamFile = createTempFile("output", ".bam");
+        final File outputMetricsFile = createTempFile("score", ".metrics");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("unpairedInput", inputFile.getAbsolutePath());
+        if (inputPairedBamFile != null) {
+            args.addFileArgument("pairedInput", inputPairedBamFile);
+        }
+        if (inputUnpairedBamFile != null) {
+            args.addFileArgument("unpairedInput", inputUnpairedBamFile);
+        }
+        args.addFileArgument("scoreMetricsFile", outputMetricsFile);
         args.addFileArgument("taxonomicDatabasePath", taxFile);
-        args.addFileArgument("scoresOutputPath", output);
-        args.addFileArgument("scoreWarningsFile",warnings);
+        args.addFileArgument("scoresOutputPath", outputScoresFile);
+        args.addOutput(outputBamFile);
+        args.addBooleanArgument("divideByGenomeLength", divideByGenomeLength);
+        args.addBooleanArgument("notNormalizedByKingdom", notNormalizedByKingdom);
+
         this.runCommandLine(args.getArgsArray());
 
-        final String input_expected = FileUtils.readFileToString(expectedFile);
-        final String input_test = FileUtils.readFileToString(output);
-        compareScoreTables(input_expected, input_test);
-    }
+        final String expectedScoresString = FileUtils.readFileToString(expectedScoresFile);
+        final String actualScoresString = FileUtils.readFileToString(outputScoresFile);
+        compareScoreTables(expectedScoresString, actualScoresString);
 
-    @Test(groups = "spark")
-    public void testDivideByGenomeLength() throws IOException {
-        final File expectedFile = getTestFile("expected_paired_genome_length.txt");
-        final File inputFile = getTestFile("alignment_paired.bam");
-        final File taxFile = getTestFile("tax.db");
-        final File output = createTempFile("test", ".txt");
-        final File bamOut = createTempFile("output", ".bam");
-        if (!output.delete() || !bamOut.delete()) {
-            Assert.fail();
-        }
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("pairedInput", inputFile.getAbsolutePath());
-        args.addOutput(bamOut);
-        args.addFileArgument("taxonomicDatabasePath", taxFile);
-        args.addFileArgument("scoresOutputPath", output);
-        args.addBooleanArgument("divideByGenomeLength", true);
-        this.runCommandLine(args.getArgsArray());
-
-        final String input_expected = FileUtils.readFileToString(expectedFile);
-        final String input_test = FileUtils.readFileToString(output);
-        compareScoreTables(input_expected, input_test);
-    }
-
-    @Test(groups = "spark")
-    public void testKingdomNormalizationFalse() throws IOException {
-        final File expectedFile = getTestFile("expected_paired_kingdom_false.txt");
-        final File inputFile = getTestFile("alignment_paired.bam");
-        final File taxFile = getTestFile("tax.db");
-        final File output = createTempFile("test", ".txt");
-        final File bamOut = createTempFile("output", ".bam");
-        if (!output.delete() || !bamOut.delete()) {
-            Assert.fail();
-        }
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("pairedInput", inputFile.getAbsolutePath());
-        args.addOutput(bamOut);
-        args.addFileArgument("taxonomicDatabasePath", taxFile);
-        args.addFileArgument("scoresOutputPath", output);
-        args.addBooleanArgument("notNormalizedByKingdom", true);
-        this.runCommandLine(args.getArgsArray());
-
-        final String input_expected = FileUtils.readFileToString(expectedFile);
-        final String input_test = FileUtils.readFileToString(output);
-        compareScoreTables(input_expected, input_test);
+        Assert.assertTrue(MetricsFile.areMetricsEqual(outputMetricsFile, expectedMetricsFile));
     }
 
 }
