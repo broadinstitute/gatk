@@ -12,7 +12,8 @@ import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedInterv
 import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotationSet;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.util.ArrayList;

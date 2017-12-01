@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;

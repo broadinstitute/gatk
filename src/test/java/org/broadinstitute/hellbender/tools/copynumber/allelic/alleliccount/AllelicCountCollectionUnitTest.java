@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount;
 
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

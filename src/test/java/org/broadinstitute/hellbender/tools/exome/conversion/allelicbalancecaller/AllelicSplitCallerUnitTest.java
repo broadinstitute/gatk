@@ -2,11 +2,11 @@ package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecalle
 
 import org.apache.commons.math3.util.Pair;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
