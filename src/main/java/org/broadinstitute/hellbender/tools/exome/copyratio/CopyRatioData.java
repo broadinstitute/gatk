@@ -80,6 +80,7 @@ public final class CopyRatioData implements DataCollection {
     //estimate global variance empirically by taking average of all per-segment variances
     public double estimateVariance() {
         return IntStream.range(0, numSegments)
+                .filter(s -> getIndexedCoveragesInSegment(s).size() > 0)
                 .mapToDouble(s -> new Variance().evaluate(Doubles.toArray(getIndexedCoveragesInSegment(s).stream().map(IndexedCoverage::getCoverage).collect(Collectors.toList()))))
                 .average().getAsDouble();
     }

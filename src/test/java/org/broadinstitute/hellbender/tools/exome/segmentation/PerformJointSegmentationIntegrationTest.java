@@ -3,15 +3,12 @@ package org.broadinstitute.hellbender.tools.exome.segmentation;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
-import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by davidben on 10/21/16.

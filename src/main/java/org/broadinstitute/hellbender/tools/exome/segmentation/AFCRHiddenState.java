@@ -21,4 +21,9 @@ public final class AFCRHiddenState {
     public double getLog2CopyRatio() {
         return log2CopyRatio;
     }
+
+    @Override
+    public String toString() {
+        return String.format("(maf=%f, log2cr=%f)", minorAlleleFraction, log2CopyRatio);
+    }
 }
