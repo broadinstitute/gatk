@@ -91,21 +91,31 @@ public final class PSUtils {
         return header;
     }
 
-    public static int getMatchesLessDeletions(final Cigar cigar, final int numMismatches) {
+    public static int getMatchesLessDeletions(final Cigar cigar, final int nmTagValue) {
         Utils.nonNull(cigar, "Cannot get match score for null cigar");
-        Utils.validateArg(numMismatches >= 0, "numMismatches cannot be negative");
-        int numMatches = -numMismatches;
+        Utils.validateArg(nmTagValue >= 0, "NM tag value cannot be negative");
+        int numMatchesOrMismatches = 0;
         int numDeletions = 0;
+        int numInsertions = 0;
         final List<CigarElement> cigarElements = cigar.getCigarElements();
         for (final CigarElement e : cigarElements) {
             if (e.getOperator().isAlignment()) {
-                numMatches += e.getLength();
+                numMatchesOrMismatches += e.getLength();
             } else if (e.getOperator().equals(CigarOperator.DELETION)) {
                 numDeletions += e.getLength();
+            } else if (e.getOperator().equals(CigarOperator.INSERTION)) {
+                numInsertions += e.getLength();
             }
         }
+        final int numSubstitutions = nmTagValue - numDeletions - numInsertions;
+        final int numMatches = numMatchesOrMismatches - numSubstitutions;
+        if (numSubstitutions < 0) {
+            logger.warn("Invalid arguments passed to getMatchesLessDeletions(): NM tag value was less than the number of insertions and deletions combined. Returning 0.");
+            return 0;
+        }
         if (numMatches < 0) {
-            logger.warn("Invalid arguments passed to getMatchesLessDeletions(): numMismatches was greater than the number of matches/mismatches in the cigar. Returning 0.");
+            logger.warn("Invalid arguments passed to getMatchesLessDeletions(): Combined number of matches and mismatches was less than the number of substitutions. Returning 0.");
+            return 0;
         }
         return numMatches - numDeletions;
     }
