@@ -34,6 +34,6 @@ public final class LibraryReadFilter extends ReadFilter implements Serializable 
             return false;
         }
 
-        return libraryToKeep.stream().anyMatch(library::equals);
+        return libraryToKeep.contains(library);
     }
 }
