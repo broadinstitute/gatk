@@ -13,7 +13,6 @@ env:
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - RUN_CNV_SOMATIC_LEGACY_WDL=true
   - RUN_M2_WDL=true
-  - RUN_CNV_GERMLINE_WDL=true
   global:
   #gradle needs this
   - TERM=dumb

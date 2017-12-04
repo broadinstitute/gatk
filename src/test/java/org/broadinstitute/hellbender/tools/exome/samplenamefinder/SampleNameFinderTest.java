@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.samplenamefinder;
 
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

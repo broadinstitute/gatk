@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.SimpleIntervalTestFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
