@@ -48,7 +48,7 @@ public final class PossibleDeNovo extends InfoFieldAnnotation {
     }
 
     /**
-     * This is dummy constructor that will do nothing until https://github.com/broadinstitute/gatk/issues/1468 is fixed
+     * This is dummy constructor that will do nothing until https://github.com/broadinstitute/gatk/issues/1880 is addressed
      */
     public PossibleDeNovo(){
         this(Collections.emptySet(), 0);

@@ -205,7 +205,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     }
 
     /**
-     * Return the allowed values for readFilterNames/disableReadFilter for use by the help system.
+     * Return the allowed values for read-filter/disable-read-filter names for use by the help system.
      * @param longArgName long name of the argument for which help is requested
      * @return
      */

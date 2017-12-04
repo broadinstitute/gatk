@@ -28,8 +28,9 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     private static final long serialVersionUID = 1L;
     public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
+    public static final String BLACK_LIST_LONG_NAME = "black-list";
 
-    @Argument(fullName="blackList", doc="", shortName="blackList", optional=false)
+    @Argument(fullName=BLACK_LIST_LONG_NAME, doc="The name of the read group to filter out", shortName="blackList", optional=false)
     public List<String> blackList = new ArrayList<>();
 
     //most of the collection Entry classes are not serializable so just use a Map

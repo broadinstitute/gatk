@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -49,13 +50,13 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
         final GATKReadFilterPluginDescriptor pluginDescriptor = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
 
-        // the help for disableReadFilter should point out to the default filters in the order provided
-        Assert.assertEquals(pluginDescriptor.getAllowedValuesForDescriptorArgument("disableReadFilter"),
+        // the help for disable-read-filter should point out to the default filters in the order provided
+        Assert.assertEquals(pluginDescriptor.getAllowedValuesForDescriptorArgument(StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME),
                 defaultFilters.stream().map(rf -> rf.getClass().getSimpleName()).collect(Collectors.toSet()));
 
         // test if the help for readFilter is not empty after parsing: if custom validation throws, the help should print the readFilter available
         // the complete set could not checked because that requires to discover all the implemented filters
-        Assert.assertFalse(pluginDescriptor.getAllowedValuesForDescriptorArgument("readFilter").isEmpty());
+        Assert.assertFalse(pluginDescriptor.getAllowedValuesForDescriptorArgument(StandardArgumentDefinitions.READ_FILTER_LONG_NAME).isEmpty());
     }
 
     //Filters with arguments to verify filter test method actually filters
@@ -93,7 +94,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
 
         String[] args = {
-                "--readFilter", filter,
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, filter,
                 argName, argValue
         };
         clp.parseArguments(nullMessageStream, args);
@@ -113,12 +114,12 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
     public Object[][] filtersWithRequiredArguments(){
         return new Object[][]{
                 { LibraryReadFilter.class.getSimpleName(), "--library", "fakeLibrary" },
-                { PlatformReadFilter.class.getSimpleName(), "--PLFilterName", "fakePlatform" },
-                { PlatformUnitReadFilter.class.getSimpleName(), "--blackListedLanes", "fakeUnit" },
-                { ReadGroupReadFilter.class.getSimpleName(), "--keepReadGroup", "fakeGroup" },
-                { ReadGroupBlackListReadFilter.class.getSimpleName(), "--blackList", "tg:sub"},
-                { ReadNameReadFilter.class.getSimpleName(), "--readName", "fakeRead" },
-                { ReadLengthReadFilter.class.getSimpleName(), "--maxReadLength", "10" },
+                { PlatformReadFilter.class.getSimpleName(), "--" + PlatformReadFilter.PL_FILTER_NAME_LONG_NAME, "fakePlatform" },
+                { PlatformUnitReadFilter.class.getSimpleName(), "--" + PlatformUnitReadFilter.BLACK_LISTED_LANES_LONG_NAME, "fakeUnit" },
+                { ReadGroupReadFilter.class.getSimpleName(), "--" + ReadGroupReadFilter.KEEP_READ_GROUP_LONG_NAME, "fakeGroup" },
+                { ReadGroupBlackListReadFilter.class.getSimpleName(), "--" + ReadGroupBlackListReadFilter.BLACK_LIST_LONG_NAME, "tg:sub"},
+                { ReadNameReadFilter.class.getSimpleName(), "--" + ReadNameReadFilter.READ_NAME_LONG_NAME, "fakeRead" },
+                { ReadLengthReadFilter.class.getSimpleName(), "--" + ReadLengthReadFilter.maxLengthArgName, "10" },
                 { SampleReadFilter.class.getSimpleName(), "--sample", "fakeSample" }
         };
     }
@@ -136,7 +137,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
 
         String[] args = {
-                "--readFilter", filter  // no args, just enable filters
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, filter  // no args, just enable filters
         };
 
         clp.parseArguments(nullMessageStream, args);
@@ -186,11 +187,11 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
 
         String[] args = {
-                "--readFilter", ReadLengthReadFilter.class.getSimpleName(),
-                "--minReadLength", "10",
-                "--maxReadLength", "102",
-                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                "--readName", "fred"
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
+                "--" + ReadLengthReadFilter.minLengthArg, "10",
+                "--" + ReadLengthReadFilter.maxLengthArgName, "102",
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadNameReadFilter.class.getSimpleName(),
+                "--" + ReadNameReadFilter.READ_NAME_LONG_NAME, "fred"
         };
         clp.parseArguments(nullMessageStream, args);
         ReadFilter rf = instantiateFilter(clp, header);
@@ -270,7 +271,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
                 "--RF", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
-                "-disableReadFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
+                "--" + StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
 
         // get the command line read filters
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
@@ -298,7 +299,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
         final String filterName = ReadFilterLibrary.MAPPED.getClass().getSimpleName();
         clp.parseArguments(nullMessageStream, new String[]{
-                "-disableReadFilter", filterName
+                "--" + StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, filterName
         });
         // Make sure mapped filter got disabled with no exception
         Assert.assertTrue(rfDesc.userArgs.getUserDisabledReadFilterNames().contains(filterName));
@@ -312,7 +313,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
-                "-disableReadFilter", "asdfasdf"
+                "--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS, "asdfasdf"
         });
     }
 
@@ -327,8 +328,8 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
-                "-disableReadFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName(),
-                "-disableReadFilter", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName()});
+                "--" + StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName(),
+                "--" + StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName()});
 
         // get the command line read filters
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
@@ -357,14 +358,14 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         defaultFilters.add(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS);
         return new Object[][] {
                 {new String[]{
-                        "--disableToolDefaultReadFilters"},
+                        "--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS},
                         defaultFilters, null},
                 {new String[]{
-                        "--disableToolDefaultReadFilters",
+                        "--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
                         "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName()},
                         defaultFilters, ReadFilterLibrary.MAPPED},
                 {new String[]{
-                        "--disableToolDefaultReadFilters",
+                        "--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
                         "--RF", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()},
                         defaultFilters, ReadFilterLibrary.GOOD_CIGAR}
         };
@@ -410,7 +411,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
                 "--sample", "fred",
-                "-disableReadFilter", SampleReadFilter.class.getSimpleName()});
+                "--disable-fead-filter", SampleReadFilter.class.getSimpleName()});
 
         // get the command line read filters
         clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
@@ -427,7 +428,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
         final String filterName = ReadLengthReadFilter.class.getSimpleName();
         clp.parseArguments(nullMessageStream, new String[] {
-                "-disableReadFilter", filterName});
+                "--" + StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, filterName});
 
         // Make sure ReadLengthReadFilter got disabled without an exception
         Assert.assertTrue(rfDesc.userArgs.getUserDisabledReadFilterNames().contains(filterName));
@@ -442,7 +443,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(Collections.emptyList())),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
-                "--disableReadFilter", SampleReadFilter.class.getSimpleName(),
+                "--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS, SampleReadFilter.class.getSimpleName(),
                 "--sample", "fred"
         });
         // get the command line read filters
@@ -458,9 +459,9 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.singletonList(rfDesc),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
-                "--disableToolDefaultReadFilters",
-                "--readFilter", ReadLengthReadFilter.class.getSimpleName(),
-                "--maxReadLength", "13"}
+                "--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
+                "--" + ReadLengthReadFilter.maxLengthArgName, "13"}
         );
         List<ReadFilter> allFilters = rfDesc.getAllInstances();
         ReadLengthReadFilter rf = (ReadLengthReadFilter) allFilters.get(0);
@@ -477,10 +478,10 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.singletonList(rfDesc),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
-                "--disableToolDefaultReadFilters",
-                "--readFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName(),
-                "--readFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
-                "--readFilter", ReadLengthReadFilter.class.getSimpleName()}
+                "--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName(),
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName()}
         );
         List<ReadFilter> allFilters = rfDesc.getAllInstances();
         // User filter is first according to the command line
@@ -502,7 +503,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", "GoodCigarReadFilter",
-                "--disableReadFilter", "GoodCigarReadFilter"});
+                "--" + StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, "GoodCigarReadFilter"});
     }
 
     @Test
@@ -517,9 +518,9 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(orderedDefaults)),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
-                "-readFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
-                "-readFilter", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
-                "-readFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
 
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
 
@@ -572,9 +573,9 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
                 //disable one just to mix things up
-                "-disableReadFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
-                "-readFilter", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
-                "-readFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
+                "-" + StandardArgumentDefinitions.DISABLE_READ_FILTER_SHORT_NAME, ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                "-" + StandardArgumentDefinitions.READ_FILTER_SHORT_NAME, ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
+                "-" + StandardArgumentDefinitions.READ_FILTER_SHORT_NAME, ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
 
         // Now get the final merged read filter and verify the execution order. We need to ensure that
         // getMergedReadFilter creates a composite filter that honors the filter test execution
@@ -610,9 +611,9 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)),
                 Collections.emptySet());
         String[] args = {
-                "--readFilter", ReadLengthReadFilter.class.getSimpleName(),
-                "--minReadLength", "10",
-                "--maxReadLength", "20"
+                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
+                "--" + ReadLengthReadFilter.minLengthArg, "10",
+                "--" + ReadLengthReadFilter.maxLengthArgName, "20"
         };
         clp.parseArguments(nullMessageStream, args);
         ReadFilter rf = instantiateFilter(clp, header);
@@ -632,13 +633,13 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
     public Object[][] defaultFilters() {
         return new Object[][]{
                 // ReadGroupReadFilter has a required "keepReadGroup" arg; provide it
-                {new String[]{"--keepReadGroup", readgroupName}},
+                {new String[]{"--" + ReadGroupReadFilter.KEEP_READ_GROUP_LONG_NAME, readgroupName}},
 
                 // ReadGroupReadFilter has a required "keepReadGroup" arg; provide it
                 // *and* specify it on the command line
                 {new String[]{
-                        "--readFilter", "ReadGroupReadFilter",
-                        "--keepReadGroup", readgroupName}
+                        "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, "ReadGroupReadFilter",
+                        "--" + ReadGroupReadFilter.KEEP_READ_GROUP_LONG_NAME, readgroupName}
                 }
         };
     }

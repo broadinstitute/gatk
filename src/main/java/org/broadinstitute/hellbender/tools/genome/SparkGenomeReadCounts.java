@@ -50,7 +50,7 @@ import java.util.stream.IntStream;
  * <pre>
  * gatk-launch --javaOptions "-Xmx4g" SparkGenomeReadCounts \
  *   --input sample.bam \
- *   --disableReadFilter NotDuplicateReadFilter \
+ *   --disable-read-filter NotDuplicateReadFilter \
  *   --outputFile sample.readCounts.tsv
  * </pre>
  *

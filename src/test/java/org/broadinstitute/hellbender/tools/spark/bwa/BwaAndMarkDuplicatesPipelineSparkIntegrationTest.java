@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.bwa;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.spark.pipelines.BwaAndMarkDuplicatesPipelineSpark;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
@@ -32,7 +33,7 @@ public final class BwaAndMarkDuplicatesPipelineSparkIntegrationTest extends Comm
         args.addReference(ref);
         args.addInput(input);
         args.addOutput(output);
-        args.addBooleanArgument("disableSequenceDictionaryValidation", true);
+        args.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
         this.runCommandLine(args.getArgsArray());
 
         SamAssertionUtils.assertSamsEqual(output, expectedSam);

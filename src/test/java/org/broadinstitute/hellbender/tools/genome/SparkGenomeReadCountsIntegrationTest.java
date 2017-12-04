@@ -30,7 +30,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCounts() throws IOException {
         final File outputFile = createTempFile(BAM_FILE.getName(), TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
@@ -55,7 +55,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCountsBigBins() throws IOException {
         final File outputFile = createTempFile(BAM_FILE.getName(), TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
@@ -80,7 +80,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCountsSmallBins()  throws IOException {
         final File outputFile = createTempFile(BAM_FILE.getName(), TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
@@ -123,7 +123,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCountsInterval() {
         final File outputFile = createTempFile(BAM_FILE.getName(), TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
@@ -146,7 +146,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCountsTwoIntervals() {
         final File outputFile = createTempFile(BAM_FILE.getName(), TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
@@ -171,7 +171,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCountsSubContig() {
         final File outputFile = createTempFile(BAM_FILE.getName(), TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
@@ -197,7 +197,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCountsHdf5Writing() throws IOException {
         final File tsvFile = createTempFile(BAM_FILE.getName(),TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tsvFile.getAbsolutePath(),
@@ -225,7 +225,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     public void testSparkGenomeReadCountsProportionalCoverageWriting() throws IOException {
         final File tsvFile = createTempFile(BAM_FILE.getName(),TSV_EXT);
         final String[] arguments = {
-                "--disableSequenceDictionaryValidation",
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME,
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tsvFile.getAbsolutePath(),

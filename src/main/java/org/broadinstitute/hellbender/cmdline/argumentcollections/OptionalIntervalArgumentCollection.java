@@ -2,6 +2,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
@@ -13,7 +14,8 @@ import java.util.List;
 public final class OptionalIntervalArgumentCollection extends IntervalArgumentCollection {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "intervals", shortName = "L", doc = "One or more genomic intervals over which to operate", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.INTERVALS_LONG_NAME, shortName = StandardArgumentDefinitions.INTERVALS_SHORT_NAME,
+            doc = "One or more genomic intervals over which to operate", optional = true)
     protected final List<String> intervalStrings = new ArrayList<>();
 
     @Override

@@ -14,7 +14,7 @@ import java.io.Serializable;
 public final class ReadLengthReadFilter extends ReadFilter implements Serializable{
     private static final long serialVersionUID = 1L;
 
-    private static final String maxLengthArgName = "maxReadLength";
+    public static final String maxLengthArgName = "maxReadLength";
 
     @Argument(fullName = maxLengthArgName,
             shortName = maxLengthArgName,
@@ -22,7 +22,7 @@ public final class ReadLengthReadFilter extends ReadFilter implements Serializab
             optional=false)
     public Integer maxReadLength;
 
-    private static final String minLengthArg = "minReadLength";
+    public static final String minLengthArg = "minReadLength";
     @Argument(fullName = minLengthArg,
             shortName = minLengthArg,
             doc="Keep only reads with length at least equal to the specified value",
