@@ -1,0 +1,4 @@
+@HD	VN:1.5
+@SQ	SN:ENST00000477735.1|ENSG00000121879.3|OTTHUMG00000157311.2|OTTHUMT00000348478.1|PIK3CA-002|PIK3CA|245|UTR5:1-182|CDS:183-245|	LN:245	M5:2fc56d640cf1e765a630ff9812d28892	UR:file:/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/gencode.v19.PIK3CA_transcript.fasta
+@SQ	SN:ENST00000263967.3|ENSG00000121879.3|OTTHUMG00000157311.2|OTTHUMT00000348409.2|PIK3CA-001|PIK3CA|9093|UTR5:1-157|CDS:158-3364|UTR3:3365-9093|	LN:9093	M5:6a1d4424867247b4310ed3d5d027711f	UR:file:/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/gencode.v19.PIK3CA_transcript.fasta
+@SQ	SN:ENST00000468036.1|ENSG00000121879.3|OTTHUMG00000157311.2|OTTHUMT00000348479.1|PIK3CA-003|PIK3CA|620|UTR5:1-266|CDS:267-620|	LN:620	M5:c8e9ae57b758d0b28bf159fb1b64586a	UR:file:/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/gencode.v19.PIK3CA_transcript.fasta

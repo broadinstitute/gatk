@@ -523,4 +523,217 @@ public class GATKProtectedVariantContextUtils {
         final OptionalInt minQuality = IntStream.range(0, pileupBaseQualities.length).map(i -> Byte.toUnsignedInt(pileupBaseQualities[i])).min();
         return minQuality.orElse(-1);
     }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a frameshift mutation.
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a frameshift.  {@code false} otherwise.
+     */
+    public static boolean isFrameshift(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // We know it's a frameshift if we have a replacement that is not of a
+        // length evenly divisible by 3 because that's how many bases are read at once:
+        return ((Math.abs( reference.length() - alternate.length() ) % 3) != 0);
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a frameshift mutation.
+     * @param reference The {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate The {@link String} containing the bases of the alternate allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a frameshift.  {@code false} otherwise.
+     */
+    public static boolean isFrameshift(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        if ( reference.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
+        }
+        else if ( alternate.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
+        }
+
+        // We know it's a frameshift if we have a replacement that is not of a
+        // length evenly divisible by 3 because that's how many bases are read at once:
+        return ((Math.abs( reference.length() - alternate.length() ) % 3) != 0);
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a frameshift mutation.
+     * This does not take into account the cases where either or both of the alleles overlap splice sites.
+     * @param startPos Genomic start position (1-based, inclusive) of the variant.  Must be > 0.
+     * @param refEnd Genomic end position (1-based, inclusive) of the reference allele.  Must be > 0.
+     * @param altEnd Genomic end position (1-based, inclusive) of the alternate allele.  Must be > 0.
+     * @return {@code true} if replacing the reference with the alternate results in a frameshift.  {@code false} otherwise.
+     */
+    public static boolean isFrameshift(final int startPos, final int refEnd, final int altEnd) {
+
+        ParamUtils.isPositive( startPos, "Genomic positions must be > 0." );
+        ParamUtils.isPositive( refEnd, "Genomic positions must be > 0." );
+        ParamUtils.isPositive( altEnd, "Genomic positions must be > 0." );
+
+        final int refLength = refEnd - startPos + 1;
+        final int altLength = altEnd - startPos + 1;
+
+        // We know it's a frameshift if we have a replacement that is not of a
+        // length evenly divisible by 3 because that's how many bases are read at once:
+        return ((Math.abs( refLength - altLength ) % 3) != 0);
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion mutation.
+     * @param reference The reference {@link Allele}.   Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.   Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion.  {@code false} otherwise.
+     */
+    public static boolean isInsertion(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we have more bases in the alternate, we have an insertion:
+        return reference.length() < alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion mutation.
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion.  {@code false} otherwise.
+     */
+    public static boolean isInsertion(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        if ( reference.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
+        }
+        else if ( alternate.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
+        }
+
+        // If we have more bases in the alternate, we have an insertion:
+        return reference.length() < alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a deletion mutation.
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a deletion.  {@code false} otherwise.
+     */
+    public static boolean isDeletion(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        if ( reference.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
+        }
+        else if ( alternate.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
+        }
+
+        // If we have fewer bases in the alternate, we have a deletion:
+        return reference.length() > alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a deletion mutation.
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a deletion.  {@code false} otherwise.
+     */
+    public static boolean isDeletion(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we have fewer bases in the alternate, we have a deletion:
+        return reference.length() > alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion or deletion mutation.
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion or deletion.  {@code false} otherwise.
+     */
+    public static boolean isIndel(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        if ( reference.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
+        }
+        else if ( alternate.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
+        }
+
+        // If we do not have the same number of bases in the reference and alternate alleles,
+        // then we have an indel:
+        return reference.length() != alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion or deletion mutation.
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion or deletion.  {@code false} otherwise.
+     */
+    public static boolean isIndel(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we do not have the same number of bases in the reference and alternate alleles,
+        // then we have an indel:
+        return reference.length() != alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an Oligo-Nucleotide Polymorphism (ONP).
+     * For Funcotator purposes, an ONP is a mutation/variant that is a substitution of one or more consecutive bases.
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an ONP.  {@code false} otherwise.
+     */
+    public static boolean isOnp(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we have more bases in the alternate, we have an insertion:
+        return reference.length() == alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an Oligo-Nucleotide Polymorphism (ONP).
+     * For Funcotator purposes, an ONP is a mutation/variant that is a substitution of one or more consecutive bases.
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an ONP.  {@code false} otherwise.
+     */
+    public static boolean isOnp(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        if ( reference.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
+        }
+        else if ( alternate.contains("*") ) {
+            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
+        }
+
+        // If we have more bases in the alternate, we have an insertion:
+        return reference.length() == alternate.length();
+    }
 }
