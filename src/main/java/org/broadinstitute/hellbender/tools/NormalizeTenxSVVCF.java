@@ -101,6 +101,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
 
             final VariantContext vc = builder
                     .id(id)
+                    .attributes(variant.getAttributes())
                     .alleles(alleles)
                     .genotypes(genotypeBuilder.make())
                     .make();
@@ -320,6 +321,7 @@ public class NormalizeTenxSVVCF extends VariantWalker {
             final List<Allele> alleles4 = new ArrayList<>(2);
             alleles4.add(Allele.create(baseAfterEnd, true));
             alleles4.add(Allele.create("[" + variant.getContig() + ":" + (variant.getStart() + 1) + "[" + (char) baseAfterEnd));
+            //alleles4.add(createBreakendAllele(baseAfterEnd, variant.getContig(), variant.getStart() + 1, false, true));
 
             final VariantContext bnd4 = new VariantContextBuilder(variant)
                     .id(id + "_4")
@@ -401,4 +403,17 @@ public class NormalizeTenxSVVCF extends VariantWalker {
         }
         return null;
     }
+
+
+//    static Allele createBreakendAllele(final byte posBase, final String mateBreakendContig, final int mateBreakendPos, final boolean joinAfterPos, final boolean mateBreakendReverseComplement) {
+//        return createBreakendAllele(new byte[] {posBase }, mateBreakendContig, mateBreakendPos, joinAfterPos, mateBreakendReverseComplement);
+//
+//    }
+//
+//    static Allele createBreakendAllele(final byte[] posBases, final String mateBreakendContig, final int mateBreakendPos, final boolean joinAfterPos, final boolean mateBreakendReverseComplement) {
+//        //alleles4.add(Allele.create("[" + variant.getContig() + ":" + (variant.getStart() + 1) + "[" + (char) baseAfterEnd));
+//        boolean
+//
+//    }
+
 }
