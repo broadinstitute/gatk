@@ -38,8 +38,8 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
             final Path tempPath = MiniClusterUtils.getTempPath(cluster, "test", "dir");
             final String gcpInputPath = getGCPTestInputPath() + "huge/CEUTrio.HiSeq.WGS.b37.NA12878.chr1_4.bam.bai";
             String args =
-                    "--input-gcs-path " + gcpInputPath +
-                            " --output-hdfs-directory " + tempPath;
+                    "--" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GCS_PATH_LONG_NAME + " " + gcpInputPath +
+                            " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.OUTPUT_HDFS_DIRECTORY_LONG_NAME + " " + tempPath;
             ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
             IntegrationTestSpec spec = new IntegrationTestSpec(
                     ab.getString(),
@@ -85,8 +85,8 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
             // directory contains two small files named foo.txt and bar.txt
             final String gcpInputPath = getGCPTestInputPath() + "parallel_copy/";
             String args =
-                    "--input-gcs-path " + gcpInputPath +
-                            " --output-hdfs-directory " + tempPath;
+                    "--" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GCS_PATH_LONG_NAME + " " + gcpInputPath +
+                            " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.OUTPUT_HDFS_DIRECTORY_LONG_NAME + " " + tempPath;
             ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
             IntegrationTestSpec spec = new IntegrationTestSpec(
                     ab.getString(),
