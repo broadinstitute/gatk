@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -104,6 +105,23 @@ public class LocalReadShardUnitTest extends GATKBaseTest {
         final LocalReadShard downsampledShard = new LocalReadShard(new SimpleInterval("1", 1, 5000), new SimpleInterval("1", 1, 5000), readsSource);
         downsampledShard.setDownsampler(readsBAndCOnlyDownsampler);
 
+
+        final ReadTransformer renameToA = read -> {
+            read.setName("a");
+            return read;
+        };
+        final ReadTransformer renameToB = read -> {
+            read.setName("b");
+            return read;
+        };
+        final LocalReadShard transformedInOrderToPassFilterShard = new LocalReadShard(new SimpleInterval("1", 200, 210), new SimpleInterval("1", 200, 210), readsSource);
+        transformedInOrderToPassFilterShard.setPreReadFilterTransformer(renameToB);
+        transformedInOrderToPassFilterShard.setReadFilter(keepReadBOnly);
+
+        final LocalReadShard transformedAfterFilterShard = new LocalReadShard(new SimpleInterval("1", 200, 210), new SimpleInterval("1", 200, 210), readsSource);
+        transformedAfterFilterShard.setPostReadFilterTransformer(renameToA);
+        transformedAfterFilterShard.setReadFilter(keepReadBOnly);
+
         return new Object[][] {
                 {new LocalReadShard(new SimpleInterval("1", 200, 210), new SimpleInterval("1", 200, 210), readsSource), Arrays.asList("a", "b", "c") },
                 {new LocalReadShard(new SimpleInterval("1", 200, 209), new SimpleInterval("1", 200, 209), readsSource), Arrays.asList("a", "b") },
@@ -112,7 +130,9 @@ public class LocalReadShardUnitTest extends GATKBaseTest {
                 {new LocalReadShard(new SimpleInterval("1", 200, 204), new SimpleInterval("1", 200, 205), readsSource), Arrays.asList("a", "b") },
                 {new LocalReadShard(new SimpleInterval("1", 400, 500), new SimpleInterval("1", 400, 500), readsSource), Collections.<String>emptyList() },
                 { filteredShard, Arrays.asList("b") },
-                { downsampledShard, Arrays.asList("b", "c")}
+                { downsampledShard, Arrays.asList("b", "c")},
+                {transformedInOrderToPassFilterShard, Arrays.asList("b", "b", "b")},
+                {transformedAfterFilterShard, Arrays.asList("a")}
         };
     }
 

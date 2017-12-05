@@ -289,10 +289,12 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         progressMeter.setRecordsBetweenTimeChecks(10L);
 
         for ( final LocalReadShard readShard : readShards ) {
-            // Since reads in each shard are lazily fetched, we need to pass the filter to the window
+            // Since reads in each shard are lazily fetched, we need to pass the filter and transformers to the window
             // instead of filtering the reads directly here
+            readShard.setPreReadFilterTransformer(makePreReadFilterTransformer());
             readShard.setReadFilter(countedFilter);
             readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null);
+            readShard.setPostReadFilterTransformer(makePostReadFilterTransformer());
             currentReadShard = readShard;
 
             processReadShard(readShard, reference, features);
