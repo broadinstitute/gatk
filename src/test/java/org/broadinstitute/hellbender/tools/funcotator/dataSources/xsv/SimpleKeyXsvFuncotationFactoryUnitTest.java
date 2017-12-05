@@ -71,7 +71,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         defaultVariantContext = variantContextBuilder.make();
 
         defaultReferenceContext = new ReferenceContext(
-                ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME) ),
+                ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME).toPath() ),
                 new SimpleInterval(defaultContig, defaultStart, defaultEnd)
         );
     }

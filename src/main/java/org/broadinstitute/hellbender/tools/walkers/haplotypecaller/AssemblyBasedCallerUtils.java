@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -148,9 +149,9 @@ public final class AssemblyBasedCallerUtils {
     public static CachingIndexedFastaSequenceFile createReferenceReader(final String reference) {
         try {
             // fasta reference reader to supplement the edges of the reference sequence
-            return new CachingIndexedFastaSequenceFile(new File(reference));
+            return new CachingIndexedFastaSequenceFile(IOUtils.getPath(reference));
         } catch( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(new File(reference), e);
+            throw new UserException.CouldNotReadInputFile(IOUtils.getPath(reference), e);
         }
     }
 

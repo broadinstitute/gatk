@@ -73,6 +73,7 @@ public final class ArgumentsBuilder {
         return this;
     }
 
+
     /**
      * add a vcf file argument using {@link StandardArgumentDefinitions#VARIANT_LONG_NAME}
      */

@@ -13,11 +13,13 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.Annotation
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 /**
@@ -30,7 +32,7 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
     private static final File INTERVALS_FILE = new File(TEST_SUB_DIR, "annotate-intervals-test.interval_list");
     private static final File REFERENCE_FILE = new File(b37_reference_20_21);
 
-    private static final SAMSequenceDictionary SEQUENCE_DICTIONARY = ReferenceDataSource.of(REFERENCE_FILE).getSequenceDictionary();
+    private static final SAMSequenceDictionary SEQUENCE_DICTIONARY = ReferenceDataSource.of(REFERENCE_FILE.toPath()).getSequenceDictionary();
     private static final LocatableMetadata LOCATABLE_METADATA = new SimpleLocatableMetadata(SEQUENCE_DICTIONARY);
 
     /**

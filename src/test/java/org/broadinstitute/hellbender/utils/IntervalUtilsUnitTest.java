@@ -17,6 +17,7 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -424,7 +425,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetContigLengths() {
-        Map<String, Integer> lengths = IntervalUtils.getContigSizes(new File(GATKBaseTest.exampleReference));
+        Map<String, Integer> lengths = IntervalUtils.getContigSizes(IOUtils.getPath(GATKBaseTest.exampleReference));
         Assert.assertEquals((long)lengths.get("1"), 16000);
         Assert.assertEquals((long)lengths.get("2"), 16000);
         Assert.assertEquals((long) lengths.get("3"), 16000);

@@ -10,12 +10,14 @@ import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,7 +31,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Static Variables:
-    private static final File TEST_REFERENCE = new File(hg19MiniReference);
+    private static final Path TEST_REFERENCE = IOUtils.getPath(hg19MiniReference);
     private static final String TEST_REFERENCE_CONTIG = "1";
     private static final int TEST_REFERENCE_START = 12000;
     private static final int TEST_REFERENCE_END = 16000;
@@ -38,7 +40,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     // Initialization of static variables:
     static {
-        refDataSourceHg19Ch3 = ReferenceDataSource.of(new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME));
+        refDataSourceHg19Ch3 = ReferenceDataSource.of(IOUtils.getPath(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME));
     }
 
     //==================================================================================================================
@@ -79,7 +81,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
      * @param start Start point in contig from which to print bases.
      * @param end End point in contig to which to print bases.
      */
-    private void printReferenceBases(final File refFile, final String contig, final int start, final int end) {
+    private void printReferenceBases(final Path refFile, final String contig, final int start, final int end) {
         final ReferenceContext ref = new ReferenceContext(new ReferenceFileSource(refFile), new SimpleInterval(contig, start, end));
 
         final int numReferenceRows = (int)Math.ceil(Math.log10( end - start ) + 1);

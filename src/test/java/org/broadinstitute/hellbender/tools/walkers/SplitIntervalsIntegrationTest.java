@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.SAMSequenceRecord;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
@@ -21,7 +23,7 @@ import java.util.stream.Stream;
  */
 public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File REFERENCE = new File(b37_reference_20_21);
+    private static final Path REFERENCE = Paths.get(b37_reference_20_21);
     private static final GenomeLocParser GLP = new GenomeLocParser(ReferenceDataSource.of(REFERENCE).getSequenceDictionary());
 
     @Test
@@ -30,7 +32,7 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("output");
         final String[] args = {
                 "-L", "20:1000000-2000000",
-                "-R", REFERENCE.getAbsolutePath(),
+                "-R", REFERENCE.toAbsolutePath().toString(),
                 "-" + SplitIntervals.SCATTER_COUNT_SHORT_NAME, Integer.toString(scatterCount),
                 "-O", outputDir.getAbsolutePath()
         };
@@ -45,7 +47,7 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
         final File outputDir = createTempDir("output");
         final String[] args = {
                 "-L", "20:1000000-2000000",
-                "-R", REFERENCE.getAbsolutePath(),
+                "-R", REFERENCE.toAbsolutePath().toString(),
                 "-" + SplitIntervals.SCATTER_COUNT_SHORT_NAME, Integer.toString(scatterCount),
                 "-O", outputDir.getAbsolutePath()
         };
@@ -62,7 +64,7 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-L", "20:1000000-2000000",
                 "-L", "20:3000000-4000000",
-                "-R", REFERENCE.getAbsolutePath(),
+                "-R", REFERENCE.toAbsolutePath().toString(),
                 "-" + SplitIntervals.SCATTER_COUNT_SHORT_NAME, Integer.toString(scatterCount),
                 "-O", outputDir.getAbsolutePath()
         };
@@ -77,7 +79,7 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
         final int scatterCount = 5;
         final File outputDir = createTempDir("output");
         final String[] args = {
-                "-R", REFERENCE.getAbsolutePath(),
+                "-R", REFERENCE.toAbsolutePath().toString(),
                 "-" + SplitIntervals.SCATTER_COUNT_SHORT_NAME, Integer.toString(scatterCount),
                 "-O", outputDir.getAbsolutePath()
         };

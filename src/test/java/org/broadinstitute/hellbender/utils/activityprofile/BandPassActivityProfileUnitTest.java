@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -30,7 +31,7 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
     @BeforeClass
     public void init() throws FileNotFoundException {
         // sequence
-        ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(b37_reference_20_21));
+        ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21));
         genomeLocParser = new GenomeLocParser(seq);
         header = new SAMFileHeader();
         seq.getSequenceDictionary().getSequences().forEach(sequence -> header.addSequence(sequence));

@@ -495,7 +495,7 @@ public class Funcotator extends VariantWalker {
 
         // Create our gencode factory:
         final GencodeFuncotationFactory gencodeFuncotationFactory =
-            new GencodeFuncotationFactory(dataSourceFile.resolveSibling(fastaPath).toFile(),
+            new GencodeFuncotationFactory(dataSourceFile.resolveSibling(fastaPath),
                     version,
                     transcriptSelectionMode,
                     transcriptList,

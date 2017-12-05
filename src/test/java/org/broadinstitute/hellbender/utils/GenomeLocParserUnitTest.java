@@ -12,6 +12,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -435,7 +436,7 @@ public final class GenomeLocParserUnitTest extends GATKBaseTest {
 
     @Test
     public void testcreateGenomeLocOnContig() throws FileNotFoundException {
-        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
+        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
         final SAMSequenceDictionary dict = seq.getSequenceDictionary();
         final GenomeLocParser genomeLocParser = new GenomeLocParser(dict);
 

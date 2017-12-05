@@ -227,24 +227,24 @@ public class UserException extends RuntimeException {
 
     public static class MissingReferenceFaiFile extends UserException {
         private static final long serialVersionUID = 0L;
-        public MissingReferenceFaiFile( final File indexFile, final File fastaFile ) {
+        public MissingReferenceFaiFile( final Path indexPath, final Path fastaPath ) {
             super(String.format("Fasta index file %s for reference %s does not exist. Please see %s for help creating it.",
-                    indexFile.getAbsolutePath(), fastaFile.getAbsolutePath(),
+                    indexPath.toUri(), fastaPath.toUri(),
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
     }
 
     public static class MissingReferenceDictFile extends UserException {
         private static final long serialVersionUID = 0L;
-        public MissingReferenceDictFile( final File dictFile, final File fastaFile ) {
+        public MissingReferenceDictFile( final Path dictFile, final Path fastaFile ) {
             super(String.format("Fasta dict file %s for reference %s does not exist. Please see %s for help creating it.",
-                    dictFile.getAbsolutePath(), fastaFile.getAbsolutePath(),
+                    dictFile.toUri(), fastaFile.toUri(),
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
 
-        public MissingReferenceDictFile( final String fastaFile ) {
+        public MissingReferenceDictFile( final String fastaFileName ) {
             super(String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
-                    fastaFile,
+                    fastaFileName,
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
     }

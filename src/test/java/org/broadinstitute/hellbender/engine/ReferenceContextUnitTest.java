@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +16,7 @@ import java.util.List;
 
 public final class ReferenceContextUnitTest extends GATKBaseTest {
 
-    private static final File TEST_REFERENCE = new File(hg19MiniReference);
+    private static final Path TEST_REFERENCE = IOUtils.getPath(hg19MiniReference);
 
     @DataProvider(name = "EmptyReferenceContextDataProvider")
     public Object[][] getEmptyReferenceContextData() {

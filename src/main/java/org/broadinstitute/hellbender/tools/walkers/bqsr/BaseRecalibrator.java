@@ -138,7 +138,7 @@ public final class BaseRecalibrator extends ReadWalker {
 
         recalibrationEngine = new BaseRecalibrationEngine(recalArgs, getHeaderForReads());
         recalibrationEngine.logCovariatesUsed();
-        referenceDataSource = ReferenceDataSource.of(referenceArguments.getReferenceFile());
+        referenceDataSource = ReferenceDataSource.of(referenceArguments.getReferencePath());
     }
 
     @Override

@@ -69,7 +69,7 @@ public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
         }
 
         logger.info("Parsing reference and files... (this may take a few minutes)");
-        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());
+        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferencePath());
         if (reference.getSequenceDictionary() == null) {
             throw new UserException.BadInput("Reference sequence dictionary not found. Please build one using CreateSequenceDictionary.");
         }

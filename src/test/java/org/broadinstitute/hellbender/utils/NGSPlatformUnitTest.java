@@ -8,6 +8,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -31,7 +32,7 @@ public final class NGSPlatformUnitTest extends GATKBaseTest {
     @BeforeClass
     public void setup() throws FileNotFoundException {
         // sequence
-        seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
+        seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
     }
 
     @DataProvider(name = "TestPrimary")

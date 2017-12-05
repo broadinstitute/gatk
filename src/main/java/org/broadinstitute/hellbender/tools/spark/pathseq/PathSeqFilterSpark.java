@@ -12,16 +12,11 @@ import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDesc
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterEmptyLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterFileLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
-
-import java.io.IOException;
 
 /**
  * This Spark tool is the first step in the PathSeq pipeline.
