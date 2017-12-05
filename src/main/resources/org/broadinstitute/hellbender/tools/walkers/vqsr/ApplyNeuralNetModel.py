@@ -25,6 +25,7 @@ from Bio import Seq, SeqIO
 from collections import Counter, defaultdict
 
 # Keras Imports
+import keras.backend as K
 from keras.models import load_model
 
 # Defines
@@ -45,7 +46,6 @@ inputs_indel = {'A':0, 'C':1, 'G':2, 'T':3, indel_char:4}
 input_symbols = dna_symbols
 
 annotations = ['MQ', 'DP', 'SOR', 'FS', 'QD', 'MQRankSum', 'ReadPosRankSum']
-#annotations = ['MQ', 'DP', 'SOR', 'FS', 'QD', 'MQRankSum', 'ReadPosRankSum', 'DP_MEDIAN', 'DREF_MEDIAN', 'GQ_MEDIAN', 'AB_MEDIAN']
 
 cigar_code = {'M':0, 'I':1, 'D':2, 'N':3, 'S':4}
 
@@ -59,15 +59,25 @@ def run():
 	args = parse_args()
 
 	# Load the model
-	model = load_model(args.architecture)
+	model = load_model(args.architecture, custom_objects=get_metric_dict(args.labels))
 	model.summary()
 
-	#annotate_vcf_1d_per_allele(args, model)
-	annotate_vcf_1d(args, model)
+	if '1d_as' == args.mode:
+		annotations = ['MQ', 'DP', 'SOR', 'FS', 'QD', 'MQRankSum', 'ReadPosRankSum', 'DP_MEDIAN', 'DREF_MEDIAN', 'GQ_MEDIAN', 'AB_MEDIAN']
+		annotate_vcf_1d_per_allele(args, model)
+	elif '1d' == args.mode:
+		annotate_vcf_1d(args, model)
+	elif '2d' == args.mode:
+		input_symbols = inputs_indel
+		annotate_vcf_2d(args, model)
+	else:
+		print('Unknown mode:', args.mode)
 
 
 def parse_args():
 	parser = argparse.ArgumentParser()
+
+	parser.add_argument('mode')
 
 	parser.add_argument('--architecture', help='hd5 file with model architecture and weights.')
 	parser.add_argument('--input_vcf', help='Path to a VCF to read and annotate with Neural Network Scores')
@@ -329,25 +339,29 @@ def annotate_vcf_1d_per_allele(args, model):
 		print(s, 'has:', stats[s])
 
 
-
-def annotate_vcf(args, model):
+def annotate_vcf_2d(args, model):
 	stats = Counter()
+	score_key = 'CNN_2D'
 
 	samfile = pysam.AlignmentFile(args.bam_file, "rb")	
 	print('got sam.')
-	vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
-	vcf_writer = vcf.Writer(open(args.output_vcf, 'w'), vcf_reader)
+
+	vcf_reader = pysam.VariantFile(args.input_vcf, "r")
+	vcf_reader.header.info.add(score_key, '.', 'Float', 'Allele specific score from 1D Convolutional Neural Net.')
+	vcf_writer = pysam.VariantFile(args.output_vcf, 'w', header=vcf_reader.header)
 	print('got vcfs.')
 
 	reference = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
 	print('got ref.')
+
+	intervals = interval_file_to_dict(args.interval_list)
+	print('got intervals.')
 
 	tensor_channel_map = get_tensor_channel_map_from_args(args)
 	if args.channels_last:
 		tensor_shape = (args.read_limit, args.window_size, len(tensor_channel_map))
 	else:
 		tensor_shape = (len(tensor_channel_map), args.read_limit, args.window_size) 
-
 
 	print('iterate over vcf')
 
@@ -357,96 +371,96 @@ def annotate_vcf(args, model):
 	tensor_batch = np.zeros(((args.batch_size,) + tensor_shape))
 	annotation_batch = np.zeros((args.batch_size, len(annotations)))
 	
-	for variant in vcf_reader:
-		idx_offset, ref_start, ref_end = get_variant_window(args, variant)
+	print('iterate over intervals...')
+	for k in intervals:
+		for start,stop in zip(intervals[k][0], intervals[k][1]):
+			for variant in vcf_reader.fetch(k, start, stop):
+				for allele_index, allele in enumerate(variant.alts):
+					idx_offset, ref_start, ref_end = get_variant_window(args, variant)
 
-		contig = reference[variant.CHROM]	
-		record = contig[ ref_start : ref_end ]
+					contig = reference[variant.contig]	
+					record = contig[ ref_start : ref_end ]
 
+					if not args.exclude_annotations:
+						if all(map(lambda x: x not in variant.info and x != "QUAL", annotations)):
+							stats['Missing ALL annotations'] += 1
+							continue # Require at least 1 annotation...
 
-		if not args.exclude_annotations:
-			if all(map(lambda x: x not in variant.INFO and x != "QUAL", annotations)):
-				stats['Missing ALL annotations'] += 1
-				continue # Require at least 1 annotation...
+						annotation_data = np.zeros(( len(annotations), ))
+						for i,a in enumerate(annotations):
+							if a == "QUAL":
+								annotation_data[i] = variant.qual
+							elif a in variant.info:
+								annotation_data[i] = variant.info[a]
+						annotation_batch[stats['annotations_in_batch']] = annotation_data
+						stats['annotations_in_batch'] += 1
 
-			annotation_data = np.zeros(( len(annotations), ))
-			for i,a in enumerate(annotations):
-				if a == "QUAL":
-					annotation_data[i] = ariant.QUAL
-				elif a in variant.INFO:
-					annotation_data[i] = variant.INFO[a]
-			annotation_batch[stats['annotations_in_batch']] = annotation_data
-			stats['annotations_in_batch'] += 1
-				
+					if not args.exclude_dna:
+						good_reads, insert_dict = get_good_reads_new(args, samfile, variant)
+						reference_seq = record.seq
+						for i in sorted(insert_dict.keys(), key=int, reverse=True):
+							reference_seq = reference_seq[:i] + indel_char*insert_dict[i] + reference_seq[i:]
 
-		if not args.exclude_dna:
-			good_reads, insert_dict = get_good_reads_new(args, samfile, variant)
-			reference_seq = record.seq
-			for i in sorted(insert_dict.keys(), key=int, reverse=True):
-				reference_seq = reference_seq[:i] + indel_char*insert_dict[i] + reference_seq[i:]
+						sequences, qualities, mapping_qualities, flags = good_reads_to_arrays(args, good_reads, ref_start, insert_dict)
 
-			sequences, qualities, mapping_qualities, flags = good_reads_to_arrays(args, good_reads, ref_start, insert_dict)
+						if len(sequences) == 0:
+							stats['No acceptable aligned reads'] += 1
+							continue
 
-			if len(sequences) == 0:
-				stats['No acceptable aligned reads'] += 1
-				continue
+						if args.channels_last:
+							read_tensor = np.zeros( (args.read_limit, args.window_size, len(tensor_channel_map)) )
+							read_tensor[:,:,:10] = reads_to_tensor(args, sequences, qualities, reference_seq)
+						else:
+							read_tensor = np.zeros( (len(tensor_channel_map), args.read_limit, args.window_size) )
+							read_tensor[:10,:,:] = reads_to_tensor(args, sequences, qualities, reference_seq)
+						
+						add_flags_to_read_tensor(args, read_tensor, tensor_channel_map, flags)
+						add_mq_to_read_tensor(args, read_tensor, tensor_channel_map, mapping_qualities)			
+						tensor_batch[stats['read_tensors_in_batch']] = read_tensor
+						stats['read_tensors_in_batch'] += 1
 
+					positions.append(variant.contig + '_' + str(variant.pos))
+					variant_batch.append(variant)
 
-			if args.channels_last:
-				read_tensor = np.zeros( (args.read_limit, args.window_size, len(tensor_channel_map)) )
-				read_tensor[:,:,:10] = reads_to_tensor(args, sequences, qualities, reference_seq)
-			else:
-				read_tensor = np.zeros( (len(tensor_channel_map), args.read_limit, args.window_size) )
-				read_tensor[:10,:,:] = reads_to_tensor(args, sequences, qualities, reference_seq)
-			
-			add_flags_to_read_tensor(args, read_tensor, tensor_channel_map, flags)
-			add_mq_to_read_tensor(args, read_tensor, tensor_channel_map, mapping_qualities)			
-			tensor_batch[stats['read_tensors_in_batch']] = read_tensor
-			stats['read_tensors_in_batch'] += 1
+					if stats['read_tensors_in_batch'] == args.batch_size or stats['annotations_in_batch'] == args.batch_size:
+						
+						t0 = time.time()
+						predictions = model.predict([tensor_batch, annotation_batch], batch_size=args.batch_size)	
+						snp_dict = predictions_to_snp_scores(args, predictions, positions)
+						indel_dict = predictions_to_indel_scores(args, predictions, positions)
+						t1 = time.time()
+						
+						print('CNN Batch predictions took:',(t1-t0), 'seconds. \nWhole batch time:', (t1-time_batch), 'Time per variant:', ((t1-time_batch)/args.batch_size))
+						print('SNP Predictions:\n', snp_dict, '\n\nINDEL Predictions:\n',indel_dict, '\n\nLast variant:', variant)
+						time_batch = time.time()
+						
+						# loop over the batch of variants and write them out with a score
+						for v_out in variant_batch:
+							position = v_out.contig + '_' + str(v_out.pos)
+							
+							if len(v_out.ref) == 1 and len(v_out.alleles[1][0]) == 1:
+								v_out.info[score_key] = float(snp_dict[position])
+							elif len(v_out.ref) > 1 or len(v_out.alleles[1][0]) > 1:
+								v_out.info[score_key] = float(indel_dict[position])
+							else:
+								stats['Not SNP or INDEL'] += 1
 
-		 		
-		positions.append(variant.CHROM + '_' + str(variant.POS))
-		variant_batch.append(variant)
+							vcf_writer.write(v_out)
+							stats['variants_written'] += 1
 
-		if stats['read_tensors_in_batch'] == args.batch_size or stats['annotations_in_batch'] == args.batch_size:
-			
-			t0 = time.time()
-			predictions = model.predict([tensor_batch, annotation_batch], batch_size=args.batch_size)	
-			snp_dict = predictions_to_snp_scores(args, predictions, positions)
-			indel_dict = predictions_to_indel_scores(args, predictions, positions)
-			t1 = time.time()
-			
-			print('CNN Batch predictions took:',(t1-t0), 'seconds. \nWhole batch time:', (t1-time_batch), 'Time per variant:', ((t1-time_batch)/args.batch_size))
-			print('SNP Predictions:\n', snp_dict, '\n\nINDEL Predictions:\n',indel_dict, '\n\nLast variant:', variant)
-			time_batch = time.time()
-			
-			# loop over the batch of variants and write them out with a score
-			for v_out in variant_batch:
-				position = v_out.CHROM + '_' + str(v_out.POS)
-				
-				if v_out.is_snp:
-					v_out.INFO['CNN_SCORE'] = snp_dict[position]
-				elif v_out.is_indel:
-					v_out.INFO['CNN_SCORE'] = indel_dict[position]
-				else:
-					stats['Not SNP or INDEL'] += 1
-
-				vcf_writer.write_record(v_out)
-				stats['variants_written'] += 1
-
-			# Reset the batch
-			positions = []		
-			variant_batch = []
-			tensor_batch = np.zeros(((args.batch_size,)+tensor_shape))
-			annotation_batch = np.zeros((args.batch_size,len(annotations)))		
-			stats['read_tensors_in_batch'] = stats['annotations_in_batch'] = 0
+						# Reset the batch
+						positions = []		
+						variant_batch = []
+						tensor_batch = np.zeros(((args.batch_size,)+tensor_shape))
+						annotation_batch = np.zeros((args.batch_size,len(annotations)))		
+						stats['read_tensors_in_batch'] = stats['annotations_in_batch'] = 0
 
 	for s in stats.keys():
 		print(s, 'has:', stats[s])
 
 
 
-def get_good_reads_new(args, samfile, variant):
+def get_good_reads_new(args, samfile, variant, sort_by='base'):
 	'''Return an array of usable reads centered at the variant.
 	
 	Ignores artificial haplotype read group.
@@ -471,7 +485,7 @@ def get_good_reads_new(args, samfile, variant):
 
 	idx_offset, ref_start, ref_end = get_variant_window(args, variant)
 
-	for read in samfile.fetch(variant.CHROM, variant.POS-1, variant.POS+1):
+	for read in samfile.fetch(variant.contig, variant.pos-1, variant.pos+1):
 
 		if not read or not hasattr(read, 'cigarstring') or read.cigarstring is None:
 			continue
@@ -494,17 +508,19 @@ def get_good_reads_new(args, samfile, variant):
 						insert_dict[insert_idx] = t[1]
 					elif insert_dict[insert_idx] < t[1]:
 						insert_dict[insert_idx] = t[1]
-				if t[0] in [cigar_code['M'], cigar_code['I'], cigar_code['D']]:
+				if t[0] in [cigar_code['M'], cigar_code['I'], cigar_code['S'], cigar_code['D']]:
 					cur_idx += t[1]
+
 		good_reads.append(read)
 
-		if len(good_reads) == args.read_limit:
-			break
+	if len(good_reads) > args.read_limit:
+		good_reads = np.random.choice(good_reads, size=args.read_limit, replace=False).tolist()
 
-	good_reads.sort(key=lambda x: x.reference_start)
+	good_reads.sort(key=lambda x: x.reference_start + x.query_alignment_start)
+	if sort_by == 'base':
+		good_reads.sort(key=lambda x: x.seq[clamp(variant.pos-x.reference_start-1, 0, len(x.seq)-1)])
+
 	return good_reads, insert_dict
-
-
 
 
 def good_reads_to_arrays(args, good_reads, ref_start, insert_dict):
@@ -525,7 +541,7 @@ def good_reads_to_arrays(args, good_reads, ref_start, insert_dict):
 				my_indel_dict[my_ref_idx] = insert_dict[my_ref_idx] - t[1]
 			elif t[0] == 2:
 				my_indel_dict[my_ref_idx] = t[1]
-			if t[0] in [cigar_code['M'], cigar_code['I'], cigar_code['D']]:
+			if t[0] in [cigar_code['M'], cigar_code['I'], cigar_code['S'], cigar_code['D']]:
 				cur_idx += t[1]
 
 		for k in insert_dict.keys():
@@ -554,7 +570,8 @@ def good_reads_to_arrays(args, good_reads, ref_start, insert_dict):
 
 	return sequences, qualities, mapping_qualities, flags
 
-
+def clamp(n, minn, maxn):
+	return max(min(maxn, n), minn)
 
 def flag_to_array(flag):
 	flags = []
@@ -726,6 +743,71 @@ def predictions_to_snp_indel_scores(args, predictions, positions):
 	return snp_dict, indel_dict
 
 
+def precision(y_true, y_pred):
+	'''Calculates the precision, a metric for multi-label classification of
+	how many selected items are relevant.
+	'''
+	true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+	predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+	precision = true_positives / (predicted_positives + K.epsilon())
+	return precision
+
+def recall(y_true, y_pred):
+	'''Calculates the recall, a metric for multi-label classification of
+	how many relevant items are selected.
+	'''
+	true_positives = K.sum(K.round(K.clip(y_true*y_pred, 0, 1)))
+	possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+	recall = true_positives / (possible_positives + K.epsilon())
+	return recall
+
+
+def per_class_recall(labels):
+	recall_fxns = []
+	
+	for label_key in labels:
+		label_idx = labels[label_key]
+		string_fxn = 'def '+ label_key + '_recall(y_true, y_pred):\n'
+		string_fxn += '\ttrue_positives = K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0)\n'
+		string_fxn += '\tpossible_positives = K.sum(K.round(K.clip(y_true, 0, 1)), axis=0)\n'
+		string_fxn += '\treturn true_positives['+str(label_idx)+'] / (possible_positives['+str(label_idx)+'] + K.epsilon())\n'
+		
+		exec(string_fxn)
+		recall_fxn = eval(label_key + '_recall')
+		recall_fxns.append(recall_fxn)
+	
+	return recall_fxns
+
+
+def per_class_precision(labels):
+	precision_fxns = []
+	
+	for label_key in labels:
+		label_idx = labels[label_key]
+		string_fxn = 'def '+ label_key + '_precision(y_true, y_pred):\n'
+		string_fxn += '\ttrue_positives = K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0)\n'
+		string_fxn += '\tpredicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0)\n'
+		string_fxn += '\treturn true_positives['+str(label_idx)+'] / (predicted_positives['+str(label_idx)+'] + K.epsilon())\n'
+		
+		exec(string_fxn)
+		precision_fxn = eval(label_key + '_precision')
+		precision_fxns.append(precision_fxn)
+	
+	return precision_fxns
+
+
+def get_metric_dict(labels):
+	metrics = {'precision':precision, 'recall':recall}
+	precision_fxns = per_class_precision(labels)
+	recall_fxns = per_class_recall(labels)
+	for i,label_key in enumerate(labels.keys()):
+		metrics[label_key+'_precision'] = precision_fxns[i]
+		metrics[label_key+'_recall'] = recall_fxns[i]
+
+	return metrics
+
+
+
 def total_input_channels_from_args(args):
 	'''Get the number of channels in the tensor map'''		
 	return len(get_tensor_channel_map_from_args(args))
@@ -851,7 +933,7 @@ def load_tensors_and_annotations_from_class_dirs(args):
 			with h5py.File(args.tensors+'/'+tp, 'r') as hf:
 				tensors.append(np.array(hf.get('read_tensor')))
 				annotations.append(np.array(hf.get('annotations')))
-		except ValueError, e:
+		except ValueError as e:
 			print(str(e), '\nValue error at:', tp)
 
 	return (np.asarray(tensors), np.asarray(annotations), np.asarray(positions))

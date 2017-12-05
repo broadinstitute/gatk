@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.avro.generic.GenericData;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -14,7 +15,9 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * VariantWalker which applies VQSR Neural Net Post Traversal.
@@ -36,8 +39,8 @@ public final class NeuralNetExecutor extends VariantWalker {
     @Argument(fullName = "batchSize", shortName = "bs", doc = "Batch size", optional = true)
     private String batchSize = "32";
 
-    @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
-    private FeatureInput<VariantContext> auxiliaryVariants;
+    @Argument(fullName = "bamFile", shortName = "bam", doc = "BAM or SAM file", optional = true)
+    private String bamFile = null;
 
     // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
     final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
@@ -53,7 +56,7 @@ public final class NeuralNetExecutor extends VariantWalker {
             throw new UserException.CouldNotReadInputFile(outputFile, e);
         }
 
-        System.out.println("Output vcf:"+outputFile.getAbsolutePath()+"\nIntervals:"+intervalArgumentCollection.getIntervalStrings().get(0));
+        logger.info("Output vcf:"+outputFile.getAbsolutePath()+"\nIntervals:"+intervalArgumentCollection.getIntervalStrings().get(0));
     }
 
     @Override
@@ -67,27 +70,33 @@ public final class NeuralNetExecutor extends VariantWalker {
         outputStream = null;
 
         final Resource pythonScriptResource = new Resource("ApplyNeuralNetModel.py", NeuralNetExecutor.class);
-        System.out.println("Run neural Net script");
-        final boolean pythonReturnCode = pythonExecutor.executeScript(
-                pythonScriptResource,
-                null,
-                Arrays.asList(
-                        "--architecture",
-                        architecture,
-                        "--input_vcf",
-                        drivingVariantFile,
-                        "--output_vcf",
-                        outputFile.getAbsolutePath(),
-                        "--reference_fasta",
-                        referenceArguments.getReferenceFileName(),
-                        "--batch_size",
-                        batchSize,
-                        "--interval_list",
-                        intervalArgumentCollection.getIntervalStrings().get(0)
-                )
+        List<String> args = new ArrayList<String>();
+        if (bamFile != null) {
+            args.add("2d");
+        } else {
+            args.add("1d");
+        }
+        args.add("--architecture");
+        args.add(architecture);
+        args.add("--input_vcf");
+        args.add(drivingVariantFile);
+        args.add("--output_vcf");
+        args.add(outputFile.getAbsolutePath());
+        args.add("--reference_fasta");
+        args.add(referenceArguments.getReferenceFileName());
+        args.add("--batch_size");
+        args.add(batchSize);
+        args.add("--interval_list");
+        args.add(intervalArgumentCollection.getIntervalStrings().get(0));
 
-        );
-        System.out.println("Ran neural Net script");
+        if (bamFile != null) {
+            args.add("--bam_file");
+            args.add(bamFile);
+        }
+
+        logger.info("Run neural net script");
+        final boolean pythonReturnCode = pythonExecutor.executeScript(pythonScriptResource, null, args);
+        logger.info("Ran neural net script");
         return pythonReturnCode;
     }
 
