@@ -2,8 +2,11 @@ package org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable;
 
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.table.TableCodec;
 import org.broadinstitute.hellbender.utils.codecs.table.TableFeature;
+
+import java.util.Arrays;
 
 /**
  * Created by jonn on 12/4/17.
@@ -22,6 +25,10 @@ public final class XsvLocatableTableCodec extends TableCodec<XsvTableFeature> {
     //==================================================================================================================
     // Constructors:
 
+    public XsvLocatableTableCodec() {
+        AsciiFeatureCodec<XsvTableFeature>(XsvTableFeature.class);
+    }
+
     //==================================================================================================================
     // Override Methods:
 
@@ -36,8 +43,8 @@ public final class XsvLocatableTableCodec extends TableCodec<XsvTableFeature> {
     }
 
     @Override
-    public XsvTableFeature decode(final String s) {
-        return null;
+    protected TableFeature createTableFeatureFromSplitLine(final String[] splitLine) {
+        return new TableFeature(new SimpleInterval(splitLine[0]), Arrays.asList(splitLine), header);
     }
 
     @Override
