@@ -41,11 +41,11 @@ public abstract class SampleRecordCollection<RECORD> implements SampleMetadata {
      * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
      * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
-    protected SampleRecordCollection(final SampleMetadata sampleMetadata,
-                                     final List<RECORD> records,
-                                     final TableColumnCollection mandatoryColumns,
-                                     final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                     final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    SampleRecordCollection(final SampleMetadata sampleMetadata,
+                           final List<RECORD> records,
+                           final TableColumnCollection mandatoryColumns,
+                           final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                           final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         this.sampleMetadata = Utils.nonNull(sampleMetadata);
         this.records = ImmutableList.copyOf(Utils.nonNull(records));
         this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
@@ -64,10 +64,10 @@ public abstract class SampleRecordCollection<RECORD> implements SampleMetadata {
      * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
      * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
-    protected SampleRecordCollection(final File inputFile,
-                                     final TableColumnCollection mandatoryColumns,
-                                     final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                     final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    SampleRecordCollection(final File inputFile,
+                           final TableColumnCollection mandatoryColumns,
+                           final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                           final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         IOUtils.canReadFile(inputFile);
         this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
         this.recordFromDataLineDecoder = Utils.nonNull(recordFromDataLineDecoder);

@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedIntervalCollection;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotationSet;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.LocatableCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -21,7 +21,7 @@ import java.util.Arrays;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = toolsTestDir + "copynumber/";
+    private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File INTERVALS_FILE = new File(TEST_SUB_DIR, "annotate-intervals-test.interval_list");
     private static final File REFERENCE_FILE = new File(b37_reference_20_21);
 
