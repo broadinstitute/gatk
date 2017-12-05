@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.copynumber.models;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.MultidimensionalSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.MultidimensionalSegment;
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Tests the MCMC inference performed by {@link MultidimensionalModeller}.  Only recovery of posterior centers is tested.
@@ -56,15 +59,19 @@ public final class MultidimensionalModellerUnitTest extends BaseTest {
         final double smoothingCredibleIntervalThresholdAlleleFraction = 2.;
 
         //recall that both CR and AF data points are at loci 1, 2, 3, etc. and that each segment is on a different contig
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata("test");
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
+                "test-sample",
+                new SAMSequenceDictionary(IntStream.range(0, numSegments)
+                        .mapToObj(i -> new SAMSequenceRecord("chr" + i + 1, 10000))
+                        .collect(Collectors.toList())));
         final CopyRatioSimulatedData simulatedDataCR = new CopyRatioSimulatedData(
-                sampleMetadata, varianceCR, outlierProbabilityCR, numSegments, averageIntervalsPerSegment, rng);
+                metadata, varianceCR, outlierProbabilityCR, numSegments, averageIntervalsPerSegment, rng);
         final AlleleFractionSimulatedData simulatedDataAF = new AlleleFractionSimulatedData(
-                sampleMetadata, globalParametersAF, numSegments, averageHetsPerSegment, averageDepthAF, rng);
+                metadata, globalParametersAF, numSegments, averageHetsPerSegment, averageDepthAF, rng);
 
         //we introduce extra segments, which we will later merge to test similar-segment merging
         final MultidimensionalSegmentCollection oversegmentedSegments = new MultidimensionalSegmentCollection(
-                sampleMetadata,
+                metadata,
                 constructOversegmentedSegments(simulatedDataCR, simulatedDataAF));
 
         final MultidimensionalModeller modeller = new MultidimensionalModeller(
@@ -81,7 +88,10 @@ public final class MultidimensionalModellerUnitTest extends BaseTest {
     private List<MultidimensionalSegment> constructOversegmentedSegments(final CopyRatioSimulatedData simulatedDataCR,
                                                                          final AlleleFractionSimulatedData simulatedDataAF) {
         final int numSegments = simulatedDataCR.getData().getNumSegments();
-        final List<String> contigs = simulatedDataCR.getData().getSegments().stream().map(SimpleInterval::getContig).distinct().collect(Collectors.toList());
+        final List<String> contigs = simulatedDataCR.getData().getSegments().getRecords().stream()
+                .map(SimpleInterval::getContig)
+                .distinct()
+                .collect(Collectors.toList());
         final List<MultidimensionalSegment> segments = new ArrayList<>(2 * numSegments);    //we split every real segment into two
         for (int segmentIndex = 0; segmentIndex < numSegments; segmentIndex++) {
             final String contig = contigs.get(segmentIndex);

@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.MultidimensionalSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SampleLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.MultidimensionalSegment;
@@ -44,7 +43,7 @@ public final class MultidimensionalKernelSegmenter {
                     ? (x, y) -> x * y
                     : (x, y) -> new NormalDistribution(null, x, standardDeviation).density(y);
 
-    static final class MultidimensionalPoint implements Locatable {
+    private static final class MultidimensionalPoint implements Locatable {
         private final SimpleInterval interval;
         private final double log2CopyRatio;
         private final double alternateAlleleFraction;
@@ -77,14 +76,15 @@ public final class MultidimensionalKernelSegmenter {
     private final OverlapDetector<CopyRatio> copyRatioMidpointOverlapDetector;
     private final AllelicCountCollection allelicCounts;
     private final OverlapDetector<AllelicCount> allelicCountOverlapDetector;
+    private final Comparator<Locatable> comparator;
     private final Map<String, List<MultidimensionalPoint>> multidimensionalPointsPerChromosome;
 
     public MultidimensionalKernelSegmenter(final CopyRatioCollection denoisedCopyRatios,
                                            final AllelicCountCollection allelicCounts) {
         Utils.nonNull(denoisedCopyRatios);
         Utils.nonNull(allelicCounts);
-        Utils.validateArg(denoisedCopyRatios.getSampleName().equals(allelicCounts.getSampleName()),
-                "Sample names do not match.");
+        Utils.validateArg(denoisedCopyRatios.getMetadata().equals(allelicCounts.getMetadata()),
+                "Metadata do not match.");
         this.denoisedCopyRatios = denoisedCopyRatios;
         copyRatioMidpointOverlapDetector = denoisedCopyRatios.getMidpointOverlapDetector();
         this.allelicCounts = allelicCounts;
@@ -94,12 +94,13 @@ public final class MultidimensionalKernelSegmenter {
                 .count();
         logger.info(String.format("Using first allelic-count site in each copy-ratio interval (%d / %d) for multidimensional segmentation...",
                 numAllelicCountsToUse, allelicCounts.size()));
+        this.comparator = denoisedCopyRatios.getComparator();
         multidimensionalPointsPerChromosome = denoisedCopyRatios.getRecords().stream()
                 .map(cr -> new MultidimensionalPoint(
                         cr.getInterval(),
                         cr.getLog2CopyRatioValue(),
                         allelicCountOverlapDetector.getOverlaps(cr).stream()
-                                .min(SampleLocatableCollection.LEXICOGRAPHICAL_ORDER_COMPARATOR::compare)
+                                .min(comparator::compare)
                                 .orElse(BALANCED_ALLELIC_COUNT).getAlternateAlleleFraction()))
                 .collect(Collectors.groupingBy(
                         MultidimensionalPoint::getContig,
@@ -159,6 +160,7 @@ public final class MultidimensionalKernelSegmenter {
                 final int end = multidimensionalPointsInChromosome.get(numMultidimensionalPointsInChromosome - 1).getEnd();
                 segments.add(new MultidimensionalSegment(
                         new SimpleInterval(chromosome, start, end),
+                        comparator,
                         copyRatioMidpointOverlapDetector,
                         allelicCountOverlapDetector));
                 continue;
@@ -177,13 +179,14 @@ public final class MultidimensionalKernelSegmenter {
                 final int end = multidimensionalPointsPerChromosome.get(chromosome).get(changepoint).getEnd();
                 segments.add(new MultidimensionalSegment(
                         new SimpleInterval(chromosome, start, end),
+                        comparator,
                         copyRatioMidpointOverlapDetector,
                         allelicCountOverlapDetector));
                 previousChangepoint = changepoint;
             }
         }
         logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), multidimensionalPointsPerChromosome.keySet().size()));
-        return new MultidimensionalSegmentCollection(allelicCounts.getSampleMetadata(), segments);
+        return new MultidimensionalSegmentCollection(allelicCounts.getMetadata(), segments);
     }
 
     private BiFunction<MultidimensionalPoint, MultidimensionalPoint, Double> constructKernel(final double kernelVarianceCopyRatio,

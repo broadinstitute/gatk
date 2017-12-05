@@ -100,7 +100,7 @@ final public class SimpleAnnotatedGenomicRegion implements Locatable {
             protected SimpleAnnotatedGenomicRegion createRecord(final DataLine dataLine) {
                 final Set<String> headersOfInterestPresent = Sets.intersection(headersOfInterest, new HashSet<>(this.columns().names()));
                 final Map<String, String> annotationMap = headersOfInterestPresent.stream()
-                        .collect(Collectors.toMap(Function.identity(), s -> dataLine.get(s)));
+                        .collect(Collectors.toMap(Function.identity(), dataLine::get));
 
                 return new SimpleAnnotatedGenomicRegion( new SimpleInterval(dataLine.get(CONTIG_HEADER), dataLine.getInt(START_HEADER), dataLine.getInt(END_HEADER)),
                         new TreeMap<>(annotationMap));

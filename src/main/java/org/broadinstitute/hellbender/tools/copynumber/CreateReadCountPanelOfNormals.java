@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.Logger;
@@ -200,21 +201,25 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
         //get sample filenames
         final List<String> sampleFilenames = inputReadCountFiles.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
-        //get intervals from the first read-count file to use as the canonical list of intervals
-        //(this file is read again below, which is slightly inefficient but is probably not worth the extra code)
-        final List<SimpleInterval> intervals = getIntervalsFromFirstReadCountFile(logger, inputReadCountFiles);
+        //get sequence dictionary and intervals from the first read-count file to use to validate remaining files
+        //(this first file is read again below, which is slightly inefficient but is probably not worth the extra code)
+        final File firstReadCountFile = inputReadCountFiles.get(0);
+        logger.info(String.format("Retrieving intervals from first read-count file (%s)...", firstReadCountFile));
+        final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
+        final SAMSequenceDictionary sequenceDictionary = firstReadCounts.getMetadata().getSequenceDictionary();
+        final List<SimpleInterval> intervals = firstReadCounts.getIntervals();
 
         //get GC content (null if not provided)
-        final double[] intervalGCContent = GCBiasCorrector.validateIntervalGCContent(intervals, annotatedIntervalsFile);
+        final double[] intervalGCContent = GCBiasCorrector.validateIntervalGCContent(sequenceDictionary, intervals, annotatedIntervalsFile);
 
         //validate input read-count files (i.e., check intervals and that only integer counts are contained)
         //and aggregate as a RealMatrix with dimensions numIntervals x numSamples
-        final RealMatrix readCountMatrix = constructReadCountMatrix(logger, inputReadCountFiles, intervals);
+        final RealMatrix readCountMatrix = constructReadCountMatrix(logger, inputReadCountFiles, sequenceDictionary, intervals);
 
         //create the PoN
         logger.info("Creating the panel of normals...");
         HDF5SVDReadCountPanelOfNormals.create(outputPanelOfNormalsFile, getCommandLine(),
-                readCountMatrix, sampleFilenames, intervals, intervalGCContent,
+                sequenceDictionary, readCountMatrix, sampleFilenames, intervals, intervalGCContent,
                 minimumIntervalMedianPercentile, maximumZerosInSamplePercentage, maximumZerosInIntervalPercentage,
                 extremeSampleMedianPercentile, doImputeZeros, extremeOutlierTruncationPercentile, numEigensamplesRequested, ctx);
 
@@ -232,16 +237,9 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
         }
     }
 
-    private static List<SimpleInterval> getIntervalsFromFirstReadCountFile(final Logger logger,
-                                                                           final List<File> inputReadCountFiles) {
-        final File firstReadCountFile = inputReadCountFiles.get(0);
-        logger.info(String.format("Retrieving intervals from first read-count file (%s)...", firstReadCountFile));
-        final SimpleCountCollection readCounts = SimpleCountCollection.read(firstReadCountFile);
-        return readCounts.getIntervals();
-    }
-
     private static RealMatrix constructReadCountMatrix(final Logger logger,
                                                        final List<File> inputReadCountFiles,
+                                                       final SAMSequenceDictionary sequenceDictionary,
                                                        final List<SimpleInterval> intervals) {
         logger.info("Validating and aggregating input read-count files...");
         final int numSamples = inputReadCountFiles.size();
@@ -253,6 +251,8 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
             final File inputReadCountFile = inputReadCountFilesIterator.next();
             logger.info(String.format("Aggregating read-count file %s (%d / %d)", inputReadCountFile, sampleIndex + 1, numSamples));
             final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
+            Utils.validateArg(readCounts.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+                    String.format("Sequence dictionary for read-count file %s does not match those in other read-count files.", inputReadCountFile));
             Utils.validateArg(readCounts.getIntervals().equals(intervals),
                     String.format("Intervals for read-count file %s do not match those in other read-count files.", inputReadCountFile));
             readCountMatrix.setRow(sampleIndex, readCounts.getCounts());

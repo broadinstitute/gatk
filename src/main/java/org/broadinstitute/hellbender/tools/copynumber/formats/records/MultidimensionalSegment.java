@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.tools.copynumber.formats.records;
 
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SampleLocatableCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,15 +41,16 @@ public class MultidimensionalSegment implements Locatable {
     }
 
     public MultidimensionalSegment(final SimpleInterval interval,
+                                   final Comparator<Locatable> comparator,
                                    final OverlapDetector<CopyRatio> copyRatioMidpointOverlapDetector,
                                    final OverlapDetector<AllelicCount> allelicCountOverlapDetector) {
         this(
                 interval,
                 copyRatioMidpointOverlapDetector.getOverlaps(interval).stream()
-                        .sorted(SampleLocatableCollection.LEXICOGRAPHICAL_ORDER_COMPARATOR)
+                        .sorted(comparator)
                         .collect(Collectors.toList()),
                 allelicCountOverlapDetector.getOverlaps(interval).stream()
-                        .sorted(SampleLocatableCollection.LEXICOGRAPHICAL_ORDER_COMPARATOR)
+                        .sorted(comparator)
                         .collect(Collectors.toList()));
     }
 

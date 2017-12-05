@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.denoising;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -112,12 +113,14 @@ public final class GCBiasCorrector {
     }
 
     /**
-     * Checks equality of intervals against those contained in an {@link AnnotatedIntervalCollection} represented by
-     * {@code inputFile}.  If the latter is {@code null}, then {@code null} is returned; otherwise,
+     * Checks equality of sequence dictionary and intervals against those contained in an
+     * {@link AnnotatedIntervalCollection} represented by {@code inputFile}.
+     * If the latter is {@code null}, then {@code null} is returned; otherwise,
      * a double array of the GC content in the intervals is returned if the intervals are equal,
      * and an exception is thrown if they are not.
      */
-    public static double[] validateIntervalGCContent(final List<SimpleInterval> intervals,
+    public static double[] validateIntervalGCContent(final SAMSequenceDictionary sequenceDictionary,
+                                                     final List<SimpleInterval> intervals,
                                                      final File inputFile) {
         if (inputFile == null) {
             logger.info("No GC-content annotations for intervals found; GC-bias correction will not be performed...");
@@ -125,6 +128,8 @@ public final class GCBiasCorrector {
         }
         logger.info("Reading and validating GC-content annotations for intervals...");
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(inputFile);
+        Utils.validateArg(annotatedIntervals.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+                "Annotated-intervals file contains incorrect sequence dictionary.");
         Utils.validateArg(annotatedIntervals.getIntervals().equals(intervals),
                 "Annotated intervals do not match provided intervals.");
         return annotatedIntervals.getRecords().stream().mapToDouble(i -> i.getAnnotationSet().getGCContent()).toArray();

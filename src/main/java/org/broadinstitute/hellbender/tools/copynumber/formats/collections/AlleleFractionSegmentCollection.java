@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AlleleFractionSegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -16,7 +16,7 @@ import java.util.function.Function;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AlleleFractionSegmentCollection extends SampleLocatableCollection<AlleleFractionSegment> {
+public final class AlleleFractionSegmentCollection extends AbstractSampleLocatableCollection<AlleleFractionSegment> {
     enum AlleleFractionSegmentTableColumn {
         CONTIG,
         START,
@@ -45,8 +45,8 @@ public final class AlleleFractionSegmentCollection extends SampleLocatableCollec
         super(inputFile, AlleleFractionSegmentTableColumn.COLUMNS, ALLELE_FRACTION_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, ALLELE_FRACTION_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 
-    public AlleleFractionSegmentCollection(final SampleMetadata sampleMetadata,
+    public AlleleFractionSegmentCollection(final SampleLocatableMetadata metadata,
                                            final List<AlleleFractionSegment> AlleleFractionSegments) {
-        super(sampleMetadata, AlleleFractionSegments, AlleleFractionSegmentTableColumn.COLUMNS, ALLELE_FRACTION_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, ALLELE_FRACTION_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(metadata, AlleleFractionSegments, AlleleFractionSegmentTableColumn.COLUMNS, ALLELE_FRACTION_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, ALLELE_FRACTION_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 }

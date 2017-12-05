@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.copynumber.denoising;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
 
@@ -20,6 +22,11 @@ public interface SVDReadCountPanelOfNormals {
      * Returns the number of eigensamples.
      */
     int getNumEigensamples();
+
+    /**
+     * Returns the sequence dictionary common to all of the read counts used to build the PoN.
+     */
+    SAMSequenceDictionary getSequenceDictionary();
 
     /**
      * Returns a modifiable copy of the original matrix of integer read-counts (represented as doubles) used to build the PoN
@@ -71,6 +78,8 @@ public interface SVDReadCountPanelOfNormals {
 
     default SVDDenoisedCopyRatioResult denoise(final SimpleCountCollection readCounts,
                                                final int numEigensamples) {
+        Utils.validateArg(readCounts.getMetadata().getSequenceDictionary().isSameDictionary(getSequenceDictionary()),
+                "Sequence dictionaries in panel and case sample do not match.");
         return SVDDenoisingUtils.denoise(this, readCounts, numEigensamples);
     }
 }

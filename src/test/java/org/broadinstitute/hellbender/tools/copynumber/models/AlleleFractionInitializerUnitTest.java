@@ -1,13 +1,16 @@
 package org.broadinstitute.hellbender.tools.copynumber.models;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -31,9 +34,13 @@ public final class AlleleFractionInitializerUnitTest {
         final double averageDepth = 50.;
         final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata("test");
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
+                "test-sample",
+                new SAMSequenceDictionary(IntStream.range(0, numSegments)
+                        .mapToObj(i -> new SAMSequenceRecord("chr" + i + 1, 1000))
+                        .collect(Collectors.toList())));
         final AlleleFractionSimulatedData simulatedData = new AlleleFractionSimulatedData(
-                sampleMetadata, globalParameters, numSegments, averageHetsPerSegment, averageDepth, rng);
+                metadata, globalParameters, numSegments, averageHetsPerSegment, averageDepth, rng);
 
         final AlleleFractionSegmentedData data = simulatedData.getData();
         final AlleleFractionState initializedState = new AlleleFractionInitializer(data).getInitializedState();

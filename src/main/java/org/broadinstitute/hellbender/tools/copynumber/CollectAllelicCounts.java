@@ -15,9 +15,10 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
@@ -130,9 +131,15 @@ public final class CollectAllelicCounts extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata(sampleName);
-        allelicCountCollector = new AllelicCountCollector(sampleMetadata);
+        final SampleLocatableMetadata bamMetadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        final SampleLocatableMetadata metadata;
+        if (!bamMetadata.getSequenceDictionary().isSameDictionary(getBestAvailableSequenceDictionary())) {
+            logger.warn("Sequence dictionary in BAM does not match best available.  The latter will be used in metadata.");
+            metadata = new SimpleSampleLocatableMetadata(bamMetadata.getSampleName(), getBestAvailableSequenceDictionary());
+        } else {
+            metadata = bamMetadata;
+        }
+        allelicCountCollector = new AllelicCountCollector(metadata);
         logger.info("Collecting allelic counts...");
     }
 

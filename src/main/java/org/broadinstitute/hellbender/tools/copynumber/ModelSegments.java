@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
@@ -353,20 +353,20 @@ public final class ModelSegments extends CommandLineProgram {
             readDenoisedCopyRatios();
             final CopyRatioSegmentCollection copyRatioSegments = performCopyRatioSegmentation();
             multidimensionalSegments = new MultidimensionalSegmentCollection(
-                    copyRatioSegments.getSampleMetadata(),
+                    copyRatioSegments.getMetadata(),
                     copyRatioSegments.getRecords().stream()
                             .map(s -> new MultidimensionalSegment(s.getInterval(), s.getNumPoints(), 0, s.getMeanLog2CopyRatio()))
                             .collect(Collectors.toList()));
-            hetAllelicCounts = new AllelicCountCollection(denoisedCopyRatios.getSampleMetadata(), Collections.emptyList()); //create an empty collection with the appropriate name
+            hetAllelicCounts = new AllelicCountCollection(denoisedCopyRatios.getMetadata(), Collections.emptyList()); //create an empty collection with the appropriate name
         } else if (inputDenoisedCopyRatiosFile == null && inputAllelicCountsFile != null) {
             readAndFilterAllelicCounts();
             final AlleleFractionSegmentCollection alleleFractionSegments = performAlleleFractionSegmentation();
             multidimensionalSegments = new MultidimensionalSegmentCollection(
-                    alleleFractionSegments.getSampleMetadata(),
+                    alleleFractionSegments.getMetadata(),
                     alleleFractionSegments.getRecords().stream()
                             .map(s -> new MultidimensionalSegment(s.getInterval(), 0, s.getNumPoints(), Double.NaN))
                             .collect(Collectors.toList()));
-            denoisedCopyRatios = new CopyRatioCollection(hetAllelicCounts.getSampleMetadata(), Collections.emptyList());     //create an empty collection with the appropriate name
+            denoisedCopyRatios = new CopyRatioCollection(hetAllelicCounts.getMetadata(), Collections.emptyList());     //create an empty collection with the appropriate name
         } else {
             readDenoisedCopyRatios();
             readAndFilterAllelicCounts();
@@ -399,7 +399,7 @@ public final class ModelSegments extends CommandLineProgram {
         //write final segments for copy-ratio caller (TODO remove this and MEAN_LOG2_COPY_RATIO column when new caller is available)
         final OverlapDetector<CopyRatio> copyRatioMidpointOverlapDetector = denoisedCopyRatios.getMidpointOverlapDetector();
         final CopyRatioSegmentCollection copyRatioSegmentsFinal = new CopyRatioSegmentCollection(
-                modeller.getModeledSegments().getSampleMetadata(),
+                modeller.getModeledSegments().getMetadata(),
                 modeller.getModeledSegments().getIntervals().stream()
                         .map(s -> new CopyRatioSegment(s, new ArrayList<>(copyRatioMidpointOverlapDetector.getOverlaps(s))))
                         .collect(Collectors.toList()));
@@ -448,12 +448,12 @@ public final class ModelSegments extends CommandLineProgram {
         //read in case sample
         logger.info(String.format("Reading allelic-counts file (%s)...", inputAllelicCountsFile));
         final AllelicCountCollection unfilteredAllelicCounts = new AllelicCountCollection(inputAllelicCountsFile);
-        final SampleMetadata sampleMetadata = unfilteredAllelicCounts.getSampleMetadata();
+        final SampleLocatableMetadata metadata = unfilteredAllelicCounts.getMetadata();
 
         //filter on total count in case sample
         logger.info(String.format("Filtering allelic counts with total count less than %d...", minTotalAlleleCount));
         AllelicCountCollection filteredAllelicCounts = new AllelicCountCollection(
-                sampleMetadata,
+                metadata,
                 unfilteredAllelicCounts.getRecords().stream()
                         .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCount)
                         .collect(Collectors.toList()));
@@ -465,7 +465,7 @@ public final class ModelSegments extends CommandLineProgram {
             logger.info("Filtering allelic-count sites not overlapping with copy-ratio intervals...");
             final OverlapDetector<CopyRatio> copyRatioOverlapDetector = denoisedCopyRatios.getOverlapDetector();
             filteredAllelicCounts = new AllelicCountCollection(
-                    sampleMetadata,
+                    metadata,
                     filteredAllelicCounts.getRecords().stream()
                             .filter(copyRatioOverlapDetector::overlapsAny)
                             .collect(Collectors.toList()));
@@ -478,7 +478,7 @@ public final class ModelSegments extends CommandLineProgram {
             logger.info("No matched normal was provided, not running in matched-normal mode...");
             logger.info("Performing binomial testing and filtering homozygous allelic counts...");
             hetAllelicCounts = new AllelicCountCollection(
-                    sampleMetadata,
+                    metadata,
                     filteredAllelicCounts.getRecords().stream()
                             .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
                             .collect(Collectors.toList()));
@@ -496,12 +496,12 @@ public final class ModelSegments extends CommandLineProgram {
                 throw new UserException.BadInput("Allelic-count sites in case sample and matched normal do not match. " +
                         "Run CollectAllelicCounts using the same interval list of sites for both samples.");
             }
-            final SampleMetadata normalSampleMetadata = unfilteredNormalAllelicCounts.getSampleMetadata();
+            final SampleLocatableMetadata normalMetadata = unfilteredNormalAllelicCounts.getMetadata();
 
             //filter on total count in matched normal
             logger.info(String.format("Filtering allelic counts in matched normal with total count less than %d...", minTotalAlleleCount));
             final AllelicCountCollection filteredNormalAllelicCounts = new AllelicCountCollection(
-                    normalSampleMetadata,
+                    normalMetadata,
                     unfilteredNormalAllelicCounts.getRecords().stream()
                             .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCount)
                             .collect(Collectors.toList()));
@@ -510,7 +510,7 @@ public final class ModelSegments extends CommandLineProgram {
 
             //filter on homozygosity in matched normal
             final AllelicCountCollection hetNormalAllelicCounts = new AllelicCountCollection(
-                    normalSampleMetadata,
+                    normalMetadata,
                     filteredNormalAllelicCounts.getRecords().stream()
                             .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
                             .collect(Collectors.toList()));
@@ -524,7 +524,7 @@ public final class ModelSegments extends CommandLineProgram {
             logger.info("Retrieving allelic counts at these sites in case sample...");
             final Set<SimpleInterval> hetNormalAllelicCountSites = new HashSet<>(hetNormalAllelicCounts.getIntervals());
             hetAllelicCounts = new AllelicCountCollection(
-                    sampleMetadata,
+                    metadata,
                     filteredAllelicCounts.getRecords().stream()
                             .filter(ac -> hetNormalAllelicCountSites.contains(ac.getInterval()))
                             .collect(Collectors.toList()));
@@ -564,7 +564,7 @@ public final class ModelSegments extends CommandLineProgram {
         modeller.writeModelParameterFiles(copyRatioParameterFile, alleleFractionParameterFile);
     }
 
-    private void writeSegments(final SampleLocatableCollection<?> segments,
+    private void writeSegments(final AbstractSampleLocatableCollection<?> segments,
                                final String fileSuffix) {
         final File segmentsFile = new File(outputDir, outputPrefix + fileSuffix);
         segments.write(segmentsFile);

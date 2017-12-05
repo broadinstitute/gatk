@@ -113,6 +113,6 @@ public final class CopyRatioKernelSegmenter {
             }
         }
         logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), denoisedCopyRatiosPerChromosome.keySet().size()));
-        return new CopyRatioSegmentCollection(denoisedCopyRatios.getSampleMetadata(), segments);
+        return new CopyRatioSegmentCollection(denoisedCopyRatios.getMetadata(), segments);
     }
 }

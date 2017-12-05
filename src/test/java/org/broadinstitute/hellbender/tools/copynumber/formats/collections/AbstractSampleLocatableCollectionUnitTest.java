@@ -156,7 +156,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testReadIntervalsNotInLexicographicalOrder() {
+    public void testReadIntervalsNotInDictionaryOrder() {
         new SimpleSampleLocatableCollection(SIMPLE_LOCATABLE_COLLECTION_NON_DICTIONARY_ORDER_FILE);
     }
 

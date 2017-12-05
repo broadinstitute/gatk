@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,10 +19,11 @@ import java.util.stream.IntStream;
 
 /**
  * Simple data structure to pass and read/write a List of {@link SimpleCount} objects.
+ * Supports both TSV and HDF5.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SimpleCountCollection extends SampleLocatableCollection<SimpleCount> {
+public final class SimpleCountCollection extends AbstractSampleLocatableCollection<SimpleCount> {
     enum SimpleCountTableColumn {
         CONTIG,
         START,
@@ -51,9 +52,9 @@ public final class SimpleCountCollection extends SampleLocatableCollection<Simpl
         super(inputFile, SimpleCountCollection.SimpleCountTableColumn.COLUMNS, SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_COUNT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
-    public SimpleCountCollection(final SampleMetadata sampleMetadata,
+    public SimpleCountCollection(final SampleLocatableMetadata metadata,
                                  final List<SimpleCount> simpleCounts) {
-        super(sampleMetadata, simpleCounts, SimpleCountCollection.SimpleCountTableColumn.COLUMNS, SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_COUNT_RECORD_TO_DATA_LINE_ENCODER);
+        super(metadata, simpleCounts, SimpleCountCollection.SimpleCountTableColumn.COLUMNS, SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_COUNT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public static SimpleCountCollection read(final File file) {
@@ -73,18 +74,18 @@ public final class SimpleCountCollection extends SampleLocatableCollection<Simpl
     private static SimpleCountCollection readHDF5(final HDF5File file) {
         Utils.nonNull(file);
         final HDF5SimpleCountCollection hdf5CountCollection = new HDF5SimpleCountCollection(file);
-        final SampleMetadata sampleMetadata = hdf5CountCollection.getSampleMetadata();
+        final SampleLocatableMetadata metadata = hdf5CountCollection.getMetadata();
         final List<SimpleInterval> intervals = hdf5CountCollection.getIntervals();
         final double[] counts = hdf5CountCollection.getCounts().getRow(0);
         final List<SimpleCount> simpleCounts = IntStream.range(0, intervals.size())
                 .mapToObj(i -> new SimpleCount(intervals.get(i), (int) counts[i]))
                 .collect(Collectors.toList());
-        return new SimpleCountCollection(sampleMetadata, simpleCounts);
+        return new SimpleCountCollection(metadata, simpleCounts);
     }
 
     public void writeHDF5(final File file) {
         Utils.nonNull(file);
-        HDF5SimpleCountCollection.write(file, getSampleName(), getIntervals(), getCounts());
+        HDF5SimpleCountCollection.write(file, getMetadata(), getIntervals(), getCounts());
     }
 
     public double[] getCounts() {

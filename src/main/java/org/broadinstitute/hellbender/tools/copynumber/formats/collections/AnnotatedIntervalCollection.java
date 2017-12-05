@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -14,7 +15,7 @@ import java.util.function.Function;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AnnotatedIntervalCollection extends LocatableCollection<AnnotatedInterval> {
+public final class AnnotatedIntervalCollection extends AbstractLocatableCollection<LocatableMetadata, AnnotatedInterval> {
     enum AnnotatedIntervalTableColumn {
         CONTIG,
         START,
@@ -44,7 +45,8 @@ public final class AnnotatedIntervalCollection extends LocatableCollection<Annot
         super(inputFile, AnnotatedIntervalCollection.AnnotatedIntervalTableColumn.COLUMNS, ANNOTATED_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, ANNOTATED_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
     }
 
-    public AnnotatedIntervalCollection(final List<AnnotatedInterval> annotatedIntervals) {
-        super(annotatedIntervals, AnnotatedIntervalCollection.AnnotatedIntervalTableColumn.COLUMNS, ANNOTATED_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, ANNOTATED_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
+    public AnnotatedIntervalCollection(final LocatableMetadata metadata,
+                                       final List<AnnotatedInterval> annotatedIntervals) {
+        super(metadata, annotatedIntervals, AnnotatedIntervalCollection.AnnotatedIntervalTableColumn.COLUMNS, ANNOTATED_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, ANNOTATED_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
     }
 }

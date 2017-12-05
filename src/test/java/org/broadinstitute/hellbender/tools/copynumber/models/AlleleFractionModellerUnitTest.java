@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.copynumber.models;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ParameterDecileCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
 import org.broadinstitute.hellbender.utils.mcmc.Decile;
 import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
@@ -45,9 +47,13 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
         final int numBurnIn = 50;
         final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata("test");
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
+                "test-sample",
+                new SAMSequenceDictionary(IntStream.range(0, numSegments)
+                        .mapToObj(i -> new SAMSequenceRecord("chr" + i + 1, 10000))
+                        .collect(Collectors.toList())));
         final AlleleFractionSimulatedData simulatedData = new AlleleFractionSimulatedData(
-                sampleMetadata, globalParameters, numSegments, averageHetsPerSegment, averageDepth, rng);
+                metadata, globalParameters, numSegments, averageHetsPerSegment, averageDepth, rng);
 
         final AlleleFractionModeller modeller = new AlleleFractionModeller(simulatedData.getData().getAllelicCounts(), simulatedData.getData().getSegments(), prior);
         modeller.fitMCMC(numSamples, numBurnIn);

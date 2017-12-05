@@ -2,9 +2,10 @@ package org.broadinstitute.hellbender.tools.copynumber.models;
 
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ParameterDecileCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
 import org.broadinstitute.hellbender.utils.mcmc.GibbsSampler;
@@ -48,7 +49,7 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AlleleFractionModeller {
+final class AlleleFractionModeller {
     private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
 
     private static final double MAX_REASONABLE_MEAN_BIAS = AlleleFractionInitializer.MAX_REASONABLE_MEAN_BIAS;
@@ -56,7 +57,7 @@ public final class AlleleFractionModeller {
     private static final double MAX_REASONABLE_OUTLIER_PROBABILITY = AlleleFractionInitializer.MAX_REASONABLE_OUTLIER_PROBABILITY;
     private static final double MIN_MINOR_FRACTION_SAMPLING_WIDTH = 1E-3;
 
-    private final SampleMetadata sampleMetadata;
+    private final SampleLocatableMetadata metadata;
     private final ParameterizedModel<AlleleFractionParameter, AlleleFractionState, AlleleFractionSegmentedData> model;
 
     private final List<Double> meanBiasSamples = new ArrayList<>();
@@ -69,13 +70,15 @@ public final class AlleleFractionModeller {
      * {@link AlleleFractionInitializer} is used for initialization and slice-sampling widths are estimated.
      */
     AlleleFractionModeller(final AllelicCountCollection allelicCounts,
-                           final List<SimpleInterval> segments,
+                           final SimpleIntervalCollection segments,
                            final AlleleFractionPrior prior) {
         Utils.nonNull(allelicCounts);
-        Utils.nonEmpty(segments);
+        Utils.nonNull(segments);
+        Utils.validateArg(allelicCounts.getMetadata().getSequenceDictionary().equals(segments.getMetadata().getSequenceDictionary()),
+                "Metadata do not match.");
         Utils.nonNull(prior);
 
-        sampleMetadata = allelicCounts.getSampleMetadata();
+        metadata = allelicCounts.getMetadata();
         final AlleleFractionSegmentedData data = new AlleleFractionSegmentedData(allelicCounts, segments);
 
         //initialization gets us to the mode of the likelihood
@@ -178,7 +181,7 @@ public final class AlleleFractionModeller {
         parameterToDecilesMap.put(AlleleFractionParameter.MEAN_BIAS, new DecileCollection(meanBiasSamples));
         parameterToDecilesMap.put(AlleleFractionParameter.BIAS_VARIANCE, new DecileCollection(biasVarianceSamples));
         parameterToDecilesMap.put(AlleleFractionParameter.OUTLIER_PROBABILITY, new DecileCollection(outlierProbabilitySamples));
-        return new ParameterDecileCollection<>(sampleMetadata, parameterToDecilesMap, AlleleFractionParameter.class, DOUBLE_FORMAT);
+        return new ParameterDecileCollection<>(new SimpleSampleMetadata(metadata.getSampleName()), parameterToDecilesMap, AlleleFractionParameter.class, DOUBLE_FORMAT);
     }
 
     //use width of a probability distribution given the position of its mode (estimated from Gaussian approximation) as step size

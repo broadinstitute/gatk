@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.copynumber.segmentation;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AlleleFractionSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AlleleFractionSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenterUnitTest;
@@ -33,7 +35,6 @@ public final class AlleleFractionKernelSegmenterUnitTest extends BaseTest {
     @DataProvider(name = "dataAlleleFractionKernelSegmenter")
     public Object[][] dataAlleleFractionKernelSegmenter() {
         final int numPoints = 10000;
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata("testSample");
         final double noiseLevel = 0.001;
         final double homFraction = 0.1;     //low hom fraction minimizes uncertainty in the changepoints coming from runs of adjacent homs near the changepoints
 
@@ -57,6 +58,14 @@ public final class AlleleFractionKernelSegmenterUnitTest extends BaseTest {
                         (i % 2500) + 1))
                 .collect(Collectors.toList());
 
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
+                "test-sample",
+                new SAMSequenceDictionary(intervals.stream()
+                        .map(SimpleInterval::getContig)
+                        .distinct()
+                        .map(c -> new SAMSequenceRecord(c, 1000))
+                        .collect(Collectors.toList())));
+
         final int globalDepth = 100;
         final List<AllelicCount> allelicCountsList = IntStream.range(0, numPoints).boxed()
                 .map(i -> new AllelicCount(
@@ -64,11 +73,11 @@ public final class AlleleFractionKernelSegmenterUnitTest extends BaseTest {
                         (int) ((1 - alternateAlleleFractions.get(i)) * globalDepth),
                         (int) (alternateAlleleFractions.get(i) * globalDepth)))
                 .collect(Collectors.toList());
-        final AllelicCountCollection allelicCounts = new AllelicCountCollection(sampleMetadata, allelicCountsList);
+        final AllelicCountCollection allelicCounts = new AllelicCountCollection(metadata, allelicCountsList);
 
         final AlleleFractionSegmentCollection segmentsExpected =
                 new AlleleFractionSegmentCollection(
-                        sampleMetadata,
+                        metadata,
                         Arrays.asList(
                                 new AlleleFractionSegment(new SimpleInterval("1", 1, 1000), allelicCountsList.subList(0, 1000)),
                                 new AlleleFractionSegment(new SimpleInterval("1", 1001, 2000), allelicCountsList.subList(1000, 2000)),

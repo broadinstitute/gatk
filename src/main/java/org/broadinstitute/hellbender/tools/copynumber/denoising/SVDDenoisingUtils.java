@@ -11,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.CreateReadCountPanelOfNormals;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -135,7 +134,7 @@ public final class SVDDenoisingUtils {
 
         //construct the result
         return new SVDDenoisedCopyRatioResult(
-                new SimpleSampleMetadata(readCounts.getSampleName()),
+                readCounts.getMetadata(),
                 panelOfNormals.getPanelIntervals(),
                 standardizedCopyRatioValues,
                 denoisedCopyRatioValues);

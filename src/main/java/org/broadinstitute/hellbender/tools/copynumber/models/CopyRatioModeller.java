@@ -2,9 +2,10 @@ package org.broadinstitute.hellbender.tools.copynumber.models;
 
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ParameterDecileCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
 import org.broadinstitute.hellbender.utils.mcmc.GibbsSampler;
@@ -39,7 +40,7 @@ final class CopyRatioModeller {
     private static final double OUTLIER_PROBABILITY_PRIOR_ALPHA = 5.;
     private static final double OUTLIER_PROBABILITY_PRIOR_BETA = 95.;
 
-    private final SampleMetadata sampleMetadata;
+    private final SampleLocatableMetadata metadata;
     private final ParameterizedModel<CopyRatioParameter, CopyRatioState, CopyRatioSegmentedData> model;
 
     private final List<Double> varianceSamples = new ArrayList<>();
@@ -51,11 +52,14 @@ final class CopyRatioModeller {
      * Initial point estimates of parameters are set to empirical estimates where available.
      */
     CopyRatioModeller(final CopyRatioCollection copyRatios,
-                      final List<SimpleInterval> segments) {
+                      final SimpleIntervalCollection segments) {
         Utils.nonNull(copyRatios);
-        Utils.nonEmpty(segments);
+        Utils.nonNull(segments);
+        Utils.validateArg(copyRatios.getMetadata().getSequenceDictionary().equals(segments.getMetadata().getSequenceDictionary()),
+                "Metadata do not match.");
+        Utils.nonEmpty(segments.getRecords());
 
-        sampleMetadata = copyRatios.getSampleMetadata();
+        metadata = copyRatios.getMetadata();
         final CopyRatioSegmentedData data = new CopyRatioSegmentedData(copyRatios, segments);
 
         //set widths for slice sampling of variance and segment-mean posteriors using empirical variance estimate.
@@ -161,6 +165,6 @@ final class CopyRatioModeller {
         final Map<CopyRatioParameter, DecileCollection> parameterToDecilesMap = new LinkedHashMap<>();
         parameterToDecilesMap.put(CopyRatioParameter.VARIANCE, new DecileCollection(varianceSamples));
         parameterToDecilesMap.put(CopyRatioParameter.OUTLIER_PROBABILITY, new DecileCollection(outlierProbabilitySamples));
-        return new ParameterDecileCollection<>(sampleMetadata, parameterToDecilesMap, CopyRatioParameter.class, DOUBLE_FORMAT);
+        return new ParameterDecileCollection<>(new SimpleSampleMetadata(metadata.getSampleName()), parameterToDecilesMap, CopyRatioParameter.class, DOUBLE_FORMAT);
     }
 }

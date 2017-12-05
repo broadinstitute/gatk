@@ -4,11 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ModeledSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.MultidimensionalSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
@@ -32,7 +30,7 @@ public final class MultidimensionalModeller {
 
     public static final String DOUBLE_FORMAT = "%6.6f";
 
-    private final SampleMetadata sampleMetadata;
+    private final SampleLocatableMetadata metadata;
     private final CopyRatioCollection denoisedCopyRatios;
     private final OverlapDetector<CopyRatio> copyRatioMidpointOverlapDetector;
     private final AllelicCountCollection allelicCounts;
@@ -42,7 +40,7 @@ public final class MultidimensionalModeller {
     private CopyRatioModeller copyRatioModeller;
     private AlleleFractionModeller alleleFractionModeller;
 
-    private List<SimpleInterval> currentSegments;
+    private SimpleIntervalCollection currentSegments;
     private final List<ModeledSegment> modeledSegments = new ArrayList<>();
 
     //similar-segment merging may leave model in a state where it is not properly fit (deciles may be estimated naively)
@@ -67,13 +65,15 @@ public final class MultidimensionalModeller {
                                     final int numSamplesAlleleFraction,
                                     final int numBurnInAlleleFraction) {
         Utils.validateArg(Stream.of(
-                Utils.nonNull(multidimensionalSegments).getSampleName(),
-                Utils.nonNull(denoisedCopyRatios).getSampleName(),
-                Utils.nonNull(allelicCounts).getSampleName()).distinct().count() == 1,
-                "Sample names from all inputs must match.");
+                Utils.nonNull(multidimensionalSegments).getMetadata(),
+                Utils.nonNull(denoisedCopyRatios).getMetadata(),
+                Utils.nonNull(allelicCounts).getMetadata()).distinct().count() == 1,
+                "Metadata from all inputs must match.");
         ParamUtils.isPositive(multidimensionalSegments.size(), "Number of segments must be positive.");
-        sampleMetadata = multidimensionalSegments.getSampleMetadata();
-        currentSegments = multidimensionalSegments.getIntervals();
+        metadata = multidimensionalSegments.getMetadata();
+        currentSegments = new SimpleIntervalCollection(
+                new SimpleLocatableMetadata(metadata.getSequenceDictionary()),
+                multidimensionalSegments.getIntervals());
         this.denoisedCopyRatios = denoisedCopyRatios;
         copyRatioMidpointOverlapDetector = denoisedCopyRatios.getMidpointOverlapDetector();
         this.allelicCounts = allelicCounts;
@@ -88,7 +88,7 @@ public final class MultidimensionalModeller {
     }
 
     public ModeledSegmentCollection getModeledSegments() {
-        return new ModeledSegmentCollection(sampleMetadata, modeledSegments);
+        return new ModeledSegmentCollection(metadata, modeledSegments);
     }
 
     /**
@@ -111,7 +111,7 @@ public final class MultidimensionalModeller {
         final List<ModeledSegment.SimplePosteriorSummary> minorAlleleFractionsPosteriorSummaries =
                 alleleFractionModeller.getMinorAlleleFractionsPosteriorSummaries();
         for (int segmentIndex = 0; segmentIndex < currentSegments.size(); segmentIndex++) {
-            final SimpleInterval segment = currentSegments.get(segmentIndex);
+            final SimpleInterval segment = currentSegments.getRecords().get(segmentIndex);
             final int numPointsCopyRatio = copyRatioMidpointOverlapDetector.getOverlaps(segment).size();
             final int numPointsAlleleFraction = allelicCountOverlapDetector.getOverlaps(segment).size();
             final ModeledSegment.SimplePosteriorSummary segmentMeansPosteriorSummary = segmentMeansPosteriorSummaries.get(segmentIndex);
@@ -170,9 +170,12 @@ public final class MultidimensionalModeller {
                                            final double intervalThresholdMinorAlleleFraction,
                                            final boolean doModelFit) {
         logger.info("Number of segments before smoothing iteration: " + modeledSegments.size());
-        final List<ModeledSegment> mergedSegments = SimilarSegmentUtils.mergeSimilarSegments(modeledSegments, intervalThresholdSegmentMean, intervalThresholdMinorAlleleFraction);
+        final List<ModeledSegment> mergedSegments = SimilarSegmentUtils.mergeSimilarSegments(
+                modeledSegments, intervalThresholdSegmentMean, intervalThresholdMinorAlleleFraction);
         logger.info("Number of segments after smoothing iteration: " + mergedSegments.size());
-        currentSegments = mergedSegments.stream().map(ModeledSegment::getInterval).collect(Collectors.toList());
+        currentSegments = new SimpleIntervalCollection(
+                new SimpleLocatableMetadata(metadata.getSequenceDictionary()),
+                mergedSegments.stream().map(ModeledSegment::getInterval).collect(Collectors.toList()));
         if (doModelFit) {
             fitModel();
         } else {

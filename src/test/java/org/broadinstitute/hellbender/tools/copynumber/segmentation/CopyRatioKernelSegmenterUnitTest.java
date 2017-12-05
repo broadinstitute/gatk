@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.copynumber.segmentation;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenterUnitTest;
@@ -31,7 +33,6 @@ public class CopyRatioKernelSegmenterUnitTest {
     @DataProvider(name = "dataCopyRatioKernelSegmenter")
     public Object[][] dataCopyRatioKernelSegmenter() {
         final int numPoints = 1000;
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata("testSample");
 
         final Random rng = new Random(RANDOM_SEED);
         rng.setSeed(RANDOM_SEED);
@@ -46,15 +47,23 @@ public class CopyRatioKernelSegmenterUnitTest {
                         (i % 250) * 10 + 10))         //intervals for copy-ratio data points have length = 10
                 .collect(Collectors.toList());
 
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
+                "test-sample",
+                new SAMSequenceDictionary(intervals.stream()
+                        .map(SimpleInterval::getContig)
+                        .distinct()
+                        .map(c -> new SAMSequenceRecord(c, 1000))
+                        .collect(Collectors.toList())));
+
         final CopyRatioCollection denoisedCopyRatios = new CopyRatioCollection(
-                sampleMetadata,
+                metadata,
                 IntStream.range(0, intervals.size()).boxed()
                         .map(i -> new CopyRatio(intervals.get(i), dataGaussian.get(i)))
                         .collect(Collectors.toList()));
 
         final CopyRatioSegmentCollection segmentsExpected =
                 new CopyRatioSegmentCollection(
-                        sampleMetadata,
+                        metadata,
                         Arrays.asList(
                                 new CopyRatioSegment(new SimpleInterval("1", 1, 1000), denoisedCopyRatios.getRecords().subList(0, 100)),
                                 new CopyRatioSegment(new SimpleInterval("1", 1001, 2000), denoisedCopyRatios.getRecords().subList(100, 200)),

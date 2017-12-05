@@ -21,9 +21,10 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -80,9 +81,9 @@ public final class CollectFragmentCounts extends ReadWalker {
     private OutputFormat outputFormat = OutputFormat.HDF5;
 
     /**
-     * Sample metadata contained in the BAM file.
+     * Metadata contained in the BAM file.
      */
-    private SampleMetadata sampleMetadata;
+    private SampleLocatableMetadata metadata;
 
     /**
      * Overlap detector used to determine when fragment centers overlap with input intervals.
@@ -112,13 +113,18 @@ public final class CollectFragmentCounts extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
-        sampleMetadata = new SimpleSampleMetadata(sampleName);
+        final SampleLocatableMetadata bamMetadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        if (!bamMetadata.getSequenceDictionary().isSameDictionary(sequenceDictionary)) {
+            logger.warn("Sequence dictionary in BAM does not match best available.  The latter will be used in metadata.");
+            metadata = new SimpleSampleLocatableMetadata(bamMetadata.getSampleName(), getBestAvailableSequenceDictionary());
+        } else {
+            metadata = bamMetadata;
+        }
 
         CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
 
         logger.info("Initializing and validating intervals...");
-        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         final List<SimpleInterval> intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         intervalCachedOverlapDetector = new CachedOverlapDetector<>(intervals);
 
@@ -154,7 +160,7 @@ public final class CollectFragmentCounts extends ReadWalker {
     public Object onTraversalSuccess() {
         logger.info("Writing fragment counts to " + outputCountsFile);
         final SimpleCountCollection fragmentCounts = new SimpleCountCollection(
-                sampleMetadata,
+                metadata,
                 intervalCachedOverlapDetector.overlapDetector.getAll().stream()
                         .map(i -> new SimpleCount(i, intervalMultiset.count(i)))
                         .collect(Collectors.toList()));

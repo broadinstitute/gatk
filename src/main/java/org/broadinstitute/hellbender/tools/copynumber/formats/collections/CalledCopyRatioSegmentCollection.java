@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-public final class CalledCopyRatioSegmentCollection extends SampleLocatableCollection<CalledCopyRatioSegment> {
+public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocatableCollection<CalledCopyRatioSegment> {
     enum CalledCopyRatioSegmentTableColumn {
         CONTIG,
         START,
@@ -54,8 +54,8 @@ public final class CalledCopyRatioSegmentCollection extends SampleLocatableColle
         super(inputFile, CalledCopyRatioSegmentTableColumn.COLUMNS, CALLED_COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, CALLED_COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
-    public CalledCopyRatioSegmentCollection(final SampleMetadata sampleMetadata,
+    public CalledCopyRatioSegmentCollection(final SampleLocatableMetadata metadata,
                                             final List<CalledCopyRatioSegment> calledCopyRatioSegments) {
-        super(sampleMetadata, calledCopyRatioSegments, CalledCopyRatioSegmentTableColumn.COLUMNS, CALLED_COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, CALLED_COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
+        super(metadata, calledCopyRatioSegments, CalledCopyRatioSegmentTableColumn.COLUMNS, CALLED_COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, CALLED_COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 }
