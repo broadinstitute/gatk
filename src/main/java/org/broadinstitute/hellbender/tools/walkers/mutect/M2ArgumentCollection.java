@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
@@ -90,6 +91,19 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = "max-population-af", shortName = "max-af", optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
     public double maxPopulationAlleleFrequency = 0.01;
+
+    /**
+     * Downsample a pool of reads starting within a range of one or more bases.
+     */
+    @Argument(fullName = "downsampling-stride", shortName = "stride", optional = true, doc = "Downsample a pool of reads starting within a range of one or more bases.")
+    public int downsamplingStride = 1;
+
+    /**
+     * Maximum number of suspicious reads (mediocre mapping quality or too many substitutions) allowed in a downsampling stride.
+     */
+    @Advanced
+    @Argument(fullName = "max-suspicious-reads-per-alignment-start", optional = true, doc = "Maximum number of suspicious reads (mediocre mapping quality or too many substitutions) allowed in a downsampling stride.  Set to 0 to disable.")
+    public int maxSuspiciousReadsPerAlignmentStart = 0;
 
     /**
      * This is a measure of the minimum evidence to support that a variant observed in the tumor is not also present in the normal.
