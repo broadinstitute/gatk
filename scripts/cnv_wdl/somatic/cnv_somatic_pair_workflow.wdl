@@ -432,7 +432,7 @@ task PlotDenoisedCopyRatios {
         java -Xmx${command_mem}m -jar $GATK_JAR PlotDenoisedCopyRatios \
             --standardizedCopyRatios ${standardized_copy_ratios} \
             --denoisedCopyRatios ${denoised_copy_ratios} \
-            -SD ${ref_fasta_dict} \
+            --sequenceDictionary ${ref_fasta_dict} \
             --minimumContigLength ${default="1000000" minimum_contig_length} \
             --output ${output_dir_} \
             --outputPrefix ${entity_id}
@@ -487,7 +487,7 @@ task PlotModeledSegments {
             --denoisedCopyRatios ${denoised_copy_ratios} \
             --allelicCounts ${het_allelic_counts} \
             --segments ${modeled_segments} \
-            -SD ${ref_fasta_dict} \
+            --sequenceDictionary ${ref_fasta_dict} \
             --minimumContigLength ${default="1000000" minimum_contig_length} \
             --output ${output_dir_} \
             --outputPrefix ${entity_id}

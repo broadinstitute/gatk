@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.plotting;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -19,6 +20,7 @@ import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -81,21 +83,13 @@ public final class PlotModeledSegments extends CommandLineProgram {
     private File inputModeledSegmentsFile;
 
     @Argument(
-            doc = "File containing the reference sequence dictionary (used to determine relative contig lengths). " +
-                    "Contigs will be plotted in the order given. " +
-                    "Contig names should not include the string \"" + PlottingUtils.CONTIG_DELIMITER + "\". " +
-                    "The tool only considers contigs in the given dictionary for plotting, and " +
-                    "data for contigs absent in the dictionary generate only a warning. In other words, you may " +
-                    "modify a reference dictionary for use with this tool to include only contigs for which plotting is desired, " +
-                    "and sort the contigs to the order in which the plots should display the contigs.",
-            shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME
+            doc = PlottingUtils.SEQUENCE_DICTIONARY_DOC_STRING,
+            shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME
     )
     private File sequenceDictionaryFile;
 
     @Argument(
-            doc = "Threshold length (in bp) for contigs to be plotted. " +
-                    "Contigs with lengths less than this threshold will not be plotted. " +
-                    "This can be used to filter out mitochondrial contigs, unlocalized contigs, etc.",
+            doc = PlottingUtils.MINIMUM_CONTIG_LENGTH_DOC_STRING,
             fullName =  PlottingUtils.MINIMUM_CONTIG_LENGTH_LONG_NAME,
             shortName = PlottingUtils.MINIMUM_CONTIG_LENGTH_SHORT_NAME
     )
@@ -135,8 +129,19 @@ public final class PlotModeledSegments extends CommandLineProgram {
         //check that the number of copy-ratio/allele-fraction points in each segment are correct
         validateNumPoints();
 
-        //load contig names and lengths from the sequence dictionary into a LinkedHashMap
-        final Map<String, Integer> contigLengthMap = PlottingUtils.getContigLengthMap(sequenceDictionaryFile, minContigLength, logger);
+        //validate sequence dictionaries and load contig names and lengths into a LinkedHashMap
+        final SAMSequenceDictionary sequenceDictionary = modeledSegments.getMetadata().getSequenceDictionary();
+        final SAMSequenceDictionary sequenceDictionaryToPlot = ReferenceUtils.loadFastaDictionary(sequenceDictionaryFile);
+        if (denoisedCopyRatios != null) {
+            Utils.validateArg(denoisedCopyRatios.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+                    "Sequence dictionary contained in denoised copy-ratio profile file does not match that contained in other input files.");
+        }
+        if (allelicCounts != null) {
+            Utils.validateArg(allelicCounts.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+                    "Sequence dictionary contained in allelic-counts file does not match that contained in other input files.");
+        }
+        PlottingUtils.validateSequenceDictionarySubset(sequenceDictionary, sequenceDictionaryToPlot);
+        final Map<String, Integer> contigLengthMap = PlottingUtils.getContigLengthMap(sequenceDictionaryToPlot, minContigLength, logger);
 
         //check that contigs in input files are present in sequence dictionary and that data points are valid given lengths
         PlottingUtils.validateContigs(contigLengthMap, denoisedCopyRatios, inputDenoisedCopyRatiosFile, logger);
@@ -169,14 +174,14 @@ public final class PlotModeledSegments extends CommandLineProgram {
 
     private String getSampleName() {
         if (inputDenoisedCopyRatiosFile != null) {
-            Utils.validateArg(denoisedCopyRatios.getSampleName().equals(modeledSegments.getSampleName()),
-                    "Sample names in input files do not all match.");
+            Utils.validateArg(denoisedCopyRatios.getMetadata().equals(modeledSegments.getMetadata()),
+                    "Metadata in input files do not all match.");
         }
         if (inputAllelicCountsFile != null) {
-            Utils.validateArg(allelicCounts.getSampleName().equals(modeledSegments.getSampleName()),
-                    "Sample names in input files do not all match.");
+            Utils.validateArg(allelicCounts.getMetadata().equals(modeledSegments.getMetadata()),
+                    "Metadata in input files do not all match.");
         }
-        return modeledSegments.getSampleName();
+        return modeledSegments.getMetadata().getSampleName();
     }
 
     private void validateNumPoints() {
