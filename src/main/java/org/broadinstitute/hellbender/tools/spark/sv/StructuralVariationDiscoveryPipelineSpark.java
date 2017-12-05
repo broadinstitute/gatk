@@ -17,12 +17,14 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.tools.BwaMemIndexImageCreator;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AssemblyContigAlignmentSignatureClassifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBadGenomicKmersSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -45,21 +47,51 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 /**
- * Tool to run the sv pipeline up to and including variant discovery.
- * Expected input is a BAM with around 30x coverage.  Coverage much lower than that probably won't work well.
+ * Tool to run the entire structural variation discovery pipeline for a single sample.
+ *
+ * <p>Runs {@link FindBreakpointEvidenceSpark} and {@link DiscoverVariantsFromContigAlignmentsSAMSpark}.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An input file of aligned reads.</li>
+ *     <li>The reference to which the reads have been aligned.</li>
+ *     <li>A BWA index image for the reference.</li>
+ *     <li>A list of ubiquitous kmers to ignore.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A vcf file describing the discovered structural variants.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk StructuralVariationDiscoveryPipelineSpark \
+ *     -I input_reads.bam \
+ *     -R reference.2bit \
+ *     --aligner-index-image reference.img \
+ *     --kmers-to-ignore ignored_kmers.txt \
+ *     -O structural_variants.vcf
+ * </pre>
+ *
+ * <h3>Notes</h3>
+ * <p>Expected input is a paired-end, coordinate-sorted BAM with around 30x coverage.
+ * Coverage much lower than that probably won't work well.</p>
+ * <p>You can use {@link BwaMemIndexImageCreator} to create the index image file, and {@link FindBadGenomicKmersSpark}
+ * to create the list of kmers to ignore.</p>
+ * <p>The reference is broadcast by Spark, and must therefore be a 2bit file due to current restrictions.</p>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Master tool to run the structural variation discovery pipeline",
-        oneLineSummary="Master tool to run the structural variation discovery pipeline",
-        programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Tool to run the entire structural variation discovery pipeline for a single sample.",
+        summary = "Runs FindBreakpointEvidenceSpark and DiscoverVariantsFromContigAlignmentsSAMSpark.",
+        programGroup = StructuralVariationSparkProgramGroup.class)
 public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(StructuralVariationDiscoveryPipelineSpark.class);
 
-
-    @Argument(doc = "sam file for aligned contigs", shortName = "contigSAMFile",
-            fullName = "contigSAMFile")
+    @Argument(doc = "sam file for aligned contigs", fullName = "contig-sam-file")
     private String outputAssemblyAlignments;
 
     @Argument(doc = "filename for output vcf", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -77,7 +109,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     @Advanced
     @Argument(doc = "directory to output results of our prototyping breakpoint and type inference tool in addition to the master VCF;" +
             " the directory contains multiple VCF's for different types and record-generating SAM files of assembly contigs,",
-            shortName = "expVcfsDir", fullName = "expVariantsOutDir", optional = true)
+            fullName = "exp-variants-out-dir", optional = true)
     private String expVariantsOutDir;
 
     @Override

@@ -21,10 +21,39 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
 
-@CommandLineProgramProperties(summary="Dump some data about the reads.",
-        oneLineSummary="Dump some data about the reads.",
-        programGroup=StructuralVariationSparkProgramGroup.class)
+/**
+ * Dump some statistics about the reads.
+ *
+ * <p>This tool takes a file of reads as input and calculates a bag of data about them:
+ * fragment length statistics by read group, mean length, coverage, partition statistics, etc. This is the first step
+ * in the workflow that FindBreakpointEvidenceSpark undertakes.</p>
+ * <p>This is currently a debugging tool and it is probably not generally useful to most users.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An input file of reads aligned to reference.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A text file describing the statistics.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk CalcMetadata \
+ *     -I input_reads.bam \
+ *     -O statistics.txt
+ * </pre>
+ */
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Dump some statistics about the reads.",
+        summary =
+        "This tool takes a file of reads as input and calculates a bag of data about them:" +
+        " fragment length statistics by read group, mean length, coverage, partition statistics, etc. This is the first step" +
+        " in the workflow that FindBreakpointEvidenceSpark undertakes.",
+        programGroup = StructuralVariationSparkProgramGroup.class)
 public class CalcMetadata extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -33,7 +62,7 @@ public class CalcMetadata extends GATKSparkTool {
     private String outputFile;
 
     @Argument(doc = "write metadata as serialized binary data, rather than as human-readable text",
-            fullName = "writeAsBinary", optional = true)
+            fullName = "write-as-binary", optional = true)
     private boolean writeAsBinary = true;
 
     @Override public boolean requiresReads() { return true; }
