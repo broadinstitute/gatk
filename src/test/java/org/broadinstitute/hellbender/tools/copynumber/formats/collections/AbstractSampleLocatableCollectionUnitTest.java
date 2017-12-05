@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -21,19 +23,33 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
- * Unit tests for {@link SampleLocatableCollection}.
+ * Unit tests for {@link AbstractSampleLocatableCollection}.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SampleLocatableCollectionUnitTest extends GATKBaseTest {
+public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber/formats/collections");
     private static final File SIMPLE_LOCATABLE_COLLECTION_FILE =
             new File(TEST_SUB_DIR, "locatable-collection-tsv-simple-locatable-collection.tsv");
-    private static final File SIMPLE_LOCATABLE_COLLECTION_NON_LEXICOGRAPHICAL_ORDER_FILE =
-            new File(TEST_SUB_DIR, "locatable-collection-tsv-simple-locatable-collection-non-lexicographical-order.tsv");
+    private static final File SIMPLE_LOCATABLE_COLLECTION_NON_DICTIONARY_ORDER_FILE =
+            new File(TEST_SUB_DIR, "locatable-collection-tsv-simple-locatable-collection-non-dictionary-order.tsv");
     private static final File SIMPLE_LOCATABLE_COLLECTION_MISSING_COLUMN_FILE =
             new File(TEST_SUB_DIR, "locatable-collection-tsv-simple-locatable-collection-missing-column.tsv");
-    private static final String SAMPLE_NAME_EXPECTED = "test";
+
+    private static final SampleLocatableMetadata METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
+            "test-sample",
+            new SAMSequenceDictionary(Arrays.asList(
+                    new SAMSequenceRecord("1", 20000),
+                    new SAMSequenceRecord("2", 20000),
+                    new SAMSequenceRecord("10", 20000))));
+
+    private static final SimpleSampleLocatableCollection SIMPLE_LOCATABLE_COLLECTION_EXPECTED = new SimpleSampleLocatableCollection(
+            METADATA_EXPECTED,
+            Arrays.asList(
+                    new SimpleLocatable(new SimpleInterval("1", 1, 1), 1),
+                    new SimpleLocatable(new SimpleInterval("1", 2, 2), 2),
+                    new SimpleLocatable(new SimpleInterval("2", 1, 1), 4),
+                    new SimpleLocatable(new SimpleInterval("10", 1, 1), 3)));
 
     //simple example of a record class
     private static final class SimpleLocatable implements Locatable {
@@ -87,10 +103,18 @@ public final class SampleLocatableCollectionUnitTest extends GATKBaseTest {
             result = 31 * result + value;
             return result;
         }
+
+        @Override
+        public String toString() {
+            return "SimpleLocatable{" +
+                    "interval=" + interval +
+                    ", value=" + value +
+                    '}';
+        }
     }
 
     //simple example of a collection class
-    private static final class SimpleSampleLocatableCollection extends SampleLocatableCollection<SimpleLocatable> {
+    private static final class SimpleSampleLocatableCollection extends AbstractSampleLocatableCollection<SimpleLocatable> {
         enum SimpleLocatableTableColumn {
             CONTIG,
             START,
@@ -119,19 +143,11 @@ public final class SampleLocatableCollectionUnitTest extends GATKBaseTest {
             super(inputFile, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
         }
 
-        private SimpleSampleLocatableCollection(final SampleMetadata sampleMetadata,
+        private SimpleSampleLocatableCollection(final SampleLocatableMetadata metadata,
                                                 final List<SimpleLocatable> simpleLocatables) {
-            super(sampleMetadata, simpleLocatables, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
+            super(metadata, simpleLocatables, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
         }
     }
-
-    private static final SimpleSampleLocatableCollection SIMPLE_LOCATABLE_COLLECTION_EXPECTED = new SimpleSampleLocatableCollection(
-            new SimpleSampleMetadata(SAMPLE_NAME_EXPECTED),
-            Arrays.asList(
-                    new SimpleLocatable(new SimpleInterval("1", 1, 1), 1),
-                    new SimpleLocatable(new SimpleInterval("1", 2, 2), 2),
-                    new SimpleLocatable(new SimpleInterval("10", 1, 1), 3),
-                    new SimpleLocatable(new SimpleInterval("2", 1, 1), 4)));
 
     @Test
     public void testRead() {
@@ -141,7 +157,7 @@ public final class SampleLocatableCollectionUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testReadIntervalsNotInLexicographicalOrder() {
-        new SimpleSampleLocatableCollection(SIMPLE_LOCATABLE_COLLECTION_NON_LEXICOGRAPHICAL_ORDER_FILE);
+        new SimpleSampleLocatableCollection(SIMPLE_LOCATABLE_COLLECTION_NON_DICTIONARY_ORDER_FILE);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -157,40 +173,38 @@ public final class SampleLocatableCollectionUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testConstructorFromListLexicographicalSortingOfIntervals() {
+    public void testConstructorFromListDictionarySortingOfIntervals() {
         final SimpleSampleLocatableCollection simpleLocatableCollectionExpectedUnsortedListArgument = new SimpleSampleLocatableCollection(
-                new SimpleSampleMetadata(SAMPLE_NAME_EXPECTED),
+                METADATA_EXPECTED,
                 Arrays.asList(
                         new SimpleLocatable(new SimpleInterval("1", 1, 1), 1),
                         new SimpleLocatable(new SimpleInterval("1", 2, 2), 2),
-                        new SimpleLocatable(new SimpleInterval("2", 1, 1), 4),
-                        new SimpleLocatable(new SimpleInterval("10", 1, 1), 3)));
+                        new SimpleLocatable(new SimpleInterval("10", 1, 1), 3),
+                        new SimpleLocatable(new SimpleInterval("2", 1, 1), 4)));
         assertSimpleLocatableCollectionEqualsExpected(simpleLocatableCollectionExpectedUnsortedListArgument);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalsWithDuplicates() {
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata("sampleName");
         final List<SimpleLocatable> intervalsWithDuplicates = Arrays.asList(
                 new SimpleLocatable(new SimpleInterval("1", 1, 1), 1),
                 new SimpleLocatable(new SimpleInterval("1", 1, 1), 2),
                 new SimpleLocatable(new SimpleInterval("2", 1, 1), 1));
-        new SimpleSampleLocatableCollection(sampleMetadata, intervalsWithDuplicates);
+        new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithDuplicates);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalsWithOverlaps() {
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata("sampleName");
         final List<SimpleLocatable> intervalsWithOverlaps = Arrays.asList(
                 new SimpleLocatable(new SimpleInterval("1", 1, 100), 1),
                 new SimpleLocatable(new SimpleInterval("1", 100, 200), 2),
                 new SimpleLocatable(new SimpleInterval("2", 1, 1), 1));
-        new SimpleSampleLocatableCollection(sampleMetadata, intervalsWithOverlaps);
+        new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithOverlaps);
     }
 
     private static void assertSimpleLocatableCollectionEqualsExpected(final SimpleSampleLocatableCollection simpleLocatableCollection) {
         Assert.assertEquals(simpleLocatableCollection, SIMPLE_LOCATABLE_COLLECTION_EXPECTED);
-        Assert.assertEquals(simpleLocatableCollection.getSampleName(), SIMPLE_LOCATABLE_COLLECTION_EXPECTED.getSampleName());
+        Assert.assertEquals(simpleLocatableCollection.getMetadata(), SIMPLE_LOCATABLE_COLLECTION_EXPECTED.getMetadata());
         Assert.assertEquals(simpleLocatableCollection.getRecords(), SIMPLE_LOCATABLE_COLLECTION_EXPECTED.getRecords());
     }
 }
