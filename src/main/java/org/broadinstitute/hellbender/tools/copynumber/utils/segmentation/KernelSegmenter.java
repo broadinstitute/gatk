@@ -8,7 +8,6 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.optimization.PersistenceOptimizer;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -134,18 +133,18 @@ public final class KernelSegmenter<DATA> {
             return Collections.emptyList();
         }
 
-        logger.info(String.format("Finding up to %d changepoints in %d data points...", maxNumChangepoints, data.size()));
+        logger.debug(String.format("Finding up to %d changepoints in %d data points...", maxNumChangepoints, data.size()));
         final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
-        logger.info("Calculating low-rank approximation to kernel matrix...");
+        logger.debug("Calculating low-rank approximation to kernel matrix...");
         final RealMatrix reducedObservationMatrix = calculateReducedObservationMatrix(rng, data, kernel, kernelApproximationDimension);
         final double[] kernelApproximationDiagonal = calculateKernelApproximationDiagonal(reducedObservationMatrix);
 
-        logger.info(String.format("Finding changepoint candidates for all window sizes %s...", windowSizes.toString()));
+        logger.debug(String.format("Finding changepoint candidates for all window sizes %s...", windowSizes.toString()));
         final List<Integer> changepointCandidates = findChangepointCandidates(
                 data, reducedObservationMatrix, kernelApproximationDiagonal, maxNumChangepoints, windowSizes);
 
-        logger.info("Performing backward model selection on changepoint candidates...");
+        logger.debug("Performing backward model selection on changepoint candidates...");
         return selectChangepoints(
                 changepointCandidates, maxNumChangepoints, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor,
                 reducedObservationMatrix, kernelApproximationDiagonal).stream()
@@ -198,19 +197,19 @@ public final class KernelSegmenter<DATA> {
                                                                        final BiFunction<DATA, DATA, Double> kernel,
                                                                        final int kernelApproximationDimension) {
         if (kernelApproximationDimension > data.size()) {
-            logger.warn("Specified dimension of the kernel approximation exceeds the number of data points to segment; " +
-                    "using all data points to calculate kernel matrix.");
+            logger.warn(String.format("Specified dimension of the kernel approximation (%d) exceeds the number of data points (%d) to segment; " +
+                    "using all data points to calculate kernel matrix.", kernelApproximationDimension, data.size()));
         }
 
         //subsample data with replacement
         final int numSubsample = Math.min(kernelApproximationDimension, data.size());
-        logger.info(String.format("Subsampling %d points from data to find kernel approximation...", numSubsample));
+        logger.debug(String.format("Subsampling %d points from data to find kernel approximation...", numSubsample));
         final List<DATA> dataSubsample = numSubsample == data.size()
                 ? data
                 : IntStream.range(0, numSubsample).mapToObj(i -> data.get(rng.nextInt(data.size()))).collect(Collectors.toList());
 
         //calculate (symmetric) kernel matrix of subsampled data
-        logger.info(String.format("Calculating kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
+        logger.debug(String.format("Calculating kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
         final RealMatrix subKernelMatrix = new Array2DRowRealMatrix(numSubsample, numSubsample);
         for (int i = 0; i < numSubsample; i++) {
             for (int j = 0; j < i; j++) {
@@ -222,11 +221,11 @@ public final class KernelSegmenter<DATA> {
         }
 
         //perform SVD of kernel matrix of subsampled data
-        logger.info(String.format("Performing SVD of kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
+        logger.debug(String.format("Performing SVD of kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
         final SingularValueDecomposition svd = new SingularValueDecomposition(subKernelMatrix);
 
         //calculate reduced observation matrix
-        logger.info(String.format("Calculating reduced observation matrix (%d x %d)...", data.size(), numSubsample));
+        logger.debug(String.format("Calculating reduced observation matrix (%d x %d)...", data.size(), numSubsample));
         final double[] invSqrtSingularValues = Arrays.stream(svd.getSingularValues()).map(Math::sqrt).map(x -> 1. / (x + EPSILON)).toArray();
         final RealMatrix subKernelUMatrix = new Array2DRowRealMatrix(numSubsample, numSubsample);
         subKernelUMatrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
@@ -267,7 +266,7 @@ public final class KernelSegmenter<DATA> {
             logger.debug(String.format("Calculating local changepoints costs for window size %d...", windowSize));
             if (windowSize > data.size()) {
                 logger.warn(String.format("Number of points needed to calculate local changepoint costs (2 * window size = %d) " +
-                        "exceeds number of data points %d.  Local changepoint costs will not be calculated for this window size.",
+                        "exceeds number of data points (%d).  Local changepoint costs will not be calculated for this window size.",
                         2 * windowSize, data.size()));
                 continue;
             }
@@ -281,7 +280,7 @@ public final class KernelSegmenter<DATA> {
         }
 
         if (changepointCandidates.isEmpty()) {
-            throw new GATKException.ShouldNeverReachHereException("No changepoint candidates found.");
+            logger.warn("No changepoint candidates were found.  The specified window sizes may be inappropriate, or there may be insufficient data points");
         }
 
         return changepointCandidates;
