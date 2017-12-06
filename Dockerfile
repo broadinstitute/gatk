@@ -1,27 +1,28 @@
 # Using OpenJDK 8
 FROM broadinstitute/gatk:gatkbase-1.2.3
-ARG DRELEASE
+ARG ZIPPATH
 
-ADD . /gatk
+ADD $ZIPPATH /gatk
 
 WORKDIR /gatk
-RUN /gatk/gradlew clean compileTestJava installAll localJar createPythonPackageArchive -Drelease=$DRELEASE
+RUN ln -s /gatk/$( find . -name "gatk*local.jar" ) gatk.jar
+RUN ln -s /gatk/$( find . -name "gatk*spark.jar" ) gatk-spark.jar
+# RUN /gatk/gradlew clean compileTestJava installAll localJar createPythonPackageArchive -Drelease=$DRELEASE
 
 WORKDIR /root
 
 # Make sure we can see a help message
-RUN ln -sFv /gatk/build/libs/gatk.jar
+RUN ln -sFv /gatk/gatk.jar
 RUN java -jar gatk.jar -h
+RUN mkdir .gradle
 
 #Setup test data
 WORKDIR /gatk
-# Create link to where test data is expected
-RUN ln -s /testdata src/test/resources
 
 # Create a simple unit test runner
 ENV CI true
 RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && ./gradlew jacocoTestReport" >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatksrc/gradlew jacocoTestReport" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk

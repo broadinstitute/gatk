@@ -42,7 +42,6 @@ Optional arguments:  \n \
 	exit 1
 fi
 
-
 # -z is like "not -n"
 if [ -z ${IS_NOT_LATEST} ] && [ -n "${IS_HASH}" ] && [ -n "${IS_PUSH}" ]; then
 	echo -e "\n##################"
@@ -106,8 +105,12 @@ if [ -n "${IS_PUSH}" ]; then
 else
     RELEASE=false
 fi
+./gradlew clean bundle -Drelease=$DRELEASE
+ZIPPATH=$( find ./build -name "gatk*.zip" )
+unzip -j ${ZIPPATH} -d ./unzippedJar
+
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg DRELEASE=$RELEASE .
+docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
@@ -152,5 +155,5 @@ fi
 
 cd ${ORIGINAL_WORKING_DIRECTORY}
 if [ -n "$STAGING_DIR" ] ; then
-    rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
+##    rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
 fi
