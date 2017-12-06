@@ -24,7 +24,9 @@ read_count_dtypes_dict = {
 
 def load_read_counts_tsv_file(read_counts_tsv_file: str,
                               max_rows: Optional[int] = None,
-                              return_interval_list: bool = False) \
+                              return_interval_list: bool = False,
+                              delimiter='\t',
+                              comment='@') \
         -> Tuple[str, np.ndarray, Optional[List[Interval]]]:
     """Loads a read counts .tsv file.
 
@@ -32,12 +34,14 @@ def load_read_counts_tsv_file(read_counts_tsv_file: str,
         read_counts_tsv_file: input read counts .tsv file
         max_rows: (optional) maximum number of rows to process
         return_interval_list: if true, an interval list will also be generated and returned
+        delimiter: delimiter character
+        comment: comment character
 
     Returns:
         sample name, counts, (and optionally a list of intervals if `return_interval_list` == True)
     """
     sample_name = io_commons.extract_sample_name_from_header(read_counts_tsv_file)
-    counts_pd = pd.read_csv(read_counts_tsv_file, delimiter='\t', comment='#', nrows=max_rows,
+    counts_pd = pd.read_csv(read_counts_tsv_file, delimiter=delimiter, comment=comment, nrows=max_rows,
                             dtype={**read_count_dtypes_dict})
     if return_interval_list:
         interval_list_pd = counts_pd[list(interval_dtypes_dict.keys())]
@@ -47,15 +51,19 @@ def load_read_counts_tsv_file(read_counts_tsv_file: str,
         return sample_name, counts_pd[io_consts.count_column_name].as_matrix(), None
 
 
-def load_interval_list_tsv_file(interval_list_tsv_file: str) -> List[Interval]:
+def load_interval_list_tsv_file(interval_list_tsv_file: str,
+                                delimiter='\t',
+                                comment='@') -> List[Interval]:
     """Loads an interval list .tsv file.
     Args:
         interval_list_tsv_file: input interval list .tsv file
+        delimiter: delimiter character
+        comment: comment character
 
     Returns:
         interval list
     """
-    interval_list_pd = pd.read_csv(interval_list_tsv_file, delimiter='\t',
+    interval_list_pd = pd.read_csv(interval_list_tsv_file, delimiter=delimiter, comment=comment,
                                    dtype={**interval_dtypes_dict, **interval_annotations_dtypes})
     return _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd, interval_list_tsv_file)
 

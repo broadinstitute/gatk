@@ -101,7 +101,8 @@ class SamplePloidyMetadata:
                  sample_name: str,
                  ploidy_j: np.ndarray,
                  ploidy_genotyping_quality_j: np.ndarray,
-                 contig_list: List[str]):
+                 contig_list: List[str],
+                 check_germline_contig_ploidy_for_homo_sapiens: bool = True):
         assert ploidy_j.ndim == 1
         assert ploidy_j.size == len(contig_list)
         assert ploidy_genotyping_quality_j.ndim == 1
@@ -112,6 +113,9 @@ class SamplePloidyMetadata:
         self.ploidy_j = ploidy_j.astype(types.small_uint)
         self.ploidy_genotyping_quality_j = ploidy_genotyping_quality_j.astype(types.floatX)
         self._contig_map = {contig: j for j, contig in enumerate(contig_list)}
+
+        if check_germline_contig_ploidy_for_homo_sapiens:
+            self.check_germline_contig_ploidy_for_homo_sapiens()
 
     def _assert_contig_exists(self, contig: str):
         assert contig in self._contig_map, \
@@ -124,6 +128,60 @@ class SamplePloidyMetadata:
     def get_contig_ploidy_genotyping_quality(self, contig: str):
         self._assert_contig_exists(contig)
         return self.ploidy_genotyping_quality_j[self._contig_map[contig]]
+
+    def check_germline_contig_ploidy_for_homo_sapiens(self):
+        autosomal_contigs = {str(j) for j in range(1, 23)}
+        allosomal_contigs = {'X', 'Y'}
+        all_standard_contigs = autosomal_contigs.union(allosomal_contigs)
+        homo_sapiens_autosomal_contig_ploidy = 2
+        homo_sapiens_sex_genotypes = {
+            'SEX_XX': {'X': 2, 'Y': 0},
+            'SEX_XY': {'X': 1, 'Y': 1}
+        }
+        general_warning_msg = "The presence of unmasked PAR regions and regions of low mappability in the " \
+                              "coverage metadata can result in unreliable ploidy designations. It is recommended " \
+                              "that the user verifies this designation by orthogonal methods."
+
+        def rectify_contig(_contig: str):
+            _contig_upper = _contig.upper()
+            if _contig_upper.find('CHR') == 0:
+                return _contig_upper[3:]
+            else:
+                return _contig_upper
+
+        for j, contig in enumerate(self.contig_list):
+            if rectify_contig(contig) not in all_standard_contigs:
+                _logger.warning("Sample {0} has an unrecognized contig ({1}). Germline contig ploidy determination "
+                                "may not be reliable for decoy/non-standard contigs.".format(
+                    self.sample_name, contig))
+            if rectify_contig(contig) in autosomal_contigs and self.ploidy_j[j] != homo_sapiens_autosomal_contig_ploidy:
+                _logger.warning("Sample {0} has an anomalous ploidy ({1}) for contig {2}. ".format(
+                                    self.sample_name, self.ploidy_j[j], contig) + general_warning_msg)
+
+        rectified_contig_list = [rectify_contig(contig) for contig in self.contig_list]
+        rectified_contig_index = {contig: j for j, contig in enumerate(rectified_contig_list)}
+
+        has_all_allosomal_contigs = all([contig in rectified_contig_list for contig in allosomal_contigs])
+        has_some_allosomal_contigs = any([contig in rectified_contig_list for contig in allosomal_contigs])
+
+        if has_all_allosomal_contigs:
+            sample_sex_genotype_table = {contig: self.ploidy_j[rectified_contig_index[contig]]
+                                         for contig in allosomal_contigs}
+            is_normal_karyotype = any([sex_genotype_type == sample_sex_genotype_table
+                                       for sex_genotype_type in homo_sapiens_sex_genotypes.values()])
+            if not is_normal_karyotype:
+                _logger.warning("Sample {0} has an anomalous karyotype ({1}). ".format(
+                                    self.sample_name, sample_sex_genotype_table) + general_warning_msg)
+        elif has_some_allosomal_contigs:
+            for contig in allosomal_contigs:
+                if contig in rectified_contig_index.keys():
+                    allosomal_ploidy = self.ploidy_j[rectified_contig_index[contig]]
+                    allowed_standard_allosomal_ploidies = {
+                        sex_genotype_table[contig] for sex_genotype_table in homo_sapiens_sex_genotypes.values()}
+                    if allosomal_ploidy not in allowed_standard_allosomal_ploidies:
+                        _logger.warning("Sample {0} has some, but not all, of expected allosomal contigs, and "
+                                        "contig {1} has a non-standard ploidy. ".format(
+                                            self.sample_name, contig) + general_warning_msg)
 
 
 class SampleReadDepthMetadata:

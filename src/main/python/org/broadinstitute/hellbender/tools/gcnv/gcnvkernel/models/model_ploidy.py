@@ -68,8 +68,10 @@ class PloidyModelConfig:
         return validated_contig_ploidy_prior_map, num_ploidy_states
 
     @staticmethod
-    def get_contig_ploidy_prior_map_from_tsv_file(input_path: str) -> Dict[str, np.ndarray]:
-        contig_ploidy_prior_pd = pd.read_csv(input_path, delimiter='\t', comment='#')
+    def get_contig_ploidy_prior_map_from_tsv_file(input_path: str,
+                                                  delimiter='\t',
+                                                  comment='@') -> Dict[str, np.ndarray]:
+        contig_ploidy_prior_pd = pd.read_csv(input_path, delimiter=delimiter, comment=comment)
         columns = [str(x) for x in contig_ploidy_prior_pd.columns.values]
         assert len(columns) > 1
         assert columns[0] == PloidyModelConfig._contig_name_column
@@ -106,6 +108,11 @@ class PloidyModelConfig:
             hide = set()
 
         initializer_params = inspect.signature(PloidyModelConfig.__init__).parameters
+        valid_args = {"--" + arg for arg in initializer_params.keys()}
+        for hidden_arg in hide:
+            assert hidden_arg in valid_args, \
+                "Initializer argument to be hidden {0} is not a valid initializer arguments; possible " \
+                "choices are: {1}".format(hidden_arg, valid_args)
 
         def process_and_maybe_add(arg, **kwargs):
             full_arg = "--" + arg

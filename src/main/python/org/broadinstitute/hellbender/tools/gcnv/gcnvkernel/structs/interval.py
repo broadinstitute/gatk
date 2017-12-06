@@ -1,6 +1,6 @@
 import numpy as np
 from abc import abstractmethod
-from typing import Dict, List
+from typing import Dict
 from copy import deepcopy
 
 
@@ -11,6 +11,7 @@ class Interval:
         Equality test and hashing is based on get_key() which excludes all annotations.
     """
     def __init__(self, contig: str, start: int, end: int):
+        assert end >= start, "Interval end point must be greater or equal to its start point"
         self.contig = str(contig)
         self.start = int(start)
         self.end = int(end)

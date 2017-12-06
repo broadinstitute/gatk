@@ -582,6 +582,15 @@ class HybridInferenceParameters:
             hide = set()
 
         initializer_params = inspect.signature(HybridInferenceParameters.__init__).parameters
+        valid_args = {"--" + arg for arg in initializer_params.keys()}
+        for hidden_arg in hide:
+            assert hidden_arg in valid_args, \
+                "Initializer argument to be hidden {0} is not a valid initializer arguments; possible " \
+                "choices are: {1}".format(hidden_arg, valid_args)
+        for override_default_arg in override_default.keys():
+            assert override_default_arg in valid_args, \
+                "Initializer argument of which the default is to be overridden {0} is not a valid initializer " \
+                "arguments; possible choices are: {1}".format(override_default_arg, valid_args)
 
         def process_and_maybe_add(arg, **kwargs):
             full_arg = "--" + arg

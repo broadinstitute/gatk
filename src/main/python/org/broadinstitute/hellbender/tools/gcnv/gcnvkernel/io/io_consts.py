@@ -18,10 +18,10 @@ ploidy_column_name = 'PLOIDY'
 ploidy_gq_column_name = 'PLOIDY_GQ'
 
 # regular expression for matching sample name from header comment line
-sample_name_header_regexp = "^[# ]+SAMPLE_NAME[\\s\t]*=[\\s\t]*(.*\\S)[\\s\t]*$"
+sample_name_header_regexp = "^@RG.*SM:(.*)[\t]*.*$"
 
 # prefix for adding sample name as a header comment line
-sample_name_header_prefix = "SAMPLE_NAME="
+sample_name_header_prefix = "RG\tID:GATKCopyNumber\tSM:"
 
 # default file names for loading and saving models, posteriors, and configurations
 default_sample_read_depth_tsv_filename = 'global_read_depth.tsv'

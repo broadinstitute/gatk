@@ -83,7 +83,7 @@ class SamplePloidyExporter:
                                      sample_ploidy_metadata: SamplePloidyMetadata,
                                      extra_comment_lines: List[str] = None,
                                      delimiter='\t',
-                                     comment='#'):
+                                     comment='@'):
         with open(os.path.join(sample_posterior_path, io_consts.default_sample_contig_ploidy_tsv_filename), 'w') as f:
             if extra_comment_lines is not None:
                 for comment_line in extra_comment_lines:
@@ -102,7 +102,7 @@ class SamplePloidyExporter:
                                   sample_read_depth_metadata: SampleReadDepthMetadata,
                                   extra_comment_lines: List[str] = None,
                                   delimiter='\t',
-                                  comment='#'):
+                                  comment='@'):
         with open(os.path.join(sample_posterior_path, io_consts.default_sample_read_depth_tsv_filename), 'w') as f:
             if extra_comment_lines is not None:
                 for comment_line in extra_comment_lines:
@@ -121,8 +121,6 @@ class SamplePloidyExporter:
             _logger.info("Saving posteriors for sample \"{0}\" in \"{1}\"...".format(
                 sample_name, sample_posterior_path))
 
-            # todo warn if ploidy genotyping quality is low?
-            # todo warn if ploidy genotyping is incompatible with a given list of sex genotypes?
             # find best contig ploidy calls and calculate ploidy genotyping quality
             ploidy_j = np.zeros((self.ploidy_workspace.num_contigs,), dtype=types.small_uint)
             ploidy_genotyping_quality_j = np.zeros((self.ploidy_workspace.num_contigs,), dtype=types.floatX)

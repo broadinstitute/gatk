@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 
 
 def extract_sample_name_from_header(input_file: str,
-                                    max_scan_lines: int = 100,
+                                    max_scan_lines: int = 10000,
                                     sample_name_header_regexp: str = io_consts.sample_name_header_regexp) -> str:
     """Extracts sample name from header.
 
@@ -97,7 +97,7 @@ def assert_output_path_writable(output_path: str,
 
 def write_ndarray_to_tsv(output_file: str,
                          array: np.ndarray,
-                         comment='#',
+                         comment='@',
                          delimiter='\t',
                          extra_comment_lines: Optional[List[str]] = None) -> None:
     """Write an vector or matrix ndarray to .tsv file.
@@ -137,7 +137,7 @@ def write_ndarray_to_tsv(output_file: str,
 
 
 def read_ndarray_from_tsv(input_file: str,
-                          comment='#',
+                          comment='@',
                           delimiter='\t') -> np.ndarray:
     """Reads a vector or matrix ndarray from .tsv file.
 

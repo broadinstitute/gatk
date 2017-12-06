@@ -116,7 +116,7 @@ class SampleDenoisingAndCallingPosteriorsExporter:
     def _export_sample_copy_number_log_posterior(sample_posterior_path: str,
                                                  log_q_c_tc: np.ndarray,
                                                  delimiter='\t',
-                                                 comment='#',
+                                                 comment='@',
                                                  extra_comment_lines: Optional[List[str]] = None):
         assert isinstance(log_q_c_tc, np.ndarray)
         assert log_q_c_tc.ndim == 2
@@ -179,7 +179,7 @@ class SampleDenoisingAndCallingPosteriorsImporter:
     def _import_sample_copy_number_log_posterior(self,
                                                  sample_posterior_path: str,
                                                  delimiter='\t',
-                                                 comment='#') -> np.ndarray:
+                                                 comment='@') -> np.ndarray:
         expected_copy_number_header_columns = [
             io_consts.copy_number_column_prefix + str(cn)
             for cn in range(self.denoising_calling_workspace.calling_config.num_copy_number_states)]
