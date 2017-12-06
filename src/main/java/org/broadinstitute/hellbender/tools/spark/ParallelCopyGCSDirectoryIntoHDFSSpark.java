@@ -26,17 +26,44 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * This tool uses Spark to do a parallel copy of either a file or a directory from GCS into HDFS.
+ * Parallel copy a file or directory from GCS into HDFS.
+ *
+ * <p>This tool uses Spark to do a parallel copy of either a file or a directory from GCS into HDFS.
  * Files are divided into chunks of size equal to the HDFS block size (with the exception of the final
  * chunk) and each Spark task is responsible for copying one chunk. To copy all of the files in a GCS directory,
  * provide the GCS directory path, including the trailing slash. Directory copies are non-recursive so
  * subdirectories will be skipped. Within directories each file is divided into chunks independently (so this will be
  * inefficient if you have lots of files smaller than the block size). After all chunks are copied, the HDFS
- * concat method is used to stitch together chunks into single files without re-copying them.
+ * concat method is used to stitch together chunks into single files without re-copying them.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An gcs input file or directory.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A copy of the input as HDFS output.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk ParallelCopyGCSDirectoryIntoHDFSSpark \
+ *     --input-gcs-path gs://bucket_name/someFile \
+ *     --output-hdfs-directory hdfs://cluster-name-m:8020/directory
+ * </pre>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Parallel copy a file or directory (non-recursive) from GCS into HDFS",
-        oneLineSummary="Parallel copy a file or directory from GCS into HDFS.",
+@CommandLineProgramProperties(
+        oneLineSummary = "Parallel copy a file or directory from GCS into HDFS.",
+        summary =
+        "This tool uses Spark to do a parallel copy of either a file or a directory from GCS into HDFS." +
+        " Files are divided into chunks of size equal to the HDFS block size (with the exception of the final" +
+        " chunk) and each Spark task is responsible for copying one chunk. To copy all of the files in a GCS directory," +
+        " provide the GCS directory path, including the trailing slash. Directory copies are non-recursive so" +
+        " subdirectories will be skipped. Within directories each file is divided into chunks independently (so this will be" +
+        " inefficient if you have lots of files smaller than the block size). After all chunks are copied, the HDFS" +
+        " concat method is used to stitch together chunks into single files without re-copying them.",
         programGroup = SparkProgramGroup.class)
 @BetaFeature
 public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
@@ -46,11 +73,10 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     // wisdom to use a power of two for byte buffer sizes
     public static final int SIXTY_FOUR_MIB = 67108864;
 
-    @Argument(doc = "input GCS file path (add trailing slash when specifying a directory)", fullName = "inputGCSPath")
-    private String inputGCSPath = null;
+    @Argument(doc = "input GCS file path (add trailing slash when specifying a directory)", fullName = "input-gcs-path")
+    private String inputGCSPath;
 
-    @Argument(doc = "output directory on HDFS", shortName = "outputHDFSDirectory",
-            fullName = "outputHDFSDirectory")
+    @Argument(doc = "output directory on HDFS", fullName = "output-hdfs-directory")
     private String outputHDFSDirectory;
 
     @Override

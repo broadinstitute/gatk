@@ -45,41 +45,57 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVar
 
 
 /**
- * This tool filters an input of SAM file containing alignments of single-ended long read
- * (be it long read sequencing, or contigs assembled from standard Illumina short reads),
- * that aims at providing an "optimal coverage" of the long read, based on an heuristic scoring scheme,
- * and saves the result as a text file, formatted as
- * (CTG_NAME, [[LIST_OF_PICKED_ALIGNMENT_INTERVAL_AS_COMPACT_STRING]]).
+ * Filters a long read SAM file, and outputs alignments that tile the contig optimally.
+ *
+ * <p>This tool takes a file containing the alignments of assembled contigs and filters them with the
+ * aim of providing "optimal coverage" of the long read, based on an heuristic scoring scheme.</p>
+ * <p>This is a prototyping/debugging tool and it is probably not generally useful to most users.</p>
+ * <p>It saves the result as a text file, formatted as:</p>
+ * <pre>(CTG_NAME, [[LIST_OF_PICKED_ALIGNMENT_INTERVAL_AS_COMPACT_STRING]])</pre>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An input file of assembled contigs or long reads aligned to reference.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A text file describing the selected alignments.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk FilterLongReadAlignmentsSAMSpark \
+ *     -I assemblies.sam \
+ *     -O selected_alignments.txt
+ * </pre>
  */
-@CommandLineProgramProperties(summary="Filters a SAM file containing long reads alignments, and outputs the filter-passing stripped down alignment information.",
-        oneLineSummary="Filters a long read SAM file, and outputs essential results.",
-        usageExample = "FilterLongReadAlignmentsSAMSpark -I /path/to/my/dir/longReads.sam -O /path/to/my/dir/filteredAlignmentsDir",
-        omitFromCommandLine = true,
-        programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Filters a long read SAM file, and outputs alignments that tile the contig optimally.",
+        summary =
+        "This tool takes a file containing the alignments of assembled contigs and filters them with the" +
+        " aim of providing \"optimal coverage\" of the long read, based on an heuristic scoring scheme.",
+        programGroup = StructuralVariationSparkProgramGroup.class)
 public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(FilterLongReadAlignmentsSAMSpark.class);
 
     @Advanced
     @Argument(doc = "Maximum difference between alignment configuration scores for which two configurations will be considered equally likely",
-            shortName = "cst",
-            fullName = "configScoreDiffTol", optional = true)
+            shortName = "cst", fullName = "config-score-diff-tolerance", optional = true)
     public final Double configScoreDiffTolerance = 0.0;
 
     @Argument(doc = "file containing non-canonical contig names (e.g chrUn_KI270588v1) in the reference, human reference assumed when omitted",
-            shortName = "nonCanoTigFile",
-            fullName = "nonCanonicalContigNamesFile", optional = true)
+            shortName = "alt-tigs", fullName = "non-canonical-contig-names-file", optional = true)
     public String nonCanonicalContigNamesFile;
 
     @Argument(doc = "prefix for output text file for filtered alignment intervals",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputFilePrefix;
 
     @Argument(doc = "whether to run old way of filtering or not",
-            shortName = "OT",
-            fullName = "oldFilteringToo", optional = true)
+            shortName = "OT", fullName = "old-filtering-too", optional = true)
     private boolean runOldFilteringToo = false;
 
     @Override

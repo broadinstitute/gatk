@@ -49,17 +49,48 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.*;
 
 /**
- * This tool takes a SAM file containing the alignments of assembled contigs or long reads to the reference
+ * Parse aligned contigs and call structural variants.
+ *
+ * <p>This tool takes a file containing the alignments of assembled contigs
  * and searches it for split alignments indicating the presence of structural variations. To do so the tool parses
  * primary and supplementary alignments; secondary alignments are ignored. To be considered valid evidence of an SV,
  * two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than
- * or equal to minAlignmentLength.
+ * or equal to min-alignment-length. Imprecise variants with approximate locations are also called.</p>
+ * <p>The input file is typically the SAM file produced by FindBreakpointEvidenceSpark.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An input file of assembled contigs or long reads aligned to reference.</li>
+ *     <li>The reference to which the contigs have been aligned.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A vcf file describing the discovered structural variants.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk DiscoverVariantsFromContigAlignmentsSAMSpark \
+ *     -I assemblies.sam \
+ *     -R reference.2bit \
+ *     -O structural_variants.vcf
+ * </pre>
+ *
+ * <h3>Notes</h3>
+ * <p>The reference is broadcast by Spark, and must therefore be a 2bit file due to current restrictions.</p>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
-        oneLineSummary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
-        programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Parse aligned contigs and call structural variants.",
+        summary =
+        "This tool takes a file containing the alignments of assembled contigs" +
+        " and searches it for split alignments indicating the presence of structural variations. To do so the tool parses" +
+        " primary and supplementary alignments; secondary alignments are ignored. To be considered valid evidence of an SV," +
+        " two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than" +
+        " or equal to min-alignment-length. Imprecise variants with approximate locations are also called.",
+        programGroup = StructuralVariationSparkProgramGroup.class)
 public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSpark.class);

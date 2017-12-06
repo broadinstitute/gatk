@@ -37,7 +37,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + SVIntegrationTestDataProvider.TEST_CONTIG_SAM +
                     " -O " + outputDir + "/variants.vcf" +
-                    (cnvCallsLoc == null ? "" : " --cnvCalls " + cnvCallsLoc);
+                    (cnvCallsLoc == null ? "" : " --cnv-calls " + cnvCallsLoc);
         }
 
     }

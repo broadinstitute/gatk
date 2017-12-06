@@ -41,20 +41,52 @@ import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEv
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
 
 /**
- * Tool to discover reads that support a hypothesis of a genomic breakpoint.
- * Expected input is a BAM with around 30x coverage.  Coverage much lower than that probably won't work well.
- * Reads sharing kmers with reads aligned near putative breakpoints are pulled out
- *  for local assemblies of these breakpoint regions.
- * The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference.
- * Final output is a SAM file of aligned contigs to be called for structural variants.
+ * Tool to discover genomic breakpoints associated with structural variants.
+ *
+ * <p>This tool prepares local assemblies of putative genomic breakpoints for structural variant discovery.
+ * Reads sharing kmers with reads aligned near putative breakpoints are pulled out for local assemblies of
+ * these breakpoint regions.</p>
+ * <p>The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference.
+ * Output is a file of aligned contigs to be used in calling structural variants.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>A file of paired-end, aligned and coordinate-sorted reads.</li>
+ *     <li>A BWA index image for the reference.</li>
+ *     <li>A list of ubiquitous kmers to ignore.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A file of aligned contigs.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk FindBreakpointEvidenceSpark \
+ *     -I input_reads.bam \
+ *     --aligner-index-image reference.img \
+ *     --kmers-to-ignore ignored_kmers.txt \
+ *     -O assemblies.sam
+ * </pre>
+ *
+ * <h3>Notes</h3>
+ * <p>Expected input is a paired-end, coordinate-sorted BAM with around 30x coverage.
+ * Coverage much lower than that probably won't work well.</p>
+ * <p>You can use BwaMemIndexImageCreator to create the index image file, and FindBadGenomicGenomicKmersSpark
+ * to create the list of kmers to ignore.</p>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Find reads that evidence breakpoints."+
-        "  Pull reads for local assemblies in breakpoint regions using shared kmers."+
-        "  Assemble breakpoint regions with FermiLite, and align assembled contigs to reference.",
-        oneLineSummary="Prepare local assemblies of putative genomic breakpoints for structural variant discovery.",
-        programGroup=StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Tool to discover genomic breakpoints associated with structural variants.",
+        summary =
+        "This tool prepares local assemblies of putative genomic breakpoints for structural variant discovery." +
+        " Reads sharing kmers with reads aligned near putative breakpoints are pulled out for local assemblies of" +
+        " these breakpoint regions." +
+        " The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference." +
+        " Output is a file of aligned contigs to be used in calling structural variants.",
+        programGroup = StructuralVariationSparkProgramGroup.class)
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

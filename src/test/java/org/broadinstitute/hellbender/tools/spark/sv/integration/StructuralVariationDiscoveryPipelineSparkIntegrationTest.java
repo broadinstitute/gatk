@@ -56,13 +56,13 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + bamLoc +
                     " -O " + outputDir        + "/variants.vcf" +
-                    " --alignerIndexImage " + alignerRefIndexImgLoc +
-                    " --kmersToIgnore " + kmerIgnoreListLoc +
-                    " --contigSAMFile "       + outputDir + "/assemblies.sam" +
-                    " --breakpointIntervals " + outputDir + "/intervals" +
-                    " --fastqDir "            + outputDir + "/fastq" +
-                    (cnvCallsLoc == null ? "" : " --cnvCalls " + cnvCallsLoc) +
-                    " --expVariantsOutDir " + getExperimentalInterpretationOutputDirName(outputDir + "/variants.vcf");
+            " --aligner-index-image " + alignerRefIndexImgLoc +
+                    " --kmers-to-ignore " + kmerIgnoreListLoc +
+                    " --contig-sam-file "       + outputDir + "/assemblies.sam" +
+                    " --breakpoint-intervals " + outputDir + "/intervals" +
+                    " --fastq-dir "            + outputDir + "/fastq" +
+                    (cnvCallsLoc == null ? "" : " --cnv-calls " + cnvCallsLoc) +
+                    " --exp-variants-out-dir " + getExperimentalInterpretationOutputDirName(outputDir + "/variants.vcf");
         }
 
         private static String getExperimentalInterpretationOutputDirName(final String vcfPath) {
@@ -73,11 +73,11 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         @Override
         public String toString() {
             return "StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs{" +
-                    "bamLoc='" + bamLoc + '\'' +
-                    ", kmerIgnoreListLoc='" + kmerIgnoreListLoc + '\'' +
-                    ", alignerRefIndexImgLoc='" + alignerRefIndexImgLoc + '\'' +
-                    ", cnvCallsLoc='" + cnvCallsLoc + '\'' +
-                    ", outputDir='" + outputDir + '\'' +
+                    "bam-loc='" + bamLoc + '\'' +
+                    ", kmer-ignore-list-loc='" + kmerIgnoreListLoc + '\'' +
+                    ", aligner-fef-index-img-loc='" + alignerRefIndexImgLoc + '\'' +
+                    ", cnv-calls-loc='" + cnvCallsLoc + '\'' +
+                    ", output-dir='" + outputDir + '\'' +
                     '}';
         }
     }
@@ -109,7 +109,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         runCommandLine(args);
 
         svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
-                args.get(args.indexOf("--expVariantsOutDir")+1),
+                args.get(args.indexOf("--exp-variants-out-dir")+1),
                 annotationsToIgnoreWhenComparingVariants, false);
     }
 
@@ -136,13 +136,13 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--kmersToIgnore");
+            idx = argsToBeModified.indexOf("--kmers-to-ignore");
             path = new Path(workingDirectory, "dummy.kill.kmers");
             file = new File(argsToBeModified.get(idx+1));
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--cnvCalls");
+            idx = argsToBeModified.indexOf("--cnv-calls");
             path = new Path(workingDirectory, "cnvVariants");
             file = new File(argsToBeModified.get(idx+1));
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
@@ -154,19 +154,19 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             final String vcfOnHDFS = path.toUri().toString();
             argsToBeModified.set(idx+1, vcfOnHDFS);
 
-            idx = argsToBeModified.indexOf("--contigSAMFile");
+            idx = argsToBeModified.indexOf("--contig-sam-file");
             path = new Path(workingDirectory, "assemblies.sam");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--breakpointIntervals");
+            idx = argsToBeModified.indexOf("--breakpoint-intervals");
             path = new Path(workingDirectory, "intervals");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--fastqDir");
+            idx = argsToBeModified.indexOf("--fastq-dir");
             path = new Path(workingDirectory, "fastq");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--expVariantsOutDir");
+            idx = argsToBeModified.indexOf("--exp-variants-out-dir");
             path = new Path(workingDirectory, "expVariantsOutDir");
             final String expOutDirOnHDFS = path.toUri().toString();
             argsToBeModified.set(idx+1, expOutDirOnHDFS);

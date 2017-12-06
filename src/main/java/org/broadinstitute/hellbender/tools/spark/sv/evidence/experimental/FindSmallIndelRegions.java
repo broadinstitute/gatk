@@ -32,12 +32,37 @@ import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
-@CommandLineProgramProperties(summary="Experimental code to dump statistics about regions containing small indels due to fragment length anomalies.",
-        oneLineSummary="Experimental do not use.",
-        usageExample="gatk-launch FindSmallIndelRegions -O hdfs://cluster-name:8020/path/to/statusDir -I hdfs://cluster-name:8020/path/to/bam --alignerIndexImage notUsed --kmersToIgnore notUsed",
-        omitFromCommandLine = true,
-        programGroup=StructuralVariationSparkProgramGroup.class)
+/**
+ * Characterize regions likely to contain small indels.
+ *
+ * <p>This is experimental/exploratory code to dump statistics about regions with fragment length anomalies
+ * that make them likely to contain small indels.</p>
+ * <p>It is probably not generally useful to most users.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An input file of reads aligned to reference.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A text file describing the regions that have fragment length anomalies.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk FindSmallIndelRegions \
+ *     -I input_reads.bam \
+ *     -O statistics.txt
+ * </pre>
+ */
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Characterize regions likely to contain small indels.",
+        summary =
+        "This is experimental/exploratory code to dump statistics about regions with fragment length anomalies" +
+        " that make them likely to contain small indels.",
+        programGroup=StructuralVariationSparkProgramGroup.class)
 public final class FindSmallIndelRegions extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

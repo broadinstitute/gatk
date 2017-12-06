@@ -27,12 +27,12 @@ ALTS_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.alts/')
 "${GATK_DIR}/gatk-launch" FindBreakpointEvidenceSpark \
     -I "${INPUT_BAM}" \
     -O "${PROJECT_OUTPUT_DIR}/assemblies.sam" \
-    --alignerIndexImage "${REF_INDEX_IMAGE}" \
-    --exclusionIntervals "${INTERVAL_KILL_LIST}" \
-    --kmersToIgnore "${KMER_KILL_LIST}" \
-    --crossContigsToIgnore "${ALTS_KILL_LIST}" \
-    --breakpointIntervals "${PROJECT_OUTPUT_DIR}/intervals" \
-    --fastqDir "${PROJECT_OUTPUT_DIR}/fastq" \
+    --aligner-index-image "${REF_INDEX_IMAGE}" \
+    --exclusion-intervals "${INTERVAL_KILL_LIST}" \
+    --kmers-to-ignore "${KMER_KILL_LIST}" \
+    --cross-contigs-to-ignore "${ALTS_KILL_LIST}" \
+    --breakpoint-intervals "${PROJECT_OUTPUT_DIR}/intervals" \
+    --fastq-dir "${PROJECT_OUTPUT_DIR}/fastq" \
     -- \
     --sparkRunner GCS \
     --cluster "${CLUSTER_NAME}" \
