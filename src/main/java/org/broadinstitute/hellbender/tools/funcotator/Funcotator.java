@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.funcotator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -42,6 +44,8 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 @BetaFeature
 public class Funcotator extends VariantWalker {
+
+    private static final Logger logger = LogManager.getLogger(Funcotator.class);
 
     //==================================================================================================================
     // Arguments:

@@ -58,7 +58,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
         if (split.length < 1) {
             throw new IllegalArgumentException("TableCodec line = " + line + " is not a valid table format");
         }
-        return createTableFeatureFromSplitLine(split);
+        return new TableFeature(new SimpleInterval(split[0]), Arrays.asList(split), header);
     }
 
     @Override
@@ -85,10 +85,6 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
             }
         }
         return header;
-    }
-
-    protected TableFeature createTableFeatureFromSplitLine(final String[] splitLine) {
-        return new TableFeature(new SimpleInterval(splitLine[0]), Arrays.asList(splitLine), header);
     }
 
     @Override
