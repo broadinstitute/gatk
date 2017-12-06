@@ -12,7 +12,7 @@ import htsjdk.variant.vcf.VCF3Codec;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -92,7 +92,7 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
         Assert.assertEquals(FeatureManager.isFeatureFile(file), expectedIsFeatureFile, "isFeatureFile() returned incorrect result for file " + file.getAbsolutePath());
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = QCProgramGroup.class)
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = TestProgramGroup.class)
     private static class ValidFeatureArgumentSource extends CommandLineProgram {
         // We should be able to detect the type parameter of a FeatureInput regardless of whether or
         // not it's wrapped within a Collection
@@ -121,7 +121,7 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
         }
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "",programGroup = QCProgramGroup.class)
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "",programGroup = TestProgramGroup.class)
     @SuppressWarnings("rawtypes")
     private static class InvalidFeatureArgumentSource extends CommandLineProgram {
         // FeatureInputs without type parameters (ie., raw types) should be detected as errors
