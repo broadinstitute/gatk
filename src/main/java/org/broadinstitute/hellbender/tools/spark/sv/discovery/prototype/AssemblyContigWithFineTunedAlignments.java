@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.List;
 
 @DefaultSerializer(Serializer.class)
-final class AssemblyContigWithFineTunedAlignments {
+public final class AssemblyContigWithFineTunedAlignments {
     private static final AlignedContig.Serializer contigSerializer = new AlignedContig.Serializer();
     public static final List<String> emptyInsertionMappings = Collections.emptyList();
 

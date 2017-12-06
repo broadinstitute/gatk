@@ -39,15 +39,14 @@ import scala.Tuple2;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.*;
 
 /**
  * This tool takes a SAM file containing the alignments of assembled contigs or long reads to the reference
@@ -178,19 +177,23 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                     "assumption that primary alignment does not contain hard clipping is invalid for read: " + primaryAlignment.toString());
 
             final byte[] contigSequence = primaryAlignment.getReadBases().clone();
-            if (primaryAlignment.getReadNegativeStrandFlag()) {
-                SequenceUtil.reverseComplement(contigSequence);
-            }
-
-            final Stream<AlignmentInterval> unSplitAIList = Utils.stream(noSecondaryAlignments).map(AlignmentInterval::new);
             final List<AlignmentInterval> parsedAlignments;
-            if (splitGapped) {
-                final int unClippedContigLength = primaryAlignment.getReadLength();
-                parsedAlignments = unSplitAIList.map(ar ->
-                        GappedAlignmentSplitter.split(ar, gapSplitSensitivity, unClippedContigLength))
-                        .flatMap(Utils::stream).collect(Collectors.toList());
+            if ( primaryAlignment.getReadUnmappedFlag() ) { // the Cigar
+                parsedAlignments = Collections.emptyList();
             } else {
-                parsedAlignments = unSplitAIList.collect(Collectors.toList());
+                if (primaryAlignment.getReadNegativeStrandFlag()) {
+                    SequenceUtil.reverseComplement(contigSequence);
+                }
+
+                final Stream<AlignmentInterval> unSplitAIList = Utils.stream(noSecondaryAlignments).map(AlignmentInterval::new);
+                if (splitGapped) {
+                    final int unClippedContigLength = primaryAlignment.getReadLength();
+                    parsedAlignments = unSplitAIList.map(ar ->
+                            GappedAlignmentSplitter.split(ar, gapSplitSensitivity, unClippedContigLength))
+                            .flatMap(Utils::stream).collect(Collectors.toList());
+                } else {
+                    parsedAlignments = unSplitAIList.collect(Collectors.toList());
+                }
             }
             return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments, false);
         }

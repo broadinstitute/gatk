@@ -1,17 +1,14 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.CigarTestUtils;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.read.*;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -346,5 +343,19 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
     public static Object[][] randomValidCigars() {
         final List<Cigar> cigars = CigarTestUtils.randomValidCigars(new Random(13), 1000, 10, 100, new Cigar());
         return cigars.stream().map(x -> new Object[] { x }).toArray(Object[][]::new);
+    }
+
+    @Test(groups = "sv", expectedExceptions = IllegalArgumentException.class)
+    public void testConstructFromUnmappedRead() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final GATKRead artificialUnmappedRead = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{}, new byte[]{});
+        new AlignmentInterval(artificialUnmappedRead);
+    }
+
+    @Test(groups = "sv", expectedExceptions = IllegalArgumentException.class)
+    public void testConstructFromUnmappedSAM() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final SAMRecord unmappedSam = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{}, new byte[]{}).convertToSAMRecord(header);
+        new AlignmentInterval(unmappedSam);
     }
 }

@@ -15,12 +15,12 @@ import scala.Tuple2;
 import java.util.*;
 import java.util.stream.Collectors;
 
-final class AssemblyContigAlignmentSignatureClassifier {
+public final class AssemblyContigAlignmentSignatureClassifier {
 
     public static final int ALIGNMENT_MAPQUAL_THREHOLD = 20;
     public static final int ALIGNMENT_READSPAN_THRESHOLD = 10;
 
-    enum RawTypes {
+    public enum RawTypes {
         InsDel,                 // 2 alignments, indicating ins/del, simple duplication expansion/contractions
         IntraChrStrandSwitch,   // breakpoint for events involving intra-chromosome strand switch, particularly for inversion breakpoint suspects
         MappedInsertionBkpt,    // breakpoint for events involving suspected insertions where the inserted sequence could be mapped to either an 1) same-chromosome location without strand switch (tandem duplication suspect) OR 2) diff-chromosome location (MEI/dispersed dup suspect with or without strand switch)

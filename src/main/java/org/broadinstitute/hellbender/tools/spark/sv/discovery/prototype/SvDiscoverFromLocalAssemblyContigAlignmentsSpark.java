@@ -63,7 +63,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             fullName = "nonCanonicalChromosomeNamesFile", optional = true)
     public String nonCanonicalChromosomeNamesFile;
 
-    @Argument(doc = "output directory", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(doc = "output directory for outputting VCF files for each type of variant, and if enabled, the signaling assembly contig's alignments",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputDir;
 
@@ -100,18 +101,18 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes =
                 preprocess(reads, headerBroadcast, broadcastSequenceDictionary, nonCanonicalChromosomeNamesFile, outputDir, writeSAMFiles, localLogger);
 
-        dispatchJobs(sampleId, contigsByPossibleRawTypes, referenceMultiSourceBroadcast, broadcastSequenceDictionary);
+        dispatchJobs(sampleId, outputDir, contigsByPossibleRawTypes, referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger);
     }
 
     //==================================================================================================================
 
-    private static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> preprocess(final JavaRDD<GATKRead> reads,
-                                                                                                final Broadcast<SAMFileHeader> headerBroadcast,
-                                                                                                final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
-                                                                                                final String nonCanonicalChromosomeNamesFile,
-                                                                                                final String outputDir,
-                                                                                                final boolean writeSAMFiles,
-                                                                                                final Logger localLogger) {
+    public static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> preprocess(final JavaRDD<GATKRead> reads,
+                                                                                               final Broadcast<SAMFileHeader> headerBroadcast,
+                                                                                               final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                                               final String nonCanonicalChromosomeNamesFile,
+                                                                                               final String outputDir,
+                                                                                               final boolean writeSAMFiles,
+                                                                                               final Logger localLogger) {
         // filter alignments and split the gaps, hence the name "reconstructed"
         final JavaRDD<AlignedContig> contigsWithChimericAlignmentsReconstructed =
                 FilterLongReadAlignmentsSAMSpark
@@ -132,24 +133,43 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     //==================================================================================================================
 
     // TODO: 11/21/17 insertion mappings are dropped here in this implementation, must get them back for ticket #3647
-    private void dispatchJobs(final String sampleId,
-                              final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
-                              final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast,
-                              final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary) {
+
+    /**
+     * Sends assembly contigs classified based on their alignment signature to
+     * a corresponding breakpoint location inference unit.
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#InsDel},
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#IntraChrStrandSwitch},
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#MappedInsertionBkpt}, and
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Cpx} (PR to be reviewed and merged)
+     * each will have its own VCF output in the directory specified in {@link #outputDir},
+     * whereas
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Incomplete},
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Ambiguous}, and
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#MisAssemblySuspect}
+     * currently DO NOT generate any VCF yet.
+     * However, if flag {@link #writeSAMFiles} is turned on, alignments of all contigs that are classified to be any of
+     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes}
+     * will be extracted and put in SAM files in {@link #outputDir} too.
+     */
+    public static void dispatchJobs(final String sampleId, final String outputDir,
+                                    final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
+                                    final Broadcast<ReferenceMultiSource> referenceMultiSourceBroadcast,
+                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                    final Logger localLogger) {
 
         new InsDelVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel).map(decoratedTig -> decoratedTig.contig),
-                        outputDir+"/"+ RawTypes.InsDel.name()+".vcf",
+                        outputDir +"/"+ RawTypes.InsDel.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
         new SimpleStrandSwitchVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch).map(decoratedTig -> decoratedTig.contig),
-                        outputDir+"/"+ RawTypes.IntraChrStrandSwitch.name()+".vcf",
+                        outputDir +"/"+ RawTypes.IntraChrStrandSwitch.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
 
         new SuspectedTransLocDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt).map(decoratedTig -> decoratedTig.contig),
-                        outputDir+"/"+ RawTypes.MappedInsertionBkpt.name()+".vcf",
+                        outputDir +"/"+ RawTypes.MappedInsertionBkpt.name()+".vcf",
                         referenceMultiSourceBroadcast, broadcastSequenceDictionary, localLogger, sampleId);
     }
 

@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.GappedAlignmentSpl
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -361,9 +362,9 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     static Set<String> getCanonicalChromosomes(final String nonCanonicalContigNamesFile, final SAMSequenceDictionary dictionary) {
         if (nonCanonicalContigNamesFile!= null) {
 
-            try (final Stream<String> nonCanonical = Files.lines(Paths.get(nonCanonicalContigNamesFile))) {
-                return Sets.difference(dictionary.getSequences().stream().map(SAMSequenceRecord::getSequenceName).collect(Collectors.toSet()),
-                        nonCanonical.collect(Collectors.toSet()));
+            try (final Stream<String> nonCanonical = Files.lines(IOUtils.getPath((nonCanonicalContigNamesFile)))) {
+                return new HashSet<>( Sets.difference(dictionary.getSequences().stream().map(SAMSequenceRecord::getSequenceName).collect(Collectors.toSet()),
+                        nonCanonical.collect(Collectors.toSet())) );
             } catch ( final IOException ioe ) {
                 throw new UserException("Can't read nonCanonicalContigNamesFile file "+nonCanonicalContigNamesFile, ioe);
             }
@@ -372,7 +373,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
             final Set<String> canonicalChromosomeNames = first22ChromosomesNum.stream().map(name -> "chr" + name).collect(Collectors.toSet());
             canonicalChromosomeNames.addAll(first22ChromosomesNum);
             canonicalChromosomeNames.addAll(Arrays.asList("chrX", "chrY", "chrM", "X", "Y", "MT"));
-            return canonicalChromosomeNames;
+            return new HashSet<>( canonicalChromosomeNames );
         }
     }
 }
