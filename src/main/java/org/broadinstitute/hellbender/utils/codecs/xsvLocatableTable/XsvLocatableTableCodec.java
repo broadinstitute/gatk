@@ -13,8 +13,8 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Codec class to read from XSV (e.g. csv, tsv, etc.) files.
@@ -66,6 +66,9 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
     /** The XSV Table Header */
     private List<String> header;
 
+    /** The name of the data source that is associated with this {@link XsvLocatableTableCodec}. */
+    private String dataSourceName;
+
     /** The current position in the file that is being read. */
     private long currentLine = 0;
 
@@ -81,16 +84,6 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
 
     @Override
     public boolean canDecode(final String path) {
-        // Check for a sibling config file with the same name, .config as extension
-        // Open that config file
-        // Validate config file
-        //     Expected keys present
-        //     Key values are valid
-        // Get delimiter
-        // Get columns for:
-        //      contig
-        //      start
-        //      end
 
         // Get the paths to our file and the config file:
         final Path inputFilePath = IOUtils.getPath(path);
@@ -135,7 +128,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
             }
         }
 
-        return new XsvTableFeature(contigColumn, startColumn, endColumn, header, split);
+        return new XsvTableFeature(contigColumn, startColumn, endColumn, header, split, dataSourceName);
     }
 
     @Override
@@ -148,8 +141,11 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
 
             // Ignore commented out lines:
             if ( !line.startsWith(COMMENT_DELIMITER) ) {
-                // The first non-commented line is the column header:
-                Collections.addAll(header, line.split(delimiter));
+
+                // The first non-commented line is the column header.
+                // Add the data source name to teh start of each header row,
+                // then add those rows to the header object.
+                header = Arrays.stream(line.split(delimiter)).map(x -> dataSourceName + x).collect(Collectors.toCollection(ArrayList::new));
 
                 return header;
             }
@@ -190,6 +186,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
      * @return The {@link Path} for the configuration file associated with {@code inputFilePath}.
      */
     private Path getConfigFilePath(final Path inputFilePath) {
+        // Check for a sibling config file with the same name, .config as extension
         final String configFilePath = IOUtils.replaceExtension( inputFilePath.toUri().toString(), CONFIG_FILE_EXTENSION );
         return inputFilePath.resolveSibling(configFilePath);
     }
@@ -199,6 +196,16 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
      * @param configFilePath {@link Path} to the configuration file from which to read in and setup metadata values.
      */
     private void readMetadataFromConfigFile(final Path configFilePath) {
+
+        // Validate config file
+        //     Expected keys present
+        //     Key values are valid
+        // Get delimiter
+        // Get columns for:
+        //      contig
+        //      start
+        //      end
+
         throw new UserException("UNIMPLEMENTED METHOD: XsvLocatableTableCodec::readMetadataFromConfigFile !");
     }
 

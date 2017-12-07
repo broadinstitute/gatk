@@ -32,6 +32,8 @@ public class XsvTableFeature implements Feature {
     private final int endColumn;
     /** The indices for location information in descending order (to be used to remove these columns). */
     private final List<Integer> locationColumnRemoveIndiciesInOrder;
+    /** Name of the source from which this feature was derived. */
+    private final String dataSourceName;
     /** The contig for this feature. */
     private final String contig;
     /** The genomic start position for this feature. */
@@ -53,13 +55,15 @@ public class XsvTableFeature implements Feature {
      * @param endColumn The column index from which to read the end position for this {@link XsvTableFeature}.
      * @param columnNames The names of the columns in this {@link XsvTableFeature}.  Must have same number of entries as {@code columnValues}.
      * @param columnValues The values for each of the columns in this {@link XsvTableFeature}.  Must have same number of entries as {@code columnNames}.
+     * @param dataSourceName The name of the source from which this {@link XsvTableFeature} was derived.
      */
     public XsvTableFeature(final int contigColumn, final int startColumn, final int endColumn,
-                           final List<String> columnNames, final List<String> columnValues) {
+                           final List<String> columnNames, final List<String> columnValues, final String dataSourceName) {
 
         this.contigColumn = contigColumn;
         this.startColumn = startColumn;
         this.endColumn = endColumn;
+        this.dataSourceName = dataSourceName;
 
         contig = columnValues.get(contigColumn);
         start = Integer.valueOf( columnValues.get(startColumn) );
@@ -74,7 +78,7 @@ public class XsvTableFeature implements Feature {
 
         // Create our list of indices to remove:
         locationColumnRemoveIndiciesInOrder = new ArrayList<>(Arrays.asList(contigColumn, startColumn, endColumn));
-        Collections.sort(locationColumnRemoveIndiciesInOrder, Collections.reverseOrder());
+        locationColumnRemoveIndiciesInOrder.sort(Collections.reverseOrder());
     }
 
     //==================================================================================================================
@@ -107,6 +111,10 @@ public class XsvTableFeature implements Feature {
         if ( endColumn != that.endColumn ) return false;
         if ( start != that.start ) return false;
         if ( end != that.end ) return false;
+        if ( locationColumnRemoveIndiciesInOrder != null ? !locationColumnRemoveIndiciesInOrder.equals(that.locationColumnRemoveIndiciesInOrder) : that.locationColumnRemoveIndiciesInOrder != null )
+            return false;
+        if ( dataSourceName != null ? !dataSourceName.equals(that.dataSourceName) : that.dataSourceName != null )
+            return false;
         if ( contig != null ? !contig.equals(that.contig) : that.contig != null ) return false;
         if ( columnNames != null ? !columnNames.equals(that.columnNames) : that.columnNames != null ) return false;
         return columnValues != null ? columnValues.equals(that.columnValues) : that.columnValues == null;
@@ -117,6 +125,8 @@ public class XsvTableFeature implements Feature {
         int result = contigColumn;
         result = 31 * result + startColumn;
         result = 31 * result + endColumn;
+        result = 31 * result + (locationColumnRemoveIndiciesInOrder != null ? locationColumnRemoveIndiciesInOrder.hashCode() : 0);
+        result = 31 * result + (dataSourceName != null ? dataSourceName.hashCode() : 0);
         result = 31 * result + (contig != null ? contig.hashCode() : 0);
         result = 31 * result + start;
         result = 31 * result + end;
@@ -131,6 +141,8 @@ public class XsvTableFeature implements Feature {
                 "contigColumn=" + contigColumn +
                 ", startColumn=" + startColumn +
                 ", endColumn=" + endColumn +
+                ", locationColumnRemoveIndiciesInOrder=" + locationColumnRemoveIndiciesInOrder +
+                ", dataSourceName='" + dataSourceName + '\'' +
                 ", contig='" + contig + '\'' +
                 ", start=" + start +
                 ", end=" + end +
@@ -144,6 +156,13 @@ public class XsvTableFeature implements Feature {
 
     //==================================================================================================================
     // Instance Methods:
+
+    /**
+     * @return The name of the data source from which this {@link XsvTableFeature} was derived.
+     */
+    public String getDataSourceName() {
+        return dataSourceName;
+    }
 
     /**
      * Get a value from this {@link XsvTableFeature}.

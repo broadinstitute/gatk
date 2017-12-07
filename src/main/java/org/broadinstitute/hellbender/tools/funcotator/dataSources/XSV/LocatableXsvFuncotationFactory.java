@@ -6,7 +6,9 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -36,7 +38,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
     @Override
     public String getName() {
-        return null;
+        return "LocatableXsv";
     }
 
     @Override
@@ -46,14 +48,24 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
     @Override
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
-        return null;
+        final List<Funcotation> outputFuncotations = new ArrayList<>();
+
+        if ( !featureList.isEmpty() ) {
+            for ( final Feature feature : featureList ) {
+                // Get the kind of feature we want here:
+                if ( XsvTableFeature.class.isAssignableFrom(feature.getClass()) ) {
+                    outputFuncotations.add( new XSVFuncotation((XsvTableFeature) feature) );
+                }
+            }
+        }
+
+        return outputFuncotations;
     }
 
     @Override
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
-        return null;
+        return createFuncotations(variant, referenceContext, featureList);
     }
-
 
     //==================================================================================================================
     // Static Methods:

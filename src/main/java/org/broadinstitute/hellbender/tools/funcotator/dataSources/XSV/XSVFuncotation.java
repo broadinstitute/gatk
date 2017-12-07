@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -39,6 +40,17 @@ public class XSVFuncotation extends Funcotation {
         fieldMap = new LinkedHashMap<>(fieldNames.size());
         for ( int i = 0; i < fieldNames.size() ; ++i ) {
             fieldMap.put(fieldNames.get(i), fieldValues.get(i));
+        }
+    }
+
+    public XSVFuncotation(final XsvTableFeature xsvTableFeature) {
+
+        final List<String> keys = xsvTableFeature.getHeaderWithoutLocationColuns();
+        final List<String> values = xsvTableFeature.getValuesWithoutLocationColumns();
+
+        fieldMap = new LinkedHashMap<>(keys.size());
+        for ( int i = 0; i < keys.size() ; ++i ) {
+            fieldMap.put(keys.get(i), values.get(i));
         }
     }
 
