@@ -27,13 +27,6 @@ Optional arguments:  \n \
 	exit 1
 fi
 
-# Make sure sudo or root was used.
-if [ "$(whoami)" != "root" ]; then
-	echo "You must have superuser privileges (through sudo or root user) to run this script"
-	exit 1
-fi
-
-
 # Output the parameters
 echo -e "\n"
 echo -e "docker hub repo, project, and tag: ${FULL_PATH}\n\n"
