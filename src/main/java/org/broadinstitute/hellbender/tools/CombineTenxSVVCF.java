@@ -4,7 +4,10 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -62,6 +65,7 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
 
         final Set<String> sampleNameSet = new IndexedSampleList(samples).asSetOfSamples();
         final VCFHeader vcfHeader = new VCFHeader(inputVCFHeader.getMetaDataInInputOrder(), new TreeSet<>(sampleNameSet));
+        vcfHeader.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
         writer.writeHeader(vcfHeader);
 
     }
@@ -124,6 +128,7 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
         for (VariantContext vc : cliques) {
             writer.add(vc);
         }
+        writer.close();
         return null;
     }
 
@@ -139,6 +144,12 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
 
     private VariantContext emitClique(final Set<VariantContext> maxClique) {
         System.err.println("emitting clique " + maxClique);
+        if (maxClique.size() == 1) {
+            return maxClique.iterator().next();
+        }
+
+
+
         final List<VariantContext> sortedByStart = maxClique.stream().sorted(Comparator.comparing(VariantContext::getStart)).collect(Collectors.toList());
         final VariantContext medianStart = sortedByStart.get(Math.round(sortedByStart.size() / 2));
         final List<VariantContext> sortedByBNDPos = maxClique.stream().sorted(Comparator.comparing(v -> parseBreakendAllele(v.getAlternateAllele(0).getDisplayString()).position)).collect(Collectors.toList());
@@ -152,11 +163,24 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
         alleles.add(Allele.create(newAltAlleleString));
         VariantContextBuilder builder = new VariantContextBuilder(medianStart)
                 .alleles(alleles);
+
+        int ac = 0;
+
         for (final VariantContext v : maxClique) {
-             gts.add(new GenotypeBuilder(v.getGenotype(0)).alleles(alleles).make());
-        }
+            Genotype oldGenotype = v.getGenotype(0);
+
+            Allele newAllele1 = alleles.get(v.getAlleles().indexOf(oldGenotype.getAllele(0)));
+            Allele newAllele2 = alleles.get(v.getAlleles().indexOf(oldGenotype.getAllele(1)));
+            gts.add(new GenotypeBuilder(oldGenotype)
+                    .alleles(Arrays.asList(newAllele1,
+                            newAllele2))
+                     .make());
+            if (newAllele1.isNonReference()) ac++;
+            if (newAllele2.isNonReference()) ac++;
+         }
 
         builder = builder.genotypes(gts);
+        builder = builder.attribute(VCFConstants.ALLELE_COUNT_KEY, ac);
         final VariantContext vc = builder.make();
         System.err.println("adding " + vc);
 
