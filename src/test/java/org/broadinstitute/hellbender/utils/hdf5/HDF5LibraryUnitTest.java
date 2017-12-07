@@ -9,7 +9,6 @@ import org.apache.commons.math3.random.RandomDataGenerator;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hdf5.HDF5Library;
-import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
@@ -28,6 +27,8 @@ import java.util.Arrays;
 public final class HDF5LibraryUnitTest {
     private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
     private static final File TEST_PON = new File(TEST_RESOURCE_DIR, "test_creation_of_panel.pon");
+
+    private static final double DOUBLE_MATRIX_TOLERANCE = 1E-8;
 
     @BeforeClass
     public void testIsSupported() {
@@ -236,7 +237,7 @@ public final class HDF5LibraryUnitTest {
         Assert.assertTrue(resultAsRealMatrix.getRowDimension() == numRows);
         Assert.assertTrue(resultAsRealMatrix.getColumnDimension() == numCols);
         final RealMatrix readMatrix = new Array2DRowRealMatrix(result);
-        PoNTestUtils.assertEqualsMatrix(readMatrix, bigCounts, false);
+        assertEqualsMatrix(readMatrix, bigCounts);
     }
 
     private RealMatrix createMatrixOfGaussianValues(int numRows, int numCols, final double mean, final double sigma) {
@@ -250,5 +251,22 @@ public final class HDF5LibraryUnitTest {
             }
         });
         return bigCounts;
+    }
+
+    /**
+     * Test whether two matrices are equal (within 1e-4)
+     * @param left never {@code null}
+     * @param right never {@code null}
+     */
+    private static void assertEqualsMatrix(final RealMatrix left, final RealMatrix right) {
+        Assert.assertEquals(left.getRowDimension(), right.getRowDimension());
+        Assert.assertEquals(left.getColumnDimension(), right.getColumnDimension());
+        for (int i = 0; i < left.getRowDimension(); i++) {
+            final double[] leftRow = left.getRow(i);
+            final double[] rightRow = right.getRow(i);
+            for (int j = 0; j < leftRow.length; j++) {
+                Assert.assertEquals(leftRow[j], rightRow[j], DOUBLE_MATRIX_TOLERANCE);
+            }
+        }
     }
 }

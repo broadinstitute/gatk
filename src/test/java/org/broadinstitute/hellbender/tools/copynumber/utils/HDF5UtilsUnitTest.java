@@ -5,7 +5,6 @@ import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.broadinstitute.hdf5.HDF5File;
-import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -17,7 +16,7 @@ import java.io.File;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class HDF5UtilsUnitTest {
-
+    private static final double DOUBLE_MATRIX_TOLERANCE = 1E-4;
     private static final int CHUNK_DIVISOR = 256;
 
     @DataProvider(name = "testCreateLargeMatrixData")
@@ -48,7 +47,7 @@ public final class HDF5UtilsUnitTest {
             final RealMatrix resultAsRealMatrix = new Array2DRowRealMatrix(result, false);
             Assert.assertTrue(resultAsRealMatrix.getRowDimension() == numRows);
             Assert.assertTrue(resultAsRealMatrix.getColumnDimension() == numColumns);
-            PoNTestUtils.assertEqualsMatrix(resultAsRealMatrix, largeMatrix, false);
+            assertEqualsMatrix(resultAsRealMatrix, largeMatrix, DOUBLE_MATRIX_TOLERANCE);
         }
     }
 
@@ -66,5 +65,22 @@ public final class HDF5UtilsUnitTest {
             }
         });
         return largeMatrix;
+    }
+
+    /**
+     * Test whether two matrices are equal
+     * @param left never {@code null}
+     * @param right never {@code null}
+     */
+    private static void assertEqualsMatrix(final RealMatrix left, final RealMatrix right, final double tolerance) {
+        Assert.assertEquals(left.getRowDimension(), right.getRowDimension());
+        Assert.assertEquals(left.getColumnDimension(), right.getColumnDimension());
+        for (int i = 0; i < left.getRowDimension(); i++) {
+            final double[] leftRow = left.getRow(i);
+            final double[] rightRow = right.getRow(i);
+            for (int j = 0; j < leftRow.length; j++) {
+                Assert.assertEquals(leftRow[j], rightRow[j], tolerance);
+            }
+        }
     }
 }
