@@ -2,11 +2,27 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.InsDelVariantDetector;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -14,12 +30,11 @@ import org.testng.annotations.Test;
 import scala.Tuple4;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.mockito.Mockito.when;
 
 
 public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
@@ -138,7 +153,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final VariantContext variantContext =
                 AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.leftJustifiedLeftRefLoc,
-                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, SvTypeInference.inferFromNovelAdjacency(breakpoints),
+                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, InsDelVariantDetector.inferTypeFromNovelAdjacency(breakpoints),
                         null, evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference),
                         SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.seqDict), null, sampleId);
 
@@ -261,5 +276,94 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                 Assert.assertEquals(e.getMessage(), expectedException.getMessage());
             }
         }
+    }
+
+
+    // -----------------------------------------------------------------------------------------------
+    // EvidenceTargetLink-based annotations
+    // -----------------------------------------------------------------------------------------------
+    private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
+
+    @DataProvider(name = "evidenceTargetLinksAndPreciseVariants")
+    public Object[][] getEvidenceTargetLinksAndPreciseVariants() {
+
+        final VariantContext unAnnotatedVC = new VariantContextBuilder()
+                .id("TESTID")
+                .chr("20").start(200).stop(300)
+                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
+                .attribute(VCFConstants.END_KEY, 300)
+                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.TYPES.DEL.toString())
+                .make();
+
+        final VariantContext annotatedVC = new VariantContextBuilder()
+                .id("TESTID")
+                .chr("20").start(200).stop(300)
+                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
+                .attribute(VCFConstants.END_KEY, 300)
+                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.TYPES.DEL.toString())
+                .attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, 7)
+                .attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, 5)
+                .make();
+
+        List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[] {
+                Arrays.asList(
+                        new EvidenceTargetLink(
+                                new StrandedInterval(new SVInterval(0, 190, 210), true),
+                                new StrandedInterval(new SVInterval(0, 310, 320), false),
+                                5, 7, new HashSet<>(), new HashSet<>())),
+                Arrays.asList( unAnnotatedVC ),
+                Arrays.asList( annotatedVC ) }
+        );
+        tests.add(new Object[] {
+                Arrays.asList(
+                        new EvidenceTargetLink(
+                                new StrandedInterval(new SVInterval(0, 190, 210), true),
+                                new StrandedInterval(new SVInterval(0, 310, 320), true),
+                                5, 7, new HashSet<>(), new HashSet<>())),
+                Arrays.asList( unAnnotatedVC ),
+                Arrays.asList( unAnnotatedVC ) }
+        );
+        tests.add(new Object[] {
+                Arrays.asList(
+                        new EvidenceTargetLink(
+                                new StrandedInterval(new SVInterval(0, 190, 210), true),
+                                new StrandedInterval(new SVInterval(0, 310, 320), false),
+                                3, 4, new HashSet<>(), new HashSet<>()),
+                        new EvidenceTargetLink(
+                                new StrandedInterval(new SVInterval(0, 192, 215), true),
+                                new StrandedInterval(new SVInterval(0, 299, 303), false),
+                                2, 3, new HashSet<>(), new HashSet<>())),
+                Arrays.asList( unAnnotatedVC ),
+                Arrays.asList( annotatedVC ) }
+        );
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "evidenceTargetLinksAndPreciseVariants", groups = "sv")
+    public void testProcessEvidenceTargetLinks(final List<EvidenceTargetLink> etls,
+                                               final List<VariantContext> inputVariants,
+                                               final List<VariantContext> expectedVariants) {
+
+        final Logger localLogger = LogManager.getLogger(AnnotatedVariantProducer.class);
+        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection params =
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
+
+        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(
+                twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+
+        ReadMetadata metadata = Mockito.mock(ReadMetadata.class);
+        when(metadata.getMaxMedianFragmentSize()).thenReturn(300);
+        when(metadata.getContigName(0)).thenReturn("20");
+
+        PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTree = new PairedStrandedIntervalTree<>();
+        etls.forEach(e -> evidenceTree.put(e.getPairedStrandedIntervals(), e));
+
+        final List<VariantContext> processedVariantContexts =
+                AnnotatedVariantProducer.annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(inputVariants,
+                        evidenceTree, metadata, referenceMultiSource, params, localLogger);
+
+        VariantContextTestUtils.assertEqualVariants(processedVariantContexts, expectedVariants);
     }
 }

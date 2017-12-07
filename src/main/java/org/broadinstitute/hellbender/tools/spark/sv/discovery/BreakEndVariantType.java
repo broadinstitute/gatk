@@ -6,6 +6,8 @@ import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
