@@ -11,6 +11,7 @@ import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -24,9 +25,8 @@ import java.util.Arrays;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HDF5LibraryUnitTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
-    private static final File TEST_PON = new File(TEST_RESOURCE_DIR, "test_creation_of_panel.pon");
+public final class HDF5LibraryUnitTest extends GATKBaseTest {
+    private static final File TEST_PON = new File(packageRootTestDir, "utils/hdf5/wes-no-gc.pon.hdf5");
 
     private static final double DOUBLE_MATRIX_TOLERANCE = 1E-8;
 
@@ -103,7 +103,6 @@ public final class HDF5LibraryUnitTest {
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", 1.1));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -120,7 +119,6 @@ public final class HDF5LibraryUnitTest {
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", Double.NaN));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -138,7 +136,6 @@ public final class HDF5LibraryUnitTest {
         file.makeGroup("test-group/double-group");
         final double[] testValues = new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 };
         Assert.assertTrue(file.makeDoubleArray("test-group/double-group/my-double", testValues));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -158,7 +155,6 @@ public final class HDF5LibraryUnitTest {
         final double[] testValues2 = new double[] { 11.1 , -22.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 1.0111e10-10 };
 
         Assert.assertTrue(file.makeDoubleArray("test-group/double-group/my-double", testValues1));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -182,7 +178,6 @@ public final class HDF5LibraryUnitTest {
                 new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 },
                 new double[] { -1.1, 2.2, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -0.01111e10-10 }};
         Assert.assertTrue(file.makeDoubleMatrix("test-group/double-group/my-double", testValues));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -202,7 +197,6 @@ public final class HDF5LibraryUnitTest {
         final String[] testValues = new String[] { "0", "1", "absdsd12 sdsad121 sdasadsad 1212sdasdas",
                 StringUtils.repeat("x", 2000) };
         Assert.assertTrue(file.makeStringArray("test-group/double-group/my-double", testValues));
-        System.err.println(testFile);
         file.close();
         FileUtils.copyFile(testFile, new File("/tmp/3.hd5"));
         final long time = System.currentTimeMillis();

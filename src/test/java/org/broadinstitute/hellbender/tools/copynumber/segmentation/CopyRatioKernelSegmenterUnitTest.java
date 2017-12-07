@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.segmentation;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
@@ -23,7 +24,7 @@ import java.util.stream.IntStream;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public class CopyRatioKernelSegmenterUnitTest {
+public class CopyRatioKernelSegmenterUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 1;   //reset seed before each simulated test case
 
     /**

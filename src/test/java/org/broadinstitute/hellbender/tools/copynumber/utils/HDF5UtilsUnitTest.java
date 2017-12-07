@@ -5,6 +5,7 @@ import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -15,7 +16,7 @@ import java.io.File;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class HDF5UtilsUnitTest {
+public final class HDF5UtilsUnitTest extends GATKBaseTest {
     private static final double DOUBLE_MATRIX_TOLERANCE = 1E-4;
     private static final int CHUNK_DIVISOR = 256;
 

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.segmentation;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AlleleFractionSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
@@ -10,7 +11,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.AlleleFrac
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenterUnitTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,7 +24,7 @@ import java.util.stream.IntStream;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AlleleFractionKernelSegmenterUnitTest extends BaseTest {
+public final class AlleleFractionKernelSegmenterUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 1;   //reset seed before each simulated test case
     
     /**

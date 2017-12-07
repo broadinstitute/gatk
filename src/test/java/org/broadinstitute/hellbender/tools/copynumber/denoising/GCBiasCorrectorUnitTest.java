@@ -5,8 +5,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -18,7 +18,7 @@ import java.util.stream.IntStream;
 /**
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class GCBiasCorrectorUnitTest extends BaseTest {
+public final class GCBiasCorrectorUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 13;
     private static final int MEAN_READ_DEPTH = 100;
     private static final double NON_GC_BIAS_NOISE_LEVEL = 0.01;

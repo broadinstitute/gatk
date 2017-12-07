@@ -3,10 +3,10 @@ package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public final class HDF5SimpleCountCollectionUnitTest extends BaseTest {
+public final class HDF5SimpleCountCollectionUnitTest extends GATKBaseTest {
     @Test
     public void basicTest() {
         final File outputFile = createTempFile("HDF5ReadCountCollection", ".hdf5");
