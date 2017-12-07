@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -10,11 +14,15 @@ import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
+import scala.Tuple2;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(summary = "Combine multiple 10x VCF files (normalized by NormalizeTenxVCFs",
         oneLineSummary = "Combine multiple 10x VCF files (normalized by NormalizeTenxVCFs",
@@ -27,39 +35,251 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
     private File outputFile;
 
     @Argument(fullName="breakpointMergeThreshold", shortName="breakpointMergeThreshold", doc = "Distance at which to merge coherent breakpoints")
-    protected int breakpointMergeThreshold = 500;
+    private int breakpointMergeThreshold = 500;
 
     LinkedList<VariantContext> currentBreakpoints = new LinkedList<>();
 
-    LinkedList<SVClique> currentCliques = new LinkedList<>();
-    Map<VariantContext, SVClique> cliqueAssignments = new HashMap<>();
-
     Map<String, String> idMappings = new HashMap<>();
+
+    private LinkedList<VariantContext> beforeForwardVariants = new LinkedList<>();
+    private LinkedList<VariantContext> beforeRevVariants = new LinkedList<>();
+    private LinkedList<VariantContext> afterForwardVariants = new LinkedList<>();
+    private LinkedList<VariantContext> afterRevVariants = new LinkedList<>();
+    private VariantContextWriter writer;
+
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
+    @Override
+    public void onTraversalStart() {
+        final SortedSet<String> samples = getSamplesForVariants();
+
+        final VCFHeader inputVCFHeader = new VCFHeader(getHeaderForVariants().getMetaDataInInputOrder(), samples);
+
+        writer = createVCFWriter(outputFile);
+
+        final Set<String> sampleNameSet = new IndexedSampleList(samples).asSetOfSamples();
+        final VCFHeader vcfHeader = new VCFHeader(inputVCFHeader.getMetaDataInInputOrder(), new TreeSet<>(sampleNameSet));
+        writer.writeHeader(vcfHeader);
+
+    }
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final String contig = variant.getContig();
-        final int loc = variant.getStart();
+        if (variant.getAlternateAlleles().size() != 1) {
+            throw new GATKException("Can't handle vc with more than one alt");
+        }
 
-        // if any cliques are out of scope, emit them by making an exemplar, reassigning the other variants to be genotypes of the exemplar,
-        // removing the variants from current breakpoints, clique assignments, and currentCliques
-        for (final Iterator<SVClique> iterator = currentCliques.iterator(); iterator.hasNext(); ) {
-            final SVClique currentClique = iterator.next();
-            if (currentClique.outOfScope(breakpointMergeThreshold, variant)) {
-                System.err.print("emitting clique: " + currentClique);
-            }
+        if (!variant.getAttribute("SVTYPE").equals("BND")) {
+            return;
         }
-        
-        // go back through the list. if variant matches previous
-        Iterator<SVClique> svCliqueIterator = currentCliques.descendingIterator();
-        while (svCliqueIterator.hasNext()) {
-            SVClique prevClique =  svCliqueIterator.next();
-            
-        }
+
+        System.err.println("processing variant " + variant);
+        final BreakendAdjacency bnd = parseBreakendAllele(variant.getAlternateAllele(0).getDisplayString());
+
+        processOutOfScopeVariantLists(variant);
+
+        final LinkedList<VariantContext> variantList = getVariantList(bnd);
+
+        variantList.addLast(variant);
 
         // if this vc does match a current
 
 
+    }
+
+    private void processOutOfScopeVariantLists(final VariantContext variant) {
+        System.err.println("collecting out of scope variants");
+        final List<VariantContext> cliques = new ArrayList<>();
+        if (!beforeForwardVariants.isEmpty() && outOfScope(breakpointMergeThreshold, beforeForwardVariants.getLast(), variant)) {
+            cliques.addAll(emitCliques(beforeForwardVariants, breakpointMergeThreshold));
+        }
+        if (!beforeRevVariants.isEmpty() && outOfScope(breakpointMergeThreshold, beforeRevVariants.getLast(), variant)) {
+            cliques.addAll(emitCliques(beforeRevVariants, breakpointMergeThreshold));
+        }
+        if (!afterForwardVariants.isEmpty() && outOfScope(breakpointMergeThreshold, afterForwardVariants.getLast(), variant)) {
+            cliques.addAll(emitCliques(afterForwardVariants, breakpointMergeThreshold));
+        }
+        if (!afterRevVariants.isEmpty() && outOfScope(breakpointMergeThreshold, afterRevVariants.getLast(), variant)) {
+            cliques.addAll(emitCliques(afterRevVariants, breakpointMergeThreshold));
+        }
+        System.err.println("variants to emit: " + cliques.size());
+        cliques.sort(IntervalUtils.getDictionaryOrderComparator(getReferenceDictionary()));
+        cliques.forEach(System.err::println);
+        for (VariantContext vc : cliques) {
+            writer.add(vc);
+        }
+    }
+
+    @Override
+    public Object onTraversalSuccess() {
+        final List<VariantContext> cliques = new ArrayList<>();
+        cliques.addAll(emitCliques(beforeForwardVariants, breakpointMergeThreshold));
+        cliques.addAll(emitCliques(beforeRevVariants, breakpointMergeThreshold));
+        cliques.addAll(emitCliques(afterForwardVariants, breakpointMergeThreshold));
+        cliques.addAll(emitCliques(afterRevVariants, breakpointMergeThreshold));
+        cliques.sort(IntervalUtils.getDictionaryOrderComparator(getReferenceDictionary()));
+        for (VariantContext vc : cliques) {
+            writer.add(vc);
+        }
+        return null;
+    }
+
+    private List<VariantContext> emitCliques(final LinkedList<VariantContext> variantList, final int breakpointMergeThreshold) {
+        final List<VariantContext> cliques = new ArrayList<>();
+        while (! variantList.isEmpty()) {
+            Set<VariantContext> maxClique = getMaxClique(variantList, breakpointMergeThreshold, getReferenceDictionary());
+            cliques.add(emitClique(maxClique));
+            variantList.removeAll(maxClique);
+        }
+        return cliques;
+    }
+
+    private VariantContext emitClique(final Set<VariantContext> maxClique) {
+        System.err.println("emitting clique " + maxClique);
+        final List<VariantContext> sortedByStart = maxClique.stream().sorted(Comparator.comparing(VariantContext::getStart)).collect(Collectors.toList());
+        final VariantContext medianStart = sortedByStart.get(Math.round(sortedByStart.size() / 2));
+        final List<VariantContext> sortedByBNDPos = maxClique.stream().sorted(Comparator.comparing(v -> parseBreakendAllele(v.getAlternateAllele(0).getDisplayString()).position)).collect(Collectors.toList());
+        final VariantContext medianBndPos = sortedByBNDPos.get(Math.round(sortedByBNDPos.size() / 2));
+        final BreakendAdjacency bnd = parseBreakendAllele(medianBndPos.getAlternateAllele(0).getDisplayString());
+        final String newAltAlleleString = new BreakendAdjacency(medianStart.getReference().getBaseString(), bnd.contig, bnd.position, bnd.before, bnd.revComp).toBNDString();
+        final List<Genotype> gts = new ArrayList<>(maxClique.size());
+
+        final List<Allele> alleles = new ArrayList<>(2);
+        alleles.add(medianStart.getReference());
+        alleles.add(Allele.create(newAltAlleleString));
+        VariantContextBuilder builder = new VariantContextBuilder(medianStart)
+                .alleles(alleles);
+        for (final VariantContext v : maxClique) {
+             gts.add(new GenotypeBuilder(v.getGenotype(0)).alleles(alleles).make());
+        }
+
+        builder = builder.genotypes(gts);
+        final VariantContext vc = builder.make();
+        System.err.println("adding " + vc);
+
+        return vc;
+    }
+
+    static Set<VariantContext> getMaxClique(final LinkedList<VariantContext> variantList, final int breakpointMergeThreshold, final SAMSequenceDictionary referenceDictionary) {
+
+        // rectangle graph sweep algorithm as described in http://www.cs.technion.ac.il/~minati/inplace-clique-DAM.pdf
+        // imagine the variants are rectangles defined by the uncertainty intervals at the breakends on the x and y axes
+//        final SVIntervalTree<VariantContext> xIntervals = new SVIntervalTree<>();
+//        for (final VariantContext variantContext : variantList) {
+//            xIntervals.put(getXInterval(variantContext, getReferenceDictionary()), variantContext);
+//        }
+        final Comparator<Locatable> dictionaryOrderComparator = IntervalUtils.getDictionaryOrderComparator(referenceDictionary);
+        final SortedMap<Tuple2<Boolean, SimpleInterval>,List<VariantContext>> yBoundaries =
+                new TreeMap<>(Comparator.comparing(Tuple2::_2, Collections.reverseOrder(dictionaryOrderComparator)));
+
+        variantList.forEach(v -> {
+            final Tuple2<Tuple2<Boolean, SimpleInterval>, Tuple2<Boolean, SimpleInterval>> variantYBoundaries = getYBoundaries(v, breakpointMergeThreshold);
+            addToBoundaryMap(yBoundaries, v, variantYBoundaries._1);
+            addToBoundaryMap(yBoundaries, v, variantYBoundaries._2);
+        });
+
+        final Set<VariantContext> maxClique = getMaxClique(dictionaryOrderComparator, yBoundaries, breakpointMergeThreshold);
+        return maxClique;
+    }
+
+    private static void addToBoundaryMap(final SortedMap<Tuple2<Boolean, SimpleInterval>, List<VariantContext>> map, final VariantContext v, final Tuple2<Boolean, SimpleInterval> key) {
+        if (! map.containsKey(key)) {
+            map.put(key, new ArrayList<>());
+        }
+        map.get(key).add(v);
+    }
+
+    private static Set<VariantContext> getMaxClique(final Comparator<Locatable> dictionaryOrderComparator,
+                                                    final SortedMap<Tuple2<Boolean, SimpleInterval>, List<VariantContext>> yBoundaries,
+                                                    final int breakpointMergeThreshold) {
+        Set<VariantContext> maxClique = Collections.emptySet();
+        final Set<VariantContext> activeVariants = new HashSet<>();
+
+        for (final Map.Entry<Tuple2<Boolean, SimpleInterval>, List<VariantContext>> next : yBoundaries.entrySet()) {
+            // boundary is top
+            if (!next.getKey()._1) {
+                activeVariants.addAll(next.getValue());
+            } else {
+                for (final VariantContext ending : next.getValue()) {
+                    final SimpleInterval xInterval = getXInterval(ending, breakpointMergeThreshold);
+                    TreeMap<Tuple2<Boolean, SimpleInterval>, List<VariantContext>> overlappingXIntervalEndpoints =
+                            new TreeMap<>(Comparator.comparing(Tuple2::_2, dictionaryOrderComparator));
+                    for (final VariantContext active : activeVariants) {
+                        if (active == ending) continue;
+                        final SimpleInterval activeX = getXInterval(active, breakpointMergeThreshold);
+                        if (activeX.overlaps(xInterval)) {
+                            final int start = Math.max(xInterval.getStart(), activeX.getStart());
+                            final int end = Math.min(xInterval.getEnd(), activeX.getEnd());
+                            final SimpleInterval newStart =
+                                    new SimpleInterval(activeX.getContig(), start, start);
+                            final SimpleInterval newEnd =
+                                    new SimpleInterval(activeX.getContig(), end, end);
+                            final Tuple2<Boolean, SimpleInterval> startKey = new Tuple2<>(true, newStart);
+                            final Tuple2<Boolean, SimpleInterval> endKey = new Tuple2<>(false, newEnd);
+                            addToBoundaryMap(overlappingXIntervalEndpoints, active, startKey);
+                            addToBoundaryMap(overlappingXIntervalEndpoints, active, endKey);
+                        }
+                    }
+                    final Set<VariantContext> currentClique = new HashSet<>();
+                    currentClique.add(ending);
+                    if (currentClique.size() > maxClique.size()) {
+                        maxClique = new HashSet<>(currentClique);
+                    }
+                    for (final Map.Entry<Tuple2<Boolean, SimpleInterval>, List<VariantContext>> xBoundaries : overlappingXIntervalEndpoints.entrySet()) {
+                        if (xBoundaries.getKey()._1) {
+                            // adding to the clique
+                            currentClique.addAll(xBoundaries.getValue());
+                            if (currentClique.size() > maxClique.size()) {
+                                maxClique = new HashSet<>(currentClique);
+                            }
+                        } else {
+                            currentClique.removeAll(xBoundaries.getValue());
+                        }
+                    }
+                    activeVariants.remove(ending);
+                }
+            }
+        }
+        return maxClique;
+    }
+
+    private static SimpleInterval getXInterval(final VariantContext variantContext, final int breakpointMergeThreshold) {
+        return new SimpleInterval(variantContext.getContig(),
+                Math.max(1, variantContext.getStart() - breakpointMergeThreshold),
+                variantContext.getStart() + breakpointMergeThreshold);
+    }
+
+    private static Tuple2<Tuple2<Boolean, SimpleInterval>, Tuple2<Boolean, SimpleInterval>> getYBoundaries(final VariantContext variantContext, final int breakpointMergeThreshold) {
+        final BreakendAdjacency breakendAdjacency = parseBreakendAllele(variantContext.getAlternateAllele(0).getDisplayString());
+        final SimpleInterval yStart = new SimpleInterval(breakendAdjacency.contig,
+                Math.max(1,breakendAdjacency.position - breakpointMergeThreshold),
+                Math.max(1,breakendAdjacency.position - breakpointMergeThreshold));
+        final SimpleInterval yEnd = new SimpleInterval(breakendAdjacency.contig, breakendAdjacency.position + breakpointMergeThreshold, breakendAdjacency.position + breakpointMergeThreshold);
+
+        return new Tuple2<>(new Tuple2<>(true, yStart), new Tuple2<>(false, yEnd));
+    }
+
+    private boolean outOfScope(final int breakpointMergeThreshold, final VariantContext last, final VariantContext variant) {
+        return !last.getContig().equals(variant.getContig()) || Math.abs(last.getStart() - variant.getStart()) > 2 * breakpointMergeThreshold;
+    }
+
+    private LinkedList<VariantContext> getVariantList(final BreakendAdjacency bnd) {
+        if (bnd.before) {
+            if (bnd.revComp) {
+                return beforeRevVariants;
+            } else {
+                return beforeForwardVariants;
+            }
+        } else {
+            if (bnd.revComp) {
+                return afterRevVariants;
+            } else {
+                return afterForwardVariants;
+            }
+        }
     }
 
     static boolean concordant(final int breakpointMergeThreshold, final VariantContext vc1, final VariantContext vc2) {
@@ -135,33 +355,36 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
             this.before = before;
             this.revComp = revComp;
         }
-    }
 
-    static class SVClique {
-
-        final Set<VariantContext> members = new HashSet<>();
-        VariantContext max= null;
-
-        public void add(VariantContext vc) {
-            if (max == null || vc.getStart() > max.getStart()) {
-                max = vc;
-            }
-            members.add(vc);
-        }
-
-        public boolean outOfScope(final int breakpointMergeThreshold, final VariantContext other) {
-            return ! concordant(breakpointMergeThreshold, other, max);
-        }
-        
-        public SVClique shiftToInclude(final VariantContext other, final int breakpointMergeThreshold) {
-            final SVClique newClique = new SVClique();
-            for (final VariantContext member : members) {
-                if (concordant(breakpointMergeThreshold, member, other)) {
-                    newClique.add(member);
+        public String toBNDString() {
+            if (before) {
+                final String bracket;
+                if (revComp) {
+                    bracket = "[";
+                } else {
+                    bracket = "]";
                 }
+                return bracket +
+                        contig +
+                        ":" +
+                        position +
+                        bracket +
+                        localBases;
+            } else {
+                final String bracket;
+                if (revComp) {
+                    bracket = "]";
+                } else {
+                    bracket = "[";
+                }
+                return localBases +
+                        bracket +
+                        contig +
+                        ":" +
+                        position +
+                        bracket;
             }
-            newClique.add(other);
-            return newClique;
         }
     }
+
 }
