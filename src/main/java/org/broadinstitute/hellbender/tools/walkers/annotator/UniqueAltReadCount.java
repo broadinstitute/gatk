@@ -11,31 +11,27 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import picard.sam.markduplicates.MarkDuplicates;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * This annotation counts, at each variant locus, the number of ALT reads with unique start positions and fragment lengths.
- * i.e. multiple reads with the same start position and fragment length are grouped and counted only once as they are
- * likely duplicates. We have seen that the majority of false positives in low allele fraction, cell-free DNA samples
- * have the profile where the evidence for alternate allele comes solely from one, two, or three sets of apparent PCR-duplicates.
- * Reads in such a set have the same read-start and mate-end position i.e. they come from the same original insert.
- * Normally, they are marked as duplicates by MarkDuplicatesGATK. But when we use unique molecular identifiers (UMIs),
- * these apparent PCR-duplicate reads may get different UMIs, and hence to Mutect these reads appear as
- * independent evidence for ALT allele.
+ * Finds a lower bound on the number of unique reads at a locus that support a non-reference allele.
  *
- * Although these reads have different UMIs, we suspect that they really are PCR-duplicates, for two reasons:
- * 1) these sites are false positives, and
- * 2) with hybrid selection, it's highly unlikely that we sequence multiple fragments with identical start and end positions.
+ * <p>Multiple reads with the same start position and fragment length are grouped and counted only once as they are
+ * likely duplicates.  In most cases such reads should be filtered using a tool such as {@link MarkDuplicates}.  This annotation
+ * is designed for use with unique molecular identifiers (UMIs), in which case reads with the same start and fragment length but different
+ * UMIs would appear to be independent.  This is not a default annotation of any GATK tool but can be enabled on the command line
+ * with --annotation UniqueAltReadCount.</p>
  *
- * We now believe that these duplicates are the result of a false-priming event that occurs during PCR amplification.
- * We suspect that during amplification excess adapter remains after the ligation step and fails to be completely
+ * <p>Although these reads have different UMIs, sometimes they really are PCR duplicates.
+ * We now believe that these duplicates are the result of a false-priming event that occurs during PCR amplification
+ * in which excess adapter remains after the ligation step and fails to be completely
  * cleaned up during SPRI. This excess adapter is thought to act as a PCR primer during amplification, which leads to
- * the synthesis of a molecule with the wrong UMI.
+ * the synthesis of a molecule with the wrong UMI.</p>
  *
- * We filter the variant if the count is lower than a user-specified threshold.
- * Mutect2FilteringEngine::applyDuplicatedAltReadFilter is the accompanying filter.
+ * <p>This annotation does not require or use any BAM file duplicate flags or UMI information, just the read alignments.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of non-duplicate-insert ALT reads (UNIQ_ALT_READ_COUNT)")
 public class UniqueAltReadCount extends GenotypeAnnotation {

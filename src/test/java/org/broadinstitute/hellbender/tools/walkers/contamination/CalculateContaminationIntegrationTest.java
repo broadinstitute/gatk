@@ -128,7 +128,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
 
         final String[] args = {
                 "-I", contaminated.getAbsolutePath(),
-                "-matched", normal.getAbsolutePath(),
+                "-" + CalculateContamination.MATCHED_NORMAL_SHORT_NAME, normal.getAbsolutePath(),
                 "-O", contaminationTable.getAbsolutePath(),
         };
         runCommandLine(args);

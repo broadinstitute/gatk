@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.OptionalInt;
 
 /**
- * Median base quality of bases supporting each allele.
+ * Median base quality of bases supporting each alt allele.
  *
- * Created by David Benjamin on 3/20/17.
+ * <p>The output is an array containing, for each alt allele, the median base quality at the variant (for SNVs) and one base before the variant (for indels) over all reads that best match that allele.</p>
+ *
+ * <p>For example, for variant context with ref allele A and alt allele C we use base qualities at the C.  For variant context with ref allele AG and alt allele A (deletion),
+ * we use base qualities at the A.  For variant context with ref allele A and alt allele AG (insertion) we use base qualities at the A.</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median base quality of bases supporting each allele (MBQ)")
 public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAnnotation {
