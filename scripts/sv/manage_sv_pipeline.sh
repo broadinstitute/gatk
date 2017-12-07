@@ -176,10 +176,16 @@ export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/st
 
 echo
 
-# set cluster name based on user and target bam file
+# set cluster name based on user and target bam file and branch name
 # (NOTE: can override by defining SV_CLUSTER_NAME)
 SANITIZED_BAM=$(basename "${GCS_BAM}" | awk '{print tolower($0)}' | sed 's/[^a-z0-9]/-/g')
-CLUSTER_NAME=${SV_CLUSTER_NAME:-"${GCS_USER}-${SANITIZED_BAM}"}
+GATK_GIT_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | awk 'BEGIN {FS="-g"} {print $2}' | cut -d- -f 1)
+GIT_BRANCH=$(git -C ${GATK_DIR} branch --contains ${GATK_GIT_HASH} | rev | cut -d" " -f 1 | rev)
+SANITIZED_GIT_BRANCH="master"
+if [[ "$GIT_BRANCH" != "master" ]]; then
+    SANITIZED_GIT_BRANCH="feature"
+fi
+CLUSTER_NAME=${SV_CLUSTER_NAME:-"${GCS_USER}-${SANITIZED_BAM}-${SANITIZED_GIT_BRANCH}"}
 echo "Using cluster name \"${CLUSTER_NAME}\""
 
 # update gcloud
@@ -211,7 +217,6 @@ echo
 if [[ ! -f ${GATK_DIR}/build/libs/gatk-spark.jar ]]; then
     echo "Cannot find GATK spark jar, maybe you forgot to build? Given GATK dir.: ${GATK_DIR}"
 fi
-GATK_GIT_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | awk 'BEGIN {FS="-g"} {print $2}' | cut -d- -f 1)
 CURRENT_GIT_HASH=$(git -C ${GATK_DIR} rev-parse --short HEAD | cut -c1-7)
 if [ "${QUIET}" != "Y" ] && [ "${GATK_GIT_HASH}" != "${CURRENT_GIT_HASH}" ]; then
     while true; do
@@ -226,7 +231,6 @@ if [ "${QUIET}" != "Y" ] && [ "${GATK_GIT_HASH}" != "${CURRENT_GIT_HASH}" ]; the
         esac
     done
 fi
-GIT_BRANCH=$(git -C ${GATK_DIR} branch --contains ${GATK_GIT_HASH} | rev | cut -d" " -f 1 | rev)
 # set output directory to datetime-git branch-git hash stamped folder
 OUTPUT_DIR="/results/$(date "+%Y-%m-%d_%H.%M.%S")-${GIT_BRANCH}-${GATK_GIT_HASH}"
 
