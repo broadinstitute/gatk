@@ -1190,7 +1190,7 @@ public final class Utils {
      * @param expectedNumTokens The number of tokens expected (used to initialize the capacity of the {@link ArrayList}).
      * @return A {@link List} of {@link String} tokens.
      */
-    public static List<String> split(final String str, final String delimiter, final int expectedNumTokens) {
+    private static List<String> split(final String str, final String delimiter, final int expectedNumTokens) {
         final List<String> result;
 
         if ( str.isEmpty() ) {

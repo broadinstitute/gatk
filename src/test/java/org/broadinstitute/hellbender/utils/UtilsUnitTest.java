@@ -762,62 +762,63 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         final List<Object[]> testCases = new ArrayList<>();
         testCases.addAll(
-                Arrays.asList(
-                    new Object[] { "", "",   Arrays.asList( "".split(""  ) ) },
-                    new Object[] { "", "1",  Arrays.asList( "".split("1" ) ) },
-                    new Object[] { ":", ":",   Arrays.asList( ":".split(":"  ) ) },
-                    new Object[] { stringData, "",    Arrays.asList( stringData.split(""   ) ) },
-                    new Object[] { stringData, "1",   Arrays.asList( stringData.split("1"  ) ) },
-                    new Object[] { stringData, "a",   Arrays.asList( stringData.split("a"  ) ) },
-                    new Object[] { stringData, "b",   Arrays.asList( stringData.split("b"  ) ) },
-                    new Object[] { stringData, "c",   Arrays.asList( stringData.split("c"  ) ) },
-                    new Object[] { stringData, "d",   Arrays.asList( stringData.split("d"  ) ) },
-                    new Object[] { stringData, "e",   Arrays.asList( stringData.split("e"  ) ) },
-                    new Object[] { stringData, "f",   Arrays.asList( stringData.split("f"  ) ) },
-                    new Object[] { stringData, "g",   Arrays.asList( stringData.split("g"  ) ) },
-                    new Object[] { stringData, "h",   Arrays.asList( stringData.split("h"  ) ) },
-                    new Object[] { stringData, "i",   Arrays.asList( stringData.split("i"  ) ) },
-                    new Object[] { stringData, "j",   Arrays.asList( stringData.split("j"  ) ) },
-                    new Object[] { stringData, "k",   Arrays.asList( stringData.split("k"  ) ) },
-                    new Object[] { stringData, "l",   Arrays.asList( stringData.split("l"  ) ) },
-                    new Object[] { stringData, "m",   Arrays.asList( stringData.split("m"  ) ) },
-                    new Object[] { stringData, "n",   Arrays.asList( stringData.split("n"  ) ) },
-                    new Object[] { stringData, "o",   Arrays.asList( stringData.split("o"  ) ) },
-                    new Object[] { stringData, "p",   Arrays.asList( stringData.split("p"  ) ) },
-                    new Object[] { stringData, "q",   Arrays.asList( stringData.split("q"  ) ) },
-                    new Object[] { stringData, "r",   Arrays.asList( stringData.split("r"  ) ) },
-                    new Object[] { stringData, "s",   Arrays.asList( stringData.split("s"  ) ) },
-                    new Object[] { stringData, "t",   Arrays.asList( stringData.split("t"  ) ) },
-                    new Object[] { stringData, "u",   Arrays.asList( stringData.split("u"  ) ) },
-                    new Object[] { stringData, "v",   Arrays.asList( stringData.split("v"  ) ) },
-                    new Object[] { stringData, "w",   Arrays.asList( stringData.split("w"  ) ) },
-                    new Object[] { stringData, "x",   Arrays.asList( stringData.split("x"  ) ) },
-                    new Object[] { stringData, "y",   Arrays.asList( stringData.split("y"  ) ) },
-                    new Object[] { stringData, "z",   Arrays.asList( stringData.split("z"  ) ) },
-                    new Object[] { stringData, " ",   Arrays.asList( stringData.split(" "  ) ) },
-                    new Object[] { stringData, "T",   Arrays.asList( stringData.split("T"  ) ) },
-                    new Object[] { stringData, "9",   Arrays.asList( stringData.split("9") ) },
-                    new Object[] { allDelimiterTestString,    ":",   Arrays.asList( allDelimiterTestString.split(":") ) },
-                    new Object[] { frontDelimiterTestString,  ":",   Arrays.asList( frontDelimiterTestString.split(":") ) },
-                    new Object[] { middleDelimiterTestString, ":",   Arrays.asList( middleDelimiterTestString.split(":") ) },
-                    new Object[] { backDelimiterTestString ,  ":",   Arrays.asList( backDelimiterTestString.split(":") ) },
-                    new Object[] { fullDelimiterTestString ,  ":",   Arrays.asList( fullDelimiterTestString.split(":") ) },
-                    new Object[] { allDelimiterTestString.replace(":", "TS"),    "TS",   Arrays.asList( allDelimiterTestString.replace(":", "TS").split("TS") ) },
-                    new Object[] { frontDelimiterTestString.replace(":", "TS"),  "TS",   Arrays.asList( frontDelimiterTestString.replace(":", "TS").split("TS") ) },
-                    new Object[] { middleDelimiterTestString.replace(":", "TS"), "TS",   Arrays.asList( middleDelimiterTestString.replace(":", "TS").split("TS") ) },
-                    new Object[] { backDelimiterTestString.replace(":", "TS") ,  "TS",   Arrays.asList( backDelimiterTestString.replace(":", "TS").split("TS") ) },
-                    new Object[] { fullDelimiterTestString.replace(":", "TS") ,  "TS",   Arrays.asList( fullDelimiterTestString.replace(":", "TS").split("TS") ) }
-                )
+            Arrays.asList(
+                new Object[] { "", "" },
+                new Object[] { ":", "" },
+                new Object[] { "SOME MORE TESTS", "" },
+                new Object[] { ":", ":" },
+                new Object[] { stringData, ""  },
+                new Object[] { stringData, "1" },
+                new Object[] { stringData, "a" },
+                new Object[] { stringData, "b" },
+                new Object[] { stringData, "c" },
+                new Object[] { stringData, "d" },
+                new Object[] { stringData, "e" },
+                new Object[] { stringData, "f" },
+                new Object[] { stringData, "g" },
+                new Object[] { stringData, "h" },
+                new Object[] { stringData, "i" },
+                new Object[] { stringData, "j" },
+                new Object[] { stringData, "k" },
+                new Object[] { stringData, "l" },
+                new Object[] { stringData, "m" },
+                new Object[] { stringData, "n" },
+                new Object[] { stringData, "o" },
+                new Object[] { stringData, "p" },
+                new Object[] { stringData, "q" },
+                new Object[] { stringData, "r" },
+                new Object[] { stringData, "s" },
+                new Object[] { stringData, "t" },
+                new Object[] { stringData, "u" },
+                new Object[] { stringData, "v" },
+                new Object[] { stringData, "w" },
+                new Object[] { stringData, "x" },
+                new Object[] { stringData, "y" },
+                new Object[] { stringData, "z" },
+                new Object[] { stringData, " " },
+                new Object[] { stringData, "T" },
+                new Object[] { stringData, "9" },
+                new Object[] { allDelimiterTestString,    ":" },
+                new Object[] { frontDelimiterTestString,  ":" },
+                new Object[] { middleDelimiterTestString, ":" },
+                new Object[] { backDelimiterTestString ,  ":" },
+                new Object[] { fullDelimiterTestString ,  ":" },
+                new Object[] { allDelimiterTestString.replace(":", "TS"),    "TS" },
+                new Object[] { frontDelimiterTestString.replace(":", "TS"),  "TS" },
+                new Object[] { middleDelimiterTestString.replace(":", "TS"), "TS" },
+                new Object[] { backDelimiterTestString.replace(":", "TS") ,  "TS" },
+                new Object[] { fullDelimiterTestString.replace(":", "TS") ,  "TS" }
+            )
         );
 
         // Create test cases for words:
         for ( final String delim : wordsToSplitOn ) {
-            testCases.add( new Object[] { stringData, delim, Arrays.asList( stringData.split(delim) ) } );
+            testCases.add( new Object[] { stringData, delim } );
         }
 
         // Create test cases for repeated substrings:
         for ( final String delim : repeatedSubstringsToSplitOn ) {
-            testCases.add( new Object[] { stringData, delim, Arrays.asList( stringData.split(delim) ) } );
+            testCases.add( new Object[] { stringData, delim } );
         }
 
         return testCases.iterator();
@@ -836,7 +837,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // Create multi-character delimiter strings:
         final String multiCharDelimiter = "oz";
-        // Must include the individual characters of the multi-char delimiter here:
+
+        // Must include the individual characters of the multi-char delimiter here
+        // so we can pass them into Utils.makePermutations to create the permutations of strings to split.
         final List<String> multiCharTestStrings = Arrays.asList("X", "o", "z", multiCharDelimiter);
         final List<List<String>> exhaustiveListsForMultiChar = Utils.makePermutations( multiCharTestStrings, maxStringLength, true );
 
@@ -844,40 +847,36 @@ public final class UtilsUnitTest extends GATKBaseTest {
 
         // Add single-char cases:
         for ( final List<String> testCase : exhaustiveListsForSingleChar ) {
-            testCases.add( new Object[] { String.join( "", testCase ), singleCharDelimiter, Arrays.asList( String.join( "", testCase ).split(singleCharDelimiter)) } );
+            testCases.add( new Object[] { String.join( "", testCase ), singleCharDelimiter } );
         }
 
         // Add multi-char cases:
         for ( final List<String> testCase : exhaustiveListsForMultiChar ) {
-            testCases.add( new Object[] { String.join( "", testCase ), multiCharDelimiter, Arrays.asList( String.join( "", testCase ).split(multiCharDelimiter)) } );
+            testCases.add( new Object[] { String.join( "", testCase ), multiCharDelimiter } );
         }
 
         return testCases.iterator();
     }
 
     private void exhaustiveStringSplitHelper(final String str,
-                                             final String delimiter,
-                                             final List<String> expected) {
+                                             final String delimiter) {
         List<String> splitStrings;
         if ( delimiter.length() == 1 ) {
             splitStrings = Utils.split( str, delimiter.charAt(0) );
-            Assert.assertEquals( splitStrings, expected );
+            Assert.assertEquals( splitStrings, Arrays.asList(str.split(delimiter)) );
         }
 
         splitStrings = Utils.split(str, delimiter);
-        Assert.assertEquals( splitStrings, expected );
-
-        splitStrings = Utils.split(str, delimiter, expected.size());
-        Assert.assertEquals( splitStrings, expected );
+        Assert.assertEquals( splitStrings, Arrays.asList(str.split(delimiter)) );
     }
 
     @Test(dataProvider = "provideDataForTestUtilsSplitString")
-    public void testUtilsSplitString( final String str, final String delimiter, final List<String> expected ) {
-        exhaustiveStringSplitHelper(str, delimiter, expected);
+    public void testUtilsSplitString( final String str, final String delimiter ) {
+        exhaustiveStringSplitHelper(str, delimiter);
     }
 
     @Test(dataProvider = "provideDataForTestUtilsSplitStringExhaustively")
-    public void testUtilsSplitStringExhaustively( final String str, final String delimiter, final List<String> expected ) {
-        exhaustiveStringSplitHelper(str, delimiter, expected);
+    public void testUtilsSplitStringExhaustively( final String str, final String delimiter ) {
+        exhaustiveStringSplitHelper(str, delimiter);
     }
 }
