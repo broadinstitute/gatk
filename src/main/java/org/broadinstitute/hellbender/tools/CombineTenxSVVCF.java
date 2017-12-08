@@ -144,11 +144,6 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
 
     private VariantContext emitClique(final Set<VariantContext> maxClique) {
         System.err.println("emitting clique " + maxClique);
-        if (maxClique.size() == 1) {
-            return maxClique.iterator().next();
-        }
-
-
 
         final List<VariantContext> sortedByStart = maxClique.stream().sorted(Comparator.comparing(VariantContext::getStart)).collect(Collectors.toList());
         final VariantContext medianStart = sortedByStart.get(Math.round(sortedByStart.size() / 2));
