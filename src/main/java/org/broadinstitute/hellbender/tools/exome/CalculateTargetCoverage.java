@@ -52,7 +52,7 @@ import java.util.stream.IntStream;
  *   --groupBy SAMPLE \
  *   --transform PCOV \
  *   --targetInformationColumns FULL \
- *   --disableReadFilter NotDuplicateReadFilter \
+ *   --disable-read-filter NotDuplicateReadFilter \
  *   --output sample.coverage.tsv
  * </pre>
  *

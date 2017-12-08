@@ -26,7 +26,7 @@ import java.util.List;
  * to be a single interval (whole genome sequencing). </p>
  *
  * <p>Using the -P flag, the user can specify the amount of padding (in bp) added to each side of the intervals.
- * This padding is in addition to the padding added by the -ip (or --interval_padding) argument of
+ * This padding is in addition to the padding added by the -ip (or --interval-padding) argument of
  * IntervalArgumentCollection. However, we encourage using only the -P flag.
  *
  * <p>The user can also specify the length of the bins (in bp) using the -BL option. If this is not commensurate with

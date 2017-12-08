@@ -20,8 +20,9 @@ import java.util.Set;
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with matching platform unit attribute")
 public final class PlatformUnitReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
+    public static final String BLACK_LISTED_LANES_LONG_NAME = "black-listed-lanes";
 
-    @Argument(fullName = "blackListedLanes",
+    @Argument(fullName = BLACK_LISTED_LANES_LONG_NAME,
             shortName = "blackListedLanes", doc="Platform unit (PU) to filter out",
             optional=false)
     public Set<String> blackListedLanes = new LinkedHashSet<>();

@@ -19,8 +19,9 @@ import java.util.Set;
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with matching Read Group platform")
 public final class PlatformReadFilter extends ReadFilter implements Serializable{
     private static final long serialVersionUID = 1L;
+    public static final String PL_FILTER_NAME_LONG_NAME = "platform-filter-name";
 
-    @Argument(fullName = "PLFilterName", shortName = "PLFilterName",
+    @Argument(fullName = PL_FILTER_NAME_LONG_NAME, shortName = "PLFilterName",
             doc="Platform attribute (PL) to match", optional=false)
     public Set<String> PLFilterNames = new LinkedHashSet<>();
 

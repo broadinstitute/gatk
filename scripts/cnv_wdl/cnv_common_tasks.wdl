@@ -183,9 +183,9 @@ task CollectReadCounts {
                     --reference ${ref_fasta} \
                     --binLength ${default="1000" wgs_bin_length} \
                     --keepXYMT ${default="false" keep_non_autosomes} \
-                    --disableToolDefaultReadFilters ${default="false" disable_all_read_filters} \
-                    --disableSequenceDictionaryValidation ${default="true" disable_sequence_dictionary_validation} \
-                    $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disableReadFilter NotDuplicateReadFilter "; else echo ""; fi) \
+                    --disable-tool-default-read-filters ${default="false" disable_all_read_filters} \
+                    --disable-sequence-dictionary-validation ${default="true" disable_sequence_dictionary_validation} \
+                    $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disable-read-filter NotDuplicateReadFilter "; else echo ""; fi) \
                     --output ${read_counts_tsv_filename} \
                     --writeHdf5
             else
@@ -196,13 +196,13 @@ task CollectReadCounts {
                     --groupBy SAMPLE \
                     --transform RAW \
                     --targetInformationColumns FULL \
-                    --interval_set_rule UNION \
-                    --interval_merging_rule OVERLAPPING_ONLY \
-                    --interval_padding 0 \
-                    --secondsBetweenProgressUpdates 10.0 \
-                    --disableToolDefaultReadFilters ${default="false" disable_all_read_filters} \
-                    --disableSequenceDictionaryValidation ${default="true" disable_sequence_dictionary_validation} \
-                    $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disableReadFilter NotDuplicateReadFilter "; else echo ""; fi) \
+                    --interval-set-rule UNION \
+                    --interval-merging-rule OVERLAPPING_ONLY \
+                    --interval-padding 0 \
+                    --seconds-between-progress-updates 10.0 \
+                    --disable-tool-default-read-filters ${default="false" disable_all_read_filters} \
+                    --disable-sequence-dictionary-validation ${default="true" disable_sequence_dictionary_validation} \
+                    $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disable-read-filter NotDuplicateReadFilter "; else echo ""; fi) \
                     --output ${read_counts_tsv_filename}
         fi
     >>>
@@ -245,7 +245,7 @@ task CollectCounts {
             --input ${bam} \
             -L ${intervals} \
             --outputFormat ${default="HDF5" output_format} \
-            --interval_merging_rule OVERLAPPING_ONLY \
+            --interval-merging-rule OVERLAPPING_ONLY \
             --output ${counts_filename}
     }
 

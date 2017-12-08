@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
@@ -287,8 +288,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             bamoutFile = new File(tempDir, "bamout.bam");
             argBuilder.addArgument("bamout", bamoutFile.getAbsolutePath());
         }
-        argBuilder.addBooleanArgument("createOutputBamIndex", createBamoutIndex);
-        argBuilder.addBooleanArgument("createOutputBamMD5", createBamoutMD5);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
 
         runCommandLine(argBuilder);
 

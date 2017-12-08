@@ -202,8 +202,8 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
 
         final String[] args = (cramRefArg == null)
-                ? new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile }
-                : new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+                ? new String[] {"--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile }
+                : new String[] {"--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
 
         clp.parseArguments(System.out, args);
 
@@ -257,7 +257,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         final String[] args = (masterSequenceFileName == null)
                 ? new String[] { "--input", inputFileName, }
-                : new String[] { "--sequenceDictionary", masterSequenceFileName, "--input", inputFileName, };
+                : new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceFileName, "--input", inputFileName, };
 
         clp.parseArguments(System.out, args);
 
@@ -294,8 +294,8 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
 
         final String[] args = (cramRefArg == null)
-            ? new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, }
-            : new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+            ? new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, sequenceFileName, otherSeqArg, otherSequenceFile, }
+            : new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, sequenceFileName, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
 
         clp.parseArguments(System.out, args);
 
@@ -709,8 +709,8 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         args.addInput(inputFile);
         args.addOutput(outputFile);
-        args.add("--createOutputVariantIndex"); args.add(Boolean.toString(createIndex));
-        args.add("--createOutputVariantMD5"); args.add(Boolean.toString(createMD5));
+        args.add("--" + StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME); args.add(Boolean.toString(createIndex));
+        args.add("--" + StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME); args.add(Boolean.toString(createMD5));
         if (lenient) {
             args.add("--lenient");
         }
