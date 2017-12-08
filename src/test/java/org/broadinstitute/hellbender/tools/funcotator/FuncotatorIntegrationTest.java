@@ -123,6 +123,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
         arguments.add("true");
 
+        // Locatable XSV Data Source:
+        arguments.add("-" + FuncotatorArgumentDefinitions.LOCATABLE_XSV_IN_ARG_SHORT_NAME);
+        arguments.add(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE1_PATH);
+
         // --------------------------------------------------------------------
         // Packaged Test Data Source Arguments:
 

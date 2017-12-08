@@ -14,10 +14,12 @@ public class FuncotatorTestConstants {
     public static final String HG19_CHR19_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr19.fasta";
     public static final String HG19_CHR3_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr3.fasta";
 
+    // chr19:8959520-9092018
     public static final String MUC16_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16.gtf";
     public static final String MUC16_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16_transcript.fasta";
     public static final String MUC16_TRANSCRIPT = "ENST00000397910.4";
 
+    // chr3:178866311-178957881
     public static final String PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.PIK3CA.gtf";
     public static final String PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_TEST_DIR + "gencode.v19.PIK3CA_transcript.fasta";
     public static final String PIK3CA_TRANSCRIPT = "ENST00000263967.3";
@@ -37,6 +39,8 @@ public class FuncotatorTestConstants {
     public static final String XSV_DEADBEEFSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_DEADBEEFSV_testFile.csv";
     public static final String XSV_CSV_PIK3CA_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_PIK3CA.csv";
     public static final String XSV_CSV_MUC16_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_MUC16.csv";
+
+    public static final String XSV_LOCATABLE_TEST_FILE1_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test.csv";
 
     public static final String DATA_SOURCES_FOLDER_PATH = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "dataSources" + File.separator;
     public static final String HGNC_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "hgnc" + File.separator + "hg19" + File.separator + "hgnc_download_Nov302017.tsv";

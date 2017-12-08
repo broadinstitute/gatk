@@ -196,7 +196,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 for ( final Feature feature : featureList ) {
 
                     // Get the kind of feature we want here:
-                    if ( GencodeGtfGeneFeature.class.isAssignableFrom(feature.getClass()) ) {
+                    if ( (feature != null) && GencodeGtfGeneFeature.class.isAssignableFrom(feature.getClass()) ) {
                         final List<GencodeFuncotation> gencodeFuncotationList = createFuncotations(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext);
 
                         // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:

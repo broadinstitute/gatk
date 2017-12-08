@@ -5,15 +5,15 @@ import htsjdk.tribble.readers.LineIterator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
+import java.io.InputStream;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 /**
@@ -42,10 +42,18 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
     //==================================================================================================================
     // Public Static Members:
 
+    public static final String COMMENT_DELIMITER = "#";
+
+    public static final String CONFIG_FILE_CONTIG_COLUMN_KEY = "contigColumn";
+    public static final String CONFIG_FILE_START_COLUMN_KEY = "start";
+    public static final String CONFIG_FILE_END_COLUMN_KEY = "end";
+    public static final String CONFIG_FILE_DELIMITER_KEY = "delimiter";
+    public static final String CONFIG_FILE_DATA_SOURCE_NAME_KEY = "name";
+
     //==================================================================================================================
     // Private Static Members:
 
-    private static final String COMMENT_DELIMITER = "#";
+
     private static final String CONFIG_FILE_EXTENSION = ".config";
 
     //==================================================================================================================
@@ -63,11 +71,11 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
     /** Delimiter for entries in this XSV Table. */
     private String delimiter;
 
-    /** The XSV Table Header */
-    private List<String> header;
-
     /** The name of the data source that is associated with this {@link XsvLocatableTableCodec}. */
     private String dataSourceName;
+
+    /** The XSV Table Header */
+    private List<String> header;
 
     /** The current position in the file that is being read. */
     private long currentLine = 0;
@@ -90,7 +98,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
         final Path configFilePath = getConfigFilePath(inputFilePath);
 
         // Check that our files are good for eating... I mean reading...
-        if ( validateInputDataFile(inputFilePath) && validateInputConfigFile(configFilePath) ) {
+        if ( validateInputDataFile(inputFilePath) && validateInputDataFile(configFilePath) ) {
 
             // Get our metadata and set up our internals so we can read from this file:
             readMetadataFromConfigFile(configFilePath);
@@ -145,7 +153,9 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
                 // The first non-commented line is the column header.
                 // Add the data source name to teh start of each header row,
                 // then add those rows to the header object.
-                header = Arrays.stream(line.split(delimiter)).map(x -> dataSourceName + x).collect(Collectors.toCollection(ArrayList::new));
+                header = Arrays.stream(line.split(delimiter))
+                        .map(x -> dataSourceName + "_" + x)
+                        .collect(Collectors.toCollection(ArrayList::new));
 
                 return header;
             }
@@ -170,25 +180,15 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
     }
 
     /**
-     * Asserts that the given {@code filePath} is a valid configuration file from which to read.
-     * @param filePath The {@link Path} to the configuration file to validate.
-     * @return {@code true} if the given {@code filePath} is valid; {@code false} otherwise.
-     */
-    private boolean validateInputConfigFile(final Path filePath) {
-        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:*.config");
-        return validateInputDataFile(filePath) && pathMatcher.matches(filePath);
-    }
-
-    /**
      * Gets the path to the corresponding configuration file for the given {@code inputFilePath}.
      * The resulting path may or may not exist.
      * @param inputFilePath The data file {@link Path} from which to construct the path to the configuration file.
      * @return The {@link Path} for the configuration file associated with {@code inputFilePath}.
      */
-    private Path getConfigFilePath(final Path inputFilePath) {
+    public static Path getConfigFilePath(final Path inputFilePath) {
         // Check for a sibling config file with the same name, .config as extension
-        final String configFilePath = IOUtils.replaceExtension( inputFilePath.toUri().toString(), CONFIG_FILE_EXTENSION );
-        return inputFilePath.resolveSibling(configFilePath);
+        final String configFilePath = IOUtils.replaceExtension( inputFilePath.toString(), CONFIG_FILE_EXTENSION );
+        return Paths.get(configFilePath);
     }
 
     /**
@@ -197,16 +197,48 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
      */
     private void readMetadataFromConfigFile(final Path configFilePath) {
 
-        // Validate config file
-        //     Expected keys present
-        //     Key values are valid
-        // Get delimiter
-        // Get columns for:
-        //      contig
-        //      start
-        //      end
+        final Properties configProperties = getAndValidateConfigFileContents(configFilePath);
 
-        throw new UserException("UNIMPLEMENTED METHOD: XsvLocatableTableCodec::readMetadataFromConfigFile !");
+        contigColumn   = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_CONTIG_COLUMN_KEY));
+        startColumn    = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_START_COLUMN_KEY));
+        endColumn      = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_END_COLUMN_KEY));
+        delimiter      = configProperties.getProperty(CONFIG_FILE_DELIMITER_KEY);
+        dataSourceName = configProperties.getProperty(CONFIG_FILE_DATA_SOURCE_NAME_KEY);
+    }
+
+    /**
+     * Get the properties from the given {@code configFilePath}, validate that all required properties are present,
+     * and return the property map.
+     * @param configFilePath {@link Path} to the configuration file.
+     * @return The {@link Properties} as contained in the given {@code configFilePath}.
+     */
+    public static Properties getAndValidateConfigFileContents(final Path configFilePath) {
+
+        Utils.nonNull(configFilePath);
+
+        // Read in the contents of the config file:
+        final Properties configFileContents = new Properties();
+        try ( final InputStream inputStream = Files.newInputStream(configFilePath, StandardOpenOption.READ) ) {
+            configFileContents.load(inputStream);
+        }
+        catch (final Exception ex) {
+            throw new UserException.BadInput("Unable to read from XSV config file: " + configFilePath.toUri().toString(), ex);
+        }
+
+        // Validate that it has the right keys:
+        assertConfigPropertiesContainsKey(configFileContents, CONFIG_FILE_CONTIG_COLUMN_KEY, configFilePath);
+        assertConfigPropertiesContainsKey(configFileContents, CONFIG_FILE_START_COLUMN_KEY, configFilePath);
+        assertConfigPropertiesContainsKey(configFileContents, CONFIG_FILE_END_COLUMN_KEY, configFilePath);
+        assertConfigPropertiesContainsKey(configFileContents, CONFIG_FILE_DELIMITER_KEY, configFilePath);
+        assertConfigPropertiesContainsKey(configFileContents, CONFIG_FILE_DATA_SOURCE_NAME_KEY, configFilePath);
+
+        return configFileContents;
+    }
+
+    private static void assertConfigPropertiesContainsKey(final Properties configProperties, final String key, final Path configFilePath) {
+        if ( !configProperties.stringPropertyNames().contains(key) ) {
+            throw new UserException.BadInput("Config file for datasource (" + configFilePath.toUri().toString() + ") does not contain required key: " + key);
+        }
     }
 
     //==================================================================================================================

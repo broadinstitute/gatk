@@ -14,16 +14,19 @@ import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.LocatableXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -74,6 +77,15 @@ public class Funcotator extends VariantWalker {
 
     //-----------------------------------------------------
     // Optional args:
+
+    @Argument(
+            fullName =  FuncotatorArgumentDefinitions.LOCATABLE_XSV_IN_ARG_LONG_NAME,
+            shortName = FuncotatorArgumentDefinitions.LOCATABLE_XSV_IN_ARG_SHORT_NAME,
+            optional = true,
+            doc = "Locatable XSV file input."
+    )
+    protected List<FeatureInput<XsvTableFeature>> xsvLocatableVariants;
+
 
     @Argument(
             shortName = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME,
@@ -188,9 +200,9 @@ public class Funcotator extends VariantWalker {
 
         // Set up our other data source factories:
         // TODO: Set up ALL datasource factories based on config files / directory:
-        assertXsvInputsAreValid();
+        assertSimpleXsvInputsAreValid();
 
-        // Go through and set up each XSV factory:
+        // Go through and set up each Simple XSV factory:
         for ( int i = 0 ; i < xsvInputPaths.size() ; ++i ) {
 
             // Create our SimpleKeyXsvFuncotationFactory:
@@ -210,6 +222,16 @@ public class Funcotator extends VariantWalker {
             // Add it to our sources:
             dataSourceFactories.add( factory );
         }
+
+        // Create a locatable XSV feature reader to handle XSV Locatable features:
+        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory();
+        // Set the supported fields by the LocatableXsvFuncotationFactory:
+        locatableXsvFuncotationFactory.setSupportedFuncotationFields(
+                xsvLocatableVariants.stream()
+                        .map(x -> Paths.get(x.getFeaturePath()))
+                        .collect(Collectors.toCollection(ArrayList::new))
+        );
+        dataSourceFactories.add( locatableXsvFuncotationFactory );
 
         // Determine which annotations are accounted for (by the funcotation factories) and which are not.
         final LinkedHashMap<String, String> unaccountedForDefaultAnnotations = getUnaccountedForAnnotations( dataSourceFactories, annotationDefaultsMap );
@@ -260,7 +282,7 @@ public class Funcotator extends VariantWalker {
      * If they are valid, this method does nothing.
      * If they are invalid, this method throws a {@link UserException.BadInput}.
      */
-    private void assertXsvInputsAreValid() {
+    private void assertSimpleXsvInputsAreValid() {
 
         if ( !(xsvInputPaths.isEmpty() && xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
             if ((xsvInputPaths.size() != xsvInputDelimiters.size() && (!xsvInputDelimiters.isEmpty()))) {
@@ -307,6 +329,7 @@ public class Funcotator extends VariantWalker {
         for ( final String field : annotationMap.keySet() ) {
             boolean accountedFor = false;
             for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
+
                 if ( funcotationFactory.getSupportedFuncotationFields().contains(field) ) {
                     accountedFor = true;
                     break;
@@ -332,6 +355,7 @@ public class Funcotator extends VariantWalker {
 
         // TODO: Need to add all features here for any kind of Data Source:
         featureList.addAll( featureContext.getValues(gtfVariants) );
+        featureList.addAll( featureContext.getValues(xsvLocatableVariants) );
 
         // Create a place to keep our funcotations:
         final List<Funcotation> funcotations = new ArrayList<>();

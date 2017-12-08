@@ -23,6 +23,9 @@ public class FuncotatorArgumentDefinitions {
     // ------------------------------------------------------------
     // Definitions for optional arguments:
 
+    public static final String LOCATABLE_XSV_IN_ARG_LONG_NAME = "xsvLocatableInput";
+    public static final String LOCATABLE_XSV_IN_ARG_SHORT_NAME = "xsvLocIn";
+
     public static final String XSV_INPUT_ARG_LONG_NAME = "xsvInput";
     public static final String XSV_INPUT_ARG_SHORT_NAME = "xsv";
     public static final List<String> XSV_INPUT_ARG_DEFAULT_VALUE = new ArrayList<>();
