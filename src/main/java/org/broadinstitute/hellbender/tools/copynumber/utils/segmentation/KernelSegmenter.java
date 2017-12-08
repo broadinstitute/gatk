@@ -30,51 +30,46 @@ import java.util.stream.IntStream;
  * </p>
  *
  * <p>
- * Given <i>N</i> sequential data points of type {@code DATA} to segment, the basic steps of the method are:
+ *     Given <i>N</i> sequential data points of type {@code DATA} to segment, the basic steps of the method are:
  *
  * <ol>
- *     1) Select <i>C<sub>max</sub></i>, the maximum number of changepoints to discover.
+ *     <li>
+ *         Select <i>C<sub>max</sub></i>, the maximum number of changepoints to discover.
+ *     </li>
+ *     <li>
+ *         Select a kernel (linear for sensitivity to changes in the distribution mean,
+ *         Gaussian with a specified variance for multimodal data, etc.)
+ *         and a subsample of <i>p</i> points to approximate it using singular value decomposition.
+ *         This is provided via a lambda of the form {@code (DATA, DATA) -> double}.
+ *     </li>
+ *     <li>
+ *         Select window sizes <i>w<sub>j</sub></i> for which to calculate local costs at each point.
+ *         To be precise, we calculate the cost of a changepoint at the point with index <i>i</i>,
+ *         assuming adjacent segments containing the points with indices <i>[i - w<sub>j</sub> + 1, i]</i>
+ *         and <i>[i + 1, i + w<sub>j</sub>]</i>.
+ *     </li>
+ *     <li>
+ *         For each of these cost functions, find (up to) the  <i>C<sub>max</sub></i> most significant local minima.
+ *         The problem of finding local minima of a noisy function can be solved by using topological persistence
+ *         (see, e.g., <a href="https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html">https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html</a>
+ *         and <a href="http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification">http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification</a>).
+ *     </li>
+ *     <li>
+ *         These sets of local minima from all window sizes together provide the pool of candidate changepoints
+ *         (some of which may overlap exactly or approximately).  We perform backward selection using the global segmentation cost.
+ *         That is, we calculate the global segmentation cost given all the candidate changepoints,
+ *         calculate the cost change for removing each of the changepoints individually,
+ *         remove the changepoint with the minimum cost change, and repeat.
+ *         This gives the global cost as a function of the number of changepoints <i>C</i>.
+ *     </li>
+ *     <li>
+ *         Add a penalty <i>A * C + B * C * log (N / C)</i> to the global cost and find the minimum to determine the
+ *         number of changepoints, where <i>A</i> and <i>B</i> are specified penalty factors.
+ *     </li>
  * </ol>
- * <ol>
- *     2) Select a kernel (linear for sensitivity to changes in the distribution mean,
- *     Gaussian with a specified variance for multimodal data, etc.)
- *     and a subsample of <i>p</i> points to approximate it using singular value decomposition.
- *     This is provided via a lambda of the form {@code (DATA, DATA) -> double}.
- * </ol>
- * <ol>
- *     3) Select window sizes <i>w<sub>j</sub></i> for which to calculate local costs at each point.
- *     To be precise, we calculate the cost of a changepoint at the point with index <i>i</i>,
- *     assuming adjacent segments containing the points with indices <i>[i - w<sub>j</sub> + 1, i]</i>
- *     and <i>[i + 1, i + w<sub>j</sub>]</i>.
- * </ol>
- * <ol>
- *     4) For each of these cost functions, find (up to) the  <i>C<sub>max</sub></i> most significant local minima.
- *     The problem of finding local minima of a noisy function can be solved by using topological persistence
- *     (e.g., <a href="https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html">https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html</a>
- *     and <a href="http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification">http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification</a>).
- * </ol>
- * <ol>
- *     5) These sets of local minima from all window sizes together provide the pool of candidate changepoints
- *     (some of which may overlap exactly or approximately).  We perform backward selection using the global segmentation cost.
- *     That is, we calculate the global segmentation cost given all the candidate changepoints,
- *     calculate the cost change for removing each of the changepoints individually,
- *     remove the changepoint with the minimum cost change, and repeat.
- *     This gives the global cost as a function of the number of changepoints <i>C</i>.
- * </ol>
- * <ol>
- *     6) Add a penalty <i>A * C + B * C * log (N / C)</i> to the global cost and find the minimum to determine the
- *     number of changepoints, where <i>A</i> and <i>B</i> are specified penalty factors.
- *
- * </ol>
- * </p>
- *
- * <p>
- * See discussion at <a href="https://github.com/broadinstitute/gatk/issues/2858#issuecomment-324125586">https://github.com/broadinstitute/gatk/issues/2858#issuecomment-324125586</a>
- * and accompanying plots for more detail.
- * </p>
  *
  * <p>
- * Note that we break with camelCase naming convention in places to match some notation in the paper
+ *     Note that we break with camelCase naming convention in places to match some notation in the paper
  * </p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;

@@ -13,7 +13,14 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ */
 public final class CopyRatioCollection extends AbstractSampleLocatableCollection<CopyRatio> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, START, END, LOG2_COPY_RATIO
+     */
     enum CopyRatioTableColumn {
         CONTIG,
         START,

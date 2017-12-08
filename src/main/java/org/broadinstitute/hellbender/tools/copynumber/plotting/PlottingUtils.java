@@ -22,8 +22,7 @@ import java.util.stream.Collectors;
 final class PlottingUtils {
     static final String CNV_PLOTTING_R_LIBRARY = "CNVPlottingLibrary.R";
 
-    static final String MINIMUM_CONTIG_LENGTH_LONG_NAME = "minimumContigLength";
-    static final String MINIMUM_CONTIG_LENGTH_SHORT_NAME = "minContigLength";
+    static final String MINIMUM_CONTIG_LENGTH_LONG_NAME = "minimum-contig-length";
 
     static final String CONTIG_DELIMITER = "CONTIG_DELIMITER";  //used to delimit contig names and lengths passed to the R script
     static final int DEFAULT_MINIMUM_CONTIG_LENGTH = 1000000;   //can be used to filter out mitochondrial contigs, unlocalized contigs, etc.

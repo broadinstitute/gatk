@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
@@ -40,8 +42,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument("L",  INTERVALS_FILE.getAbsolutePath())
-                .addArgument("imr", IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME,  INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final AnnotatedIntervalCollection result = new AnnotatedIntervalCollection(outputFile);
@@ -64,8 +66,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("isr", IntervalSetRule.INTERSECTION.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -75,8 +77,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("ixp", "1")
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME, "1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -86,8 +88,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("ip", "1")
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, "1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -97,8 +99,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File resultOutputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("imr", IntervalMergingRule.ALL.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }

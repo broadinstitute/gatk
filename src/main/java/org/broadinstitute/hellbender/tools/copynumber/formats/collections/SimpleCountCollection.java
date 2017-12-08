@@ -24,6 +24,10 @@ import java.util.stream.IntStream;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class SimpleCountCollection extends AbstractSampleLocatableCollection<SimpleCount> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, START, END, COUNT
+     */
     enum SimpleCountTableColumn {
         CONTIG,
         START,

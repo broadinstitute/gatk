@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-final class CopyRatioModeller {
+public final class CopyRatioModeller {
     private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
 
     private static final double EPSILON = 1E-6;

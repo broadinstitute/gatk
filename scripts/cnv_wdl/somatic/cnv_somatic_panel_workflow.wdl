@@ -110,14 +110,14 @@ task CreateReadCountPanelOfNormals {
 
         java -Xmx${machine_mem}g -jar $GATK_JAR CreateReadCountPanelOfNormals \
             --input ${sep=" --input " read_count_files} \
-            --minimumIntervalMedianPercentile ${default="10.0" minimum_interval_median_percentile} \
-            --maximumZerosInSamplePercentage ${default="5.0" maximum_zeros_in_sample_percentage} \
-            --maximumZerosInIntervalPercentage ${default="5.0" maximum_zeros_in_interval_percentage} \
-            --extremeSampleMedianPercentile ${default="2.5" extreme_sample_median_percentile} \
-            --doImputeZeros ${default="true" do_impute_zeros} \
-            --extremeOutlierTruncationPercentile ${default="0.1" extreme_outlier_truncation_percentile} \
-            --numberOfEigensamples ${default="20" number_of_eigensamples} \
-            ${"--annotatedIntervals " + annotated_intervals} \
+            --minimum-interval-median-percentile ${default="10.0" minimum_interval_median_percentile} \
+            --maximum-zeros-in-sample-percentage ${default="5.0" maximum_zeros_in_sample_percentage} \
+            --maximum-zeros-in-interval-percentage ${default="5.0" maximum_zeros_in_interval_percentage} \
+            --extreme-sample-median-percentile ${default="2.5" extreme_sample_median_percentile} \
+            --do-impute-zeros ${default="true" do_impute_zeros} \
+            --extreme-outlier-truncation-percentile ${default="0.1" extreme_outlier_truncation_percentile} \
+            --number-of-eigensamples ${default="20" number_of_eigensamples} \
+            ${"--annotated-intervals " + annotated_intervals} \
             --output ${pon_entity_id}.pon.hdf5
     >>>
 

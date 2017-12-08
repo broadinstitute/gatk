@@ -5,6 +5,7 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -59,6 +60,7 @@ import java.util.List;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class PreprocessIntervals extends GATKTool {
     public static final String BIN_LENGTH_LONG_NAME = "binLength";
     public static final String BIN_LENGTH_SHORT_NAME = "BL";
@@ -82,7 +84,7 @@ public final class PreprocessIntervals extends GATKTool {
             optional = true,
             minValue = 0
     )
-    private int padding = 0;
+    private int padding = 250;
 
     @Argument(
             doc = "Output Picard interval-list file containing the preprocessed intervals.",

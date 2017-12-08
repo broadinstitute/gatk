@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -125,7 +126,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                 .addArgument(PreprocessIntervals.BIN_LENGTH_SHORT_NAME, Integer.toString(binLength))
                 .addArgument(PreprocessIntervals.PADDING_SHORT_NAME, Integer.toString(paddingLength))
                 .addOutput(outputFile);
-        inputIntervals.forEach(i -> argsBuilder.addArgument("L", i.getContig() + ":" + i.getStart() + "-" + i.getEnd()));
+        inputIntervals.forEach(i -> argsBuilder.addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, i.getContig() + ":" + i.getStart() + "-" + i.getEnd()));
         runCommandLine(argsBuilder);
 
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
@@ -142,7 +143,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                 .addReference(REFERENCE_FILE)
                 .addArgument(PreprocessIntervals.BIN_LENGTH_SHORT_NAME, Integer.toString(binLength))
                 .addArgument(PreprocessIntervals.PADDING_SHORT_NAME, Integer.toString(paddingLength))
-                .addArgument("L",  INTERVAL_LIST_FILE.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME,  INTERVAL_LIST_FILE.getAbsolutePath())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
