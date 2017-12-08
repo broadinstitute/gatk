@@ -7,7 +7,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
@@ -131,7 +131,7 @@ public final class VariantOverlapAnnotatorUnitTest extends GATKBaseTest {
         Assert.assertEquals(annotated, toAnnotate);
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup=QCProgramGroup.class)
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup=TestProgramGroup.class)
     private static class ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap extends CommandLineProgram {
         @Argument(fullName = "dbsnp", shortName = "f")
         FeatureInput<Feature> featureArgument;

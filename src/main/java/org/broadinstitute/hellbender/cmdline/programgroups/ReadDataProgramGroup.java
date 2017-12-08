@@ -4,9 +4,11 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
- * This Program Group is OBSOLETE and references to it should be replaced with a reference to an approved group.
+ * Tools that manipulate read data in SAM, BAM or CRAM format
+ *
+ * This class is a temporary PLACEHOLDER to be used only until the corresponding Picard group is available.
  */
-public final class ReadProgramGroup implements CommandLineProgramGroup {
+public class ReadDataProgramGroup implements CommandLineProgramGroup {
 
     @Override
     public String getName() { return HelpConstants.DOC_CAT_READ_DATA; }

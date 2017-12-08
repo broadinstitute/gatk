@@ -4,9 +4,11 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
- * Program group for tools that process intervals and associated overlapping records
+ * Tools that process genomic intervals in various formats
+ *
+ * This class is a temporary PLACEHOLDER to be used only until the corresponding Picard group is available.
  */
-public final class IntervalProgramGroup implements CommandLineProgramGroup {
+public final class IntervalsProgramGroup implements CommandLineProgramGroup {
 
     @Override
     public String getName() { return HelpConstants.DOC_CAT_INTERVALS; }
