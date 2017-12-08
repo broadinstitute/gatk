@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
  *      start
  *      end
  *      delimiter
+ *      name
  *
  * These tables are assumed to have comment lines that start with `#` and a header that has the names for each
  * column in the table as the top row.
