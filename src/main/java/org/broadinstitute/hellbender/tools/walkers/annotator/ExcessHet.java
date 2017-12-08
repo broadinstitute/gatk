@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.StatUtils;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
@@ -15,13 +16,13 @@ import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
+import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.util.*;
 
 /**
  * Phred-scaled p-value for exact test of excess heterozygosity.
@@ -29,17 +30,29 @@ import java.util.Map;
  * Wigginton JE, Cutler DJ, Abecasis GR. A Note on Exact Tests of Hardy-Weinberg Equilibrium. American Journal of Human Genetics. 2005;76(5):887-893.
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Phred-scaled p-value for exact test of excess heterozygosity (ExcessHet)")
-public final class ExcessHet extends InfoFieldAnnotation implements StandardAnnotation {
+public final class ExcessHet extends PedigreeAnnotation implements StandardAnnotation {
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
     private static final boolean ROUND_GENOTYPE_COUNTS = true;
     
     public static final double PHRED_SCALED_MIN_P_VALUE = -10.0 * Math.log10(MIN_NEEDED_VALUE);
 
+    public ExcessHet(final Set<String> founderIds){
+        super(founderIds);
+    }
+
+    public ExcessHet(final File pedigreeFile){
+        super(pedigreeFile);
+    }
+
+    public ExcessHet() {
+        this((Set<String>) null);
+    }
+
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
-        final GenotypesContext genotypes = vc.getGenotypes();
+        GenotypesContext genotypes = getFounderGenotypes(vc);
         if (genotypes == null || !vc.isVariant()) {
             return Collections.emptyMap();
         }
