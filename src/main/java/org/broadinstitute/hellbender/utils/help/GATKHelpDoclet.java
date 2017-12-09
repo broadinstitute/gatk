@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.help;
 import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.RootDoc;
 
+import com.sun.javadoc.Tag;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.GSONWorkUnit;
@@ -23,6 +24,14 @@ public class GATKHelpDoclet extends HelpDoclet {
 
     private final static String GATK_FREEMARKER_INDEX_TEMPLATE_NAME = "generic.index.template.html";
     private final static String WALKER_TYPE_MAP_ENTRY = "walkertype";      // populated from javadoc custom tag
+
+    /**
+     * Holds reference to the last rootDoct that {@link #startProcessDocs(RootDoc)} was called with. 
+     * <p>
+     * This seems to be required to be able to print out error, warnings and notes through the javadoc framework.
+     * </p>
+     */
+    private RootDoc currentRootDoc;
 
     /**
      * Create a doclet of the appropriate type and generate the FreeMarker templates properties.
@@ -105,5 +114,40 @@ public class GATKHelpDoclet extends HelpDoclet {
 
         return root;
     }
+   
+    @Override
+    protected boolean startProcessDocs(final RootDoc rootDoc) throws IOException {
+        currentRootDoc = rootDoc;
+        return super.startProcessDocs(rootDoc);
+    }
 
+    /**
+     * Prints out an error message while processing the current doc.
+     * @param message the message to display.
+     */
+    public void printError(final String message) {
+        if (currentRootDoc != null) {
+        		currentRootDoc.printError(message);
+        }
+    }
+
+    /**
+     * Prints out a warning message while processing the current doc.
+     * @param message the message to display.
+     */
+    public void printWarning(final String message) {
+        if (currentRootDoc != null) {
+        		currentRootDoc.printWarning(message);
+        }
+    }
+
+    /**
+     * Prints out a notice message while processing the current doc.
+     * @param message the message to display.
+     */
+    public void printNotice(final String message) {
+        if (currentRootDoc == null) {
+        		currentRootDoc.printNotice(message);
+        }
+    }
 }
