@@ -36,6 +36,7 @@ final public class GencodeGtfFeatureBaseData {
      */
     public GencodeGtfFeature.FeatureType           featureType;
 
+    //TODO: Make this a Strand, not a GenomicStrand.
     /**
      * Which strand this feature is on.
      */
@@ -61,6 +62,9 @@ final public class GencodeGtfFeatureBaseData {
 
     /**
      * Optional GENCODE GTF Fields.
+     * For details, see the following:
+     *     https://www.gencodegenes.org/data_format.html
+     *     https://www.gencodegenes.org/gencode_tags.html
      */
     public List<GencodeGtfFeature.OptionalField<?>> optionalFields          = new ArrayList<>();
 
