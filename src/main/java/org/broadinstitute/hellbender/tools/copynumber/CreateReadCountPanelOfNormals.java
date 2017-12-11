@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.denoising.GCBiasCorrector;
 import org.broadinstitute.hellbender.tools.copynumber.denoising.HDF5SVDReadCountPanelOfNormals;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -251,7 +252,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
             final File inputReadCountFile = inputReadCountFilesIterator.next();
             logger.info(String.format("Aggregating read-count file %s (%d / %d)", inputReadCountFile, sampleIndex + 1, numSamples));
             final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
-            Utils.validateArg(readCounts.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(readCounts.getMetadata().getSequenceDictionary(), sequenceDictionary),
                     String.format("Sequence dictionary for read-count file %s does not match those in other read-count files.", inputReadCountFile));
             Utils.validateArg(readCounts.getIntervals().equals(intervals),
                     String.format("Intervals for read-count file %s do not match those in other read-count files.", inputReadCountFile));

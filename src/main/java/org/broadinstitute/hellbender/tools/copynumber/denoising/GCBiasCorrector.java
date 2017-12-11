@@ -8,6 +8,7 @@ import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -128,7 +129,7 @@ public final class GCBiasCorrector {
         }
         logger.info("Reading and validating GC-content annotations for intervals...");
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(inputFile);
-        Utils.validateArg(annotatedIntervals.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+        Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(annotatedIntervals.getMetadata().getSequenceDictionary(), sequenceDictionary),
                 "Annotated-intervals file contains incorrect sequence dictionary.");
         Utils.validateArg(annotatedIntervals.getIntervals().equals(intervals),
                 "Annotated intervals do not match provided intervals.");

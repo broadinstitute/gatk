@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.ModelSegments;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
@@ -133,11 +134,11 @@ public final class PlotModeledSegments extends CommandLineProgram {
         final SAMSequenceDictionary sequenceDictionary = modeledSegments.getMetadata().getSequenceDictionary();
         final SAMSequenceDictionary sequenceDictionaryToPlot = ReferenceUtils.loadFastaDictionary(sequenceDictionaryFile);
         if (denoisedCopyRatios != null) {
-            Utils.validateArg(denoisedCopyRatios.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(denoisedCopyRatios.getMetadata().getSequenceDictionary(), sequenceDictionary),
                     "Sequence dictionary contained in denoised copy-ratio profile file does not match that contained in other input files.");
         }
         if (allelicCounts != null) {
-            Utils.validateArg(allelicCounts.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(allelicCounts.getMetadata().getSequenceDictionary(), sequenceDictionary),
                     "Sequence dictionary contained in allelic-counts file does not match that contained in other input files.");
         }
         PlottingUtils.validateSequenceDictionarySubset(sequenceDictionary, sequenceDictionaryToPlot);

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -15,11 +16,13 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.List;
@@ -131,14 +134,10 @@ public final class CollectAllelicCounts extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        final SampleLocatableMetadata bamMetadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
-        final SampleLocatableMetadata metadata;
-        if (!bamMetadata.getSequenceDictionary().isSameDictionary(getBestAvailableSequenceDictionary())) {
-            logger.warn("Sequence dictionary in BAM does not match best available.  The latter will be used in metadata.");
-            metadata = new SimpleSampleLocatableMetadata(bamMetadata.getSampleName(), getBestAvailableSequenceDictionary());
-        } else {
-            metadata = bamMetadata;
-        }
+        final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary),
+                "Sequence dictionary in BAM does not match the master sequence dictionary.");
         allelicCountCollector = new AllelicCountCollector(metadata);
         logger.info("Collecting allelic counts...");
     }

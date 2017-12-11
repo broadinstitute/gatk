@@ -113,14 +113,10 @@ public final class CollectFragmentCounts extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        final SampleLocatableMetadata bamMetadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        if (!bamMetadata.getSequenceDictionary().isSameDictionary(sequenceDictionary)) {
-            logger.warn("Sequence dictionary in BAM does not match best available.  The latter will be used in metadata.");
-            metadata = new SimpleSampleLocatableMetadata(bamMetadata.getSampleName(), getBestAvailableSequenceDictionary());
-        } else {
-            metadata = bamMetadata;
-        }
+        Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary),
+                "Sequence dictionary in BAM does not match the master sequence dictionary.");
 
         CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
 
