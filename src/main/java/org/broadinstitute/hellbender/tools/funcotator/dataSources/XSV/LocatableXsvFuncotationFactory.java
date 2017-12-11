@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -34,6 +35,9 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     //==================================================================================================================
     // Private Static Members:
 
+    @VisibleForTesting
+    static String DEFAULT_NAME = "LocatableXsv";
+
     //==================================================================================================================
     // Private Members:
 
@@ -51,7 +55,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     // Constructors:
 
     public LocatableXsvFuncotationFactory(){
-        this("LocatableXsv");
+        this(DEFAULT_NAME);
     }
 
     public LocatableXsvFuncotationFactory(final String name){
