@@ -253,7 +253,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
             logger.info(String.format("Aggregating read-count file %s (%d / %d)", inputReadCountFile, sampleIndex + 1, numSamples));
             final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
             if (!CopyNumberArgumentValidationUtils.isSameDictionary(readCounts.getMetadata().getSequenceDictionary(), sequenceDictionary)) {
-                logger.warn("Sequence dictionary for read-count file %s does not match those in other read-count files.", inputReadCountFile);
+                logger.warn(String.format("Sequence dictionary for read-count file %s does not match those in other read-count files.", inputReadCountFile));
             }
             Utils.validateArg(readCounts.getIntervals().equals(intervals),
                     String.format("Intervals for read-count file %s do not match those in other read-count files.", inputReadCountFile));
