@@ -78,16 +78,14 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
             return;
         }
 
-//        System.err.println("processing variant " + variant);
-//        final BreakendAdjacency bnd = parseBreakendAllele(variant.getAlternateAllele(0).getDisplayString());
-//
-//        processOutOfScopeVariantLists(variant);
-//
-//        final LinkedList<VariantContext> variantList = getVariantList(bnd);
-//
-//        variantList.addLast(variant);
+        //System.err.println("processing variant " + variant);
+        final BreakendAdjacency bnd = parseBreakendAllele(variant.getAlternateAllele(0).getDisplayString());
 
-        // if this vc does match a current
+        processOutOfScopeVariantLists(variant);
+
+        final LinkedList<VariantContext> variantList = getVariantList(bnd);
+
+        variantList.addLast(variant);
 
 
     }
@@ -109,7 +107,7 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
 
         while (! cliques.isEmpty() && writable(cliques.peek(), breakpointMergeThreshold)) {
             final VariantContext poll = cliques.poll();
-            System.err.println(poll);
+            //System.err.println(poll);
             writer.add(poll);
         }
     }
@@ -147,7 +145,7 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
     }
 
     private VariantContext emitClique(final Set<VariantContext> maxClique) {
-        System.err.println("emitting clique " + maxClique);
+        //System.err.println("emitting clique " + maxClique);
 
         final List<VariantContext> sortedByStart = maxClique.stream().sorted(Comparator.comparing(VariantContext::getStart)).collect(Collectors.toList());
         final VariantContext medianStart = sortedByStart.get(Math.round(sortedByStart.size() / 2));
@@ -181,7 +179,7 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
         builder = builder.genotypes(gts);
         builder = builder.attribute(VCFConstants.ALLELE_COUNT_KEY, ac);
         final VariantContext vc = builder.make();
-        System.err.println("adding " + vc);
+        //System.err.println("adding " + vc);
 
         return vc;
     }
