@@ -91,7 +91,7 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
     }
 
     private void processOutOfScopeVariantLists(final VariantContext variant) {
-        System.err.println("collecting out of scope variants");
+        //System.err.println("collecting out of scope variants");
         if (!beforeForwardVariants.isEmpty() && outOfScope(breakpointMergeThreshold, beforeForwardVariants.getLast(), variant)) {
             cliques.addAll(emitCliques(beforeForwardVariants, breakpointMergeThreshold));
         }
@@ -105,9 +105,14 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
             cliques.addAll(emitCliques(afterRevVariants, breakpointMergeThreshold));
         }
 
+//        cliques.forEach(System.err::println);
         while (! cliques.isEmpty() && writable(cliques.peek(), breakpointMergeThreshold)) {
             final VariantContext poll = cliques.poll();
-            //System.err.println(poll);
+//            System.err.println("adding " + new SimpleInterval(poll));
+//            System.err.println("BF: " + beforeForwardVariants.peekFirst() + "\n" + beforeForwardVariants.peekLast());
+//            System.err.println("BR: " + beforeRevVariants.peekFirst() + "\n" + beforeRevVariants.peekLast());
+//            System.err.println("AF: " + afterForwardVariants.peek() + "\n" + afterForwardVariants.peekLast());
+//            System.err.println("AR: " + afterRevVariants.peek() + "\n" + afterRevVariants.peekLast());
             writer.add(poll);
         }
     }
@@ -284,7 +289,7 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
     }
 
     private boolean outOfScope(final int breakpointMergeThreshold, final VariantContext last, final VariantContext variant) {
-        return !last.getContig().equals(variant.getContig()) || Math.abs(last.getStart() - variant.getStart()) > 2 * breakpointMergeThreshold;
+        return !last.getContig().equals(variant.getContig()) || variant.getStart() - last.getStart() > 2 * breakpointMergeThreshold;
     }
 
     private LinkedList<VariantContext> getVariantList(final BreakendAdjacency bnd) {
