@@ -20,9 +20,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgument
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.List;
@@ -136,8 +134,9 @@ public final class CollectAllelicCounts extends LocusWalker {
     public void onTraversalStart() {
         final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary),
-                "Sequence dictionary in BAM does not match the master sequence dictionary.");
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
+        }
         allelicCountCollector = new AllelicCountCollector(metadata);
         logger.info("Collecting allelic counts...");
     }

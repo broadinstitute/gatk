@@ -129,8 +129,9 @@ public final class GCBiasCorrector {
         }
         logger.info("Reading and validating GC-content annotations for intervals...");
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(inputFile);
-        Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(annotatedIntervals.getMetadata().getSequenceDictionary(), sequenceDictionary),
-                "Annotated-intervals file contains incorrect sequence dictionary.");
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(annotatedIntervals.getMetadata().getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Annotated-intervals file contains incorrect sequence dictionary.");
+        }
         Utils.validateArg(annotatedIntervals.getIntervals().equals(intervals),
                 "Annotated intervals do not match provided intervals.");
         return annotatedIntervals.getRecords().stream().mapToDouble(i -> i.getAnnotationSet().getGCContent()).toArray();

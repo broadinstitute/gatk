@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.copynumber.denoising;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
 
@@ -79,8 +77,6 @@ public interface SVDReadCountPanelOfNormals {
 
     default SVDDenoisedCopyRatioResult denoise(final SimpleCountCollection readCounts,
                                                final int numEigensamples) {
-        Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(readCounts.getMetadata().getSequenceDictionary(), getSequenceDictionary()),
-                "Sequence dictionaries in panel and case sample do not match.");
         return SVDDenoisingUtils.denoise(this, readCounts, numEigensamples);
     }
 }
