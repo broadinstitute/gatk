@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -40,15 +39,12 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
     @Argument(fullName="breakpointMergeThreshold", shortName="breakpointMergeThreshold", doc = "Distance at which to merge coherent breakpoints")
     private int breakpointMergeThreshold = 500;
 
-    LinkedList<VariantContext> currentBreakpoints = new LinkedList<>();
-
-    Map<String, String> idMappings = new HashMap<>();
-
     private LinkedList<VariantContext> beforeForwardVariants = new LinkedList<>();
     private LinkedList<VariantContext> beforeRevVariants = new LinkedList<>();
     private LinkedList<VariantContext> afterForwardVariants = new LinkedList<>();
     private LinkedList<VariantContext> afterRevVariants = new LinkedList<>();
     private VariantContextWriter writer;
+    private PriorityQueue<VariantContext> cliques;
 
     @Override
     public boolean requiresReference() {
@@ -68,6 +64,8 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
         vcfHeader.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
         writer.writeHeader(vcfHeader);
 
+        cliques = new PriorityQueue<>(IntervalUtils.getDictionaryOrderComparator(getReferenceDictionary()));
+
     }
 
     @Override
@@ -80,14 +78,14 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
             return;
         }
 
-        System.err.println("processing variant " + variant);
-        final BreakendAdjacency bnd = parseBreakendAllele(variant.getAlternateAllele(0).getDisplayString());
-
-        processOutOfScopeVariantLists(variant);
-
-        final LinkedList<VariantContext> variantList = getVariantList(bnd);
-
-        variantList.addLast(variant);
+//        System.err.println("processing variant " + variant);
+//        final BreakendAdjacency bnd = parseBreakendAllele(variant.getAlternateAllele(0).getDisplayString());
+//
+//        processOutOfScopeVariantLists(variant);
+//
+//        final LinkedList<VariantContext> variantList = getVariantList(bnd);
+//
+//        variantList.addLast(variant);
 
         // if this vc does match a current
 
@@ -96,7 +94,6 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
 
     private void processOutOfScopeVariantLists(final VariantContext variant) {
         System.err.println("collecting out of scope variants");
-        final List<VariantContext> cliques = new ArrayList<>();
         if (!beforeForwardVariants.isEmpty() && outOfScope(breakpointMergeThreshold, beforeForwardVariants.getLast(), variant)) {
             cliques.addAll(emitCliques(beforeForwardVariants, breakpointMergeThreshold));
         }
@@ -109,12 +106,19 @@ public class CombineTenxSVVCF extends MultiVariantWalker {
         if (!afterRevVariants.isEmpty() && outOfScope(breakpointMergeThreshold, afterRevVariants.getLast(), variant)) {
             cliques.addAll(emitCliques(afterRevVariants, breakpointMergeThreshold));
         }
-        System.err.println("variants to emit: " + cliques.size());
-        cliques.sort(IntervalUtils.getDictionaryOrderComparator(getReferenceDictionary()));
-        cliques.forEach(System.err::println);
-        for (VariantContext vc : cliques) {
-            writer.add(vc);
+
+        while (! cliques.isEmpty() && writable(cliques.peek(), breakpointMergeThreshold)) {
+            final VariantContext poll = cliques.poll();
+            System.err.println(poll);
+            writer.add(poll);
         }
+    }
+
+    private boolean writable(final VariantContext vc, final int breakpointMergeThreshold) {
+        return (beforeForwardVariants.size() == 0 || outOfScope(breakpointMergeThreshold, vc, beforeForwardVariants.getFirst())) &&
+                (afterForwardVariants.size() == 0 || outOfScope(breakpointMergeThreshold, vc, afterForwardVariants.getFirst())) &&
+                (beforeRevVariants.size() == 0 ||outOfScope(breakpointMergeThreshold, vc, beforeRevVariants.getFirst())) &&
+                (afterRevVariants.size() == 0 ||outOfScope(breakpointMergeThreshold, vc, afterRevVariants.getFirst()));
     }
 
     @Override

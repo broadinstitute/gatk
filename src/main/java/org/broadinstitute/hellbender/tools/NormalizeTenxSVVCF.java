@@ -61,8 +61,9 @@ public class NormalizeTenxSVVCF extends VariantWalker {
 
         vcfWriter = new VariantContextWriterBuilder().setOutputFile(outputFile).build();
         final List<String> genotypeSamples = headerForVariants.getGenotypeSamples();
-        Utils.validate(genotypeSamples.size() == 1, "This tool reuqires a single-sample 10x Long Ranger SV VCF");
+        Utils.validate(genotypeSamples.size() == 1, "This tool requires a single-sample 10x Long Ranger SV VCF");
         sample = genotypeSamples.get(0);
+        newHeader.setSequenceDictionary(getReferenceDictionary());
         vcfWriter.setHeader(newHeader);
         vcfWriter.writeHeader(newHeader);
 
