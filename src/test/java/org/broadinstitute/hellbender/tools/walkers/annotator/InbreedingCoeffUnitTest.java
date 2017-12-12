@@ -183,6 +183,40 @@ public final class InbreedingCoeffUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testInbreedingCoeffForMultiallelicVC_usingPedigreeFile() {
+        //make sure that compound hets (with no ref) don't add to het count
+        VariantContext vc = makeVC("1", Arrays.asList(Aref, T, C),
+                makeG("s1", Aref, T, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s2", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s3", T, C, 7099, 2530, 7099, 3056, 0, 14931),
+                makeG("s4", Aref, T, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s5", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s6", Aref, T, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s7", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s8", Aref, T, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s9", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s10", Aref, T, 2530, 0, 7099, 366, 3056, 14931),
+
+                //add a bunch of hom samples that will be ignored if we use s1..s10 as founders
+                makeG("s11", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s12", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s13", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s14", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s15", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s16", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s17", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931)
+        );
+
+        final Map<String, Object> foundersOnly = new InbreedingCoeff(getTestFile("testtrio.ped")).annotate(null, vc, null);
+        final double ICresultFoundersOnly = Double.valueOf((String) foundersOnly.get(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
+        Assert.assertEquals(ICresultFoundersOnly, -0.3333333, DELTA_PRECISION, "ICresultFoundersOnly");
+
+        final Map<String, Object> all = new InbreedingCoeff().annotate(null, vc, null);
+        final double ICresult = Double.valueOf((String) all.get(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
+        Assert.assertEquals(ICresult, -0.1724, DELTA_PRECISION, "ICresult");
+    }
+
+    @Test
     public void testInbreedingCoeffForMultiallelicVC_refAltFlip() {
         //make sure that compound hets (with no ref) don't add to het count
         VariantContext test1 = makeVC("1", Arrays.asList(Aref, T, C),
