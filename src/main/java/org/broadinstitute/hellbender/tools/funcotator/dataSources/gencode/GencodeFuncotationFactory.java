@@ -816,6 +816,8 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         final int referenceWindow = 10;
         final String referenceBases;
 
+        final SimpleInterval currentReferenceWindow = reference.getWindow();
+
         if ( strand == Strand.POSITIVE ) {
             refAllele = variant.getReference();
             altAllele = alternateAllele;
@@ -823,11 +825,8 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
             // Calculate our window to include any extra bases but also have the right referenceWindow:
             final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindow + refAllele.length() - 1: referenceWindow + altAllele.length() - 1;
 
-            // Set our reference window:
-            reference.setWindow(referenceWindow, endWindow);
-
             // Get the reference sequence:
-            referenceBases = new String(reference.getBases());
+            referenceBases = new String(reference.getBases(new SimpleInterval(currentReferenceWindow.getContig(), currentReferenceWindow.getStart() - referenceWindow, currentReferenceWindow.getEnd() + endWindow)));
         }
         else {
             refAllele = Allele.create(ReadUtils.getBasesReverseComplement( variant.getReference().getBases() ), true);
@@ -836,11 +835,8 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
             // Calculate our window to include any extra bases but also have the right referenceWindow:
             final int endWindow = refAllele.length() >= altAllele.length() ? referenceWindow + refAllele.length() - 1: referenceWindow + altAllele.length() - 1;
 
-            // Set our reference window:
-            reference.setWindow(referenceWindow, endWindow);
-
             // Get the reference sequence:
-            referenceBases = ReadUtils.getBasesReverseComplement(reference.getBases());
+            referenceBases = ReadUtils.getBasesReverseComplement(reference.getBases(new SimpleInterval(currentReferenceWindow.getContig(), currentReferenceWindow.getStart() - referenceWindow, currentReferenceWindow.getEnd() + endWindow)));
         }
 
         // Set our reference sequence in the SequenceComparison:

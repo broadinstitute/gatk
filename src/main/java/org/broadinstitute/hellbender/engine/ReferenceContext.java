@@ -178,7 +178,14 @@ public final class ReferenceContext implements Iterable<Byte> {
             return new byte[0];
         }
 
-        return dataSource.queryAndPrefetch(window).getBases();
+        // Trim to the contig start/end:
+        final SimpleInterval trimmedWindow = new SimpleInterval(
+                window.getContig(),
+                trimToContigStart(window.getStart()),
+                trimToContigLength(window.getContig(), window.getEnd())
+        );
+
+        return dataSource.queryAndPrefetch(trimmedWindow).getBases();
     }
 
     /**
