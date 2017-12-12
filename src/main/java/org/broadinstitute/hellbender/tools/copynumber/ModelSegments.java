@@ -425,6 +425,9 @@ public final class ModelSegments extends CommandLineProgram {
         if (inputNormalAllelicCountsFile != null) {
             IOUtils.canReadFile(inputNormalAllelicCountsFile);
         }
+        if (!new File(outputDir).exists()) {
+            throw new UserException(String.format("Output directory %s does not exist.", outputDir));
+        }
     }
 
     private void readDenoisedCopyRatios() {
