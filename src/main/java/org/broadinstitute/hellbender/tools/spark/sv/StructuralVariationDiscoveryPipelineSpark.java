@@ -14,7 +14,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.BwaMemIndexImageCreator;
@@ -86,7 +86,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 @CommandLineProgramProperties(
         oneLineSummary = "Tool to run the entire structural variation discovery pipeline for a single sample.",
         summary = "Runs FindBreakpointEvidenceSpark and DiscoverVariantsFromContigAlignmentsSAMSpark.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(StructuralVariationDiscoveryPipelineSpark.class);

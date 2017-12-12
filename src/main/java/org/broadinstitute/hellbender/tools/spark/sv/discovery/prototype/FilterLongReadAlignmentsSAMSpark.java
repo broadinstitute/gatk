@@ -14,8 +14,9 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -70,13 +71,14 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVar
  *     -O selected_alignments.txt
  * </pre>
  */
+@DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
         oneLineSummary = "Filters a long read SAM file, and outputs alignments that tile the contig optimally.",
         summary =
         "This tool takes a file containing the alignments of assembled contigs and filters them with the" +
         " aim of providing \"optimal coverage\" of the long read, based on an heuristic scoring scheme.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(FilterLongReadAlignmentsSAMSpark.class);
