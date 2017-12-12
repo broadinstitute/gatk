@@ -1,20 +1,18 @@
-package org.broadinstitute.hellbender.tools.spark.sv.evidence.experimental;
+package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.common.io.FileBackedOutputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.SVReadFilter;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -41,11 +39,12 @@ import java.util.Collections;
  *
  * <h3>Usage example</h3>
  * <pre>
- *   gatk CalcMetadata \
+ *   gatk CalcMetadataSpark \
  *     -I input_reads.bam \
  *     -O statistics.txt
  * </pre>
  */
+@DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
         oneLineSummary = "Dump some statistics about the reads.",
@@ -53,8 +52,8 @@ import java.util.Collections;
         "This tool takes a file of reads as input and calculates a bag of data about them:" +
         " fragment length statistics by read group, mean length, coverage, partition statistics, etc. This is the first step" +
         " in the workflow that FindBreakpointEvidenceSpark undertakes.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
-public class CalcMetadata extends GATKSparkTool {
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
+public class CalcMetadataSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     @Argument(doc = "output file for metadata", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -73,7 +72,7 @@ public class CalcMetadata extends GATKSparkTool {
         final ReadMetadata readMetadata =
                 new ReadMetadata(Collections.emptySet(), getHeaderForReads(),
                         10000, getUnfilteredReads(),
-                        new SVReadFilter(params), LogManager.getLogger(CalcMetadata.class));
+                        new SVReadFilter(params), LogManager.getLogger(CalcMetadataSpark.class));
         if ( !writeAsBinary ) {
             ReadMetadata.writeMetadata(readMetadata, outputFile);
         } else {

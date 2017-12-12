@@ -21,7 +21,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -90,7 +90,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
         " primary and supplementary alignments; secondary alignments are ignored. To be considered valid evidence of an SV," +
         " two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than" +
         " or equal to min-alignment-length. Imprecise variants with approximate locations are also called.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSpark.class);

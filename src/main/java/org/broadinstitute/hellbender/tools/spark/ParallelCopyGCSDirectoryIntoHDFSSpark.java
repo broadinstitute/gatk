@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -64,7 +64,7 @@ import java.util.stream.Collectors;
         " subdirectories will be skipped. Within directories each file is divided into chunks independently (so this will be" +
         " inefficient if you have lots of files smaller than the block size). After all chunks are copied, the HDFS" +
         " concat method is used to stitch together chunks into single files without re-copying them.",
-        programGroup = SparkProgramGroup.class)
+        programGroup = OtherProgramGroup.class)
 @BetaFeature
 public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;

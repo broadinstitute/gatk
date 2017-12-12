@@ -12,8 +12,9 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -64,6 +65,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.A
  * <h3>Notes</h3>
  * <p>The reference is broadcast by Spark, and must therefore be a 2bit file due to current restrictions.</p>
  */
+@DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
         oneLineSummary = "Parse aligned contigs and call complex structural variants.",
@@ -71,7 +73,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.A
         "This tool takes a file containing the alignments of assembled contigs and searches for reads with\n" +
         " split alignments indicating the presence of SV breakpoints. The alignment signatures of the split alignments are" +
         " analyzed to determine the type of structural variation and written to a VCF file.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(SvDiscoverFromLocalAssemblyContigAlignmentsSpark.class);

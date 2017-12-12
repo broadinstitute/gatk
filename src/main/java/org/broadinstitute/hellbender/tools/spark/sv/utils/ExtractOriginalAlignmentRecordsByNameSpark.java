@@ -6,8 +6,9 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintReadsSpark;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
  *     -O output_reads.bam
  * </pre>
  */
+@DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
         oneLineSummary = "Find reads by name.",
@@ -54,7 +56,7 @@ import java.util.stream.Collectors;
             "Reads a file of read (i.e., template) names, and searches an input file of reads to find names that match." +
             " The matching reads are copied to an output file. Unlike PrintReadsSpark, this tool does not require" +
             " reads to be coordinate-sorted.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
