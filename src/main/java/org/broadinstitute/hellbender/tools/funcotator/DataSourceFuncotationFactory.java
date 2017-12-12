@@ -11,7 +11,7 @@ import java.util.*;
  * An abstract class to allow for the creation of a {@link Funcotation} for a given data source.
  * Created by jonn on 8/30/17.
  */
-public interface DataSourceFuncotationFactory extends AutoCloseable {
+public abstract class DataSourceFuncotationFactory implements AutoCloseable {
 
     //==================================================================================================================
 
@@ -42,14 +42,14 @@ public interface DataSourceFuncotationFactory extends AutoCloseable {
     /**
      * Perform cleanup tasks for this {@link DataSourceFuncotationFactory}.
      */
-    default void close() {}
+    public void close() {}
 
     /**
      * Apply the override values in {@link DataSourceFuncotationFactory#annotationOverrideMap} to every
      * {@link Funcotation} in the given {@code outputFuncotations}.
      * @param funcotationList {@link List} of {@link Funcotation} to which to apply override values.
      */
-    void setOverrideValuesInFuncotations(final List<Funcotation> funcotationList) {
+    protected void setOverrideValuesInFuncotations(final List<Funcotation> funcotationList) {
         for ( final Funcotation funcotation : funcotationList ) {
             funcotation.setFieldSerializationOverrideValues( annotationOverrideMap );
         }
@@ -58,12 +58,12 @@ public interface DataSourceFuncotationFactory extends AutoCloseable {
     /**
      * @return The name of the data source corresponding to this {@link DataSourceFuncotationFactory}.
      */
-    String getName();
+    public abstract String getName();
 
     /**
      * @return An ordered {@link LinkedHashSet} of the names of annotations that this Data Source supports.
      */
-    List<String> getSupportedFuncotationFields();
+    public abstract LinkedHashSet<String> getSupportedFuncotationFields();
 
     /**
      * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, and {@code featureContext}.
@@ -72,7 +72,7 @@ public interface DataSourceFuncotationFactory extends AutoCloseable {
      * @param featureList {@link List} of {@link Feature} corresponding to the given {@code variant}.
      * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
      */
-    List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList);
+    public abstract List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList);
 
     /**
      * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, {@code featureContext}, and {@code gencodeFuncotations}.
@@ -83,7 +83,7 @@ public interface DataSourceFuncotationFactory extends AutoCloseable {
      * @param gencodeFuncotations {@link List} of {@link GencodeFuncotation} that have already been created for the given {@code variant}/{@code referenceContext}/{@code featureContext}.
      * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
      */
-    List<Funcotation> createFuncotations(final VariantContext variant,
+    public abstract List<Funcotation> createFuncotations(final VariantContext variant,
                                                          final ReferenceContext referenceContext,
                                                          final List<Feature> featureList,
                                                          final List<GencodeFuncotation> gencodeFuncotations);

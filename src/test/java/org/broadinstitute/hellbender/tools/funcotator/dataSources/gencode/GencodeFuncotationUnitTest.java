@@ -86,133 +86,133 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         final String D = "|";
 
         return new Object[][] {
-                { setFuncotationFieldOverride(gencodeFuncotation, "hugoSymbol", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_hugoSymbol", overrideVal),
                         overrideVal + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "ncbiBuild", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_ncbiBuild", overrideVal),
                         "TESTGENE" + D + overrideVal + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "chromosome", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_chromosome", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + overrideVal + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "start", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_start", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + overrideVal + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "end", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_end", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + overrideVal + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "variantClassification", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_variantClassification", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 overrideVal + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "secondaryVariantClassification", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_secondaryVariantClassification", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + overrideVal + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "variantType", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_variantType", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + overrideVal + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "refAllele", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_refAllele", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 overrideVal + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "tumorSeqAllele1", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_tumorSeqAllele1", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + overrideVal + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "tumorSeqAllele2", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_tumorSeqAllele2", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + overrideVal + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "genomeChange", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_genomeChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + overrideVal + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "annotationTranscript", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_annotationTranscript", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + overrideVal + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "transcriptStrand", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_transcriptStrand", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 overrideVal + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "transcriptExon", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_transcriptExon", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + overrideVal + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "transcriptPos", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_transcriptPos", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + overrideVal + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "cDnaChange", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_cDnaChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + overrideVal + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "codonChange", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_codonChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + overrideVal + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "proteinChange", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_proteinChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + overrideVal + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "gcContent", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_gcContent", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + overrideVal + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "gcContent", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_gcContent", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + overrideVal + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + overrideVal + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
                 },
-                { setFuncotationFieldOverride(gencodeFuncotation, "otherTranscripts", overrideVal),
+                { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_otherTranscripts", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "T" + D + "T" + D + "big changes" + D + "T1" + D +

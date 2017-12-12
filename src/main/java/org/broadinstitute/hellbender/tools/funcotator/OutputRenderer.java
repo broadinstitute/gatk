@@ -13,7 +13,7 @@ import java.util.List;
  * at the user's discretion.
  * Created by jonn on 8/30/17.
  */
-public interface OutputRenderer extends AutoCloseable {
+public abstract class OutputRenderer implements AutoCloseable {
 
     //==================================================================================================================
     /**
@@ -32,17 +32,17 @@ public interface OutputRenderer extends AutoCloseable {
     /**
      * Open the {@link OutputRenderer} for writing.
      */
-    void open();
+    public abstract void open();
 
     /**
      * Close the {@link OutputRenderer}.
      */
-    void close();
+    public abstract void close();
 
     /**
      * Write the given {@code variant} and {@code funcotations} to the output file.
      * @param variant {@link VariantContext} to write to the file.
      * @param funcotations {@link List} of {@link Funcotation} to add to the given {@code variant} on output.
      */
-    void write(final VariantContext variant, final List<Funcotation> funcotations);
+    public abstract void write(final VariantContext variant, final List<Funcotation> funcotations);
 }

@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
@@ -24,7 +23,6 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.testng.collections.Sets;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.testng.collections.Sets;
 
 import java.io.File;
 import java.util.*;
@@ -39,7 +37,7 @@ import static org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfFeatu
  * This is a high-level object that interfaces with the internals of {@link Funcotator}.
  * Created by jonn on 8/30/17.
  */
-public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
+public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Private Static Members:
@@ -63,22 +61,6 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
      * Also used for context from which to get surrounding codon changes and protein changes.
      */
     final static private int referenceWindow = 10;
-
-    /**
-     * The set of {@link GencodeFuncotation.VariantClassification} types that are valid for coding regions.
-     */
-    private static final Set<GencodeFuncotation.VariantClassification> codingVariantClassifications =
-            Sets.newHashSet(Arrays.asList(GencodeFuncotation.VariantClassification.MISSENSE,
-                            GencodeFuncotation.VariantClassification.NONSENSE,
-                            GencodeFuncotation.VariantClassification.NONSTOP,
-                            GencodeFuncotation.VariantClassification.SILENT,
-                            GencodeFuncotation.VariantClassification.IN_FRAME_DEL,
-                            GencodeFuncotation.VariantClassification.IN_FRAME_INS,
-                            GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS,
-                            GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL,
-                            GencodeFuncotation.VariantClassification.START_CODON_SNP,
-                            GencodeFuncotation.VariantClassification.START_CODON_INS,
-                            GencodeFuncotation.VariantClassification.START_CODON_DEL));
 
     /**
      * List of valid Appris Ranks used for sorting funcotations to get the "best" one.z
@@ -576,8 +558,6 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
 
         final GencodeFuncotation.VariantType variantType = getVariantType(variant.getReference(), altAllele);
 
-        final GencodeFuncotation.VariantType variantType = getVariantType(variant.getReference(), altAllele);
-
         // OK, now that we have our SequenceComparison object set up we can continue the annotation:
 
         // Set the exon number:
@@ -1071,19 +1051,19 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
      * Creates a {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} object with the fields populated.
      * @param variant The {@link VariantContext} for the current variant.
      * @param alternateAllele The current alternate {@link Allele} for the variant.
-     * @param referenceContext The {@link ReferenceContext} for the current sample set.
+     * @param reference The {@link ReferenceContext} for the current sample set.
      * @param transcript The {@link GencodeGtfTranscriptFeature} for the current gene feature / alt allele.
      * @param exonPositionList A {@link List} of {@link htsjdk.samtools.util.Locatable} objects representing exon positions in the transcript.
      * @return A populated {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} object.
      */
     @VisibleForTesting
     static SequenceComparison createSequenceComparison(final VariantContext variant,
-                                                                final Allele alternateAllele,
-                                                                final ReferenceContext referenceContext,
-                                                                final GencodeGtfTranscriptFeature transcript,
-                                                                final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
-                                                                final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
-                                                                final ReferenceDataSource transcriptFastaReferenceDataSource) {
+                                                       final Allele alternateAllele,
+                                                       final ReferenceContext reference,
+                                                       final GencodeGtfTranscriptFeature transcript,
+                                                       final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
+                                                       final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
+                                                       final ReferenceDataSource transcriptFastaReferenceDataSource) {
 
         final SequenceComparison sequenceComparison = new SequenceComparison();
 
@@ -1127,14 +1107,12 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
             referenceBases = ReadUtils.getBasesReverseComplement(reference.getBases(new SimpleInterval(currentReferenceWindow.getContig(), currentReferenceWindow.getStart() - referenceWindow, currentReferenceWindow.getEnd() + endWindow)));
         }
 
-        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, altAllele, strand, referenceWindow, referenceContext);
-
         // Set our reference sequence in the SequenceComparison:
         sequenceComparison.setReferenceWindow( referenceWindow );
         sequenceComparison.setReferenceBases( referenceBases );
 
         // Set our GC content:
-        sequenceComparison.setGcContent( calculateGcContent( referenceContext, gcContentWindowSizeBases ) );
+        sequenceComparison.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
 
         // Get the coding sequence for the transcript:
         final String transcriptSequence;

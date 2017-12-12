@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * A {@link Funcotation} to hold data from XSV files.
  * Created by jonn on 11/28/17.
  */
-public class XSVFuncotation extends Funcotation {
+public class XSVFuncotation implements Funcotation {
 
     //==================================================================================================================
     // Private Static Members:

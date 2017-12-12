@@ -94,7 +94,7 @@ public class GencodeFuncotation implements Funcotation {
      * Copy constructor for a {@link GencodeFuncotation}.
      */
     public GencodeFuncotation(final GencodeFuncotation that) {
-        this.hugoSymbol = that.hugoSymbol;
+        this.hugoSymbol = that.hugoSymbol;                         
         this.ncbiBuild = that.ncbiBuild;
         this.chromosome = that.chromosome;
         this.start = that.start;
@@ -114,6 +114,7 @@ public class GencodeFuncotation implements Funcotation {
         this.codonChange = that.codonChange;
         this.proteinChange = that.proteinChange;
         this.gcContent = that.gcContent;
+        this.referenceContext = that.referenceContext;
         this.otherTranscripts = that.otherTranscripts;
         this.locusLevel = that.locusLevel;
         this.apprisRank = that.apprisRank;
@@ -138,8 +139,8 @@ public class GencodeFuncotation implements Funcotation {
         this.codonChangeSerializedOverride = that.codonChangeSerializedOverride;
         this.proteinChangeSerializedOverride = that.proteinChangeSerializedOverride;
         this.gcContentSerializedOverride = that.gcContentSerializedOverride;
+        this.referenceContextSerializedOverride = that.referenceContextSerializedOverride;
         this.otherTranscriptsSerializedOverride = that.otherTranscriptsSerializedOverride;
-        ajfhaweiufhiuawef
     }
 
     //==================================================================================================================
