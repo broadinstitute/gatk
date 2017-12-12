@@ -20,6 +20,9 @@ public abstract class GATKBaseTest extends BaseTest {
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
     public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
 
+    public static final String publicMainResourcesDir = new File(gatkDirectory, "src/main/resources").getAbsolutePath() + "/";
+    public static final String packageMainResourcesDir = publicMainResourcesDir + "org/broadinstitute/hellbender/";
+
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");

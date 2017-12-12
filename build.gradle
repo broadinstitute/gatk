@@ -143,6 +143,9 @@ dependencies {
     testCompile(javadocJDKFiles)
 
     compile 'org.broadinstitute:barclay:1.2.2'
+    // Library for configuration:
+    compile 'org.aeonbits.owner:owner:1.0.9'
+
     compile 'com.github.broadinstitute:picard:' + picardVersion
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
     compile ('com.intel:genomicsdb:' + genomicsdbVersion)  {
@@ -254,9 +257,8 @@ processResources {
 }
 
 processTestResources {
-    //Don't waste time packaging our test data into the test jar
-    exclude "**/large/**"
-    exclude "**/org/broadinstitute/hellbender/**"
+    //Don't waste time packaging unnecessary test data into the test resources:
+    include "org/broadinstitute/hellbender/utils/config/*"
 }
 
 sourceCompatibility = 1.8

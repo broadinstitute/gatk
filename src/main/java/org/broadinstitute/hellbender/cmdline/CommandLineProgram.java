@@ -13,16 +13,10 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.barclay.argparser.CommandLinePluginProvider;
-import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.File;
@@ -53,6 +47,10 @@ import java.util.stream.Collectors;
  *
  */
 public abstract class CommandLineProgram implements CommandLinePluginProvider {
+
+    // Logger is a protected instance variable here to output the correct class name
+    // with concrete sub-classes of CommandLineProgram.  Since CommandLineProgram is
+    // abstract, this is fine (as long as no logging has to happen statically in this class).
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
     @Argument(common=true, optional=true)
@@ -75,7 +73,18 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     public boolean useJdkInflater = false;
 
     @Argument(fullName = "gcs_max_retries", shortName = "gcs_retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
-    public int NIO_MAX_REOPENS = BucketUtils.DEFAULT_GCS_MAX_REOPENS;
+    public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
+
+    // This option is here for documentation completeness.
+    // This is actually parsed out in Main to initialize configuration files because
+    // we need to have the configuration completely set up before we create our CommandLinePrograms.
+    // (Some of the CommandLinePrograms have default values set to config values, and these are loaded
+    // at class load time as static initializers).
+    @Argument(fullName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
+              doc = "A configuration file to use with the GATK.",
+                common = true,
+                optional = true)
+    public String GATK_CONFIG_FILE = null;
 
     private CommandLineParser commandLineParser;
 
@@ -297,6 +306,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                     logger.info("HTSJDK " + Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
             );
         }
+
+        // Log the configuration options:
+        ConfigFactory.logConfigFields(ConfigFactory.getInstance().getGATKConfig(), Log.LogLevel.DEBUG);
 
         final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
         logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));

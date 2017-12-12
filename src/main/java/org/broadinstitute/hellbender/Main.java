@@ -9,13 +9,14 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 
-import java.io.PrintStream;
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -30,6 +31,7 @@ import java.util.*;
  * - {@link #getCommandLineName()} for the name of the toolkit.
  * - {@link #handleResult(Object)} for handle the result of the tool.
  * - {@link #handleNonUserException(Exception)} for handle non {@link UserException}.
+ * - {@link #parseArgsForConfigSetup(String[])} for pulling command-line configuration options out and initializing the {@link org.broadinstitute.hellbender.utils.config.GATKConfig}
  *
  * Note: If any of the previous methods was overrided, {@link #main(String[])} should be implemented to instantiate your class
  * and call {@link #mainEntry(String[])} to make the changes effective.
@@ -98,6 +100,21 @@ public class Main {
         return packageList;
     }
 
+
+    /**
+     * Reads from the given command-line arguments, pulls out configuration options,
+     * and initializes the configuration for this instance of Main.
+     *
+     * Suggested use for this is to handle downstream project configuration options and overrides.
+     * For example this would allow:
+     *
+     *      Custom command-line arguments for use in tools
+     *      Custom config file loading and initialization
+     */
+    protected void parseArgsForConfigSetup(final String[] args) {
+        ConfigFactory.getInstance().initializeConfigurationsFromCommandLineArgs(args, "--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+    }
+
     /**
      * The single classes we wish to include in our command line.
      */
@@ -120,22 +137,43 @@ public class Main {
      *
      */
     public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
+
+        final CommandLineProgram program = setupConfigAndExtractProgram(args, packageList, classList, commandLineName);
         return runCommandLineProgram(program, args);
     }
 
     /**
      * Run the given command line program with the raw arguments from the command line
-     * @param rawArgs thes are the raw arguments from the command line, the first will be stripped off
+     * @param rawArgs these are the raw arguments from the command line, the first will be stripped off
      * @return the result of running  {program} with the given args, possibly null
      */
-    protected static Object runCommandLineProgram(CommandLineProgram program, String[] rawArgs) {
+    protected static Object runCommandLineProgram(final CommandLineProgram program, final String[] rawArgs) {
 
         if (null == program) return null; // no program found!  This will happen if help was specified with no other arguments
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
         final String[] mainArgs = Arrays.copyOfRange(rawArgs, 1, rawArgs.length);
         return program.instanceMain(mainArgs);
+    }
+
+    /**
+     * Set up the configuration file store and create the {@link CommandLineProgram} to run.
+     * @param args Argument array passed into this invocation of {@link Main}.
+     * @param packageList List of packages to include in the command-line.
+     * @param classList List of single classes to include in the command-line.
+     * @param commandLineName The command-line name as it appears in the usage.
+     * @return The {@link CommandLineProgram} to run from this invocation of {@link Main}.
+     */
+    protected CommandLineProgram setupConfigAndExtractProgram(final String[] args,
+                                                              final List<String> packageList,
+                                                              final List<Class<? extends CommandLineProgram>> classList,
+                                                              final String commandLineName ){
+        // Parse our config file path from our arguments and initialize the configuration file.
+        // Note: this must be here because the command-line invocation inserts into here:
+        parseArgsForConfigSetup(args);
+
+        // Get our command-line program:
+        return extractCommandLineProgram(args, packageList, classList, commandLineName);
     }
 
     /**
@@ -154,7 +192,9 @@ public class Main {
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     protected final void mainEntry(final String[] args) {
-        final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
+
+        final CommandLineProgram program = setupConfigAndExtractProgram(args, getPackageList(), getClassList(), getCommandLineName());
+
         try {
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
@@ -174,7 +214,6 @@ public class Main {
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
     }
-
 
 
     /**
@@ -247,8 +286,10 @@ public class Main {
     /**
      * Returns the command line program specified, or prints the usage and exits with exit code 1 *
      */
-    private CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-
+    private CommandLineProgram extractCommandLineProgram( final String[] args,
+                                                          final List<String> packageList,
+                                                          final List<Class<? extends CommandLineProgram>> classList,
+                                                          final String commandLineName ) {
         /** Get the set of classes that are our command line programs **/
         final ClassFinder classFinder = new ClassFinder();
         for (final String pkg : packageList) {
@@ -392,7 +433,7 @@ public class Main {
     /**
      * @return A display name to be used for the tool who's class is {@code clazz}.
      */
-    protected String getDisplayNameForToolClass(Class<?> clazz) {
+    protected String getDisplayNameForToolClass(final Class<?> clazz) {
         return RuntimeUtils.toolDisplayName(clazz);
     }
 
