@@ -13,11 +13,11 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.collections.Sets;
 
 import java.io.File;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * This is a high-level object that interfaces with the internals of {@link Funcotator}.
  * Created by jonn on 8/30/17.
  */
-public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
+public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
 
     //==================================================================================================================
 
@@ -346,7 +346,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Set up our SequenceComparison object so we can calculate some useful fields more easily
         // These fields can all be set without knowing the alternate allele:
-        final FuncotatorUtils.SequenceComparison sequenceComparison = createSequenceComparison(variant, altAllele, reference, transcript, exonPositionList, transcriptIdMap, transcriptFastaReferenceDataSource);
+        final SequenceComparison sequenceComparison = createSequenceComparison(variant, altAllele, reference, transcript, exonPositionList, transcriptIdMap, transcriptFastaReferenceDataSource);
 
         final GencodeFuncotation.VariantType variantType = getVariantType(variant.getReference(), altAllele);
 
@@ -432,7 +432,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param altAllele The {@link Allele} of the given {@code variant} to classify.
      * @param variantType The {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantType} of the given {@code variant}.
      * @param exon The {@link GencodeGtfExonFeature} in which the given {@code variant} occurs.
-     * @param sequenceComparison The {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.SequenceComparison} for the given {@code variant}.
+     * @param sequenceComparison The {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} for the given {@code variant}.
      * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} based on the given {@code allele}, {@code variant}, {@code exon}, and {@code sequenceComparison}.
      */
     @VisibleForTesting
@@ -440,7 +440,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                                 final Allele altAllele,
                                                                                 final GencodeFuncotation.VariantType variantType,
                                                                                 final GencodeGtfExonFeature exon,
-                                                                                final FuncotatorUtils.SequenceComparison sequenceComparison ){
+                                                                                final SequenceComparison sequenceComparison ){
 
         Utils.nonNull(variant);
         Utils.nonNull(altAllele);
@@ -522,17 +522,17 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param variant The {@link VariantContext} to classify.
      * @param altAllele The {@link Allele} of the given {@code variant} to classify.
      * @param variantType The {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantType} of the given {@code variant}.
-     * @param sequenceComparison The {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.SequenceComparison} for the given {@code variant}.
+     * @param sequenceComparison The {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} for the given {@code variant}.
      * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} based on the given {@code allele}, {@code variant}, {@code exon}, and {@code sequenceComparison}.
      */
     private static GencodeFuncotation.VariantClassification getVariantClassificationForCodingRegion(final VariantContext variant,
                                                                                              final Allele altAllele,
                                                                                              final GencodeFuncotation.VariantType variantType,
-                                                                                             final FuncotatorUtils.SequenceComparison sequenceComparison) {
+                                                                                             final SequenceComparison sequenceComparison) {
         final GencodeFuncotation.VariantClassification varClass;
 
         if (variantType == GencodeFuncotation.VariantType.INS) {
-            if (GATKProtectedVariantContextUtils.isFrameshift(variant.getReference(), altAllele)) {
+            if ( GATKVariantContextUtils.isFrameshift(variant.getReference(), altAllele)) {
                 varClass = GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS;
             }
             else {
@@ -540,7 +540,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
         else if (variantType == GencodeFuncotation.VariantType.DEL) {
-            if (GATKProtectedVariantContextUtils.isFrameshift(variant.getReference(), altAllele)) {
+            if (GATKVariantContextUtils.isFrameshift(variant.getReference(), altAllele)) {
                 varClass = GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL;
             }
             else {
@@ -562,7 +562,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * This essentially compares the amino acid sequences of both alleles and returns a value based on the differences between them.
      * @return The {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} corresponding to the given variant / reference allele / alternate allele.
      */
-    private static GencodeFuncotation.VariantClassification getVarClassFromEqualLengthCodingRegions(final FuncotatorUtils.SequenceComparison sequenceComparison) {
+    private static GencodeFuncotation.VariantClassification getVarClassFromEqualLengthCodingRegions(final SequenceComparison sequenceComparison) {
 
         GencodeFuncotation.VariantClassification varClass = GencodeFuncotation.VariantClassification.SILENT;
 
@@ -692,7 +692,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // offset of 1 to account for that:
             // (TODO: come to think of it this is really bad, because we're tying our parsing / computations to a data format).
             int offsetIndelAdjustment = 0;
-            if ( GATKProtectedVariantContextUtils.isDeletion(variant.getReference(), altAllele) ) {
+            if ( GATKVariantContextUtils.isDeletion(variant.getReference(), altAllele) ) {
                 offsetIndelAdjustment = 1;
             }
 
@@ -780,16 +780,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Creates a {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.SequenceComparison} object with the fields populated.
+     * Creates a {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} object with the fields populated.
      * @param variant The {@link VariantContext} for the current variant.
      * @param alternateAllele The current alternate {@link Allele} for the variant.
      * @param reference The {@link ReferenceContext} for the current sample set.
      * @param transcript The {@link GencodeGtfTranscriptFeature} for the current gene feature / alt allele.
      * @param exonPositionList A {@link List} of {@link htsjdk.samtools.util.Locatable} objects representing exon positions in the transcript.
-     * @return A populated {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.SequenceComparison} object.
+     * @return A populated {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} object.
      */
     @VisibleForTesting
-    static FuncotatorUtils.SequenceComparison createSequenceComparison(final VariantContext variant,
+    static SequenceComparison createSequenceComparison(final VariantContext variant,
                                                                 final Allele alternateAllele,
                                                                 final ReferenceContext reference,
                                                                 final GencodeGtfTranscriptFeature transcript,
@@ -797,7 +797,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                 final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
                                                                 final ReferenceDataSource transcriptFastaReferenceDataSource) {
 
-        final FuncotatorUtils.SequenceComparison sequenceComparison = new FuncotatorUtils.SequenceComparison();
+        final SequenceComparison sequenceComparison = new SequenceComparison();
 
         // Get the contig:
         sequenceComparison.setContig(variant.getContig());

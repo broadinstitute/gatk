@@ -201,6 +201,8 @@ public final class ReferenceContextUnitTest extends GATKBaseTest {
         }
     }
 
+
+
     @DataProvider(name = "InvalidWindowDataProvider")
     public Object[][] getInvalidWindows() {
         return new Object[][] {

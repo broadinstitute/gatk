@@ -8,10 +8,11 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
+import org.broadinstitute.hellbender.tools.funcotator.SequenceComparison;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
 import org.testng.Assert;
@@ -339,7 +340,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE));
         final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory.createTranscriptIdMap(muc16TranscriptDataSource);
 
-        final FuncotatorUtils.SequenceComparison seqComp =
+        final SequenceComparison seqComp =
                 GencodeFuncotationFactory.createSequenceComparison(
                         variantContext,
                         altAllele,

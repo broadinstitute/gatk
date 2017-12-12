@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
  * A class to represent a Functional Annotation.
  * Created by jonn on 8/22/17.
  */
-public class GencodeFuncotation extends Funcotation {
+public class GencodeFuncotation implements Funcotation {
 
     private static final String FIELD_DELIMITER = "|";
     private static final String OTHER_TRANSCRIPT_DELIMITER = ";";

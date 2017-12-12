@@ -37,7 +37,7 @@ public class Funcotator extends VariantWalker {
 
     public static final String GTF_FILE_ARG_LONG_NAME = "gtfFile";
     public static final String GTF_FILE_ARG_SHORT_NAME = "gtf";
-    public static final String GENCODE_FASTA_ARG_NAME = "fasta";
+    public static final String GENCODE_FASTA_ARG_NAME = "gencodeFasta";
 
     //==================================================================================================================
 
@@ -74,8 +74,6 @@ public class Funcotator extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        logger.info("Beginning traversal");
-
         // Set up our data source factories:
         // TODO: this should be set up based on the input CLI arguments.
         dataSourceFactories.add(new GencodeFuncotationFactory(gencodeTranscriptFastaFile));
@@ -99,7 +97,6 @@ public class Funcotator extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        logger.info("Traversal complete!");
         return true;
     }
 

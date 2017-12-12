@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * A Funcotator output renderer for writing to VCF files.
  * Created by jonn on 8/30/17.
  */
-public class VcfOutputRenderer extends OutputRenderer {
+public class VcfOutputRenderer implements OutputRenderer {
 
     /**
      * The name of the field inside the VCF INFO field in which to put {@link Funcotator} results.

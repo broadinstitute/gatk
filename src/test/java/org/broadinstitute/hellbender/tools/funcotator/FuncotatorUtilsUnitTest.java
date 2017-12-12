@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -1088,7 +1087,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                                     final String altAllele,
                                     final String expected) {
 
-        final FuncotatorUtils.SequenceComparison seqComp = new FuncotatorUtils.SequenceComparison();
+        final SequenceComparison seqComp = new SequenceComparison();
         seqComp.setReferenceAminoAcidSequence(refAminoAcidSeq);
         seqComp.setProteinChangeStartPosition(protChangeStartPos);
         seqComp.setProteinChangeEndPosition(protChangeEndPos);
