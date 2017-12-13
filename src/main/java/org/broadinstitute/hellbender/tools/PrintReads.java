@@ -13,7 +13,33 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 /**
- * Print reads from a SAM/BAM/CRAM file.
+ * Copy reads in a SAM/BAM/CRAM file verbatim to a SAM file
+ *
+ * <p>
+ *     This tool copies reads from a SAM/BAM/CRAM file to a SAM file. If you are interested in printing reads in
+ *     certain intervals only, use the -L argument.
+ *
+ * </p>
+ *
+ * <h3> Input </h3>
+ * <ul>
+ *     <li> SAM/BAM/CRAM file to be copied to a SAM file </li>
+ *     <li> (optional) interval file with the -L argument </li>
+ * </ul>
+ *
+ * <h3> Output </h3>
+ * SAM file with reads copied from the source
+ *
+ *
+ * <h3>Examples</h3>
+ * <pre>
+ *  gatk PrintReads \
+ *  -R reference.fasta \
+ *  -I input.bam \
+ *  -L 20 \
+ *  -O chr20.sam
+ * </pre>
+ *
  *
  * {@GATK.walkertype ReadWalker}
  */
@@ -25,7 +51,9 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 @DocumentedFeature
 public final class PrintReads extends ReadWalker {
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc="Write output to this file")
     public String output;
 
     private SAMFileGATKReadWriter outputWriter;
