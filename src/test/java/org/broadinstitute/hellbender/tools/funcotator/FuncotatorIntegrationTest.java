@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -28,6 +28,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 {FuncotatorTestConstants.GTF_CHR3_FILE_NAME, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
                 {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME, 0},
                 {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
+                {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_PATHOLOGICAL_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
         };
     }
 
@@ -108,6 +109,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("PIK3CA_XSV_INPUT");
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
         arguments.add("true");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_VERSION_ARG_SHORT_NAME);
+        arguments.add("0.001.TEST");
 
         // Arbitrary XSV Args:
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME);
@@ -122,6 +125,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("MUC16_XSV_INPUT");
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
         arguments.add("true");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_VERSION_ARG_SHORT_NAME);
+        arguments.add("0.002.TEST");
 
         // Locatable XSV Data Source:
         arguments.add("-" + FuncotatorArgumentDefinitions.LOCATABLE_XSV_IN_ARG_SHORT_NAME);
@@ -143,6 +148,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("hgnc");
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
         arguments.add("true");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_VERSION_ARG_SHORT_NAME);
+        arguments.add("0.003.HGNC");
 
         // simple_uniprot:
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME);
@@ -157,6 +164,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add("simple_uniprot");
         arguments.add("-" + FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME);
         arguments.add("true");
+        arguments.add("-" + FuncotatorArgumentDefinitions.XSV_VERSION_ARG_SHORT_NAME);
+        arguments.add("0.004.SIMPLE_UNIPROT");
 
         // Override Args:
         arguments.add("-" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_SHORT_NAME);

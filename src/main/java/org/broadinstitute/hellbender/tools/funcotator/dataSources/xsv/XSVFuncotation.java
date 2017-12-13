@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV;
+package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 
 /**
  * A {@link Funcotation} to hold data from XSV files.
+ * This class will be used any time an annotation is created by reading data from an XSV file through either
+ * {@link SimpleKeyXsvFuncotationFactory} or {@link LocatableXsvFuncotationFactory}.
  * Created by jonn on 11/28/17.
  */
 public class XSVFuncotation implements Funcotation {

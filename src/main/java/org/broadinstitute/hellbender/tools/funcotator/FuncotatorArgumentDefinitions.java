@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 
 import java.util.*;
 
@@ -30,6 +30,10 @@ public class FuncotatorArgumentDefinitions {
     public static final String XSV_INPUT_ARG_SHORT_NAME = "xsv";
     public static final List<String> XSV_INPUT_ARG_DEFAULT_VALUE = new ArrayList<>();
 
+    public static final String XSV_VERSION_ARG_LONG_NAME = "xsvVersion";
+    public static final String XSV_VERSION_ARG_SHORT_NAME = "xsvV";
+    public static final List<String> XSV_VERSION_ARG_DEFAULT_VALUE = new ArrayList<>();
+
     public static final String XSV_DELIMITER_ARG_LONG_NAME = "xsvDelimiter";
     public static final String XSV_DELIMITER_ARG_SHORT_NAME = "xsvD";
     public static final List<String> XSV_DELIMITER_ARG_DEFAULT_VALUE = new ArrayList<>();
@@ -52,7 +56,7 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcriptSelectionMode";
     public static final String TRANSCRIPT_SELECTION_MODE_SHORT_NAME = "tm";
-    public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANNONICAL;
+    public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
 
     public static final String TRANSCRIPT_LIST_LONG_NAME = "transcriptList";
     public static final String TRANSCRIPT_LIST_SHORT_NAME = "tl";
@@ -211,6 +215,6 @@ public class FuncotatorArgumentDefinitions {
          *      appris_candidate
          *      no appris tag present
          */
-        CANNONICAL
+        CANONICAL
     }
 }

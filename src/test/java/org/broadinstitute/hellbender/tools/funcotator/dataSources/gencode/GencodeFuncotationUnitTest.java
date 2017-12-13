@@ -411,37 +411,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Tests:
 
-    @Test
-    void testGetSerializedFieldNames() {
-        final List<String> serializedFieldNames = GencodeFuncotation.getSerializedFieldNames();
-
-        final List<String> expectedFieldNames = Arrays.asList(
-                "Gencode_hugoSymbol",
-                "Gencode_ncbiBuild",
-                "Gencode_chromosome",
-                "Gencode_start",
-                "Gencode_end",
-                "Gencode_variantClassification",
-                "Gencode_secondaryVariantClassification",
-                "Gencode_variantType",
-                "Gencode_refAllele",
-                "Gencode_tumorSeqAllele1",
-                "Gencode_tumorSeqAllele2",
-                "Gencode_genomeChange",
-                "Gencode_annotationTranscript",
-                "Gencode_transcriptStrand",
-                "Gencode_transcriptExon",
-                "Gencode_transcriptPos",
-                "Gencode_cDnaChange",
-                "Gencode_codonChange",
-                "Gencode_proteinChange",
-                "Gencode_gcContent",
-                "Gencode_referenceContext",
-                "Gencode_otherTranscripts");
-
-        Assert.assertEquals(serializedFieldNames, expectedFieldNames);
-    }
-
     @Test(dataProvider = "provideDataForTestSerializationOverrides")
     void testSerializationOverrides(final GencodeFuncotation gencodeFuncotation, final String expected) {
         Assert.assertEquals(gencodeFuncotation.serializeToVcfString(), expected);

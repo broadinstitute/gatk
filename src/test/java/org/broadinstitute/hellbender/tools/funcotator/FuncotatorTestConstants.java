@@ -18,6 +18,7 @@ public class FuncotatorTestConstants {
     public static final String MUC16_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16.gtf";
     public static final String MUC16_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16_transcript.fasta";
     public static final String MUC16_TRANSCRIPT = "ENST00000397910.4";
+    public static final String MUC16_PATHOLOGICAL_TRANSCRIPT = "ENST00000599436.1";
 
     // chr3:178866311-178957881
     public static final String PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.PIK3CA.gtf";

@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
+import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.testng.collections.Sets;
@@ -30,7 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfFeature.FeatureTag.*;
+import static org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.FeatureTag.*;
 
 /**
  * A factory to create {@link GencodeFuncotation}s.
@@ -41,9 +41,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Private Static Members:
-    /**
-     * Standard Logger.
-     */
+    /** Standard Logger.  */
     protected static final Logger logger = LogManager.getLogger(GencodeFuncotationFactory.class);
 
     /**
@@ -134,25 +132,27 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
     // Constructors:
 
-    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile) {
-        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>(), new LinkedHashMap<>());
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final String version) {
+        this(gencodeTranscriptFastaFile, version, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>(), new LinkedHashMap<>());
     }
 
-    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final Set<String> userRequestedTranscripts) {
-        this(gencodeTranscriptFastaFile, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts, new LinkedHashMap<>());
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final String version, final Set<String> userRequestedTranscripts) {
+        this(gencodeTranscriptFastaFile, version, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts, new LinkedHashMap<>());
     }
 
-    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode) {
-        this(gencodeTranscriptFastaFile, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final String version,final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode) {
+        this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
     }
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile,
+                                     final String version,
                                      final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts) {
-        this(gencodeTranscriptFastaFile, transcriptSelectionMode, userRequestedTranscripts, new LinkedHashMap<>());
+        this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, userRequestedTranscripts, new LinkedHashMap<>());
     }
 
     public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile,
+                                     final String version,
                                      final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
                                      final LinkedHashMap<String, String> annotationOverrides) {
@@ -160,6 +160,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
 
         this.transcriptSelectionMode = transcriptSelectionMode;
+
+        this.version = version;
 
         // Go through each requested transcript and remove the version numbers from them if they exist:
         this.userRequestedTranscripts = new HashSet<>();
@@ -184,9 +186,35 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         return "Gencode";
     }
 
+    //TODO: Add in version getter/setter:
+
     @Override
     public LinkedHashSet<String> getSupportedFuncotationFields() {
-        return new LinkedHashSet<>(GencodeFuncotation.getSerializedFieldNames());
+
+            return new LinkedHashSet<>(Arrays.asList(
+                    getName() + "_" + getVersion() + "_hugoSymbol",
+                    getName() + "_" + getVersion() + "_ncbiBuild",
+                    getName() + "_" + getVersion() + "_chromosome",
+                    getName() + "_" + getVersion() + "_start",
+                    getName() + "_" + getVersion() + "_end",
+                    getName() + "_" + getVersion() + "_variantClassification",
+                    getName() + "_" + getVersion() + "_secondaryVariantClassification",
+                    getName() + "_" + getVersion() + "_variantType",
+                    getName() + "_" + getVersion() + "_refAllele",
+                    getName() + "_" + getVersion() + "_tumorSeqAllele1",
+                    getName() + "_" + getVersion() + "_tumorSeqAllele2",
+                    getName() + "_" + getVersion() + "_genomeChange",
+                    getName() + "_" + getVersion() + "_annotationTranscript",
+                    getName() + "_" + getVersion() + "_transcriptStrand",
+                    getName() + "_" + getVersion() + "_transcriptExon",
+                    getName() + "_" + getVersion() + "_transcriptPos",
+                    getName() + "_" + getVersion() + "_cDnaChange",
+                    getName() + "_" + getVersion() + "_codonChange",
+                    getName() + "_" + getVersion() + "_proteinChange",
+                    getName() + "_" + getVersion() + "_gcContent",
+                    getName() + "_" + getVersion() + "_referenceContext",
+                    getName() + "_" + getVersion() + "_otherTranscripts"
+            ));
     }
 
     @Override
@@ -246,15 +274,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Filter the given list of {@link GencodeFuncotation} to only contain those funcotations that have transcriptIDs that
-     * appear in the given {@code acceptableTranscripts}.
+     * appear in the given {@code selectedTranscripts}.
      * Ignores transcript version numbers.
      * @param funcotations The {@link List} of {@link GencodeFuncotation} to filter.
-     * @param acceptableTranscripts The {@link Set} of transcript IDs to keep in the given {@code funcotations}.
+     * @param selectedTranscripts The {@link Set} of transcript IDs to keep in the given {@code funcotations}.
      */
     static void filterAnnotationsByUserTranscripts( final List<GencodeFuncotation> funcotations,
-                                                    final Set<String> acceptableTranscripts ) {
-        if ( (acceptableTranscripts != null) && (!acceptableTranscripts.isEmpty()) ) {
-            funcotations.removeIf( f -> !isFuncotationInTranscriptList(f, acceptableTranscripts) );
+                                                    final Set<String> selectedTranscripts ) {
+        if ( (selectedTranscripts != null) && (!selectedTranscripts.isEmpty()) ) {
+            funcotations.removeIf( f -> !isFuncotationInTranscriptList(f, selectedTranscripts) );
         }
     }
 
@@ -431,8 +459,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 // Add it into our transcript:
                 outputFuncotations.add( gencodeFuncotation );
 
-            } catch (final Exception ex) {
-                //TODO: This should never happen, but needs to be here for some known issues with transcripts, such as HG19 MUC16 ENST00000599436.1
+            } catch (final FuncotatorUtils.TranscriptCodingSequenceException ex) {
+                //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
                 //      There may be other erroneous transcripts too.
                 otherTranscriptsCondensedAnnotations.add( "ERROR_ON_" + transcript.getTranscriptId() );
 
@@ -565,7 +593,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Set the Codon and Protein changes:
         final String codonChange = FuncotatorUtils.getCodonChangeString( sequenceComparison );
-        final String proteinChange = FuncotatorUtils.getProteinChangeString2( sequenceComparison );
+        final String proteinChange = FuncotatorUtils.getProteinChangeString( sequenceComparison );
 
         gencodeFuncotationBuilder.setCodonChange(codonChange)
                                  .setProteinChange(proteinChange)
@@ -1128,7 +1156,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Get the allele genomic start position:
         sequenceComparison.setAlleleStart(variant.getStart());
 
-        // Get the allele transcript start position (including NTRs):
+        // Get the allele transcript start position (including UTRs):
         sequenceComparison.setTranscriptAlleleStart(
                 FuncotatorUtils.getTranscriptAlleleStartPosition( variant.getStart(), transcript.getStart(), transcript.getEnd(), sequenceComparison.getStrand() )
         );
@@ -1245,22 +1273,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Create a placeholder for the bases:
         final byte[] bases;
 
-        // Since we're messing with the window this seems prudent:
-        synchronized ( referenceContext ) {
-
-            // Save the old reference values:
-            final int oldLeadingBases  = referenceContext.numWindowLeadingBases();
-            final int oldTrailingBases = referenceContext.numWindowTrailingBases();
-
-            // Set our reference window:
-            referenceContext.setWindow(windowSize, windowSize);
-
-            // Get the bases:
-            bases = referenceContext.getBases();
-
-            // Preserve the old reference values:
-            referenceContext.setWindow(oldLeadingBases, oldTrailingBases);
-        }
+        // Get the bases:
+        bases = referenceContext.getBases(windowSize, windowSize);
 
         // Get the gcCount:
         long gcCount = 0;

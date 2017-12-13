@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.GENCODE;
+package org.broadinstitute.hellbender.utils.codecs.gencode;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;

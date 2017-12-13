@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV;
+package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -76,20 +76,21 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     //==================================================================================================================
     // Constructors:
 
-    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType) {
-        this(name, filePath, delim, keyColumn, keyType, new LinkedHashMap<>(), 0, false);
+    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String version, final String delim, final int keyColumn, final XsvDataKeyType keyType) {
+        this(name, filePath, version, delim, keyColumn, keyType, new LinkedHashMap<>(), 0, false);
     }
 
-    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType, final LinkedHashMap<String, String> annotationOverrides) {
-        this(name, filePath, delim, keyColumn, keyType, annotationOverrides, 0, false);
+    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String version, final String delim, final int keyColumn, final XsvDataKeyType keyType, final LinkedHashMap<String, String> annotationOverrides) {
+        this(name, filePath, version, delim, keyColumn, keyType, annotationOverrides, 0, false);
     }
 
-    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType, final LinkedHashMap<String, String> annotationOverrides, final int numHeaderLinesToIgnore) {
-        this(name, filePath, delim, keyColumn, keyType, annotationOverrides, numHeaderLinesToIgnore, false);
+    public SimpleKeyXsvFuncotationFactory(final String name, final Path filePath, final String version, final String delim, final int keyColumn, final XsvDataKeyType keyType, final LinkedHashMap<String, String> annotationOverrides, final int numHeaderLinesToIgnore) {
+        this(name, filePath, version, delim, keyColumn, keyType, annotationOverrides, numHeaderLinesToIgnore, false);
     }
 
     public SimpleKeyXsvFuncotationFactory(final String name,
                                           final Path filePath,
+                                          final String version,
                                           final String delim,
                                           final int keyColumn,
                                           final XsvDataKeyType keyType,
@@ -101,6 +102,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         delimiter = delim;
         xsvInputPath = filePath;
 
+        this.version = version;
         this.keyColumn = keyColumn;
         this.keyType = keyType;
 
@@ -149,7 +151,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      *
      */
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
-        throw new GATKException("This method should never be called on a " + this.getClass().getName());
+        throw new GATKException(this.getClass().getName() + " requires a set of GencodeFuncotations in order to createFuncotations!  This method should never be called on a " + this.getClass().getName());
     }
 
     @Override

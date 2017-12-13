@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV;
+package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;

@@ -17,7 +17,6 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
@@ -1515,16 +1514,12 @@ public final class GATKVariantContextUtils {
         Utils.nonNull(reference);
         Utils.nonNull(alternate);
 
-        if ( reference.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
-        }
-        else if ( alternate.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
-        }
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
 
         // We know it's a frameshift if we have a replacement that is not of a
         // length evenly divisible by 3 because that's how many bases are read at once:
-        return ((Math.abs( reference.length() - alternate.length() ) % 3) != 0);
+        return ((Math.abs( refComparable.length() - altComperable.length() ) % 3) != 0);
     }
 
     /**
@@ -1575,15 +1570,11 @@ public final class GATKVariantContextUtils {
         Utils.nonNull(reference);
         Utils.nonNull(alternate);
 
-        if ( reference.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
-        }
-        else if ( alternate.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
-        }
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
 
         // If we have more bases in the alternate, we have an insertion:
-        return reference.length() < alternate.length();
+        return refComparable.length() < altComperable.length();
     }
 
     /**
@@ -1597,15 +1588,11 @@ public final class GATKVariantContextUtils {
         Utils.nonNull(reference);
         Utils.nonNull(alternate);
 
-        if ( reference.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
-        }
-        else if ( alternate.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
-        }
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
 
         // If we have fewer bases in the alternate, we have a deletion:
-        return reference.length() > alternate.length();
+        return refComparable.length() > altComperable.length();
     }
 
     /**
@@ -1634,16 +1621,12 @@ public final class GATKVariantContextUtils {
         Utils.nonNull(reference);
         Utils.nonNull(alternate);
 
-        if ( reference.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
-        }
-        else if ( alternate.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
-        }
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
 
         // If we do not have the same number of bases in the reference and alternate alleles,
         // then we have an indel:
-        return reference.length() != alternate.length();
+        return refComparable.length() != altComperable.length();
     }
 
     /**
@@ -1663,44 +1646,36 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Determines whether the given reference and alternate alleles constitute an Oligo-Nucleotide Polymorphism (ONP).
-     * For Funcotator purposes, an ONP is a mutation/variant that is a substitution of one or more consecutive bases.
+     * Determines whether the given reference and alternate alleles constitute a polymorphism in one or more nucleotides (XNP).
      * @param reference The reference {@link Allele}.  Must not be {@code null}.
      * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
-     * @return {@code true} if replacing the reference with the alternate results in an ONP.  {@code false} otherwise.
+     * @return {@code true} if replacing the reference with the alternate results in an XNP.  {@code false} otherwise.
      */
-    public static boolean isOnp(final Allele reference, final Allele alternate) {
+    public static boolean isXnp(final Allele reference, final Allele alternate) {
 
         Utils.nonNull(reference);
         Utils.nonNull(alternate);
 
-        // If we have more bases in the alternate, we have an insertion:
-        return reference.length() == alternate.length();
+        // If we have an equal number of bases in the reference and the alternate, we have an ONP:
+        return (reference.length() == alternate.length()) && (!reference.equals(alternate));
     }
 
     /**
-     * Determines whether the given reference and alternate alleles constitute an Oligo-Nucleotide Polymorphism (ONP).
-     * For Funcotator purposes, an ONP is a mutation/variant that is a substitution of one or more consecutive bases.
+     * Determines whether the given reference and alternate alleles constitute a polymorphism in one or more nucleotides (XNP).
      * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
      * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
-     * @return {@code true} if replacing the reference with the alternate results in an ONP.  {@code false} otherwise.
+     * @return {@code true} if replacing the reference with the alternate results in an XNP.  {@code false} otherwise.
      */
-    public static boolean isOnp(final String reference, final String alternate) {
+    public static boolean isXnp(final String reference, final String alternate) {
 
         Utils.nonNull(reference);
         Utils.nonNull(alternate);
 
-        if ( reference.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + reference);
-        }
-        else if ( alternate.contains("*") ) {
-            throw new GATKException("Allele strings must contain only valid bases (" + new String(BaseUtils.BASE_CHARS) + ").  Found: " + alternate);
-        }
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
 
-        // If we have more bases in the alternate, we have an insertion:
-        return reference.length() == alternate.length();
+        // If we have an equal number of bases in the reference and the alternate, we have an ONP:
+        return ((refComparable.length() == altComperable.length()) && (!refComparable.equals(altComperable)));
     }
-
-
 }
 

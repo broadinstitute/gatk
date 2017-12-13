@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfGeneFeature;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -150,37 +150,6 @@ public class GencodeFuncotation implements Funcotation {
      */
     public static GencodeFuncotationBuilder getBuilder() {
         return new GencodeFuncotationBuilder();
-    }
-
-    /**
-     * @return A {@link List} of {@link String} containing the field names that {@link GencodeFuncotation} produces.
-     */
-    public static List<String> getSerializedFieldNames() {
-
-        return Arrays.asList(
-                    "Gencode_hugoSymbol",
-                    "Gencode_ncbiBuild",
-                    "Gencode_chromosome",
-                    "Gencode_start",
-                    "Gencode_end",
-                    "Gencode_variantClassification",
-                    "Gencode_secondaryVariantClassification",
-                    "Gencode_variantType",
-                    "Gencode_refAllele",
-                    "Gencode_tumorSeqAllele1",
-                    "Gencode_tumorSeqAllele2",
-                    "Gencode_genomeChange",
-                    "Gencode_annotationTranscript",
-                    "Gencode_transcriptStrand",
-                    "Gencode_transcriptExon",
-                    "Gencode_transcriptPos",
-                    "Gencode_cDnaChange",
-                    "Gencode_codonChange",
-                    "Gencode_proteinChange",
-                    "Gencode_gcContent",
-                    "Gencode_referenceContext",
-                    "Gencode_otherTranscripts"
-                );
     }
 
     //==================================================================================================================

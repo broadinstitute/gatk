@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfGeneFeature;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;

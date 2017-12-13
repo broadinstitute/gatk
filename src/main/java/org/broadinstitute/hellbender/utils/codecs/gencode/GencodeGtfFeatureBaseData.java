@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.GENCODE;
+package org.broadinstitute.hellbender.utils.codecs.gencode;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 

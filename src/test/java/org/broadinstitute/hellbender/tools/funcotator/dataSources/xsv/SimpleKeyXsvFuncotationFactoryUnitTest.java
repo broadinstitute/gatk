@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV;
+package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -123,6 +123,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 new SimpleKeyXsvFuncotationFactory(
                                         defaultName,
                                         IOUtils.getPath(path),
+                                        "VERSION",
                                         delim,
                                         keyColumn,
                                         SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME,
@@ -147,6 +148,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 new SimpleKeyXsvFuncotationFactory(
                                         defaultName,
                                         IOUtils.getPath(path),
+                                        "VERSION",
                                         delim,
                                         keyColumn,
                                         SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID,
@@ -192,6 +194,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                     new SimpleKeyXsvFuncotationFactory(
                             defaultName,
                             IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                            "VERSION",
                             ",",
                             0,
                             SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -202,6 +205,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new SimpleKeyXsvFuncotationFactory(
                                 "Donatello",
                                 IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                                "VERSION",
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -212,6 +216,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new SimpleKeyXsvFuncotationFactory(
                                 "Leonardo",
                                 IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                                "VERSION",
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -222,6 +227,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new SimpleKeyXsvFuncotationFactory(
                                 "Michelangelo",
                                 IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                                "VERSION",
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -232,6 +238,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 new SimpleKeyXsvFuncotationFactory(
                         "Raphael",
                         IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                        "VERSION",
                         ",",
                         0,
                         SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -252,6 +259,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new SimpleKeyXsvFuncotationFactory(
                                 defaultName,
                                 IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                                "VERSION",
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -265,6 +273,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new SimpleKeyXsvFuncotationFactory(
                                 defaultName,
                                 IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                                "VERSION",
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
@@ -280,6 +289,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         new SimpleKeyXsvFuncotationFactory(
                                 defaultName,
                                 IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                                "VERSION",
                                 ",",
                                 0,
                                 SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID
@@ -313,10 +323,10 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final SimpleKeyXsvFuncotationFactory xsvFuncotationFactory;
         if ( headerLinesToIgnore == 0 ) {
-            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType);
+            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, "VERSION", delimiter, keyColumn, dataKeyType);
         }
         else {
-            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, delimiter, keyColumn, dataKeyType, new LinkedHashMap<>(), headerLinesToIgnore);
+            xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(name, inputPath, "VERSION", delimiter, keyColumn, dataKeyType, new LinkedHashMap<>(), headerLinesToIgnore);
         }
 
         final LinkedHashSet<String> supportedFields = xsvFuncotationFactory.getSupportedFuncotationFields();
@@ -335,6 +345,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 new SimpleKeyXsvFuncotationFactory(
                     defaultName,
                     IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                    "VERSION",
                     ",",
                     0,
                     SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME

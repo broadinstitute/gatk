@@ -9,14 +9,12 @@ import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.util.ArrayList;
 import java.util.*;
 
 public final class FuncotatorUtils {
@@ -404,7 +402,7 @@ public final class FuncotatorUtils {
     public static String getCodonChangeString( final SequenceComparison seqComp ) {
 
         // ONP:
-        if ( GATKProtectedVariantContextUtils.isOnp(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+        if ( GATKVariantContextUtils.isXnp(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
             return getCodonChangeStringForOnp(
                     seqComp.getAlignedCodingSequenceReferenceAllele(),
                     seqComp.getAlignedCodingSequenceAlternateAllele(),
@@ -415,9 +413,9 @@ public final class FuncotatorUtils {
         else {
 
             // Insertion:
-            if ( GATKProtectedVariantContextUtils.isInsertion(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+            if ( GATKVariantContextUtils.isInsertion(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
 
-                if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+                if ( GATKVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
 
                     if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
                         final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
@@ -466,7 +464,7 @@ public final class FuncotatorUtils {
             }
             // Deletion:
             else {
-                if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+                if ( GATKVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
                     if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
 
                         // Check to see if the deletion actually starts in the next codon, if it does then we skip the
@@ -711,7 +709,7 @@ public final class FuncotatorUtils {
      * @param seqComp {@link SequenceComparison} representing the alternate and reference alleles for a DNA sequence.  Must not be {@code null}.
      * @return A {@link String} representing the codon change for the given {@link SequenceComparison}.
      */
-    public static String getProteinChangeString2(final SequenceComparison seqComp) {
+    public static String getProteinChangeString(final SequenceComparison seqComp) {
 
         Utils.nonNull(seqComp);
         Utils.nonNull(seqComp.getReferenceAminoAcidSequence());
@@ -734,15 +732,15 @@ public final class FuncotatorUtils {
         final Integer protChangeEndPos = seqComp.getProteinChangeEndPosition();
 
         // Check for the ONP case:
-        if ( GATKProtectedVariantContextUtils.isOnp(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
+        if ( GATKVariantContextUtils.isXnp(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
             return getProteinChangeStringForOnp(refAaSeq, altAaSeq, protChangeStartPos, protChangeEndPos);
         }
         else {
 
             // Insertion:
-            if ( GATKProtectedVariantContextUtils.isInsertion(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+            if ( GATKVariantContextUtils.isInsertion(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
 
-                if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+                if ( GATKVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
 
                     if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
                         final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
@@ -767,8 +765,6 @@ public final class FuncotatorUtils {
                                 createAminoAcidSequence(seqComp.getAlignedAlternateAllele().substring(3));
                     }
                     else {
-                        // TODO: Problem 1 is here!
-
                         // TODO: must do head / tail matching on the protein strings to deterimine what the positions of the protein change string actually are.
                         //       That is, you can have a mutation in protein position 979 that results in an amino acid insertion
                         //       between pp978 and pp979:
@@ -799,7 +795,7 @@ public final class FuncotatorUtils {
             }
             // Deletion:
             else {
-                if ( GATKProtectedVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
+                if ( GATKVariantContextUtils.isFrameshift(seqComp.getAlignedReferenceAllele(), seqComp.getAlignedAlternateAllele()) ) {
                     if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
 
                         // Check to see if the deletion actually starts in the next codon, if it does then we skip the
@@ -827,8 +823,6 @@ public final class FuncotatorUtils {
                         else {
                             // Get the offset for where our REAL difference occurs:
                             final int refAaOffset = getOffsetForRefAaSequence(refAaSeq, altAaSeq);
-
-                           //TODO: problem 3 is here.
 
                             // Return the string:
                             return "p." + refAaSeq.substring(refAaOffset) + (protChangeStartPos + refAaOffset) + "fs";
@@ -876,7 +870,6 @@ public final class FuncotatorUtils {
                                                                                 refSb,
                                                                                 altSb );
 
-                        // TODO: Problem 2 is here.
                         // Use the offset to adjust the starting positions:
                         int adjustedProteinStartPos = protChangeStartPos;
                         int adjustedProteinEndPos = protChangeEndPos;
@@ -991,97 +984,6 @@ public final class FuncotatorUtils {
                 ++index;
             }
             return index;
-        }
-    }
-
-    /**
-     * Creates the string representation of the codon change for the given {@link SequenceComparison}.
-     * Requires that the given {@code seqComp} has the following fields defined with values that are not {@code null}:
-     *     referenceAminoAcidSequence
-     *     proteinChangeStartPosition
-     *     proteinChangeEndPosition
-     *     alternateAminoAcidSequence
-     *     referenceAllele
-     *     alternateAllele
-     * In the case of an insertion, the given {@code seqComp} must have the following fields defined with values that are not {@code null}:
-     *     codingSequenceAlleleStart
-     *     transcriptCodingSequence
-     *     strand  (must also not be {@link Strand#NONE}
-     * @param seqComp {@link SequenceComparison} representing the alternate and reference alleles for a DNA sequence.  Must not be {@code null}.
-     * @return A {@link String} representing the codon change for the given {@link SequenceComparison}.
-     */
-    public static String getProteinChangeString(final SequenceComparison seqComp) {
-
-        Utils.nonNull(seqComp);
-        Utils.nonNull(seqComp.getReferenceAminoAcidSequence());
-        Utils.nonNull(seqComp.getProteinChangeStartPosition());
-        Utils.nonNull(seqComp.getProteinChangeEndPosition());
-        Utils.nonNull(seqComp.getAlternateAminoAcidSequence());
-        Utils.nonNull(seqComp.getReferenceAllele());
-        Utils.nonNull(seqComp.getAlternateAllele());
-
-        if ( seqComp.getReferenceAllele().length() == 0 ) {
-            throw new UserException("Reference allele cannot be empty.");
-        }
-        if ( seqComp.getAlternateAllele().length() == 0 ) {
-            throw new UserException("Alternate allele cannot be empty.");
-        }
-
-        final String refAaSeq = seqComp.getReferenceAminoAcidSequence();
-        final String altAaSeq = seqComp.getAlternateAminoAcidSequence();
-        final Integer protChangeStartPos = seqComp.getProteinChangeStartPosition();
-        final Integer protChangeEndPos = seqComp.getProteinChangeEndPosition();
-
-        // Check for the ONP case:
-        if ( GATKVariantContextUtils.isOnp(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
-            return getProteinChangeStringForOnp(refAaSeq, altAaSeq, protChangeStartPos, protChangeEndPos);
-        }
-        // Check for the Insertion case:
-        else if ( GATKVariantContextUtils.isInsertion(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
-
-            Utils.nonNull(seqComp.getCodingSequenceAlleleStart());
-            Utils.nonNull(seqComp.getTranscriptCodingSequence());
-            assertValidStrand(seqComp.getStrand());
-
-            // Because we have to deal with the codon after the insertion, we need to know what that next codon is:
-            final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
-
-            // We must also know the Amino Acid sequence for it:
-            final String nextRefAaSeq = createAminoAcidSequence(nextRefCodon);
-
-            if ( GATKVariantContextUtils.isFrameshift(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
-                return getProteinChangeStringForInsertionFrameshift(
-                        seqComp.getCodingSequenceAlleleStart(),
-                        refAaSeq,
-                        protChangeStartPos,
-                        nextRefAaSeq
-                );
-            }
-            else {
-
-                // If the variant position is in frame, then we have to use the next amino acid, because it will be the first
-                // amino acid that is affected.
-                // We add 1 because of the convention that the variant occurs just after the base specified for insertions.
-                // TODO: This is really bad - we are tying our output to a specific input format.  FIX IT.
-                if ( isPositionInFrame(seqComp.getCodingSequenceAlleleStart() + 1) ) {
-                    return getProteinChangeStringForInsertionInFrameWithInFrameStartPosition(protChangeStartPos, altAaSeq);
-                }
-                else {
-                    return getProteinChangeStringForInsertionInFrameWithOutOfFrameStartPosition(
-                        refAaSeq,
-                        altAaSeq,
-                        protChangeStartPos,
-                        seqComp.getAlternateAllele().length()
-                    );
-                }
-            }
-        }
-        // Must be a deletion:
-        else {
-            return getProteinChangeStringForDeletion(seqComp.getReferenceAllele(),
-                    seqComp.getAlternateAllele(),
-                    seqComp.getReferenceAminoAcidSequence(),
-                    seqComp.getProteinChangeStartPosition());
         }
     }
 
@@ -1271,7 +1173,7 @@ public final class FuncotatorUtils {
         Utils.nonNull(seqComp.getAlternateAllele());
 
         // Check for ONP:
-        if ( GATKVariantContextUtils.isOnp(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
+        if ( GATKVariantContextUtils.isXnp(seqComp.getReferenceAllele(), seqComp.getAlternateAllele()) ) {
             if (seqComp.getAlternateAllele().length() > 1) {
                 return "c." + seqComp.getCodingSequenceAlleleStart() + "_" + (seqComp.getCodingSequenceAlleleStart() + seqComp.getReferenceAllele().length() - 1) +
                         seqComp.getReferenceAllele() + ">" + seqComp.getAlternateAllele();
@@ -1390,13 +1292,25 @@ public final class FuncotatorUtils {
         final String alignedAlleleSeq;
 
         if ( strand == Strand.POSITIVE ) {
-            alignedAlleleSeq = codingSequence.substring(start, end);
+
+            if ( end > codingSequence.length() ) {
+                throw new TranscriptCodingSequenceException("Gencode transcript ends at position " + end + " but codingSequence is only " + codingSequence.length() + " bases long!");
+            }
+            else {
+                alignedAlleleSeq = codingSequence.substring(start, end);
+            }
         }
         else {
             // Negative strand means we need to reverse complement and go from the other end:
             start = codingSequence.length() - alignedAlleleStop;
             end = codingSequence.length() - alignedAlleleStart + 1;
-            alignedAlleleSeq = ReadUtils.getBasesReverseComplement( codingSequence.substring(start, end).getBytes() );
+
+            if ( end > codingSequence.length() ) {
+                throw new TranscriptCodingSequenceException("Gencode transcript ends at position " + end + " but codingSequence is only " + codingSequence.length() + " bases long!");
+            }
+            else {
+                alignedAlleleSeq = ReadUtils.getBasesReverseComplement(codingSequence.substring(start, end).getBytes());
+            }
         }
 
         return alignedAlleleSeq;
@@ -1526,7 +1440,6 @@ public final class FuncotatorUtils {
     /**
      * Get a string of bases around a variant (specified by reference and alternate alleles), including the reference allele itself.
      * ASSUMES: that the given {@link ReferenceContext} is already centered on the variant location.
-     * SIDE EFFECT: Will change the window size of the given {@link ReferenceContext} to include {@code referenceWindowInBases} additional bases on either side of the variant.
      * @param refAllele The reference {@link Allele} for the variant in question.  If on {@link Strand#NEGATIVE}, must have already been reverse complemented.  Must not be {@code null}.
      * @param altAllele The alternate {@link Allele} for the variant in question.  If on {@link Strand#NEGATIVE}, must have already been reverse complemented.  Must not be {@code null}.
      * @param strand The {@link Strand} on which the variant in question lives.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
@@ -1549,29 +1462,13 @@ public final class FuncotatorUtils {
 
         final String referenceBases;
 
-        synchronized ( referenceContext ) {
-
-            // Get the old window size:
-            final int oldNumLeadingBases = referenceContext.numWindowLeadingBases();
-            final int oldNumTrailingBases = referenceContext.numWindowTrailingBases();
-
-            if ( strand == Strand.POSITIVE ) {
-                // Set our reference window:
-                referenceContext.setWindow(referenceWindowInBases, endWindow);
-
-                // Get the reference sequence:
-                referenceBases = new String(referenceContext.getBases());
-            }
-            else {
-                // Set our reference window:
-                referenceContext.setWindow(referenceWindowInBases, endWindow);
-
-                // Get the reference sequence:
-                referenceBases = ReadUtils.getBasesReverseComplement(referenceContext.getBases());
-            }
-
-            // Set back our window:
-            referenceContext.setWindow( oldNumLeadingBases, oldNumTrailingBases );
+        if ( strand == Strand.POSITIVE ) {
+            // Get the reference sequence:
+            referenceBases = new String(referenceContext.getBases(referenceWindowInBases, endWindow));
+        }
+        else {
+            // Get the reference sequence:
+            referenceBases = ReadUtils.getBasesReverseComplement(referenceContext.getBases(referenceWindowInBases, endWindow));
         }
 
         return referenceBases;
@@ -1709,17 +1606,9 @@ public final class FuncotatorUtils {
             if ( end < exon.getEnd() ) { end = exon.getEnd(); }
         }
 
-        // Set the window on our reference to be correct for our start and end:
-        reference.setWindow(
-                Math.abs(start - reference.getInterval().getStart()),
-                Math.abs(reference.getInterval().getEnd() - end)
-        );
-
-        // Now that the window size is correct, we can go through and pull our sequences out.
-
         // Get the window so we can convert to reference coordinates from genomic coordinates of the exons:
         final SimpleInterval refWindow = reference.getWindow();
-        final byte[] bases = reference.getBases();
+        final byte[] bases = reference.getBases(Math.abs(start - reference.getInterval().getStart()), Math.abs(reference.getInterval().getEnd() - end));
 
         // If we're going in the opposite direction, we must reverse this reference base array
         // and complement it.
@@ -1833,5 +1722,23 @@ public final class FuncotatorUtils {
             throw new GATKException("Unable to handle NONE strand.");
         }
 
+    }
+
+    // ========================================================================================
+
+    /**
+     * Class representing exceptions that arise when trying to create a coding sequence for a variant:
+     */
+    public static class TranscriptCodingSequenceException extends GATKException {
+
+        private static final long serialVersionUID = 1L;
+
+        public TranscriptCodingSequenceException( final String msg ) {
+            super(msg);
+        }
+
+        public TranscriptCodingSequenceException( final String msg, final Throwable throwable ) {
+            super(msg, throwable);
+        }
     }
 }

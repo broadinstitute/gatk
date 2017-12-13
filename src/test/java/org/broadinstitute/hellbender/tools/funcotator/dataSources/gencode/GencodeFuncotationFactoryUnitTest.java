@@ -19,7 +19,7 @@ import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.SequenceComparison;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
+import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -59,7 +59,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Gets cleaned up in `cleanupAfterTests()`
         // NOTE: This is initialized here to save time in testing.
-        testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE));
+        testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION");
     }
 
     //==================================================================================================================
@@ -845,7 +845,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene("MUC16");
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), requestedTranscriptIds)) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION", requestedTranscriptIds)) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -914,7 +914,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene(expectedGeneName);
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(transcriptFastaFile), requestedTranscriptIds)) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(transcriptFastaFile), "VERSION", requestedTranscriptIds)) {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );

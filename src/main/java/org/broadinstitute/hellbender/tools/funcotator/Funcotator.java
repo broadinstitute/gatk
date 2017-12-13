@@ -14,12 +14,12 @@ import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.LocatableXsvFuncotationFactory;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.XSV.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.LocatableXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -102,6 +102,14 @@ public class Funcotator extends VariantWalker {
     protected List<String> xsvInputPaths = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_DEFAULT_VALUE;
 
     @Argument(
+            shortName = FuncotatorArgumentDefinitions.XSV_VERSION_ARG_LONG_NAME,
+            fullName  = FuncotatorArgumentDefinitions.XSV_VERSION_ARG_SHORT_NAME,
+            optional = true,
+            doc = "Version number for each additional data source file."
+    )
+    protected List<String> xsvVersionNumbers = FuncotatorArgumentDefinitions.XSV_VERSION_ARG_DEFAULT_VALUE;
+
+    @Argument(
             shortName = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_LONG_NAME,
             fullName  = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME,
             optional = true,
@@ -154,7 +162,7 @@ public class Funcotator extends VariantWalker {
             shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_SHORT_NAME,
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME,
             optional = true,
-            doc = "List of transcripts to use for annotation."
+            doc = "List of transcripts to use for annotation to override selected transcript."
     )
     protected Set<String> transcriptList = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_DEFAULT_VALUE;
 
@@ -192,8 +200,11 @@ public class Funcotator extends VariantWalker {
         final LinkedHashMap<String, String> annotationDefaultsMap = splitAnnotationArgsIntoMap(annotationDefaults);
         final LinkedHashMap<String, String> annotationOverridesMap = splitAnnotationArgsIntoMap(annotationOverrides);
 
+        // TODO: Read Gencode Version info from files!
+
         // Set up and add our gencode factory:
         gencodeFuncotationFactory = new GencodeFuncotationFactory(gencodeTranscriptFastaFile,
+                                                                 "UNKNOWN_GENCODE_VERSION",
                                                                  transcriptSelectionMode,
                                                                  transcriptList,
                                                                  annotationOverridesMap);
@@ -212,6 +223,7 @@ public class Funcotator extends VariantWalker {
                     new SimpleKeyXsvFuncotationFactory(
                             xsvDataSourceNames.get(i),
                             IOUtils.getPath(xsvInputPaths.get(i)),
+                            xsvVersionNumbers.get(i),
                             xsvInputDelimiters.get(i),
                             xsvKeyColumns.get(i),
                             xsvFileTypes.get(i),
@@ -284,11 +296,11 @@ public class Funcotator extends VariantWalker {
      */
     private void assertSimpleXsvInputsAreValid() {
 
-        if ( !(xsvInputPaths.isEmpty() && xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
+        if ( !(xsvInputPaths.isEmpty() && xsvInputDelimiters.isEmpty() && xsvVersionNumbers.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
             if ((xsvInputPaths.size() != xsvInputDelimiters.size() && (!xsvInputDelimiters.isEmpty()))) {
                 throw new UserException.BadInput("Must specify the same number of XSV input files and XSV delimiters (or no delimiters to assume CSV format).");
             }
-            else if ( (xsvInputPaths.size() != xsvDataSourceNames.size()) && (xsvInputPaths.size() != xsvFileTypes.size()) && (xsvInputPaths.size() != xsvKeyColumns.size()) && (xsvInputPaths.size() != xsvPermissiveColumns.size()) ) {
+            else if ( (xsvInputPaths.size() != xsvDataSourceNames.size()) || (xsvInputPaths.size() != xsvFileTypes.size()) || (xsvInputPaths.size() != xsvKeyColumns.size()) || (xsvInputPaths.size() != xsvPermissiveColumns.size()) || (xsvInputPaths.size() != xsvVersionNumbers.size()) ) {
                 throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
             }
 
@@ -309,10 +321,9 @@ public class Funcotator extends VariantWalker {
                 }
             }
         }
-        else if ( xsvInputPaths.isEmpty() && !(xsvInputDelimiters.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
+        else if ( xsvInputPaths.isEmpty() && !(xsvInputDelimiters.isEmpty() && xsvVersionNumbers.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
             throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
         }
-
     }
 
     /**
