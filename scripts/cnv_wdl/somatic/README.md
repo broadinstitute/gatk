@@ -7,9 +7,9 @@
 
 #### Setting up parameter json file for a run
 
-To get started, copy the relevant ``*.template.json`` for the workflow you wish to run and adjust parameters accordingly.  
+To get started, create the json template (using ``java -jar wdltool.jar inputs <workflow>``) for the workflow you wish to run and adjust parameters accordingly.  
 
-*Please note that there are optional workflow-level and task-level parameters that do not appear in the template files.  These are set to reasonable values by default, but can also be adjusted if desired.*
+*Please note that there are optional workflow-level and task-level parameters that do not appear in the template file.  These are set to reasonable values by default, but can also be adjusted if desired.*
 
 #### Required parameters in the somatic panel workflow
 
