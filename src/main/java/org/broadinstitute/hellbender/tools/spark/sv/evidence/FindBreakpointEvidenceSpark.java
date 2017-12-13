@@ -54,7 +54,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEv
  * kmers (fixed-length subsequences) with the reads aligned in these regions are extracted to produce the local
  * assemblies.</p>
  * <p>The local assemblies are done with <a href="https://github.com/lh3/fermi-lite">FermiLite</a>,
- * and the assembled contigs are aligned to reference with <a href="https://arxiv.org/abs/1303.3997>BWA-MEM</a>.</p>
+ * and the assembled contigs are aligned to reference with <a href="https://arxiv.org/abs/1303.3997">BWA-MEM</a>.</p>
  * <p>The output is a file of aligned contigs from local assemblies to be used in calling structural variants.</p>
  *
  * <h3>Inputs</h3>
