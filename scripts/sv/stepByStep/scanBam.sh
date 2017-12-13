@@ -24,7 +24,7 @@ INTERVAL_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.intervals/')
 KMER_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.kmers/')
 ALTS_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.alts/')
 
-"${GATK_DIR}/gatk-launch" FindBreakpointEvidenceSpark \
+"${GATK_DIR}/gatk" FindBreakpointEvidenceSpark \
     -I "${INPUT_BAM}" \
     -O "${PROJECT_OUTPUT_DIR}/assemblies.sam" \
     --aligner-index-image "${REF_INDEX_IMAGE}" \
@@ -34,7 +34,7 @@ ALTS_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.alts/')
     --breakpoint-intervals "${PROJECT_OUTPUT_DIR}/intervals" \
     --fastq-dir "${PROJECT_OUTPUT_DIR}/fastq" \
     -- \
-    --sparkRunner GCS \
+    --spark-runner GCS \
     --cluster "${CLUSTER_NAME}" \
     --num-executors 20 \
     --driver-memory 30G \

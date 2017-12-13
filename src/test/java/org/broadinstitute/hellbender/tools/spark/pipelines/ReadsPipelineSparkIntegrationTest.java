@@ -83,7 +83,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 // input local, computation local.
                 // Note: these output files were created by running Picard 1.130 and GATK3.46.
                 // VCF files were generated using GATK4 with a command like:
-                // ./gatk-launch HaplotypeCaller \
+                // gatk HaplotypeCaller \
                 //        -I src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.bam \
                 //        -R src/test/resources/large/human_g1k_v37.20.21.fasta \
                 //        -O src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.vcf \

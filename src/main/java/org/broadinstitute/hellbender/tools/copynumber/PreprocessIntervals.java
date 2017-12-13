@@ -37,7 +37,7 @@ import java.util.List;
  *
  * <h3>Example</h3>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" PreprocessIntervals \
+ * gatk --java-options "-Xmx4g" PreprocessIntervals \
  *   -R ref_fasta.fa \
  *   -L intervals.list \
  *   -BL 10000 \

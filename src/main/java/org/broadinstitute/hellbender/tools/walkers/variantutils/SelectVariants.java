@@ -85,7 +85,7 @@ import java.util.stream.Collectors;
  *
  * * <h3>Usage example</h3>
  * <pre>
- *     ./gatk-launch SelectVariants \
+ *     gatk SelectVariants \
  *     -R reference.fasta \
  *     -V input.vcf \
  *     -selectType SNP \

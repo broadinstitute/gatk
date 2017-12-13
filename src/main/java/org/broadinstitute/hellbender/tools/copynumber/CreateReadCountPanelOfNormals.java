@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  * <h3>Examples</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CreateReadCountPanelOfNormals \
+ * gatk --java-options "-Xmx4g" CreateReadCountPanelOfNormals \
  *   --input normal_1.readCounts.hdf5 \
  *   --input normal_2.readCounts.hdf5 \
  *   ... \

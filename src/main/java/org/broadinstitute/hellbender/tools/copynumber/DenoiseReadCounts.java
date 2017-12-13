@@ -25,7 +25,7 @@ import java.io.File;
  * <h3>Examples</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" DenoiseReadCounts \
+ * gatk --java-options "-Xmx4g" DenoiseReadCounts \
  *   --input tumor.readCounts.tsv \
  *   --readCountPanelOfNormals panel_of_normals.hdf5 \
  *   --standardizedCopyRatios tumor.standardizedCR.tsv \

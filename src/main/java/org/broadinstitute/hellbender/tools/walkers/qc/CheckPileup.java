@@ -42,7 +42,7 @@ import java.util.List;
  *
  * <h3>Usage example</h3>
  * <pre>
- * ./gatk-launch CheckPileup \
+ * gatk CheckPileup \
  *   -R reference.fasta \
  *   -I input.bam \
  *   -O output.txt \

@@ -89,7 +89,7 @@ import java.util.regex.Pattern;
  *
  * <h3>Example</h3>
  * <pre>
- *   gatk-launch \
+ *   gatk \
  *     ClipReads \
  *     -R reference.fasta \
  *     -I original.bam \

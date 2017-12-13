@@ -107,20 +107,20 @@ if [[ ! $REF_DIR =~ .+/$ ]]; then
     REF_DIR+="/"
 fi
 
-${GATK_DIR}/gatk-launch ParallelCopyGCSDirectoryIntoHDFSSpark \
+${GATK_DIR}/gatk ParallelCopyGCSDirectoryIntoHDFSSpark \
     --input-gcs-path "$REF_DIR" \
     --output-hdfs-directory "$MASTER_NODE"/reference \
     -- \
-    --sparkRunner GCS \
+    --spark-runner GCS \
     --cluster "$CLUSTER_NAME" \
 
 if [[ ! $SAMP_DIR =~ .+/$ ]]; then
     SAMP_DIR+="/"
 fi
 
-${GATK_DIR}/gatk-launch ParallelCopyGCSDirectoryIntoHDFSSpark \
+${GATK_DIR}/gatk ParallelCopyGCSDirectoryIntoHDFSSpark \
     --input-gcs-path "$SAMP_DIR" \
     --output-hdfs-directory "$MASTER_NODE"/data \
     -- \
-    --sparkRunner GCS \
+    --spark-runner GCS \
     --cluster "$CLUSTER_NAME" \

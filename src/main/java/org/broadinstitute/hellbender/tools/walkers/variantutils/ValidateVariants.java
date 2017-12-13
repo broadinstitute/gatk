@@ -55,7 +55,7 @@ import java.util.*;
  *
  * <h4>To perform VCF format and all strict validations: </h4>
  * <pre>
- *   ./gatk-launch ValidateVariants \
+ *   gatk ValidateVariants \
  *   -R ref.fasta \
  *   -V input.vcf \
  *   --dbsnp dbsnp.vcf
@@ -63,7 +63,7 @@ import java.util.*;
  *
  * <h4>To perform only VCF format tests:</h4>
  * <pre>
- *   ./gatk-launch ValidateVariants
+ *   gatk ValidateVariants
  *   -R ref.fasta \
  *   -V input.vcf \
  *   --validationTypeToExclude ALL
@@ -71,7 +71,7 @@ import java.util.*;
  *
  * <h4>To perform all validations except the strict `ALLELE` validation:</h4>
  * <pre>
- *   ./gatk-launch ValidateVariants \
+ *   gatk ValidateVariants \
  *   -R ref.fasta \
  *   -V input.vcf \
  *   --validationTypeToExclude ALLELES \

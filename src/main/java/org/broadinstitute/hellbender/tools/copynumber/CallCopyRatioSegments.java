@@ -20,7 +20,7 @@ import java.io.File;
  * <h3>Examples</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CallCopyRatioSegments \
+ * gatk --java-options "-Xmx4g" CallCopyRatioSegments \
  *   --segments tumor.cr.seg \
  *   --output tumor.called
  * </pre>

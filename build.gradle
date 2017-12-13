@@ -257,9 +257,9 @@ dependencies {
     testCompile "com.google.jimfs:jimfs:1.1"
 }
 
-//add gatk-launch to the jar as a resource
+//add gatk launcher script to the jar as a resource
 processResources {
-    from("gatk-launch")
+    from("gatk")
 }
 
 processTestResources {
@@ -444,9 +444,9 @@ task bundle(type: Zip) {
     dependsOn shadowJar, sparkJar, 'gatkTabComplete'
 
     doFirst {
-        assert file("gatk-launch").exists()
+        assert file("gatk").exists()
         assert file("README.md").exists()
-        assert file("build/docs/tabCompletion/gatk-launch-completion.sh").exists()
+        assert file("build/docs/tabCompletion/gatk-completion.sh").exists()
     }
 
     baseName = project.name + "-" + project.version
@@ -455,9 +455,9 @@ task bundle(type: Zip) {
 
     from(shadowJar.archivePath)
     from(sparkJar.archivePath)
-    from("gatk-launch")
+    from("gatk")
     from("README.md")
-    from("build/docs/tabCompletion/gatk-launch-completion.sh")
+    from("build/docs/tabCompletion/gatk-completion.sh")
 
     into(baseName)
 
@@ -564,16 +564,16 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("absolute-version", getVersion())
     options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
 
-    options.addStringOption("caller-script-name", "gatk-launch")
+    options.addStringOption("caller-script-name", "gatk")
 
-    options.addStringOption("caller-pre-legal-args", "--help --list --dryRun --javaOptions")
+    options.addStringOption("caller-pre-legal-args", "--help --list --dry-run --java-options")
     options.addStringOption("caller-pre-arg-val-types", "null null null String")
-    options.addStringOption("caller-pre-mutex-args", "--help;list,dryRun,javaOptions --list;help,dryRun,javaOptions")
+    options.addStringOption("caller-pre-mutex-args", "--help;list,dry-run,java-options --list;help,dry-run,java-options")
     options.addStringOption("caller-pre-alias-args", "--help;-h")
     options.addStringOption("caller-pre-arg-min-occurs", "0 0 0 0")
     options.addStringOption("caller-pre-arg-max-occurs", "1 1 1 1")
 
-    options.addStringOption("caller-post-legal-args", "--sparkRunner --spark-master --cluster --dryRun --javaOptions --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors")
+    options.addStringOption("caller-post-legal-args", "--spark-runner --spark-master --cluster --dry-run --java-options --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors")
     options.addStringOption("caller-post-arg-val-types", "String String String null String file int int int int int")
     options.addStringOption("caller-post-mutex-args", "")
     options.addStringOption("caller-post-alias-args", "")

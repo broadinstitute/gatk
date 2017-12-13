@@ -199,7 +199,7 @@ public class CalculateContamination extends CommandLineProgram {
         final long otherAltBases = sites.stream().mapToInt(PileupSummary::getOtherAltCount).sum();
         return 1.5 * ((double) otherAltBases / totalBases);
     }
-    
+
     // subset sites in the contaminated sample to hom alt site found in the genotyping sample
     private static List<PileupSummary> subsetSites(final List<PileupSummary> sites, final List<PileupSummary> subsetLoci) {
         final OverlapDetector<PileupSummary> homAltsInMatchedNormalOverlapDetector = OverlapDetector.create(subsetLoci);
