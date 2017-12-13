@@ -49,6 +49,10 @@ public final class CopyRatioKernelSegmenter {
                         Collectors.mapping(Function.identity(), Collectors.toList())));
     }
 
+    /**
+     * Segments the internally held {@link CopyRatioCollection} using a separate {@link KernelSegmenter} for each chromosome.
+     * @param kernelVariance    variance of the Gaussian kernel; if zero, a linear kernel is used instead
+     */
     public CopyRatioSegmentCollection findSegmentation(final int maxNumChangepointsPerChromosome,
                                                        final double kernelVariance,
                                                        final int kernelApproximationDimension,

@@ -71,7 +71,7 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     @Argument(
             doc = "Threshold on z-score of non-log2 copy ratio used for determining outlier copy-neutral segments.  " +
                     "If non-log2 copy ratio z-score is above this threshold for a copy-neutral segment, " +
-                    "it is considered an outlier and not used in the calculation of the length-weighted standard deviation " +
+                    "it is considered an outlier and not used in the calculation of the length-weighted mean and standard deviation " +
                     "used for calling.",
             fullName = OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME,
             shortName = OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD_SHORT_NAME,
@@ -81,10 +81,7 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     private double outlierNeutralSegmentCopyRatioZScoreThreshold = 2.;
 
     @Argument(
-            doc = "Threshold on z-score of non-log2 copy ratio used for calling segments.  " +
-                    "If non-log2 copy ratio z-score is above this threshold for a copy-neutral segment, " +
-                    "it is considered an outlier and not used in the calculation of the length-weighted standard deviation " +
-                    "used for calling.",
+            doc = "Threshold on z-score of non-log2 copy ratio used for calling segments.",
             fullName = CALLING_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME,
             shortName = CALLING_COPY_RATIO_Z_SCORE_THRESHOLD_SHORT_NAME,
             optional = true,

@@ -46,6 +46,10 @@ public final class AlleleFractionKernelSegmenter {
                         Collectors.mapping(Function.identity(), Collectors.toList())));
     }
 
+    /**
+     * Segments the internally held {@link AllelicCountCollection} using a separate {@link KernelSegmenter} for each chromosome.
+     * @param kernelVariance    variance of the Gaussian kernel; if zero, a linear kernel is used instead
+     */
     public AlleleFractionSegmentCollection findSegmentation(final int maxNumChangepointsPerChromosome,
                                                             final double kernelVariance,
                                                             final int kernelApproximationDimension,

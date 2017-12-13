@@ -107,6 +107,17 @@ public final class MultidimensionalKernelSegmenter {
                         Collectors.toList()));
     }
 
+    /**
+     * Segments the internally held {@link CopyRatioCollection} and {@link AllelicCountCollection}
+     * using a separate {@link KernelSegmenter} for each chromosome.
+     * @param kernelVarianceCopyRatio       variance of the Gaussian kernel used for copy-ratio data;
+     *                                      if zero, a linear kernel is used instead
+     * @param kernelVarianceAlleleFraction  variance of the Gaussian kernel used for allele-fraction data;
+     *                                      if zero, a linear kernel is used instead
+     * @param kernelScalingAlleleFraction   relative scaling S of the kernel K_AF for allele-fraction data
+     *                                      to the kernel K_CR for copy-ratio data;
+     *                                      the total kernel is K_CR + S * K_AF
+     */
     public MultidimensionalSegmentCollection findSegmentation(final int maxNumChangepointsPerChromosome,
                                                               final double kernelVarianceCopyRatio,
                                                               final double kernelVarianceAlleleFraction,

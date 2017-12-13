@@ -36,8 +36,8 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Model segmented copy ratio from denoised read counts and minor-allele fraction from allelic counts.",
-        oneLineSummary = "Model segmented copy ratio from denoised read counts.",
+        summary = "Model segmented copy ratio from denoised read counts and segmented minor-allele fraction from allelic counts.",
+        oneLineSummary = "Model segmented copy ratio from denoised read counts and segmented minor-allele fraction from allelic counts.",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

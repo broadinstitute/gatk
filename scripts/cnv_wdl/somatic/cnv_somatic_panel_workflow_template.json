@@ -1,9 +1,0 @@
-{
-  "CNVSomaticPanelWorkflow.gatk_docker": "String",
-  "CNVSomaticPanelWorkflow.intervals": "File",
-  "CNVSomaticPanelWorkflow.normal_bams_list": "File",
-  "CNVSomaticPanelWorkflow.pon_entity_id": "String",
-  "CNVSomaticPanelWorkflow.ref_fasta_dict": "File",
-  "CNVSomaticPanelWorkflow.ref_fasta_fai": "File",
-  "CNVSomaticPanelWorkflow.ref_fasta": "File"
-}

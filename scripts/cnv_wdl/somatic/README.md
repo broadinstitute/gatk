@@ -15,7 +15,7 @@ To get started, copy the relevant ``*.template.json`` for the workflow you wish 
 
 The reference used must be the same between PoN and case samples.
 
-- ``CNVSomaticPanelWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:x.beta.x``).
+- ``CNVSomaticPanelWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:latest``).
 - ``CNVSomaticPanelWorkflow.intervals`` -- Picard or GATK-style interval list.  For WGS, this should typically only include the autosomal chromosomes.
 - ``CNVSomaticPanelWorkflow.normal_bams_list`` -- TSV file consisting of corresponding bam and corresponding index files as described in cnv_somatic_panel_workflow.wdl.
 - ``CNVSomaticPanelWorkflow.pon_entity_id`` -- Name of the final PoN file.
@@ -36,7 +36,7 @@ Further explanation of other task-level parameters may be found by invoking the 
 The reference (and bins, if specified) used must be the same between PoN and case samples.
 
 - ``CNVSomaticPairWorkflow.common_sites`` -- Picard or GATK-style interval list of common sites to use for collecting allelic counts.
-- ``CNVSomaticPairWorkflow.gatk_docker`` -- GATK Docker image (e.g., "broadinstitute/gatk:x.beta.x").
+- ``CNVSomaticPairWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:latest``).
 - ``CNVSomaticPairWorkflow.intervals`` -- Picard or GATK-style interval list.  For WGS, this should typically only include the autosomal chromosomes.
 - ``CNVSomaticPairWorkflow.normal_bam`` -- File path or storage location (depending on backend) of the normal BAM file.
 - ``CNVSomaticPairWorkflow.normal_bam_idx`` -- File path or storage location (depending on backend) of the normal BAM file index.
