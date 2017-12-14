@@ -1865,4 +1865,60 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 {list2, gtList2}
         };
     }
+
+    @DataProvider
+    public Object[][] createGetIntervalsWithFlanksData() {
+        final SAMSequenceDictionary dictionary = ArtificialReadUtils.createArtificialSamHeader().getSequenceDictionary();
+
+        return new Object[][] {
+                // input intervals, padding, dictionary, expected output intervals
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  0, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  20, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 120), new SimpleInterval("1", 130, 220), new SimpleInterval("1", 280, 420), new SimpleInterval("2", 30, 270))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  25, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 225), new SimpleInterval("1", 275, 425), new SimpleInterval("2", 25, 275))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  50, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 450), new SimpleInterval("2", 1, 300))
+                }
+        };
+    }
+
+    @Test(dataProvider = "createGetIntervalsWithFlanksData")
+    public void testGetIntervalsWithFlanks(final List<SimpleInterval> inputIntervals, final int padding, final SAMSequenceDictionary dictionary, final List<SimpleInterval> expectedIntervals) {
+        final List<SimpleInterval> result = IntervalUtils.getIntervalsWithFlanks(inputIntervals, padding, dictionary);
+        Assert.assertEquals(result, expectedIntervals);
+    }
+
+    @DataProvider
+    public Object[][] createGroupIntervalsByContigTestData() {
+        return new Object[][] {
+                // input intervals, expected output
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400)), Arrays.asList(new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("2", 150, 200), new SimpleInterval("3", 300, 400), new SimpleInterval("5", 50, 150), new SimpleInterval("6", 175, 250)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100)), Arrays.asList(new SimpleInterval("2", 150, 200)), Arrays.asList(new SimpleInterval("3", 300, 400)), Arrays.asList(new SimpleInterval("5", 50, 150)), Arrays.asList(new SimpleInterval("6", 175, 250)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100)))
+                },
+        };
+    }
+
+    @Test(dataProvider = "createGroupIntervalsByContigTestData")
+    public void testGroupIntervalsByContig(final List<SimpleInterval> inputIntervals, final List<List<SimpleInterval>> expectedResult) {
+        final List<List<SimpleInterval>> result = IntervalUtils.groupIntervalsByContig(inputIntervals);
+        Assert.assertEquals(result, expectedResult);
+    }
 }

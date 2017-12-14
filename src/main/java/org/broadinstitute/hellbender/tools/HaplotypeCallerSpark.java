@@ -81,7 +81,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         public int readShardSize = DEFAULT_READSHARD_SIZE;
 
         @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Read shards must have as much or more padding than assembly regions.", optional = true)
-        public int readShardPadding = HaplotypeCaller.DEFAULT_READSHARD_PADDING;
+        public int readShardPadding = HaplotypeCaller.DEFAULT_ASSEMBLY_REGION_PADDING;
 
         @Argument(fullName = "minAssemblyRegionSize", shortName = "minAssemblyRegionSize", doc = "Minimum size of an assembly region", optional = true)
         public int minAssemblyRegionSize = HaplotypeCaller.DEFAULT_MIN_ASSEMBLY_REGION_SIZE;

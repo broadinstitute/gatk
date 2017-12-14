@@ -125,6 +125,51 @@ public interface GATKRead extends Locatable {
     int getUnclippedEnd();
 
     /**
+     * Calculates the reference coordinate for the beginning of the read taking into account soft clips but not hard clips.
+     *
+     * Note: {@link #getUnclippedStart} adds soft and hard clips, this method only adds soft clips.
+     *
+     * @return the unclipped start of the read taking soft clips (but not hard clips) into account
+     */
+    int getSoftStart();
+
+    /**
+     * Calculates the reference coordinate for the end of the read taking into account soft clips but not hard clips.
+     *
+     * Note: {@link #getUnclippedEnd} adds soft and hard clips, this method only adds soft clips.
+     *
+     * @return the unclipped end of the read taking soft clips (but not hard clips) into account
+     */
+    int getSoftEnd();
+
+    /**
+     * Finds the adaptor boundary around the read and returns the first base inside the adaptor that is closest to
+     * the read boundary. If the read is in the positive strand, this is the first base after the end of the
+     * fragment (Picard calls it 'insert'), if the read is in the negative strand, this is the first base before the
+     * beginning of the fragment.
+     *
+     * There are two cases we need to treat here:
+     *
+     * 1) Our read is in the reverse strand :
+     *
+     *     <----------------------| *
+     *   |--------------------->
+     *
+     *   in these cases, the adaptor boundary is at the mate start (minus one)
+     *
+     * 2) Our read is in the forward strand :
+     *
+     *   |---------------------->   *
+     *     <----------------------|
+     *
+     *   in these cases the adaptor boundary is at the start of the read plus the inferred insert size (plus one)
+     *
+     * @return the reference coordinate for the adaptor boundary (effectively the first base IN the adaptor, closest to the read).
+     * CANNOT_COMPUTE_ADAPTOR_BOUNDARY if the read is unmapped or the mate is mapped to another contig.
+     */
+    int getAdaptorBoundary();
+
+    /**
      * @return The contig that this read's mate is mapped to, or {@code null} if the mate is unmapped
      * @throws IllegalStateException if the read is not paired (has no mate)
      */
@@ -208,6 +253,14 @@ public interface GATKRead extends Locatable {
     byte[] getBases();
 
     /**
+     * @return The read sequence as ASCII bytes ACGTN=, or an empty byte[] if no sequence is present.
+     *
+     * This method DOES NOT make a defensive copy of the bases array before returning it, so modifying the
+     * returned array WILL alter the bases in the read. CALLER BEWARE!
+     */
+    byte[] getBasesNoCopy();
+
+    /**
      * @return The base at index i.
      * The default implementation returns getBases()[i].
      * Subclasses may override to provide a more efficient implementations but must preserve the
@@ -242,6 +295,14 @@ public interface GATKRead extends Locatable {
      * returned array will not alter the base qualities in the read.
      */
     byte[] getBaseQualities();
+
+    /**
+     * @return Base qualities as binary phred scores (not ASCII), or an empty byte[] if base qualities are not present.
+     *
+     * This method DOES NOT make a defensive copy of the base qualities array before returning it, so modifying the
+     * returned array WILL alter the base qualities in the read. CALLER BEWARE!
+     */
+    byte[] getBaseQualitiesNoCopy();
 
     /**
      * @return The number of base qualities in the read sequence.
