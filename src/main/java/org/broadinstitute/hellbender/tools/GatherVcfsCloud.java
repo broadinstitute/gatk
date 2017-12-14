@@ -47,24 +47,45 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+
 /**
- * Simple little class that combines multiple VCFs that have exactly the same set of samples
- * and totally discrete sets of loci.
+ * This tool gathers the output of a scatter operation, stored in multiple VCF files, and combines them into a single one.
+ *
+ * <p>The input files need to have the same set of samples but completely different sets of loci.
+ * These input files must be supplied in genomic order and must not have events at overlapping positions.</p>
+ *
+ * <h3>Input</h3>
+ * <p>
+ * A set of VCF files statisfying the above criteria.
+ * </p>
+ *
+ * <h3>Output</h3>
+ * <p>
+ * A new VCF file containing the combined result of the scatter operation.
+ * </p>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *     gatk GatherVcfsCloud \
+ *     -I input_files.vcf \                                 ???? How do I add multiple input arguemnts? ?????
+ *     -O output.vcf
+ * </pre>
  *
  * @author Tim Fennell
  */
+
 @DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Gathers multiple VCF files from a scatter operation into a single VCF file. Input files " +
-                "must be supplied in genomic order and must not have events at overlapping positions.",
+                  "must be supplied in genomic order and must not have events at overlapping positions.",
         oneLineSummary = "Gathers multiple VCF files from a scatter operation into a single VCF file",
         programGroup = VariantProgramGroup.class
 )
 @BetaFeature
 public final class GatherVcfsCloud extends CommandLineProgram {
 
-    public static final String IGNORE_SAFETY_CHECKS_LONG_NAME = "ignoreSafetyChecks";
-    public static final String GATHER_TYPE_LONG_NAME = "gatherType";
+    public static final String IGNORE_SAFETY_CHECKS_LONG_NAME = "ignore-safety-checks";
+    public static final String GATHER_TYPE_LONG_NAME = "gather-type";
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,  doc = "Input VCF file(s).")
@@ -92,7 +113,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
     public boolean ignoreSafetyChecks = false;
 
     @Advanced
-    @Argument(fullName = "disableContigOrderingCheck", doc = "Don't check relative ordering of contigs when doing a conventional gather")
+    @Argument(fullName = "disable-contig-ordering-check", doc = "Don't check relative ordering of contigs when doing a conventional gather")
     public boolean disableContigOrderingCheck = false;
 
     private static final Logger log = LogManager.getLogger();
@@ -115,7 +136,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
         final SAMSequenceDictionary sequenceDictionary = getHeader(inputPaths.get(0)).getSequenceDictionary();
 
         if (createIndex && sequenceDictionary == null) {
-            throw new UserException("In order to index the resulting VCF input VCFs must contain ##contig lines.");
+            throw new UserException("In order to index the resulting VCF, the input VCFs must contain ##contig lines.");
         }
 
         if( !ignoreSafetyChecks) {

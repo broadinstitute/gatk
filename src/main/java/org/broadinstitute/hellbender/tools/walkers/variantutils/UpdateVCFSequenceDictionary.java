@@ -24,6 +24,33 @@ import java.io.File;
 /**
  * Updates the sequence dictionary in a variant file using the dictionary from a variant, alignment, reference,
  * or dictionary file.
+ *
+ * <p>This tool is designed to update the sequence dictionary in a variant file using a dictionary from another variant,
+ * alignment, dictionary, or reference file. The dictionary must be valid, i.e. must contain a sequence record, for all
+ * variants in the target file.
+ * </p>
+ *
+ * <h3>Example</h3>
+ *
+ * <pre>
+ * gatk UpdateVCFSequenceDictionary \
+ *   -O updated_sequence_dictionary.dict \
+ *   --source-dictionary input_dictionary.dict
+ * </pre>
+ *
+ * <pre>
+ * gatk UpdateVCFSequenceDictionary \
+ *   -O updated_sequence_dictionary.dict \
+ *   -R reference.fa \
+ *   --replace true                                     ???? Is this corectly specified? ????
+ * </pre>
+ *
+ * <p>
+ *    The -O argument specifies the name of the updated directory file. The --source-dictionary argument specifies the
+ *    input sequence dictionary. The --replace argument is optional, and forces the replacement of the dictionary
+ *    if the input file already has a dictionary.
+ * </p>
+ *
  */
 @CommandLineProgramProperties(
         summary = "Updates the sequence dictionary in a variant file using the dictionary from another variant, " +
@@ -36,10 +63,11 @@ import java.io.File;
 public final class UpdateVCFSequenceDictionary extends VariantWalker {
     static final Logger logger = LogManager.getLogger(UpdateVCFSequenceDictionary.class);
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc="File to which updated variants should be written")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc="File to which updated variants should be written")
     public String outFile = null;
 
-    public final static String DICTIONARY_ARGUMENT_NAME = "sourceDictionary";
+    public final static String DICTIONARY_ARGUMENT_NAME = "source-dictionary";
     @Argument(fullName=DICTIONARY_ARGUMENT_NAME,
             doc="A variant, alignment, dictionary, or reference file to use as a dictionary source " +
                 "(optional if the sequence dictionary source is specified as a reference argument). The dictionary " +

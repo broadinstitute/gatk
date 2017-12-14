@@ -23,7 +23,8 @@ import java.util.stream.IntStream;
 
 /**
  * This tool takes in intervals via the standard arguments of
- * {@link IntervalArgumentCollection} and splits them into equal sub-intervals for scattering.
+ * {@link IntervalArgumentCollection} and splits them into interval files for scattering. The resulting files contain
+ * equal number of bases.
  *
  * <p>Standard GATK engine arguments include -L and -XL, interval padding, and interval set rule etc.
  * For example, for the -L argument, the tool accepts GATK-style intervals (.list or .intervals), BED files
@@ -32,10 +33,10 @@ import java.util.stream.IntStream;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" SplitIntervals \
+ * gatk SplitIntervals \
  *   -R ref_fasta.fa \
  *   -L intervals.list \
- *   -scatter 10 \
+ *   --scatter-count 10 \
  *   -O interval-files
  * </pre>
  *
@@ -64,7 +65,7 @@ public class SplitIntervals extends GATKTool {
 
 
     @Argument(fullName = SCATTER_COUNT_LONG_NAME, shortName = SCATTER_COUNT_SHORT_NAME,
-            doc = "scatter count: number of sub-intervals to split into", optional = true)
+            doc = "scatter count: number of output interval files to split into", optional = true)
     private int scatterCount = 1;
 
     @Argument(fullName = SUBDIVISION_MODE_lONG_NAME, shortName = SUBDIVISION_MODE_SHORT_NAME, doc = "How to divide intervals.")
@@ -77,7 +78,7 @@ public class SplitIntervals extends GATKTool {
 
     @Override
     public void onTraversalStart() {
-        ParamUtils.isPositive(scatterCount, "scatter count must be > 0.");
+        ParamUtils.isPositive(scatterCount, "scatter-count must be > 0.");
 
         if (!outputDir.exists() && !outputDir.mkdir()) {
             throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());

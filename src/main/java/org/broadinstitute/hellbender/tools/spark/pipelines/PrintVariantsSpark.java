@@ -15,15 +15,41 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.IOException;
 
-@CommandLineProgramProperties(summary = "Print variants from the input VCF", oneLineSummary = "Print variants from the input VCF", programGroup = SparkProgramGroup.class)
+/**
+ * Print out variants from a VCF file.
+ *
+ * <h3>Input</h3>
+ * <p>
+ * A VCF file.                                      ???? Is this true? ????
+ * </p>
+ *
+ * <h3>Output</h3>
+ * <p>
+ * A new file containing the variants.                                 ???? Is this true? ????
+ * </p>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *     gatk PrintVariantsSpark \
+ *     -I input.vcf \
+ *     -O output.vcf                                    ???? Is the output a VCF file? ????
+ * </pre>
+ *
+ */
+
+@CommandLineProgramProperties(
+        summary = "Prints out variants from the input VCF file.",
+        oneLineSummary = "Prints out variants from the input VCF.",
+        programGroup = SparkProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class PrintVariantsSpark extends VariantWalkerSpark {
 
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "uri for the output file: a local file path",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+    @Argument(doc = "Uri for the output file (a local file path).",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = false)
     public String output;
 

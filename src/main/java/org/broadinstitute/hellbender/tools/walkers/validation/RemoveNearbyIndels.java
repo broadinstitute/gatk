@@ -18,33 +18,35 @@ import java.io.File;
 import java.util.ArrayDeque;
 
 /**
- * Remove indels that are close to another indel from a vcf.
+ * Remove indels that are close to another indel from a vcf file.
  *
  * <p>
- * This is a preprocessing step for the CRSP sensitivity validation truth data.
+ * This is a preprocessing step for the CRSP sensitivity validation truth data. For any pair of indels that are within
+ * a minimum allowed distance (given by --min-indel-spacing), both indels are removed, regardless of any intervening
+ * non-indel variants.
  * </p>
  *
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" RemoveNearbyIndels \
+ * gatk RemoveNearbyIndels \
  *   -V input.vcf \
  *   -O output.vcf \
- *   -minIndelSpacing 20
+ *   --min-indel-spacing 20
  * </pre>
  *
  * Created by David Benjamin on 1/30/17.
  */
 @CommandLineProgramProperties(
-        summary = "Remove indels that are close to each other from a vcf.  For any pair of indels that are within" +
-                "some minimum allowed distance, both indels are removed, regardless of any intervening non-indel variants.",
-        oneLineSummary = "(Internal) Remove indels that are close to each other from a vcf",
+        summary = "Remove indels that are close to each other from a vcf. For any pair of indels that are within" +
+                  "some minimum allowed distance, both indels are removed, regardless of any intervening non-indel variants.",
+        oneLineSummary = "(Internal) Remove indels from the VCF file that are close to each other.",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
 public class RemoveNearbyIndels extends VariantWalker {
 
-    public static final String MIN_INDEL_SPACING_NAME = "minIndelSpacing";
+    public static final String MIN_INDEL_SPACING_NAME = "min-indel-spacing";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
