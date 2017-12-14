@@ -32,7 +32,7 @@ import java.io.IOException;
  * <pre>
  *     gatk IndexFeatureFile \
  *     --feature-file feature_file.vcf \
- *     -O output_index_file.vcf                                 ???? Right file extension ????
+ *     -O output_index_file.vcf
  * </pre>
  */
 

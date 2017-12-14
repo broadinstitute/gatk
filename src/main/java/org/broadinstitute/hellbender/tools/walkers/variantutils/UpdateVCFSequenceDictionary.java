@@ -35,8 +35,8 @@ import java.io.File;
  * <pre>
  * gatk UpdateVCFSequenceDictionary \
  *   -O updated_sequence_dictionary.dict \
- *   --source-dictionary input_dictionary.dict
- *   -V variants.vcf
+ *   -V variants.vcf \
+ *   --source-dictionary input_dictionary.dict \
  *   --replace=true
  * </pre>
  *
@@ -44,7 +44,8 @@ import java.io.File;
  * gatk UpdateVCFSequenceDictionary \
  *   -O updated_sequence_dictionary.dict \
  *   -R reference.fa \
- *   --replace true                                     ???? Is this corectly specified? ????
+ *   -V variants.vcf \
+ *   --replace=true
  * </pre>
  *
  * <p>

@@ -20,12 +20,12 @@ import java.io.IOException;
  *
  * <h3>Input</h3>
  * <p>
- * A VCF file.                                      ???? Is this true? ????
+ * A VCF file.
  * </p>
  *
  * <h3>Output</h3>
  * <p>
- * A new file containing the variants.                                 ???? Is this true? ????
+ * A new file containing the variants.
  * </p>
  *
  * <h3>Usage example</h3>

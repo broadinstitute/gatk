@@ -67,7 +67,7 @@ import java.util.stream.Collectors;
  * <h3>Usage example</h3>
  * <pre>
  *     gatk GatherVcfsCloud \
- *     -I input_files.vcf \                                 ???? How do I add multiple input arguemnts? ?????
+ *     -I input_files.vcf \
  *     -O output.vcf
  * </pre>
  *
