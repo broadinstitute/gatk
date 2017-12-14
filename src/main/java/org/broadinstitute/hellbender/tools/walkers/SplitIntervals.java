@@ -37,7 +37,7 @@ import java.util.stream.IntStream;
  *   -R ref_fasta.fa \
  *   -L intervals.list \
  *   --scatter-count 10 \
- *   -O interval-files
+ *   -O interval-files-folder
  * </pre>
  *
  * <p>

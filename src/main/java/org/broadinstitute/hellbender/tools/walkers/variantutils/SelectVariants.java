@@ -88,7 +88,7 @@ import java.util.stream.Collectors;
  *     gatk SelectVariants \
  *     -R reference.fasta \
  *     -V input.vcf \
- *     --select-type SNP \
+ *     --select-type-to-include SNP \
  *     -O output.vcf
  * </pre>
  *

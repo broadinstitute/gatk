@@ -32,7 +32,8 @@ import java.io.IOException;
  * <pre>
  *     gatk PrintVariantsSpark \
  *     -I input.vcf \
- *     -O output.vcf                                    ???? Is the output a VCF file? ????
+ *     -O output.vcf \
+ *     --variant variants.vcf
  * </pre>
  *
  */
