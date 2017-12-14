@@ -3,9 +3,6 @@ package org.broadinstitute.hellbender.engine.datasources;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.*;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Bytes;
@@ -16,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
@@ -69,43 +65,21 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
     private Map<String, String> referenceNameToIdTable;
     private String apiKey;
 
-    public ReferenceAPISource( final PipelineOptions pipelineOptions, final String referenceURL ) {
-        Utils.nonNull(pipelineOptions);
+    public ReferenceAPISource( final String referenceURL ) {
         String referenceName = getReferenceSetID(referenceURL);
-        this.referenceMap = getReferenceNameToReferenceTable(pipelineOptions, referenceName);
+        this.referenceMap = getReferenceNameToReferenceTable(referenceName);
         this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
-
-        // For Spark, we keep around the apiKey from the PipelineOptions since we don't have
-        // a "context" with PipelineOptions available on each worker.
-        // If we go with Spark, we'll end up refactoring this to store all of the secrets
-        // directly in this class and get rid of PipelineOptions as an argument to
-        // getReferenceBases.
-        this.apiKey = pipelineOptions.as(GCSOptions.class).getApiKey();
-    }
-
-    private ReferenceAPISource(final PipelineOptions pipelineOptions, final Map<String, Reference> referenceMap){
-        Utils.nonNull(pipelineOptions);
-        this.referenceMap = referenceMap;
-        this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
-
-        // For Spark, we keep around the apiKey from the PipelineOptions since we don't have
-        // a "context" with PipelineOptions available on each worker.
-        // If we go with Spark, we'll end up refactoring this to store all of the secrets
-        // directly in this class and get rid of PipelineOptions as an argument to
-        // getReferenceBases.
-        this.apiKey = pipelineOptions.as(GCSOptions.class).getApiKey();
     }
 
     /**
      * Creates this ReferenceAPISource from an assembly ID by querying in the cloud APIs.
      */
-    public static ReferenceAPISource fromReferenceSetAssemblyID(final PipelineOptions pipelineOptions, final String referenceSetAssemblyID){
-        Utils.nonNull(pipelineOptions);
+    public static ReferenceAPISource fromReferenceSetAssemblyID(final String referenceSetAssemblyID){
         Utils.nonNull(referenceSetAssemblyID);
         final SearchReferenceSetsRequest content = new SearchReferenceSetsRequest();
         content.setAssemblyId(referenceSetAssemblyID);
         try {
-            final Genomics genomicsService = createGenomicsService(pipelineOptions);
+            final Genomics genomicsService = createGenomicsService();
             final SearchReferenceSetsResponse found = genomicsService.referencesets().search(content).execute();
             final Set<String> referenceSetIds = found.getReferenceSets().stream().map(rs -> rs.getId()).collect(Collectors.toSet());
             if (referenceSetIds.isEmpty()){
@@ -119,7 +93,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
                 final SearchReferencesRequest query = new SearchReferencesRequest().setReferenceSetId(rId);
                 ret.putAll(genomicsService.references().search(query).execute().getReferences().stream().collect(Collectors.toMap(r -> r.getName(), r -> r)));
             }
-            return new ReferenceAPISource(pipelineOptions, ret);
+            return new ReferenceAPISource(ret);
         } catch (final IOException e) {
             throw new UserException("Error while looking up reference set " + referenceSetAssemblyID, e);
         }
@@ -150,35 +124,26 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
        * Query the Google Genomics API for reference bases spanning the specified interval from the specified
        * reference name.
        *
-       * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
        * @param interval - the range of bases to retrieve.
        * @return the reference bases specified by interval and apiData (using the Google Genomics API).
        */
       @Override
-      public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) {
-          return getReferenceBases(pipelineOptions, interval, defaultPageSize);
+      public ReferenceBases getReferenceBases(final SimpleInterval interval) {
+          return getReferenceBases(interval, defaultPageSize);
       }
 
       /**
        * Query the Google Genomics API for reference bases spanning the specified interval from the specified
        * reference name.
        *
-       * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
        * @param interval - the range of bases to retrieve.
        * @return the reference bases specified by interval and apiData (using the Google Genomics API).
        */
-      public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval, int pageSize) {
+      public ReferenceBases getReferenceBases(final SimpleInterval interval, int pageSize) {
           Utils.nonNull(interval);
 
           if (genomicsService == null) {
-              if (pipelineOptions == null) {
-                  // Fall back on the saved apiKey for Spark.
-                  GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
-                  options.setApiKey(apiKey);
-                  genomicsService = createGenomicsService(options);
-              } else {
-                  genomicsService = createGenomicsService(pipelineOptions);
-              }
+              genomicsService = createGenomicsService();
           }
           if (!referenceNameToIdTable.containsKey(interval.getContig())) {
               throw new UserException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
@@ -317,14 +282,12 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
      * to the corresponding Reference object. The table is produced via a query to get the mapping. The query
      * currently takes ~10 seconds, so this table should be cached and no produced per query to get the reference bases.
      * This is clumsy and should be refactored with better Genomics API use (issue 643).
-     * @param pipelineOptions - are used to get the credentials necessary to call the Genomics API
      * @param referenceSetID - the ID of the reference set to use
      * @return returns a mapping from reference name to String ID.
      */
-    public Map<String, Reference> getReferenceNameToReferenceTable(final PipelineOptions pipelineOptions, final String referenceSetID) {
-        Utils.nonNull(pipelineOptions);
+    public Map<String, Reference> getReferenceNameToReferenceTable(final String referenceSetID) {
         Utils.nonNull(referenceSetID);
-        fillGenomicsService(pipelineOptions);
+        fillGenomicsService();
 
         final Map<String, Reference> ret = new LinkedHashMap<>();
         try {
@@ -343,21 +306,12 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
     // --------------------------------------------------------------------------------------------
     // non-public methods
 
-    private void fillGenomicsService(final PipelineOptions pipelineOptions) {
-        if (null==genomicsService) genomicsService = createGenomicsService(pipelineOptions);
+    private void fillGenomicsService() {
+        if (null==genomicsService) genomicsService = createGenomicsService();
     }
 
-    private static Genomics createGenomicsService(final PipelineOptions pipelineOptions) {
-        try {
-            final GenomicsFactory.OfflineAuth auth = GATKGCSOptions.Methods.getOfflineAuth(pipelineOptions.as(GATKGCSOptions.class));
-            return auth.getGenomics(auth.getDefaultFactory());
-        }
-        catch ( GeneralSecurityException|ClassNotFoundException e ) {
-            throw new UserException("Authentication failed for Google genomics service", e);
-        }
-        catch ( IOException e ) {
-            throw new UserException("Unable to access Google genomics service", e);
-        }
+    private static Genomics createGenomicsService() {
+        return GenomicsFactory.builder("GATK4").build().fromApplicationDefaultCredential();
     }
 
     // TODO: Move these to a CustomCoder. That will allow us to do something else (possibly better) for Spark.

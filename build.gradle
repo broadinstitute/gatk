@@ -161,7 +161,7 @@ dependencies {
     // and that of Hadoop/Spark (either the one we reference explicitly, or the one
     // provided by dataproc).
     compile 'com.google.cloud:google-cloud-nio:0.20.4-alpha-20171031.194208-5:shaded'
-    compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
+
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     // this comes built-in when running on Google Dataproc, but the library
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
@@ -175,10 +175,12 @@ dependencies {
     compile 'org.apache.commons:commons-vfs2:2.0'
     compile 'commons-io:commons-io:2.4'
     compile 'org.reflections:reflections:0.9.10'
-    compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.4.150727'
+
     compile 'it.unimi.dsi:fastutil:7.0.6'
-    compile 'com.google.apis:google-api-services-genomics:v1-rev90-1.22.0'
-    compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
+
+    compile 'com.google.apis:google-api-services-genomics:v1-rev527-1.23.0'
+    compile 'com.google.cloud.genomics:google-genomics-utils:v1-0.10'
+
     compile 'com.github.wendykierp:JTransforms:3.1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
     compile 'org.nd4j:nd4j-native-platform:0.5.0'

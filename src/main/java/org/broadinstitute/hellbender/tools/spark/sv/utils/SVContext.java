@@ -160,7 +160,7 @@ public final class SVContext extends VariantContext {
 
         final ReferenceBases bases;
         try {
-            bases = reference.getReferenceBases(null, referenceInterval);
+            bases = reference.getReferenceBases(referenceInterval);
         } catch (final IOException ex) {
             throw new GATKException("could not read reference file");
         }

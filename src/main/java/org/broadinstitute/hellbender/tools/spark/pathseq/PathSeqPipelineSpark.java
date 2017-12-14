@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -148,8 +147,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         //Bwa pathogen alignment
         final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);
-        final PipelineOptions options = getAuthenticatedGCSOptions();
-        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction(), options);
+        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
         final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
         JavaRDD<GATKRead> alignedPairedReads = aligner.doBwaAlignment(pairedReads, true, headerBroadcast);
         JavaRDD<GATKRead> alignedUnpairedReads = aligner.doBwaAlignment(unpairedReads, false, headerBroadcast);

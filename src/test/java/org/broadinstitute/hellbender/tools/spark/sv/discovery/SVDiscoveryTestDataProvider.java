@@ -25,11 +25,11 @@ import java.util.List;
  */
 public final class SVDiscoveryTestDataProvider {
 
-    public static final ReferenceMultiSource reference = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+    public static final ReferenceMultiSource reference = new ReferenceMultiSource(
             GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary seqDict = reference.getReferenceSequenceDictionary(null);
 
-    public static final ReferenceMultiSource b38_reference = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+    public static final ReferenceMultiSource b38_reference = new ReferenceMultiSource(
             GATKBaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b38_seqDict = b38_reference.getReferenceSequenceDictionary(null);
 

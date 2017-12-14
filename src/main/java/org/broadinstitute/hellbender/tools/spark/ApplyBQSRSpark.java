@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark;
 
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -47,7 +46,6 @@ public final class ApplyBQSRSpark extends GATKSparkTool {
     @Override
     protected void runTool(JavaSparkContext ctx) {
         JavaRDD<GATKRead> initialReads = getReads();
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
         Broadcast<RecalibrationReport> recalibrationReportBroadCast = ctx.broadcast(new RecalibrationReport(BucketUtils.openFile(bqsrRecalFile)));
         final JavaRDD<GATKRead> recalibratedReads = ApplyBQSRSparkFn.apply(initialReads, recalibrationReportBroadCast, getHeaderForReads(), applyBQSRArgs);
         writeReads(ctx, output, recalibratedReads);

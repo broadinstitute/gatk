@@ -193,7 +193,7 @@ public class AnnotatedVariantProducer implements Serializable {
     static List<Allele> produceAlleles(final SimpleInterval refLoc, final ReferenceMultiSource reference, final SvType SvType)
             throws IOException {
 
-        final byte[] refBases = reference.getReferenceBases(null, refLoc).getBases();
+        final byte[] refBases = reference.getReferenceBases(refLoc).getBases();
 
         return new ArrayList<>(Arrays.asList(Allele.create(new String(refBases), true), SvType.getAltAllele()));
     }

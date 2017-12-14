@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
@@ -119,7 +118,6 @@ public class PSScorerTest extends CommandLineProgramTest {
     @Test(groups = "spark")
     public void testDoHeaderWarnings() {
 
-        final PipelineOptions options = null;
         final File file = createTempFile("header_warnings", "txt");
         final PSTree tree = new PSTree(1);
         final Map<String, Integer> map = new HashMap<>(10);

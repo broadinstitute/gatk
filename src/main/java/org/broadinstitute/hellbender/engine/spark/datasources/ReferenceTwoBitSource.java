@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.io.ByteStreams;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -35,7 +34,7 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
     private final TwoBitFile twoBitFile;
     private final Map<String, TwoBitRecord> twoBitSeqEntries;
 
-    public ReferenceTwoBitSource(PipelineOptions popts, String referenceURL) throws IOException {
+    public ReferenceTwoBitSource(String referenceURL) throws IOException {
         this.referenceURL = referenceURL;
         Utils.validateArg(isTwoBit(this.referenceURL), "ReferenceTwoBitSource can only take .2bit files");
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
@@ -48,13 +47,12 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
      * Gets the reference bases spanning the requested interval. If the interval ends beyond the end of its
      * contig according to our reference source's dictionary, it will be truncated at the contig end.
      *
-     * @param pipelineOptions pipeline options (may be null)
      * @param interval query interval
      * @return A ReferenceBases containing the reference bases spanning the requested interval, cropped at the
      *         contig end if necessary
      */
     @Override
-    public ReferenceBases getReferenceBases(PipelineOptions pipelineOptions, SimpleInterval interval) throws IOException {
+    public ReferenceBases getReferenceBases(SimpleInterval interval) throws IOException {
         final SimpleInterval queryInterval = cropIntervalAtContigEnd(interval);
         final String bases = twoBitFile.extract(simpleIntervalToReferenceRegion(queryInterval));
         return new ReferenceBases(bases.getBytes(), queryInterval);

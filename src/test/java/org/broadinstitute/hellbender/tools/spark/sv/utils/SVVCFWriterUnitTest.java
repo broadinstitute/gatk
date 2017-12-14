@@ -70,7 +70,7 @@ public class SVVCFWriterUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testSetHeader() {
-        SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+        SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(
                 b37_2bit_reference_20_21 , ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
         final VCFHeader vcfHeader = SVVCFWriter.getVcfHeader(referenceSequenceDictionary);
         Assert.assertNotNull(vcfHeader.getSequenceDictionary());

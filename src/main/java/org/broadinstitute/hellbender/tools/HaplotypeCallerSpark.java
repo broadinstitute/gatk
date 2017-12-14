@@ -5,9 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -122,7 +120,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
-        callVariantsWithHaplotypeCallerAndWriteOutput(getAuthHolder(), ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output);
+        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output);
     }
 
     @Override
@@ -135,7 +133,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      *
      * This may be called from any spark pipeline in order to call variants from an RDD of GATKRead
      *
-     * @param authHolder authorization needed for the reading the reference
      * @param ctx the spark context
      * @param reads the reads variants should be called from
      * @param header the header that goes with the reads
@@ -147,7 +144,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * @param output the output path for the VCF
      */
     public static void callVariantsWithHaplotypeCallerAndWriteOutput(
-            final AuthHolder authHolder,
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
             final SAMFileHeader header,
@@ -162,8 +158,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         final JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.coordinateSortReads(reads, readsHeader, numReducers);
 
-        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference, authHolder));
-        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(authHolder, ctx, coordinateSortedReads, readsHeader, reference, intervals, hcArgs, shardingArgs);
+        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference));
+        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, coordinateSortedReads, readsHeader, reference, intervals, hcArgs, shardingArgs);
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
             VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(readsHeader.getSequenceDictionary(), new HashSet<>()),
@@ -178,7 +174,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      *
      * This may be called from any spark pipeline in order to call variants from an RDD of GATKRead
      *
-     * @param authHolder authorization needed for the reading the reference
      * @param ctx the spark context
      * @param reads the reads variants should be called from
      * @param header the header that goes with the reads
@@ -189,7 +184,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * @return an RDD of Variants
      */
     public static JavaRDD<VariantContext> callVariantsWithHaplotypeCaller(
-            final AuthHolder authHolder,
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
             final SAMFileHeader header,
@@ -217,10 +211,10 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final JavaRDD<Shard<GATKRead>> readShards = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), shardBoundaries, maxReadLength);
 
         final JavaRDD<Tuple2<AssemblyRegion, SimpleInterval>> assemblyRegions = readShards
-                .mapPartitions(shardsToAssemblyRegions(authHolder, referenceBroadcast,
-                    hcArgsBroadcast, shardingArgs, header, annotatorEngineBroadcast));
+                .mapPartitions(shardsToAssemblyRegions(referenceBroadcast,
+                                                       hcArgsBroadcast, shardingArgs, header, annotatorEngineBroadcast));
 
-        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(authHolder, header, referenceBroadcast, hcArgsBroadcast, annotatorEngineBroadcast));
+        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(header, referenceBroadcast, hcArgsBroadcast, annotatorEngineBroadcast));
     }
 
     /**
@@ -229,7 +223,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * created in, it's used to eliminate redundant variant calls at the edge of shard boundaries.
      */
     private static FlatMapFunction<Iterator<Tuple2<AssemblyRegion, SimpleInterval>>, VariantContext> callVariantsFromAssemblyRegions(
-            final AuthHolder authHolder,
             final SAMFileHeader header,
             final Broadcast<ReferenceMultiSource> referenceBroadcast,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
@@ -237,7 +230,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         return regionAndIntervals -> {
             //HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
             final ReferenceMultiSource referenceMultiSource = referenceBroadcast.value();
-            final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource, authHolder);
+            final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
             return iteratorToStream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
         };
@@ -273,7 +266,6 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * interval it was generated in
      */
     private static FlatMapFunction<Iterator<Shard<GATKRead>>, Tuple2<AssemblyRegion, SimpleInterval>> shardsToAssemblyRegions(
-            final AuthHolder authHolder,
             final Broadcast<ReferenceMultiSource> reference,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final ShardingArgumentCollection assemblyArgs,
@@ -281,7 +273,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return shards -> {
             final ReferenceMultiSource referenceMultiSource = reference.value();
-            final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource, authHolder);
+            final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
 
             final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
@@ -327,12 +319,10 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         private static final long serialVersionUID = 1L;
 
         private final ReferenceMultiSource source;
-        private final AuthHolder auth;
         private final SAMSequenceDictionary sequenceDictionary;
 
-        public ReferenceMultiSourceAdapter(final ReferenceMultiSource source, final AuthHolder auth) {
+        public ReferenceMultiSourceAdapter(final ReferenceMultiSource source) {
             this.source = source;
-            this.auth = auth;
             sequenceDictionary = source.getReferenceSequenceDictionary(null);
         }
 
@@ -369,7 +359,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         @Override
         public ReferenceSequence getSubsequenceAt(final String contig, final long start, final long stop) {
             try {
-                final ReferenceBases bases = source.getReferenceBases(auth.asPipelineOptionsDeprecated(), new SimpleInterval(contig, (int) start, (int) stop));
+                final ReferenceBases bases = source.getReferenceBases(new SimpleInterval(contig, (int) start, (int) stop));
                 return new ReferenceSequence(contig, sequenceDictionary.getSequenceIndex(contig), bases.getBases());
             } catch (final IOException e) {
                 throw new GATKException(String.format("Failed to load reference bases for %s:%d-%d", contig, start, stop));
