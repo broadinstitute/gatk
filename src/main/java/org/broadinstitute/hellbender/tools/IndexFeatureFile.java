@@ -25,27 +25,36 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * Tool to create an appropriate index file for the various kinds of Feature-containing files
- * we support. These include VCF, and BED files.
+ * This tool creates an index file for the various kinds of feature-containing files supported by GATK (such as VCF
+ * and BED files). These files must have an index in order to be queried by interval.
  *
- * Such files must have an index in order to be queried by interval.
+ * <h3>Usage example</h3>
+ * <pre>
+ *     gatk IndexFeatureFile \
+ *     --feature-file feature_file.vcf \
+ *     -O output_index_file.vcf                                 ???? Right file extension ????
+ * </pre>
  */
+
 @CommandLineProgramProperties(
-        summary = "Creates indices for Feature-containing files, such as VCF and BED files",
-        oneLineSummary = "Creates indices for Feature-containing files (eg VCF and BED files)",
+        summary = "Creates indices for feature-containing files, such as VCF and BED files",
+        oneLineSummary = "Creates indices for feature-containing files (eg. VCF and BED files)",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
 public final class IndexFeatureFile extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(IndexFeatureFile.class);
 
-    @Argument(shortName = "F", fullName = "feature_file", doc = "Feature file (eg., VCF or BED file) to index. Must be in a tribble-supported format")
+    @Argument(shortName = "F",
+              fullName = "feature-file",
+              doc = "Feature file (eg., VCF or BED file) to index. Must be in a tribble-supported format")
     public File featureFile;
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "The output index file. If missing, the tool will create an index file in the same directory as the input file.",
-            optional = true)
+              fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+              doc = "The output index file. If missing, the tool will create an index file in the same directory " +
+                     "as the input file.",
+              optional = true)
     public File outputFile;
 
     public static final int OPTIMAL_GVCF_INDEX_BIN_SIZE = 128000;
