@@ -1,7 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.GENCODE;
-
-import java.util.ArrayList;
-import java.util.List;
+package org.broadinstitute.hellbender.utils.codecs.gencode;
 
 /**
  * A Gencode GTF Feature representing a selenocysteine.

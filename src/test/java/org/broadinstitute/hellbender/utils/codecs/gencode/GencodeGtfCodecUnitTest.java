@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.GENCODE;
+package org.broadinstitute.hellbender.utils.codecs.gencode;
 
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.index.Index;
@@ -7,7 +7,6 @@ import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -26,7 +25,7 @@ import java.nio.file.StandardCopyOption;
  */
 public class GencodeGtfCodecUnitTest extends GATKBaseTest {
 
-    private static final String testResourceDir = publicTestDir + "org/broadinstitute/hellbender/utils/codecs/GENCODE/";
+    private static final String testResourceDir = publicTestDir + "org/broadinstitute/hellbender/utils/codecs/gencode/";
     private static final String xyzTestFile = largeFileTestDir + "gencode.v26.primary_assembly.annotation.XYZ.gtf";
     private static final String gencodeHg19TestFile = largeFileTestDir + "gencode.v19.LargeFile.gtf";
 

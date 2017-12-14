@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.codecs.GENCODE;
+package org.broadinstitute.hellbender.utils.codecs.gencode;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
@@ -1103,6 +1103,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** shares an identical CDS but has alternative 3' UTR with respect to a reference variant. */
         ALTERNATIVE_5_UTR("alternative_5_UTR"),
 
+        /** Transcript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
+        APPRIS_PRINCIPAL("appris_principal"),
+
         /** (This flag corresponds to the older flag "appris_principal") Where the transcript expected to code for the main */
         APPRIS_PRINCIPAL_1("appris_principal_1"),
 
@@ -1124,26 +1127,23 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** Candidate transcript(s) models that appear to be conserved in fewer than three tested non-primate species. */
         APPRIS_ALTERNATIVE_2("appris_alternative_2"),
 
-        /** Transcript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
-        APPRIS_PRINCIPAL("appris_principal"),
-
-        /** where there is no single 'appris_principal' variant the main functional isoform will be translated from one of the */
-        APPRIS_CANDIDATE("appris_candidate"),
-
-        /** the "appris_candidate" transcript that has an unique CCDS. */
-        APPRIS_CANDIDATE_CCDS("appris_candidate_ccds"),
-
         /** where there is no 'appris_principal' variant, the candidate with highest APPRIS score is selected as the primary */
         APPRIS_CANDIDATE_HIGHEST_SCORE("appris_candidate_highest_score"),
-
-        /** where there is no 'appris_principal' variant, the longest of the 'appris_candidate' variants is selected as the primary */
-        APPRIS_CANDIDATE_LONGEST("appris_candidate_longest"),
 
         /** the "appris_candidate" transcripts where there are several CCDS, in this case APPRIS labels the longest CCDS. */
         APPRIS_CANDIDATE_LONGEST_CCDS("appris_candidate_longest_ccds"),
 
+        /** the "appris_candidate" transcript that has an unique CCDS. */
+        APPRIS_CANDIDATE_CCDS("appris_candidate_ccds"),
+
         /** where there is no "appris_candidate_ccds" or "appris_candidate_longest_ccds" variant, the longest protein of the */
         APPRIS_CANDIDATE_LONGEST_SEQ("appris_candidate_longest_seq"),
+
+        /** where there is no 'appris_principal' variant, the longest of the 'appris_candidate' variants is selected as the primary */
+        APPRIS_CANDIDATE_LONGEST("appris_candidate_longest"),
+
+        /** where there is no single 'appris_principal' variant the main functional isoform will be translated from one of the */
+        APPRIS_CANDIDATE("appris_candidate"),
 
         /** identifies a subset of representative transcripts for each gene; prioritises full-length protein coding transcripts */
         BASIC("basic"),
