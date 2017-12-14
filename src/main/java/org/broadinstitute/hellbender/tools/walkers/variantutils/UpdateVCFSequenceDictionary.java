@@ -36,6 +36,8 @@ import java.io.File;
  * gatk UpdateVCFSequenceDictionary \
  *   -O updated_sequence_dictionary.dict \
  *   --source-dictionary input_dictionary.dict
+ *   -V variants.vcf
+ *   --replace=true
  * </pre>
  *
  * <pre>
@@ -64,6 +66,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
     static final Logger logger = LogManager.getLogger(UpdateVCFSequenceDictionary.class);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which updated variants should be written")
     public String outFile = null;
 
