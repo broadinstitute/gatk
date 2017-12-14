@@ -25,7 +25,7 @@ import java.nio.file.StandardCopyOption;
  */
 public class GencodeGtfCodecUnitTest extends GATKBaseTest {
 
-    private static final String testResourceDir = publicTestDir + "org/broadinstitute/hellbender/utils/codecs/GENCODE/";
+    private static final String testResourceDir = publicTestDir + "org/broadinstitute/hellbender/utils/codecs/gencode/";
     private static final String xyzTestFile = largeFileTestDir + "gencode.v26.primary_assembly.annotation.XYZ.gtf";
     private static final String gencodeHg19TestFile = largeFileTestDir + "gencode.v19.LargeFile.gtf";
 
