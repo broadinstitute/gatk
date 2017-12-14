@@ -194,7 +194,7 @@ public final class ReferenceConfidenceModel {
         final RefVsAnyResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null);
 
         final Allele refAllele = Allele.create(refBase, true);
-        final List<Allele> refSiteAlleles = Arrays.asList(refAllele, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final List<Allele> refSiteAlleles = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
         final VariantContextBuilder vcb = new VariantContextBuilder("HC", curPos.getContig(), curPos.getStart(), curPos.getStart(), refSiteAlleles);
         final GenotypeBuilder gb = new GenotypeBuilder(sampleName, GATKVariantContextUtils.homozygousAlleleList(refAllele, ploidy));
         gb.AD(homRefCalc.getAD());
@@ -213,8 +213,9 @@ public final class ReferenceConfidenceModel {
         // as our GLs for the site.
         final GenotypeLikelihoods leastConfidenceGLs = getGLwithWorstGQ(indelGLs, snpGLs);
 
-        gb.GQ((int) (-10 * getGQForHomRef(leastConfidenceGLs)));
-        gb.PL(leastConfidenceGLs.getAsPLs());
+        final int[] leastConfidenceGLsAsPLs = leastConfidenceGLs.getAsPLs();
+        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(leastConfidenceGLsAsPLs));
+        gb.PL(leastConfidenceGLsAsPLs);
 
         vcb.genotypes(gb.make());
         return vcb.make();

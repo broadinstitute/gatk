@@ -1,6 +1,0 @@
-@HD	VN:1.0	SO:coordinate
-@SQ	SN:chr1	LN:50
-@SQ	SN:chr2	LN:50
-@SQ	SN:chr3	LN:50
-chr1	25	50	+	target_1
-chr2	10	50	+	target_2

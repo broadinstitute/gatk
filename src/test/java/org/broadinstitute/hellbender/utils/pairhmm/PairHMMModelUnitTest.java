@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +14,7 @@ import java.util.Iterator;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class PairHMMModelUnitTest extends BaseTest {
+public final class PairHMMModelUnitTest extends GATKBaseTest {
 
     final double TOLERANCE = 1E-9;
 

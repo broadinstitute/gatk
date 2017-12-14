@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -22,6 +23,7 @@ import java.io.*;
  * already readable using samtools. Currently {@link ReadsSparkSink} saves the "shards" with a header for the
  * {@link ReadsWriteFormat#SHARDED} case, and without a header for the {@link ReadsWriteFormat#SINGLE} case.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Convert a headerless hadoop bam shard into a readable bam",
         oneLineSummary = "Convert a headerless hadoop bam shard into a readable bam",

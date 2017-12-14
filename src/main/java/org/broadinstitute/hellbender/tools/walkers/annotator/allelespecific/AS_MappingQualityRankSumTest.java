@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -32,6 +34,7 @@ import java.util.OptionalDouble;
  * </ul>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific rank sum test for mapping qualities of REF versus ALT reads (AS_MQRankSum)")
 public class AS_MappingQualityRankSumTest extends AS_RankSumTest implements AS_StandardAnnotation {
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY); }

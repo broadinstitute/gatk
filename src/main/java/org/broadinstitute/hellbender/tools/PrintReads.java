@@ -8,10 +8,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
-
-import java.io.File;
 
 /**
  * Print reads from a SAM/BAM/CRAM file.
@@ -27,13 +26,13 @@ import java.io.File;
 public final class PrintReads extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
-    public File OUTPUT;
+    public String output;
 
     private SAMFileGATKReadWriter outputWriter;
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(OUTPUT, true);
+        outputWriter = createSAMWriter(IOUtils.getPath(output), true);
     }
 
     @Override

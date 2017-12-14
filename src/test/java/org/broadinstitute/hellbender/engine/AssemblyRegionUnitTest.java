@@ -11,11 +11,10 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -23,12 +22,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
 
-public final class AssemblyRegionUnitTest extends BaseTest {
+public final class AssemblyRegionUnitTest extends GATKBaseTest {
     private IndexedFastaSequenceFile seq;
     private String contig;
     private int contigLength;
@@ -466,7 +464,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
             shard.setReadFilter(new CountingReadFilter(new MappingQualityReadFilter(20))
                     .and(new CountingReadFilter(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
                     .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
-                    .and(new CountingReadFilter(ReadFilterLibrary.PRIMARY_ALIGNMENT))
+                    .and(new CountingReadFilter(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT))
                     .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
                     .and(new CountingReadFilter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
                     .and(new CountingReadFilter(ReadFilterLibrary.GOOD_CIGAR))

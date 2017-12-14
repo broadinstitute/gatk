@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -13,7 +13,11 @@ import org.broadinstitute.hellbender.engine.LocusWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollector;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
@@ -30,18 +34,19 @@ import java.util.List;
  * gatk-launch --javaOptions "-Xmx4g" CollectAllelicCounts \
  *   --input sample.bam \
  *   --reference ref_fasta.fa \
- *   --siteIntervals sites.interval_list \
+ *   -L sites.interval_list \
  *   --output allelic_counts.tsv
  * </pre>
  *
  * <p>
- *     The --siteIntervals is a Picard-style interval list, e.g.:
+ *     Use -L as usual to specify intervals for the sites of interest.  For example,
+ *     a Picard interval list can be used:
  * </p>
  *
  * <pre>
- *     @HD	VN:1.4	SO:unsorted
- *     @SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
- *     @SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
+ *     {@literal @}HD	VN:1.4	SO:unsorted
+ *     {@literal @}SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
+ *     {@literal @}SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
  *      1	10736	10736	+	normal
  *      1	11522	11522	+	normal
  *      1	12098	12098	+	normal
@@ -77,61 +82,74 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Collects ref/alt counts at sites.",
-        oneLineSummary = "Collects ref/alt counts at sites",
+        summary = "Collect ref/alt counts at sites.",
+        oneLineSummary = "Collect ref/alt counts at sites.",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
 public final class CollectAllelicCounts extends LocusWalker {
-
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
+
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
+
+    public static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimumBaseQuality";
+    public static final String MINIMUM_BASE_QUALITY_SHORT_NAME = "minBQ";
 
     @Argument(
             doc = "Output allelic-counts file.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    protected File outputAllelicCountsFile;
+    private File outputAllelicCountsFile;
 
     @Argument(
-            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
-            fullName = "minimumBaseQuality",
-            shortName = "minBQ",
-            optional = true,
-            minValue = 0
+            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileups.",
+            fullName = MINIMUM_BASE_QUALITY_LONG_NAME,
+            shortName = MINIMUM_BASE_QUALITY_SHORT_NAME,
+            minValue = 0,
+            optional = true
     )
-    protected int minimumBaseQuality = 20;
+    private int minimumBaseQuality = 20;
 
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
-
-    private AllelicCountCollector allelicCountCollector = new AllelicCountCollector();
+    private AllelicCountCollector allelicCountCollector;
 
     @Override
-    public boolean emitEmptyLoci() {return true;}
+    public boolean emitEmptyLoci() {
+        return true;
+    }
 
     @Override
-    public boolean requiresReference() {return true;}
+    public boolean requiresReference() {
+        return true;
+    }
 
     @Override
-    public boolean requiresIntervals() {return true;}
+    public boolean requiresIntervals() {
+        return true;
+    }
 
     @Override
     public void onTraversalStart() {
+        final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
+        final SampleMetadata sampleMetadata = new SimpleSampleMetadata(sampleName);
+        allelicCountCollector = new AllelicCountCollector(sampleMetadata);
         logger.info("Collecting allelic counts...");
     }
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> initialReadFilters = super.getDefaultReadFilters();
-        initialReadFilters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-
-        return initialReadFilters;
+        final List<ReadFilter> filters = super.getDefaultReadFilters();
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        return filters;
     }
 
     @Override
     public Object onTraversalSuccess() {
         allelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
-        logger.info("Allelic counts written to " + outputAllelicCountsFile.toString());
+        logger.info("Allelic counts written to " + outputAllelicCountsFile);
         return("SUCCESS");
     }
 

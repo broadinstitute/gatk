@@ -12,14 +12,14 @@ import htsjdk.variant.vcf.VCF3Codec;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.table.TableCodec;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -27,9 +27,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-public final class FeatureManagerUnitTest extends BaseTest {
+public final class FeatureManagerUnitTest extends GATKBaseTest {
     private static final String FEATURE_MANAGER_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
     @DataProvider(name = "DetectCorrectFileFormatTestData")
@@ -93,7 +92,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         Assert.assertEquals(FeatureManager.isFeatureFile(file), expectedIsFeatureFile, "isFeatureFile() returned incorrect result for file " + file.getAbsolutePath());
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = QCProgramGroup.class)
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = TestProgramGroup.class)
     private static class ValidFeatureArgumentSource extends CommandLineProgram {
         // We should be able to detect the type parameter of a FeatureInput regardless of whether or
         // not it's wrapped within a Collection
@@ -122,7 +121,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         }
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "",programGroup = QCProgramGroup.class)
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "",programGroup = TestProgramGroup.class)
     @SuppressWarnings("rawtypes")
     private static class InvalidFeatureArgumentSource extends CommandLineProgram {
         // FeatureInputs without type parameters (ie., raw types) should be detected as errors

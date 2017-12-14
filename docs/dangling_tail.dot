@@ -1,0 +1,9 @@
+digraph G {
+  rankdir="LR"
+  graph[ranksep=0.3]
+  node [shape="box" margin=0.1 height=0.15 width=0.5];
+  "ACCT" -> "CCTG" -> "CTGG" -> "TGGA" [color = red]
+ "TGGA" -> "GGAC" -> "GACC" -> "ACCC"
+  "TGGA" -> "GGAT" -> "GATC" -> "ATCC" [color = red]
+  "GGAC" -> "GATC"
+}

@@ -5,20 +5,23 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.*;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -41,22 +44,6 @@ public class OrientationBiasUtils {
         Utils.nonNull(g);
         final String genotypeFieldAsString = getGenotypeString(g, fieldName);
         return isVcfGenotypeFieldEmpty(genotypeFieldAsString) ? defaultValue : Double.parseDouble(genotypeFieldAsString);
-    }
-
-    /**
-     * See {@link OrientationBiasUtils#getGenotypeString}.
-     *  This converts String to a Integer.  If an empty field value ({@link VCFConstants#MISSING_VALUE_v4}) would be
-     *  returned, return the specified defaultValue instead.
-     *
-     * @param g genotype Never {@code null}
-     * @param fieldName Name of the field (format field).
-     * @param defaultValue return value if field is not found.
-     * @return Value of field as a Integer or specified defaultValue.
-     */
-    public static Integer getGenotypeInteger(final Genotype g, final String fieldName, final int defaultValue) {
-        Utils.nonNull(g);
-        final String genotypeFieldAsString = getGenotypeString(g, fieldName);
-        return isVcfGenotypeFieldEmpty(genotypeFieldAsString) ? defaultValue : Integer.parseInt(genotypeFieldAsString);
     }
 
     private static boolean isVcfGenotypeFieldEmpty(final String genotypeFieldAsString) {
@@ -245,9 +232,15 @@ public class OrientationBiasUtils {
 
     private static Stream<Genotype> getNumArtifactGenotypeStream(String sampleName, List<VariantContext> variantContexts, Transition transition, Transition complement) {
         return getGenotypeStream(sampleName, variantContexts)
-                .filter(g -> OrientationBiasUtils.isGenotypeInTransition(g, complement) || OrientationBiasUtils.isGenotypeInTransition(g, transition));
+                .filter(g -> OrientationBiasUtils.isGenotypeInTransitionWithComplement(g, transition));
     }
 
+    private static Stream<Genotype> getNumArtifactGenotypeStreamKeepingOBFilteredVCs(String sampleName, List<VariantContext> variantContexts, Transition transition, Transition complement) {
+        return variantContexts.stream()
+                .filter(vc -> (!vc.isFiltered()) || ((vc.getFilters().size() == 1) && (vc.getFilters().stream().allMatch(f -> f.equals(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)))) )
+                .map(vc -> vc.getGenotype(sampleName))
+                .filter(g -> OrientationBiasUtils.isGenotypeInTransition(g, complement) || OrientationBiasUtils.isGenotypeInTransition(g, transition));
+    }
     private static Stream<Genotype> getGenotypeStream(String sampleName, List<VariantContext> variantContexts) {
         return variantContexts.stream()
                 .filter(vc -> !vc.isFiltered())
@@ -258,7 +251,7 @@ public class OrientationBiasUtils {
     @VisibleForTesting
     static long calculateNumTransitionGenotypeFilteredByOrientationBias(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
         final Transition complement = transition.complement();
-        return getNumArtifactGenotypeStream(sampleName, variantContexts, transition, complement)
+        return getNumArtifactGenotypeStreamKeepingOBFilteredVCs(sampleName, variantContexts, transition, complement)
                 .filter(g -> (g != null) && (g.getFilters() != null)
                         && g.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT))
                 .count();
@@ -275,6 +268,7 @@ public class OrientationBiasUtils {
 
         return getGenotypeStream(sampleName, variants)
                 .filter(g -> !g.isFiltered())
+                .filter(g -> g.getAlleles().size() > 1)
                 .filter(g -> !g.getAllele(0).basesMatch(g.getAllele(1)))
                 .count();
     }
@@ -300,5 +294,13 @@ public class OrientationBiasUtils {
             logger.warn("Existing genotype filter could be incorrect: " + existingFilterValue + " ... Proceeding with " + appendedFilterString + " ...");
             return appendedFilterString;
         }
+    }
+
+    public static int[] getF1R2(final Genotype g) {
+        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F1R2_KEY, () -> null, 0);
+    }
+
+    public static int[] getF2R1(final Genotype g) {
+        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.F2R1_KEY, () -> null, 0);
     }
 }

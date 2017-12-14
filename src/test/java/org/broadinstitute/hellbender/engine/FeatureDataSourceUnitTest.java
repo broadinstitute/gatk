@@ -7,7 +7,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class FeatureDataSourceUnitTest extends BaseTest {
+public final class FeatureDataSourceUnitTest extends GATKBaseTest {
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
     private static final File QUERY_TEST_GVCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test_gvcf.vcf");
@@ -30,7 +30,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testHandleNonExistentFile() {
         FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(
-                BaseTest.getSafeNonExistentFile("nonexistent.vcf"));
+                GATKBaseTest.getSafeNonExistentFile("nonexistent.vcf"));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

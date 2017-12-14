@@ -12,6 +12,11 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
@@ -84,6 +89,25 @@ public class GetPileupSummaries extends MultiVariantWalker {
     @Override
     public boolean requiresReference() {
         return false;
+    }
+
+    private static final int MAPPING_QUALITY_THRESHOLD = 50;
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> filters = new ArrayList<>();
+        filters.add(new MappingQualityReadFilter(MAPPING_QUALITY_THRESHOLD));
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
+        filters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
+        filters.add(ReadFilterLibrary.GOOD_CIGAR);
+        filters.add(new WellformedReadFilter());
+        return filters;
     }
 
     @Override

@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.vcf.VCFContigHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderVersion;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class VcfUtilsUnitTest extends BaseTest {
+public class VcfUtilsUnitTest extends GATKBaseTest {
 
     VCFHeaderVersion vcfHeaderVersion = VCFHeaderVersion.VCF4_2;
 

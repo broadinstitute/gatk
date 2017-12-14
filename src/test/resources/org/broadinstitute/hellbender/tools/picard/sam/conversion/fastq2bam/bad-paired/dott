@@ -1,6 +1,0 @@
-
-mv s11seq-more.txt pair1-one-more-record.txt
-mv s11seq.txt pair1.txt
-mv s12seq-diff-name.txt pair2-diff-name.txt
-mv s12seq-more.txt pair2-one-more-record.txt
-mv s12seq.txt pair2.txt

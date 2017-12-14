@@ -4,14 +4,14 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 
-public class ReferenceTwoBitSourceUnitTest extends BaseTest {
+public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
     private static String fastaRefURL = publicTestDir + "large/human_g1k_v37.20.21.fasta";
     private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
 

@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.tools.picard.interval.IntervalListScatterer;
+import picard.util.IntervalListScatterer;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -26,7 +26,7 @@ import java.util.stream.IntStream;
  * {@link IntervalArgumentCollection} and splits them into equal sub-intervals for scattering.
  *
  * <p>Standard GATK engine arguments include -L and -XL, interval padding, and interval set rule etc.
- * For example, for the -L argument, the tool accepts gatk-style intervals (.list or .intervals), BED files
+ * For example, for the -L argument, the tool accepts GATK-style intervals (.list or .intervals), BED files
  * and VCF files.</p>
  *
  * <h3>Example</h3>

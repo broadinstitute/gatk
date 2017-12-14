@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.LongSupplier;
 
-public class ProgressMeterUnitTest extends BaseTest {
+public class ProgressMeterUnitTest extends GATKBaseTest {
 
     private static class ListBasedTimeFunction implements LongSupplier {
         private final List<Long> values;

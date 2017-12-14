@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.function.Function;
 
 
-public class GenotypeGVCFsUnitTest extends BaseTest {
+public class GenotypeGVCFsUnitTest extends GATKBaseTest {
 
     public static final int MIN_DP = 15;
     public static final int DP = 3;
@@ -139,7 +139,7 @@ public class GenotypeGVCFsUnitTest extends BaseTest {
         return new Object[][]{
                 {new VariantContextBuilder("test", "1", 1, 1, Collections.singleton(REF)).make(), false},
                 {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT)).make(), true},
-                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)).make(), false},
+                {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.NON_REF_ALLELE)).make(), false},
                 {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, Allele.SPAN_DEL)).make(), false},
                 {new VariantContextBuilder("test", "1", 1, 2, Arrays.asList(REF, Allele.create("<SOME_SYMBOLIC_ALLELE>"))).make(), false},
                 {new VariantContextBuilder("test", "1", 1, 1, Arrays.asList(REF, ALT, Allele.create("G"))).make(), true},
@@ -157,7 +157,7 @@ public class GenotypeGVCFsUnitTest extends BaseTest {
         return new Object[][]{
                 {Allele.SPAN_DEL, true},
                 {GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED, true},
-                {GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, false},
+                {Allele.NON_REF_ALLELE, false},
                 {Allele.NO_CALL, false},
                 {Allele.create("A", true), false}
         };

@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.pulldown;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class HeterogeneousHeterozygousPileupPriorModelUnitTest extends BaseTest {
+public final class HeterogeneousHeterozygousPileupPriorModelUnitTest extends GATKBaseTest {
 
     private static final double MIN_ABNORMAL_FRACTION = 0.1;
     private static final double MAX_ABNORMAL_FRACTION = 0.9;

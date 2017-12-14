@@ -1,9 +1,0 @@
-@HD	VN:1.5	SO:unsorted
-@SQ	SN:chr1	LN:101	M5:bd01f7e11515bb6beda8f7257902aa67	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta
-@SQ	SN:chr2	LN:101	M5:31c33e2155b3de5e2554b693c475b310	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta
-@SQ	SN:chr3	LN:101	M5:631593c6dd2048ae88dcce2bd505d295	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta
-@SQ	SN:chr4	LN:101	M5:c60cb92f1ee5b78053c92bdbfa19abf1	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta
-@SQ	SN:chr5	LN:101	M5:07ebc213c7611db0eacbb1590c3e9bda	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta
-@SQ	SN:chr6	LN:101	M5:7be2f5e7ee39e60a6c3b5b6a41178c6d	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta
-@SQ	SN:chr7	LN:404	M5:da488fc432cdaf2c20c96da473a7b630	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta
-@SQ	SN:chr8	LN:202	M5:d339678efce576d5546e88b49a487b63	UR:file:/home/chris/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/valid.fasta

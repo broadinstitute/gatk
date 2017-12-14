@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class ArtifactStatisticsScorerUnitTest extends BaseTest {
+public class ArtifactStatisticsScorerUnitTest extends GATKBaseTest {
     @Test(dataProvider = "BasicTest")
     public void testCalculateSuppressionFactorFromPreAdapterQ(double biasP1, double biasP2, double preAdapterQ, double gt) {
         Assert.assertEquals(ArtifactStatisticsScorer.calculateSuppressionFactorFromPreAdapterQ(preAdapterQ, biasP1, biasP2),gt, 1e-6);

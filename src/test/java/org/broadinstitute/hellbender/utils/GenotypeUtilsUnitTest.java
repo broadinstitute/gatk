@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class GenotypeUtilsUnitTest extends BaseTest {
+public class GenotypeUtilsUnitTest extends GATKBaseTest {
     private static final Allele Aref = Allele.create("A", true);
     private static final Allele T = Allele.create("T");
     private static final double DELTA_PRECISION = .001;

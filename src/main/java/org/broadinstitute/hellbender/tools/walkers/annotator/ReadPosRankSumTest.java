@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -28,18 +30,24 @@ import java.util.OptionalDouble;
  * <p>The read position rank sum test can not be calculated for sites without a mixture of reads showing both the reference and alternate alleles.</p>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Rank sum test for relative positioning of REF versus ALT alleles within reads (ReadPosRankSum)")
 public final class ReadPosRankSumTest extends RankSumTest implements StandardAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.READ_POS_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
+    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
+        return getReadPosition(read, refLoc);
     }
 
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
+    public boolean isUsableRead(final GATKRead read, final int refLoc) {
+        Utils.nonNull(read);
+        return super.isUsableRead(read, refLoc) && ReadUtils.getSoftEnd(read) >= refLoc;
+    }
+
+    public static OptionalDouble getReadPosition(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
         if ( offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
@@ -61,9 +69,5 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
         return OptionalDouble.of(readPos);
     }
 
-    @Override
-    protected boolean isUsableRead(final GATKRead read, final int refLoc) {
-        Utils.nonNull(read);
-        return super.isUsableRead(read, refLoc) && ReadUtils.getSoftEnd(read) >= refLoc;
-    }
+
 }

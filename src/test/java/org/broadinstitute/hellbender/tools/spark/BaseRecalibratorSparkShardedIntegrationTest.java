@@ -109,7 +109,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
 
 
     // "local", but we're still getting the reference from the cloud.
-    @Test(dataProvider = "BQSRTest", groups = {"spark", "cloud"}, enabled = false) //FIXME: disabled because it fails. https://github.com/broadinstitute/gatk/issues/1119
+    @Test(dataProvider = "BQSRTest", groups = {"spark", "bucket"}, enabled = false) //FIXME: disabled because it fails. https://github.com/broadinstitute/gatk/issues/1119
     public void testBQSRLocal(BQSRTest params) throws IOException {
         ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -129,7 +129,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
     }
 
     // TODO: We need to update the expected output files for this test, then it can be re-enabled.
-    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"spark", "cloud"}, enabled = false)
+    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"spark", "bucket"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
         final String GRCh37Ref = ReferenceAPISource.GRCH37_REF_ID; // that's the "full" version
@@ -159,7 +159,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
-    @Test(groups = {"spark", "cloud"})
+    @Test(groups = {"spark", "bucket"})
     public void testBQSRFailWithoutDBSNP() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
@@ -176,7 +176,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         spec.executeTest("testBQSRFailWithoutDBSNP", this);
     }
 
-    @Test(groups = {"spark", "cloud"})
+    @Test(groups = {"spark", "bucket"})
     public void testBQSRFailWithIncompatibleReference() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();

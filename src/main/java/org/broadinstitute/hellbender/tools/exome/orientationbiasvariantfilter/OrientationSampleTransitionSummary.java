@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 
 
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 
 /** Simple class for holding summary information derived from the orientation bias filter.  Typically, the orientation bias filter will produce a list of these.  Each representing a sample-artifact transition pair.
  *

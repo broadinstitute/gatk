@@ -190,7 +190,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     // Private Member Variables
     /////////////////////////////
     private VariantContextWriter vcfWriter;
-    final private List<Tranche> tranches = new ArrayList<>();
+    final private List<TruthSensitivityTranche> tranches = new ArrayList<>();
     final private Set<String> ignoreInputFilterSet = new TreeSet<>();
     final static private String listPrintSeparator = ",";
     final static private String trancheFilterString = "VQSRTranche";
@@ -209,7 +209,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     public void onTraversalStart() {
         if( TS_FILTER_LEVEL != null ) {
             try {
-                for (final Tranche t : Tranche.readTranches(TRANCHES_FILE)) {
+                for (final TruthSensitivityTranche t : TruthSensitivityTranche.readTranches(TRANCHES_FILE)) {
                     if (t.targetTruthSensitivity >= TS_FILTER_LEVEL) {
                         tranches.add(t);
                     }
@@ -252,7 +252,7 @@ public class ApplyVQSR extends MultiVariantWalker {
 
             if( tranches.size() >= 2 ) {
                 for( int iii = 0; iii < tranches.size() - 1; iii++ ) {
-                    final Tranche t = tranches.get(iii);
+                    final TruthSensitivityTranche t = tranches.get(iii);
                     hInfo.add(new VCFFilterHeaderLine(t.name, String.format("Truth sensitivity tranche level for " + t.model.toString() + " model at VQS Lod: " + t.minVQSLod + " <= x < " + tranches.get(iii+1).minVQSLod)));
                 }
             }
@@ -444,7 +444,7 @@ public class ApplyVQSR extends MultiVariantWalker {
         String filterString = null;
         if( TS_FILTER_LEVEL != null ) {
             for( int i = tranches.size() - 1; i >= 0; i-- ) {
-                final Tranche tranche = tranches.get(i);
+                final TruthSensitivityTranche tranche = tranches.get(i);
                 if( lod >= tranche.minVQSLod ) {
                     if( i == tranches.size() - 1 ) {
                         filterString = VCFConstants.PASSES_FILTERS_v4;

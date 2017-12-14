@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
+import htsjdk.samtools.*;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class PSUtilsTest extends BaseTest {
+public class PSUtilsTest extends GATKBaseTest {
 
     @Override
     public String getTestedClassName() {
@@ -83,6 +84,23 @@ public class PSUtilsTest extends BaseTest {
         items.add("y");
         items.add("z");
         PSUtils.logItemizedWarning(logger, items, "Test warning statement");
+    }
+
+    @Test
+    public void testCheckAndClearHeaderSequences() {
+        final List<SAMSequenceRecord> records = new ArrayList<>(1);
+        records.add(new SAMSequenceRecord("rec1", 1));
+        final SAMSequenceDictionary dict = new SAMSequenceDictionary(records);
+        final SAMFileHeader inputHeader = new SAMFileHeader(dict);
+        inputHeader.addReadGroup(new SAMReadGroupRecord("rg1"));
+        inputHeader.addProgramRecord(new SAMProgramRecord("pg1"));
+
+        final SAMFileHeader resultHeader = PSUtils.checkAndClearHeaderSequences(inputHeader, new PSFilterArgumentCollection(), logger);
+        Assert.assertTrue(resultHeader.getSequenceDictionary() == null || resultHeader.getSequenceDictionary().isEmpty());
+        Assert.assertNotEquals(resultHeader, inputHeader);
+
+        resultHeader.setSequenceDictionary(dict);
+        Assert.assertEquals(resultHeader, inputHeader);
     }
 
 }

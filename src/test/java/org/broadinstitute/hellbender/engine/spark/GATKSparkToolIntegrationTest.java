@@ -5,7 +5,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -39,7 +39,7 @@ public class GATKSparkToolIntegrationTest extends CommandLineProgramTest {
 
     @Test(expectedExceptions = UserException.MissingReferenceDictFile.class)
     public void testMissingReferenceDictFileCatch() throws IOException {
-        File outFile = BaseTest.createTempFile("bqsrSparkPipelineTest", ".bam");
+        File outFile = GATKBaseTest.createTempFile("bqsrSparkPipelineTest", ".bam");
         final List<String> args = new ArrayList<>();
         args.add("-R");
         args.add("src/test/resources/org/broadinstitute/hellbender/engine/spark/validNoDict.fasta");

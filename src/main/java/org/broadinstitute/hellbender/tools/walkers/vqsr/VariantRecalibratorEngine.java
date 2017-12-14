@@ -53,7 +53,7 @@ public class VariantRecalibratorEngine {
             try {
                 model.precomputeDenominatorForEvaluation();
             } catch( Exception e ) {
-                //TODO: what is this catching ?????
+                logger.warn("Model could not pre-compute denominators.");  //this happened when we were reading in VQSR models that didn't have enough precision
                 model.failedToConverge = true;
                 return;
             }
@@ -63,6 +63,7 @@ public class VariantRecalibratorEngine {
         for( final VariantDatum datum : data ) {
             final double thisLod = evaluateDatum( datum, model );
             if( Double.isNaN(thisLod) ) {
+                logger.warn("Evaluate datum returned a NaN.");
                 model.failedToConverge = true;
                 return;
             }

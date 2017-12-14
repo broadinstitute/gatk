@@ -377,7 +377,7 @@ public final class ClippingOp {
         hardClippedRead.setBaseQualities(newQuals);
         hardClippedRead.setBases(newBases);
         hardClippedRead.setCigar(cigarShift.cigar);
-        if (start == 0) {
+        if (start == 0 && !read.isUnmapped()) {
             hardClippedRead.setPosition(read.getContig(), read.getStart() + calculateAlignmentStartShift(cigar, cigarShift.cigar));
         }
 

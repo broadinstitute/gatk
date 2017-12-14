@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * Created by David Benjamin on 5/5/17.
  */
-public class GermlineProbabilityCalculatorUnitTest extends BaseTest {
+public class GermlineProbabilityCalculatorUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "log10ProbabilityData")
     public void testLog10PosteriorProbabilityOfGermlineVariant(final double normalLog10Odds, final double tumorLog10Odds,

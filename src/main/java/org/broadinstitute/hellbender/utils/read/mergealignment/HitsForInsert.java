@@ -139,10 +139,10 @@ public final class HitsForInsert {
         for (int i = 0; i < this.numHits(); ++i) {
             final boolean notPrimary = (i != primaryAlignmentIndex);
             if (this.getFirstOfPair(i) != null) {
-                this.getFirstOfPair(i).setNotPrimaryAlignmentFlag(notPrimary);
+                this.getFirstOfPair(i).setSecondaryAlignment(notPrimary);
             }
             if (this.getSecondOfPair(i) != null) {
-                this.getSecondOfPair(i).setNotPrimaryAlignmentFlag(notPrimary);
+                this.getSecondOfPair(i).setSecondaryAlignment(notPrimary);
             }
         }
 

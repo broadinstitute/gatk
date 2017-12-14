@@ -8,7 +8,10 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.Feature;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -23,6 +26,7 @@ import org.broadinstitute.hellbender.utils.text.XReadLines;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -70,16 +74,11 @@ public final class IntervalUtils {
         Utils.nonNull(first);
         Utils.nonNull(second);
         Utils.nonNull(dictionary);
+
         int result = 0;
         if(first != second) {
-            // get the contigs
-            final int firstRefIndex = dictionary.getSequenceIndex(first.getContig());
-            final int secondRefIndex = dictionary.getSequenceIndex(second.getContig());
-            if(firstRefIndex == -1 || secondRefIndex == -1) {
-                throw new IllegalArgumentException("Can't do comparison because locatables are not found in dictionary");
-            }
             // compare the contigs
-            result = Integer.compare(firstRefIndex, secondRefIndex);
+            result = compareContigs(first, second, dictionary);
             if (result == 0) {
                 // compare start position
                 result = Integer.compare(first.getStart(), second.getStart());
@@ -91,6 +90,64 @@ public final class IntervalUtils {
         }
         return result;
     }
+
+    /**
+     * Tests whether the first Locatable ends before the start of the second Locatable
+     *
+     * @param first first Locatable
+     * @param second second Locatable
+     * @param dictionary sequence dictionary used to determine contig ordering
+     * @return true if first ends before the start of second, otherwise false
+     */
+    public static boolean isBefore(final Locatable first, final Locatable second, final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(first);
+        Utils.nonNull(second);
+        Utils.nonNull(dictionary);
+
+        final int contigComparison = compareContigs(first, second, dictionary);
+        return contigComparison == -1 || (contigComparison == 0 && first.getEnd() < second.getStart());
+    }
+
+    /**
+     * Tests whether the first Locatable starts after the end of the second Locatable
+     *
+     * @param first first Locatable
+     * @param second second Locatable
+     * @param dictionary sequence dictionary used to determine contig ordering
+     * @return true if first starts after the end of second, otherwise false
+     */
+    public static boolean isAfter(final Locatable first, final Locatable second, final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(first);
+        Utils.nonNull(second);
+        Utils.nonNull(dictionary);
+
+        final int contigComparison = compareContigs(first, second, dictionary);
+        return contigComparison == 1 || (contigComparison == 0 && first.getStart() > second.getEnd());
+    }
+
+    /**
+     * Determines the relative contig ordering of first and second using the provided sequence dictionary
+     *
+     * @param first first Locatable
+     * @param second second Locatable
+     * @param dictionary sequence dictionary used to determine contig ordering
+     * @return 0 if the two contigs are the same, a negative value if first's contig comes before second's contig,
+     *         or a positive value if first's contig comes after second's contig
+     */
+    public static int compareContigs(final Locatable first, final Locatable second, final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(first);
+        Utils.nonNull(second);
+        Utils.nonNull(dictionary);
+
+        final int firstRefIndex = dictionary.getSequenceIndex(first.getContig());
+        final int secondRefIndex = dictionary.getSequenceIndex(second.getContig());
+        if (firstRefIndex == -1 || secondRefIndex == -1) {
+            throw new IllegalArgumentException("Can't do comparison because Locatables' contigs not found in sequence dictionary");
+        }
+        // compare the contigs
+        return Integer.compare(firstRefIndex, secondRefIndex);
+    }
+
 
     /**
      * getSpanningInterval returns interval that covers all of the locations passed in.
@@ -1056,4 +1113,256 @@ public final class IntervalUtils {
 
 
     // (end of shard-related code)
+
+    /**
+     * Combine the breakpoints of multiple intervals and return a list of locatables based on the updated breakpoints.
+     *
+     * Suppose we have two lists of locatables:
+     * List 1:
+     *
+     * <pre>
+     *     1  1000  2000
+     * </pre>
+     *
+     * List 2:
+     *
+     * <pre>
+     *     1  500  2500
+     *     1  2501  3000
+     *     1  4000  5000
+     * </pre>
+     *
+     * The result would be:
+     * <pre>
+     *     1  500  999
+     *     1  1000  2000
+     *     1  2001  2500
+     *     1  2501  3000
+     *     1  4000  5000
+     * </pre>
+     *
+     * Note that start breakpoints will always appear as starts of the resulting intervals.
+     *
+     * <p>
+     * Does not alter the input.
+     * </p>
+     *
+     * Any single list of input locatables containing duplicates or overlapping intervals will throw an exception.
+     *
+     * Intervals are assumed to include the start and end bases.
+     *
+     * This method performs all necessary sorting.
+     *
+     * @param unsortedLocatables1 list of locatables
+     * @param unsortedLocatables2 list of locatables
+     * @param dictionary Sequence dictionary to base the sort.  The order of contigs/sequences in the dictionary is the order of the sorting here.
+     * @return Locatables from the combined breakpoints of unsortedLocatables1 and unsortedLocatables2.  If both inputs are null, return an
+     *   empty list.  Please note that returned values are new copies.  If exactly one of the inputs is null, this method
+     *   returns a copy of of the non-null input.
+     */
+    public static <T extends Locatable> List<Locatable> combineAndSortBreakpoints(final List<T> unsortedLocatables1,
+                                                                                     final List<T> unsortedLocatables2,
+                                                                                     final SAMSequenceDictionary dictionary) {
+
+        Utils.nonNull(dictionary);
+
+        final List<T> locatables1 = sortLocatablesBySequenceDictionary(unsortedLocatables1, dictionary);
+        final List<T> locatables2 = sortLocatablesBySequenceDictionary(unsortedLocatables2, dictionary);
+
+        if ((locatables1 == null) && (locatables2 == null)) {
+            return Collections.emptyList();
+        }
+
+        validateNoOverlappingIntervals(locatables1);
+        validateNoOverlappingIntervals(locatables2);
+
+        if (CollectionUtils.isEmpty(locatables1)) {
+            return locatables2.stream().map(SimpleInterval::new).collect(Collectors.toList());
+        }
+        if (CollectionUtils.isEmpty(locatables2)) {
+            return locatables1.stream().map(SimpleInterval::new).collect(Collectors.toList());
+        }
+
+        final List<Locatable> masterList = new ArrayList<>();
+        masterList.addAll(locatables1);
+        masterList.addAll(locatables2);
+
+        final Set<String> contigs = masterList.stream()
+                .map(Locatable::getContig).collect(Collectors.toSet());
+
+        final Map<String, Set<Pair<Integer, IntervalBreakpointType>>> contigToBreakpoints = contigs.stream()
+                .collect(Collectors.toMap(Function.identity(), l -> new HashSet<>()));
+
+        // Populate initialized maps with contigs to the break points.  Also, keep a mapping of contigs
+        //  to start breakpoints.
+        masterList.forEach(l -> {
+            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getStart(), IntervalBreakpointType.START_BREAKPOINT));
+            contigToBreakpoints.get(l.getContig()).add(Pair.of(l.getEnd(), IntervalBreakpointType.END_BREAKPOINT));
+        });
+
+        final List<Locatable> result = new ArrayList<>();
+
+        for (final String contig : contigs) {
+
+            // Sort the breakpoints for this contig.  Use the pair structure, since we need to differentiate between a
+            //  breakpoint that is a start and a breakpoint that is end, yet have the same position.  This is especially
+            //  important for single base intervals.
+            final List<Pair<Integer, IntervalBreakpointType>> breakpoints = new ArrayList<>(contigToBreakpoints.get(contig));
+            breakpoints.sort((p1, p2) -> {
+                final int firstComparison = p1.getLeft().compareTo(p2.getLeft());
+                if (firstComparison != 0) {
+                    return firstComparison;
+                } else {
+                    // We want start breakpoints before end breakpoints
+                    return p1.getRight().compareTo(p2.getRight());
+                }
+            });
+            int numCurrentStarts = 0;
+            int numCurrentEnds = 0;
+            for (int i = 0; i < (breakpoints.size() - 1); i++) {
+                final int currentBreakpoint = breakpoints.get(i).getLeft();
+                final int nextBreakpoint = breakpoints.get(i + 1).getLeft();
+
+                final boolean isCurrentBreakpointStart = breakpoints.get(i).getRight() == IntervalBreakpointType.START_BREAKPOINT;
+                final boolean isNextBreakpointStart = breakpoints.get(i + 1).getRight() == IntervalBreakpointType.START_BREAKPOINT;
+
+                // if both breakpoints are starts of intervals, then the result is bp1, bp2-1
+                // if both breakpoints are ends of intervals, then the result is bp1+1, bp2
+                int start = (!isCurrentBreakpointStart && !isNextBreakpointStart ? currentBreakpoint + 1 : currentBreakpoint);
+                int end = (isCurrentBreakpointStart && isNextBreakpointStart ? nextBreakpoint - 1 : nextBreakpoint);
+
+                // If the current breakpoint is an end and the next is a start, then we want to shrink both ends.
+                //  Note that this could indicate that we are between intervals for one list of locatables,
+                //   but not the other.
+                final boolean isBetweenIntervals = !isCurrentBreakpointStart && isNextBreakpointStart;
+                if (isBetweenIntervals) {
+                    start++;
+                    end--;
+                }
+
+                // If the next breakpoint is a start and the current is end AND we are not in the middle of an interval,
+                //   then we do NOT add the interval at all (we are between intervals in both lists).
+                if (isCurrentBreakpointStart) {
+                    numCurrentStarts++;
+                } else {
+                    numCurrentEnds++;
+                }
+
+                // We also need to check if start > end, since we could have been between intervals that were one adjacent,
+                //   so we don't want to add an interval for that.
+                if (((!isBetweenIntervals) || (numCurrentStarts > numCurrentEnds)) &&
+                        start <= end){
+                    result.add(new SimpleInterval(contig, start, end));
+                }
+            }
+        }
+        return sortLocatablesBySequenceDictionary(result, dictionary);
+    }
+
+    /**
+     *  Throws Bad Input exception if any overlaps are detected within the list of locatables.
+     * @param locatables List of locatables to test.  {@code null} will never throw an exception.
+     * @param <T> Locatable class
+     */
+    private static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
+        // Do not throw an exception for empty or null lists.
+        if (CollectionUtils.isEmpty(locatables)) {
+            return;
+        }
+
+        final HashSet<T> locatablesSet = new HashSet<>(locatables);
+        if (locatablesSet.size() != locatables.size()) {
+            throw new UserException.BadInput("Duplicate(s) detected in input:  " + locatables.size() + " intervals had " + (locatables.size() - locatablesSet.size()) + " duplicates.");
+        }
+
+        final OverlapDetector<T> overlapDetector = OverlapDetector.create(locatables);
+
+        for (final Locatable locatable : locatables) {
+            final Set<T> overlaps = overlapDetector.getOverlaps(locatable);
+            if (overlaps.size() > 1) {
+                throw new UserException.BadInput("Overlap detected in input:  " + locatable + " overlapped " + StringUtils.join(overlaps, ", "));
+            }
+        }
+    }
+
+    /**
+     * Sort by the contig then position as specified by the index order in the given sequence dictionary.
+     *
+     * @param locatables list of locatables.
+     * @param dictionary Never {@code null}
+     * @param <T> Locatable
+     * @return new list that is sorted using the sequence index of the given dictionary.  Returns {@code null} if locatables
+     *   is {@code null}.  Instances in the list are not copies of input.
+     */
+    public static <T extends Locatable> List<T> sortLocatablesBySequenceDictionary(final Collection<T> locatables, final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(dictionary);
+
+        final List<T> result = (locatables == null ? null : new ArrayList<>(locatables));
+
+        if (result != null) {
+            result.sort(getDictionaryOrderComparator(dictionary));
+        }
+        return result;
+    }
+
+    /**
+     * Creates a map of which locatables (keys) overlap the other list of locatables (vals)
+     *
+     * Input lists will be sorted sorted by the input dictionary.
+     *
+     *  Within a single input list, segments cannot overlap (or duplicate).  If this occurs, an exception is thrown.
+     *
+     * No copies of inputs are created.
+     *
+     * @param keys -- the intervals we wish to query.  Sorted by interval.  No intervals overlap.  Never {@code null}
+     * @param vals -- the intervals that we wish to map to the keys.  Sorted by interval.  No intervals overlap.  Never {@code null}
+     * @param dictionary -- the SAMSequenceDictionary that the intervals (and sorting) derive from.  Never {@code null}
+     * @return a mapping of intervals from keys to the list of overlapping intervals in vals.  All item in keys will
+     * have a key.  Never {@code null}
+     */
+    public static <T extends Locatable, U extends Locatable> Map<T, List<U>> createOverlapMap(final List<T> keys, final List<U> vals,
+                                                                                              final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(keys);
+        Utils.nonNull(vals);
+        Utils.nonNull(dictionary);
+
+        validateNoOverlappingIntervals(keys);
+        validateNoOverlappingIntervals(vals);
+
+        final List<T> sortedKeys = sortLocatablesBySequenceDictionary(keys, dictionary);
+
+        final OverlapDetector<U> overlapDetector = OverlapDetector.create(vals);
+
+        final Map<T, List<U>> result = new HashMap<>();
+
+        for (final T key: sortedKeys) {
+
+            // Get the overlaps, sort'em, and create a map entry.
+            final Set<U> overlaps = overlapDetector.getOverlaps(key);
+            final List<U> overlapsAsList = sortLocatablesBySequenceDictionary(overlaps, dictionary);
+            result.put(key, overlapsAsList);
+        }
+
+        return result;
+    }
+
+    /**
+     *
+     * The order of contigs/sequences in the dictionary is the order of the sorting here.
+     *
+     * @param dictionary dictionary to use for the sorting.  Intervals with sequences not in this dictionary will cause
+     *                   exceptions to be thrown.  Never {@ode null}.
+     * @return an instance of {@code Comapator<Locatable>} for use in sorting of Locatables.
+     */
+    public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(dictionary);
+        return (o1, o2) -> IntervalUtils.compareLocatables(o1, o2, dictionary);
+    }
+
+    /**
+     * An enum to classify breakpoints whether the breakpoint is the start or end of a region.
+     */
+    public enum IntervalBreakpointType {
+        START_BREAKPOINT, END_BREAKPOINT
+    }
 }

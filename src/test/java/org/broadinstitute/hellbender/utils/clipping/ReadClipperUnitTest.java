@@ -4,12 +4,9 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.OverhangFixingManager;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.SplitNCigarReads;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.SplitNCigarReadsUnitTest;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -21,7 +18,7 @@ import java.util.*;
 import static org.broadinstitute.hellbender.utils.read.ReadUtils.getSoftEnd;
 import static org.broadinstitute.hellbender.utils.read.ReadUtils.getSoftStart;
 
-public final class ReadClipperUnitTest extends BaseTest {
+public final class ReadClipperUnitTest extends GATKBaseTest {
     List<Cigar> cigarList;
     int maximumCigarElements = 9;                                                                                           // 6 is the minimum necessary number to try all combinations of cigar types with guarantee of clipping an element with length = 2
 

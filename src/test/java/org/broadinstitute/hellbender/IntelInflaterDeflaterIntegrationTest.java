@@ -10,7 +10,6 @@ import htsjdk.samtools.util.zip.DeflaterFactory;
 import htsjdk.samtools.util.zip.InflaterFactory;
 import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
@@ -88,7 +87,7 @@ public class IntelInflaterDeflaterIntegrationTest extends CommandLineProgramTest
         }
 
         final File ORIG_BAM = new File(largeFileTestDir, INPUT_FILE);
-        final File outFile = BaseTest.createTempFile(INPUT_FILE, ".bam");
+        final File outFile = GATKBaseTest.createTempFile(INPUT_FILE, ".bam");
 
         final ArrayList<String> args = new ArrayList<>();
         args.add("--input"); args.add(ORIG_BAM.getAbsolutePath());

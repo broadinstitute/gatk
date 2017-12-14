@@ -9,7 +9,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
+public class JoinReadsWithVariantsSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "pairedReadsAndVariants")
     public Object[][] pairedReadsAndVariants(){
         List<Object[]> testCases = new ArrayList<>();

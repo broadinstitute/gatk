@@ -4,6 +4,7 @@ import htsjdk.samtools.ValidationStringency;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
@@ -118,7 +119,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String argPre = "-R " + hg18Reference + " -indelBQSR -enableBAQ " + " --knownSites " + dbSNPb37_chr17 + " -I " + HiSeqBam_chr17 + " -O " + tablePre + " ";
         new BaseRecalibrator().instanceMain(Utils.escapeExpressions(argPre));
 
-        final String argApply = "-I " + HiSeqBam_chr17 + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated_chr17.getAbsolutePath();
+        final String argApply = "-I " + HiSeqBam_chr17 + " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME +" " + tablePre + " -O " + actualHiSeqBam_recalibrated_chr17.getAbsolutePath();
         new ApplyBQSR().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");

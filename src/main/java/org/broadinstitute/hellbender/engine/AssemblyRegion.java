@@ -504,6 +504,10 @@ public final class AssemblyRegion implements Locatable {
      * Divide a read shard up into one or more AssemblyRegions using the provided AssemblyRegionEvaluator to find
      * the borders between "active" and "inactive" regions within the shard.
      *
+     * DEPRECATED: Use the new AssemblyRegionIterator instead of AssemblyRegion.createFromReadShard(),
+     *             since AssemblyRegion.createFromReadShard() slurps all reads in the shard into memory at once,
+     *             whereas AssemblyRegionIterator loads the reads from the shard as lazily as possible.
+     *
      * @param shard Shard to divide into assembly regions
      * @param readsHeader header for the reads
      * @param referenceContext reference data overlapping the shard's extended span (including padding)

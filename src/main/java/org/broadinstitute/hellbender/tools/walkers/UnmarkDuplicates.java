@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -16,6 +17,7 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Simple tool to \"unmark\" duplicates in a SAM/BAM/CRAM file. Clears the isDuplicate bit on all reads.",
         oneLineSummary = "Unmark duplicates in a SAM/BAM/CRAM file",

@@ -196,7 +196,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private Mutect2Engine m2Engine;
 
     @Override
-    protected int defaultReadShardSize() { return 5000; }
+    protected int defaultReadShardSize() { return NO_INTERVAL_SHARDING; }
 
     @Override
     protected int defaultReadShardPadding() { return 100; }
@@ -220,6 +220,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected int defaultMaxProbPropagationDistance() { return 50; }
 
     @Override
+    protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
+
+    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return Mutect2Engine.makeStandardMutect2ReadFilters();
     }
@@ -229,7 +232,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        m2Engine = new Mutect2Engine(MTAC, getHeaderForReads(), referenceArguments.getReferenceFileName());
+        m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName());
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = createVCFWriter(outputVCF);
         m2Engine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
@@ -242,11 +245,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        m2Engine.callRegion(region, referenceContext, featureContext).stream()
-                // Only include calls that start within the current read shard (as opposed to the padded regions around it).
-                // This is critical to avoid duplicating events that span shard boundaries!
-                .filter(call -> getCurrentReadShardBounds().contains(new SimpleInterval(call.getContig(), call.getStart(), call.getStart())))
-                .forEach(vcfWriter::add);
+        m2Engine.callRegion(region, referenceContext, featureContext).forEach(vcfWriter::add);
     }
 
     @Override

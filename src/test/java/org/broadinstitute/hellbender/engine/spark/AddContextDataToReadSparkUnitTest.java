@@ -14,14 +14,13 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,10 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
-
-public class AddContextDataToReadSparkUnitTest extends BaseTest {
+public class AddContextDataToReadSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases() {
         List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
@@ -64,14 +60,12 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
         JavaRDD<GATKVariant> rddVariants = ctx.parallelize(variantList);
 
-        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
-        when(mockSource.getReferenceBases(any(PipelineOptions.class), any())).then(new ReferenceBasesAnswer());
-        when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SAMSequenceDictionary sd = new SAMSequenceDictionary(Lists.newArrayList(new SAMSequenceRecord("1", 100000), new SAMSequenceRecord("2", 100000)));
-        when(mockSource.getReferenceSequenceDictionary(null)).thenReturn(sd);
-
-        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(ctx, rddReads, mockSource, rddVariants, null, joinStrategy,
+        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(ctx, rddReads,
+                new TestMultiReferenceSource(sd),
+                rddVariants, null, joinStrategy,
                 sd, 10000, 1000);
+
         Map<GATKRead, ReadContextData> actual = rddActual.collectAsMap();
 
         Assert.assertEquals(actual.size(), expectedReadContextData.size());
@@ -86,11 +80,38 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         }
     }
 
-    static class ReferenceBasesAnswer implements Answer<ReferenceBases>, Serializable {
+    // Provide a fake implementation of this class for testing. We can't use a real mock since this is used as a Spark
+    // broadcast variable. Mocks are mutated when they're accessed, which can result in ConcurrentModificationExceptions
+    // during serialization/broadcast.
+    static class TestMultiReferenceSource extends ReferenceMultiSource implements Serializable {
         private static final long serialVersionUID = 1L;
-        @Override
-        public ReferenceBases answer(InvocationOnMock invocation) throws Throwable {
-            return FakeReferenceSource.bases(invocation.getArgumentAt(1, SimpleInterval.class));
+
+        final SAMSequenceDictionary sequenceDictionary;
+
+        public TestMultiReferenceSource(final SAMSequenceDictionary sd) {
+            sequenceDictionary = sd;
         }
+
+        @Override
+        public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) throws IOException {
+            return FakeReferenceSource.bases(interval);
+        }
+
+        @Override
+        public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) {
+            return sequenceDictionary;
+        }
+
+        @Override
+        public boolean isCompatibleWithSparkBroadcast(){
+            return true;
+        }
+
+        @Override
+        public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
+            return ReferenceWindowFunctions.IDENTITY_FUNCTION;
+        }
+
     }
+
 }

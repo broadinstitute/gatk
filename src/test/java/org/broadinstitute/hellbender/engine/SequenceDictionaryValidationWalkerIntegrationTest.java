@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.PrintReads;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -23,7 +24,7 @@ public class SequenceDictionaryValidationWalkerIntegrationTest extends CommandLi
 
     @Test
     public void testSeqDictValCompatible() throws IOException {
-        final File outFile = BaseTest.createTempFile("testSeqDictValCompatible", ".bam");
+        final File outFile = GATKBaseTest.createTempFile("testSeqDictValCompatible", ".bam");
         final String[] args = {
                 "--input" , SEQDICTVAL_TEST_DIRECTORY + "test.sorted.bam",
                 "-R", SEQDICTVAL_TEST_DIRECTORY + "test.fasta",
@@ -35,7 +36,7 @@ public class SequenceDictionaryValidationWalkerIntegrationTest extends CommandLi
 
     @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
     public void testSeqDictValIncompatible() throws IOException {
-        final File outFile = BaseTest.createTempFile("testSeqDictValIncompatible", ".bam");
+        final File outFile = GATKBaseTest.createTempFile("testSeqDictValIncompatible", ".bam");
         final String[] args = {
                 "--input" , SEQDICTVAL_TEST_DIRECTORY + "test2.sorted.bam",
                 "-R", SEQDICTVAL_TEST_DIRECTORY + "test2.fasta",
@@ -47,12 +48,12 @@ public class SequenceDictionaryValidationWalkerIntegrationTest extends CommandLi
 
     @Test
     public void testSeqDictValIncompatibleDisableValidation() throws IOException {
-        final File outFile = BaseTest.createTempFile("testSeqDictValIncompatibleDisableValidation", ".bam");
+        final File outFile = GATKBaseTest.createTempFile("testSeqDictValIncompatibleDisableValidation", ".bam");
         final String[] args = {
                 "--input" , SEQDICTVAL_TEST_DIRECTORY + "test2.sorted.bam",
                 "-R", SEQDICTVAL_TEST_DIRECTORY + "test2.fasta",
                 "--output", outFile.getAbsolutePath(),
-                "--disableSequenceDictionaryValidation"
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME
         };
         // Should run without producing an exception even though the dictionaries are incompatible,
         // since we've disabled sequence dictionary validation

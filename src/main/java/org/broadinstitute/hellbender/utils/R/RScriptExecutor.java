@@ -5,13 +5,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
-import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
-import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
+import org.broadinstitute.hellbender.utils.runtime.ScriptExecutor;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -20,25 +16,25 @@ import java.util.List;
 /**
  * Generic service for executing RScripts
  */
-public final class RScriptExecutor {
-    private static final String RSCRIPT_BINARY = "Rscript";
-    private static final File RSCRIPT_PATH = RuntimeUtils.which(RSCRIPT_BINARY);
-    public static final boolean RSCRIPT_EXISTS = (RSCRIPT_PATH != null);
-    private static final String RSCRIPT_MISSING_MESSAGE = "Please add the Rscript directory to your environment ${PATH}";
-
-    /**
-     * our log
-     */
+public final class RScriptExecutor extends ScriptExecutor {
     private static final Logger logger = LogManager.getLogger(RScriptExecutor.class);
-
-    private boolean ignoreExceptions = false;
     private final List<RScriptLibrary> libraries = new ArrayList<>();
     private final List<Resource> scriptResources = new ArrayList<>();
     private final List<File> scriptFiles = new ArrayList<>();
     private final List<String> args = new ArrayList<>();
 
-    public void setIgnoreExceptions(boolean ignoreExceptions) {
-        this.ignoreExceptions = ignoreExceptions;
+    public RScriptExecutor() {
+        this(false);
+    }
+
+    /**
+     * @param ensureExecutableExists throw if the RScript executable cannot be located
+     */
+    public RScriptExecutor(boolean ensureExecutableExists) {
+        super("Rscript");
+        if (ensureExecutableExists && !externalExecutableExists()) {
+            executableMissing();
+        }
     }
 
     public void addLibrary(RScriptLibrary library) {
@@ -63,6 +59,7 @@ public final class RScriptExecutor {
             this.args.add(arg.toString());
     }
 
+    @Override
     public String getApproximateCommandLine() {
         StringBuilder command = new StringBuilder("Rscript");
         for (Resource script: this.scriptResources)
@@ -74,16 +71,16 @@ public final class RScriptExecutor {
         return command.toString();
     }
 
-    public boolean exec() {
-        if (!RSCRIPT_EXISTS) {
-            if (!ignoreExceptions) {
-                throw new UserException.CannotExecuteRScript(RSCRIPT_MISSING_MESSAGE);
-            } else {
-                logger.warn("Skipping: " + getApproximateCommandLine());
-                return false;
-            }
-        }
+    /**
+     * Return an exception specific to this executor type, to be thrown on error conditions.
+     * @param message
+     */
+    @Override
+    public RScriptExecutorException getScriptException(final String message) {
+        return new RScriptExecutorException(message.toString());
+    }
 
+    public boolean exec() {
         List<File> tempFiles = new ArrayList<>();
         try {
             File tempLibSourceDir  = IOUtils.tempDir("RlibSources.", "");
@@ -124,46 +121,14 @@ public final class RScriptExecutor {
 
             String[] cmd = new String[this.args.size() + 3];
             int i = 0;
-            cmd[i++] = RSCRIPT_BINARY;
+            cmd[i++] = externalScriptExecutableName;
             cmd[i++] = "-e";
             cmd[i++] = expression.toString();
             for (String arg: this.args)
                 cmd[i++] = arg;
 
-            ProcessSettings processSettings = new ProcessSettings(cmd);
-            //if debug is enabled, output the stdout and stdder, otherwise capture it to a buffer
-            if (logger.isDebugEnabled()) {
-                processSettings.getStdoutSettings().printStandard(true);
-                processSettings.getStderrSettings().printStandard(true);
-            } else {
-                processSettings.getStdoutSettings().setBufferSize(8192);
-                processSettings.getStderrSettings().setBufferSize(8192);
-            }
-
-            ProcessController controller = ProcessController.getThreadLocal();
-
-            if (logger.isDebugEnabled()) {
-                logger.debug("Executing:");
-                for (String arg: cmd)
-                    logger.debug("  " + arg);
-            }
-            ProcessOutput po = controller.exec(processSettings);
-            int exitValue = po.getExitValue();
-            logger.debug("Result: " + exitValue);
-
-            if (exitValue != 0){
-                StringBuilder message = new StringBuilder();
-                message.append(String.format("\nRscript exited with %d\nCommand Line: %s", exitValue,String.join(" ", cmd)));
-                //if debug was enabled the stdout/error were already output somewhere
-                if (!logger.isDebugEnabled()){
-                    message.append(String.format("\nStdout: %s\nStderr: %s",
-                            po.getStdout().getBufferString(),
-                            po.getStderr().getBufferString()));
-                }
-                throw new RScriptExecutorException(message.toString());
-            }
-
-            return true;
+            // actually run the script
+            return executeCuratedArgs(cmd);
         } catch (GATKException e) {
             if (!ignoreExceptions) {
                 throw e;

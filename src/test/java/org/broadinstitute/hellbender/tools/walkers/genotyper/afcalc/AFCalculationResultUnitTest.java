@@ -4,14 +4,14 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class AFCalculationResultUnitTest extends BaseTest {
+public final class AFCalculationResultUnitTest extends GATKBaseTest {
     private static class MyTest {
         final double[] Ls, expectedPosteriors;
 

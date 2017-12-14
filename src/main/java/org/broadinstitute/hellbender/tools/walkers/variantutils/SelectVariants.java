@@ -137,8 +137,8 @@ public final class SelectVariants extends VariantWalker {
 
     /**
      * This argument can be specified multiple times in order to provide multiple sample names, or to specify
-     * the name of one or more files containing sample names. File names must end in ".list", and the expected
-     * file format is simply plain text with one sample name per line. Note that sample exclusion takes
+     * the name of one or more files containing sample names. File names must use the extension ".args", and the
+     * expected file format is simply plain text with one sample name per line. Note that sample exclusion takes
      * precedence over inclusion, so that if a sample is in both lists it will be excluded.
      */
     @Argument(fullName="sample_name", shortName="sn", doc="Include genotypes from this sample", optional=true)
@@ -155,8 +155,8 @@ public final class SelectVariants extends VariantWalker {
     /**
      * Note that sample exclusion takes precedence over inclusion, so that if a sample is in both lists it will be
      * excluded. This argument can be specified multiple times in order to provide multiple sample names, or to
-     * specify the name of one or more files containing sample names. File names must end in ".list", and the
-     * expected file format is simply plain text with one sample name per line.
+     * specify the name of one or more files containing sample names. File names must use the extension ".args",
+     * and the expected file format is simply plain text with one sample name per line.
      */
     @Argument(fullName="exclude_sample_name", shortName="xl_sn", doc="Exclude genotypes from this sample", optional=true)
     private Set<String> XLsampleNames = new LinkedHashSet<>(0);

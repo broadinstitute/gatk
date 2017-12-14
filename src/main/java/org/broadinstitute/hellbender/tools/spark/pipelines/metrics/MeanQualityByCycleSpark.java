@@ -11,6 +11,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
@@ -18,7 +19,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
-import org.broadinstitute.hellbender.tools.picard.analysis.MeanQualityByCycle;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -38,6 +38,7 @@ import java.util.List;
  *
  * This is the Spark implementation of this tool.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
 summary = "Program to generate a data table and pdf chart of " +
         "mean base quality by cycle from a SAM/BAM file.  Works best on a single lane/run of data, but can be applied to " +
@@ -242,9 +243,19 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
                 plotSubtitle = StringUtil.asEmptyIfNull(readGroups.get(0).getLibrary());
             }
             final RScriptExecutor executor = new RScriptExecutor();
-            executor.addScript(new Resource(MeanQualityByCycle.R_SCRIPT, MeanQualityByCycle.class));
+            executor.addScript(getMeanQualityByCycleRScriptResource());
             executor.addArgs(out, chartOutput.getAbsolutePath(), inputFileName, plotSubtitle);
             executor.exec();
         }
     }
+
+    /**
+     * Return the R Script resource used by this class
+     */
+    @VisibleForTesting
+    static Resource getMeanQualityByCycleRScriptResource() {
+        final String R_SCRIPT = "meanQualityByCycle.R";
+        return new Resource(R_SCRIPT, MeanQualityByCycleSpark.class);
+    }
+
 }

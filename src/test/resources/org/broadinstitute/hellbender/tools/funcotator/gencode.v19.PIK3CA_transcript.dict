@@ -1,0 +1,2 @@
+@HD	VN:1.5	SO:unsorted
+@SQ	SN:ENST00000263967.3|ENSG00000121879.3|OTTHUMG00000157311.2|OTTHUMT00000348409.2|PIK3CA-001|PIK3CA|9093|UTR5:1-157|CDS:158-3364|UTR3:3365-9093|	LN:9093	M5:6a1d4424867247b4310ed3d5d027711f	UR:file:/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/gencode.v19.PIK3CA_transcript.fasta

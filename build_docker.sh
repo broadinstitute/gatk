@@ -6,6 +6,7 @@ set -e
 REPO=broadinstitute
 PROJECT=gatk
 REPO_PRJ=${REPO}/${PROJECT}
+GCR_REPO="us.gcr.io/broad-gatk/gatk"
 STAGING_CLONE_DIR=${PROJECT}_staging_temp
 
 #################################################
@@ -41,11 +42,6 @@ Optional arguments:  \n \
 	exit 1
 fi
 
-# Make sure sudo or root was used.
-if [ "$(whoami)" != "root" ]; then
-	echo "You must have superuser privileges (through sudo or root user) to run this script"
-	exit 1
-fi
 
 # -z is like "not -n"
 if [ -z ${IS_NOT_LATEST} ] && [ -n "${IS_HASH}" ] && [ -n "${IS_PUSH}" ]; then
@@ -75,6 +71,8 @@ if [ -n "${IS_PUSH}" ]; then
 	docker login
 fi
 
+ORIGINAL_WORKING_DIRECTORY=$(pwd)
+
 if [ -n "$STAGING_DIR" ]; then
     GITHUB_DIR="tags/"
 
@@ -89,21 +87,27 @@ if [ -n "$STAGING_DIR" ]; then
     set -e
     GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/${REPO}/${PROJECT}.git ${STAGING_DIR}/${STAGING_CLONE_DIR}
     cd ${STAGING_DIR}/${STAGING_CLONE_DIR}
-    echo "Now in ${PWD}"
-        if [ ${PULL_REQUEST_NUMBER} ]; then
-            GIT_FETCH_COMMAND="git fetch origin +refs/pull/${PULL_REQUEST_NUMBER}/merge"
-            echo "${GIT_FETCH_COMMAND}"
-            ${GIT_FETCH_COMMAND}
-        fi
+    STAGING_ABSOLUTE_PATH=$(pwd)
+
+    echo "Now in $(pwd)"
+    if [ ${PULL_REQUEST_NUMBER} ]; then
+        GIT_FETCH_COMMAND="git fetch origin +refs/pull/${PULL_REQUEST_NUMBER}/merge"
+        echo "${GIT_FETCH_COMMAND}"
+        ${GIT_FETCH_COMMAND}
+    fi
     GIT_CHECKOUT_COMMAND="git checkout ${GITHUB_DIR}${GITHUB_TAG}"
     echo "${GIT_CHECKOUT_COMMAND}"
     ${GIT_CHECKOUT_COMMAND}
 fi
 
-
 # Build
+if [ -n "${IS_PUSH}" ]; then
+    RELEASE=true
+else
+    RELEASE=false
+fi
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} .
+docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg DRELEASE=$RELEASE .
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
@@ -114,22 +118,39 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 		REMOVE_CONTAINER_STRING=" "
 	fi
 
-	echo docker run ${REMOVE_CONTAINER_STRING} -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-	docker run ${REMOVE_CONTAINER_STRING} -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+	git lfs pull
+    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
+
+	echo docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+	docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
 	echo " Unit tests passed..."
 fi
 
 ## Push
 if [ -n "${IS_PUSH}" ]; then
 
+	echo "Pushing to ${REPO_PRJ}"
 	docker push ${REPO_PRJ}:${GITHUB_TAG}
 
+	echo "Pushing to ${GCR_REPO}"
+	docker tag ${REPO_PRJ}:${GITHUB_TAG} ${GCR_REPO}:${GITHUB_TAG}
+	gcloud docker -- push ${GCR_REPO}:${GITHUB_TAG}
+
 	if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
+		echo "Updating latest tag in ${REPO_PRJ}"
 		docker build -t ${REPO_PRJ}:latest .
 		docker push ${REPO_PRJ}:latest
+		
+		echo "Updating latest tag in ${GCR_REPO}"
+		docker tag ${GCR_REPO}:${GITHUB_TAG} ${GCR_REPO}:latest
+		gcloud docker -- push ${GCR_REPO}:latest
 	fi
 
 else
 	echo "Not pushing to dockerhub"
 fi
 
+cd ${ORIGINAL_WORKING_DIRECTORY}
+if [ -n "$STAGING_DIR" ] ; then
+    rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
+fi

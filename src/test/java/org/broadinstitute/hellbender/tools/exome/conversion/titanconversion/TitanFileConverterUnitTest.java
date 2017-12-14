@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.conversion.titanconversion;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class TitanFileConverterUnitTest extends BaseTest {
+public class TitanFileConverterUnitTest extends GATKBaseTest {
     private static final String ACNV_TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
     // Typically, this next file would be the output of a tangent normalization run.

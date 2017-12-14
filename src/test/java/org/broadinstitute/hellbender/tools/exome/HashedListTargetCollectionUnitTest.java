@@ -1,17 +1,22 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.SAMSequenceRecord;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
+import org.broadinstitute.hellbender.utils.test.SimpleIntervalTestFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -19,7 +24,9 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HashedListTargetCollectionUnitTest extends BaseTest {
+public final class HashedListTargetCollectionUnitTest extends GATKBaseTest {
+
+    private static final SimpleIntervalTestFactory targetsUtils = new SimpleIntervalTestFactory(new File(CommandLineProgramTest.getTestDataDir(), "exome/test_reference.fasta"));
 
     /**
      * Average target size for randomly generated test data.
@@ -71,9 +78,9 @@ public final class HashedListTargetCollectionUnitTest extends BaseTest {
     public void setUp() {
         nonOverlappingTargetIntervals = new ArrayList<>(100);
         final Random rdn = new Random(13);// some "random" but fixed seed to make sure errors are deterministic.
-        for (int i = 0; i < TargetsToolsTestUtils.REFERENCE_DICTIONARY.size(); i++) {
+        for (int i = 0; i < targetsUtils.REFERENCE_DICTIONARY.size(); i++) {
             int current = 0;
-            final SAMSequenceRecord sequence = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(i);
+            final SAMSequenceRecord sequence = targetsUtils.REFERENCE_DICTIONARY.getSequence(i);
             while (current < sequence.getSequenceLength()) {
                 int start = current + Math.max(minimumTargetIntergapSize,
                         (int) Math.round(rdn.nextGaussian() * sdTargetIntergapSize + averageTargetIntergapSize));
@@ -87,7 +94,7 @@ public final class HashedListTargetCollectionUnitTest extends BaseTest {
                     break;
                 }
                 nonOverlappingTargetIntervals.add(
-                        TargetsToolsTestUtils.createInterval(
+                        targetsUtils.createInterval(
                                 sequence.getSequenceName(), start, stop));
                 current = stop + 1;
             }
@@ -411,7 +418,7 @@ public final class HashedListTargetCollectionUnitTest extends BaseTest {
         for (int i = 0; i < nonOverlappingTargetIntervals.size(); i++) {
             result.add(new Object[]{nonOverlappingTargetIntervals.get(i), new IndexRange(i, i + 1)});
             result.add(new Object[]{
-                    TargetsToolsTestUtils.createInterval(nonOverlappingTargetIntervals.get(i).getContig(),
+                    targetsUtils.createInterval(nonOverlappingTargetIntervals.get(i).getContig(),
                             nonOverlappingTargetIntervals.get(i).getStart() - 1), new IndexRange(i,i)});
             int j;
             for (j = i + 1; j < nonOverlappingTargetIntervals.size() && rdn.nextBoolean(); j++) {
@@ -420,7 +427,7 @@ public final class HashedListTargetCollectionUnitTest extends BaseTest {
                 }
             }
             result.add(new Object[]{
-                    TargetsToolsTestUtils.createInterval(nonOverlappingTargetIntervals.get(i).getContig(),
+                    targetsUtils.createInterval(nonOverlappingTargetIntervals.get(i).getContig(),
                             nonOverlappingTargetIntervals.get(i).getStart(),
                             nonOverlappingTargetIntervals.get(j - 1).getEnd()),
                     new IndexRange(i, j)
@@ -505,8 +512,8 @@ public final class HashedListTargetCollectionUnitTest extends BaseTest {
             final SimpleInterval previous = nonOverlappingTargetIntervals.get(i-1);
             final SimpleInterval next = nonOverlappingTargetIntervals.get(i);
             final SimpleInterval query = previous.getContig().equals(next.getContig())
-                    ? TargetsToolsTestUtils.createInterval(previous.getContig(), previous.getEnd() + 1, next.getStart() - 1)
-                    : TargetsToolsTestUtils.createInterval(next.getContig(), 1, next.getStart() - 1);
+                    ? targetsUtils.createInterval(previous.getContig(), previous.getEnd() + 1, next.getStart() - 1)
+                    : targetsUtils.createInterval(next.getContig(), 1, next.getStart() - 1);
             result.add(new Object[]{query, null, -i - 1});
         }
         return result.toArray(new Object[result.size()][]);
@@ -516,8 +523,8 @@ public final class HashedListTargetCollectionUnitTest extends BaseTest {
     public Object[][] wrongTargetLookUpData() {
         return new Object[][] {
                 {null},
-                {TargetsToolsTestUtils.createOverEntireContig(nonOverlappingTargetIntervals.get(0).getContig())},
-                {TargetsToolsTestUtils.createInterval(nonOverlappingTargetIntervals.get(0).getContig(),
+                {targetsUtils.createOverEntireContig(nonOverlappingTargetIntervals.get(0).getContig())},
+                {targetsUtils.createInterval(nonOverlappingTargetIntervals.get(0).getContig(),
                         nonOverlappingTargetIntervals.get(0).getEnd(),
                         nonOverlappingTargetIntervals.get(1).getStart())}
         };

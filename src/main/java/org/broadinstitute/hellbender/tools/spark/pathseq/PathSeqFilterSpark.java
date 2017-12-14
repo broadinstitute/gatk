@@ -1,18 +1,22 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterEmptyLogger;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterFileLogger;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
@@ -25,15 +29,17 @@ import java.io.IOException;
  * Output: set of high quality non-host reads.
  *
  * Filtering steps:
- * 1) Remove secondary and supplementary reads
- * 2) Mask repetitive sequences with 'N' and base quality --dustPhred using symmetric DUST
- * 3) Hard clip read ends using base qualities
- * 4) Remove reads shorter than --minClippedReadLength
- * 5) Mask bases whose Phred score is less than --minBaseQuality with 'N'
- * 6) Remove reads whose fraction of bases that are 'N' is greater than --maxAmbiguousBaseFraction
- * 7) If specified, Remove reads containing one or more kmers --kmerLibraryPath
- * 8) If specified, remove reads that align to the host BWA image --bwamemIndexImage with at least --minCoverage and --minIdentity
- * 9) If --filterDuplicates is set, remove exact duplicate reads (not using Mark Duplicates because it requires aligned reads)
+ * 1)  Remove secondary and supplementary alignments
+ * 2)  Trim adapter sequences
+ * 3)  Mask sequences with excessive A/T or G/C content
+ * 4)  Mask repetitive sequences with 'N' and base quality --dustPhred using symmetric DUST
+ * 5)  Hard clip read ends using base qualities
+ * 6)  Remove reads shorter than --minClippedReadLength
+ * 7)  Mask bases whose Phred score is less than --minBaseQuality with 'N'
+ * 8)  Remove reads whose fraction of bases that are 'N' is greater than --maxAmbiguousBases
+ * 9)  If specified, remove reads containing one or more kmers --kmerLibraryPath
+ * 10) If specified, remove reads that align to the host BWA image --filterBwaImage with at least --minCoverage and --minIdentity
+ * 11) If --filterDuplicates is set, remove exact duplicate reads (not using Mark Duplicates because it requires aligned reads)
  *
  * Notes:
  *
@@ -45,9 +51,16 @@ import java.io.IOException;
  *     outputPath.unpaired.bam. This improves performance by avoiding shuffles but violates the SAM format specification.
  *
  */
-@CommandLineProgramProperties(summary = "PathSeq read preprocessing and host organism filtering",
-        oneLineSummary = "PathSeqFilter on Spark",
-        programGroup = SparkProgramGroup.class)
+@DocumentedFeature
+@CommandLineProgramProperties(summary = "First, low-quality and repetitive sequences reads are filtered: \n\t(1) Remove secondary and " +
+        "supplementary alignments; \n\t(2) trim adapter sequences; \n\t(3) mask sequences with excessive A/T or G/C content; " +
+        "\n\t(4) mask repetitive sequences using the sDUST algorithm; \n\t(5) hard clip according to masked " +
+        "and low-quality bases; \n\t(6) remove reads below minimum length; \n\t(7) mask low-quality bases; \n\t(8) filter reads with" +
+        " too many masked bases. \nHost reads are then filtered using optionally-supplied host k-mer database (created " +
+        "with PathSeqBuildKmers) and host BWA index image (created with BwaMemIndexImageCreator). Lastly, exact " +
+        "duplicate sequences are removed.",
+        oneLineSummary = "Step 1: Filters low-quality, low-complexity, duplicate, and host reads",
+        programGroup = PathSeqProgramGroup.class)
 @BetaFeature
 public final class PathSeqFilterSpark extends GATKSparkTool {
 
@@ -58,6 +71,10 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     public String outputPath;
+    @Argument(doc = "Log counts of filtered reads to this file. May increase run time.",
+            fullName = "filterMetricsFile",
+            optional = true)
+    public String metricsFileUri = null;
 
     @ArgumentCollection
     public PSFilterArgumentCollection filterArgs = new PSFilterArgumentCollection();
@@ -70,34 +87,31 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final SAMFileHeader header = getHeaderForReads();
-        if (filterArgs.alignedInput && (header.getSequenceDictionary() == null || header.getSequenceDictionary().isEmpty())) {
-            logger.warn("--isHostAligned is true but the BAM header contains no sequences");
-        }
-        if (!filterArgs.alignedInput && header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
-            logger.warn("--isHostAligned is false but there are one or more sequences in the BAM header");
-        }
-        header.setSequenceDictionary(new SAMSequenceDictionary());
+        filterArgs.doReadFilterArgumentWarnings(getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class), logger);
+        final SAMFileHeader header = PSUtils.checkAndClearHeaderSequences(getHeaderForReads(), filterArgs, logger);
 
-        try (final PSFilter filter = new PSFilter(ctx, filterArgs, getReads(), header)) {
-
-            final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> result = filter.doFilter();
-            final JavaRDD<GATKRead> pairedReads = result._1;
-            final JavaRDD<GATKRead> unpairedReads = result._2;
-
-            if (!pairedReads.isEmpty()) {
-                header.setSortOrder(SAMFileHeader.SortOrder.queryname);
-                writeReads(ctx, outputPath + ".paired.bam", pairedReads, header);
-            } else {
-                logger.info("No paired reads to write - BAM will not be written.");
-            }
-            if (!unpairedReads.isEmpty()) {
-                header.setSortOrder(SAMFileHeader.SortOrder.unsorted);
-                writeReads(ctx, outputPath + ".unpaired.bam", unpairedReads, header);
-            } else {
-                logger.info("No unpaired reads to write - BAM will not be written.");
-            }
+        final JavaRDD<GATKRead> reads = getReads();
+        final PSFilter filter = new PSFilter(ctx, filterArgs, header);
+        final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> filterResult;
+        try (final PSFilterLogger filterLogger = metricsFileUri != null ? new PSFilterFileLogger(getMetricsFile(), metricsFileUri) : new PSFilterEmptyLogger()) {
+            filterResult = filter.doFilter(reads, filterLogger);
         }
+        final JavaRDD<GATKRead> pairedReads = filterResult._1;
+        final JavaRDD<GATKRead> unpairedReads = filterResult._2;
+
+        if (!pairedReads.isEmpty()) {
+            header.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            writeReads(ctx, outputPath + ".paired.bam", pairedReads, header);
+        } else {
+            logger.info("No paired reads to write - BAM will not be written.");
+        }
+        if (!unpairedReads.isEmpty()) {
+            header.setSortOrder(SAMFileHeader.SortOrder.unsorted);
+            writeReads(ctx, outputPath + ".unpaired.bam", unpairedReads, header);
+        } else {
+            logger.info("No unpaired reads to write - BAM will not be written.");
+        }
+        filter.close();
     }
 
     private void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads,

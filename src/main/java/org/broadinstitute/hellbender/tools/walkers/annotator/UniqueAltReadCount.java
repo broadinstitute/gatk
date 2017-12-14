@@ -7,8 +7,10 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,7 +21,7 @@ import java.util.stream.Collectors;
  * likely duplicates. We have seen that the majority of false positives in low allele fraction, cell-free DNA samples
  * have the profile where the evidence for alternate allele comes solely from one, two, or three sets of apparent PCR-duplicates.
  * Reads in such a set have the same read-start and mate-end position i.e. they come from the same original insert.
- * Normally, they are marked as duplicates by Picard MarkDuplicates. But when we use unique molecular identifiers (UMIs),
+ * Normally, they are marked as duplicates by MarkDuplicatesGATK. But when we use unique molecular identifiers (UMIs),
  * these apparent PCR-duplicate reads may get different UMIs, and hence to Mutect these reads appear as
  * independent evidence for ALT allele.
  *
@@ -35,7 +37,8 @@ import java.util.stream.Collectors;
  * We filter the variant if the count is lower than a user-specified threshold.
  * Mutect2FilteringEngine::applyDuplicatedAltReadFilter is the accompanying filter.
  */
-public class UniqueAltReadCount extends GenotypeAnnotation implements StandardSomaticAnnotation {
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of non-duplicate-insert ALT reads (UNIQ_ALT_READ_COUNT)")
+public class UniqueAltReadCount extends GenotypeAnnotation {
     public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
 
     @Override

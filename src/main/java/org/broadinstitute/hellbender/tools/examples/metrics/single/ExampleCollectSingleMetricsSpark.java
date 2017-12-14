@@ -31,7 +31,8 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary        = "Program to collect example single-level metrics in SAM/BAM/CRAM file(s)",
         oneLineSummary = "Collect example single-level metrics on Spark",
-        programGroup   = ExampleProgramGroup.class)
+        programGroup   = ExampleProgramGroup.class,
+        omitFromCommandLine = true)
 public final class ExampleCollectSingleMetricsSpark
         extends MetricsCollectorSparkTool<ExampleSingleMetricsArgumentCollection> {
 

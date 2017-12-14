@@ -7,7 +7,7 @@ import htsjdk.samtools.*;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class GATKReadAdaptersUnitTest extends BaseTest {
+public class GATKReadAdaptersUnitTest extends GATKBaseTest {
 
     public static final String BASIC_READ_NAME = "basic_read";
     public static final String BASIC_READ_CONTIG = "1";

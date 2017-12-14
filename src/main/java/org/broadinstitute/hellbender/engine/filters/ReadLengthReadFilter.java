@@ -10,11 +10,11 @@ import java.io.Serializable;
 /**
  * Keep only reads whose length is &ge; min value and &le; max value.
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads whose length is within a certain range")
 public final class ReadLengthReadFilter extends ReadFilter implements Serializable{
     private static final long serialVersionUID = 1L;
 
-    private static final String maxLengthArgName = "maxReadLength";
+    public static final String maxLengthArgName = "maxReadLength";
 
     @Argument(fullName = maxLengthArgName,
             shortName = maxLengthArgName,
@@ -22,7 +22,7 @@ public final class ReadLengthReadFilter extends ReadFilter implements Serializab
             optional=false)
     public Integer maxReadLength;
 
-    private static final String minLengthArg = "minReadLength";
+    public static final String minLengthArg = "minReadLength";
     @Argument(fullName = minLengthArg,
             shortName = minLengthArg,
             doc="Keep only reads with length at least equal to the specified value",

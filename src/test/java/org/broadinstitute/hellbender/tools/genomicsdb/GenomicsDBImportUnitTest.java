@@ -5,18 +5,27 @@ import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.mockito.internal.util.io.IOUtil;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.HashMap;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class GenomicsDBImportUnitTest extends BaseTest{
+public class GenomicsDBImportUnitTest extends GATKBaseTest {
+
+    private static final String ORDERED_SAMPLE_MAP =    "Sample1\tfile1\n" +
+                                                        "Sample2\tfile2\n" +
+                                                        "Sample3\tfile3";
+
+    private static final String UNORDERED_SAMPLE_MAP =  "Sample3\tfile3\n" +
+                                                        "Sample2\tfile2\n" +
+                                                        "Sample1\tfile1\n";
 
     @DataProvider
     public Object[][] getBadTestFiles(){
@@ -44,24 +53,35 @@ public class GenomicsDBImportUnitTest extends BaseTest{
     }
 
     @Test
-    public void testSampleNameToFileMap(){
-        final String content =
-                "Sample1\tfile1\n" +
-                "Sample2\tfile2\n" +
-                "Sample3\tfile3";
-        final File sampleFile = IOUtils.writeTempFile(content, "sampleMapping", ".txt");
-        final Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("Sample1", "file1");
-        expected.put("Sample2", "file2");
-        expected.put("Sample3", "file3");
-        final LinkedHashMap<String, String> actual = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+    public void testLoadSampleNameMapFilePreservesOrder(){
+        final File sampleFile = IOUtils.writeTempFile(UNORDERED_SAMPLE_MAP, "badSampleMapping", ".txt");
+        final LinkedHashMap<String, Path> unsortedMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        Assert.assertEquals(new ArrayList<>(unsortedMap.keySet()), Arrays.asList("Sample3", "Sample2", "Sample1"));
+    }
+
+    @DataProvider
+    public Object[][] getSampleMaps(){
+        return new Object[][]{
+                {ORDERED_SAMPLE_MAP},
+                {UNORDERED_SAMPLE_MAP}
+        };
+    }
+
+    @Test(dataProvider = "getSampleMaps")
+    public void testLoadSampleNameMapFileInSortedOrder(final String sampleMapText){
+        final File sampleFile = IOUtils.writeTempFile(sampleMapText, "sampleMapping", ".txt");
+        final Map<String, Path> expected = new LinkedHashMap<>();
+        expected.put("Sample1", Paths.get("file1"));
+        expected.put("Sample2", Paths.get("file2"));
+        expected.put("Sample3", Paths.get("file3"));
+        final Map<String, Path> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullFeatureReadersToFail() {
-        Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
+        final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
         sampleToReaderMap.put("Sample1", null);
         GenomicsDBImporter.generateSortedCallSetMap(sampleToReaderMap, true, true, 0L);
     }

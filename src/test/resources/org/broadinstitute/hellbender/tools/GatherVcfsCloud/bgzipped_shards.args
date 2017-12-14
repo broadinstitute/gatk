@@ -1,0 +1,12 @@
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_0.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_1.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_2.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_3.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_4.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_5.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_6.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_7.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_8.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_9.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_10.vcfs.gz
+src/test/resources/org/broadinstitute/hellbender/tools/GatherVcfsCloud/shard_11.vcfs.gz

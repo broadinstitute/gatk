@@ -31,11 +31,11 @@ import java.io.IOException;
  * Such files must have an index in order to be queried by interval.
  */
 @CommandLineProgramProperties(
-        summary = "(Disabled) Creates indices for Feature-containing files, such as VCF and BED files",
-        oneLineSummary = "(Disabled) Creates indices for Feature-containing files (eg VCF and BED files)",
+        summary = "Creates indices for Feature-containing files, such as VCF and BED files",
+        oneLineSummary = "Creates indices for Feature-containing files (eg VCF and BED files)",
         programGroup = VariantProgramGroup.class
 )
-@BetaFeature
+@DocumentedFeature
 public final class IndexFeatureFile extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(IndexFeatureFile.class);
 
@@ -53,12 +53,6 @@ public final class IndexFeatureFile extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        // When https://github.com/broadinstitute/gatk/issues/2801 is fixed and this tool is re-enabled, we should
-        // remove the @BetaFeature annotation, restore the @DocumentedFeature annotation, remove the "(Disabled)" string
-        // from the CommandLineProgramProperties strings, remove this throw, re-enable the integration tests.
-        if (true) {
-            throw new UserException("The IndexFeatureFile tool is temporarily disabled.");
-        }
         if (!featureFile.canRead()) {
             throw new UserException.CouldNotReadInputFile(featureFile);
         }

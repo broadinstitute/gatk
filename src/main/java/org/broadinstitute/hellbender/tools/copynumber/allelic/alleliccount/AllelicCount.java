@@ -18,30 +18,32 @@ public class AllelicCount implements Locatable {
     private final SimpleInterval interval;
     private final int refReadCount;
     private final int altReadCount;
-    /* these are extra metadata and can be null */
+    /* these are set to N if not specified */
     private final Nucleotide refNucleotide;
     private final Nucleotide altNucleotide;
 
     /**
      * Construct the allelic count object.
      * @param interval the genomic interval (it is assumed to have the same begin and end points)
-     * @param refReadCount ref nucleotide count in the pileup
-     * @param altReadCount alt nucleotide count in the pileup
+     * @param refReadCount ref nucleotide count
+     * @param altReadCount alt nucleotide count
      * @param refNucleotide ref nucleotide
      * @param altNucleotide alt nucleotide
      */
-    public AllelicCount(final SimpleInterval interval, final int refReadCount, final int altReadCount,
-                        final Nucleotide refNucleotide, final Nucleotide altNucleotide) {
-        this.interval = Utils.nonNull(interval, "Can't construct AllelicCount with null interval.");
+    public AllelicCount(final SimpleInterval interval,
+                        final int refReadCount,
+                        final int altReadCount,
+                        final Nucleotide refNucleotide,
+                        final Nucleotide altNucleotide) {
+        this.interval = Utils.nonNull(interval);
         this.refReadCount = ParamUtils.isPositiveOrZero(refReadCount, "Can't construct AllelicCount with negative read counts.");
         this.altReadCount = ParamUtils.isPositiveOrZero(altReadCount, "Can't construct AllelicCount with negative read counts.");
-        /* these can be null */
-        this.refNucleotide = refNucleotide;
-        this.altNucleotide = altNucleotide;
+        this.refNucleotide = Utils.nonNull(refNucleotide);
+        this.altNucleotide = Utils.nonNull(altNucleotide);
     }
 
     public AllelicCount(final SimpleInterval interval, final int refReadCount, final int altReadCount) {
-        this(interval, refReadCount, altReadCount, null, null);
+        this(interval, refReadCount, altReadCount, Nucleotide.N, Nucleotide.N);
     }
 
     @Override
@@ -60,16 +62,25 @@ public class AllelicCount implements Locatable {
     public int getAltReadCount() { return altReadCount; }
 
     public Nucleotide getRefNucleotide() {
-        return Utils.nonNull(refNucleotide, "The ref nucleotide is not set.");
+        return refNucleotide;
     }
 
     public Nucleotide getAltNucleotide() {
-        return Utils.nonNull(altNucleotide, "The alt nucleotide is not set.");
+        return altNucleotide;
+    }
+
+    public int getTotalReadCount() {
+        return altReadCount + refReadCount;
+    }
+
+    public double getAlternateAlleleFraction() {
+        return getTotalReadCount() == 0 ? 0. : (double) altReadCount / getTotalReadCount();
     }
 
     /**
-     * If all fields are specified for both counts, they are all used to check for equality.
-     * Otherwise, only the interval and counts are used.
+     * If all fields are specified for both {@link AllelicCount} objects, they are all used to check for equality.
+     * Otherwise, if either or both counts have both nucleotides unspecified, then
+     * only the intervals and the ref and alt counts are used.
      */
     @Override
     public boolean equals(Object o) {
@@ -83,8 +94,9 @@ public class AllelicCount implements Locatable {
         final AllelicCount count = (AllelicCount) o;
         return interval.equals(count.interval)
                 && refReadCount == count.refReadCount && altReadCount == count.altReadCount
-                && (((refNucleotide == null) || (count.refNucleotide == null)) || (refNucleotide == count.refNucleotide))
-                && (((altNucleotide == null) || (count.altNucleotide == null)) || (altNucleotide == count.altNucleotide));
+                && ((refNucleotide == Nucleotide.N && altNucleotide == Nucleotide.N) ||
+                (count.refNucleotide == Nucleotide.N && count.altNucleotide == Nucleotide.N) ||
+                (refNucleotide == count.refNucleotide && altNucleotide == count.altNucleotide));
     }
 
     @Override
@@ -97,6 +109,12 @@ public class AllelicCount implements Locatable {
 
     @Override
     public String toString() {
-        return String.format("(%s, r=%s, a=%s)", interval, refReadCount, altReadCount);
+        return "AllelicCount{" +
+                "interval=" + interval +
+                ", refReadCount=" + refReadCount +
+                ", altReadCount=" + altReadCount +
+                ", refNucleotide=" + refNucleotide +
+                ", altNucleotide=" + altNucleotide +
+                '}';
     }
 }

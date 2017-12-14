@@ -1,0 +1,7 @@
+digraph G {
+  rankdir="LR"
+  graph[ranksep=0.3]
+  node [shape="box" margin=0.1 height=0.15 width=0.5];
+  "TGAAA" -> "CGTAT" -> "TTGGG"
+  "TGAAA" -> "TGTAC" -> "TTGGG"
+}

@@ -42,7 +42,8 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
     public boolean requiresReference() { return true; }
 
     @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
-            fullName = "bwamemIndexImage")
+            fullName = "bwamemIndexImage",
+            optional = true)
     private String indexImageFile;
 
     @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
@@ -54,8 +55,8 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        try (final BwaSparkEngine engine = new BwaSparkEngine(ctx, indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary())) {
-            final JavaRDD<GATKRead> alignedReads = engine.align(getReads());
+        try (final BwaSparkEngine engine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary())) {
+            final JavaRDD<GATKRead> alignedReads = engine.alignPaired(getReads());
             final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, engine.getHeader(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
             final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
             try {

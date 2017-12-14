@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class SegmenterUnitTest extends BaseTest {
+public class SegmenterUnitTest extends GATKBaseTest {
 
     private static final String inputTestDir = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/";
     private static final String outputTestDir = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/";

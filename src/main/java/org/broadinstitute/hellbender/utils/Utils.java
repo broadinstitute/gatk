@@ -4,6 +4,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.tribble.util.ParsingUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -12,7 +13,6 @@ import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -1127,5 +1127,110 @@ public final class Utils {
      */
     public static void forceJVMLocaleToUSEnglish() {
         Locale.setDefault(Locale.US);
+    }
+
+    /**
+     * Streams and sorts a collection of objects and returns the integer median entry of the sorted list
+     * @param values List of sortable entries from which to select the median
+     */
+    public static <T extends Comparable<?>> T getMedianValue(List<T> values) {
+        final List<T> sorted = values.stream().sorted().collect(Collectors.toList());
+        return sorted.get(sorted.size() / 2);
+    }
+
+
+    /**
+     * Splits a String using indexOf instead of regex to speed things up.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str       the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return A {@link List} of {@link String} tokens.
+     */
+    public static List<String> split(final String str, final char delimiter) {
+
+        final List<String> tokens;
+
+        if ( str.isEmpty() ) {
+            tokens = new ArrayList<>(1);
+            tokens.add("");
+        }
+        else {
+            tokens = ParsingUtils.split(str, delimiter);
+            removeTrailingEmptyStringsFromEnd(tokens);
+        }
+
+        return tokens;
+    }
+
+    /**
+     * Splits a String using indexOf instead of regex to speed things up.
+     * If given an empty delimiter, will return each character in the string as a token.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str       the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return A {@link List} of {@link String} tokens.
+     */
+    public static List<String> split(final String str, final String delimiter) {
+        // This is 10 because the ArrayList default capacity is 10 (but private).
+        return split(str, delimiter, 10);
+    }
+
+    /**
+     * Splits a given {@link String} using {@link String#indexOf} instead of regex to speed things up.
+     * If given an empty delimiter, will return each character in the string as a token.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str               The {@link String} to split.
+     * @param delimiter         The delimiter used to split the {@link String}.
+     * @param expectedNumTokens The number of tokens expected (used to initialize the capacity of the {@link ArrayList}).
+     * @return A {@link List} of {@link String} tokens.
+     */
+    private static List<String> split(final String str, final String delimiter, final int expectedNumTokens) {
+        final List<String> result;
+
+        if ( str.isEmpty() ) {
+            result = new ArrayList<>(1);
+            result.add("");
+        }
+        else if ( delimiter.isEmpty() ) {
+            result = new ArrayList<>(str.length());
+            for ( int i = 0; i < str.length(); ++i ) {
+                result.add(str.substring(i, i + 1));
+            }
+        }
+        else if ( delimiter.length() == 1 ) {
+            result = split(str, delimiter.charAt(0));
+        }
+        else {
+            result = new ArrayList<>(expectedNumTokens);
+
+            int delimiterIdx = -1;
+            int tokenStartIdx = delimiterIdx + 1;
+            do {
+                delimiterIdx = str.indexOf(delimiter, tokenStartIdx);
+                final String token = (delimiterIdx != -1 ? str.substring(tokenStartIdx, delimiterIdx) : str.substring(tokenStartIdx));
+                result.add(token);
+                tokenStartIdx = delimiterIdx + delimiter.length();
+            } while ( delimiterIdx != -1 );
+
+            removeTrailingEmptyStringsFromEnd(result);
+        }
+
+        return result;
+    }
+
+    private static void removeTrailingEmptyStringsFromEnd(final List<String> result) {
+        // Remove all trailing empty strings to emulate the behavior of String.split:
+        // We remove items from the end of the list to our index
+        // so that we can take advantage of better performance of removing items from the end
+        // of certain concrete lists:
+        while ( (!result.isEmpty()) && (result.get(result.size() - 1).isEmpty()) ) {
+            result.remove(result.size() - 1);
+        }
     }
 }

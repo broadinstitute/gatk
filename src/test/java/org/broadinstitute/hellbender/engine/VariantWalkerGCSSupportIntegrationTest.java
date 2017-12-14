@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -60,7 +61,7 @@ public class VariantWalkerGCSSupportIntegrationTest extends CommandLineProgramTe
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -V " + getGCPTestInputPath() + vcf +
                 intervalArg +
-                " -O %s "+ " --addOutputVCFCommandLine false ",
+                " -O %s "+ " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Collections.singletonList(expectedOutput)
         );
         testSpec.executeTest("testReadVCFOnGCS", this);

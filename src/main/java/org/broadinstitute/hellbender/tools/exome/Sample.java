@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
 
 /**
  * Class that represent a sample with Id and read-groups.

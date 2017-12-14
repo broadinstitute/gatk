@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
@@ -15,6 +16,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -37,10 +39,27 @@ import java.util.stream.IntStream;
  * </ul>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Root mean square of the mapping quality of reads across all samples (MQ)")
 public final class RMSMappingQuality extends InfoFieldAnnotation implements StandardAnnotation, ReducibleAnnotation {
+    private static final RMSMappingQuality instance = new RMSMappingQuality();
 
     @Override
     public String getRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY;}
+
+    @Override
+    public List<String> getKeyNames() {
+        return Arrays.asList(VCFConstants.RMS_MAPPING_QUALITY_KEY, getRawKeyName());
+    }
+
+    @Override
+    public List<VCFInfoHeaderLine> getDescriptions() {
+        return Arrays.asList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)), GATKVCFHeaderLines.getInfoLine(getRawKeyName()));
+    }
+
+    @Override
+    public List<VCFInfoHeaderLine> getRawDescriptions() {
+        return getDescriptions();
+    }
 
     /**
      * Generate the raw data necessary to calculate the annotation. Raw data is the final endpoint for gVCFs.
@@ -63,6 +82,56 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     }
 
     @Override
+    @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
+    public Map<String, Object> combineRawData(final List<Allele> vcAlleles, final List<ReducibleAnnotationData<?>>  annotationList) {
+        //VC already contains merged alleles from ReferenceConfidenceVariantContextMerger
+        ReducibleAnnotationData combinedData = new ReducibleAnnotationData(null);
+
+        for (final ReducibleAnnotationData currentValue : annotationList) {
+            parseRawDataString(currentValue);
+            combineAttributeMap(currentValue, combinedData);
+
+        }
+        final Map<String, Object> annotations = new HashMap<>();
+        String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
+        annotations.put(getRawKeyName(), annotationString);
+        return annotations;
+    }
+
+    public String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, Number> perAlleleData) {
+        return String.format("%.2f", perAlleleData.get(Allele.NO_CALL));
+    }
+
+    @Override
+    @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
+    public Map<String, Object> finalizeRawData(final VariantContext vc, final VariantContext originalVC) {
+        if (!vc.hasAttribute(getRawKeyName()))
+            return new HashMap<>();
+        String rawMQdata = vc.getAttributeAsString(getRawKeyName(),null);
+        if (rawMQdata == null)
+            return new HashMap<>();
+
+        ReducibleAnnotationData myData = new ReducibleAnnotationData(rawMQdata);
+        parseRawDataString(myData);
+
+        String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
+        return Collections.singletonMap(getKeyNames().get(0), (Object)annotationString);
+    }
+
+    public String makeFinalizedAnnotationString(final VariantContext vc, final Map<Allele, Number> perAlleleData) {
+        int numOfReads = getNumOfReads(vc);
+        return String.format("%.2f", Math.sqrt((double)perAlleleData.get(Allele.NO_CALL)/numOfReads));
+    }
+
+
+    public void combineAttributeMap(ReducibleAnnotationData<Number> toAdd, ReducibleAnnotationData<Number> combined) {
+        if (combined.getAttribute(Allele.NO_CALL) != null)
+            combined.putAttribute(Allele.NO_CALL, (Double) combined.getAttribute(Allele.NO_CALL) + (Double) toAdd.getAttribute(Allele.NO_CALL));
+        else
+            combined.putAttribute(Allele.NO_CALL, toAdd.getAttribute(Allele.NO_CALL));
+
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
     public void calculateRawData(final VariantContext vc,
                                  final ReadLikelihoods<Allele> likelihoods,
@@ -89,16 +158,6 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         return String.format("%.2f", rms);
     }
 
-    @Override
-    public List<String> getKeyNames() {
-        return Arrays.asList(VCFConstants.RMS_MAPPING_QUALITY_KEY, getRawKeyName());
-    }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Arrays.asList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)), GATKVCFHeaderLines.getInfoLine(getRawKeyName()));
-    }
-
     /**
      * converts {@link GATKVCFConstants#RAW_RMS_MAPPING_QUALITY_KEY} into  {@link VCFConstants#RMS_MAPPING_QUALITY_KEY}  annotation if present
      * @param vc which potentially contains rawMQ
@@ -121,6 +180,15 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         }
     }
 
+    protected void parseRawDataString(ReducibleAnnotationData<Number> myData) {
+        final String rawDataString = myData.getRawData();
+        String[] rawMQdataAsStringVector;
+        rawMQdataAsStringVector = rawDataString.split(",");
+        double squareSum = Double.parseDouble(rawMQdataAsStringVector[0]);
+        myData.putAttribute(Allele.NO_CALL, squareSum);
+    }
+
+    //TODO once the AS annotations have been added genotype gvcfs this can be removed for a more generic approach
     private static double parseRawDataString(String rawDataString) {
         try {
             /*
@@ -163,4 +231,35 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         return numOfReads;
     }
 
+    /**
+     *
+     * @return the number of reads at the given site, calculated as InfoField {@link VCFConstants#DEPTH_KEY} minus the
+     * format field {@link GATKVCFConstants#MIN_DP_FORMAT_KEY} or DP of each of the HomRef genotypes at that site.
+     * Will fall back to calculating the reads from the stratifiedContexts then AlleleLikelyhoods data if provided.
+     * @throws UserException.BadInput if the {@link VCFConstants#DEPTH_KEY} is missing or if the calculated depth is <= 0
+     */
+    @VisibleForTesting
+    static int getNumOfReads(final VariantContext vc,
+                             final ReadLikelihoods<Allele> likelihoods) {
+        int numOfReads = 0;
+        if (vc.hasAttribute(VCFConstants.DEPTH_KEY)) {
+            return getNumOfReads(vc);
+        } else if (likelihoods != null && likelihoods.numberOfAlleles() != 0) {
+            for (int i = 0; i < likelihoods.numberOfSamples(); i++) {
+                for (GATKRead read : likelihoods.sampleReads(i)) {
+                    if (read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE) {
+                        numOfReads++;
+                    }
+                }
+            }
+        }
+        if (numOfReads <= 0) {
+            numOfReads = -1;  //return -1 to result in a NaN
+        }
+        return numOfReads;
+    }
+
+    public static RMSMappingQuality getInstance() {
+        return instance;
+    }
 }

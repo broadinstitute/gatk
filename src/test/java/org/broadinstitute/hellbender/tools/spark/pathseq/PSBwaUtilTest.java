@@ -8,11 +8,11 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class PSBwaUtilTest extends BaseTest {
+public class PSBwaUtilTest extends GATKBaseTest {
 
     @Test
     public void testAddReferenceSequencesToHeader() {

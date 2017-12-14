@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.List;
 
 
-public class SegmentUtilsUnitTest extends BaseTest {
+public class SegmentUtilsUnitTest extends GATKBaseTest {
     private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/caller");
     private static final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
 

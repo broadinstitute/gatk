@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import java.util.Arrays;
+import java.util.stream.LongStream;
 
 /**
  * Represents the nucleotide alphabet.
@@ -60,11 +61,19 @@ public enum Nucleotide {
     }
 
     /**
+     * Checks whether the nucleotide refer to a concrete (rather than ambiguous) base.
+     * @return
+     */
+    public boolean isConcrete() {
+        return ordinal() < N.ordinal();
+    }
+
+    /**
      * Helper class to count the number of occurrences of each nucleotide in
      * a sequence.
      */
     public static class Counter {
-        final long[] counts;
+        private final long[] counts;
 
         /**
          * Creates a new counter with all counts set to 0.
@@ -120,6 +129,10 @@ public enum Nucleotide {
          */
         public void clear() {
             Arrays.fill(counts, 0);
+        }
+
+        public long sum() {
+            return LongStream.of(counts).sum();
         }
     }
 }

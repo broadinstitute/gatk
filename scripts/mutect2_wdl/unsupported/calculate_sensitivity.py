@@ -1,3 +1,22 @@
+"""
+The input to this script is a tab-separated table with header columns:
+STATUS	BAM_DEPTH	AF_EXP	TYPE
+
+STATUS takes on values TP (true positive), FP (false positive), FN (false negative), FFN (filtered false negative)
+as emitted by the GATK tool Concordance (the input table come from running VariantsToTable on an output vcf of Concordance).
+BAM_DEPTH is the depth of the simulated tumor (ie the Hapmap mixture) at each site
+AF_EXP is the expected allele fraction based on the component samples' genotypes and the mixing fractions
+TYPE is either SNP or INDEL
+
+This script divides the data by SNP/INDEL and by bins of depth and expected allele fraction and computes the sensitivity
+(true positives / (true positives + false negatives + filtered false negatives)) for each bin, along with error bars
+on the sensitivity and the raw counts of true and called variants.  It produces tables containing this information and plots of
+the sensitivity with error bars.
+
+
+
+"""
+
 from __future__ import division
 import numpy as np
 import pandas as pd
@@ -82,9 +101,16 @@ def generate_sensitivity_table(df, snp_or_indel):
                               columns = flatten([(str(x) + "_LCI", str(x) + "_UCI") for x in af_bins]))
 
     sensitivity_with_confidence = sensitivity_table.merge(error_bars, left_index = True, right_index = True)
-    sensitivity_with_confidence.to_csv( snp_or_indel + "_sensitivity.tsv", sep = '\t')
 
-    return sensitivity_with_confidence, af_bins
+    # merge the sensitivity with the error bars, the counts total true variants, and the counts of called true variants into a single data frame
+    total = pd.DataFrame(total.values, columns = [str(x) + "_total_count" for x in af_bins], index = total.index)
+    called = pd.DataFrame(called.values, columns = [str(x) + "_called_count" for x in af_bins], index = total.index)
+    sensitivity_with_confidence_and_truth_count = sensitivity_with_confidence.merge(total, left_index = True, right_index = True)
+    sensitivity_with_confidence_and_counts = sensitivity_with_confidence_and_truth_count.merge(called, left_index = True, right_index = True)
+
+    sensitivity_with_confidence_and_counts.to_csv( snp_or_indel + "_sensitivity.tsv", sep = '\t')
+
+    return sensitivity_with_confidence_and_counts, af_bins
 
 def draw_sensitivity_graph(df, af_bins, snp_or_indel):
     x = df.index    # depth

@@ -1,15 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
-import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
 /**
@@ -17,13 +16,17 @@ import java.util.OptionalInt;
  *
  * Created by David Benjamin on 3/20/17.
  */
-public class FragmentLength extends PerAlleleAnnotation {
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median fragment length of reads supporting each allele (MFRL)")
+public class FragmentLength extends PerAlleleAnnotation implements StandardMutectAnnotation {
     public static final String KEY = "MFRL";
 
     @Override
     protected int aggregate(final List<Integer> values) {
         return values.isEmpty() ? 0 : GATKProtectedMathUtils.median(Ints.toArray(values));
     }
+
+    @Override
+    protected boolean includeRefAllele() { return true; }
 
     @Override
     protected String getVcfKey() { return KEY; }

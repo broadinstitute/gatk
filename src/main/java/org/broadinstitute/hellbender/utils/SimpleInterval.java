@@ -225,10 +225,15 @@ public final class SimpleInterval implements Locatable, Serializable {
       * This is the same as plain overlaps if margin=0.
       *
       * @param other interval to check
-      * @param margin how many bases may be between the two interval for us to still consider them overlapping.
+      * @param margin how many bases may be between the two interval for us to still consider them overlapping; must be non-negative
       * @return true if this interval overlaps other, otherwise false
+      * @throws IllegalArgumentException if margin is negative
       */
      public boolean overlapsWithMargin(final Locatable other, final int margin) {
+         if ( margin < 0 ) {
+             throw new IllegalArgumentException("given margin is negative: " + margin +
+                     "\tfor this: " + toString() + "\tand that: " + (other == null ? "other is null" : other.toString()));
+         }
          if ( other == null || other.getContig() == null ) {
              return false;
          }

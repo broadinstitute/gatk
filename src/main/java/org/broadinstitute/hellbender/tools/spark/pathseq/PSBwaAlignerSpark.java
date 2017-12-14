@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
@@ -29,6 +29,6 @@ public final class PSBwaAlignerSpark implements AutoCloseable {
 
     //Run this after invoking a Spark action on all RDDs returned from doBwaAlignment()
     public void close() {
-        BwaMemIndexSingleton.closeAllDistributedInstances(ctx);
+        BwaMemIndexCache.closeAllDistributedInstances(ctx);
     }
 }

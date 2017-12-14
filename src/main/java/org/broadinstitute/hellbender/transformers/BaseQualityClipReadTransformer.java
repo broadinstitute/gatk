@@ -1,17 +1,18 @@
 package org.broadinstitute.hellbender.transformers;
 
+import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
+import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-
-import java.util.Arrays;
 
 /**
  * Clips reads on both ends using base quality scores
  */
-public class BaseQualityClipReadTransformer implements ReadTransformer {
-    public static final long serialVersionUID = 1L;
+public final class BaseQualityClipReadTransformer implements ReadTransformer {
+    private static final long serialVersionUID = 1L;
     private int qTrimmingThreshold = 15;
 
-    public BaseQualityClipReadTransformer(int trim_thresh) {
+    public BaseQualityClipReadTransformer(final int trim_thresh) {
         qTrimmingThreshold = trim_thresh;
     }
 
@@ -29,11 +30,14 @@ public class BaseQualityClipReadTransformer implements ReadTransformer {
      *
      */
     @Override
-    public GATKRead apply(GATKRead read) {
-        GATKRead readClippedRightEnd = clipReadRightEnd(read);
+    public GATKRead apply(final GATKRead read) {
+        final GATKRead readClippedRightEnd = clipReadRightEnd(read);
         return clipReadLeftEnd(readClippedRightEnd);
     }
 
+    /**
+     * Returns right clip point or -1 if no clip
+     */
     public int getRightClipPoint( final byte[] quals ) {
         int clipSum = 0, lastMax = -1, clipPoint = -1; // -1 means no clip
         final int readLength = quals.length;
@@ -47,6 +51,9 @@ public class BaseQualityClipReadTransformer implements ReadTransformer {
         return clipPoint;
     }
 
+    /**
+     * Returns left clip point or -1 if no clip
+     */
     public int getLeftClipPoint( final byte[] quals ) {
         int clipSum = 0, lastMax = -1, clipPoint = -1; // -1 means no clip
         final int readLength = quals.length;
@@ -63,14 +70,10 @@ public class BaseQualityClipReadTransformer implements ReadTransformer {
     private GATKRead clipReadRightEnd(GATKRead read) {
         final byte[] quals = read.getBaseQualities();
         final int clipPoint = getRightClipPoint(quals);
-
         if (clipPoint != -1) {
-            final byte[] newBases = Arrays.copyOf(read.getBases(), clipPoint);
-            final byte[] newQuals = Arrays.copyOf(quals, clipPoint);
-            final GATKRead clippedRead = read.copy();
-            clippedRead.setBaseQualities(newQuals);
-            clippedRead.setBases(newBases);
-            return clippedRead;
+            final ReadClipper readClipper = new ReadClipper(read);
+            readClipper.addOp(new ClippingOp(clipPoint, read.getLength()));
+            return readClipper.clipRead(ClippingRepresentation.HARDCLIP_BASES);
         } else {
             return read;
         }
@@ -79,15 +82,10 @@ public class BaseQualityClipReadTransformer implements ReadTransformer {
     private GATKRead clipReadLeftEnd(GATKRead read) {
         final byte[] quals = read.getBaseQualities();
         final int clipPoint = getLeftClipPoint(quals);
-
         if (clipPoint != -1) {
-            final int readLength = read.getLength();
-            final byte[] newBases = Arrays.copyOfRange(read.getBases(), clipPoint+1, readLength);
-            final byte[] newQuals = Arrays.copyOfRange(quals, clipPoint+1, readLength);
-            final GATKRead clippedRead = read.copy();
-            clippedRead.setBaseQualities(newQuals);
-            clippedRead.setBases(newBases);
-            return clippedRead;
+            final ReadClipper readClipper = new ReadClipper(read);
+            readClipper.addOp(new ClippingOp(0, clipPoint));
+            return readClipper.clipRead(ClippingRepresentation.HARDCLIP_BASES);
         } else {
             return read;
         }

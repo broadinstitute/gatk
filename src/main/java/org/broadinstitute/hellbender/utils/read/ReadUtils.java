@@ -1,7 +1,32 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.SamStreams;
 import htsjdk.samtools.cram.build.CramIO;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.OptionalInt;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -12,12 +37,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
-
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.*;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -323,6 +342,50 @@ public final class ReadUtils {
 
             throw new IllegalArgumentException("Read attribute " + attributeName + " invalid: attribute names must be non-null two-character Strings matching the pattern /[A-Za-z][A-Za-z0-9]/");
         }
+    }
+
+    /**
+     * Encapsulates a integer attribute into an {@link OptionalInt} instance.
+     * @param read the input read.
+     * @param tag the attribute tag name.
+     * @throws IllegalArgumentException if {@code read} or {@code tag} are {@code null}.
+     * @throws GATKException.ReadAttributeTypeMismatch if the value provided for that attribute is not an integer.
+     * @return never {@code null}, but perhaps empty indicating that no value was provided for this attribute.
+     */
+    public static OptionalInt getOptionalIntAttribute(final SAMRecord read, final String tag) {
+        Utils.nonNull(read);
+        Utils.nonNull(tag);
+        final Object obj = read.getAttribute(tag);
+        if (obj == null) {
+            return OptionalInt.empty();
+        } else if (obj instanceof Integer || obj instanceof Short) {
+            final Number num = (Number) obj;
+            return OptionalInt.of(num.intValue());
+        } else if (obj instanceof CharSequence) {
+            final String str = "" + obj;
+            try {
+                return OptionalInt.of(Integer.parseInt(str));
+            } catch (final NumberFormatException ex) {
+                throw new GATKException.ReadAttributeTypeMismatch(read, tag, "integer", ex);
+            }
+        } else {
+            throw new GATKException.ReadAttributeTypeMismatch(read, tag, "integer", obj);
+        }
+    }
+
+    /**
+     * Encapsulates a integer attribute into an {@link OptionalInt} instance.
+     * @param read the input read.
+     * @param tag the attribute tag name.
+     * @throws IllegalArgumentException if {@code read} or {@code tag} are {@code null}.
+     * @throws GATKException.ReadAttributeTypeMismatch if the value provided for that attribute is not an integer.
+     * @return never {@code null}, but perhaps empty indicating that no value was provided for this attribute.
+     */
+    public static OptionalInt getOptionalIntAttribute(final GATKRead read, final String tag) {
+        Utils.nonNull(read);
+        Utils.nonNull(tag);
+        final Integer obj = read.getAttributeAsInteger(tag);
+        return obj == null ? OptionalInt.empty() : OptionalInt.of(obj);
     }
 
     /**
@@ -968,17 +1031,46 @@ public final class ReadUtils {
             boolean createOutputBamIndex,
             final boolean createMD5)
     {
-        Utils.nonNull(outputFile);
+        return createCommonSAMWriter(
+            (null == outputFile ? null : outputFile.toPath()),
+            referenceFile,
+            header,
+            preSorted,
+            createOutputBamIndex,
+            createMD5);
+    }
+
+    /**
+     * Create a common SAMFileWriter for use with GATK tools.
+     *
+     * @param outputPath - if this file has a .cram extension then a reference is required. Can not be null.
+     * @param referenceFile - the reference source to use. Can not be null if a output file has a .cram extension.
+     * @param header - header to be used for the output writer
+     * @param preSorted - if true then the records must already be sorted to match the header sort order
+     * @param createOutputBamIndex - if true an index will be created for .BAM and .CRAM files
+     * @param createMD5 - if true an MD5 file will be created
+     *
+     * @return SAMFileWriter
+     */
+    public static SAMFileWriter createCommonSAMWriter(
+        final Path outputPath,
+        final File referenceFile,
+        final SAMFileHeader header,
+        final boolean preSorted,
+        boolean createOutputBamIndex,
+        final boolean createMD5)
+    {
+        Utils.nonNull(outputPath);
         Utils.nonNull(header);
 
         if (createOutputBamIndex && header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
             logger.warn("Skipping index file creation for: " +
-                    outputFile.getAbsolutePath() +  ". Index file creation requires reads in coordinate sorted order.");
+                outputPath +  ". Index file creation requires reads in coordinate sorted order.");
             createOutputBamIndex = false;
         }
 
         final SAMFileWriterFactory factory = new SAMFileWriterFactory().setCreateIndex(createOutputBamIndex).setCreateMd5File(createMD5);
-        return ReadUtils.createCommonSAMWriterFromFactory(factory, outputFile, referenceFile, header, preSorted);
+        return ReadUtils.createCommonSAMWriterFromFactory(factory, outputPath, referenceFile, header, preSorted);
     }
 
     /**
@@ -999,14 +1091,38 @@ public final class ReadUtils {
             final SAMFileHeader header,
             final boolean preSorted)
     {
-        Utils.nonNull(outputFile);
+        return createCommonSAMWriterFromFactory(factory,
+            Utils.nonNull(outputFile).toPath(), referenceFile, header, preSorted);
+    }
+
+    /**
+     * Create a common SAMFileWriter from a factory for use with GATK tools. Assumes that if the factory has been set
+     * to create an index, the header must be set to coordinate sorted.
+     *
+     * @param outputPath if this file has a .cram extension then a reference is required. Can not be null.
+     * @param referenceFile the reference source to use. Can not be null if a output file has a .cram extension.
+     * @param header header to be used for the output writer
+     * @param preSorted if true then records must already be sorted to match the header sort order
+     * @param factory SAMFileWriterFactory factory to use
+     * @param openOptions (optional) NIO options specifying how to open the file
+     * @return SAMFileWriter
+     */
+    public static SAMFileWriter createCommonSAMWriterFromFactory(
+        final SAMFileWriterFactory factory,
+        final Path outputPath,
+        final File referenceFile,
+        final SAMFileHeader header,
+        final boolean preSorted,
+        OpenOption... openOptions)
+    {
+        Utils.nonNull(outputPath);
         Utils.nonNull(header);
 
-        if (null == referenceFile && outputFile.getName().endsWith(CramIO.CRAM_FILE_EXTENSION)) {
+        if (null == referenceFile && outputPath.toString().endsWith(CramIO.CRAM_FILE_EXTENSION)) {
             throw new UserException("A reference file is required for writing CRAM files");
         }
 
-        return factory.makeWriter(header.clone(), preSorted, outputFile, referenceFile);
+        return factory.makeWriter(header.clone(), preSorted, outputPath, referenceFile);
     }
 
     /**
@@ -1118,5 +1234,171 @@ public final class ReadUtils {
         }
 
         return isValid;
+    }
+
+    /**
+     * Returns the offset (0-based index) of the first base in the read that is aligned against the reference.
+     * <p>
+     *     In most cases for mapped reads, this is typically equal to the sum of the size of soft-clipping at the
+     *     beginning of the alignment.
+     * </p>
+     * <p>
+     *     Notice that this index makes reference to the offset of that first base in the array returned by {@link GATKRead#getBases()}, If you
+     *     are after the first base in the original unclipped and not reverse-complemented read, you must use
+     *     {@link #getFirstAlignedReadPosition} instead.
+     * </p>
+     *
+     * @throws IllegalArgumentException if the input {@code read} is {@code null} or does not have any base aligned
+     *  against the reference (e.g. is unmapped). You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return a number between 0 and the read length-1.
+     */
+    public static int getFirstAlignedBaseOffset(final GATKRead read) {
+        Utils.nonNull(read, "the input read cannot be null");
+        if (read.isUnmapped()) {
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
+        } else {
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.isEmpty()) {
+                throw new IllegalArgumentException("the input read is mapped yet contains no cigar-elements: " + read.commonToString());
+            }
+            int result = 0;
+            for (final CigarElement ce : cigarElements) {
+                final int length = ce.getLength();
+                final CigarOperator co = ce.getOperator();
+                if (length > 0 && co.isAlignment()) {
+                    return result;
+                } else if (co.consumesReadBases()) {
+                    result += length;
+                }
+            }
+            throw new IllegalArgumentException("the input read cigar does not contain any alignment element");
+        }
+    }
+
+    /**
+     * Checks whether the input read has some base aligned against the reference.
+     * @param read the input read.
+     * @return {@code true} iff there is some base aligned against the reference.
+     */
+    public static boolean hasBasesAlignedAgainstTheReference(final GATKRead read) {
+        Utils.nonNull(read, "the input read cannot be null");
+        if (read.isUnmapped()) {
+            return false;
+        } else {
+            final Cigar cigar = read.getCigar();
+            if (cigar.isEmpty()) {
+                throw new IllegalArgumentException("the input read is not unmapped but its cigar is empty");
+            }
+            for (final CigarElement el : cigar.getCigarElements()) {
+                if (el.getOperator().isAlignment() && el.getLength() > 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+     }
+
+    /**
+     * Returns the first position (1-based) on the original read in 5to3 prime orientation that is aligned
+     * against a base on the reference.
+     * <p>
+     *     If what you are after is the offset of the first aligned base in the array returned by {@link GATKRead#getBases()}
+     *     then you should be looking into {@link #getFirstAlignedBaseOffset(GATKRead)}.
+     * </p>
+     *
+     * @param read the query read.
+     * @throws IllegalArgumentException if {@code read} is {@code null} or it does not have any base aligned against
+     *  the reference (e.g. is unmapped). You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return a value between 1 and the length of the original read. Never {@code 0} nor a negative value.
+     */
+    public static int getFirstAlignedReadPosition(final GATKRead read) {
+        Utils.nonNull(read, "the input read cannot be null");
+        if (read.isUnmapped()) {
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
+        } else {
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.isEmpty()) {
+                throw new IllegalArgumentException("the input read is mapped yet has an empty cigar");
+            } else if (!read.isReverseStrand()) {
+                return getFirstAlignedBaseOffset(read) + 1 + CigarUtils.countLeftHardClippedBases(read.getCigar());
+            } else {
+                return read.getLength() - getAfterLastAlignedBaseOffset(read) + 1 + CigarUtils.countRightHardClippedBases(read.getCigar());
+            }
+        }
+    }
+
+    /**
+     * Returns the offset (0-based) after the last base in the record that is aligned against the reference.
+     *
+     * <p>
+     *     Notice that this does not take in consideration whether the record is mapped against the forward and backward
+     *     strand. If what you want to find out is the last base position on the original unclipped and non-reverve
+     *     complemented read sequence that is mapped against the reference the use
+     *     {@link #getLastAlignedReadPosition(GATKRead)} instead.
+     * </p>
+     *
+     * @param read the query read.
+     * @throws IllegalArgumentException if {@code read} is {@code null} or does not have any base aligned against the
+     *    reference. You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return a number between 0 and the read's length inclusive.
+     */
+    public static int getAfterLastAlignedBaseOffset(final GATKRead read) {
+        if (read.isUnmapped()) {
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
+        } else {
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.isEmpty()) {
+                throw new IllegalArgumentException("the input read is mapped yet the cigar is empty");
+            }
+            int result = read.getLength();
+            final ListIterator<CigarElement> cigarElementIterator = cigarElements.listIterator(cigarElements.size());
+            while (cigarElementIterator.hasPrevious()) {
+                final CigarElement ce = cigarElementIterator.previous();
+                final int length = ce.getLength();
+                final CigarOperator co = ce.getOperator();
+                if (length > 0 && co.isAlignment()) {
+                    return result;
+                } else if (co.consumesReadBases()) {
+                    result -= length;
+                }
+            }
+            throw new IllegalArgumentException("the input read is unmapped and therefore does not have any base aligned");
+        }
+    }
+
+    /**
+     * Returns the last position (1-based) on the original unclipped nor reverse-complemented read that is mapped against the reference.
+     * <p>
+     *     It will return {@code -1} if no position in the read is aligned against the reference (e.g. unmapped).
+     * </p>
+     *
+     * @param read the query read.
+     * @throws IllegalArgumentException if {@code read} is {@code null} or does not have any base aligned against the
+     *    reference. You can use {@link #hasBasesAlignedAgainstTheReference(GATKRead)} to check on
+     *  the latter requirement.
+     *
+     * @return any number between 1 and the length of the original read (including hard-clips). Never {@code 0}.
+     */
+    public static int getLastAlignedReadPosition(final GATKRead read) {
+        if (read.isUnmapped()) {
+            throw new IllegalArgumentException("the input read cannot be unmapped");
+        } else {
+            final List<CigarElement> cigarElements = read.getCigarElements();
+            if (cigarElements.isEmpty()) {
+                throw new IllegalArgumentException("the input read is mapped but the cigar is empty");
+            } else if (!read.isReverseStrand()) {
+                final int offset = getAfterLastAlignedBaseOffset(read);
+                return offset + CigarUtils.countLeftHardClippedBases(read.getCigar());
+            } else {
+                final int offset = getFirstAlignedBaseOffset(read);
+                return read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
+            }
+        }
     }
 }

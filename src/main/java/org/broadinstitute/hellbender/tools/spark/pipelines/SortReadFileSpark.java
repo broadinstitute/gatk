@@ -6,6 +6,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -18,6 +19,7 @@ import scala.Tuple2;
 import java.util.Collections;
 import java.util.List;
 
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Sorts the input SAM/BAM/CRAM",
         oneLineSummary = "SortSam on Spark (works on SAM/BAM/CRAM)",
         programGroup = SparkProgramGroup.class)
