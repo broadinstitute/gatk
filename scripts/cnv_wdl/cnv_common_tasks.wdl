@@ -24,7 +24,7 @@ task PreprocessIntervals {
             --sequence-dictionary ${ref_fasta_dict} \
             --padding ${default="250" padding} \
             --binLength ${default="1000" bin_length} \
-            --interval_merging_rule OVERLAPPING_ONLY \
+            --interval-merging-rule OVERLAPPING_ONLY \
             --output ${base_filename}.preprocessed.interval_list
     >>>
 
@@ -60,7 +60,7 @@ task AnnotateIntervals {
         java -Xmx${default="4" mem}g -jar $GATK_JAR AnnotateIntervals \
             -L ${intervals} \
             --reference ${ref_fasta} \
-            --interval_merging_rule OVERLAPPING_ONLY \
+            --interval-merging-rule OVERLAPPING_ONLY \
             --output annotated_intervals.tsv
     >>>
 
