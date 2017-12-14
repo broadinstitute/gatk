@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollector;
+import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;

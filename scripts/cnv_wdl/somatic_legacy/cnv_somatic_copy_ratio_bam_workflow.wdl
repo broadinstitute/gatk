@@ -119,7 +119,7 @@ task NormalizeSomaticReadCounts {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    command {
+    command <<<
         java -Xmx${default=4 mem}g -jar ${gatk_jar} NormalizeSomaticReadCounts \
             --input ${coverage} \
             --targets ${padded_targets} \
@@ -128,7 +128,7 @@ task NormalizeSomaticReadCounts {
             --factorNormalizedOutput ${entity_id}.fnt.tsv \
             --preTangentNormalized ${entity_id}.preTN.tsv \
             --betaHatsOutput ${entity_id}.betaHats.tsv
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
@@ -231,13 +231,13 @@ task CallSegments {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    command {
+    command <<<
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CallSegments \
             --tangentNormalized ${tn_coverage} \
             --segments ${segments} \
             --legacy false \
             --output ${entity_id}.called
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
@@ -269,7 +269,7 @@ task PlotSegmentedCopyRatio {
     # If optional output_dir not specified, use "."
     String output_dir_ = select_first([output_dir, "."])
 
-    command {
+    command <<<
         mkdir -p ${output_dir_}; \
         java -Xmx${default=4 mem}g -jar ${gatk_jar} PlotSegmentedCopyRatio \
             --tangentNormalized ${tn_coverage} \
@@ -278,7 +278,7 @@ task PlotSegmentedCopyRatio {
             -SD ${ref_fasta_dict} \
             --output ${output_dir_} \
             --outputPrefix ${entity_id}
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"

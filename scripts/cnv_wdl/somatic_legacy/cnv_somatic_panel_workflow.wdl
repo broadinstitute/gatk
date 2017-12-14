@@ -120,12 +120,12 @@ task CombineReadCounts {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    command {
+    command <<<
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CombineReadCounts \
             --input ${sep=" --input " coverage_file_list} \
             --maxOpenFiles ${default=100 max_open_files} \
             --output ${combined_entity_id}.tsv
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
@@ -152,7 +152,7 @@ task CreatePanelOfNormals {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    command {
+    command <<<
         # If there are no removed samples the output file still needs to be created
         touch "${pon_entity_id}.pon.removed_samples.txt" ; \
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CreatePanelOfNormals \
@@ -161,7 +161,7 @@ task CreatePanelOfNormals {
             --truncatePercentileThreshold 0.1 \
             --noQC ${default="false" no_qc} \
             --output ${pon_entity_id}.pon
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"

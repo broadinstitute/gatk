@@ -8,10 +8,10 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedIntervalCollection;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotationSet;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 

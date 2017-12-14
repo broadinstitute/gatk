@@ -18,12 +18,12 @@ task PadTargets {
     String filename = select_first([targets, ""])
     String base_filename = basename(filename, ".tsv")
 
-    command {
+    command <<<
         java -Xmx${default="1" mem}g -jar ${gatk_jar} PadTargets \
             --targets ${targets} \
             --padding ${default="250" padding} \
             --output ${base_filename}.padded.tsv
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
@@ -126,12 +126,12 @@ task AnnotateTargets {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    command {
+    command <<<
         java -Xmx${default=4 mem}g -jar ${gatk_jar} AnnotateTargets \
             --targets ${targets} \
             --reference ${ref_fasta} \
             --output ${entity_id}.annotated.tsv
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
@@ -158,12 +158,12 @@ task CorrectGCBias {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    command {
+    command <<<
         java -Xmx${default=4 mem}g -jar ${gatk_jar} CorrectGCBias \
           --input ${coverage} \
           --targets ${annotated_targets} \
           --output ${entity_id}.gc_corrected.tsv
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -22,7 +22,7 @@ import java.util.List;
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
 public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/collectfragmentcounts";
+    private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
 
     private static final File NA12878_BAM = new File(TEST_SUB_DIR, "collect-fragment-counts-NA12878.bam");
     private static final File NA12878_FRAGMENT_COUNTS_EXPECTED_OUTPUT = new File(TEST_SUB_DIR, "collect-fragment-counts-NA12878-expected.tsv");

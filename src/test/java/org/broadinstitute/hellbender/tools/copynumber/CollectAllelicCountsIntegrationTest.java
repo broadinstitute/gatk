@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCount;
-import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
@@ -21,7 +21,7 @@ import java.util.Arrays;
  */
 public final class CollectAllelicCountsIntegrationTest extends CommandLineProgramTest {
 
-    private static final String TEST_SUB_DIR = toolsTestDir + "copynumber/allelic";
+    private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-normal.bam");
     private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-tumor.bam");
     private static final File SITES_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-sites.interval_list");

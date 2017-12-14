@@ -34,10 +34,10 @@ public abstract class LocatableCollection<RECORD extends Locatable> extends Reco
     /**
      * Records are sorted using {@code LEXICOGRAPHICAL_ORDER_COMPARATOR}.
      */
-    protected LocatableCollection(final List<RECORD> records,
-                                  final TableColumnCollection mandatoryColumns,
-                                  final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                  final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    LocatableCollection(final List<RECORD> records,
+                        final TableColumnCollection mandatoryColumns,
+                        final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                        final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(
                 Utils.nonNull(records).stream().sorted(LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList()),
                 mandatoryColumns,
@@ -49,10 +49,10 @@ public abstract class LocatableCollection<RECORD extends Locatable> extends Reco
     /**
      * @throws IllegalArgumentException if records are not sorted using {@code LEXICOGRAPHICAL_ORDER_COMPARATOR}
      */
-    protected LocatableCollection(final File inputFile,
-                                  final TableColumnCollection mandatoryColumns,
-                                  final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                  final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    LocatableCollection(final File inputFile,
+                        final TableColumnCollection mandatoryColumns,
+                        final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                        final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
         validateIntervals(getRecords());
     }
