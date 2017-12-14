@@ -21,7 +21,7 @@ task PreprocessIntervals {
 
         java -Xmx${default="2" mem}g -jar $GATK_JAR PreprocessIntervals \
             ${"-L " + intervals} \
-            -sequenceDictionary ${ref_fasta_dict} \
+            --sequence-dictionary ${ref_fasta_dict} \
             --padding ${default="250" padding} \
             --binLength ${default="1000" bin_length} \
             --interval_merging_rule OVERLAPPING_ONLY \
