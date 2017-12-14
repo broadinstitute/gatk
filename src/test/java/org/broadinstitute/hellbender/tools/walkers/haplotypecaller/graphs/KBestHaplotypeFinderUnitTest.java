@@ -9,7 +9,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +20,7 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.*;
 
-public final class KBestHaplotypeFinderUnitTest extends BaseTest {
+public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
     @Test
     public void testScore(){
@@ -265,7 +266,7 @@ public final class KBestHaplotypeFinderUnitTest extends BaseTest {
         expectedCigar.add(new CigarElement(postRef.length(), CigarOperator.M));
 
         final String ref = preRef + v2Ref.getSequenceString() + postRef;
-        Assert.assertEquals(path.calculateCigar(ref.getBytes()).toString(), AlignmentUtils.consolidateCigar(expectedCigar).toString(), "Cigar string mismatch");
+        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), AlignmentUtils.consolidateCigar(expectedCigar).toString(), "Cigar string mismatch");
     }
 
     @DataProvider(name = "GetBasesData")
@@ -419,7 +420,7 @@ public final class KBestHaplotypeFinderUnitTest extends BaseTest {
             expectedCigar.add(new CigarElement(postAltOption.length(), CigarOperator.I));
         }
 
-        Assert.assertEquals(path.calculateCigar(ref.getBytes()).toString(),
+        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(),
                 AlignmentUtils.consolidateCigar(expectedCigar).toString(),
                 "Cigar string mismatch: ref = " + ref + " alt " + new String(path.getBases()));
     }
@@ -446,8 +447,8 @@ public final class KBestHaplotypeFinderUnitTest extends BaseTest {
         final Path<SeqVertex,BaseEdge> altPath = bestPathFinder.get(1).path();
 
         final String refString = top.getSequenceString() + ref.getSequenceString() + bot.getSequenceString();
-        Assert.assertEquals(refPath.calculateCigar(refString.getBytes()).toString(), "10M");
-        Assert.assertEquals(altPath.calculateCigar(refString.getBytes()).toString(), "1M3I5M3D1M");
+        Assert.assertEquals(refPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "10M");
+        Assert.assertEquals(altPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "1M3I5M3D1M");
     }
 
     @Test
@@ -472,11 +473,13 @@ public final class KBestHaplotypeFinderUnitTest extends BaseTest {
 
         final String refString = top.getSequenceString() + ref.getSequenceString() + bot.getSequenceString();
 
-        logger.warn("RefPath : " + refPath + " cigar " + refPath.calculateCigar(refString.getBytes()));
-        logger.warn("AltPath : " + altPath + " cigar " + altPath.calculateCigar(refString.getBytes()));
+        logger.warn("RefPath : " + refPath + " cigar " + refPath.calculateCigar(refString.getBytes(),
+                                                                                SmithWatermanJavaAligner.getInstance()));
+        logger.warn("AltPath : " + altPath + " cigar " + altPath.calculateCigar(refString.getBytes(),
+                                                                                SmithWatermanJavaAligner.getInstance()));
 
-        Assert.assertEquals(refPath.calculateCigar(refString.getBytes()).toString(), "51M");
-        Assert.assertEquals(altPath.calculateCigar(refString.getBytes()).toString(), "3M6I48M");
+        Assert.assertEquals(refPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "51M");
+        Assert.assertEquals(altPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "3M6I48M");
     }
 
     // -----------------------------------------------------------------
@@ -551,7 +554,7 @@ public final class KBestHaplotypeFinderUnitTest extends BaseTest {
         expected = AlignmentUtils.consolidateCigar(expected);
 
         final String refString = top.getSequenceString() + ref.getSequenceString() + bot.getSequenceString();
-        final Cigar pathCigar = path.calculateCigar(refString.getBytes());
+        final Cigar pathCigar = path.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance());
 
         logger.warn("diffs: " + ref + " vs. " + alt + " cigar " + midCigar);
         logger.warn("Path " + path + " with cigar " + pathCigar);

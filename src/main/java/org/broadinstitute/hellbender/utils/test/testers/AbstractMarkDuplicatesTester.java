@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.utils.test.testers;
 
+import htsjdk.samtools.*;
 import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordSetBuilder;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
@@ -22,6 +19,7 @@ import java.io.FileReader;
  * This class is an extension of SamFileTester used to test AbstractMarkDuplicatesCommandLineProgram's with SAM files generated on the fly.
  * This performs the underlying tests defined by classes such as AbstractMarkDuplicatesCommandLineProgramTest.
  */
+// TODO: it should live in the test sources, as the implementations - not required to be packed in the testing framework
 public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
 
     final private File metricsFile;
@@ -53,7 +51,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
     }
 
     @Override
-    public String getTestedClassName() { return getProgram().getClass().getSimpleName(); }
+    public final String getTestedToolName() { return getProgram().getClass().getSimpleName(); }
 
     /**
      * Fill in expected duplication metrics directly from the input records given to this tester
@@ -104,7 +102,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
             updateExpectedDuplicationMetrics();
             // Read the output and check the duplicate flag
             int outputRecords = 0;
-            final SamReader reader = SamReaderFactory.makeDefault().open(getOutput());
+            final SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(getOutput());
             for (final SAMRecord record : reader) {
                 outputRecords++;
                 final String key = samRecordToDuplicatesFlagsKey(record);

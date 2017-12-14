@@ -1,21 +1,26 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.cloud.storage.StorageException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.annotations.Test;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
-import java.nio.file.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Random;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.testng.annotations.Test;
 
 /**
  * Test GCS access via the NIO APIs.
  */
-public final class GcsNioIntegrationTest extends BaseTest {
+public final class GcsNioIntegrationTest extends GATKBaseTest {
 
     final String privateFilePath = "org/broadinstitute/hellbender/utils/nio/private_file.txt";
     final String privateFilePath2 = "org/broadinstitute/hellbender/utils/nio/private_file_2.txt";
@@ -34,6 +39,27 @@ public final class GcsNioIntegrationTest extends BaseTest {
         }
     }
 
+    /**
+     * Ensure we can write to the staging folder. If this fails, it may indicate a misconfiguration.
+     *
+     * @throws IOException
+     */
+    @Test(groups={"bucket"})
+    public void writePrivateFile() throws IOException {
+        try {
+            final String dest = BucketUtils.getTempFilePath(
+                    getGCPTestStaging() +"GcsNioIntegrationTest-writePrivateFile-test", ".txt");
+            final Path outputPath = BucketUtils.getPathOnGcs(dest);
+            System.out.println("Writing to " + dest);
+            try (OutputStream os = Files.newOutputStream(outputPath)) {
+                os.write(42);
+            }
+        } catch (shaded.cloud_nio.com.google.api.client.http.HttpResponseException forbidden) {
+            helpDebugAuthError();
+            throw forbidden;
+        }
+    }
+
 
     /**
      * When we give no explicit credentials, then the system will still work if either
@@ -42,7 +68,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
      * - the code is running on a Google Cloud Compute machine.
      * (see http://gcloud-python.readthedocs.org/en/latest/gcloud-auth.html)
      */
-    @Test(groups = {"cloud"})
+    @Test(groups = {"bucket"})
     public void openPrivateFileUsingDefaultCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
@@ -62,7 +88,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
      * Opening the private file even when the user is not logged in on gcloud should work
      * when we provide explicit credentials.
      *
-    @Test(groups = {"cloud"})
+    @Test(groups = {"bucket"})
     public void openPrivateFileWithExplicitCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
@@ -87,7 +113,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
      * Yet you must set getGoogleServiceAccountKeyPath() (you may have to switch it to a different
      * environment variable).
      **/
-    @Test(enabled = false, groups = {"cloud"}, expectedExceptions = {StorageException.class})
+    @Test(enabled = false, groups = {"bucket"}, expectedExceptions = {StorageException.class})
     public void explicitCredentialsAreNotKept() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
@@ -105,7 +131,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
     }
 
 
-    @Test(groups = {"cloud"})
+    @Test(groups = {"bucket"})
     public void testCloseWhilePrefetching() throws Exception {
         final String large = getGCPTestInputPath() + largeFilePath;
         SeekableByteChannel chan = new SeekableByteChannelPrefetcher(
@@ -118,41 +144,4 @@ public final class GcsNioIntegrationTest extends BaseTest {
         chan.close();
     }
 
-
-    private FileSystem getAuthenticatedGcs(String bucket) throws IOException {
-        byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
-        return BucketUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
-    }
-
-
-    private void helpDebugAuthError() {
-        final String key = "GOOGLE_APPLICATION_CREDENTIALS";
-        String credsFile = System.getenv(key);
-        if (null == credsFile) {
-            System.err.println("$"+key+" is not defined.");
-            return;
-        }
-        System.err.println("$"+key+" = " + credsFile);
-        Path credsPath = Paths.get(credsFile);
-        boolean exists = Files.exists(credsPath);
-        System.err.println("File exists: " + exists);
-        if (exists) {
-            try {
-                System.err.println("Key lines from file:");
-                printKeyLines(credsPath, "\"type\"", "\"project_id\"", "\"client_email\"");
-            } catch (IOException x2) {
-                System.err.println("Unable to read: " + x2.getMessage());
-            }
-        }
-    }
-
-    private void printKeyLines(Path path, String... keywords) throws IOException {
-        for (String line : Files.readAllLines(path)) {
-            for (String keyword : keywords) {
-                if (line.contains(keyword)) {
-                    System.err.println(line);
-                }
-            }
-        }
-    }
 }

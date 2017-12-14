@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.collections;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class IntervalsSkipListUnitTest extends BaseTest {
+public final class IntervalsSkipListUnitTest extends GATKBaseTest {
 
     @DataProvider(name="intervals")
     public Object[][] intervals(){

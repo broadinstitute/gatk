@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.hmm.segmentation;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 
 /**
  * Unit tests for {@link HMMPostProcessor}
@@ -9,5 +9,5 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class HMMPostProcessorUnitTest extends BaseTest {
+public class HMMPostProcessorUnitTest extends GATKBaseTest {
 }

@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class TargetPadderUnitTest extends BaseTest {
+public class TargetPadderUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "simple")
     public void testSimplePaddingWithoutOverlap(List<Target> targets){

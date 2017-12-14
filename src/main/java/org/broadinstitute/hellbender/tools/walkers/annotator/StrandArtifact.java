@@ -7,9 +7,12 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import org.apache.commons.math3.distribution.BetaDistribution;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -21,7 +24,10 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
  *
  * Created by tsato on 4/19/17.
  */
-public class StrandArtifact extends GenotypeAnnotation implements StandardSomaticAnnotation {
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filter (SA_POST_PROB, SA_MAP_AF)")
+public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+
     public static final String POSTERIOR_PROBABILITIES_KEY = "SA_POST_PROB";
     public static final String MAP_ALLELE_FRACTIONS_KEY = "SA_MAP_AF";
 
@@ -31,6 +37,10 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardSomati
     private static final int ALPHA = 1;
     private static final int BETA = 6;
     private static final BetaDistribution betaPrior = new BetaDistribution(null, ALPHA, BETA);
+
+    // Apache Commons uses naive recursion for Gauss-Legendre and is prone to stack overflows
+    // capping the number of subdivisions is a stop-gap for a more principled integration scheme
+    private static final int MAX_GAUSS_LEGENDRE_POINTS = 100;
 
     // the latent variable z in the strand artifact filter model
     public enum StrandArtifactZ {
@@ -65,6 +75,11 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardSomati
 
         // We use the allele with highest LOD score
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, -1);
+
+        if (tumorLods==null) {
+            warning.warn("One or more variant contexts is missing the 'TLOD' annotation, StrandArtifact will not be computed for these VariantContexts");
+            return;
+        }
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
         final Allele altAlelle = vc.getAlternateAllele(indexOfMaxTumorLod);
 
@@ -83,8 +98,8 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardSomati
 
         // the integrand is a polynomial of degree n, where n is the number of reads at the locus
         // thus to integrate exactly with Gauss-Legendre we need (n/2)+1 points
-        final int numIntegPointsForAlleleFraction = numReads / 2 + 1;
-        final int numIntegPointsForEpsilon = (numReads + ALPHA + BETA - 2) / 2 + 1;
+        final int numIntegPointsForAlleleFraction = Math.min(numReads / 2 + 1, MAX_GAUSS_LEGENDRE_POINTS);
+        final int numIntegPointsForEpsilon = Math.min((numReads + ALPHA + BETA - 2) / 2 + 1, MAX_GAUSS_LEGENDRE_POINTS);
 
         final double likelihoodForArtifactFwd = IntegrationUtils.integrate2d(
                 (f,epsilon) -> getIntegrandGivenArtifact(f, epsilon, numFwdReads, numRevReads, numFwdAltReads, numRevAltReads),

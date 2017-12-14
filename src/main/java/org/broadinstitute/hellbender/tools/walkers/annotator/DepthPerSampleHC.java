@@ -9,9 +9,11 @@ import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
  * </ul>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of informative coverage for each sample (DP)")
 public final class DepthPerSampleHC extends GenotypeAnnotation implements StandardHCAnnotation {
     private final static Logger logger = LogManager.getLogger(DepthPerSampleHC.class);
 

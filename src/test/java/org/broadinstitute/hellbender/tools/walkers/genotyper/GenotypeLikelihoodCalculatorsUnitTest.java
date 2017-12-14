@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -10,11 +10,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public final class GenotypeLikelihoodCalculatorsUnitTest extends BaseTest {
+public final class GenotypeLikelihoodCalculatorsUnitTest extends GATKBaseTest {
 
     GenotypeLikelihoodCalculators calcs;
 
-    @BeforeSuite
+    @BeforeClass
     public void init(){
         calcs = new GenotypeLikelihoodCalculators();
     }

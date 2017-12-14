@@ -1,87 +1,67 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.fastq.FastqReader;
+import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.LineIterator;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.testng.Assert;
-import org.testng.TestException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class PSFilterTest extends CommandLineProgramTest {
 
-    private final String BWA_IMAGE_PATH = "src/test/resources/" + PSFilter.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.bwa_image";
+    private static final String BWA_IMAGE_PATH = publicTestDir + "hg19mini.fasta.img";
 
-    final static List<List<String>> readFastq(final File fastqFile) {
-        try {
-            final LineIterator itr = IOUtils.lineIterator(new FileReader(fastqFile));
-            final List<List<String>> seqs = new ArrayList<>(100);
-            while (itr.hasNext()) {
-                final List<String> read = new ArrayList<>(3);
-                String readName = itr.next();
-                if (readName.endsWith("/1") || readName.endsWith("/2")) {
-                    readName = readName.substring(0, readName.length() - 2);
-                }
-                read.add(readName);
-                read.add(itr.next());
-                itr.next();
-                read.add(itr.next());
-                seqs.add(read);
-            }
-            return seqs;
-        } catch (IOException e) {
-            logger.error("Could not open test file " + fastqFile.getAbsolutePath(), e);
+    private static final GATKRead fastqRecordToGATKRead(final FastqRecord rec) {
+        final GATKRead read = new SAMRecordToGATKReadAdapter(new SAMRecord(null));
+        read.setName(rec.getReadName());
+        read.setBaseQualities(rec.getBaseQualities());
+        read.setBases(rec.getReadBases());
+        return read;
+    }
+
+    private static final List<GATKRead> getReadsFromFastq(final File fastqFile) {
+        try (final FastqReader reader = new FastqReader(fastqFile)) {
+            final List<GATKRead> readList = new ArrayList<>();
+            reader.forEachRemaining(read -> readList.add(fastqRecordToGATKRead(read)));
+            return readList;
         }
-        throw new TestException("Invalid fastq test file " + fastqFile);
     }
 
-    final static List<GATKRead> getReadsFromFastq(final File fastqFile) {
-        final List<List<String>> fastqList = readFastq(fastqFile);
-        return fastqList.stream().map(list -> {
-            final String name = list.get(0);
-            final byte[] bases = list.get(1).getBytes();
-            final byte[] qual = list.get(2).getBytes();
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, qual, "*");
-            read.setName(name);
-            return read;
-        }).collect(Collectors.toList());
-    }
-
-    final static List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
+    private static final List<GATKRead> getPairedReadsFromFastq(final File fastqFile1, final File fastqFile2) {
         final List<GATKRead> readList1 = getReadsFromFastq(fastqFile1);
         final List<GATKRead> readList2 = getReadsFromFastq(fastqFile2);
-        readList1.forEach(read -> {
-            read.setIsPaired(true);
-            read.setIsFirstOfPair();
-        });
-        readList2.forEach(read -> {
-            read.setIsPaired(true);
-            read.setIsSecondOfPair();
-        });
+        for (final GATKRead gatkRead : readList1) {
+            gatkRead.setIsPaired(true);
+            gatkRead.setIsFirstOfPair();
+        }
+        for (final GATKRead gatkRead : readList2) {
+            gatkRead.setIsPaired(true);
+            gatkRead.setIsSecondOfPair();
+        }
         readList1.addAll(readList2);
         readList1.sort(Comparator.comparing(GATKRead::getName));
         return readList1;
     }
 
-    final static List<GATKRead> makeReadSet(final SAMFileHeader header) {
+    private static final List<GATKRead> makeReadSet(final SAMFileHeader header) {
         final List<GATKRead> readList = new ArrayList<>(3);
 
         final List<GATKRead> readPair1 = ArtificialReadUtils.createPair(header, "paired_1", 101, 1, 102, false, false);
@@ -175,7 +155,7 @@ public class PSFilterTest extends CommandLineProgramTest {
     public Object[][] loadReads() {
         return new Object[][]{
                 {"hg19mini.0.fq", null, 3},
-                {"hg19mini.1.fq", "hg19mini.2.fq", 4},
+                {"hg19mini.1.fq", "hg19mini.2.fq", 2},
                 {"hg19mini.negative.0.fq", null, 45},
                 {"hg19mini.negative.1.fq", "hg19mini.negative.2.fq", 60}
         };
@@ -197,7 +177,8 @@ public class PSFilterTest extends CommandLineProgramTest {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final JavaRDD<GATKRead> reads = ctx.parallelize(readList);
 
-        final List<GATKRead> result = PSFilter.doBwaFilter(reads, BWA_IMAGE_PATH, 19, 1, 70, 65).collect();
+        final List<GATKRead> result = PSFilter.doBwaFilter(reads, BWA_IMAGE_PATH, 19, 1, 65).collect();
+        BwaMemIndexCache.closeAllDistributedInstances(ctx);
         Assert.assertEquals(result.size(), expectedNum);
     }
 

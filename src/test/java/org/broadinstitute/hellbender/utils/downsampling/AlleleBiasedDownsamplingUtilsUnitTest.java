@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,7 +22,7 @@ import java.util.*;
 /**
  * Basic unit test for AlleleBiasedDownsamplingUtils
  */
-public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
+public class AlleleBiasedDownsamplingUtilsUnitTest extends GATKBaseTest {
 
     private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(AlleleBiasedDownsamplingUtilsUnitTest.class);
 

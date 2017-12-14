@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.api.services.genomics.model.Read;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public final class ReferenceShardUnitTest extends BaseTest {
+public final class ReferenceShardUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "reads")
     public Object[][] reads() {

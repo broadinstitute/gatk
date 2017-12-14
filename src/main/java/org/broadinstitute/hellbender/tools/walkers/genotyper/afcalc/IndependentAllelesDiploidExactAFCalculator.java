@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 
@@ -123,7 +122,7 @@ import java.util.*;
         }
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
         final Allele reference = vcb.getAlleles().get(0);
-        vcb.alleles(Arrays.asList(reference, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+        vcb.alleles(Arrays.asList(reference, Allele.NON_REF_ALLELE));
         final int genotypeCount = calculators.genotypeCount(2, vc.getNAlleles());
         final double[] hetLikelihoods = new double[vc.getNAlleles() - 1];
         final double[] homAltLikelihoods = new double[genotypeCount - hetLikelihoods.length - 1];
@@ -141,7 +140,7 @@ import java.util.*;
                     } else if (oldAllele.isNoCall()) {
                         newAlleles.add(Allele.NO_CALL);
                     } else {
-                        newAlleles.add(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                        newAlleles.add(Allele.NON_REF_ALLELE);
                     }
                 }
                 gb.alleles(newAlleles);

@@ -23,10 +23,11 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -35,9 +36,10 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
-public final class GATKToolUnitTest extends BaseTest{
+public final class GATKToolUnitTest extends GATKBaseTest {
 
     public static final String bqsrTestDir = toolsTestDir + "BQSR/";
 
@@ -77,6 +79,10 @@ public final class GATKToolUnitTest extends BaseTest{
         @Override
         public void traverse() {
             //no op
+        }
+
+        public List<SimpleInterval> getIntervals() {
+            return intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary());
         }
     }
 
@@ -196,8 +202,8 @@ public final class GATKToolUnitTest extends BaseTest{
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
 
         final String[] args = (cramRefArg == null)
-                ? new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile }
-                : new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+                ? new String[] {"--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile }
+                : new String[] {"--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
 
         clp.parseArguments(System.out, args);
 
@@ -251,7 +257,7 @@ public final class GATKToolUnitTest extends BaseTest{
 
         final String[] args = (masterSequenceFileName == null)
                 ? new String[] { "--input", inputFileName, }
-                : new String[] { "--sequenceDictionary", masterSequenceFileName, "--input", inputFileName, };
+                : new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceFileName, "--input", inputFileName, };
 
         clp.parseArguments(System.out, args);
 
@@ -288,8 +294,8 @@ public final class GATKToolUnitTest extends BaseTest{
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
 
         final String[] args = (cramRefArg == null)
-            ? new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, }
-            : new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+            ? new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, sequenceFileName, otherSeqArg, otherSequenceFile, }
+            : new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, sequenceFileName, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
 
         clp.parseArguments(System.out, args);
 
@@ -317,6 +323,35 @@ public final class GATKToolUnitTest extends BaseTest{
             Assert.assertEquals(headerForReads, samFileHeader);
         }
         tool.doWork();
+        tool.onShutdown();
+    }
+
+    @Test
+    public void testPicardIntervalList() throws Exception {
+        final TestGATKToolWithReads tool = new TestGATKToolWithReads();
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
+        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final File intervalsFile = new File(publicTestDir + "picard_intervals.list");
+        final String[] args = {
+                "-I", bamFile.getCanonicalPath(),
+                "-L", intervalsFile.getCanonicalPath()
+        };
+        clp.parseArguments(System.out, args);
+        tool.onStartup();
+        final SAMFileHeader headerForReads = tool.getHeaderForReads();
+
+        final SamReaderFactory factory = SamReaderFactory.makeDefault()    //read the file directly and compare headers
+                .validationStringency(ValidationStringency.SILENT);
+        try(SamReader samReader = factory.open(bamFile)) {
+            final SAMFileHeader samFileHeader = samReader.getFileHeader();
+            Assert.assertEquals(headerForReads, samFileHeader);
+        }
+        tool.doWork();
+
+        // ensure that the raw interval argument has not been expanded by Barclay, and that the post-merged
+        // intervals list contains 3 itervals (there are 4 in the file; 2 get merged)
+        Assert.assertEquals(tool.getIntervals().size(), 3);
+
         tool.onShutdown();
     }
 
@@ -362,7 +397,7 @@ public final class GATKToolUnitTest extends BaseTest{
     public void testNonExistentReferenceFile() throws Exception {
         final TestGATKToolWithFeatures tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
-        final String[] args = {"--reference", BaseTest.getSafeNonExistentFile("NonExistentReferenceFile.fasta").getAbsolutePath()};
+        final String[] args = {"--reference", GATKBaseTest.getSafeNonExistentFile("NonExistentReferenceFile.fasta").getAbsolutePath()};
         clp.parseArguments(System.out, args);
         tool.onStartup();
     }
@@ -674,8 +709,8 @@ public final class GATKToolUnitTest extends BaseTest{
 
         args.addInput(inputFile);
         args.addOutput(outputFile);
-        args.add("--createOutputVariantIndex"); args.add(Boolean.toString(createIndex));
-        args.add("--createOutputVariantMD5"); args.add(Boolean.toString(createMD5));
+        args.add("--" + StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME); args.add(Boolean.toString(createIndex));
+        args.add("--" + StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME); args.add(Boolean.toString(createMD5));
         if (lenient) {
             args.add("--lenient");
         }

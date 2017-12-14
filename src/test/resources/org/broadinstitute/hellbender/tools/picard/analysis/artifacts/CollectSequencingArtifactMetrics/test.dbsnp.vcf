@@ -1,6 +1,0 @@
-##fileformat=VCFv4.2
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-chr1	6	oxog_snp_1	G	T	.	PASS	.
-chr1	9	oxog_snp_2	G	T	.	PASS	.
-chr2	15	insertion	C	CT	.	PASS	.
-chr2	35	deletion	CG	C	.	PASS	.

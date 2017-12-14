@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerShort;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerizer;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**

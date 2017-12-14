@@ -37,7 +37,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     // the purpose of this argument collection is to allow the caller to control the exposure of the command line arguments
     @VisibleForTesting
     @ArgumentCollection
-    public final GATKReadFilterArgumentCollection userArgs;
+    final GATKReadFilterArgumentCollection userArgs;
 
     // Map of read filter (simple) class names to the corresponding discovered plugin instance
     private final Map<String, ReadFilter> allDiscoveredReadFilters = new HashMap<>();
@@ -205,7 +205,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     }
 
     /**
-     * Return the allowed values for readFilterNames/disableReadFilter for use by the help system.
+     * Return the allowed values for read-filter/disable-read-filter names for use by the help system.
      * @param longArgName long name of the argument for which help is requested
      * @return
      */

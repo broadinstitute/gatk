@@ -26,7 +26,8 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Example tool that prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
         oneLineSummary = "Print intervals with optional contextual data",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public final class ExampleIntervalWalkerSpark extends IntervalWalkerSpark {
     private static final long serialVersionUID = 1L;

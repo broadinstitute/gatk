@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -35,7 +36,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      */
     public AssemblyBasedCallerGenotypingEngine(final AssemblyBasedCallerArgumentCollection configuration, final SampleList samples,
                                            final AFCalculatorProvider afCalculatorProvider, final boolean doPhysicalPhasing) {
-        super(configuration, samples, afCalculatorProvider);
+        super(configuration, samples, afCalculatorProvider, false);
         this.doPhysicalPhasing= doPhysicalPhasing;
     }
 
@@ -46,7 +47,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
 
     @Override
     protected boolean forceKeepAllele(final Allele allele) {
-        return allele == GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE ||
+        return allele == Allele.NON_REF_ALLELE ||
                 configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ||
                 configuration.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
     }
@@ -196,8 +197,12 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         } else {
             readAlleleLikelihoodsForAnnotations = readHaplotypeLikelihoods.marginalize(alleleMapper, loc);
             if (emitReferenceConfidence) {
-                readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
+        }
+
+        if (call.getAlleles().size() != readAlleleLikelihoodsForAnnotations.numberOfAlleles()) {
+            readAlleleLikelihoodsForAnnotations.updateNonRefAlleleLikelihoods(new IndexedAlleleList<>(call.getAlleles()));
         }
 
         // Skim the filtered map based on the location so that we do not add filtered read that are going to be removed
@@ -427,7 +432,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele, false otherwise
      */
     private static boolean isBiallelic(final VariantContext vc) {
-        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
     }
 
     /**

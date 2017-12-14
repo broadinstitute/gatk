@@ -5,8 +5,12 @@ import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
 
@@ -655,5 +659,128 @@ public final class ArtificialReadUtils {
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         header.setSequenceDictionary(dict);
         return header;
+    }
+
+    /**
+     * Create a pileupElement with the given insertion added to the bases.
+     *
+     * Assumes the insertion is prepended with one "reference" base.
+     *
+     * @param offsetIntoRead the offset into the read where the insertion Allele should appear.  As a reminder, the
+     *                       insertion allele should have a single ref base prepend.  Must be 0 - (lengthOfRead-1)
+     * @param insertionAllele the allele as you would see in a VCF for the insertion.  So, it is prepended with a ref base.  Never {@code null}
+     * @param lengthOfRead the length of the artificial read.  Does not include any length differences due to the spliced indel.  Must be greater than zero.
+     * @return pileupElement with an artificial read containing the insertion.
+     */
+    public static PileupElement createSplicedInsertionPileupElement(int offsetIntoRead, final Allele insertionAllele, final int lengthOfRead) {
+
+        ParamUtils.isPositive(lengthOfRead, "length of read is invalid for creating an artificial read, must be greater than 0.");
+        ParamUtils.inRange(offsetIntoRead, 0, lengthOfRead-1, "offset into read is invalid for creating an artificial read, must be 0-" + (lengthOfRead-1) + ".");
+        Utils.nonNull(insertionAllele);
+
+        int remainingReadLength = lengthOfRead - ((offsetIntoRead + 1) + (insertionAllele.getBases().length - 1));
+        String cigarString = (offsetIntoRead + 1) + "M" + (insertionAllele.getBases().length - 1) + "I";
+        if (remainingReadLength > 0) {
+            cigarString += (remainingReadLength + "M");
+        }
+
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final GATKRead gatkRead = ArtificialReadUtils.createArtificialRead(cigar);
+        final PileupElement pileupElement = PileupElement.createPileupForReadAndOffset(gatkRead, offsetIntoRead);
+
+        // Splice in that insertion.
+        final byte[] bases = gatkRead.getBases();
+        final int newReadLength = lengthOfRead + insertionAllele.getBases().length - 1;
+        final byte[] destBases = new byte[newReadLength];
+        final byte[] basesToInsert = ArrayUtils.subarray(insertionAllele.getBases(), 1, insertionAllele.getBases().length);
+        System.arraycopy(bases, 0, destBases, 0, offsetIntoRead);
+
+        // Make sure that the one prepended "reference base" matches the input.
+        destBases[offsetIntoRead] = insertionAllele.getBases()[0];
+
+        System.arraycopy(basesToInsert, 0, destBases, offsetIntoRead+1, basesToInsert.length);
+
+        if ((offsetIntoRead + 1) < lengthOfRead) {
+            System.arraycopy(bases, offsetIntoRead + 1, destBases, offsetIntoRead + basesToInsert.length + 1, bases.length - 1 - offsetIntoRead);
+        }
+
+        gatkRead.setBases(destBases);
+
+        return pileupElement;
+    }
+
+    /** See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}, except that this method returns a
+     * pileup element containing the specified deletion.
+     *
+     * @param offsetIntoRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @param referenceAllele  the reference allele as you would see in a VCF for the deletion.
+     *                         In other words, it is the deletion prepended with a single ref base.  Never {@code null}
+     * @param lengthOfRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @return pileupElement with an artificial read containing the deletion.
+     */
+    public static PileupElement createSplicedDeletionPileupElement(int offsetIntoRead, final Allele referenceAllele, final int lengthOfRead) {
+        ParamUtils.isPositive(lengthOfRead, "length of read is invalid for creating an artificial read, must be greater than 0.");
+        ParamUtils.inRange(offsetIntoRead, 0, lengthOfRead-1, "offset into read is invalid for creating an artificial read, must be 0-" + (lengthOfRead-1) + ".");
+        Utils.nonNull(referenceAllele);
+
+        // Do not include the prepended "ref"
+        final int numberOfSpecifiedBasesToDelete = referenceAllele.getBases().length - 1;
+        final int numberOfBasesToActuallyDelete = Math.min(numberOfSpecifiedBasesToDelete, lengthOfRead - offsetIntoRead - 1);
+
+        final int newReadLength = lengthOfRead - numberOfBasesToActuallyDelete;
+
+        String cigarString = (offsetIntoRead + 1) + "M";
+
+        if (numberOfBasesToActuallyDelete > 0) {
+            cigarString += numberOfBasesToActuallyDelete + "D";
+        }
+        final int remainingBases = lengthOfRead - (offsetIntoRead + 1) - numberOfBasesToActuallyDelete;
+        if (remainingBases > 0) {
+            cigarString += remainingBases + "M";
+        }
+
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final GATKRead gatkRead = ArtificialReadUtils.createArtificialRead(cigar);
+        final PileupElement pileupElement = PileupElement.createPileupForReadAndOffset(gatkRead, offsetIntoRead);
+
+        // The Cigar string has basically already told the initial generation of a read to delete bases.
+        final byte[] bases = gatkRead.getBases();
+
+        // Make sure that the one prepended "reference base" matches the input.
+        bases[offsetIntoRead] = referenceAllele.getBases()[0];
+
+        gatkRead.setBases(bases);
+
+        return pileupElement;
+    }
+
+    /**
+     * See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}, except that this method returns a
+     * pileup element containing base-by-base replacement.  As a result, the length of the read will not change.
+     *
+     * @param offsetIntoRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @param newAllele The new bases that should be in the read at the specified position.  If this allele causes the
+     *                  replacement to extend beyond the end of the read
+     *                  (i.e. offsetIntoRead + length(newAllele) is greater than length of read),
+     *                  the replacement will be truncated.
+     * @param lengthOfRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @return pileupElement with an artificial read containing the new bases specified by te given allele.
+     */
+    public static PileupElement createNonIndelPileupElement(final int offsetIntoRead, final Allele newAllele, final int lengthOfRead) {
+        ParamUtils.isPositive(lengthOfRead, "length of read is invalid for creating an artificial read, must be greater than 0.");
+        ParamUtils.inRange(offsetIntoRead, 0, lengthOfRead-1, "offset into read is invalid for creating an artificial read, must be 0-" + (lengthOfRead-1) + ".");
+        Utils.nonNull(newAllele);
+
+        final String cigarString = lengthOfRead + "M";
+
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final GATKRead gatkRead = ArtificialReadUtils.createArtificialRead(cigar);
+        final byte[] newBases = gatkRead.getBases();
+        final int upperBound = Math.min(offsetIntoRead + newAllele.getBases().length, lengthOfRead);
+        for (int i = offsetIntoRead; i < upperBound; i++) {
+            newBases[i] = newAllele.getBases()[i - offsetIntoRead];
+        }
+        gatkRead.setBases(newBases);
+        return PileupElement.createPileupForReadAndOffset(gatkRead, offsetIntoRead);
     }
 }

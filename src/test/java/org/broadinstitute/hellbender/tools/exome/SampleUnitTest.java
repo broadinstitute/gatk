@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import java.util.List;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class SampleUnitTest extends BaseTest {
+public final class SampleUnitTest extends GATKBaseTest {
 
     /**
      * Different read-group counts used in testing.

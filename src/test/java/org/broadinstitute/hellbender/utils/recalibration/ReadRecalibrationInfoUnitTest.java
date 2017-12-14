@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 
-public final class ReadRecalibrationInfoUnitTest extends BaseTest {
+public final class ReadRecalibrationInfoUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "InfoProvider")
     public Object[][] createCombineTablesProvider() {

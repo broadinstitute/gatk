@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.R;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -11,14 +12,19 @@ import java.io.File;
 /**
  * Basic unit test for RScriptExecutor in reduced reads
  */
-public final class RScriptExecutorUnitTest extends BaseTest {
+public final class RScriptExecutorUnitTest extends GATKBaseTest {
 
     private static final String HELLO_WORLD_SCRIPT = "print('hello, world')";
     private static final String GSALIB_LOADED_SCRIPT = "if (!'package:gsalib' %in% search()) stop('gsalib not loaded')";
 
     @Test(groups = {"R"})
     public void testRscriptExists() {
-        Assert.assertTrue(RScriptExecutor.RSCRIPT_EXISTS, "Rscript not found in environment ${PATH}");
+        Assert.assertTrue(new RScriptExecutor().externalExecutableExists(), "Rscript not found in environment ${PATH}");
+    }
+
+    @Test(groups = {"R"})
+    public void testRscriptEnsureExists() {
+        Assert.assertNotNull(new RScriptExecutor(true), "Rscript not found in environment ${PATH}");
     }
 
     @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
@@ -34,17 +40,17 @@ public final class RScriptExecutorUnitTest extends BaseTest {
     }
 
     @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
-    public void testNonExistantScriptException() {
+    public void testNonExistentScriptException() {
         RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new File("does_not_exists.R"));
+        executor.addScript(BaseTest.getSafeNonExistentFile("does_not_exists.R"));
         executor.exec();
     }
 
     @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
-    public void testNonExistantScriptNoException() {
+    public void testNonExistentScriptNoException() {
         logger.warn("Testing that warning is printed an no exception thrown for missing script.");
         RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new File("does_not_exists.R"));
+        executor.addScript(BaseTest.getSafeNonExistentFile("does_not_exists.R"));
         executor.setIgnoreExceptions(true);
         Assert.assertFalse(executor.exec(), "Exec should have returned false when the job failed");
     }

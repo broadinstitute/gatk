@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.tools.validation.CompareBaseQualities;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -35,7 +35,7 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
     }
 
     private File applyBQSR(final File bamIn, final String interval, final File recalOut, final boolean skipIndels) {
-        final File bamOut = BaseTest.createTempFile("applyBQSR." + skipIndels, ".bam");
+        final File bamOut = GATKBaseTest.createTempFile("applyBQSR." + skipIndels, ".bam");
         final ArgumentsBuilder args1 = new ArgumentsBuilder();
         args1.addInput(bamIn);
         args1.addFileArgument("bqsr", recalOut);
@@ -46,7 +46,7 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
     }
 
     private File baseRecalibrator(final File bamIn, final String interval, final boolean skipIndels) {
-        final File recalOut = BaseTest.createTempFile("baseRecalibrator." + skipIndels, ".recal");
+        final File recalOut = GATKBaseTest.createTempFile("baseRecalibrator." + skipIndels, ".recal");
 
         final ArgumentsBuilder args1 = new ArgumentsBuilder();
         args1.addInput(bamIn);

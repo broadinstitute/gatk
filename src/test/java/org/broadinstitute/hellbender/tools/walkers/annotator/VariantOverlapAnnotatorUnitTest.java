@@ -7,12 +7,12 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -21,7 +21,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
+public final class VariantOverlapAnnotatorUnitTest extends GATKBaseTest {
 
     private VariantContext makeVC(final String source, final String id, final List<String> alleles) {
         final VariantContext vc = GATKVariantContextUtils.makeFromAlleles(source, "20", 10, alleles);
@@ -131,7 +131,7 @@ public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
         Assert.assertEquals(annotated, toAnnotate);
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup=QCProgramGroup.class)
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup=TestProgramGroup.class)
     private static class ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap extends CommandLineProgram {
         @Argument(fullName = "dbsnp", shortName = "f")
         FeatureInput<Feature> featureArgument;

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.iterators;
 
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-public class IntervalLocusIteratorUnitTest extends BaseTest {
+public class IntervalLocusIteratorUnitTest extends GATKBaseTest {
 
     @Test
     public void testSimple() {

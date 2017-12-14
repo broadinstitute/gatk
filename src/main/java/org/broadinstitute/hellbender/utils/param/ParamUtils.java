@@ -215,7 +215,7 @@ public class ParamUtils {
         Utils.nonNull(stringIterator, "String list cannot be null");
         try (final FileWriter writer = new FileWriter(outputFile.getAbsolutePath())) {
             for (String str : stringIterator) {
-                writer.write(str);
+                writer.write(str + "\n");
             }
         } catch (final IOException ioe) {
             throw new GATKException("Cannot write to file.", ioe);

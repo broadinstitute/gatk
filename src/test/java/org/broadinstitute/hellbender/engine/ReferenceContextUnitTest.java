@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public final class ReferenceContextUnitTest extends BaseTest {
+public final class ReferenceContextUnitTest extends GATKBaseTest {
 
     private static final File TEST_REFERENCE = new File(hg19MiniReference);
 
@@ -182,22 +182,61 @@ public final class ReferenceContextUnitTest extends BaseTest {
         }
     }
 
-    private void checkReferenceContextBases( final ReferenceContext refContext, final String expectedBases ) {
-        byte[] contextBases = refContext.getBases();
+    @Test
+    public void testGetBasesStaticWindow() {
+        try (final ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
+            final SimpleInterval interval = new SimpleInterval("1", 11210, 11220);
+            final ReferenceContext refContext = new ReferenceContext(reference, interval);
+            final String intervalBases = "CGGTGCTGTGC";
 
-        List<Byte> contextBasesFromIterator = new ArrayList<>();
-        Iterator<Byte> baseIterator = refContext.iterator();
+            checkReferenceContextBasesFromInterval(refContext, intervalBases, interval);
+            Assert.assertEquals(refContext.getWindow(), interval);
+
+            checkReferenceContextBasesFromInterval(refContext, "GCTCA" + intervalBases + "CAGGG",
+                    new SimpleInterval(interval.getContig(), interval.getStart() - 5, interval.getEnd() + 5)
+            );
+            Assert.assertEquals(refContext.getWindow(), interval);
+
+            checkReferenceContextBasesFromInterval(refContext, intervalBases + "CAGGGCGCCC",
+                    new SimpleInterval(interval.getContig(), interval.getStart() - 0, interval.getEnd() + 10)
+            );
+            Assert.assertEquals(refContext.getWindow(), interval);
+
+            checkReferenceContextBasesFromInterval(refContext, "CTACAGGACCCGCTTGCTCA" + intervalBases + "CAG",
+                    new SimpleInterval(interval.getContig(), interval.getStart() - 20, interval.getEnd() + 3)
+            );
+            Assert.assertEquals(refContext.getWindow(), interval);
+        }
+    }
+
+    private void checkReferenceContextBases( final ReferenceContext refContext, final String expectedBases ) {
+
+        final byte[] contextBases = refContext.getBases();
+
+        final List<Byte> contextBasesFromIterator = new ArrayList<>();
+        final Iterator<Byte> baseIterator = refContext.iterator();
         while ( baseIterator.hasNext() ) {
             contextBasesFromIterator.add(baseIterator.next());
         }
 
         Assert.assertEquals(contextBases.length, expectedBases.length(), "Wrong number of bases from refContext.getBases()");
-        Assert.assertEquals(contextBasesFromIterator.size(), expectedBases.length(), "Wrong number of bases from refContext.iterator()");
 
-        byte[] expectedBasesByteArray = expectedBases.getBytes();
+        final byte[] expectedBasesByteArray = expectedBases.getBytes();
         for ( int baseIndex = 0; baseIndex < expectedBases.length(); ++baseIndex ) {
             Assert.assertEquals(contextBases[baseIndex], expectedBasesByteArray[baseIndex], "Base #" + (baseIndex + 1) + " incorrect from refContext.getBases()");
             Assert.assertEquals(contextBasesFromIterator.get(baseIndex).byteValue(), expectedBasesByteArray[baseIndex], "Base #" + (baseIndex + 1) + " incorrect from refContext.iterator()");
+        }
+    }
+
+    private void checkReferenceContextBasesFromInterval( final ReferenceContext refContext, final String expectedBases, final SimpleInterval interval ) {
+
+        final byte[] contextBases = refContext.getBases(interval);
+
+        Assert.assertEquals(contextBases.length, expectedBases.length(), "Wrong number of bases from refContext.getBases()");
+
+        final byte[] expectedBasesByteArray = expectedBases.getBytes();
+        for ( int baseIndex = 0; baseIndex < expectedBases.length(); ++baseIndex ) {
+            Assert.assertEquals(contextBases[baseIndex], expectedBasesByteArray[baseIndex], "Base #" + (baseIndex + 1) + " incorrect from refContext.getBases()");
         }
     }
 

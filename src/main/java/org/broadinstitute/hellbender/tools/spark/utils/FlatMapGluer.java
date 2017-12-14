@@ -68,4 +68,8 @@ public class FlatMapGluer<I,O> implements Iterator<O> {
                                                  final I sentinel ) {
         return new FlatMapGluer<>(flatMapFunc,inputIterator,sentinel);
     }
+
+    public static <T> Iterator<T> concatIterators( final Iterator<Iterator<T>> itrItr ) {
+        return new FlatMapGluer<>(itr -> itr, itrItr);
+    }
 }

@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class VariantDataManagerUnitTest extends BaseTest {
+public class VariantDataManagerUnitTest extends GATKBaseTest {
 
     @Test
     public final void testCalculateSortOrder() {

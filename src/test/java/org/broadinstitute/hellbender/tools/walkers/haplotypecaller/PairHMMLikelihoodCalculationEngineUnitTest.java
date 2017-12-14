@@ -15,9 +15,9 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -27,11 +27,11 @@ import java.util.*;
 /**
  * Unit tests for PairHMMLikelihoodCalculationEngine
  */
-public final class PairHMMLikelihoodCalculationEngineUnitTest extends BaseTest {
+public final class PairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTest {
 
     Allele Aref, T, C, G, Cref, ATC, ATCATC;
 
-    @BeforeSuite
+    @BeforeClass
     public void setup() {
         // alleles
         Aref = Allele.create("A", true);

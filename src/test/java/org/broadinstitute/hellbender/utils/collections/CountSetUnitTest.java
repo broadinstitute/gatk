@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.collections;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import java.util.*;
 /**
  * Unit tests for {@link CountSet}
  */
-public final class CountSetUnitTest extends BaseTest {
+public final class CountSetUnitTest extends GATKBaseTest {
 
     @Test(dataProvider="capacities")
     public void testSize(final int capacity) {

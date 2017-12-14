@@ -1,2 +1,0 @@
-chrom	start	end	length	name	%gc	mean_coverage	normalized_coverage
-20	8113296	10015981	1902686	chr20:8113295:10015981:Coordinate	0.387748	0.004787	1

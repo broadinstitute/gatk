@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.PositionalArguments;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import static org.broadinstitute.hellbender.transformers.BQSRReadTransformer.constructStaticQuantizedMapping;
 
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "USAGE: CompareBaseQualities <SAMFile1> <SAMFile2>\n" +
                 "Compares the base qualities of two input SAM/BAM/CRAM files. The files must be sorted exactly the same name.",

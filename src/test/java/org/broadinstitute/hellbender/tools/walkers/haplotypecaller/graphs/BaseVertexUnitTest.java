@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public final class BaseVertexUnitTest extends BaseTest {
+public final class BaseVertexUnitTest extends GATKBaseTest {
     @Test
     public void testBasic() {
         final byte[] bases = "ACT".getBytes();

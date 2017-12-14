@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.ValidationStringency;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 
-public final class SamAssertionUtilsUnitTest extends BaseTest{
+public final class SamAssertionUtilsUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "bamPairs")
     public Object[][] differentFilesButSameContent(){

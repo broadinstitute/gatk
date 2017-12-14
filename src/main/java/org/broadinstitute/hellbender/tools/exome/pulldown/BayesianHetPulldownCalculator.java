@@ -4,8 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.*;
 import htsjdk.samtools.filter.DuplicateReadFilter;
-import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
 import htsjdk.samtools.filter.SamRecordFilter;
+import htsjdk.samtools.filter.SecondaryAlignmentFilter;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.SamLocusIterator;
@@ -291,7 +291,7 @@ public final class BayesianHetPulldownCalculator {
         final SamLocusIterator locusIterator = new SamLocusIterator(samReader, snpIntervals, false);
 
         /* set read and locus filters */
-        final List<SamRecordFilter> samFilters = Arrays.asList(new NotPrimaryAlignmentFilter(),
+        final List<SamRecordFilter> samFilters = Arrays.asList(new SecondaryAlignmentFilter(),
                 new DuplicateReadFilter());
         locusIterator.setSamFilters(samFilters);
         locusIterator.setEmitUncoveredLoci(false);

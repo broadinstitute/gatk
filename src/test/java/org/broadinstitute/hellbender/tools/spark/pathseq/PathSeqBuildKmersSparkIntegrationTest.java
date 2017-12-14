@@ -4,7 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.spark.sv.SVKmerShort;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
@@ -28,7 +28,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
     @Test
     public void testHopscotchSetFromFasta() throws Exception {
 
-        final String libraryPath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
+        final String libraryPath = publicTestDir + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
         final File expectedFile = new File(libraryPath);
         final File ref = new File(hg19MiniReference);
         final File output = createTempFile("test", ".hss");
@@ -54,7 +54,7 @@ public class PathSeqBuildKmersSparkIntegrationTest extends CommandLineProgramTes
     @Test
     public void testBloomFilterFromFasta() throws Exception {
 
-        final String libraryPath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
+        final String libraryPath = publicTestDir + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
         final File expectedFile = new File(libraryPath);
         final File ref = new File(hg19MiniReference);
         final File output = createTempFile("test", ".bfi");

@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -24,13 +26,11 @@ import java.util.OptionalDouble;
  * <p>The read position rank sum test can not be calculated for sites without a mixture of reads showing both the reference and alternate alleles.</p>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Rank sum test of per-read likelihoods of REF versus ALT reads (LikelihoodRankSum)")
 public final class LikelihoodRankSumTest extends RankSumTest {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY); }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
 
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, final ReadLikelihoods<Allele>.BestAllele bestAllele) {

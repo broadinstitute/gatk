@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public final class LIBSDownsamplingInfoUnitTest extends BaseTest {
+public final class LIBSDownsamplingInfoUnitTest extends GATKBaseTest {
 
     @Test
     public void testToLibsInfoNone() throws Exception {

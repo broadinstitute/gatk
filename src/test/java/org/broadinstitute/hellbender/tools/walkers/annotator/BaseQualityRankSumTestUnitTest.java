@@ -3,12 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_BaseQualityRankSumTest;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -30,11 +29,11 @@ public final class BaseQualityRankSumTestUnitTest {
     private static final Allele REF = Allele.create("T", true);
     private static final Allele ALT = Allele.create("A", false);
 
-    private GATKRead makeRead(final int qual) {
-        return AnnotationArtificialData.makeRead(qual, 50);
+    public static GATKRead makeRead(final int qual) {
+        return ArtificialAnnotationUtils.makeRead(qual, 50);
     }
 
-    private VariantContext makeVC(final Allele refAllele, final Allele altAllele) {
+    public static VariantContext makeVC(final Allele refAllele, final Allele altAllele) {
         final double[] genotypeLikelihoods1 = {30, 0, 190};
         final GenotypesContext testGC = GenotypesContext.create(2);
         // SAMPLE_1 -> A/T with GQ 30
@@ -57,7 +56,7 @@ public final class BaseQualityRankSumTestUnitTest {
         final List<GATKRead> refReads = Arrays.stream(refBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
         final List<GATKRead> altReads = Arrays.stream(altBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(SAMPLE_1, refReads, altReads, -100.0, -100.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods(SAMPLE_1, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final ReferenceContext ref = null;
         final VariantContext vc = makeVC(REF, ALT);
@@ -72,35 +71,6 @@ public final class BaseQualityRankSumTestUnitTest {
         Assert.assertEquals(ann.getDescriptions().get(0).getID(), key);
         Assert.assertEquals(ann.getKeyNames().size(), 1);
         Assert.assertEquals(ann.getKeyNames().get(0), key);
-    }
-
-    @Test
-    public void testBaseQualRawAnnotate() {
-        final AS_RankSumTest ann =  new AS_BaseQualityRankSumTest();
-        final String key1 = GATKVCFConstants.AS_RAW_BASE_QUAL_RANK_SUM_KEY;
-        final String key2 = GATKVCFConstants.AS_BASE_QUAL_RANK_SUM_KEY;
-
-        final int[] altBaseQuals = {10, 20};
-        final int[] refBaseQuals = {50, 60};
-        final List<GATKRead> refReads = Arrays.stream(refBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
-        final List<GATKRead> altReads = Arrays.stream(altBaseQuals).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
-        final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(SAMPLE_1, refReads, altReads, -100.0, -100.0, REF, ALT);
-
-        final ReferenceContext ref = null;
-        final VariantContext vc = makeVC(REF, ALT);
-
-        final Map<String, Object> annotateRaw = ann.annotateRawData(ref, vc, likelihoods);
-        final Map<String, Object> annotateNonRaw = ann.annotate(ref, vc, likelihoods);
-
-        final String expectedAnnotation = refBaseQuals[0] + ",1," + refBaseQuals[1] + ",1" + AS_RankSumTest.PRINT_DELIM + altBaseQuals[0] + ",1," + altBaseQuals[1] + ",1";
-        Assert.assertEquals(annotateRaw.get(key1),    expectedAnnotation);
-        Assert.assertEquals(annotateNonRaw.get(key1), expectedAnnotation);
-
-        Assert.assertEquals(ann.getDescriptions().size(), 1);
-        Assert.assertEquals(ann.getDescriptions().get(0).getID(), key1);
-        Assert.assertEquals(ann.getKeyNames().size(), 1);
-        Assert.assertEquals(ann.getKeyNames().get(0), key2);
     }
 
     @Test

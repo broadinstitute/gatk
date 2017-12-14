@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import htsjdk.samtools.Cigar;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public final class PathUnitTest extends BaseTest {
+public final class PathUnitTest extends GATKBaseTest {
     @Test
     public void testAlignReallyLongDeletion() {
         final String ref = "ATGGTGGCTCATACCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGAACATCACCTGAGGCCAGGAGTTCAAAACCAGCCTGGCTAACATAGCAAAACCCCATCTCTAATGAAAATACAAAAATTAGCTGGGTGTGGTGGTGTCCGCCTGTAGTCCCAGCTACTCAGGAGACTAAGGCATGAGAATCACTTGAACCCAGGATGCAGAGGCTGTAGTGAGCCGAGATTGCACCACGGCTGCACTCCAGCCTGGGCAACAGAGCGAGACTCTGTCTCAAATAAAATAGCGTAACGTAACATAACATAACATAACATAACATAACATAACATAACATAACATAACATAACATAACACAACAACAAAATAAAATAACATAAATCATGTTGTTAGGAAAAAAATCAGTTATGCAGCTACATGCTATTTACAAGAGATATACCTTAAAATATAAGACACAGAGGCCGGGCGCGGTAGCTCATGCCTGTAATCCCAGCACTTTGGGAGGCTGAGGCAAGCGGATCATGAGGTCAGGAGATCGAGACCATCC";
@@ -15,7 +16,7 @@ public final class PathUnitTest extends BaseTest {
         final SeqVertex v = new SeqVertex(hap);
         graph.addVertex(v);
         final Path<SeqVertex,BaseEdge> path = new Path<>(v, graph);
-        final Cigar cigar = path.calculateCigar(ref.getBytes());
+        final Cigar cigar = path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance());
         Assert.assertNull(cigar, "Should have failed gracefully");
     }
 

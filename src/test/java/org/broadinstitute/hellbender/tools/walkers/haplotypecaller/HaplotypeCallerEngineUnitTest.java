@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public class HaplotypeCallerEngineUnitTest extends BaseTest {
+public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
 
     @Test
     public void testIsActive() throws IOException {
@@ -47,7 +47,7 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
               final ReferenceDataSource ref = new ReferenceFileSource(reference);
               final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference);) {
 
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, reads.getHeader(), referenceReader);
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, reads.getHeader(), referenceReader);
 
             List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
             hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));

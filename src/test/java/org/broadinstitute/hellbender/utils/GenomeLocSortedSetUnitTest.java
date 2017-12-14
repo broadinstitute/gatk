@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
@@ -15,7 +15,7 @@ import java.util.*;
 
 import static org.testng.Assert.*;
 
-public final class GenomeLocSortedSetUnitTest extends BaseTest {
+public final class GenomeLocSortedSetUnitTest extends GATKBaseTest {
 
     private GenomeLocSortedSet mSortedSet = null;
     private SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(NUMBER_OF_CHROMOSOMES, STARTING_CHROMOSOME, CHROMOSOME_SIZE);

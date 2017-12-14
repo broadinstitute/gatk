@@ -1,0 +1,15 @@
+{
+  "CNVGermlineCohortWorkflow.sex_genotypes": "File",
+  "CNVGermlineCohortWorkflow.contig_ploidy_annotations": "File",
+  "CNVGermlineCohortWorkflow.transition_prior_table": "File",
+  "CNVGermlineCohortWorkflow.copy_number_transition_prior_files": "Array[File]",
+  "CNVGermlineCohortWorkflow.output_path": "String",
+  "CNVGermlineCohortWorkflow.num_latents": "Int",
+  "CNVGermlineCohortWorkflow.model_path": "String",
+  "CNVGermlineCohortWorkflow.normal_bams_list": "File",
+  "CNVGermlineCohortWorkflow.ref_fasta": "File",
+  "CNVGermlineCohortWorkflow.ref_fasta_dict": "File",
+  "CNVGermlineCohortWorkflow.ref_fasta_fai": "File",
+  "CNVGermlineCohortWorkflow.gatk_jar": "String",
+  "CNVGermlineCohortWorkflow.targets": "(optional) File?"
+}

@@ -4,6 +4,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 public final class RuntimeUtils {
     public static final String[] PATHS;
 
@@ -31,4 +33,21 @@ public final class RuntimeUtils {
         }
         return null;
     }
+
+    /**
+     * Given a Class that is a CommandLineProgram, either GATK or Picard, return a display name suitable for
+     * presentation to the user that distinguishes GATK tools from Picard tools by including a " (Picard)" suffix;
+     * @param toolClass A CommandLineProgram class object may not be null
+     * @return tool display name
+     */
+    public static String toolDisplayName(final Class<?> toolClass) {
+        Utils.nonNull(toolClass, "A valid class is required to get a display name");
+
+        final String picardToolSuffix = " (Picard)";
+        final Class<?> picardCommandLineProgramClass = picard.cmdline.CommandLineProgram.class;
+        return picardCommandLineProgramClass.isAssignableFrom(toolClass) ?
+                toolClass.getSimpleName() + picardToolSuffix :
+                toolClass.getSimpleName();
+    }
+
 }

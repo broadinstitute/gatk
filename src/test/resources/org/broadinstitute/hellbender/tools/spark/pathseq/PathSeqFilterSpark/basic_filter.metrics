@@ -1,0 +1,10 @@
+## htsjdk.samtools.metrics.StringHeader
+# PathSeqFilterSpark  --output /Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqFilterSpark/basic_output --filterMetricsFile /Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqFilterSpark/basic_filter.metrics --filterDuplicates false --input /Users/markw/IdeaProjects/gatk/src/test/resources/org/broadinstitute/hellbender/tools/spark/pathseq/PathSeqFilterSpark/basic_input.bam  --isHostAligned false --skipFilters false --skipPreBwaRepartition false --minClippedReadLength 31 --maxMaskedBases 2 --minBaseQuality 15 --readTrimmerThreshold 15 --dustPhred 2 --dustWindowSize 64 --dustTScore 20.0 --filterMinIdentity 30 --hostKmerThreshold 1 --filterMinSeedLength 19 --filterReadsPerPartition 200000 --maxAdapterMismatches 1 --minAdapterLength 12 --readValidationStringency SILENT --interval_set_rule UNION --interval_padding 0 --interval_exclusion_padding 0 --interval_merging_rule ALL --bamPartitionSize 0 --disableSequenceDictionaryValidation false --shardedOutput false --numReducers 0 --sparkMaster local[*] --help false --version false --showHidden false --verbosity INFO --QUIET false --use_jdk_deflater false --use_jdk_inflater false --gcs_max_retries 20 --disableToolDefaultReadFilters false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: September 22, 2017 12:29:55 PM EDT
+
+## METRICS CLASS	org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterMetrics
+PRIMARY_READS	READS_AFTER_PREALIGNED_HOST_FILTER	READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER	READS_AFTER_HOST_FILTER	READS_AFTER_DEDUPLICATION	FINAL_PAIRED_READS	FINAL_UNPAIRED_READS	FINAL_TOTAL_READS	LOW_QUALITY_OR_LOW_COMPLEXITY_READS_FILTERED	HOST_READS_FILTERED	DUPLICATE_READS_FILTERED
+15002	15002	13300	13300	13300	12040	1260	13300	1702	0	0
+
+

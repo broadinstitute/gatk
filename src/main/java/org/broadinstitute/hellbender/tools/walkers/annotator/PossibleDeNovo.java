@@ -4,9 +4,12 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
 import org.broadinstitute.hellbender.utils.samples.Trio;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -34,24 +37,23 @@ import java.util.*;
  * </ul>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
 public final class PossibleDeNovo extends InfoFieldAnnotation {
 
     public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
         this.trios = Collections.unmodifiableSet(new LinkedHashSet<>(trios));
-        if ( trios.isEmpty() ) {
-            PossibleDeNovo.logger.warn("Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
-        }
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
     }
 
     /**
-     * This is dummy constructor that will do nothing until https://github.com/broadinstitute/gatk/issues/1468 is fixed
+     * This is dummy constructor that will do nothing until https://github.com/broadinstitute/gatk/issues/1880 is addressed
      */
     public PossibleDeNovo(){
         this(Collections.emptySet(), 0);
     }
 
-    private static final Logger logger = LogManager.getLogger(PossibleDeNovo.class);
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+
 
     private static final int hi_GQ_threshold = 20; //WARNING - If you change this value, update the description in GATKVCFHeaderLines
     private static final int lo_GQ_threshold = 10; //WARNING - If you change this value, update the description in GATKVCFHeaderLines
@@ -72,6 +74,7 @@ public final class PossibleDeNovo extends InfoFieldAnnotation {
                                         final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
         if (trios.isEmpty()){
+            warning.warn("Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
             return Collections.emptyMap();
         }
         final List<String> highConfDeNovoChildren = new ArrayList<>();

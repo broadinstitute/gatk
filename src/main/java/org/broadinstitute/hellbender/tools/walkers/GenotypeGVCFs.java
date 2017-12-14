@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
@@ -94,26 +95,11 @@ public final class GenotypeGVCFs extends VariantWalker {
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
-    /**
-     * Which annotations to recompute for the combined output VCF file.
-     */
-    @Advanced
-    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to recompute", optional=true)
-    private List<String> annotationsToUse = new ArrayList<>();
-
-
-    @Advanced
-    @Argument(fullName="annotationsToExclude", shortName="AX", doc="One or more specific annotations to exclude from recomputation", optional=true)
-    private List<String> annotationsToExclude = new ArrayList<>();
-
-    /**
-     * This argument controls which groups of annotations to add to the output VCF file. Not recommended for normal
-     * operation of the tool because it obscures the specific requirements of individual annotations. Any requirements
-     * that are not met (e.g. failing to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
-     */
-    @Advanced
-    @Argument(fullName="group", shortName="G", doc="One or more classes/groups of annotations to apply to variant calls", optional=true)
-    private List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{StandardAnnotation.class.getSimpleName()}));
+    @ArgumentCollection
+    private final VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
+            Arrays.asList(StandardAnnotation.class.getSimpleName()),
+            Collections.emptyList(),
+            Collections.emptyList());
 
     /**
      * This option can only be activated if intervals are specified.
@@ -140,12 +126,7 @@ public final class GenotypeGVCFs extends VariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    //todo: remove this when the reducible annotation framework is in place
-    //this is ok because RMS_MAPPING is stateless, but it needs to be instantiated in order to call its
-    //overridden instance methods
-    private static final RMSMappingQuality RMS_MAPPING_QUALITY = new RMSMappingQuality();
-
-    //these are used when {@link #onlyOutputCallsStartingInIntervals) is true
+    /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
 
     @Override
@@ -167,11 +148,12 @@ public final class GenotypeGVCFs extends VariantWalker {
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
 
-        genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
+        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(variantAnnotationArgumentCollection, dbsnp.dbsnp, Collections.emptyList());
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbsnp.dbsnp, Collections.emptyList());
+        // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
+        genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs), annotationEngine.isRequestedReducibleRawKey(GATKVCFConstants.AS_QUAL_KEY));
 
-        merger = new ReferenceConfidenceVariantContextMerger();
+        merger = new ReferenceConfidenceVariantContextMerger(annotationEngine);
 
         setupVCFWriter(inputVCFHeader, samples);
     }
@@ -187,7 +169,7 @@ public final class GenotypeGVCFs extends VariantWalker {
         // Remove GCVFBlocks
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCF_BLOCK));
 
-        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions());
+        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerLines.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
 
         // add headers for annotations added by this tool
@@ -225,7 +207,7 @@ public final class GenotypeGVCFs extends VariantWalker {
      * Re-genotype (and re-annotate) a combined genomic VC
      * @return a new VariantContext or null if the site turned monomorphic and we don't want such sites
      */
-    private VariantContext regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
+    private VariantContext  regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
         Utils.nonNull(originalVC);
 
         final VariantContext result;
@@ -233,10 +215,12 @@ public final class GenotypeGVCFs extends VariantWalker {
             // only re-genotype polymorphic sites
             final VariantContext regenotypedVC = calculateGenotypes(originalVC);
             if (isProperlyPolymorphic(regenotypedVC)) {
-                final VariantContext allelesTrimmed = GATKVariantContextUtils.reverseTrimAlleles(regenotypedVC);
-                final VariantContext withAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), allelesTrimmed);
-                //TODO: remove this when proper support for reducible annotations is added
-                result = RMS_MAPPING_QUALITY.finalizeRawMQ(withAnnotations);
+                // Note that reversetrimAlleles must be performed after the annotations are finalized because the reducible annotation data maps
+                // were generated and keyed on the un reverseTrimmed alleles from the starting VariantContexts. Thus reversing the order will make
+                // it difficult to recover the data mapping due to the keyed alleles no longer being present in the variant context.
+                final VariantContext withGenotypingAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), regenotypedVC);
+                final VariantContext withAnnotations = annotationEngine.finalizeAnnotations(withGenotypingAnnotations, originalVC);
+                result = GATKVariantContextUtils.reverseTrimAlleles(withAnnotations);
             } else if (includeNonVariants) {
                 result = originalVC;
             } else {
@@ -310,12 +294,15 @@ public final class GenotypeGVCFs extends VariantWalker {
      * @return a non-null VC
      */
     private VariantContext addGenotypingAnnotations(final Map<String, Object> originalAttributes, final VariantContext newVC) {
-        // we want to carry forward the attributes from the original VC but make sure to add the MLE-based annotations
+        // we want to carry forward the attributes from the original VC but make sure to add the MLE-based annotations and any other annotations generated by the genotyper.
         final Map<String, Object> attrs = new LinkedHashMap<>(originalAttributes);
         attrs.put(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, newVC.getAttribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY));
         attrs.put(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, newVC.getAttribute(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY));
         if (newVC.hasAttribute(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY)) {
             attrs.put(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY, newVC.getAttribute(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY));
+        }
+        if (newVC.hasAttribute(GATKVCFConstants.AS_QUAL_KEY)) {
+            attrs.put(GATKVCFConstants.AS_QUAL_KEY, newVC.getAttribute(GATKVCFConstants.AS_QUAL_KEY));
         }
         return new VariantContextBuilder(newVC).attributes(attrs).make();
     }

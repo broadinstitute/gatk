@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -25,7 +25,7 @@ import java.util.Map;
 
 import static org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource.*;
 
-public class ReferenceAPISourceUnitTest extends BaseTest {
+public class ReferenceAPISourceUnitTest extends GATKBaseTest {
 
     private ReferenceBases queryReferenceAPI(final String referenceName, final SimpleInterval interval, int pageSize ) {
         final Pipeline p = setupPipeline();
@@ -104,8 +104,8 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         };
     }
 
-    @Test(groups = "cloud", dataProvider = "assemblyIDData")
-    public void testCreateByAssemblyID(final String assemblyID, final String refID) throws Exception {
+    @Test(groups = "bucket", dataProvider = "assemblyIDData")
+    public void testCreateByAssemblyID(final String assemblyID, final String refID) {
         final Pipeline p = setupPipeline();
         final ReferenceAPISource apiSourceByAssemblyName = ReferenceAPISource.fromReferenceSetAssemblyID(p.getOptions(), assemblyID);
         final ReferenceAPISource apiSourceByID = makeReferenceAPISource(refID, p);
@@ -119,7 +119,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         };
     }
 
-    @Test(groups = "cloud", dataProvider = "assemblyIDDataMultiple", expectedExceptions = UserException.MultipleReferenceSets.class)
+    @Test(groups = "bucket", dataProvider = "assemblyIDDataMultiple", expectedExceptions = UserException.MultipleReferenceSets.class)
     public void testCreateByAssemblyIDMultipleReferenceSets(final String assemblyID, final String refID) throws Exception {
         final Pipeline p = setupPipeline();
         final ReferenceAPISource apiSourceByAssemblyName = ReferenceAPISource.fromReferenceSetAssemblyID(p.getOptions(), assemblyID);
@@ -127,7 +127,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(apiSourceByAssemblyName.getReferenceMap(), apiSourceByID.getReferenceMap());
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "bucket")
     public void testDummy() {
         String referenceName = HS37D5_REF_ID;
         final String expected = "AAACAGGTTA";
@@ -148,7 +148,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
 
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "bucket")
     public void testReferenceSourceQuery() {
         final ReferenceBases bases = queryReferenceAPI(HS37D5_REF_ID, new SimpleInterval("1", 50000, 50009));
 
@@ -158,7 +158,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(new String(bases.getBases()), "TAAACAGGTT", "Wrong bases returned");
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "bucket")
     public void testReferenceSourceMultiPageQuery() {
         final int mio = 1_000_000;
         final ReferenceBases bases1 = queryReferenceAPI(HS37D5_REF_ID, new SimpleInterval("1", 50000, 50000 + mio + 50));
@@ -180,7 +180,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
 
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "bucket")
     public void testReferenceSourceMultiSmallPagesQuery() {
         int pageSize = 300;
         // not a multiple of pageSize (testing the fetching of a partial page)
@@ -203,7 +203,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(seam1.getBases(), seam2.getBases(), "seam doesn't match (paging bug?)");
     }
 
-    @Test(groups = "cloud", expectedExceptions = UserException.ReferenceAPIReturnedUnexpectedNumberOfBytes.class)
+    @Test(groups = "bucket", expectedExceptions = UserException.ReferenceAPIReturnedUnexpectedNumberOfBytes.class)
     public void testOffContig() throws Exception {
         //Test the case of a query that starts before the end of the contig and runs off
         final int b37Chr1Len = 249250621;
@@ -216,7 +216,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         final ReferenceBases bases = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, new SimpleInterval("1", start, end), pageSize);
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "bucket")
     public void testReferenceSourceVaryingPageSizeQuery() {
 
         SimpleInterval interval = new SimpleInterval("1", 50000, 50050);
@@ -230,17 +230,17 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(bases1.getBases(), bases2.getBases(), "bases should match despite different paging size");
     }
 
-    @Test(groups = "cloud", expectedExceptions = UserException.class)
+    @Test(groups = "bucket", expectedExceptions = UserException.class)
     public void testReferenceSourceQueryWithInvalidContig() {
         final ReferenceBases bases = queryReferenceAPI(HS37D5_REF_ID, new SimpleInterval("FOOCONTIG", 1, 2));
     }
 
-    @Test(groups = "cloud", expectedExceptions = UserException.class)
+    @Test(groups = "bucket", expectedExceptions = UserException.class)
     public void testReferenceSourceQueryWithInvalidPosition() {
         final ReferenceBases bases = queryReferenceAPI(HS37D5_REF_ID, new SimpleInterval("1", 1000000000, 2000000000));
     }
 
-    @Test(groups = "cloud", expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "bucket", expectedExceptions = IllegalArgumentException.class)
     public void testReferenceSourceQueryWithNullInterval() {
         final ReferenceBases bases = queryReferenceAPI(HS37D5_REF_ID, null);
     }

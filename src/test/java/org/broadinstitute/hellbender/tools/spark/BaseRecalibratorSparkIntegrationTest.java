@@ -186,7 +186,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         };
     }
 
-    @Test(dataProvider = "BQSRCloudTest", groups = {"cloud", "spark"})
+    @Test(dataProvider = "BQSRCloudTest", groups = {"bucket", "spark"})
     public void testBQSRSparkCloud(final BQSRTest params) throws IOException {
         ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -270,7 +270,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
-    @Test(groups = {"spark", "cloud"})
+    @Test(groups = {"spark", "bucket"})
     public void testBQSRFailWithoutDBSNP() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
@@ -287,7 +287,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         spec.executeTest("testBQSRFailWithoutDBSNP", this);
     }
 
-    @Test(groups = {"spark", "cloud"})
+    @Test(groups = {"spark", "bucket"})
     public void testBQSRFailWithIncompatibleReference() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();

@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetrics;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
@@ -18,14 +18,14 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
 public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLineProgramTest{
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
+    private static final File TEST_DATA_DIR = new File(
+            "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectInsertSizeMetrics");
 
     @Override
     public String getTestedClassName() {
@@ -75,7 +75,7 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
 
         // create a directory to contain the results since there will be multiple collectors
         // and each may create multiple files
-        final File outDir = BaseTest.createTempDir("collectMultiMetricsSparkTest" );
+        final File outDir = GATKBaseTest.createTempDir("collectMultiMetricsSparkTest" );
         String outBase = outDir.getAbsolutePath() + "/collectMultiSparkMetrics";
 
         // IO arguments

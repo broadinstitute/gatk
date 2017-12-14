@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public final class IndexUtilsUnitTest extends BaseTest{
+public final class IndexUtilsUnitTest extends GATKBaseTest {
 
     @DataProvider(name= "okFeatureFiles")
     public Object[][] okFeatureFiles() {
@@ -78,7 +78,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
     public void testLoadIndexAcceptOldIndex() throws Exception {
         final File featureFile = new File(getToolTestDataDir(), "test_variants_for_index.newerThanIndex.vcf");
         final File featureFileIdx = new File(getToolTestDataDir(), "test_variants_for_index.newerThanIndex.vcf.idx");
-        final File tmpDir = BaseTest.createTempDir("testLoadIndexAcceptOldIndex");
+        final File tmpDir = GATKBaseTest.createTempDir("testLoadIndexAcceptOldIndex");
 
         final Path tmpFeatureFilePath= tmpDir.toPath().resolve(featureFile.toPath().getFileName());
         final Path tmpFeatureFileIdxPath= tmpDir.toPath().resolve(featureFileIdx.toPath().getFileName());

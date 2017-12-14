@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.utils.samples;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-
-public class SampleUnitTest extends BaseTest {
+public class SampleUnitTest extends GATKBaseTest {
 
     @DataProvider(name="basicSamples")
     public Object[][] basicSamples() {

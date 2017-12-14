@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-public class MarkDuplicatesSparkUtilsUnitTest extends BaseTest {
+public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
     @Test(groups = "spark")
     public void testSpanningIterator() {
         check(Collections.emptyIterator(), Collections.emptyList());

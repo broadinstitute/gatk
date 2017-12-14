@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -18,7 +18,7 @@ import java.util.Random;
 import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedClippedBytes;
 import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedOffset;
 
-public final class ContextCovariateUnitTest extends BaseTest {
+public final class ContextCovariateUnitTest extends GATKBaseTest {
     ContextCovariate covariate;
     RecalibrationArgumentCollection RAC;
 

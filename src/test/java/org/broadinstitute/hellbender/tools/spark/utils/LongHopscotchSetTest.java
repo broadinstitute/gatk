@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.utils;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +17,7 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public final class LongHopscotchSetTest extends BaseTest {
+public final class LongHopscotchSetTest extends GATKBaseTest {
     private static final long[] testVals = {0, 1, 2, 8, 16, 42, 97, 100, 2894765};
     private static final long[] notAllTestVals = {0, 1, 2, 3, 7, 22, 61};
     private static final long notInTestVals = 6;

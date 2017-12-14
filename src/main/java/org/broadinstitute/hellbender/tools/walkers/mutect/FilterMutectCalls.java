@@ -74,8 +74,7 @@ public final class FilterMutectCalls extends VariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    private final List<VariantContext> unfilteredCalls = new ArrayList<>();
-
+    private Mutect2FilteringEngine filteringEngine;
 
     @Override
     public void onTraversalStart() {
@@ -92,24 +91,21 @@ public final class FilterMutectCalls extends VariantWalker {
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
         vcfWriter = createVCFWriter(new File(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
+
+        final String tumorSample = getHeaderForVariants().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
+        filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample);
     }
 
     @Override
     public Object onTraversalSuccess() {
-        final String tumorSample = getHeaderForVariants().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
-        final Mutect2FilteringEngine filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample);
-        // TODO: implement sophisticated filtering
-        for (final VariantContext vc : unfilteredCalls) {
-            final VariantContextBuilder vcb = new VariantContextBuilder(vc);
-            vcb.filters(filteringEngine.calculateFilters(MTFAC, vc));
-            vcfWriter.add(vcb.make());
-        }
         return "SUCCESS";
     }
 
     @Override
     public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
-        unfilteredCalls.add(vc);
+        final VariantContextBuilder vcb = new VariantContextBuilder(vc);
+        vcb.filters(filteringEngine.calculateFilters(MTFAC, vc));
+        vcfWriter.add(vcb.make());
     }
 
     @Override

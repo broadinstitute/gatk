@@ -16,10 +16,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class GATKVariantContextUtilsUnitTest extends BaseTest {
+public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     Allele Aref, T, C, G, Cref, ATC, ATCATC;
     Allele ATCATCT;
@@ -36,7 +36,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
     Allele Anoref;
     Allele GT;
 
-    @BeforeSuite
+    @BeforeClass
     public void setup() throws IOException {
         // alleles
         Aref = Allele.create("A", true);
@@ -1922,5 +1922,197 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         final List<String> filterResult = GATKVariantContextUtils.createFilterListWithAppend(vc, testFilterString);
         Assert.assertEquals(filterResult.size(), 1);
         Assert.assertTrue(filterResult.contains(testFilterString));
+    }
+
+    @DataProvider
+    Object[][] provideAllelesAndFrameshiftResults() {
+        return new Object[][] {
+                { Allele.create((byte)'A'), Allele.create((byte)'A'), false },
+                { Allele.create((byte)'A'), Allele.create((byte)'T'), false },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        false
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'T'}),
+                        false
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'T',(byte)'T'}),
+                        false
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A'}),
+                        false
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
+                        false
+                },
+
+                // ======================
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
+                        true
+                },
+
+                {
+                        Allele.create(new byte[] {(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
+                        true
+                },
+                {
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A'}),
+                        Allele.create(new byte[] {(byte)'A',(byte)'A',(byte)'A',(byte)'A'}),
+                        true
+                },
+        };
+    }
+
+    @DataProvider
+    Object[][] providePositionsAndFrameshiftResults() {
+        return new Object[][] {
+                { 1,1,1, false },
+                { 1,3,1, true },
+                { 1,3,2, true },
+                { 1,3,3, false },
+                { 1,3,233, true },
+                { 1,3,234, false },
+                { 1,3,235, true },
+                { 8,9,8, true },
+                { 8,9,9, false },
+                { 8,9,10, true },
+                { 8,9,11, true },
+                { 8,9,12, false },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideDataForTestIsInsertion() {
+        return new Object[][] {
+                { Allele.create("A", true),     Allele.create("T"),     false },
+                { Allele.create("A", true),     Allele.create("TT"),    true },
+                { Allele.create("AA", true),    Allele.create("TT"),    false },
+                { Allele.create("AA", true),    Allele.create("T"),     false },
+                { Allele.create("A", true),     Allele.create("TTTTT"), true },
+                { Allele.create("AAAAA", true), Allele.create("T"),     false },
+                { Allele.create("AAAAA", true), Allele.create("TTTTT"), false },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideDataForTestIsDeletion() {
+        return new Object[][] {
+                { Allele.create("A", true),     Allele.create("T"),     false },
+                { Allele.create("A", true),     Allele.create("TT"),    false },
+                { Allele.create("AA", true),    Allele.create("TT"),    false },
+                { Allele.create("AA", true),    Allele.create("T"),     true },
+                { Allele.create("A", true),     Allele.create("TTTTT"), false },
+                { Allele.create("AAAAA", true), Allele.create("T"),     true },
+                { Allele.create("AAAAA", true), Allele.create("TTTTT"), false },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideDataForTestIsOnp() {
+        return new Object[][] {
+                { Allele.create("A", true),     Allele.create("T"),     true },
+                { Allele.create("A", true),     Allele.create("TT"),    false },
+                { Allele.create("AA", true),    Allele.create("TT"),    true },
+                { Allele.create("AA", true),    Allele.create("T"),     false },
+                { Allele.create("A", true),     Allele.create("TTTTT"), false },
+                { Allele.create("AAAAA", true), Allele.create("T"),     false },
+                { Allele.create("AAAAA", true), Allele.create("TTTTT"), true },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideDataForTestIsIndel() {
+        return new Object[][] {
+                { Allele.create("A", true),     Allele.create("T"),     false },
+                { Allele.create("A", true),     Allele.create("TT"),    true },
+                { Allele.create("AA", true),    Allele.create("TT"),    false },
+                { Allele.create("AA", true),    Allele.create("T"),     true },
+                { Allele.create("A", true),     Allele.create("TTTTT"), true },
+                { Allele.create("AAAAA", true), Allele.create("T"),     true },
+                { Allele.create("AAAAA", true), Allele.create("TTTTT"), false },
+        };
+    }
+
+
+    @Test(dataProvider = "provideAllelesAndFrameshiftResults")
+    void testIsFrameshift(final Allele ref, final Allele alt, final boolean expected) {
+        Assert.assertEquals( GATKVariantContextUtils.isFrameshift(ref, alt), expected );
+        Assert.assertEquals( GATKVariantContextUtils.isFrameshift(ref.getBaseString(), alt.getBaseString()), expected );
+    }
+
+    @Test(dataProvider = "providePositionsAndFrameshiftResults")
+    void testIsFrameshiftByPositions(final int refStart, final int refEnd, final int altEnd, final boolean expected) {
+        Assert.assertEquals( GATKVariantContextUtils.isFrameshift(refStart, refEnd, altEnd), expected );
+    }
+
+    @Test(dataProvider = "provideDataForTestIsInsertion")
+    void testIsInsertion(final Allele ref, final Allele alt, final boolean expected) {
+        Assert.assertEquals( GATKVariantContextUtils.isInsertion(ref, alt), expected );
+        Assert.assertEquals( GATKVariantContextUtils.isInsertion(ref.getBaseString(), alt.getBaseString()), expected );
+    }
+
+    @Test(dataProvider = "provideDataForTestIsDeletion")
+    void testIsDeletion(final Allele ref, final Allele alt, final boolean expected) {
+        Assert.assertEquals( GATKVariantContextUtils.isDeletion(ref, alt), expected );
+        Assert.assertEquals( GATKVariantContextUtils.isDeletion(ref.getBaseString(), alt.getBaseString()), expected );
+    }
+
+    @Test(dataProvider = "provideDataForTestIsOnp")
+    void testIsOnp(final Allele ref, final Allele alt, final boolean expected) {
+        Assert.assertEquals( GATKVariantContextUtils.isOnp(ref, alt), expected );
+        Assert.assertEquals( GATKVariantContextUtils.isOnp(ref.getBaseString(), alt.getBaseString()), expected );
+    }
+
+    @Test(dataProvider = "provideDataForTestIsIndel")
+    void testIsIndel(final Allele ref, final Allele alt, final boolean expected ) {
+        Assert.assertEquals( GATKVariantContextUtils.isIndel(ref, alt), expected );
+        Assert.assertEquals( GATKVariantContextUtils.isIndel(ref.getBaseString(), alt.getBaseString()), expected );
     }
 }

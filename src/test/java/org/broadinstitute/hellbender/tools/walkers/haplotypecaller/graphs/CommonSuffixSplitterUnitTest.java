@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Arrays;
 
-public final class CommonSuffixSplitterUnitTest extends BaseTest {
+public final class CommonSuffixSplitterUnitTest extends GATKBaseTest {
     private static final boolean DEBUG = false;
 
     @DataProvider(name = "SplitData")

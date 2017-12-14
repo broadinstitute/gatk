@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -65,6 +66,7 @@ import java.util.List;
  *
  * @author Ami Levy Moonshine
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Counts filtered reads at het sites for allele specific expression estimate",
         oneLineSummary = "Generates table of filtered base counts at het sites for allele specific expression",

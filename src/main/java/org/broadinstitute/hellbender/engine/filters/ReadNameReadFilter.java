@@ -9,13 +9,15 @@ import java.io.Serializable;
 
 /**
  * Keep only reads with this read name.
- * Matching is done by case-sensitive exact match.
+ *
+ * <p>Matching is done by case-sensitive exact match.</p>
  */
-@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with this read name")
 public final class ReadNameReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
+    public static final String READ_NAME_LONG_NAME = "read-name";
 
-    @Argument(fullName = "readName", shortName = "readName", doc="Keep only reads with this read name", optional=false)
+    @Argument(fullName = READ_NAME_LONG_NAME, shortName = "readName", doc="Keep only reads with this read name", optional=false)
     public String readName = null;
 
     @Override

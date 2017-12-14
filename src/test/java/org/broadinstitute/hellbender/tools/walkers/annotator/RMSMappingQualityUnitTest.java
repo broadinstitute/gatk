@@ -8,6 +8,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
@@ -15,12 +16,14 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class RMSMappingQualityUnitTest {
 
@@ -84,9 +87,9 @@ public final class RMSMappingQualityUnitTest {
         MQsListOK.removeAll(Collections.singleton(QualityUtils.MAPPING_QUALITY_UNAVAILABLE));
 
 
-        final List<GATKRead> reads = Arrays.stream(MQs).mapToObj(mq -> AnnotationArtificialData.makeRead(20, mq)).collect(Collectors.toList());
+        final List<GATKRead> reads = Arrays.stream(MQs).mapToObj(mq -> ArtificialAnnotationUtils.makeRead(20, mq)).collect(Collectors.toList());
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods("sample1", reads, -1.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods("sample1", reads, -1.0, REF, ALT);
 
 
         final VariantContext vc = makeVC();
@@ -123,21 +126,21 @@ public final class RMSMappingQualityUnitTest {
 
     @Test
     public void testDescriptions_AS() throws Exception {
-        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
-        Assert.assertEquals(cov.getDescriptions().size(), 1);
-        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
+        final ReducibleAnnotation cov = new AS_RMSMappingQuality();
+        Assert.assertEquals(cov.getRawDescriptions().size(), 1);
+        Assert.assertEquals(cov.getRawDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
     }
 
     @Test
     public void testNullLikelihoods_AS() throws Exception {
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
-        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
+        final AS_RMSMappingQuality cov = new AS_RMSMappingQuality();
         final Map<String, Object> annotate = cov.annotate(referenceContext, vc, null);
         Assert.assertTrue(annotate.isEmpty());
 
-        Assert.assertEquals(cov.getDescriptions().size(), 1);
-        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(cov.getRawDescriptions().size(), 1);
+        Assert.assertEquals(cov.getRawDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
     }
 
     @Test
@@ -156,10 +159,10 @@ public final class RMSMappingQualityUnitTest {
         //(casting i to (Object) would work too but it's more error prone)
         MQsListOK.removeAll(Collections.singleton(QualityUtils.MAPPING_QUALITY_UNAVAILABLE));
 
-        final List<GATKRead> reads = Arrays.stream(MQs).mapToObj(mq -> AnnotationArtificialData.makeRead(30, mq)).collect(Collectors.toList());
+        final List<GATKRead> reads = Arrays.stream(MQs).mapToObj(mq -> ArtificialAnnotationUtils.makeRead(30, mq)).collect(Collectors.toList());
 
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods("sample1", reads, -10.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods("sample1", reads, -10.0, REF, ALT);
 
         final VariantContext vc = makeVC();
         final ReferenceContext referenceContext= null;
@@ -188,6 +191,17 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertEquals(split.length, 2);
         Assert.assertEquals(split[0], String.format("%.2f", 0.0));
         Assert.assertEquals(split[1], String.format("%.2f", 0.0));
+    }
+
+    @Test
+    public void testFinalizeRawData(){
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                .attribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, "2000,100,20")
+                .attribute(VCFConstants.DEPTH_KEY, 20)
+                .make();
+        final VariantContext originalVC = null;
+        final Map<String, Object> output = new RMSMappingQuality().finalizeRawData(vc, originalVC);
+        Assert.assertEquals(output.get("MQ"), "10.00");
     }
 
     @Test
@@ -271,5 +285,38 @@ public final class RMSMappingQualityUnitTest {
         final VariantContext emptyVariantContext = makeVC();
         Assert.assertEquals(RMSMappingQuality.getNumOfReads(emptyVariantContext), -1);
 
+    }
+
+    @Test
+    public void testGetNumReadsFallbackBehavior() {
+        final Allele refAllele = Allele.create("A", true);
+        final Allele altAllele = Allele.create("T");
+
+        final VariantContext vc = new VariantContextBuilder().alleles(Arrays.asList(refAllele, altAllele))
+                .chr("1").start(15L).stop(15L).make();
+
+        final List<GATKRead> refReads = IntStream.range(0, 5).mapToObj(i -> ArtificialAnnotationUtils.makeRead(30, 5)).collect(Collectors.toList());
+        final List<GATKRead> altReads = IntStream.range(0, 10).mapToObj(i -> ArtificialAnnotationUtils.makeRead(30, 5)).collect(Collectors.toList());
+        final ReadLikelihoods<Allele> likelihoods = ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -100, -100 ,refAllele, altAllele);
+
+        // Testing the likelihoods map
+        Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc, likelihoods), 15);
+
+        // Testing that unavailable mapping quality gets filtered out
+        altReads.get(0).setMappingQuality(QualityUtils.MAPPING_QUALITY_UNAVAILABLE);
+        Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc, likelihoods), 14);
+    }
+
+
+    @Test
+    public void testGetNumReadsFallbackReturnsNegativeOneWhenDataIsBad(){
+        final Allele refAllele = Allele.create("A", true);
+        final Allele altAllele = Allele.create("T");
+        final VariantContext vc = new VariantContextBuilder().alleles(Arrays.asList(refAllele, altAllele))
+                .chr("1").start(15L).stop(15L).make();
+        final List<GATKRead> refReads = Collections.emptyList();
+        final List<GATKRead> altReads = Collections.emptyList();
+        final ReadLikelihoods<Allele> likelihoods = ArtificialAnnotationUtils.makeLikelihoods("sample1", refReads, altReads, -100, -100 ,refAllele, altAllele);
+        Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc,likelihoods), -1);
     }
 }

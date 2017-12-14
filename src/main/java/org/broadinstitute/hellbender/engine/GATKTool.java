@@ -26,6 +26,8 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -34,14 +36,9 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -65,7 +62,7 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
     private String masterSequenceDictionaryFilename = null;
 
-    public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
+    public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
@@ -75,7 +72,7 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
             doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
-    public boolean createOutputBamIndex = true;
+    public boolean createOutputBamIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_SHORT_NAME,
@@ -265,18 +262,20 @@ public abstract class GATKTool extends CommandLineProgram {
      *         The default implementation returns a value (40 MB) that is suitable for tools with a small
      *         number of large cloud inputs. Tools with large numbers of cloud inputs will likely want to
      *         override to specify a smaller size.
+     *         This value is maintained in the {@link GATKConfig} file.
      */
     public int getDefaultCloudPrefetchBufferSize() {
-        return 40;
+        return ConfigFactory.getInstance().getGATKConfig().cloudPrefetchBuffer();
     }
 
     /**
      * @return Default size in MB of the cloud index prefetch buffer. May be overridden by individual tools.
      *         A return value of -1 means to use the same value as returned by {@link #getDefaultCloudPrefetchBufferSize()}.
      *         The default implementation returns -1.
+     *         This value is maintained in the {@link GATKConfig} file.
      */
     public int getDefaultCloudIndexPrefetchBufferSize() {
-        return -1;
+        return ConfigFactory.getInstance().getGATKConfig().cloudIndexPrefetchBuffer();
     }
 
     /**
@@ -660,19 +659,32 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public final SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
-        if (!hasReference() && IOUtils.isCramFile(outputFile)) {
+        return createSAMWriter(Utils.nonNull(outputFile).toPath(), preSorted);
+    }
+
+    /*
+     * Create a common SAMFileWriter using the reference and read header for this tool.
+     *
+     * @param outputPath    - if this path has a .cram extension then a reference is required. Can not be null.
+     * @param preSorted     - if true then the records must already be sorted to match the header sort order
+     *
+     * @throws UserException if outputFile ends with ".cram" and no reference is provided
+     * @return SAMFileWriter
+     */
+    public final SAMFileGATKReadWriter createSAMWriter(final Path outputPath, final boolean preSorted) {
+        if (!hasReference() && IOUtils.isCramFile(outputPath)) {
             throw new UserException.MissingReference("A reference file is required for writing CRAM files");
         }
 
         return new SAMFileGATKReadWriter(
-                        ReadUtils.createCommonSAMWriter(
-                                outputFile,
-                                referenceArguments.getReferenceFile(),
-                                getHeaderForSAMWriter(),
-                                preSorted,
-                                createOutputBamIndex,
-                                createOutputBamMD5
-                        )
+            ReadUtils.createCommonSAMWriter(
+                outputPath,
+                referenceArguments.getReferenceFile(),
+                getHeaderForSAMWriter(),
+                preSorted,
+                createOutputBamIndex,
+                createOutputBamMD5
+            )
         );
     }
 

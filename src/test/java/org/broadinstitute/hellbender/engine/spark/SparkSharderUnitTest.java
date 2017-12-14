@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 import static org.testng.Assert.*;
 
-public class SparkSharderUnitTest extends BaseTest implements Serializable {
+public class SparkSharderUnitTest extends GATKBaseTest implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

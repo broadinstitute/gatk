@@ -3,11 +3,13 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsamplingIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
+import org.broadinstitute.hellbender.utils.iterators.ReadTransformingIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Iterator;
@@ -33,7 +35,9 @@ public final class LocalReadShard implements Shard<GATKRead> {
     private final SimpleInterval interval;
     private final SimpleInterval paddedInterval;
     private final ReadsDataSource readsSource;
+    private ReadTransformer preReadFilterTransformer;
     private ReadFilter readFilter;
+    private ReadTransformer postReadFilterTransformer;
     private ReadsDownsampler downsampler;
 
     /**
@@ -65,6 +69,13 @@ public final class LocalReadShard implements Shard<GATKRead> {
     }
 
     /**
+     * Reads in this shard will be transformed before filtering
+     *
+     * @param transformer read transformer to apply before read filtering
+     */
+    public void setPreReadFilterTransformer(final ReadTransformer transformer) { preReadFilterTransformer = transformer; }
+
+    /**
      * Reads in this shard will be filtered using this filter before being returned.
      * Read filtering will be performed before any requested downsampling.
      *
@@ -83,6 +94,13 @@ public final class LocalReadShard implements Shard<GATKRead> {
     public void setDownsampler(final ReadsDownsampler downsampler) {
         this.downsampler = downsampler;
     }
+
+    /**
+     * Reads in this shard will be transformed after filtering and before downsampling
+     *
+     * @param transformer read transformer to apply after read filtering and before downsampling
+     */
+    public void setPostReadFilterTransformer(final ReadTransformer transformer) { postReadFilterTransformer = transformer; }
 
     /**
      * @return the interval this shard spans
@@ -142,8 +160,16 @@ public final class LocalReadShard implements Shard<GATKRead> {
     public Iterator<GATKRead> iterator() {
         Iterator<GATKRead> readsIterator = readsSource.query(paddedInterval);
 
+        if (preReadFilterTransformer != null) {
+            readsIterator = new ReadTransformingIterator(readsIterator, preReadFilterTransformer);
+        }
+
         if ( readFilter != null ) {
             readsIterator = new ReadFilteringIterator(readsIterator, readFilter);
+        }
+
+        if (postReadFilterTransformer != null) {
+            readsIterator = new ReadTransformingIterator(readsIterator, postReadFilterTransformer);
         }
 
         if ( downsampler != null ) {

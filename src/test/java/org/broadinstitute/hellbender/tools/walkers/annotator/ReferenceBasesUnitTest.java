@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +17,7 @@ import java.util.Collections;
 /**
  * Created by davidben on 3/23/17.
  */
-public class ReferenceBasesUnitTest extends BaseTest {
+public class ReferenceBasesUnitTest extends GATKBaseTest {
 
     @Test
     public void test() {
@@ -31,4 +31,12 @@ public class ReferenceBasesUnitTest extends BaseTest {
         Assert.assertEquals(refBases, "ACTGCATCCCTTGCATTTCC");
     }
 
+    // Asserts that the code silently failed
+    @Test
+    public void TestNoReferenceBehavior() {
+        final VariantContext vc = new VariantContextBuilder("source", "20", 10_000_100, 10_000_100, Collections.singleton(Allele.create((byte) 'A', true))).make();
+        final String refBases = (String) new ReferenceBases().annotate(null, vc, null)
+                .get(ReferenceBases.REFERENCE_BASES_KEY);
+        Assert.assertNull(refBases);
+    }
 }

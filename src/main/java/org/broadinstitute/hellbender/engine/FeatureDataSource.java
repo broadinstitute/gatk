@@ -288,11 +288,37 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 throw new UserException("GenomicsDB inputs can only be used to provide VariantContexts.", e);
             }
         } else {
-            final Path featurePath = IOUtils.getPath(featureInput.getFeaturePath());
-            IOUtils.assertFileIsReadable(featurePath);
-            final FeatureCodec<T, ?> codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
+            FeatureCodec<T, ?> codec = getCodecForFeatureInput(featureInput, targetFeatureType);
             return getTribbleFeatureReader(featureInput, codec, cloudWrapper, cloudIndexWrapper);
         }
+    }
+
+    /**
+     * Get a new FeatureCodec instance to use for a FeatureInput. Avoid re-discovering which codec class to
+     * use by checking to see if the FeatureInput already has a cached codec class. It not, discover the codec class
+     * and cache it for next time.
+     *
+     * @return A new FeatureCodec instance to use for the FeatureInput.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T extends Feature> FeatureCodec<T, ?> getCodecForFeatureInput(final FeatureInput<T> featureInput,
+                                                                                  final Class<? extends Feature> targetFeatureType) {
+        FeatureCodec<T, ?> codec;
+        final Class<FeatureCodec<T, ?>> codecClass = featureInput.getFeatureCodecClass();
+        if (codecClass == null) {
+            final Path featurePath = IOUtils.getPath(featureInput.getFeaturePath());
+            IOUtils.assertFileIsReadable(featurePath);
+            codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
+            featureInput.setFeatureCodecClass((Class<FeatureCodec<T, ?>>)codec.getClass());
+        } else {
+            try {
+                codec = codecClass.newInstance();
+            }
+            catch ( InstantiationException | IllegalAccessException e ) {
+                throw new GATKException("Unable to automatically instantiate codec " + codecClass.getName());
+            }
+        }
+        return codec;
     }
 
     private static <T extends Feature> AbstractFeatureReader<T, ?> getTribbleFeatureReader(final FeatureInput<T> featureInput, final FeatureCodec<T, ?> codec, Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper, Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {

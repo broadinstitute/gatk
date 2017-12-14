@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools;
 import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -41,6 +42,7 @@ import java.io.File;
  * </pre>
  *
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Left-aligns indels from reads in a SAM/BAM/CRAM file.",
         oneLineSummary = "Left-aligns indels from reads in a SAM/BAM/CRAM file",

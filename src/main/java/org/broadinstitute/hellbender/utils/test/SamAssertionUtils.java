@@ -1,19 +1,32 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.collect.Sets;
-import htsjdk.samtools.*;
-import org.apache.commons.io.FilenameUtils;
-import org.broadinstitute.hellbender.tools.picard.sam.SortSam;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.read.SamComparison;
-import org.testng.Assert;
-
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMValidationError;
+import htsjdk.samtools.SamFileValidator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import org.apache.commons.io.FilenameUtils;
+import picard.sam.SortSam;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SamComparison;
+import org.testng.Assert;
 
 /**
  * Collection of utilities for making common assertions about SAM files for unit testing purposes.
@@ -372,16 +385,31 @@ public final class SamAssertionUtils {
      * Unconditionally validate/assert that the contents are CRAM
      */
     public static void assertCRAMContents(final File putativeCRAMFile) {
-        Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMFile));
+        Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMFile), "should have had CRAM contents: " + putativeCRAMFile.getName());
     }
 
     private static void sortSam(final File input, final File output, final File reference, final ValidationStringency stringency) {
         final SortSam sort = new SortSam();
-        sort.INPUT = input;
-        sort.OUTPUT = output;
-        sort.REFERENCE_SEQUENCE = reference;
-        sort.SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
-        sort.VALIDATION_STRINGENCY = stringency;
-        sort.runTool();
+
+        // We can't use ArgumentsBuilder since it assumes GATK argument names, but we're running a Picard
+        // tool, which uses upper case argument names.
+        final List<String> args = new ArrayList<>(6);
+        args.add("--INPUT");
+        args.add(input.getAbsolutePath());
+        args.add("--OUTPUT");
+        args.add(output.getAbsolutePath());
+        args.add("--SORT_ORDER");
+        args.add(SAMFileHeader.SortOrder.coordinate.name());
+        args.add("--VALIDATION_STRINGENCY");
+        args.add(stringency.name());
+        if (reference != null) {
+            args.add("--REFERENCE_SEQUENCE");
+            args.add(reference.getAbsolutePath());
+        }
+
+        int returnCode  = sort.instanceMain(args.toArray(new String[args.size()]));
+        if (returnCode != 0) {
+            throw new RuntimeException("Failure running SortSam on inputs");
+        }
     }
 }

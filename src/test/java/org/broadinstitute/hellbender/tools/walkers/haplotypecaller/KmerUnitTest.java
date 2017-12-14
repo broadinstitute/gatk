@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public final class KmerUnitTest extends BaseTest {
+public final class KmerUnitTest extends GATKBaseTest {
     @DataProvider(name = "KMerCreationData")
     public Object[][] makeKMerCreationData() {
         List<Object[]> tests = new ArrayList<>();

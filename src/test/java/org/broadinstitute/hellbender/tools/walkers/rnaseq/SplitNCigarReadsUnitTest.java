@@ -7,7 +7,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -22,7 +22,7 @@ import java.util.List;
  * For valid cigar sting in length 8 there are few thousands options, with N in every possible option and with more than one N (for example 1M1N1M1N1M1N2M).
  * The cigarElements array is used to provide all the possible cigar element that might be included.
  */
-public final class SplitNCigarReadsUnitTest extends BaseTest {
+public final class SplitNCigarReadsUnitTest extends GATKBaseTest {
     final static CigarElement[] cigarElements = {
             new CigarElement(1, CigarOperator.HARD_CLIP),
             new CigarElement(1, CigarOperator.SOFT_CLIP),

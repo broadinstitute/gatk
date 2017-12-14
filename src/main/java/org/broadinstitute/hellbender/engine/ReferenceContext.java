@@ -167,6 +167,28 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * Get all reference bases in this context with the given window.
+     * Does not cache results or modify this {@link ReferenceContext} at all.
+     * Will always return an empty array if there is no backing data source and/or interval to query.
+     *
+     * @return reference bases in this context, as a byte array
+     */
+    public byte[] getBases(final SimpleInterval window) {
+        if ( dataSource == null || window == null ) {
+            return new byte[0];
+        }
+
+        // Trim to the contig start/end:
+        final SimpleInterval trimmedWindow = new SimpleInterval(
+                window.getContig(),
+                trimToContigStart(window.getStart()),
+                trimToContigLength(window.getContig(), window.getEnd())
+        );
+
+        return dataSource.queryAndPrefetch(trimmedWindow).getBases();
+    }
+
+    /**
      * Get the bases in this context, from the beginning of the interval to the end of the window.
      */
     public byte[] getForwardBases() {

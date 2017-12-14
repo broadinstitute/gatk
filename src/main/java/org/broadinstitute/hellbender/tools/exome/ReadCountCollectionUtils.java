@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
-import htsjdk.samtools.util.Locatable;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
@@ -398,7 +397,7 @@ public final class ReadCountCollectionUtils {
         Utils.nonNull(byKeySorted, "Targets cannot be null.");
         Utils.nonNull(comments, "Comments cannot be null.");
 
-        final boolean areTargetIntervalsAllPopulated = byKeySorted.keySet().stream().allMatch(t -> t != null);
+        final boolean areTargetIntervalsAllPopulated = byKeySorted.keySet().stream().allMatch(Objects::nonNull);
         if (!areTargetIntervalsAllPopulated) {
             throw new UserException("Cannot write target coverage file with any null intervals.");
         }
@@ -409,9 +408,8 @@ public final class ReadCountCollectionUtils {
                 writer.writeComment(comment);
             }
 
-            for (final Locatable locatable : byKeySorted.keySet()) {
-                final SimpleInterval interval = new SimpleInterval(locatable);
-                final double coverage = byKeySorted.get(locatable).doubleValue();
+            for (final SimpleInterval interval : byKeySorted.keySet()) {
+                final double coverage = byKeySorted.get(interval).doubleValue();
                 writer.writeRecord(new ReadCountRecord.SingleSampleRecord(new Target(interval), coverage));
             }
         } catch (final IOException e) {

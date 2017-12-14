@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.io;
 
-import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
@@ -17,18 +16,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.io.Reader;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.*;
 import java.util.HashMap;
@@ -46,6 +34,13 @@ public final class IOUtils {
      */
     public static boolean isCramFile(final File inputFile) {
         return isCramFileName(inputFile.getName());
+    }
+
+    /**
+     * Returns true if the file's extension is CRAM.
+     */
+    public static boolean isCramFile(final Path path) {
+        return isCramFileName(path.getFileName().toString());
     }
 
     /**
@@ -459,6 +454,11 @@ public final class IOUtils {
      */
     public static File createTempFile(String name, String extension) {
         try {
+
+            if ( !extension.startsWith(".") ) {
+                extension = "." + extension;
+            }
+
             final File file = File.createTempFile(name, extension);
             file.deleteOnExit();
 
@@ -466,6 +466,7 @@ public final class IOUtils {
             new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
             new File(file.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION).deleteOnExit();
             new File(file.getAbsolutePath() + ".bai").deleteOnExit();
+            new File(file.getAbsolutePath() + ".md5").deleteOnExit();
             new File(file.getAbsolutePath().replaceAll(extension + "$", ".bai")).deleteOnExit();
 
             return file;
@@ -591,5 +592,14 @@ public final class IOUtils {
                 throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file cannot be read.  Check the permissions.");
             }
         }
+    }
+
+    /**
+     * Creates a directory, in local FS, HDFS, or Google buckets to write individual files in.
+     */
+    public static void createDirectory(final String pathString) throws IOException {
+        Utils.nonNull(pathString);
+
+        Files.createDirectory(getPath(pathString));
     }
 }

@@ -18,17 +18,19 @@ import java.util.*;
 
 /**
  * Keep records not matching the read group tag and exact match string.
- * For example, this filter value:
- *   PU:1000G-mpimg-080821-1_1
- * would filter out a read with the read group PU:1000G-mpimg-080821-1_1
+ *
+ * <p>For example, this filter value:
+ *   <code>PU:1000G-mpimg-080821-1_1</code>
+ * would filter out a read with the read group PU:1000G-mpimg-080821-1_1</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class ReadGroupBlackListReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
     public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
+    public static final String BLACK_LIST_LONG_NAME = "black-list";
 
-    @Argument(fullName="blackList", doc="", shortName="blackList", optional=false)
+    @Argument(fullName=BLACK_LIST_LONG_NAME, doc="The name of the read group to filter out", shortName="blackList", optional=false)
     public List<String> blackList = new ArrayList<>();
 
     //most of the collection Entry classes are not serializable so just use a Map

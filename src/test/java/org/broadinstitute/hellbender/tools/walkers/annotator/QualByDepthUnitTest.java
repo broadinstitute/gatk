@@ -8,7 +8,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_Q
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -19,7 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class QualByDepthUnitTest extends BaseTest {
+public class QualByDepthUnitTest extends GATKBaseTest {
     private static final Allele REF = Allele.create("A", true);
     private static final Allele ALT = Allele.create("C");
 
@@ -109,7 +110,7 @@ public class QualByDepthUnitTest extends BaseTest {
                 .mapToObj(n -> ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"))).collect(Collectors.toList());
 
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(sample1, reads, -100.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods(sample1, reads, -100.0, REF, ALT);
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
         final Map<String, Object> annotatedMap = new QualByDepth().annotate(null, vc, likelihoods);

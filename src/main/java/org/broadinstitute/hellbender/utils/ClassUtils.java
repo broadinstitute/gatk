@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.broadinstitute.hellbender.cmdline.ClassFinder;
+import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.lang.reflect.Modifier;
@@ -76,5 +76,24 @@ public final class ClassUtils {
         final ClassFinder finder = new ClassFinder();
         finder.find(iface.getPackage().getName(), iface);
         return finder.getClasses().stream().filter(cl -> !cl.equals(iface) && cl.isInterface()).collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets a list of classes that are either the same as, or a subclass/subinterface of a parent target class.
+     * @param targetClass Parent {@link Class} for which to check for inheritance.
+     * @param classesToSearch Classes to check for inheritance against {@code targetClass}.
+     * @return {@link List} of classes from {@code classesToSearch} that inherit from {@code targetClass}.
+     */
+    public static List<Class<?>> getClassesOfType(final Class<?> targetClass, final List<Class<?>> classesToSearch) {
+
+        final List<Class<?>> classList = new ArrayList<>();
+
+        for ( final Class<?> clazz : classesToSearch ) {
+            if ( targetClass.isAssignableFrom(clazz) ) {
+                classList.add( clazz );
+            }
+        }
+
+        return classList;
     }
 }

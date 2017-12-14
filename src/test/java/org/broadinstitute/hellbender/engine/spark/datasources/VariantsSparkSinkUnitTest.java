@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
@@ -31,7 +31,7 @@ import java.util.List;
 
 import static org.testng.Assert.assertEquals;
 
-public final class VariantsSparkSinkUnitTest extends BaseTest {
+public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     private final String outputFileName = getClass().getSimpleName();
     private MiniDFSCluster cluster;
 
@@ -51,6 +51,7 @@ public final class VariantsSparkSinkUnitTest extends BaseTest {
         return new Object[][]{
                 {hg19_chr1_1M_dbSNP, ".vcf"},
                 {hg19_chr1_1M_dbSNP, ".vcf.bgz"},
+                {hg19_chr1_1M_dbSNP, ".vcf.gz"},
                 {hg19_chr1_1M_dbSNP_modified, ".vcf"},
         };
     }

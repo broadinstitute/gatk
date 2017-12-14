@@ -2,10 +2,12 @@ package org.broadinstitute.hellbender.utils.bwa;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
-import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Utils to move data from a BwaMemAlignment into a GATKRead, or into a SAM tag.
@@ -36,7 +38,7 @@ public class BwaMemAlignmentUtils {
         byte[] bases = basesArg;
         byte[] quals = qualsArg == null ? new byte[0] : qualsArg;
         if ( SAMFlag.READ_REVERSE_STRAND.isSet(samFlag) &&
-                SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(samFlag) ) {
+                SAMFlag.SECONDARY_ALIGNMENT.isUnset(samFlag) ) {
             bases = BaseUtils.simpleReverseComplement(bases);
             quals = Arrays.copyOf(quals, quals.length);
             SequenceUtil.reverseQualities(quals);
@@ -79,7 +81,7 @@ public class BwaMemAlignmentUtils {
             else if ( alignment.getRefStart() >= 0 ) samRecord.setMateAlignmentStart(alignment.getRefStart() + 1);
             if ( alignment.getTemplateLen() != 0 ) samRecord.setInferredInsertSize(alignment.getTemplateLen());
         }
-        if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(samFlag) ) {
+        if ( SAMFlag.SECONDARY_ALIGNMENT.isUnset(samFlag) ) {
             samRecord.setReadBases(bases);
             samRecord.setBaseQualities(quals);
         } else {
@@ -101,7 +103,7 @@ public class BwaMemAlignmentUtils {
         final String[] selfTags = new String[nAlignments];
         for ( int idx = 0; idx != nAlignments; ++idx ) {
             final BwaMemAlignment alignment = alignments.get(idx);
-            if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(alignment.getSamFlag()) ) {
+            if ( SAMFlag.SECONDARY_ALIGNMENT.isUnset(alignment.getSamFlag()) ) {
                 selfTags[idx] = asTag(alignment, refNames);
             }
         }
@@ -109,7 +111,7 @@ public class BwaMemAlignmentUtils {
         final Map<BwaMemAlignment,String> saTags = new HashMap<>(SVUtils.hashMapCapacity(nAlignments));
         for ( int idx = 0; idx != nAlignments; ++idx ) {
             final BwaMemAlignment alignment = alignments.get(idx);
-            if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isSet(alignment.getSamFlag()) ) continue;
+            if ( SAMFlag.SECONDARY_ALIGNMENT.isSet(alignment.getSamFlag()) ) continue;
 
             final StringBuilder saTag = new StringBuilder();
             for ( int idx2 = 0; idx2 != nAlignments; ++idx2 ) {
@@ -129,5 +131,33 @@ public class BwaMemAlignmentUtils {
         return refNames.get(alignment.getRefId())+","+(alignment.getRefStart()+1)+","+
                 (SAMFlag.READ_REVERSE_STRAND.isSet(alignment.getSamFlag())?"-":"+")+","+
                 alignment.getCigar().replace('H','S')+","+alignment.getMapQual()+","+alignment.getNMismatches()+";";
+    }
+
+    public static Stream<SAMRecord> toSAMStreamForRead(final String readName, final byte[] contigSequence,
+                                                       final List<BwaMemAlignment> alignments,
+                                                       final SAMFileHeader header, final List<String> refNames,
+                                                       final SAMReadGroupRecord contigAlignmentsReadGroup) {
+
+        Utils.nonNull(readName, "provided read name is null for the alignments");
+        Utils.nonNull(contigSequence, "provided read sequence is null");
+        Utils.nonNull(alignments, "alignments to be converted is null");
+        Utils.nonNull(header, "provided header is null");
+        Utils.nonNull(refNames, "provided list of reference contig names is null");
+
+        if ( alignments.isEmpty() ) return Stream.empty();
+
+        final Map<BwaMemAlignment,String> saTagMap = createSATags(alignments,refNames);
+
+        return alignments.stream()
+                .map(alignment -> {
+                    final SAMRecord samRecord =
+                            applyAlignment(readName, contigSequence, null, null, alignment,
+                                    refNames, header, false, false);
+                    final String saTag = saTagMap.get(alignment);
+                    if ( saTag != null ) samRecord.setAttribute("SA", saTag);
+                    if (contigAlignmentsReadGroup != null)
+                        samRecord.setAttribute( SAMTag.RG.name(), contigAlignmentsReadGroup.getId());
+                    return samRecord;
+                });
     }
 }

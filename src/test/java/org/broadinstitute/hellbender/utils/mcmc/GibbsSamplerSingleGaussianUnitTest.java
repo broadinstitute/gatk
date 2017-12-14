@@ -6,7 +6,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -31,7 +31,7 @@ import java.util.function.Function;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
+public final class GibbsSamplerSingleGaussianUnitTest extends GATKBaseTest {
     private static final int NUM_DATAPOINTS = 10000;
 
     private static final double VARIANCE_MIN = 0.;

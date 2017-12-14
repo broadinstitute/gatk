@@ -5,7 +5,7 @@ import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.QRDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 import java.util.stream.IntStream;
 
 
-public final class SingularValueDecomposerUnitTest extends BaseTest {
+public final class SingularValueDecomposerUnitTest extends GATKBaseTest {
 
     @DataProvider(name="makeSVDers")
     private Object[][] makeSVDers(){

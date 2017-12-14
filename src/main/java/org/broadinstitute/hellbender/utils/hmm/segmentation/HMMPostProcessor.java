@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.hmm.ForwardBackwardAlgorithm;
 import org.broadinstitute.hellbender.utils.hmm.interfaces.AlleleMetadataProducer;
@@ -59,7 +58,6 @@ import java.util.stream.IntStream;
  * @param <T> target type; must extend {@link Target}
  *
  * @param <S> hidden state type; must implement {@link AlleleMetadataProducer} and {@link CallStringProducer}.
- *            For example, see the enum type {@link CopyNumberTriState} as a typical use case.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;

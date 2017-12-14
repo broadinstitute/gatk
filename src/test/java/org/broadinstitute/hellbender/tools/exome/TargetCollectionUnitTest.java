@@ -1,16 +1,18 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
+import org.broadinstitute.hellbender.utils.test.SimpleIntervalTestFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -19,7 +21,9 @@ import java.util.*;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class TargetCollectionUnitTest extends BaseTest {
+public final class TargetCollectionUnitTest extends GATKBaseTest {
+
+    private static final SimpleIntervalTestFactory targetsUtils = new SimpleIntervalTestFactory(new File(CommandLineProgramTest.getTestDataDir(), "exome/test_reference.fasta"));
 
     /**
      * General target_db_test_data, will contain TargetDB instances as a single arguments.
@@ -37,7 +41,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
         targetDBTestData.add(new Object[]{new TargetCollectionStub(0, rdn)});
         targetDBTestData.add(new Object[] { new TargetCollectionStub(1,rdn) });
         targetDBTestData.add(new Object[] { new TargetCollectionStub(33,rdn) });
-        final int maxTargetCount = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength() / 50;
+        final int maxTargetCount = targetsUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength() / 50;
         final int minTargetCount = 2;
         while (targetDBTestData.size() < 30) {
             final int targetCount = rdn.nextInt(maxTargetCount - minTargetCount + 1) + minTargetCount;
@@ -64,7 +68,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
 
     @Test(dataProvider = "targetDBData")
     public void testTargetByLocationNonOverlapping(final TargetCollection<SimpleInterval> targetCollection) {
-        final SimpleInterval otherChromosome =  TargetsToolsTestUtils.createOverEntireContig(2);
+        final SimpleInterval otherChromosome =  targetsUtils.createOverEntireContig(2);
         Assert.assertNull(targetCollection.target(otherChromosome));
         for (int i = 0; i < targetCollection.targetCount() - 1; i++) {
             final int start = targetCollection.target(i).getEnd() + 1;
@@ -72,7 +76,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
             if (end < start) {   // avoid zero-length intra-target intervals (due to artificial data construction).
                 continue;
             }
-            final SimpleInterval loc = TargetsToolsTestUtils.createInterval(targetCollection.target(i).getContig(), start, end);
+            final SimpleInterval loc = targetsUtils.createInterval(targetCollection.target(i).getContig(), start, end);
             Assert.assertNull(targetCollection.target(loc),"query = " + targetCollection.target(i).getContig() + ":" + start + "-" + end);
         }
     }
@@ -82,7 +86,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
         for (int i = 0; i < targetCollection.targetCount() - 1; i++) {
             final int start = targetCollection.target(i).getEnd() - 1;
             final int end = targetCollection.target(i + 1).getStart() + 1;
-            final SimpleInterval loc = TargetsToolsTestUtils.createInterval(targetCollection.target(i).getContig(), start, end);
+            final SimpleInterval loc = targetsUtils.createInterval(targetCollection.target(i).getContig(), start, end);
             try {
                 targetCollection.target(loc);
                 Assert.fail("expected exception. Index == " + i);
@@ -97,14 +101,14 @@ public final class TargetCollectionUnitTest extends BaseTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testForEachNullTask() {
         final TargetCollection<SimpleInterval> targetCollection = new TargetCollectionStub(0,new Random(13));
-        targetCollection.forEachTarget(TargetsToolsTestUtils.createOverEntireContig(0), null);
+        targetCollection.forEachTarget(targetsUtils.createOverEntireContig(0), null);
     }
 
     @Test(dataProvider = "targetDBData")
     public void testForEachSingleCallExactMatch(final TargetCollection<SimpleInterval> targetCollection) {
         for (int i = 0; i < targetCollection.targetCount(); i++) {
             final SimpleInterval simpleInterval = targetCollection.target(i);
-            final SimpleInterval loc = TargetsToolsTestUtils.createInterval(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+            final SimpleInterval loc = targetsUtils.createInterval(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
             final int expectedIdx = i;
             final int[] totalCalls = new int[] { 0 };
             targetCollection.forEachTarget(loc, (idx, target) -> {
@@ -134,7 +138,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
                 if (start > end) {
                     continue;
                 }
-                final SimpleInterval loc = TargetsToolsTestUtils.createInterval(contig, start, end);
+                final SimpleInterval loc = targetsUtils.createInterval(contig, start, end);
                 final List<SimpleInterval> visited = new ArrayList<>(j - i + 1);
                 final int iFinal = i;
                 targetCollection.forEachTarget(loc, (idx, e) -> {
@@ -172,7 +176,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
             if (start < end)
                 continue;
             targetCollection.forEachTarget(
-                    TargetsToolsTestUtils.createInterval(iInterval.getContig(), start, end),
+                    targetsUtils.createInterval(iInterval.getContig(), start, end),
                     (idx, e) -> Assert.fail("no target should be call"));
         }
     }
@@ -190,7 +194,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
             final int end = jInterval.getStart() - 1;
             if (start < end)
                 continue;
-            final List<SimpleInterval> observed = targetCollection.targets(TargetsToolsTestUtils.createInterval(iInterval.getContig(), start, end));
+            final List<SimpleInterval> observed = targetCollection.targets(targetsUtils.createInterval(iInterval.getContig(), start, end));
             Assert.assertEquals(observed.size(), 0);
         }
     }
@@ -263,8 +267,8 @@ public final class TargetCollectionUnitTest extends BaseTest {
                 return;
             }
             List<SimpleInterval> intervals = new ArrayList<>(numberOfTargets);
-            final String contig = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName();
-            final int contigLength = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength();
+            final String contig = targetsUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName();
+            final int contigLength = targetsUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength();
             final float avgSlotSize = (float) contigLength / numberOfTargets;
 
             int nextBasePos = 0;
@@ -332,7 +336,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
 
         @Override
         public IndexRange indexRange(final Locatable location) {
-            if (!location.getContig().equals(TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName()))
+            if (!location.getContig().equals(targetsUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName()))
                 return new IndexRange(targetCount(), targetCount());
             else {
                 int from = 0;

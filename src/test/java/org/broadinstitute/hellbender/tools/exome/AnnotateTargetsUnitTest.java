@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -14,7 +17,7 @@ import java.util.stream.Collectors;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class AnnotateTargetsUnitTest extends BaseTest {
+public class AnnotateTargetsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "calculateBaitCountsTestData")
     public void testCalculateBaitCounts(final List<Target> targets,

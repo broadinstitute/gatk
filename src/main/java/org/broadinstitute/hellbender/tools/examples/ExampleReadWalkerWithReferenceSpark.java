@@ -19,7 +19,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with reference context",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public final class ExampleReadWalkerWithReferenceSpark extends ReadWalkerSpark {
     private static final long serialVersionUID = 1L;

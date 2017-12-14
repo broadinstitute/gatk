@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public final class MultiSampleEdgeUnitTest extends BaseTest {
+public final class MultiSampleEdgeUnitTest extends GATKBaseTest {
 
     private class MultiplicityTestProvider {
         final List<Integer> countsPerSample;

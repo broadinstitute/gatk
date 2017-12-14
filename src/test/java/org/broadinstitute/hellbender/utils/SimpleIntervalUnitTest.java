@@ -5,15 +5,14 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public final class SimpleIntervalUnitTest extends BaseTest {
+public final class SimpleIntervalUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "badIntervals")
     public Object[][] badIntervals(){
@@ -207,6 +206,25 @@ public final class SimpleIntervalUnitTest extends BaseTest {
     public void testOverlapWithMargin( final SimpleInterval firstInterval, final SimpleInterval secondInterval, int margin, final boolean expectedOverlapResult ) {
         Assert.assertEquals(firstInterval.overlapsWithMargin(secondInterval, margin), expectedOverlapResult,
                 "overlap() returned incorrect result for intervals " + firstInterval + " and " + secondInterval);
+    }
+
+    @DataProvider()
+    private Object[][] overlapsWithMarginExpectingException() {
+        final SimpleInterval standardInterval = new SimpleInterval("1", 10, 20);
+        final SimpleInterval middleInterval = new SimpleInterval("1", 100, 200);
+
+        return new Object[][] {
+                { standardInterval, new SimpleInterval("2", 10, 20), -100 },
+                { standardInterval, new SimpleInterval("1", 30, 50), -9 },
+                { standardInterval, new SimpleInterval("1", 30, 50), -10 },
+                { middleInterval, new SimpleInterval("1", 50, 90), -9 },
+                { middleInterval, new SimpleInterval("1", 50, 90), -10 },
+        };
+    }
+    @Test(dataProvider = "overlapsWithMarginExpectingException", expectedExceptions = IllegalArgumentException.class)
+    public void testOverlapWithMarginExpectingException( final SimpleInterval firstInterval, final SimpleInterval secondInterval,
+                                                         int margin) {
+        firstInterval.overlapsWithMargin(secondInterval, margin);
     }
 
     @DataProvider(name = "IntervalContainsData")

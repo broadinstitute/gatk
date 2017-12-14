@@ -1,13 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import htsjdk.samtools.SamFiles;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -60,7 +66,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-normal", normalSample,
                 "-R", b37_reference_20_21,
                 "-L", "20",
-                "-germline_resource", GNOMAD.getAbsolutePath(),
+                "-germline-resource", GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
@@ -70,6 +76,19 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // run FilterMutectCalls
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
 
+        // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
+        // also check that alleles have been properly clipped after dropping any non-called alleles, i.e. if we had AAA AA A
+        // and A got dropped, we need AAA AA -> AA A.  The condition we don't want is that all allles share a common first base
+        // and no allele has length 1.
+        StreamSupport.stream(new FeatureDataSource<VariantContext>(unfilteredVcf).spliterator(), false)
+                .forEach(vc -> {
+                    final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+                    final int[] f1r2 = OrientationBiasUtils.getF1R2(tumorGenotype);
+                    Assert.assertEquals(f1r2.length, vc.getNAlleles());
+                    if (vc.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> a.getBases()[0]).distinct().count() == 1) {
+                        Assert.assertTrue(vc.getAlleles().stream().anyMatch(a -> a.getBases().length == 1));
+                    }
+                });
 
         // run Concordance
         final File concordanceSummary = createTempFile("concordance", ".txt");
@@ -110,7 +129,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-tumor", tumorSample,
                 "-I", normalBam.getAbsolutePath(),
                 "-normal", normalSample,
-                "-normal_panel", ponVcf.getAbsolutePath(),
+                "-pon", ponVcf.getAbsolutePath(),
                 "-R", b37_reference_20_21,
                 "-L", "20",
                 "-O", unfilteredVcf.getAbsolutePath()
@@ -169,7 +188,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-tumor", "NA12878",
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10010000",
-                "-germline_resource", GNOMAD.getAbsolutePath(),
+                "-germline-resource", GNOMAD.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
 
@@ -185,7 +204,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(vc -> vc.getFilters().isEmpty()).count();
 
         // just a sanity check that this bam has some germline variants on this interval so that our test doesn't pass trivially!
-        Assert.assertTrue(numVariantsBeforeFiltering > 50);
+        Assert.assertTrue(numVariantsBeforeFiltering > 15);
 
         // every variant on this interval in this sample is in gnomAD
         Assert.assertTrue(numVariantsPassingFilters < 2);
@@ -213,18 +232,75 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // per megabase).
     @Test
     public void testBamWithRepeatedReads() {
-        final String repeatedReadsBam = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam";
-        final File outputVcf = createTempFile("output", ".vcf");
+        doMutect2Test(
+                publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam",
+                "SM-612V3",
+                "20:10018000-10020000",
+                false,
+                false,
+                false
+        );
+    }
 
-        final String[] args = {
-                "-I", repeatedReadsBam,
-                "-tumor", "SM-612V3",
-                "-R", b37_reference_20_21,
-                "-L", "20:10018000-10020000",
-                "-O", outputVcf.getAbsolutePath()
+    @DataProvider(name="bamoutVariations")
+    public Object[][] bamoutVariations() {
+        return new Object[][]{
+                // bamout, index, md5
+                { true, true, true },
+                { true, true, false },
+                { true, false, true },
+                { true, false, false },
         };
+    }
 
-        runCommandLine(args);
+    @Test(dataProvider = "bamoutVariations")
+    public void testBamoutVariations(final boolean createBamout, final boolean createBamoutIndex, final boolean createBamoutMD5) {
+        // hijack repeated reads test for bamout variations testing
+        doMutect2Test(
+                publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam",
+                "SM-612V3",
+                "20:10018000-10020000",
+                createBamout,
+                createBamoutIndex,
+                createBamoutMD5
+        );
+    }
+
+    private void doMutect2Test(
+            final String inputBam,
+            final String tumorSample,
+            final String interval,
+            final boolean createBamout,
+            final boolean createBamoutIndex,
+            final boolean createBamoutMD5) {
+        final File tempDir = GATKBaseTest.createTempDir("mutect2");
+        final File outputVcf = new File(tempDir,"output.vcf");
+        File bamoutFile = null;
+
+        final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+
+        argBuilder.addInput(new File(inputBam));
+        argBuilder.addReference(new File(b37_reference_20_21));
+        argBuilder.addArgument("tumor", tumorSample);
+        argBuilder.addOutput(new File(outputVcf.getAbsolutePath()));
+        argBuilder.addArgument("L", interval);
+        if (createBamout) {
+            bamoutFile = new File(tempDir, "bamout.bam");
+            argBuilder.addArgument("bamout", bamoutFile.getAbsolutePath());
+        }
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
+        argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
+
+        runCommandLine(argBuilder);
+
+        if (createBamout && createBamoutIndex) {
+            Assert.assertNotNull(SamFiles.findIndex(bamoutFile));
+        }
+
+        if (createBamout && createBamoutIndex) {
+            final File expectedMD5File = new File(bamoutFile.getAbsolutePath() + ".md5");
+            Assert.assertEquals(expectedMD5File.exists(), createBamoutMD5);
+        }
     }
 
     // tumor bam, tumor sample name, normal bam, normal sample name, truth vcf, required sensitivity

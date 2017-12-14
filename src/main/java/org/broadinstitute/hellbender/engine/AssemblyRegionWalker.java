@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -7,12 +8,20 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -45,9 +54,17 @@ import java.util.List;
  */
 public abstract class AssemblyRegionWalker extends GATKTool {
 
-    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. For good performance, this should be much larger than the maximum assembly region size.", optional = true)
+    /**
+     * If readShardSize is set to this value, we will not shard the user's intervals. Instead,
+     * we'll create one shard per interval (or one shard per contig, if intervals are not explicitly specified)
+     */
+    public static final int NO_INTERVAL_SHARDING = -1;
+
+    @Advanced
+    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. Set to " + NO_INTERVAL_SHARDING + " for one shard per interval (or one shard per contig, if intervals are not explicitly specified). For good performance, this should typically be much larger than the maximum assembly region size.", optional = true)
     protected int readShardSize = defaultReadShardSize();
 
+    @Advanced
     @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Read shards must have as much or more padding than assembly regions.", optional = true)
     protected int readShardPadding = defaultReadShardPadding();
 
@@ -70,6 +87,32 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Advanced
     @Argument(fullName = "maxProbPropagationDistance", shortName = "maxProbPropagationDistance", doc="Upper limit on how many bases away probability mass can be moved around when calculating the boundaries between active and inactive assembly regions", optional = true)
     protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
+
+    /**
+     * If provided, this walker will write out its activity profile (per bp probabilities of being active)
+     * to this file in the IGV formatted TAB deliminated output:
+     *
+     * http://www.broadinstitute.org/software/igv/IGV
+     *
+     * Intended to make debugging the activity profile calculations easier
+     */
+    @Argument(fullName="activityProfileOut", shortName="APO", doc="Output the raw activity profile results in IGV format", optional = true)
+    protected String activityProfileOut = null;
+
+    private PrintStream activityProfileOutStream;
+
+    /**
+     * If provided, this walker will write out its assembly regions
+     * to this file in the IGV formatted TAB-delimited output:
+     *
+     * http://www.broadinstitute.org/software/igv/IGV
+     *
+     * Intended to make debugging the active region calculations easier
+     */
+    @Argument(fullName="assemblyRegionOut", shortName="ARO", doc="Output the assembly region to this IGV formatted file", optional = true)
+    protected String assemblyRegionOut = null;
+
+    private PrintStream assemblyRegionOutStream;
 
     /**
      * @return Default value for the {@link #readShardSize} parameter, if none is provided on the command line
@@ -111,6 +154,11 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      */
     protected abstract int defaultMaxProbPropagationDistance();
 
+    /**
+     * @return If true, include reads with deletions at the current locus in the pileups passed to the AssemblyRegionEvaluator.
+     */
+    protected abstract boolean includeReadsWithDeletionsInIsActivePileups();
+
     @Override
     public final boolean requiresReads() { return true; }
 
@@ -132,8 +180,8 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     protected final void onStartup() {
         super.onStartup();
 
-        if ( readShardSize <= 0 ) {
-            throw new CommandLineException.BadArgumentValue("read shard size must be > 0");
+        if ( readShardSize <= 0 && readShardSize != NO_INTERVAL_SHARDING ) {
+            throw new CommandLineException.BadArgumentValue("read shard size must be > 0 or " + NO_INTERVAL_SHARDING + " for no sharding");
         }
 
         if ( readShardPadding < 0 ) {
@@ -144,7 +192,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             throw new CommandLineException.BadArgumentValue("minAssemblyRegionSize must be <= maxAssemblyRegionSize");
         }
 
-        if ( maxAssemblyRegionSize > readShardSize ) {
+        if ( readShardSize != NO_INTERVAL_SHARDING && maxAssemblyRegionSize > readShardSize ) {
             throw new CommandLineException.BadArgumentValue("maxAssemblyRegionSize must be <= readShardSize");
         }
 
@@ -154,6 +202,8 @@ public abstract class AssemblyRegionWalker extends GATKTool {
 
         final List<SimpleInterval> intervals = hasIntervals() ? intervalsForTraversal : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         readShards = makeReadShards(intervals);
+
+        initializeAssemblyRegionOutputStreams();
     }
 
     /**
@@ -166,10 +216,41 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         final List<LocalReadShard> shards = new ArrayList<>();
 
         for ( final SimpleInterval interval : intervals ) {
-            shards.addAll(LocalReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
+            if ( readShardSize != NO_INTERVAL_SHARDING ) {
+                shards.addAll(LocalReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
+            }
+            else {
+                shards.add(new LocalReadShard(interval, interval.expandWithinContig(readShardPadding, getHeaderForReads().getSequenceDictionary()), reads));
+            }
         }
 
         return shards;
+    }
+
+    private void initializeAssemblyRegionOutputStreams() {
+        if ( activityProfileOut != null ) {
+            try {
+                activityProfileOutStream = new PrintStream(activityProfileOut);
+            }
+            catch ( IOException e ) {
+                throw new UserException.CouldNotCreateOutputFile(activityProfileOut, "Error writing activity profile to output file", e);
+            }
+
+            logger.info("Writing activity profile to " + activityProfileOut);
+            IGVUtils.printIGVFormatHeader(activityProfileOutStream, "line", "ActivityProfile");
+        }
+
+        if ( assemblyRegionOut != null ) {
+            try {
+                assemblyRegionOutStream = new PrintStream(assemblyRegionOut);
+            }
+            catch ( IOException e ) {
+                throw new UserException.CouldNotCreateOutputFile(assemblyRegionOut, "Error writing assembly regions to output file", e);
+            }
+
+            logger.info("Writing assembly regions to " + assemblyRegionOut);
+            IGVUtils.printIGVFormatHeader(assemblyRegionOutStream, "line", "AssemblyRegions");
+        }
     }
 
     /**
@@ -208,15 +289,15 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         progressMeter.setRecordsBetweenTimeChecks(10L);
 
         for ( final LocalReadShard readShard : readShards ) {
-            // Since reads in each shard are lazily fetched, we need to pass the filter to the window
+            // Since reads in each shard are lazily fetched, we need to pass the filter and transformers to the window
             // instead of filtering the reads directly here
+            readShard.setPreReadFilterTransformer(makePreReadFilterTransformer());
             readShard.setReadFilter(countedFilter);
             readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null);
+            readShard.setPostReadFilterTransformer(makePostReadFilterTransformer());
             currentReadShard = readShard;
 
-            processReadShard(readShard,
-                    new ReferenceContext(reference, readShard.getPaddedInterval()), // use the fully-padded window to fetch overlapping data
-                    new FeatureContext(features, readShard.getPaddedInterval()));
+            processReadShard(readShard, reference, features);
         }
 
         logger.info(countedFilter.getSummaryLine());
@@ -227,19 +308,18 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * and send each region to the tool implementation for processing.
      *
      * @param shard Shard to process
-     * @param referenceContext Reference bases spanning the fully-padded interval of the shard
-     * @param featureContext Features spanning the fully-padded interval of the shard
+     * @param reference Reference data source
+     * @param features FeatureManager
      */
-    private void processReadShard(Shard<GATKRead> shard, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        // Divide each shard into one or more assembly regions using our AssemblyRegionEvaluator:
-        final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shard,
-                getHeaderForReads(), referenceContext, featureContext, assemblyRegionEvaluator(),
-                minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
-                maxProbPropagationDistance);
+    private void processReadShard(Shard<GATKRead> shard, ReferenceDataSource reference, FeatureManager features ) {
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups());
 
         // Call into the tool implementation to process each assembly region from this shard.
-        for ( final AssemblyRegion assemblyRegion : assemblyRegions ) {
+        while ( assemblyRegionIter.hasNext() ) {
+            final AssemblyRegion assemblyRegion = assemblyRegionIter.next();
+            
             logger.debug("Processing assembly region at " + assemblyRegion.getSpan() + " isActive: " + assemblyRegion.isActive() + " numReads: " + assemblyRegion.getReads().size() + " in read shard " + shard.getInterval());
+            writeAssemblyRegion(assemblyRegion);
 
             apply(assemblyRegion,
                     new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
@@ -247,6 +327,25 @@ public abstract class AssemblyRegionWalker extends GATKTool {
 
             // For this traversal, the progress meter unit is the assembly region rather than the read shard
             progressMeter.update(assemblyRegion.getSpan());
+        }
+    }
+
+    private void writeAssemblyRegion(final AssemblyRegion region) {
+        writeActivityProfile(region.getSupportingStates());
+
+        if ( assemblyRegionOutStream != null ) {
+            IGVUtils.printIGVFormatRow(assemblyRegionOutStream, new SimpleInterval(region.getContig(), region.getStart(), region.getStart()),
+                    "end-marker", 0.0);
+            IGVUtils.printIGVFormatRow(assemblyRegionOutStream, region,
+                    "size=" + new SimpleInterval(region).size(), region.isActive() ? 1.0 : -1.0);
+        }
+    }
+
+    private void writeActivityProfile(final List<ActivityProfileState> states) {
+        if ( activityProfileOutStream != null ) {
+            for ( final ActivityProfileState state : states ) {
+                IGVUtils.printIGVFormatRow(activityProfileOutStream, state.getLoc(), "state", Math.min(state.isActiveProb(), 1.0));
+            }
         }
     }
 
@@ -259,6 +358,14 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     protected final void onShutdown() {
         // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
+
+        if ( assemblyRegionOutStream != null ) {
+            assemblyRegionOutStream.close();
+        }
+
+        if ( activityProfileOutStream != null ) {
+            activityProfileOutStream.close();
+        }
     }
 
     /**

@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
@@ -396,9 +396,9 @@ public final class ReadLikelihoodsUnitTest {
         final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         final double[][][] originalLikelihoods = fillWithRandomLikelihoods(samples,alleles,original);
         final ReadLikelihoods<Allele> result = original.copy();
-        result.addNonReferenceAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        result.addNonReferenceAllele(Allele.NON_REF_ALLELE);
         Assert.assertEquals(result.numberOfAlleles(), original.numberOfAlleles() + 1);
-        Assert.assertEquals(result.indexOfAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), result.numberOfAlleles() - 1);
+        Assert.assertEquals(result.indexOfAllele(Allele.NON_REF_ALLELE), result.numberOfAlleles() - 1);
         final double[][][] newLikelihoods = new double[originalLikelihoods.length][][];
         for (int s = 0; s < samples.length; s++) {
             newLikelihoods[s] = Arrays.copyOf(originalLikelihoods[s], originalLikelihoods[s].length + 1);
@@ -417,14 +417,24 @@ public final class ReadLikelihoodsUnitTest {
                         secondBestLk = lk;
                     }
                 }
-                final double expectedNonRefLk = Double.isInfinite(secondBestLk) ? bestLk : secondBestLk;
+                final Median median = new Median();
+                final List<Double> qualifylingLikelihoods = new ArrayList<>();
+                for (int a = 0; a < ordinarynumberOfAlleles; a++) {
+                    if (originalLikelihoods[s][a][r] >= bestLk) continue;
+                    qualifylingLikelihoods.add(originalLikelihoods[s][a][r]);
+                }
+                final double medianLikelihood = median.evaluate(qualifylingLikelihoods.stream().mapToDouble(d -> d).toArray());
+                // NaN is returned in cases whether there is no elements in qualifyingLikelihoods.
+                // In such case we set the NON-REF likelihood to -Inf.
+                final double expectedNonRefLk = !Double.isNaN(medianLikelihood) ? medianLikelihood
+                        : ordinarynumberOfAlleles <= 1 ? Double.NaN : bestLk;
                 newLikelihoods[s][ordinarynumberOfAlleles][r] = expectedNonRefLk;
             }
         }
         testLikelihoodMatrixQueries(samples,result,newLikelihoods);
     }
 
-    private void testLikelihoodMatrixQueries(String[] samples, ReadLikelihoods<Allele> result, final double[][][] likelihoods) {
+    private void testLikelihoodMatrixQueries(final String[] samples, final ReadLikelihoods<Allele> result, final double[][][] likelihoods) {
         for (final String sample : samples) {
             final int indexOfSample = result.indexOfSample(sample);
             final int sampleReadCount = result.sampleReadCount(indexOfSample);
@@ -432,9 +442,14 @@ public final class ReadLikelihoodsUnitTest {
             Assert.assertEquals(result.numberOfAlleles(), numberOfAlleles);
             for (int a = 0; a < numberOfAlleles; a++) {
                 Assert.assertEquals(result.sampleReadCount(indexOfSample), sampleReadCount);
-                for (int r = 0; r < sampleReadCount; r++)
-                    Assert.assertEquals(result.sampleMatrix(indexOfSample).get(a, r),
-                            likelihoods == null ? 0.0 : likelihoods[indexOfSample][a][r], EPSILON);
+                for (int r = 0; r < sampleReadCount; r++) {
+                    if (Double.isNaN(result.sampleMatrix(indexOfSample).get(a, r))) {
+                        Assert.assertTrue(likelihoods != null && Double.isNaN(likelihoods[indexOfSample][a][r]));
+                    } else {
+                        Assert.assertEquals(result.sampleMatrix(indexOfSample).get(a, r),
+                                likelihoods == null ? 0.0 : likelihoods[indexOfSample][a][r], EPSILON);
+                    }
+                }
             }
         }
     }

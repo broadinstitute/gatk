@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-public final class ArtificialBAMBuilderUnitTest extends BaseTest {
+public final class ArtificialBAMBuilderUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "ArtificialBAMBuilderUnitTestProvider")
     public Object[][] makeArtificialBAMBuilderUnitTestProvider() {

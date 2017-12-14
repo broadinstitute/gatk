@@ -4,16 +4,15 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-public final class StandardCovariateListUnitTest extends BaseTest {
+public final class StandardCovariateListUnitTest extends GATKBaseTest {
 
     public StandardCovariateList makeCovariateList() {
         return new StandardCovariateList(new RecalibrationArgumentCollection(), Collections.singletonList("readGroup"));

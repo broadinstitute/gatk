@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome.alleliccount;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +15,7 @@ import java.io.File;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class AllelicCountCollectionUnitTest extends BaseTest {
+public class AllelicCountCollectionUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
     private static final File BASIC_SNPS_FILE = new File(TEST_SUB_DIR, "snps-basic.tsv");
