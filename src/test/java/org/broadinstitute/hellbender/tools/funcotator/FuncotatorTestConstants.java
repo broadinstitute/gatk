@@ -45,6 +45,7 @@ public class FuncotatorTestConstants {
 
     public static final String XSV_LOCATABLE_TEST_FILE1_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test.csv";
     public static final String XSV_LOCATABLE_TEST_FILE2_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test2.csv";
+    public static final String XSV_LOCATABLE_TEST_FILE3_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test3.tsv";
 
     public static final String DATA_SOURCES_FOLDER_PATH = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "dataSources" + File.separator;
     public static final String HGNC_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "hgnc" + File.separator + "hg19" + File.separator + "hgnc_download_Nov302017.tsv";

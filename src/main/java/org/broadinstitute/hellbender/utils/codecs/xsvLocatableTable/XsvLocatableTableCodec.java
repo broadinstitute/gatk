@@ -45,10 +45,10 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
 
     public static final String COMMENT_DELIMITER = "#";
 
-    public static final String CONFIG_FILE_CONTIG_COLUMN_KEY = "contigColumn";
-    public static final String CONFIG_FILE_START_COLUMN_KEY = "start";
-    public static final String CONFIG_FILE_END_COLUMN_KEY = "end";
-    public static final String CONFIG_FILE_DELIMITER_KEY = "delimiter";
+    public static final String CONFIG_FILE_CONTIG_COLUMN_KEY = "contig_column";
+    public static final String CONFIG_FILE_START_COLUMN_KEY = "start_column";
+    public static final String CONFIG_FILE_END_COLUMN_KEY = "end_column";
+    public static final String CONFIG_FILE_DELIMITER_KEY = "xsv_delimiter";
     public static final String CONFIG_FILE_DATA_SOURCE_NAME_KEY = "name";
 
     //==================================================================================================================
@@ -125,13 +125,13 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
             throw new UserException.BadInput("XSV file has a line with no delimiter at line number: " + currentLine);
         }
         else if ( split.size() < header.size() ) {
-            logger.warn("WARNING: Line " + currentLine + "does not have the same number of fields as header!  Padding with empty fields to end...");
+            logger.warn("WARNING: Line " + currentLine + " does not have the same number of fields as header!  Padding with empty fields to end...");
             while (split.size() < header.size() ) {
                 split.add("");
             }
         }
         else if ( split.size() > header.size() ) {
-            logger.warn("WARNING: Line " + currentLine + "does not have the same number of fields as header!  Truncating fields from end...");
+            logger.warn("WARNING: Line " + currentLine + " does not have the same number of fields as header!  Truncating fields from end...");
             while (split.size() > header.size() ) {
                 split.remove( split.size() - 1 );
             }
@@ -168,45 +168,6 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
     //==================================================================================================================
     // Static Methods:
 
-    //==================================================================================================================
-    // Instance Methods:
-
-    /**
-     * Asserts that the given {@code filePath} is a valid file from which to read.
-     * @param filePath The {@link Path} to the data file to validate.
-     * @return {@code true} if the given {@code filePath} is valid; {@code false} otherwise.
-     */
-    private boolean validateInputDataFile(final Path filePath) {
-        return Files.exists(filePath) && Files.isReadable(filePath) && !Files.isDirectory(filePath);
-    }
-
-    /**
-     * Gets the path to the corresponding configuration file for the given {@code inputFilePath}.
-     * The resulting path may or may not exist.
-     * @param inputFilePath The data file {@link Path} from which to construct the path to the configuration file.
-     * @return The {@link Path} for the configuration file associated with {@code inputFilePath}.
-     */
-    public static Path getConfigFilePath(final Path inputFilePath) {
-        // Check for a sibling config file with the same name, .config as extension
-        final String configFilePath = IOUtils.replaceExtension( inputFilePath.toString(), CONFIG_FILE_EXTENSION );
-        return Paths.get(configFilePath);
-    }
-
-    /**
-     * Reads the metadata required for parsing from the given {@code configFilePath}.
-     * @param configFilePath {@link Path} to the configuration file from which to read in and setup metadata values.
-     */
-    private void readMetadataFromConfigFile(final Path configFilePath) {
-
-        final Properties configProperties = getAndValidateConfigFileContents(configFilePath);
-
-        contigColumn   = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_CONTIG_COLUMN_KEY));
-        startColumn    = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_START_COLUMN_KEY));
-        endColumn      = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_END_COLUMN_KEY));
-        delimiter      = configProperties.getProperty(CONFIG_FILE_DELIMITER_KEY);
-        dataSourceName = configProperties.getProperty(CONFIG_FILE_DATA_SOURCE_NAME_KEY);
-    }
-
     /**
      * Get the properties from the given {@code configFilePath}, validate that all required properties are present,
      * and return the property map.
@@ -236,11 +197,66 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
         return configFileContents;
     }
 
+    /**
+     * Gets the path to the corresponding configuration file for the given {@code inputFilePath}.
+     * The resulting path may or may not exist.
+     * @param inputFilePath The data file {@link Path} from which to construct the path to the configuration file.
+     * @return The {@link Path} for the configuration file associated with {@code inputFilePath}.
+     */
+    public static Path getConfigFilePath(final Path inputFilePath) {
+        // Check for a sibling config file with the same name, .config as extension
+        final String configFilePath = IOUtils.replaceExtension( inputFilePath.toString(), CONFIG_FILE_EXTENSION );
+        return Paths.get(configFilePath);
+    }
+
+    /**
+     * Ensures that the given {@link Properties} contain the given key.
+     * @param configProperties The {@link Properties} in which to look for the given key.
+     * @param key The value to find in the given {@link Properties}.
+     * @param configFilePath The {@link Path} for the config file from which {@link Properties} were derived.  Used for printing output only.
+     */
     private static void assertConfigPropertiesContainsKey(final Properties configProperties, final String key, final Path configFilePath) {
         if ( !configProperties.stringPropertyNames().contains(key) ) {
             throw new UserException.BadInput("Config file for datasource (" + configFilePath.toUri().toString() + ") does not contain required key: " + key);
         }
     }
+
+    //==================================================================================================================
+    // Instance Methods:
+
+    /**
+     * Asserts that the given {@code filePath} is a valid file from which to read.
+     * @param filePath The {@link Path} to the data file to validate.
+     * @return {@code true} if the given {@code filePath} is valid; {@code false} otherwise.
+     */
+    private boolean validateInputDataFile(final Path filePath) {
+        return Files.exists(filePath) && Files.isReadable(filePath) && !Files.isDirectory(filePath);
+    }
+
+    /**
+     * Reads the metadata required for parsing from the given {@code configFilePath}.
+     * @param configFilePath {@link Path} to the configuration file from which to read in and setup metadata values.
+     */
+    private void readMetadataFromConfigFile(final Path configFilePath) {
+
+        final Properties configProperties = getAndValidateConfigFileContents(configFilePath);
+
+        // Get the properties and remove the leading/trailing whitespace if there is any:
+        contigColumn   = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_CONTIG_COLUMN_KEY).replaceAll("^\\s+", "").replaceAll("\\s+$", ""));
+        startColumn    = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_START_COLUMN_KEY).replaceAll("^\\s+", "").replaceAll("\\s+$", ""));
+        endColumn      = Integer.valueOf(configProperties.getProperty(CONFIG_FILE_END_COLUMN_KEY).replaceAll("^\\s+", "").replaceAll("\\s+$", ""));
+        dataSourceName = configProperties.getProperty(CONFIG_FILE_DATA_SOURCE_NAME_KEY).replaceAll("^\\s+", "").replaceAll("\\s+$", "");
+
+        // Get the delimiter - we do NOT remove whitespace here on purpose:
+        delimiter      = configProperties.getProperty(CONFIG_FILE_DELIMITER_KEY);
+
+        // Process delimiter just in case it is a tab escape character:
+        if ( delimiter.equals("\\t") ) {
+            delimiter = "\t";
+        }
+    }
+
+
 
     //==================================================================================================================
     // Helper Data Types:

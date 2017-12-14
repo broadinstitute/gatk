@@ -63,7 +63,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     static final Logger logger = LogManager.getLogger(GencodeGtfCodec.class);
 
     public static final int GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE = 19;
-    public static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 26;
+    public static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 27;
 
     public static final String GENCODE_GTF_FILE_EXTENSION = "gtf";
     public static final String GENCODE_GTF_FILE_PREFIX = "gencode";
@@ -101,19 +101,12 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             throw new GATKException("Gencode version is out of expected range.  Cannot decode: " + gencodeVersion);
         }
 
-        switch (gencodeVersion) {
-            case 19: return "hg19";
-            case 20: return "hg19";
-            case 21: return "hg19";
-            case 22: return "hg19";
-            case 23: return "hg19";
-            case 24: return "hg19";
-            case 25: return "hg38";
-            case 26: return "hg38";
+        if ( gencodeVersion < 25 ) {
+            return "hg19";
         }
-
-        // This should never happen:
-        throw new GATKException("Gencode version is out of expected range.  Cannot decode: " + gencodeVersion);
+        else {
+            return "hg38";
+        }
     }
 
     // ============================================================================================================
