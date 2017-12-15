@@ -22,7 +22,7 @@ WORKDIR /gatk
 # Create a simple unit test runner
 ENV CI true
 RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatksrc/gradlew jacocoTestReport" >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatksrc/gradlew jacocoTestReport -p /gatksrc " >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
