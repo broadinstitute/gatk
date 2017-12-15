@@ -444,4 +444,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 null,
                 new BCF2Codec());
     }
+
+    @Test(expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
+    public void testYouCantWriteIntoAnExistingDirectory(){
+        // this actually creates the directory on disk, not just the file name.
+        final String workspace = createTempDir("workspace").getAbsolutePath();
+        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+    }
 }
