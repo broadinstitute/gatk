@@ -452,21 +452,32 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final List<String> otherTranscriptsCondensedAnnotations = new ArrayList<>();
         for ( final GencodeGtfTranscriptFeature transcript : gtfFeature.getTranscripts() ) {
 
-            // Try to create the annotation:
-            try {
-                final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
+            // Check if this transcript has the `basic` tag:
+            final boolean isBasic = transcript.getOptionalFields().stream()
+                    .filter( f -> f.getName().equals("tag") )
+                    .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
+                    .filter( f -> f.equals(GencodeGtfFeature.FeatureTag.BASIC) )
+                    .count() > 0;
 
-                // Add it into our transcript:
-                outputFuncotations.add( gencodeFuncotation );
+            // Only annotate on the `basic` transcripts:
+            if ( isBasic ) {
+                // Try to create the annotation:
+                try {
+                    final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
 
-            } catch (final FuncotatorUtils.TranscriptCodingSequenceException ex) {
-                //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
-                //      There may be other erroneous transcripts too.
-                otherTranscriptsCondensedAnnotations.add( "ERROR_ON_" + transcript.getTranscriptId() );
+                    // Add it into our transcript:
+                    outputFuncotations.add(gencodeFuncotation);
 
-                logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
-                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
-                );
+                }
+                catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
+                    //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
+                    //      There may be other erroneous transcripts too.
+                    otherTranscriptsCondensedAnnotations.add("ERROR_ON_" + transcript.getTranscriptId());
+
+                    logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
+                            variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
+                    );
+                }
             }
         }
 

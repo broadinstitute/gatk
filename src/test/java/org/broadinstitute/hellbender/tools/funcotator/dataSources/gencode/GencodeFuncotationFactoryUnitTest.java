@@ -266,6 +266,9 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // PIK3CA Other Indels:
         outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
+        // Non-basic funcotations:
+
+
         return outList.toArray(new Object[][]{{}});
     }
 
