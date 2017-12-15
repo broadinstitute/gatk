@@ -186,7 +186,9 @@ dependencies {
     compile 'org.broadinstitute:gatk-native-bindings:0.1.0-rc-1'
 
     compile 'org.ojalgo:ojalgo:44.0.0'
-    compile 'org.ojalgo:ojalgo-commons-math3:1.0.0'
+    compile ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
+        exclude group: 'org.apache.commons'
+    }
     compile ('org.apache.spark:spark-mllib_2.11:' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
