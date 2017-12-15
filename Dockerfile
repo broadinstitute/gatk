@@ -13,7 +13,7 @@ WORKDIR /root
 
 # Make sure we can see a help message
 RUN ln -sFv /gatk/gatk.jar
-RUN java -jar gatk.jar -h
+RUN java -jar /gatk/gatk.jar -h
 RUN mkdir .gradle
 
 #Setup test data
