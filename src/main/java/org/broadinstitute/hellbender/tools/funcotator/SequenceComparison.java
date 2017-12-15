@@ -34,6 +34,14 @@ public class SequenceComparison {
      * Stored in the forward reading direction.  For NEGATIVE strand reads, must
      * reverse complement any bases retrieved.
      */
+    private ReferenceSequence transcriptCodingSequence = null;
+
+    /**
+     * The reference coding sequence for a the transcript of this sequence comparison.
+     * This does NOT include introns.
+     * Stored in the forward reading direction.  For NEGATIVE strand reads, must
+     * reverse complement any bases retrieved.
+     */
     private ReferenceSequence referenceCodingSequence = null;
 
     /**
@@ -163,6 +171,12 @@ public class SequenceComparison {
      */
     private String  alternateAminoAcidSequence           = null;
 
+    /**
+     * The fraction of Guanine and Cytosine bases in a window of a given size around a variant.
+     * The default windows size is {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory#gcContentWindowSizeBases}.
+     */
+    private Double gcContent                             = null;
+
     // =============================================================================================================
 
     public String getReferenceBases() {
@@ -179,6 +193,20 @@ public class SequenceComparison {
 
     public void setReferenceWindow(final Integer referenceWindow) {
         this.referenceWindow = referenceWindow;
+    }
+
+   /**
+     * Return the {@link ReferenceSequence} containing the coding region for the transcript of this {@link SequenceComparison}.
+     * This does NOT include introns.
+     * The reference sequence is stored in the forward reading direction.
+     * For NEGATIVE strand reads, must reverse complement any bases retrieved.
+     */
+    public ReferenceSequence getTranscriptCodingSequence() {
+        return transcriptCodingSequence;
+    }
+
+     public void setTranscriptCodingSequence(final ReferenceSequence transcriptCodingSequence) {
+        this.transcriptCodingSequence = transcriptCodingSequence;
     }
 
     /**
@@ -363,5 +391,13 @@ public class SequenceComparison {
 
     public void setAlternateAminoAcidSequence(final String alternateAminoAcidSequence) {
         this.alternateAminoAcidSequence = alternateAminoAcidSequence;
+    }
+
+    public Double getGcContent() {
+        return gcContent;
+    }
+
+    public void setGcContent(final Double gcContent) {
+        this.gcContent = gcContent;
     }
 }

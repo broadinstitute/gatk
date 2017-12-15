@@ -8,17 +8,21 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
+import org.broadinstitute.hellbender.utils.codecs.gencode.*;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.collections.Sets;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.util.*;
@@ -26,19 +30,57 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.FeatureTag.*;
+
 /**
  * A factory to create {@link GencodeFuncotation}s.
  * This is a high-level object that interfaces with the internals of {@link Funcotator}.
  * Created by jonn on 8/30/17.
  */
-public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
+public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
+    // Private Static Members:
+    /** Standard Logger.  */
+    protected static final Logger logger = LogManager.getLogger(GencodeFuncotationFactory.class);
 
     /**
      * The window around splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
      */
-    final static private int spliceSiteVariantWindowBases = 2;
+    private static final int spliceSiteVariantWindowBases = 2;
+
+    /**
+     * Number of bases to the left and right of a variant in which to calculate the GC content.
+     */
+    private static final int gcContentWindowSizeBases = 200;
+
+    /**
+     * The window around a variant to include in the reference context annotation.
+     * Also used for context from which to get surrounding codon changes and protein changes.
+     */
+    final static private int referenceWindow = 10;
+
+    /**
+     * List of valid Appris Ranks used for sorting funcotations to get the "best" one.z
+     */
+    private static final HashSet<GencodeGtfGeneFeature.FeatureTag> apprisRanks = new HashSet<>(
+            Arrays.asList(
+                APPRIS_PRINCIPAL,
+                APPRIS_PRINCIPAL_1,
+                APPRIS_PRINCIPAL_2,
+                APPRIS_PRINCIPAL_3,
+                APPRIS_PRINCIPAL_4,
+                APPRIS_PRINCIPAL_5,
+                APPRIS_ALTERNATIVE_1,
+                APPRIS_ALTERNATIVE_2,
+                APPRIS_CANDIDATE_HIGHEST_SCORE,
+                APPRIS_CANDIDATE_LONGEST_CCDS,
+                APPRIS_CANDIDATE_CCDS,
+                APPRIS_CANDIDATE_LONGEST_SEQ,
+                APPRIS_CANDIDATE_LONGEST,
+                APPRIS_CANDIDATE
+            )
+    );
 
     /**
      * The set of {@link GencodeFuncotation.VariantClassification} types that are valid for coding regions.
@@ -58,6 +100,7 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
 
 
     //==================================================================================================================
+    // Private Members:
 
     /**
      * ReferenceSequenceFile for the transcript reference file.
@@ -70,14 +113,68 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
      */
     private final Map<String, MappedTranscriptIdInfo> transcriptIdMap;
 
-    //==================================================================================================================
+    /**
+     * The mode to select the "best" transcript (i.e. the transcript with detailed information) from the list of
+     * possible transcripts.
+     *
+     * For more information on the specifics of the differences go here:
+     * https://gatkforums.broadinstitute.org/gatk/discussion/4220/what-is-the-difference-between-tx-mode-best-effect-vs-canonical
+     */
+    private final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode;
 
-    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile) {
+    /**
+     * {@link List} of Transcript IDs that the user has requested that we annotate.
+     * If this list is empty, will default to keeping ALL transcripts.
+     * Otherwise, only transcripts on this list will be annotated.
+     */
+    private final Set<String> userRequestedTranscripts;
+
+    //==================================================================================================================
+    // Constructors:
+
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final String version) {
+        this(gencodeTranscriptFastaFile, version, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>(), new LinkedHashMap<>());
+    }
+
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final String version, final Set<String> userRequestedTranscripts) {
+        this(gencodeTranscriptFastaFile, version, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts, new LinkedHashMap<>());
+    }
+
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile, final String version,final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode) {
+        this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
+    }
+
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile,
+                                     final String version,
+                                     final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
+                                     final Set<String> userRequestedTranscripts) {
+        this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, userRequestedTranscripts, new LinkedHashMap<>());
+    }
+
+    public GencodeFuncotationFactory(final File gencodeTranscriptFastaFile,
+                                     final String version,
+                                     final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
+                                     final Set<String> userRequestedTranscripts,
+                                     final LinkedHashMap<String, String> annotationOverrides) {
         transcriptFastaReferenceDataSource = ReferenceDataSource.of(gencodeTranscriptFastaFile);
         transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
+
+        this.transcriptSelectionMode = transcriptSelectionMode;
+
+        this.version = version;
+
+        // Go through each requested transcript and remove the version numbers from them if they exist:
+        this.userRequestedTranscripts = new HashSet<>();
+        for ( final String transcript : userRequestedTranscripts ) {
+            this.userRequestedTranscripts.add( getTranscriptIdWithoutVersionNumber(transcript) );
+        }
+
+        // Initialize overrides / defaults:
+        initializeAnnotationOverrides( annotationOverrides );
     }
 
     //==================================================================================================================
+    // Override Methods:
 
     @Override
     public void close() {
@@ -85,8 +182,39 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
     }
 
     @Override
-    public List<String> getSupportedFuncotationFields() {
-        return GencodeFuncotation.getSerializedFieldNames();
+    public String getName() {
+        return "Gencode";
+    }
+
+    //TODO: Add in version getter/setter:
+
+    @Override
+    public LinkedHashSet<String> getSupportedFuncotationFields() {
+
+            return new LinkedHashSet<>(Arrays.asList(
+                    getName() + "_" + getVersion() + "_hugoSymbol",
+                    getName() + "_" + getVersion() + "_ncbiBuild",
+                    getName() + "_" + getVersion() + "_chromosome",
+                    getName() + "_" + getVersion() + "_start",
+                    getName() + "_" + getVersion() + "_end",
+                    getName() + "_" + getVersion() + "_variantClassification",
+                    getName() + "_" + getVersion() + "_secondaryVariantClassification",
+                    getName() + "_" + getVersion() + "_variantType",
+                    getName() + "_" + getVersion() + "_refAllele",
+                    getName() + "_" + getVersion() + "_tumorSeqAllele1",
+                    getName() + "_" + getVersion() + "_tumorSeqAllele2",
+                    getName() + "_" + getVersion() + "_genomeChange",
+                    getName() + "_" + getVersion() + "_annotationTranscript",
+                    getName() + "_" + getVersion() + "_transcriptStrand",
+                    getName() + "_" + getVersion() + "_transcriptExon",
+                    getName() + "_" + getVersion() + "_transcriptPos",
+                    getName() + "_" + getVersion() + "_cDnaChange",
+                    getName() + "_" + getVersion() + "_codonChange",
+                    getName() + "_" + getVersion() + "_proteinChange",
+                    getName() + "_" + getVersion() + "_gcContent",
+                    getName() + "_" + getVersion() + "_referenceContext",
+                    getName() + "_" + getVersion() + "_otherTranscripts"
+            ));
     }
 
     @Override
@@ -95,7 +223,7 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
      * create funcotations for the given variant and reference.
      */
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
-        final List<Funcotation> funcotations = new ArrayList<>();
+        final List<Funcotation> outputFuncotations = new ArrayList<>();
 
         // If we have features we need to annotate, go through them and create annotations:
         if ( featureList.size() > 0 ) {
@@ -103,28 +231,86 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
                 for ( final Feature feature : featureList ) {
 
                     // Get the kind of feature we want here:
-                    if ( GencodeGtfGeneFeature.class.isAssignableFrom(feature.getClass()) ) {
-                        funcotations.addAll(createFuncotations(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext));
-                    }
+                    if ( (feature != null) && GencodeGtfGeneFeature.class.isAssignableFrom(feature.getClass()) ) {
+                        final List<GencodeFuncotation> gencodeFuncotationList = createFuncotations(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext);
 
-                    // NOTE: If we don't have any funcotations for this feature, it's OK.
-                    //       However, this means that some other DataSourceFuncotationFactory must be producing a
-                    //       funcotation for this variant.
-                    //       For it is decreed that all variants must have a funcotation, even if that funcotation be
-                    //       empty.
+                        // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
+                        filterAnnotationsByUserTranscripts( gencodeFuncotationList, userRequestedTranscripts );
+
+                        // Add the filtered funcotations here:
+                        outputFuncotations.addAll(gencodeFuncotationList);
+                    }
                     // TODO: Actually you may want to put another IGR creation here for now...  This may be a more difficult thing if we determine it in here.  There is no way to know if these are IGRs or simply not included in this particular data set.
                 }
             }
         }
         else {
-            // This is an IGR.
-            funcotations.addAll( createIgrFuncotations(variant, referenceContext) );
+            // This is an IGR.  Only bother with it if the User has not asked for a specific transcript (because IGRs
+            // by definition have no associated transcript).
+            if ( userRequestedTranscripts.size() == 0 ) {
+                outputFuncotations.addAll(createIgrFuncotations(variant, referenceContext));
+            }
         }
 
-        return funcotations;
+        // Now we set the override values for each annotation:
+        for ( final Funcotation funcotation : outputFuncotations ) {
+            funcotation.setFieldSerializationOverrideValues( annotationOverrideMap );
+        }
+
+        return outputFuncotations;
+    }
+
+    @Override
+    /**
+     * {@inheritDoc}
+     * This method should never be called on a {@link GencodeFuncotationFactory}, as that would imply a time-loop.
+     */
+    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
+        throw new GATKException("This method should never be called on a "+ this.getClass().getName());
     }
 
     //==================================================================================================================
+    // Static Methods:
+
+    /**
+     * Filter the given list of {@link GencodeFuncotation} to only contain those funcotations that have transcriptIDs that
+     * appear in the given {@code selectedTranscripts}.
+     * Ignores transcript version numbers.
+     * @param funcotations The {@link List} of {@link GencodeFuncotation} to filter.
+     * @param selectedTranscripts The {@link Set} of transcript IDs to keep in the given {@code funcotations}.
+     */
+    static void filterAnnotationsByUserTranscripts( final List<GencodeFuncotation> funcotations,
+                                                    final Set<String> selectedTranscripts ) {
+        if ( (selectedTranscripts != null) && (!selectedTranscripts.isEmpty()) ) {
+            funcotations.removeIf( f -> !isFuncotationInTranscriptList(f, selectedTranscripts) );
+        }
+    }
+
+    /**
+     * Determines whether the given {@code funcotation} has a transcript ID that is in the given {@code acceptableTranscripts}.
+     * Ignores transcript version numbers.
+     * @param funcotation The {@link GencodeFuncotation} to check against the set of {@code acceptableTranscripts}.
+     * @param acceptableTranscripts The {@link Set} of transcript IDs that are OK to keep.
+     * @return {@code true} if funcotation.annotationTranscript is in {@code acceptableTranscripts} (ignoring transcript version); {@code false} otherwise.
+     */
+    static boolean isFuncotationInTranscriptList( final GencodeFuncotation funcotation,
+                                                  final Set<String> acceptableTranscripts ) {
+        if ( funcotation.getAnnotationTranscript() != null ) {
+            return acceptableTranscripts.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
+     * Removes the transcript ID version number from the given transcript ID (if it exists).
+     * @param transcriptId The transcript from which to remove the version number.
+     * @return The {@link String} corresponding to the given {@code transcriptId} without a version number.
+     */
+    static String getTranscriptIdWithoutVersionNumber( final String transcriptId ) {
+        return transcriptId.replaceAll("\\.\\d+$", "");
+    }
 
     /**
      * Creates a map of Transcript IDs for use in looking up transcripts from the FASTA dictionary for the GENCODE Transcripts.
@@ -246,6 +432,9 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         }
     }
 
+    //==================================================================================================================
+    // Normal Methods:
+
     /**
      * Creates a {@link List} of {@link GencodeFuncotation}s based on the given {@link VariantContext}, {@link Allele}, and {@link GencodeGtfGeneFeature}.
      * @param variant The variant to annotate.
@@ -257,67 +446,114 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
     List<GencodeFuncotation> createFuncotations(final VariantContext variant, final Allele altAllele, final GencodeGtfGeneFeature gtfFeature, final ReferenceContext reference) {
         // For each applicable transcript, create an annotation.
 
-        final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
+        final List<GencodeFuncotation> outputFuncotations = new ArrayList<>();
 
-        // TODO: instead of getting the best one here, we do them all, then in the renderer we condense them into 1 annotation based on worst effect.
-        // Get our "best" transcript:
-        final int bestTranscriptIndex = getBestTranscriptIndex(gtfFeature, variant);
-        if ( bestTranscriptIndex == -1 ) {
-            throw new GATKException("Could not get a good transcript for the given feature: " + gtfFeature.toString());
+        // Go through and annotate all our non-best transcripts:
+        final List<String> otherTranscriptsCondensedAnnotations = new ArrayList<>();
+        for ( final GencodeGtfTranscriptFeature transcript : gtfFeature.getTranscripts() ) {
+
+            // Try to create the annotation:
+            try {
+                final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
+
+                // Add it into our transcript:
+                outputFuncotations.add( gencodeFuncotation );
+
+            } catch (final FuncotatorUtils.TranscriptCodingSequenceException ex) {
+                //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
+                //      There may be other erroneous transcripts too.
+                otherTranscriptsCondensedAnnotations.add( "ERROR_ON_" + transcript.getTranscriptId() );
+
+                logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
+                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
+                );
+            }
         }
-        final GencodeGtfTranscriptFeature transcript = gtfFeature.getTranscripts().remove(bestTranscriptIndex);
 
-        final GencodeGtfFeature.GeneTranscriptType geneType = gtfFeature.getGeneType();
+        // Get our "Best Transcript" from our list:
+        sortFuncotationsByTranscriptForOutput( outputFuncotations );
+        final GencodeFuncotation bestFuncotation = outputFuncotations.remove(0);
+
+        // Now convert the other transcripts into summary strings:
+        for ( final GencodeFuncotation funcotation : outputFuncotations ) {
+            otherTranscriptsCondensedAnnotations.add( condenseGencodeFuncotation(funcotation) );
+        }
+
+        // Set our `other transcripts` annotation in our best funcotation:
+        bestFuncotation.setOtherTranscripts( otherTranscriptsCondensedAnnotations );
+
+        // Add our best funcotation to the output:
+        outputFuncotations.add(bestFuncotation);
+
+        return outputFuncotations;
+    }
+
+    /**
+     * Create a {@link GencodeFuncotation} for a given variant and transcript.
+     * @param variant The {@link VariantContext} to annotate.
+     * @param altAllele The alternate {@link Allele} to annotate.
+     * @param gtfFeature The corresponding {@link GencodeGtfFeature} from which to create annotations.
+     * @param reference The {@link ReferenceContext} for the given {@link VariantContext}.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} in which the given {@code variant} occurs.
+     * @return A {@link GencodeFuncotation}
+     */
+    private GencodeFuncotation createGencodeFuncotationOnTranscript(final VariantContext variant,
+                                                                    final Allele altAllele,
+                                                                    final GencodeGtfGeneFeature gtfFeature,
+                                                                    final ReferenceContext reference,
+                                                                    final GencodeGtfTranscriptFeature transcript) {
+        final GencodeFuncotation gencodeFuncotation;
 
         // We only fully process protein-coding regions.
         // For other gene types, we do trivial processing and label them as either LINCRNA or RNA:
         // TODO: Add more types to Variant Classification to be more explicit and a converter function to go from gene type to variant classification.
-        if ( geneType != GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING) {
+        if ( gtfFeature.getGeneType() != GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING ) {
 
             // Setup the "trivial" fields of the gencodeFuncotation:
             final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
-            if ( geneType == GencodeGtfFeature.GeneTranscriptType.LINCRNA) {
+            if ( gtfFeature.getGeneType() == GencodeGtfFeature.GeneTranscriptType.LINCRNA ) {
                 gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.LINCRNA);
             }
             else {
                 gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.RNA);
             }
-            gencodeFuncotations.add(gencodeFuncotationBuilder.build());
+
+            // Get GC Content:
+            gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+
+            gencodeFuncotation = gencodeFuncotationBuilder.build();
         }
         else {
+
+            // TODO: check for complex INDEL and warn and skip.
+
             // Find the sub-feature of transcript that contains our variant:
             final GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variant, transcript);
 
             // Determine what kind of region we're in and handle it in it's own way:
-            if (containingSubfeature == null) {
-
+            if ( containingSubfeature == null ) {
                 // We have an IGR variant
-                gencodeFuncotations.add( createIgrFuncotation(altAllele) );
-
-            } else if (GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
-
+                gencodeFuncotation = createIgrFuncotation(variant.getReference(), altAllele, reference);
+            }
+            else if ( GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have a coding region variant
-                gencodeFuncotations.add( createCodingRegionFuncotation(variant, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature) );
-
-            } else if (GencodeGtfUTRFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
-
+                gencodeFuncotation = createCodingRegionFuncotation(variant, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature);
+            }
+            else if ( GencodeGtfUTRFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have a UTR variant
-                gencodeFuncotations.add( createUtrFuncotation(variant, altAllele, reference, gtfFeature, transcript, (GencodeGtfUTRFeature) containingSubfeature) );
-
-            } else if (GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass())) {
-
+                gencodeFuncotation = createUtrFuncotation(variant, altAllele, reference, gtfFeature, transcript, (GencodeGtfUTRFeature) containingSubfeature);
+            }
+            else if ( GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
                 // We have an intron variant
-                gencodeFuncotations.add( createIntronFuncotation(variant, altAllele, gtfFeature, transcript) );
-
-            } else {
-
+                gencodeFuncotation = createIntronFuncotation(variant, altAllele, reference, gtfFeature, transcript, reference);
+            }
+            else {
                 // Uh-oh!  Problemz.
                 throw new GATKException.ShouldNeverReachHereException("Unable to determine type of variant-containing subfeature: " + containingSubfeature.getClass().getName());
             }
         }
-
-        return gencodeFuncotations;
+        return gencodeFuncotation;
     }
 
     /**
@@ -356,8 +592,12 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setTranscriptExonNumber( exon.getExonNumber() );
 
         // Set the Codon and Protein changes:
-        gencodeFuncotationBuilder.setCodonChange(FuncotatorUtils.getCodonChangeString(sequenceComparison))
-                                 .setProteinChange(FuncotatorUtils.getProteinChangeString(sequenceComparison));
+        final String codonChange = FuncotatorUtils.getCodonChangeString( sequenceComparison );
+        final String proteinChange = FuncotatorUtils.getProteinChangeString( sequenceComparison );
+
+        gencodeFuncotationBuilder.setCodonChange(codonChange)
+                                 .setProteinChange(proteinChange)
+                                 .setGcContent( sequenceComparison.getGcContent() );
 
         // Set the Variant Classification:
         final GencodeFuncotation.VariantClassification varClass = createVariantClassification( variant, altAllele, variantType, exon, sequenceComparison );
@@ -375,6 +615,9 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         if ( isInCodingRegion ) {
             gencodeFuncotationBuilder.setcDnaChange(FuncotatorUtils.getCodingSequenceChangeString(sequenceComparison));
         }
+
+        // Set the reference context with the bases from the sequence comparison:
+        gencodeFuncotationBuilder.setReferenceContext( sequenceComparison.getReferenceBases() );
 
         return gencodeFuncotationBuilder.build();
     }
@@ -614,6 +857,33 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
             }
         }
 
+        // Set GC Content:
+        gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+
+        // Determine the strand for the variant:
+        final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
+        FuncotatorUtils.assertValidStrand(strand);
+
+        // Get the strand-corrected alleles from the inputs.
+        // Also get the reference sequence for the variant region.
+        // (spanning the entire length of both the reference and the variant, regardless of which is longer).
+        final Allele strandCorrectedRefAllele;
+        final Allele strandCorrectedAltAllele;
+
+        if ( strand == Strand.POSITIVE ) {
+            strandCorrectedRefAllele = variant.getReference();
+            strandCorrectedAltAllele = altAllele;
+        }
+        else {
+            strandCorrectedRefAllele = Allele.create(ReadUtils.getBasesReverseComplement( variant.getReference().getBases() ), true);
+            strandCorrectedAltAllele = Allele.create(ReadUtils.getBasesReverseComplement( altAllele.getBases() ), false);
+        }
+
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(strandCorrectedRefAllele, strandCorrectedAltAllele, strand, referenceWindow, reference);
+
+        // Set our reference sequence in the Gencode Funcotation Builder:
+        gencodeFuncotationBuilder.setReferenceContext( referenceBases );
+
         // Set whether it's the 5' or 3' UTR:
         if ( is5PrimeUtr(utr, transcript) ) {
 
@@ -622,7 +892,6 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
 
             // Get our coding sequence for this region:
             final List<Locatable> activeRegions = Collections.singletonList(utr);
-            final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
 
             final String referenceCodingSequence;
             if ( transcriptFastaReferenceDataSource != null ) {
@@ -662,14 +931,18 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
      * Create a {@link GencodeFuncotation} for a {@code variant} that occurs in an intron in the given {@code transcript}.
      * @param variant The {@link VariantContext} for which to create a {@link GencodeFuncotation}.
      * @param altAllele The {@link Allele} in the given {@code variant} for which to create a {@link GencodeFuncotation}.
+     * @param reference The {@link ReferenceContext} for the given {@code variant}.
      * @param gtfFeature The {@link GencodeGtfGeneFeature} in which the given {@code variant} occurs.
      * @param transcript The {@link GencodeGtfTranscriptFeature} in which the given {@code variant} occurs.
+     * @param referenceContext The {@link ReferenceContext} in which the given variant appears.
      * @return A {@link GencodeFuncotation} containing information about the given {@code variant} given the corresponding {@code transcript}.
      */
     private static GencodeFuncotation createIntronFuncotation(final VariantContext variant,
-                                                       final Allele altAllele,
-                                                       final GencodeGtfGeneFeature gtfFeature,
-                                                       final GencodeGtfTranscriptFeature transcript) {
+                                                              final Allele altAllele,
+                                                              final ReferenceContext reference,
+                                                              final GencodeGtfGeneFeature gtfFeature,
+                                                              final GencodeGtfTranscriptFeature transcript,
+                                                              final ReferenceContext referenceContext) {
 
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
@@ -678,8 +951,31 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
         FuncotatorUtils.assertValidStrand(strand);
 
+        // Get the strand-corrected alleles from the inputs.
+        // Also get the reference sequence for the variant region.
+        // (spanning the entire length of both the reference and the variant, regardless of which is longer).
+        final Allele strandCorrectedRefAllele;
+        final Allele strandCorrectedAltAllele;
+
+        if ( strand == Strand.POSITIVE ) {
+            strandCorrectedRefAllele = variant.getReference();
+            strandCorrectedAltAllele = altAllele;
+        }
+        else {
+            strandCorrectedRefAllele = Allele.create(ReadUtils.getBasesReverseComplement( variant.getReference().getBases() ), true);
+            strandCorrectedAltAllele = Allele.create(ReadUtils.getBasesReverseComplement( altAllele.getBases() ), false);
+        }
+
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(strandCorrectedRefAllele, strandCorrectedAltAllele, strand, referenceWindow, referenceContext);
+
+        // Set our reference sequence in the Gencode Funcotation Builder:
+        gencodeFuncotationBuilder.setReferenceContext( referenceBases );
+
         // Set as default INTRON variant classification:
         gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
+
+        // Set GC Content:
+        gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
 
         // Need to check if we're within the window for splice site variants:
         final GencodeGtfExonFeature spliceSiteExon = getExonWithinSpliceSiteWindow(variant, transcript, spliceSiteVariantWindowBases);
@@ -790,12 +1086,12 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
      */
     @VisibleForTesting
     static SequenceComparison createSequenceComparison(final VariantContext variant,
-                                                                final Allele alternateAllele,
-                                                                final ReferenceContext reference,
-                                                                final GencodeGtfTranscriptFeature transcript,
-                                                                final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
-                                                                final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
-                                                                final ReferenceDataSource transcriptFastaReferenceDataSource) {
+                                                       final Allele alternateAllele,
+                                                       final ReferenceContext reference,
+                                                       final GencodeGtfTranscriptFeature transcript,
+                                                       final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
+                                                       final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
+                                                       final ReferenceDataSource transcriptFastaReferenceDataSource) {
 
         final SequenceComparison sequenceComparison = new SequenceComparison();
 
@@ -840,20 +1136,19 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         }
 
         // Set our reference sequence in the SequenceComparison:
-        sequenceComparison.setReferenceBases( referenceBases );
         sequenceComparison.setReferenceWindow( referenceWindow );
+        sequenceComparison.setReferenceBases( referenceBases );
+
+        // Set our GC content:
+        sequenceComparison.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
 
         // Get the coding sequence for the transcript:
-        final String referenceCodingSequence;
-        if ( transcriptFastaReferenceDataSource != null ) {
-            referenceCodingSequence = getCodingSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource );
-        }
-        else {
-            referenceCodingSequence = FuncotatorUtils.getCodingSequence( reference, exonPositionList, strand );
-        }
+        final String transcriptSequence;
+        // NOTE: This can't be null because of the Funcotator input args.
+        transcriptSequence = getCodingSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource );
 
-        // Get the reference sequence in the coding region as described by the given exonPositionList:
-        sequenceComparison.setReferenceCodingSequence(new ReferenceSequence(transcript.getTranscriptId(),transcript.getStart(),referenceCodingSequence.getBytes()));
+        // Get the transcript sequence as described by the given exonPositionList:
+        sequenceComparison.setTranscriptCodingSequence(new ReferenceSequence(transcript.getTranscriptId(),transcript.getStart(),transcriptSequence.getBytes()));
 
         // Get the ref allele:
         sequenceComparison.setReferenceAllele(refAllele.getBaseString());
@@ -861,17 +1156,18 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         // Get the allele genomic start position:
         sequenceComparison.setAlleleStart(variant.getStart());
 
-        // Get the allele transcript start position:
+        // Get the allele transcript start position (including UTRs):
         sequenceComparison.setTranscriptAlleleStart(
                 FuncotatorUtils.getTranscriptAlleleStartPosition( variant.getStart(), transcript.getStart(), transcript.getEnd(), sequenceComparison.getStrand() )
         );
 
-        // Get the coding region start position (in the above computed reference coding region):
+        // Get the coding region start position (in the above computed transcript coding region):
         sequenceComparison.setCodingSequenceAlleleStart(
                 FuncotatorUtils.getStartPositionInTranscript( variant, exonPositionList, strand )
         );
 
         // Get the overlapping exon start / stop as an interval from the given variant:
+        //TODO: See the overlap detector for this:
         sequenceComparison.setExonPosition(
                 FuncotatorUtils.getOverlappingExonPositions( refAllele, altAllele, variant.getContig(), variant.getStart(), variant.getEnd(), strand, exonPositionList )
         );
@@ -901,15 +1197,13 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         // NOTE: We are calling this with Strand.POSITIVE because we have already reverse complemented the reference sequence.
         sequenceComparison.setAlignedCodingSequenceReferenceAllele(
                 FuncotatorUtils.getAlignedCodingSequenceAllele(
-                        sequenceComparison.getReferenceCodingSequence().getBaseString(),
+                        sequenceComparison.getTranscriptCodingSequence().getBaseString(),
                         sequenceComparison.getAlignedCodingSequenceAlleleStart(),
                         sequenceComparison.getAlignedReferenceAlleleStop(),
                         refAllele,
                         sequenceComparison.getCodingSequenceAlleleStart(),
                         Strand.POSITIVE )
         );
-
-        // TODO: Check from here down for where you should use the coding sequence VS the raw reference alleles:
 
         // Get the amino acid sequence of the reference allele:
         sequenceComparison.setReferenceAminoAcidSequence(
@@ -964,6 +1258,37 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
     }
 
     /**
+     * Calculates the fraction of Guanine and Cytosine bases in a window of a given size around a variant.
+     * Note: Since Guanine and Cytosine are complementary bases, strandedness makes no difference.
+     * @param referenceContext The {@link ReferenceContext} for a variant.  Assumed to already be centered on the variant of interest.  Must not be {@code null}.
+     * @param windowSize The number of bases to the left and right of the given {@code variant} to calculate the GC Content.  Must be >=1.
+     * @return The fraction of Guanine and Cytosine bases / total bases in a window of size {@code windowSize} around a variant.
+     */
+    public static double calculateGcContent( final ReferenceContext referenceContext,
+                                             final int windowSize) {
+
+        Utils.nonNull( referenceContext );
+        ParamUtils.isPositive( windowSize, "Window size must be >= 1." );
+
+        // Create a placeholder for the bases:
+        final byte[] bases;
+
+        // Get the bases:
+        bases = referenceContext.getBases(windowSize, windowSize);
+
+        // Get the gcCount:
+        long gcCount = 0;
+        for ( final byte base : bases ) {
+            if ( BaseUtils.basesAreEqual(base, BaseUtils.Base.G.base) || BaseUtils.basesAreEqual(base, BaseUtils.Base.C.base) ) {
+                ++gcCount;
+            }
+        }
+
+        // Calculate the ratio itself:
+        return ((double)gcCount) / ((double) bases.length);
+    }
+
+    /**
      * Creates a {@link GencodeFuncotationBuilder} with some of the fields populated.
      * @param variant The {@link VariantContext} for the current variant.
      * @param altAllele The alternate {@link Allele} we are currently annotating.
@@ -975,7 +1300,6 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
                                                                                                         final Allele altAllele,
                                                                                                         final GencodeGtfGeneFeature gtfFeature,
                                                                                                         final GencodeGtfTranscriptFeature transcript) {
-
 
          final GencodeFuncotationBuilder gencodeFuncotationBuilder = new GencodeFuncotationBuilder();
          final Strand strand = Strand.decode(transcript.getGenomicStrand().toString());
@@ -997,10 +1321,19 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
                          FuncotatorUtils.getTranscriptAlleleStartPosition(variant.getStart(), transcript.getStart(), transcript.getEnd(), strand)
                  )
                  .setOtherTranscripts(
-                         gtfFeature.getTranscripts().stream().map(GencodeGtfTranscriptFeature::getTranscriptId).collect(Collectors.toList())
+                    gtfFeature.getTranscripts().stream().map(GencodeGtfTranscriptFeature::getTranscriptId).collect(Collectors.toList())
                  );
 
-         return gencodeFuncotationBuilder;
+         // Check for the optional non-serialized values for sorting:
+         // NOTE: This is kind of a kludge:
+         gencodeFuncotationBuilder.setLocusLevel( Integer.valueOf(gtfFeature.getLocusLevel().toString()) );
+
+        // Check for existence of Appris Rank and set it:
+         gencodeFuncotationBuilder.setApprisRank( getApprisRank( gtfFeature ) );
+
+         // Get the length of the transcript:
+         // NOTE: We add 1 because of genomic cordinates:
+         gencodeFuncotationBuilder.setTranscriptLength( transcript.getEnd() - transcript.getStart() + 1);return gencodeFuncotationBuilder;
     }
 
     /**
@@ -1062,9 +1395,15 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
             final int startPos = variant.getStart() + 1;
             final int endPos = variant.getStart() + variant.getReference().length() - 1;
 
-            return "g." + gtfFeature.getChromosomeName() +
-                    ":" + startPos + "_" + endPos +
-                    "del" + cleanAltAlleleString;
+            if ( startPos == endPos ) {
+                return "g." + gtfFeature.getChromosomeName() +
+                        ":" + startPos + "del" + cleanAltAlleleString;
+            }
+            else {
+                return "g." + gtfFeature.getChromosomeName() +
+                        ":" + startPos + "_" + endPos +
+                        "del" + cleanAltAlleleString;
+            }
         }
         // Check for SNP:
         else if ( variant.getReference().length() == 1 ) {
@@ -1080,61 +1419,99 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
     }
 
     /**
-     * Return the index of the "best" transcript in this gene.
-     * @param geneFeature A {@link GencodeGtfGeneFeature} from which to get the index of the "best" transcript.
-     * @param variant The {@link VariantContext} for which we want to get the best index.
-     * @return The index of the "best" {@link GencodeGtfTranscriptFeature} in the given {@link GencodeGtfGeneFeature}.  Returns -1 if no transcript is present.
+     * Sort the given list of funcotations such that the list becomes sorted in "best"->"worst" order by each funcotation's
+     * transcript.
+     * @param funcotationList The {@link List} of {@link GencodeFuncotation} to sort.
      */
-    private static int getBestTranscriptIndex(final GencodeGtfGeneFeature geneFeature, final VariantContext variant) {
-        if ( geneFeature.getTranscripts().size() == 0 ) {
-            return -1;
-        }
+    private void sortFuncotationsByTranscriptForOutput( final List<GencodeFuncotation> funcotationList ) {
+        //TODO: Make this sort go from "worst" -> "best" so we can just pop the last element off and save some time.
 
-        for ( int i = 0 ; i < geneFeature.getTranscripts().size() ; ++i ) {
-            if ( geneFeature.getTranscripts().get(i).getGenomicPosition().overlaps(variant) ) {
-                return i;
-            }
+        if ( transcriptSelectionMode == FuncotatorArgumentDefinitions.TranscriptSelectionMode.BEST_EFFECT ) {
+            funcotationList.sort(new BestEffectGencodeFuncotationComparator(userRequestedTranscripts));
         }
-
-        // Oops... we didn't find anything.
-        return -1;
+        else {
+            funcotationList.sort(new CannonicalGencodeFuncotationComparator(userRequestedTranscripts));
+        }
     }
 
     /**
      * Creates a {@link List} of {@link GencodeFuncotation}s based on the given {@link VariantContext} with type
      * {@link GencodeFuncotation.VariantClassification#IGR}.
-     * @param variant The variant to annotate.
-     * @param reference The reference against which to compare the given variant.
+     * @param variant The {@link VariantContext} for which to create {@link Funcotation}s.
+     * @param reference The {@link ReferenceContext} against which to compare the given {@link VariantContext}.
      * @return A list of IGR annotations for the given variant.
      */
     private static List<GencodeFuncotation> createIgrFuncotations(final VariantContext variant, final ReferenceContext reference) {
         // for each allele, create an annotation.
 
-        // TODO: NEED TO FIX THIS LOGIC TO INCLUDE MORE INFO!
-
         final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
 
         for ( final Allele allele : variant.getAlternateAlleles() ) {
-            gencodeFuncotations.add( createIgrFuncotation(allele) );
+            gencodeFuncotations.add( createIgrFuncotation(variant.getReference(), allele, reference) );
         }
 
         return gencodeFuncotations;
     }
 
     /**
+     * Condenses a given {@link GencodeFuncotation} into a string for the `other transcripts` annotation.
+     * @param funcotation The {@link GencodeFuncotation} to condense.
+     * @return A {@link String} representing the given {@link GencodeFuncotation}.
+     */
+    private static String condenseGencodeFuncotation( final GencodeFuncotation funcotation ) {
+        Utils.nonNull( funcotation );
+
+        final StringBuilder condensedFuncotationStringBuilder = new StringBuilder();
+
+        if ( !funcotation.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR) ) {
+            condensedFuncotationStringBuilder.append(funcotation.getHugoSymbol());
+            condensedFuncotationStringBuilder.append("_");
+            condensedFuncotationStringBuilder.append(funcotation.getAnnotationTranscript());
+            condensedFuncotationStringBuilder.append("_");
+            condensedFuncotationStringBuilder.append(funcotation.getVariantClassification());
+
+            if ( !(funcotation.getVariantClassification().equals(GencodeFuncotation.VariantClassification.INTRON ) ||
+                    ((funcotation.getSecondaryVariantClassification() != null) && funcotation.getSecondaryVariantClassification().equals(GencodeFuncotation.VariantClassification.INTRON))) ) {
+                condensedFuncotationStringBuilder.append("_");
+                condensedFuncotationStringBuilder.append(funcotation.getProteinChange());
+            }
+        }
+        else {
+            //TODO: This is known issue #3849:
+            condensedFuncotationStringBuilder.append("IGR_ANNOTATON");
+        }
+        return condensedFuncotationStringBuilder.toString();
+    }
+
+    /**
      * Creates a {@link GencodeFuncotation}s based on the given {@link Allele} with type
      * {@link GencodeFuncotation.VariantClassification#IGR}.
-     * @param altAllele The alternate allele to use for this funcotation.
+     * Reports reference bases as if they are on the {@link Strand#POSITIVE} strand.
+     * @param refAllele The reference {@link Allele} to use for this {@link GencodeFuncotation}.
+     * @param altAllele The alternate {@link Allele} to use for this {@link GencodeFuncotation}.
+     * @param reference The {@link ReferenceContext} in which the given {@link Allele}s appear.
      * @return An IGR funcotation for the given allele.
      */
-    private static GencodeFuncotation createIgrFuncotation(final Allele altAllele){
-        final GencodeFuncotation gencodeFuncotation = new GencodeFuncotation();
+    private static GencodeFuncotation createIgrFuncotation(final Allele refAllele,
+                                                           final Allele altAllele,
+                                                           final ReferenceContext reference){
 
-        gencodeFuncotation.setVariantClassification( GencodeFuncotation.VariantClassification.IGR );
-        gencodeFuncotation.setTumorSeqAllele1( altAllele.getBaseString() );
-        gencodeFuncotation.setTumorSeqAllele2( altAllele.getBaseString() );
+        final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
-        return gencodeFuncotation;
+        // Get GC Content:
+        funcotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+
+        funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.IGR );
+        funcotationBuilder.setRefAlleleAndStrand( refAllele, Strand.POSITIVE );
+        funcotationBuilder.setTumorSeqAllele1( altAllele.getBaseString() );
+        funcotationBuilder.setTumorSeqAllele2( altAllele.getBaseString() );
+
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, altAllele, Strand.POSITIVE, referenceWindow, reference);
+
+        // Set our reference context in the the FuncotatonBuilder:
+        funcotationBuilder.setReferenceContext( referenceBases );
+
+        return funcotationBuilder.build();
     }
 
     /**
@@ -1162,7 +1539,232 @@ public class GencodeFuncotationFactory implements DataSourceFuncotationFactory {
         }
     }
 
+    /**
+     * Get the Appris Rank from the given {@link GencodeGtfGeneFeature}.
+     * @param gtfFeature The {@link GencodeGtfGeneFeature} from which to get the Appris Rank.
+     * @return The highest Appris Rank found in the given {@code gtfFeature}; if no Appris Rank exists, {@code null}.
+     */
+    private static GencodeGtfFeature.FeatureTag getApprisRank( final GencodeGtfGeneFeature gtfFeature ) {
+
+        // Get our appris tag(s) if it/they exist(s):
+        final List<GencodeGtfFeature.FeatureTag> gtfApprisTags = gtfFeature.getOptionalFields().stream()
+                .filter( f -> f.getName().equals("tag") )
+                .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
+                .filter( f -> apprisRanks.contains( f.getValue() ) )
+                .map( f -> (GencodeGtfFeature.FeatureTag)f.getValue() ).collect(Collectors.toList());
+
+        if ( gtfApprisTags.isEmpty() ) {
+            return null;
+        }
+        else if ( gtfApprisTags.size() == 1 ) {
+            return gtfApprisTags.get(0);
+        }
+        else {
+            // This case should never happen, but just in case we take the highest Appris Rank:
+            gtfApprisTags.sort( Comparator.naturalOrder() );
+            return gtfApprisTags.get(0);
+        }
+    }
+
     //==================================================================================================================
+    // Helper Data Types:
+
+    /**
+     * Comparator class for Best Effect order.
+     * Complex enough that a Lambda would be utter madness.
+     */
+    static class BestEffectGencodeFuncotationComparator implements Comparator<GencodeFuncotation> {
+
+        final Set<String> userRequestedTranscripts;
+
+        public BestEffectGencodeFuncotationComparator( final Set<String> userRequestedTranscripts ) {
+            this.userRequestedTranscripts = userRequestedTranscripts;
+        }
+
+        @Override
+        public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
+            // 1)
+            // Choose the transcript that is on the custom list specified by the user:
+            if ( isFuncotationInTranscriptList(a, userRequestedTranscripts) && (!isFuncotationInTranscriptList(b, userRequestedTranscripts)) ) {
+                return -1;
+            }
+            else if ( (!isFuncotationInTranscriptList(a, userRequestedTranscripts)) && isFuncotationInTranscriptList(b, userRequestedTranscripts) ) {
+                return 1;
+            }
+
+            // 1.5)
+            // Check to see if one is an IGR.  IGR's have only a subset of the information in them, so it's easier to
+            // order them if they're IGRs:
+            else if ( (b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
+                    (!a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
+                return -1;
+            }
+            else if ( (a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
+                    (!b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
+                return 1;
+            }
+
+            // 2)
+            // Check highest variant classification:
+            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
+                return -1;
+            }
+            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
+                return 1;
+            }
+
+            // 3)
+            // Check locus/curation levels:
+            if ( (a.getLocusLevel() != null) && (b.getLocusLevel() == null) ) {
+                return -1;
+            }
+            else if ( (a.getLocusLevel() == null ) && (b.getLocusLevel() != null) ) {
+                return 1;
+            }
+            else if ( (a.getLocusLevel() != null) && (b.getLocusLevel() != null) && (!a.getLocusLevel().equals(b.getLocusLevel())) ) {
+                return a.getLocusLevel().compareTo( b.getLocusLevel() );
+            }
+
+            // 4)
+            // Check the appris annotation:
+            else if ( (a.getApprisRank() != null) && (b.getApprisRank() == null) ) {
+                return -1;
+            }
+            else if ( (a.getApprisRank() == null ) && (b.getApprisRank() != null) ) {
+                return 1;
+            }
+            else if ( (a.getApprisRank() != null) && (b.getApprisRank() != null) && (!a.getApprisRank().equals(b.getApprisRank())) ) {
+                return a.getApprisRank().compareTo( b.getApprisRank() );
+            }
+
+            // 5)
+            // Check transcript sequence length:
+            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() == null) ) {
+                return -1;
+            }
+            else if ( (a.getTranscriptLength() == null ) && (b.getTranscriptLength() != null) ) {
+                return 1;
+            }
+            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() != null) && (!a.getTranscriptLength().equals(b.getTranscriptLength())) ) {
+                return b.getTranscriptLength().compareTo( a.getTranscriptLength() );
+            }
+
+            // 6)
+            // Default to ABC order by transcript name:
+            else if ( (a.getAnnotationTranscript() != null) && (b.getAnnotationTranscript() == null) ) {
+                return -1;
+            }
+            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() != null) ) {
+                return 1;
+            }
+            // Need a default case in case all the comparison criteria are the same:
+            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() == null) ) {
+                return -1;
+            }
+            else {
+                return a.getAnnotationTranscript().compareTo(b.getAnnotationTranscript());
+            }
+        }
+    }
+
+    /**
+     * Comparator class for Cannonical order.
+     * Complex enough that a Lambda would be utter madness.
+     */
+    static class CannonicalGencodeFuncotationComparator implements Comparator<GencodeFuncotation> {
+
+        final Set<String> userRequestedTranscripts;
+
+        public CannonicalGencodeFuncotationComparator( final Set<String> userRequestedTranscripts ) {
+            this.userRequestedTranscripts = userRequestedTranscripts;
+        }
+
+        @Override
+        public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
+
+            // 1)
+            // Choose the transcript that is on the custom list specified by the user:
+            if ( isFuncotationInTranscriptList(a, userRequestedTranscripts) && (!isFuncotationInTranscriptList(b, userRequestedTranscripts)) ) {
+                return -1;
+            }
+            else if ( (!isFuncotationInTranscriptList(a, userRequestedTranscripts)) && isFuncotationInTranscriptList(b, userRequestedTranscripts) ) {
+                return 1;
+            }
+
+            // 2)
+            // Check locus/curation levels:
+            if ( (a.getLocusLevel() != null) && (b.getLocusLevel() == null) ) {
+                return -1;
+            }
+            else if ( (a.getLocusLevel() == null ) && (b.getLocusLevel() != null) ) {
+                return 1;
+            }
+            else if ( (a.getLocusLevel() != null) && (b.getLocusLevel() != null) && (!a.getLocusLevel().equals(b.getLocusLevel())) ) {
+                return a.getLocusLevel().compareTo( b.getLocusLevel() );
+            }
+
+            // 2.5)
+            // Check to see if one is an IGR.  IGR's have only a subset of the information in them, so it's easier to
+            // order them if they're IGRs:
+            if ( (b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
+                    (!a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
+                return -1;
+            }
+            else if ( (a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
+                    (!b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
+                return 1;
+            }
+
+            // 3)
+            // Check highest variant classification:
+            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
+                return -1;
+            }
+            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
+                return 1;
+            }
+
+            // 4)
+            // Check the appris annotation:
+            else if ( (a.getApprisRank() != null) && (b.getApprisRank() == null) ) {
+                return -1;
+            }
+            else if ( (a.getApprisRank() == null ) && (b.getApprisRank() != null) ) {
+                return 1;
+            }
+            else if ( (a.getApprisRank() != null) && (b.getApprisRank() != null) && (!a.getApprisRank().equals(b.getApprisRank())) ) {
+                return a.getApprisRank().compareTo( b.getApprisRank() );
+            }
+
+            // 5)
+            // Check transcript sequence length:
+            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() == null) ) {
+                return -1;
+            }
+            else if ( (a.getTranscriptLength() == null ) && (b.getTranscriptLength() != null) ) {
+                return 1;
+            }
+            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() != null) && (!a.getTranscriptLength().equals(b.getTranscriptLength())) ) {
+                return b.getTranscriptLength().compareTo( a.getTranscriptLength() );
+            }
+
+            // 6)
+            // Default to ABC order by transcript name:
+            else if ( (a.getAnnotationTranscript() != null) && (b.getAnnotationTranscript() == null) ) {
+                return -1;
+            }
+            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() != null) ) {
+                return 1;
+            }
+            // Need a default case in case all the comparison criteria are the same:
+            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() == null) ) {
+                return -1;
+            }
+            else {
+                return a.getAnnotationTranscript().compareTo(b.getAnnotationTranscript());
+            }
+        }
+    }
 
     /**
      * A simple data object class to hold information about the transcripts in the

@@ -13,7 +13,7 @@ import java.io.File;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = toolsTestDir + "copynumber/plotting/";
+    private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber/plotting");
 
     //test files
     private static final File DENOISED_COPY_RATIOS_FILE = new File(TEST_SUB_DIR, "plotting-copy-ratios.tsv");

@@ -248,7 +248,7 @@ task PlotACNVResults {
     # If optional output_dir not specified, use "."
     String output_dir_ = select_first([output_dir, "."])
 
-    command {
+    command <<<
         mkdir -p ${output_dir_}; \
         java -Xmx${default=4 mem}g -jar ${gatk_jar} PlotACNVResults \
             --hets ${hets} \
@@ -257,7 +257,7 @@ task PlotACNVResults {
             -SD ${ref_fasta_dict} \
             --output ${output_dir_} \
             --outputPrefix ${entity_id}
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
@@ -289,14 +289,14 @@ task ConvertACNVResults {
     # If optional output_dir not specified, use "."
     String output_dir_ = select_first([output_dir, "."])
 
-    command {
+    command <<<
         mkdir -p ${output_dir_}; \
         java -Xmx${default=4 mem}g -jar ${gatk_jar} ConvertACNVResults \
             --tumorHets ${hets} \
             --tangentNormalized ${tn_coverage} \
             --segments ${acnv_segments} \
             --outputDir ${output_dir_}
-    }
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
