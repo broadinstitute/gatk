@@ -66,7 +66,7 @@ releases of the toolkit.
       outside of the Docker image, the conda [gatkcondaenv.yml](https://github.com/broadinstitute/gatk/blob/master/scripts/gatkcondaenv.yml)
       file is provided. To establish the conda environment locally, [Conda](https://conda.io/docs/index.html) must first
       be installed. Then, create the gatk environment by running the command ```conda env -n gatk -f gatkcondaenv.yml```.
-      To activate the environment once its been created, run the command ```source activate gatk```. See the
+      To activate the environment once it has been created, run the command ```source activate gatk```. See the
       [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
       additional information about using and managing Conda environments.
     * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
